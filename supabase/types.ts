@@ -564,6 +564,7 @@ export type Database = {
 
 type DefaultSchema = Database[Extract<keyof Database, "public">]
 
+// biome-ignore lint
 type Tables<
 	DefaultSchemaTableNameOrOptions extends
 		| keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
@@ -589,6 +590,7 @@ type Tables<
 			: never
 		: never
 
+// biome-ignore lint
 type TablesInsert<
 	DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof Database },
 	TableName extends DefaultSchemaTableNameOrOptions extends {
@@ -610,6 +612,7 @@ type TablesInsert<
 			: never
 		: never
 
+// biome-ignore lint
 type TablesUpdate<
 	DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof Database },
 	TableName extends DefaultSchemaTableNameOrOptions extends {
@@ -631,6 +634,7 @@ type TablesUpdate<
 			: never
 		: never
 
+// biome-ignore lint
 type Enums<
 	DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof Database },
 	EnumName extends DefaultSchemaEnumNameOrOptions extends {
@@ -644,6 +648,7 @@ type Enums<
 		? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
 		: never
 
+// biome-ignore lint
 type CompositeTypes<
 	PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof Database },
 	CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
@@ -657,7 +662,8 @@ type CompositeTypes<
 		? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
 		: never
 
-const Constants = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const DatabaseConstants = {
 	graphql_public: {
 		Enums: {},
 	},

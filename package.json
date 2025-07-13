@@ -20,7 +20,7 @@
 		"validate": "pnpm run check && pnpm run typecheck && pnpm run test && pnpm run check:unused",
 		"check": "biome check .",
 		"check:fix": "biome check --fix .",
-		"check:unused": "knip --max-issues 100 --exit-code 0",
+		"check:unused": "knip --max-issues 100 --no-exit-code",
 		"check:unused:fix": "knip --fix",
 		"typegen": "react-router typegen"
 	},

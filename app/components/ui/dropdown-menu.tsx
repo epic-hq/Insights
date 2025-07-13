@@ -200,18 +200,18 @@ function DropdownMenuSubContent({
 
 export {
 	DropdownMenu,
-	
 	DropdownMenuTrigger,
 	DropdownMenuContent,
-	
-	
 	DropdownMenuItem,
-	
-	
-	
-	
-	
-	
-	
-	
+	DropdownMenuPortal,
+	DropdownMenuGroup,
+	DropdownMenuCheckboxItem,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
+	DropdownMenuLabel,
+	DropdownMenuSeparator,
+	DropdownMenuShortcut,
+	DropdownMenuSub,
+	DropdownMenuSubTrigger,
+	DropdownMenuSubContent,
 }

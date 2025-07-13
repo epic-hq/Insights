@@ -1,7 +1,7 @@
 // Component for displaying a list of interviews
 import PageHeader from "../navigation/PageHeader"
 
-interface Interview {
+export interface Interview {
 	id: string
 	date: string
 	participant: string
