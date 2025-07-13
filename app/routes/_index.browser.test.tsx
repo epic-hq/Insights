@@ -1,32 +1,31 @@
 import * as Module from "./_index"
 
 describe("Home route", () => {
-	it("should render the home page text properly in english", async ({ renderStub }) => {
+	it("should render the dashboard component with data from the loader", async ({ renderStub }) => {
 		const { getByText } = await renderStub({
 			entries: [
 				{
 					id: "home",
 					path: "/",
-					Component: () => Module.default(),
+					Component: Module.default,
+					loader: Module.loader,
 				},
 			],
 		})
 
-		expect(
-			getByText("React Router is awesome!", {
-				exact: false,
-			})
-		).not.toBeNull()
+		// Check for text that is actually in the Dashboard component
+		expect(getByText("Total Interviews")).not.toBeNull()
+		expect(getByText("Insights Generated")).not.toBeNull()
 	})
 
-	it("should render the home page text properly with explicit language set", async ({ renderStub }) => {
+	it("should render the dashboard with explicit language set", async ({ renderStub }) => {
 		const { getByText } = await renderStub({
 			entries: [
 				{
 					id: "home",
 					path: "/",
-
-					Component: () => Module.default(),
+					Component: Module.default,
+					loader: Module.loader,
 				},
 			],
 			i18n: {
@@ -34,10 +33,7 @@ describe("Home route", () => {
 			},
 		})
 
-		expect(
-			getByText("Rick & Jett Starter Kit", {
-				exact: false,
-			})
-		).not.toBeNull()
+		// Check for text that is actually in the Dashboard component
+		expect(getByText("Themes Identified")).not.toBeNull()
 	})
 })

@@ -9,10 +9,7 @@
 		"@babel/preset-typescript",
 		"babel-plugin-react-compiler",
 		"tailwindcss",
-		"@supabase/supabase-js",
-		"class-variance-authority",
 		"date-fns",
-		"lucide-react",
 		"tw-animate-css"
 	]
 }

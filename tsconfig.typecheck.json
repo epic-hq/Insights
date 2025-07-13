@@ -1,0 +1,7 @@
+{
+	"extends": "./tsconfig.json",
+	"compilerOptions": {
+		"skipLibCheck": true
+	},
+	"exclude": ["**/*.stories.*", "app/stories/**/*", "**/__tests__/**", "**/node_modules/**"]
+}

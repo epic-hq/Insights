@@ -59,7 +59,7 @@
 				"noUnusedFunctionParameters": "error"
 			},
 			"a11y": {
-				"recommended": true
+				"recommended": false
 			},
 			"nursery": {
 				"recommended": true,

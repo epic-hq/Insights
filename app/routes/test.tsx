@@ -1,9 +1,9 @@
 import type { MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import type { Resource } from "~/localization/resource"
+import { convertDateToUserTz } from "~/utils/dates"
 import type { Route } from "../+types/root"
-import { Card, CardContent, CardHeader, CardTitle } from "../components/ui/card"
-import type { Resource } from "../localization/resource"
-import { convertDateToUserTz } from "../utils/dates"
 import "@dotenvx/dotenvx/config"
 
 export const meta: MetaFunction = () => {
