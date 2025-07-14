@@ -26,6 +26,7 @@ It includes a basic setup for a project with react-router v7 framework mode and:
 - [dotenvx](https://dotenvx.com/): (for .env handling) Note: brew install dotenvx/brew/dotenvx
 - [Conform](https://conform.guide/): (for form validation)
 - [ShadcnUI](https://ui.shadcn.com/): (for UI components, added Lucide-React)
+- [Consola](https://github.com/consola/consola): (for logging) see ~/utils/logger.ts
 
 ## Internationalization
 

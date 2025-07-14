@@ -57,6 +57,19 @@ export type OpportunityUpdate = TablesUpdate<"opportunities">
 // direct table rows. Define them here so components can
 // reuse consistently.
 
+// Kanban UI interfaces
+export interface OpportunityItem {
+	id: string
+	title: string
+	owner: string
+	priority?: "high" | "medium" | "low"
+}
+
+export interface ColumnData {
+	title: string
+	items: OpportunityItem[]
+}
+
 export interface InsightWithEvidence extends Insight {
 	evidence_interviews: Interview[]
 }
@@ -69,6 +82,14 @@ export interface OpportunityView extends Opportunity {
 	impact?: number | null
 	effort?: number | null
 	description?: string | null
+	name?: string | null
+	confidence?: number | null
+	priority?: string | null
+	updated_at?: string | null
+	tags?: string[] | null
+	insights?: string[] | null
+	assignee?: string | null
+	due_date?: string | null
 }
 
 // --------------------------------------

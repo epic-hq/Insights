@@ -1,7 +1,8 @@
 // Component for displaying a list of interviews
 import PageHeader from "../navigation/PageHeader"
 
-export interface Interview {
+// Extended interface for UI-specific interview display needs
+export interface InterviewListItem {
 	id: string
 	date: string
 	participant: string
@@ -9,7 +10,7 @@ export interface Interview {
 }
 
 interface InterviewsListProps {
-	interviews: Interview[]
+	interviews: InterviewListItem[]
 	title?: string
 }
 

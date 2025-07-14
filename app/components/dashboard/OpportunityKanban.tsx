@@ -1,21 +1,11 @@
-interface OpportunityItem {
-	id: string
-	title: string
-	owner: string
-	priority?: "high" | "medium" | "low"
-}
-
-interface ColumnData {
-	title: string
-	items: OpportunityItem[]
-}
+import { useState } from "react"
+import { Link } from "react-router-dom"
+import type { OpportunityItem, ColumnData } from "~/types"
 
 interface OpportunityKanbanProps {
 	columns: ColumnData[]
 	className?: string
 }
-
-import { useState } from "react"
 
 export default function OpportunityKanban({ columns, className }: OpportunityKanbanProps) {
 	const [draggedItem, setDraggedItem] = useState<OpportunityItem | null>(null)
@@ -90,9 +80,11 @@ export default function OpportunityKanban({ columns, className }: OpportunityKan
 								onDragStart={() => handleDragStart(item)}
 								onDragOver={(e) => handleDragOverItem(item.id, e)}
 								onDragEnd={handleDragEnd}
-								className={`cursor-move rounded border bg-gray-50 p-3 text-sm transition-all dark:bg-gray-800 ${getPriorityColor(item.priority)} ${draggedItem?.id === item.id ? "scale-95 opacity-50" : ""} ${dragOverItem === item.id ? "-translate-y-1 border-blue-400" : ""}hover:shadow-md hover:-translate-y-0.5 active:translate-y-0 active:shadow-sm `}
+								className={`active:shadow-sm active:translate-y-0 bg-gray-50 border cursor-move dark:bg-gray-800 hover:-translate-y-0.5 hover:shadow-md p-3 rounded text-sm transition-all ${getPriorityColor(item.priority)} ${draggedItem?.id === item.id ? "opacity-50 scale-95" : ""} ${dragOverItem === item.id ? "-translate-y-1 border-blue-400" : ""}`}
 							>
-								<div className="mb-1 font-medium">{item.title}</div>
+								<Link to={`/opportunities/${item.id}`} className="block font-medium hover:text-blue-600 mb-1">
+									{item.title}
+								</Link>
 								<div className="flex items-center justify-between">
 									<div className="text-gray-500 text-xs">Owner: {item.owner}</div>
 									{item.priority && (

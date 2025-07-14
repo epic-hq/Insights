@@ -1,12 +1,10 @@
 import type React from "react"
-import { useParams } from "react-router-dom"
-import PageHeader from "../navigation/PageHeader"
-
 // Import types
 import type { OpportunityView } from "~/types"
+import PageHeader from "../navigation/PageHeader"
 
 interface OpportunityDetailProps {
-	opportunities: OpportunityView[]
+	opportunity: OpportunityView
 }
 
 // Mock data with stable IDs
@@ -26,25 +24,7 @@ const mockInterviews = [
 	{ id: "int3", name: "Interview 3", role: "Designer", date: new Date(2023, 2, 25) },
 ]
 
-const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunities }) => {
-	const { opportunityId } = useParams<{ opportunityId: string }>()
-
-	// Find the opportunity by ID
-	const opportunity = opportunities.find((o, index) => {
-		return o.id === opportunityId || index.toString() === opportunityId
-	})
-
-	if (!opportunity) {
-		return (
-			<div className="mx-auto max-w-7xl px-4 py-8">
-				<PageHeader title="Opportunity Not Found" />
-				<div className="rounded-lg bg-white p-6 shadow dark:bg-gray-900">
-					<h1 className="mb-4 font-bold text-2xl text-red-600">Opportunity Not Found</h1>
-					<p>The requested opportunity could not be found.</p>
-				</div>
-			</div>
-		)
-	}
+const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) => {
 
 	// Helper function to get status color
 	const getStatusColor = (status?: string) => {

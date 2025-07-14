@@ -2,7 +2,7 @@ import { json, type MetaFunction, useLoaderData } from "react-router"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
 import PersonaDetail from "~/components/personas/PersonaDetail"
-import { db } from "~/lib/db.server"
+import { db } from "~/utils/supabase.server"
 import type { InsightView, Interview, PersonaView } from "~/types"
 
 export const meta: MetaFunction = ({ params }) => {
@@ -72,14 +72,14 @@ export async function loader({ params }: { params: { personaId: string } }) {
 		name: insight.name,
 		title: insight.name,
 		category: insight.category,
-		journeyStage: insight.journey_stage,
+		journeyStage: insight.journey_stage || undefined, // Convert null to undefined
 		impact: insight.impact,
 		novelty: insight.novelty,
 		jtbd: insight.jtbd,
 		pain: insight.pain,
 		desiredOutcome: insight.desired_outcome,
-		description: null, // Not in DB schema
-		evidence: null, // Not in DB schema
+		description: undefined, // Not in DB schema
+		evidence: undefined, // Not in DB schema
 		opportunityIdeas: insight.opportunity_ideas,
 		confidence: insight.confidence,
 		createdAt: insight.created_at,
@@ -93,10 +93,7 @@ export async function loader({ params }: { params: { personaId: string } }) {
 	if (insights.length > 0) {
 		const insightIds = insights.map((i) => i.id).filter(Boolean)
 		if (insightIds.length > 0) {
-			const { data: tagsData } = await db
-				.from("insight_tags")
-				.select("*")
-				.in("insight_id", insightIds)
+			const { data: tagsData } = await db.from("insight_tags").select("*").in("insight_id", insightIds)
 
 			// Add tags to insights
 			if (tagsData) {

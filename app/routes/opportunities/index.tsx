@@ -195,7 +195,11 @@ export default function Opportunities() {
 							{kanbanColumns.flatMap((col) =>
 								col.items.map((item) => (
 									<tr key={item.id}>
-										<td className="whitespace-nowrap px-4 py-3">{item.title}</td>
+										<td className="whitespace-nowrap px-4 py-3">
+											<Link to={`/opportunities/${item.id}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+												{item.title}
+											</Link>
+										</td>
 										<td className="whitespace-nowrap px-4 py-3">{item.owner}</td>
 										<td className="whitespace-nowrap px-4 py-3">
 											<span
@@ -213,6 +217,7 @@ export default function Opportunities() {
 									</tr>
 								))
 							)}
+
 						</tbody>
 					</table>
 				</div>

@@ -1,8 +1,9 @@
 import { Link, useNavigate } from "react-router-dom"
+import type { OpportunityView } from "~/types"
+import { log } from "~/utils/logger"
 import type { TreeNode } from "../charts/TreeMap"
 import TreeMap from "../charts/TreeMap"
 import type { InsightCardProps } from "../insights/InsightCard"
-import type { OpportunityView } from "~/types"
 import UploadButton from "../upload/UploadButton"
 import FilterBar from "./FilterBar"
 import type { KPI } from "./KPIBar"
@@ -43,35 +44,32 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 	})
 
 	// Transform OpportunityView items to match OpportunityItem interface requirements
-	const transformToKanbanItem = (o: OpportunityView): { id: string; title: string; owner: string; priority?: "high" | "medium" | "low" } => ({
-		id: o.id || '',
-		title: o.title || 'Untitled Opportunity',
-		owner: o.owner || 'Unassigned',
+	const transformToKanbanItem = (
+		o: OpportunityView
+	): { id: string; title: string; owner: string; priority?: "high" | "medium" | "low" } => ({
+		id: o.id || "",
+		title: o.title || "Untitled Opportunity",
+		owner: o.owner || "Unassigned",
 		// Add a default priority based on impact if available
-		...(o.impact ? { priority: o.impact > 7 ? "high" : o.impact > 4 ? "medium" : "low" } : {})
-	});
+		...(o.impact ? { priority: o.impact > 7 ? "high" : o.impact > 4 ? "medium" : "low" } : {}),
+	})
 
 	const kanbanCols = [
 		{
 			title: "Explore",
-			items: opportunities
-				.filter(o => o.status === "Explore" && !!o.id)
-				.map(transformToKanbanItem),
+			items: opportunities.filter((o) => o.status === "Explore" && !!o.id).map(transformToKanbanItem),
 		},
 		{
 			title: "Validate",
-			items: opportunities
-				.filter(o => o.status === "Validate" && !!o.id)
-				.map(transformToKanbanItem),
+			items: opportunities.filter((o) => o.status === "Validate" && !!o.id).map(transformToKanbanItem),
 		},
 		{
 			title: "Build",
-			items: opportunities
-				.filter(o => o.status === "Build" && !!o.id)
-				.map(transformToKanbanItem),
+			items: opportunities.filter((o) => o.status === "Build" && !!o.id).map(transformToKanbanItem),
 		},
 	]
 
+	log.info("opportunities", opportunities)
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
 			{/* Filter bar - full width above sticky KPI bar */}

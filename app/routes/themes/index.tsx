@@ -1,47 +1,90 @@
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import TreeMap from "~/components/charts/TreeMap"
+import { db } from "~/utils/supabase.server"
+import type { Database } from "~/../supabase/types"
+import consola from "consola"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Themes | Insights" }, { name: "description", content: "Explore insight themes" }]
 }
 
-export function loader() {
-	// TODO: Remove hardcoded test data and fetch from API
-	return {
-		themeTree: [
-			{
-				name: "User Experience",
-				value: 100,
-				fill: "#4f46e5",
-				children: [
-					{ name: "Navigation", value: 30, fill: "#6366f1" },
-					{ name: "Performance", value: 40, fill: "#818cf8" },
-					{ name: "Accessibility", value: 30, fill: "#a5b4fc" },
-				],
-			},
-			{
-				name: "Content",
-				value: 80,
-				fill: "#10b981",
-				children: [
-					{ name: "Assignments", value: 40, fill: "#34d399" },
-					{ name: "Resources", value: 25, fill: "#6ee7b7" },
-					{ name: "Feedback", value: 15, fill: "#a7f3d0" },
-				],
-			},
-			{
-				name: "Technical",
-				value: 60,
-				fill: "#f59e0b",
-				children: [
-					{ name: "Bugs", value: 25, fill: "#fbbf24" },
-					{ name: "Performance Issues", value: 20, fill: "#fcd34d" },
-					{ name: "Feature Requests", value: 15, fill: "#fde68a" },
-				],
-			},
-		],
+export async function loader() {
+	consola.info('Loading themes from database')
+	
+	// Fetch themes from database
+	const { data: themesData, error: themesError } = await db
+		.from("themes")
+		.select("*")
+		.order("category")
+
+	if (themesError) {
+		consola.error(`Error fetching themes: ${themesError.message}`)
+		throw new Response(`Error fetching themes: ${themesError.message}`, { status: 500 })
 	}
+
+	if (!themesData || themesData.length === 0) {
+		consola.warn('No themes found in database')
+		return { themeTree: [] }
+	}
+
+	// Count insights per theme for sizing
+	const { data: insightsData, error: insightsError } = await db
+		.from("insights")
+		.select("category")
+
+	if (insightsError) {
+		consola.error(`Error fetching insights: ${insightsError.message}`)
+	}
+
+	// Count insights per theme category
+	const categoryCounts = new Map<string, number>()
+	insightsData?.forEach((insight: { category: string | null }) => {
+		if (insight.category) {
+			const count = categoryCounts.get(insight.category) || 0
+			categoryCounts.set(insight.category, count + 1)
+		}
+	})
+
+	// Define theme node type
+	type ThemeNode = {
+		name: string;
+		value: number;
+		fill: string;
+		id: string;
+	}
+
+	// Group themes by category
+	const categoryMap = new Map<string, ThemeNode[]>()
+	themesData.forEach((theme: Database["public"]["Tables"]["themes"]["Row"]) => {
+		const category = theme.category || "Uncategorized"
+		if (!categoryMap.has(category)) {
+			categoryMap.set(category, [])
+		}
+		
+		categoryMap.get(category)?.push({
+			name: theme.name,
+			value: categoryCounts.get(theme.name) || 10, // Default value if no insights
+			fill: theme.color_hex || `#${Math.floor(Math.random()*16777215).toString(16)}`, // Use theme color or generate random
+			id: theme.id
+		})
+	})
+
+	// Create tree structure for visualization
+	const themeTree = Array.from(categoryMap.entries()).map(([category, themes]) => {
+		// Sum values of all themes in this category
+		const totalValue = themes.reduce((sum, theme) => sum + theme.value, 0)
+		
+		return {
+			name: category,
+			value: totalValue,
+			fill: themes[0]?.fill || "#6b7280", // Use first theme's color or default gray
+			children: themes
+		}
+	})
+
+	consola.success(`Successfully loaded ${themesData.length} themes in ${categoryMap.size} categories`)
+	return { themeTree }
 }
 
 export default function Themes() {
@@ -64,8 +107,9 @@ export default function Themes() {
 						height={500}
 						onClick={(node) => {
 							if (node && !node.children) {
-								// Navigate to specific theme
-								window.location.href = `/themes/${node.name.toLowerCase().replace(/\s+/g, "-")}`
+								// Navigate to specific theme using ID if available
+								const themeId = node.id || node.name.toLowerCase().replace(/\s+/g, "-")
+								window.location.href = `/themes/${themeId}`
 							}
 						}}
 					/>
@@ -77,7 +121,7 @@ export default function Themes() {
 					category.children?.map((theme) => (
 						<Link
 							key={theme.name}
-							to={`/themes/${theme.name.toLowerCase().replace(/\s+/g, "-")}`}
+							to={`/themes/${theme.id || theme.name.toLowerCase().replace(/\s+/g, "-")}`}
 							className="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 						>
 							<div className="flex items-center">
