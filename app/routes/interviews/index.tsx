@@ -1,109 +1,146 @@
+import { formatDistanceToNow } from "date-fns"
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+import type { Database } from "~/../supabase/types"
+import type { InterviewStatus } from "~/types"
+import { InterviewStatus as InterviewStatusEnum } from "~/types"
+import { db } from "~/utils/supabase.server"
 
+// Define interview view type if not in centralized types
+interface InterviewView {
+	id: string
+	date: string
+	participant: string
+	role: string
+	duration: string
+	status: InterviewStatus
+	insightCount: number
+	title: string
+	interviewer: string
+	createdAt: string
+}
 export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
 }
 
-// Mock data for demonstration purposes
-export function loader() {
+export async function loader({ request }: { request: Request }) {
+	const url = new URL(request.url)
+
+	const _sort = url.searchParams.get("sort") || "default"
+	const _interviewFilter = url.searchParams.get("interview") || null
+	const _themeFilter = url.searchParams.get("theme") || null
+	const _personaFilter = url.searchParams.get("persona") || null
+
+	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
+	const query = db.from("interviews").select("*")
+
+	const { data: rows, error } = await query
+	if (error) throw new Response(error.message, { status: 500 })
+
+	const { data: allInsights, error: insightsError } = await db
+		.from("insights")
+		.select("interview_id")
+		.not("interview_id", "is", null)
+
+	if (insightsError) {
+		throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
+	}
+
+	const insightCountMap = new Map<string, number>()
+	if (allInsights) {
+		allInsights.forEach((insight) => {
+			if (insight.interview_id) {
+				const currentCount = insightCountMap.get(insight.interview_id) || 0
+				insightCountMap.set(insight.interview_id, currentCount + 1)
+			}
+		})
+	}
+
+	const interviews: InterviewView[] = (rows || []).map((interview: InterviewRow) => ({
+		id: interview.id,
+		date: interview.interview_date || interview.created_at.split("T")[0],
+		participant: interview.participant_pseudonym || "Anonymous",
+		role: interview.segment || "User",
+		duration: interview.duration_min ? `${interview.duration_min} min` : "N/A",
+		status: interview.status as InterviewStatus,
+		insightCount: insightCountMap.get(interview.id) || 0,
+		title: interview.title || "",
+		interviewer: interview.interviewer_id || "",
+		createdAt: interview.created_at,
+	}))
+
+	const statusOptions = InterviewStatusEnum.options
+	const roleMap: Record<string, { role: string } & Record<InterviewStatus, number>> = {}
+	const roleCounts: Record<string, number> = {}
+	const statusCounts: Record<InterviewStatus, number> = Object.fromEntries(statusOptions.map((s) => [s, 0])) as Record<
+		InterviewStatus,
+		number
+	>
+	let totalInsights = 0
+
+	interviews.forEach((interview) => {
+		const role = interview.role || "Unknown"
+		const status = interview.status
+		const count = interview.insightCount || 0
+
+		if (!roleMap[role]) {
+			roleMap[role] = { role, ...Object.fromEntries(statusOptions.map((s) => [s, 0])) } as any
+		}
+		roleMap[role][status]++
+		statusCounts[status]++
+		roleCounts[role] = (roleCounts[role] || 0) + 1
+		totalInsights += count
+	})
+
+	const stats = {
+		total: interviews.length,
+		byStatus: statusCounts,
+		byRole: roleCounts,
+		totalInsights,
+		averageInsightsPerInterview: interviews.length > 0 ? totalInsights / interviews.length : 0,
+	}
+
 	return {
-		interviews: [
-			{
-				id: "int-001",
-				date: "2025-07-10",
-				participant: "Alex Johnson",
-				status: "ready" as const,
-				role: "Student",
-				duration: "45 minutes",
-				insightCount: 12,
-			},
-			{
-				id: "int-002",
-				date: "2025-07-08",
-				participant: "Maria Garcia",
-				status: "ready" as const,
-				role: "Teacher",
-				duration: "60 minutes",
-				insightCount: 15,
-			},
-			{
-				id: "int-003",
-				date: "2025-07-05",
-				participant: "Sam Taylor",
-				status: "transcribed" as const,
-				role: "Student",
-				duration: "30 minutes",
-				insightCount: 8,
-			},
-			{
-				id: "int-004",
-				date: "2025-07-01",
-				participant: "Jamie Smith",
-				status: "processing" as const,
-				role: "Admin",
-				duration: "50 minutes",
-				insightCount: 0,
-			},
-			{
-				id: "int-005",
-				date: "2025-06-28",
-				participant: "Pat Wilson",
-				status: "ready" as const,
-				role: "Teacher",
-				duration: "55 minutes",
-				insightCount: 14,
-			},
-			{
-				id: "int-006",
-				date: "2025-06-25",
-				participant: "Jordan Lee",
-				status: "ready" as const,
-				role: "Student",
-				duration: "40 minutes",
-				insightCount: 10,
-			},
-			{
-				id: "int-007",
-				date: "2025-06-20",
-				participant: "Casey Brown",
-				status: "ready" as const,
-				role: "Parent",
-				duration: "35 minutes",
-				insightCount: 9,
-			},
-			{
-				id: "int-008",
-				date: "2025-06-15",
-				participant: "Riley Martinez",
-				status: "ready" as const,
-				role: "IT Staff",
-				duration: "65 minutes",
-				insightCount: 18,
-			},
-		],
-		stats: {
-			total: 8,
-			byStatus: {
-				ready: 6,
-				transcribed: 1,
-				processing: 1,
-			},
-			byRole: {
-				Student: 3,
-				Teacher: 2,
-				Admin: 1,
-				Parent: 1,
-				"IT Staff": 1,
-			},
-			totalInsights: 86,
-			averageInsightsPerInterview: 10.75,
-		},
+		interviews,
+		stackedData: (() => {
+			const roleMap: Record<string, { role: string } & Record<InterviewStatus, number>> = {}
+
+			interviews.forEach((interview) => {
+				const role = interview.role || "Unknown"
+				const status = interview.status
+
+				if (!roleMap[role]) {
+					roleMap[role] = {
+						role,
+						...(Object.fromEntries(InterviewStatusEnum.options.map((s) => [s, 0])) as Record<InterviewStatus, number>),
+					}
+				}
+
+				if (InterviewStatusEnum.options.includes(status)) {
+					roleMap[role][status]++
+				}
+			})
+
+			return Object.values(roleMap)
+		})(),
+		stats,
 	}
 }
 
 export default function Interviews() {
-	const { interviews, stats } = useLoaderData<typeof loader>()
+	const { interviews, stackedData, stats } = useLoaderData<typeof loader>()
+
+	const statusColors: Partial<Record<InterviewStatus, string>> = {
+		draft: "#0acf00",
+		scheduled: "#a855f7",
+		uploaded: "#06b6d4",
+		transcribed: "#facc15",
+		processing: "#60a5fa",
+		ready: "#4ade80",
+		tagged: "#f97316",
+		archived: "#9ca3af",
+	}
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
@@ -136,8 +173,8 @@ export default function Interviews() {
 			</div>
 
 			<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-				<h2 className="mb-4 font-semibold text-xl">Interview Distribution</h2>
-				<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+				{/* <h2 className="mb-4 font-semibold text-xl">Interview Distribution</h2> */}
+				{/* <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 					<div>
 						<h3 className="mb-2 font-medium">By Status</h3>
 						<div className="space-y-2">
@@ -160,6 +197,26 @@ export default function Interviews() {
 							))}
 						</div>
 					</div>
+				</div> */}
+				<div className="mt-6">
+					<h2 className="mb-4 font-semibold text-xl">Interview Segments by Status</h2>
+					<ResponsiveContainer width="100%" height={200}>
+						<BarChart data={stackedData}>
+							<XAxis dataKey="role" />
+							<YAxis allowDecimals={false} />
+							<Tooltip />
+							<Legend />
+
+							{InterviewStatusEnum.options.map((status) => (
+								<Bar
+									key={status}
+									dataKey={status}
+									stackId="a"
+									fill={statusColors[status] || "#d1d5db"} // fallback gray
+								/>
+							))}
+						</BarChart>
+					</ResponsiveContainer>
 				</div>
 			</div>
 
@@ -174,9 +231,6 @@ export default function Interviews() {
 					<table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
 						<thead>
 							<tr>
-								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-									ID
-								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Date
 								</th>
@@ -203,8 +257,9 @@ export default function Interviews() {
 						<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 							{interviews.map((interview) => (
 								<tr key={interview.id}>
-									<td className="whitespace-nowrap px-4 py-3">{interview.id}</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.date}</td>
+									<td className="whitespace-nowrap px-4 py-3">
+										{formatDistanceToNow(interview.date, { addSuffix: true })}
+									</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.participant}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.role}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.duration}</td>

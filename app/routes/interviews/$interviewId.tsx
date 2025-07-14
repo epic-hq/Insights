@@ -1,9 +1,10 @@
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
-import type { InsightCardProps } from "~/components/insights/InsightCard"
 import InsightCard from "~/components/insights/InsightCard"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import InterviewMetadata from "~/components/interviews/InterviewMetadata"
+import type { InsightView } from "~/types"
+import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
@@ -12,119 +13,91 @@ export const meta: MetaFunction = ({ params }) => {
 	]
 }
 
-// Mock data for demonstration purposes
-export function loader({ params }: { params: { interviewId: string } }) {
+// Define transcript entry type for type safety
+type TranscriptEntry = {
+	speaker: string
+	text: string
+}
+
+type TranscriptData = {
+	content?: string | TranscriptEntry[] | null
+}
+
+export async function loader({ params }: { params: { interviewId: string } }) {
 	const interviewId = params.interviewId
 
-	// Mock interview data
-	const interview = {
-		id: interviewId,
-		date: "2025-07-10",
-		participant: "Alex Johnson",
-		role: "Student",
-		status: "ready" as const,
-		duration: "45 minutes",
-		metadata: {
-			age: "21",
-			gender: "Male",
-			location: "San Francisco, CA",
-			education: "Undergraduate",
-			experience: "2nd year student",
-		},
-		transcript: [
-			{
-				speaker: "Interviewer",
-				text: "Thanks for joining us today. Can you tell me about your experience using the platform?",
-			},
-			{
-				speaker: "Alex",
-				text: "Sure. I've been using it for about a semester now. Overall it's been good, but I've had some issues with finding my assignments sometimes.",
-			},
-			{ speaker: "Interviewer", text: "Can you elaborate on that? What makes finding assignments difficult?" },
-			{
-				speaker: "Alex",
-				text: "The navigation is a bit confusing. Sometimes assignments are under the course page, sometimes they're in the assignments section. It's not consistent.",
-			},
-			{ speaker: "Interviewer", text: "How does that affect your workflow?" },
-			{
-				speaker: "Alex",
-				text: "I've missed a couple of deadlines because I didn't see the assignments. It's frustrating because I'm trying to stay on top of my work.",
-			},
-			{ speaker: "Interviewer", text: "What would make this better for you?" },
-			{
-				speaker: "Alex",
-				text: "I'd love to have all assignments in one place, with clear due dates and maybe even notifications.",
-			},
-			{ speaker: "Interviewer", text: "How do you feel about the collaboration features?" },
-			{
-				speaker: "Alex",
-				text: "Those are actually pretty good. I like how I can work on projects with classmates in real-time.",
-			},
-		],
+	// Fetch interview data from database
+	const { data: interviewData, error: interviewError } = await db
+		.from("interviews")
+		.select("*")
+		.eq("id", interviewId)
+		.single()
+
+	if (interviewError) {
+		throw new Response(`Error fetching interview: ${interviewError.message}`, { status: 500 })
 	}
 
-	// Mock insights from this interview
-	const insights: InsightCardProps[] = [
-		{
-			id: "ins-001",
-			title: "Navigation inconsistency causes missed deadlines",
-			description:
-				"Student reported missing assignment deadlines due to inconsistent placement of assignments across the platform.",
-			sentiment: "negative",
-			impact: "high",
-			confidence: 90,
-			tags: ["navigation", "assignments", "deadlines"],
-			source: {
-				type: "interview",
-				id: interviewId,
-				participant: "Alex Johnson",
-				date: "2025-07-10",
-			},
-			evidence:
-				"I've missed a couple of deadlines because I didn't see the assignments. It's frustrating because I'm trying to stay on top of my work.",
-		},
-		{
-			id: "ins-002",
-			title: "Students want centralized assignment view",
-			description: "Participant expressed desire for a single location to view all assignments with clear due dates.",
-			sentiment: "neutral",
-			impact: "medium",
-			confidence: 85,
-			tags: ["assignments", "organization", "feature request"],
-			source: {
-				type: "interview",
-				id: interviewId,
-				participant: "Alex Johnson",
-				date: "2025-07-10",
-			},
-			evidence: "I'd love to have all assignments in one place, with clear due dates and maybe even notifications.",
-		},
-		{
-			id: "ins-003",
-			title: "Positive feedback on collaboration features",
-			description: "Student appreciates the real-time collaboration functionality for group projects.",
-			sentiment: "positive",
-			impact: "medium",
-			confidence: 80,
-			tags: ["collaboration", "group work", "positive"],
-			source: {
-				type: "interview",
-				id: interviewId,
-				participant: "Alex Johnson",
-				date: "2025-07-10",
-			},
-			evidence: "Those are actually pretty good. I like how I can work on projects with classmates in real-time.",
-		},
-	]
+	if (!interviewData) {
+		throw new Response(`Interview not found: ${interviewId}`, { status: 404 })
+	}
+
+	// Fetch transcript data if available - using the correct table name from the schema
+	let transcriptData: TranscriptData | null = null
+	try {
+		const { data, error } = await db.from("transcripts").select("content").eq("interview_id", interviewId).single()
+
+		if (!error && data) {
+			transcriptData = data as TranscriptData
+		}
+	} catch (_error) {
+		// Silently handle error - transcript is optional
+	}
+
+	// Format the interview data
+	const interview = {
+		...interviewData,
+	}
+
+	// Fetch insights related to this interview
+	const { data: insightsData, error: insightsError } = await db
+		.from("insights")
+		.select("*")
+		.eq("interview_id", interviewId)
+
+	if (insightsError) {
+		throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
+	}
+
+	// Transform insights to match the expected format for UI
+	const insights: InsightView[] = (insightsData || []).map((insight) => ({
+		id: insight.id,
+		name: insight.name || "",
+		title: insight.name || "", // Use name as title for backward compatibility
+		category: insight.category || "",
+		journeyStage: insight.journey_stage || "",
+		impact: insight.impact,
+		novelty: insight.novelty,
+		jtbd: insight.jtbd,
+		pain: insight.pain,
+		desiredOutcome: insight.desired_outcome,
+		description: "", // No direct field in DB schema
+		evidence: "", // No direct evidence field in DB schema
+		opportunityIdeas: insight.opportunity_ideas,
+		confidence: insight.confidence,
+		createdAt: insight.created_at,
+		relatedTags: [], // No direct field in DB schema
+		contradictions: insight.contradictions,
+	}))
 
 	return {
 		interview,
 		insights,
+		transcriptData,
 	}
 }
 
 export default function InterviewDetail() {
-	const { interview, insights } = useLoaderData<typeof loader>()
+	const { interview, insights, transcriptData } = useLoaderData<typeof loader>()
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
@@ -136,7 +109,7 @@ export default function InterviewDetail() {
 						</Link>
 						<span className="text-gray-500">/</span>
 						<h1 className="font-bold text-2xl">
-							{interview.id}: {interview.participant}
+							{interview.id}: {interview.participant_pseudonym || "Anonymous"}
 						</h1>
 					</div>
 				</div>
@@ -150,17 +123,55 @@ export default function InterviewDetail() {
 					<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 						<h2 className="mb-4 font-semibold text-xl">Interview Transcript</h2>
 						<div className="space-y-4">
-							{interview.transcript.map((entry, index) => (
-								<div
-									key={`${entry.speaker}-${index}`}
-									className={`rounded-lg p-3 ${
-										entry.speaker === "Interviewer" ? "bg-gray-50 dark:bg-gray-800" : "bg-blue-50 dark:bg-blue-900/20"
-									}`}
-								>
-									<p className="mb-1 font-medium">{entry.speaker}</p>
-									<p className="text-gray-700 dark:text-gray-300">{entry.text}</p>
-								</div>
-							))}
+							{(() => {
+								if (!transcriptData?.content) {
+									return (
+										<div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+											<p className="text-gray-700 dark:text-gray-300">Transcript not available</p>
+										</div>
+									)
+								}
+
+								try {
+									// Try to parse the content as JSON if it exists
+									let parsedTranscript: TranscriptEntry[] = []
+
+									if (typeof transcriptData.content === "string") {
+										parsedTranscript = JSON.parse(transcriptData.content)
+									} else if (Array.isArray(transcriptData.content)) {
+										parsedTranscript = transcriptData.content
+									}
+
+									if (!Array.isArray(parsedTranscript) || parsedTranscript.length === 0) {
+										return (
+											<div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+												<p className="text-gray-700 dark:text-gray-300">No transcript entries found</p>
+											</div>
+										)
+									}
+
+									return (
+										<>
+											{parsedTranscript.map((entry, index) => (
+												<div
+													key={`transcript-entry-${index}-${entry.speaker || "unknown"}`}
+													className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800"
+												>
+													<p className="mb-1 font-medium">{entry.speaker || "Unknown"}</p>
+													<p className="text-gray-700 dark:text-gray-300">{entry.text || ""}</p>
+												</div>
+											))}
+										</>
+									)
+								} catch (_error) {
+									// Catch parsing errors but don't use the error variable
+									return (
+										<div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
+											<p className="text-gray-700 dark:text-gray-300">Error parsing transcript</p>
+										</div>
+									)
+								}
+							})()}
 						</div>
 					</div>
 
@@ -183,12 +194,12 @@ export default function InterviewDetail() {
 					<div className="sticky top-4 mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 						<h2 className="mb-4 font-semibold text-xl">Participant Information</h2>
 						<InterviewMetadata
-							date={interview.date}
-							participant={interview.participant}
-							interviewer={interview.role}
+							date={interview.interview_date || interview.created_at?.split("T")[0] || ""}
+							participant={interview.participant_pseudonym || "Anonymous"}
+							interviewer={interview.interviewer_id || ""}
 							interviewId={interview.id}
-							duration={Number(interview.duration)}
-							segment={interview.status}
+							duration={interview.duration_min || 0}
+							segment={interview.segment || ""}
 						/>
 
 						<div className="mt-6 border-gray-200 border-t pt-6 dark:border-gray-700">
@@ -203,7 +214,8 @@ export default function InterviewDetail() {
 												: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
 									}`}
 								>
-									{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
+									{(interview.status || "processing").charAt(0).toUpperCase() +
+										(interview.status || "processing").slice(1)}
 								</span>
 							</div>
 						</div>
