@@ -1,8 +1,8 @@
 import type { MetaFunction } from "react-router"
 import { Link, useLoaderData, useSearchParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
-import type { InsightCardProps } from "~/components/insights/InsightCard"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
+import type { InsightView } from "~/types"
 import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = () => {
@@ -53,7 +53,7 @@ export async function loader({ request }: { request: Request }) {
 	if (error) throw new Response(error.message, { status: 500 })
 
 	// Map to component props
-	const insights: InsightCardProps[] = (rows || []).map((r: InsightRow) => ({
+	const insights: InsightView[] = (rows || []).map((r: InsightRow) => ({
 		id: r.id,
 		name: r.name,
 		tag: r.name,
@@ -61,7 +61,7 @@ export async function loader({ request }: { request: Request }) {
 		journeyStage: r.journey_stage ?? "",
 		impact: r.impact ?? 0,
 		novelty: r.novelty ?? 0,
-		jtbD: r.jtbd ?? "",
+		jtbd: r.jtbd ?? "",
 		underlyingMotivation: r.motivation ?? "",
 		pain: r.pain ?? "",
 		desiredOutcome: r.desired_outcome ?? "",
@@ -91,7 +91,7 @@ export async function loader({ request }: { request: Request }) {
 	if (personaFilter) {
 		// For demo purposes, we'll just filter based on participant name containing the persona name
 		// In a real app, you'd have more structured data about which insights relate to which personas
-		filteredInsights = filteredInsights.filter((insight: InsightCardProps) => {
+		filteredInsights = filteredInsights.filter((insight: InsightView) => {
 			const personaName = personaFilter.toLowerCase()
 			if (personaName === "students") {
 				return insight.name?.toLowerCase().includes("student") || insight.name?.toLowerCase().includes("students")
@@ -110,11 +110,11 @@ export async function loader({ request }: { request: Request }) {
 	if (sort === "latest") {
 		filteredInsights.sort((a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime())
 	} else if (sort === "impact") {
-		filteredInsights.sort((a: InsightCardProps, b: InsightCardProps) => Number(b.impact) - Number(a.impact))
+		filteredInsights.sort((a: InsightView, b: InsightView) => Number(b.impact) - Number(a.impact))
 	} else if (sort === "confidence") {
 		filteredInsights.sort(
-			(a: InsightCardProps & { upvotes?: number }, b: InsightCardProps & { upvotes?: number }) =>
-				(b.upvotes || 0) - (a.upvotes || 0)
+			(a: InsightView & { upvotes?: number }, b: InsightView & { upvotes?: number }) =>
+				Number(b.upvotes || 0) - Number(a.upvotes || 0)
 		)
 	}
 

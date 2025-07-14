@@ -26,6 +26,17 @@ create table if not exists research_projects (
 );
 
 -- 3. Interviews -----------------------------------------------------------------
+create type interview_status as enum (
+  'draft',
+  'scheduled',
+  'uploaded',
+  'transcribed',
+  'processing',
+  'ready',
+  'tagged',
+  'archived'
+);
+
 create table if not exists interviews (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations (id) on delete cascade,
@@ -36,7 +47,7 @@ create table if not exists interviews (
   participant_pseudonym text,
   segment text,
   duration_min int,
-  status text not null check (status in ('uploaded','transcribed','processed')),
+  status interview_status not null default 'draft',
   created_at timestamptz not null default now()
 );
 

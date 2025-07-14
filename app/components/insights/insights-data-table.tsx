@@ -7,12 +7,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableRow } from "~/components/ui/table"
-import type { InsightCardProps } from "./InsightCard"
+import type { InsightView } from "~/types"
 
 const ALL = "__all__"
 
 type SortConfig = {
-	key: keyof InsightCardProps | null
+	key: keyof InsightView | null
 	direction: "asc" | "desc"
 }
 
@@ -26,7 +26,7 @@ type ColumnFilters = {
 }
 
 interface InsightsDataTableProps {
-	insights: InsightCardProps[]
+	insights: InsightView[]
 }
 
 export function InsightsDataTable({ insights }: InsightsDataTableProps) {
@@ -61,7 +61,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 		const filtered = insights.filter((insight) => {
 			const searchWords = columnFilters.tag.toLowerCase().split(" ").filter(Boolean)
 			const matchesTag = searchWords.every((word) => (insight.name ?? "").toLowerCase().includes(word))
-			const matchesJtbd = searchWords.every((word) => (insight.jtbD ?? "").toLowerCase().includes(word))
+			const matchesJtbd = searchWords.every((word) => (insight.jtbd ?? "").toLowerCase().includes(word))
 			return (
 				(matchesTag || matchesJtbd) &&
 				(columnFilters.category === ALL || insight.category === columnFilters.category) &&
@@ -91,7 +91,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 		return filtered
 	}, [insights, columnFilters, sortConfig])
 
-	const handleSort = (key: keyof InsightCardProps) => {
+	const handleSort = (key: keyof InsightView) => {
 		setSortConfig((current) => ({
 			key,
 			direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
@@ -107,7 +107,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 		setColumnFilters((prev) => ({ ...prev, [column]: ALL }))
 	}
 
-	const getSortIcon = (column: keyof InsightCardProps) => {
+	const getSortIcon = (column: keyof InsightView) => {
 		if (sortConfig.key !== column) return <ArrowUpDown className="h-4 w-4" />
 		return sortConfig.direction === "asc" ? <ArrowUp className="h-4 w-4" /> : <ArrowDown className="h-4 w-4" />
 	}
@@ -355,7 +355,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 							<TableRow key={insight.id}>
 								<TableCell>
 									<div className="mb-1 font-medium">{insight.name}</div>
-									<div className="line-clamp-2 text-muted-foreground text-xs">{insight.jtbD}</div>
+									<div className="line-clamp-2 text-muted-foreground text-xs">{insight.jtbd}</div>
 								</TableCell>
 								<TableCell>
 									<Badge variant="outline">{insight.category}</Badge>

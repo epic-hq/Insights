@@ -1,2 +1,2 @@
 # Ignore generated Supabase types file which contains many unused generic helper types
-supabase/types.ts
+supabase/**

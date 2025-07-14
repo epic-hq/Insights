@@ -1,8 +1,9 @@
 import { type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
+import { db } from "~/utils/supabase.server"
 
-import InsightCard from "~/components/insights/InsightCard"
-import InsightCardGrid from "~/components/insights/InsightCardGrid"
+import ThemeDetail from "~/components/themes/ThemeDetail"
+import type { TreeNode } from "~/components/charts/TreeMap"
+import type { InsightView, Interview, Theme } from "~/types"
 
 export const meta: MetaFunction = ({ params }) => {
 	const themeName = params.themeId?.replace(/-/g, " ")
@@ -12,67 +13,95 @@ export const meta: MetaFunction = ({ params }) => {
 	]
 }
 
-// Mock data for demonstration purposes
-import type { InsightCardProps } from "~/components/insights/InsightCard"
-
-export function loader({ params }: { params: { themeId: string } }) {
+export async function loader({ params }: { params: { themeId: string } }) {
 	const themeId = params.themeId
 	const themeName = themeId.replace(/-/g, " ")
-	// const { data: insights } = supabase.from("insights").select("*").eq("theme_id", themeId)
+	
+	// Fetch insights from database
+	const { data: insights } = await db
+		.from("insights")
+		.select("*")
+		.or(`category.ilike.${themeName},tags.cs.{${themeName}}`) // Search in category or tags
 
-	const insights: InsightCardProps[] = [] // TODO: replace with real query
+	// Fetch interviews that are referenced by these insights
+	const interviewIds = insights
+		?.filter(insight => insight.interview_id !== null)
+		.map(insight => insight.interview_id as string) || []
+	
+	const { data: interviews } = await db
+		.from("interviews")
+		.select("*")
+		.in("id", interviewIds)
+
+	// Fetch theme tree for navigation context
+	const { data: themes } = await db
+		.from("themes")
+		.select("*")
+		.order("name")
+
+	// Transform themes into TreeNode structure
+	const themeTree = transformThemesToTreeNodes(themes || [])
+
+	// Transform insights to InsightView
+	const insightViews: InsightView[] = (insights || []).map(insight => ({
+		id: insight.id,
+		name: insight.name,
+		title: insight.name,
+		category: insight.category,
+		jtbd: insight.jtbd,
+		underlyingMotivation: null, // Field not in DB schema
+		pain: insight.pain,
+		desiredOutcome: insight.desired_outcome,
+		description: null, // Field not in DB schema
+		evidence: null, // Field not in DB schema
+		confidence: insight.confidence,
+		novelty: insight.novelty,
+		impact: insight.impact,
+		relatedTags: insight.tags ? insight.tags : [],
+		interview_id: insight.interview_id
+	}))
+
 	return {
 		themeName: themeName.charAt(0).toUpperCase() + themeName.slice(1),
-		insights,
+		insights: insightViews,
+		interviews: interviews || [],
+		themeTree
 	}
 }
 
-export default function ThemeDetail() {
-	const { themeName, insights } = useLoaderData<typeof loader>()
+// Helper function to transform themes into TreeNode structure
+function transformThemesToTreeNodes(themes: Theme[]): TreeNode[] {
+	// Group themes by category
+	const categoriesMap: Record<string, Theme[]> = {}
+	themes.forEach(theme => {
+		const category = theme.category || "Uncategorized"
+		if (!categoriesMap[category]) {
+			categoriesMap[category] = []
+		}
+		categoriesMap[category].push(theme)
+	})
+
+	// Transform into TreeNode structure
+	return Object.entries(categoriesMap).map(([category, themes]) => ({
+		name: category,
+		value: themes.length,
+		fill: "#cccccc", // Default fill for category
+		children: themes.map(theme => ({
+			name: theme.name || "",
+			value: 1,
+			fill: theme.color_hex || "#cccccc"
+		}))
+	}))
+}
+
+export default function ThemeDetailPage() {
+	const { insights, interviews, themeTree } = useLoaderData<typeof loader>()
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<div>
-					<div className="flex items-center gap-2">
-						<Link to="/themes" className="text-blue-600 hover:text-blue-800">
-							Themes
-						</Link>
-						<span className="text-gray-500">/</span>
-						<h1 className="font-bold text-2xl">{themeName}</h1>
-					</div>
-				</div>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
-			</div>
-
-			<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-				<h2 className="mb-4 font-semibold text-xl">Theme Overview</h2>
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-						<p className="text-gray-500 text-sm dark:text-gray-400">Total Insights</p>
-						<p className="font-bold text-2xl">{insights.length}</p>
-					</div>
-					<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-						<p className="text-gray-500 text-sm dark:text-gray-400">Average Impact</p>
-						<p className="font-bold text-2xl">Medium</p>
-					</div>
-					<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-						<p className="text-gray-500 text-sm dark:text-gray-400">Sentiment</p>
-						<p className="font-bold text-2xl">Mixed</p>
-					</div>
-				</div>
-			</div>
-
-			<div className="mb-6">
-				<h2 className="mb-4 font-semibold text-xl">Related Insights</h2>
-				<InsightCardGrid>
-					{insights.map((insight) => (
-						<InsightCard key={insight.id} {...insight} />
-					))}
-				</InsightCardGrid>
-			</div>
-		</div>
+		<ThemeDetail 
+			insights={insights}
+			interviews={interviews}
+			themeTree={themeTree}
+		/>
 	)
 }

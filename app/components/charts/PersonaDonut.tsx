@@ -44,14 +44,14 @@ export default function PersonaDonut({ data, centerLabel, size = 160, style }: P
 			)}
 
 			{/* Legend */}
-			<div className="absolute right-0 bottom-0 left-0 mt-2 flex w-full flex-wrap justify-center text-xs">
+			{/* <div className="absolute right-0 bottom-0 left-0 mt-2 flex w-full flex-wrap justify-center text-xs">
 				{data.map((slice) => (
 					<div key={`legend-${slice.name}`} className="mr-2 flex items-center">
 						<div className="mr-1 h-2 w-2 rounded-full" style={{ backgroundColor: slice.color }} aria-hidden="true" />
 						<span className="text-gray-600 dark:text-gray-300">{slice.name}</span>
 					</div>
 				))}
-			</div>
+			</div> */}
 		</div>
 	)
 }

@@ -1,7 +1,23 @@
 import type { MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import type { Database } from "~/../supabase/types"
 import OpportunityKanban from "~/components/dashboard/OpportunityKanban"
+import type { OpportunityView } from "~/types"
+import { db } from "~/utils/supabase.server"
+
+// Define interfaces to match the OpportunityKanban component's expected types
+interface OpportunityItem {
+	id: string
+	title: string
+	owner: string
+	priority?: "high" | "medium" | "low"
+}
+
+interface ColumnData {
+	title: string
+	items: OpportunityItem[]
+}
 
 export const meta: MetaFunction = () => {
 	return [
@@ -10,51 +26,101 @@ export const meta: MetaFunction = () => {
 	]
 }
 
-// Mock data for demonstration purposes
-export function loader() {
-	const opportunities = [
-		{ id: "opp-1", title: "Improve onboarding flow", owner: "Alex", status: "explore" },
-		{ id: "opp-2", title: "Simplify grading system", owner: "Maria", status: "explore" },
-		{ id: "opp-3", title: "Add mobile notifications", owner: "Jamie", status: "explore" },
-		{ id: "opp-4", title: "Enhance search functionality", owner: "Sam", status: "validate" },
-		{ id: "opp-5", title: "Streamline assignment submission", owner: "Alex", status: "validate" },
-		{ id: "opp-6", title: "Improve calendar integration", owner: "Maria", status: "validate" },
-		{ id: "opp-7", title: "Add collaborative editing", owner: "Jamie", status: "build" },
-		{ id: "opp-8", title: "Enhance reporting dashboard", owner: "Sam", status: "build" },
-		{ id: "opp-9", title: "Implement dark mode", owner: "Alex", status: "build" },
-		{ id: "opp-10", title: "Add accessibility features", owner: "Maria", status: "explore" },
-		{ id: "opp-11", title: "Improve notification settings", owner: "Jamie", status: "validate" },
-		{ id: "opp-12", title: "Create student analytics dashboard", owner: "Sam", status: "build" },
-	]
+// Load opportunities from Supabase
+export async function loader() {
+	type OpportunityRow = Database["public"]["Tables"]["opportunities"]["Row"]
 
-	// Group opportunities by status
-	const kanbanColumns = [
+	// Fetch all opportunities from the database
+	const { data: rows, error } = await db.from("opportunities").select("*")
+	if (error) throw new Response(error.message, { status: 500 })
+
+	// Map database rows to OpportunityView type
+	const opportunities: OpportunityView[] = (rows || []).map((r: OpportunityRow) => ({
+		id: r.id,
+		title: r.title || "",
+		// Include all required fields from the database
+		created_at: r.created_at,
+		kanban_status: r.kanban_status,
+		org_id: r.org_id,
+		owner_id: r.owner_id,
+		related_insight_ids: r.related_insight_ids,
+		// Add UI-specific fields
+		owner: r.owner_id || "", // Use owner_id as owner name for now
+		status: r.kanban_status || "explore", // Use kanban_status as status
+		impact: 3, // Default value for now
+		effort: 2, // Default value for now
+		description: "", // Default value for now
+	}))
+
+	// Group opportunities by status and map to the format expected by OpportunityKanban
+	const kanbanColumns: ColumnData[] = [
 		{
 			title: "Explore",
-			items: opportunities.filter((opp) => opp.status === "explore").map((opp) => ({ ...opp, id: opp.id })),
+			items: opportunities
+				.filter((opp) => opp.status?.toLowerCase() === "explore")
+				.map((opp) => ({
+					id: opp.id,
+					title: opp.title || "",
+					owner: opp.owner || "",
+					// Map impact to priority for visualization
+					priority:
+						typeof opp.impact === "number" && opp.impact > 3
+							? "high"
+							: typeof opp.impact === "number" && opp.impact > 1
+								? "medium"
+								: "low",
+				})),
 		},
 		{
 			title: "Validate",
-			items: opportunities.filter((opp) => opp.status === "validate").map((opp) => ({ ...opp, id: opp.id })),
+			items: opportunities
+				.filter((opp) => opp.status?.toLowerCase() === "validate")
+				.map((opp) => ({
+					id: opp.id,
+					title: opp.title || "",
+					owner: opp.owner || "",
+					priority:
+						typeof opp.impact === "number" && opp.impact > 3
+							? "high"
+							: typeof opp.impact === "number" && opp.impact > 1
+								? "medium"
+								: "low",
+				})),
 		},
 		{
 			title: "Build",
-			items: opportunities.filter((opp) => opp.status === "build").map((opp) => ({ ...opp, id: opp.id })),
+			items: opportunities
+				.filter((opp) => opp.status?.toLowerCase() === "build")
+				.map((opp) => ({
+					id: opp.id,
+					title: opp.title || "",
+					owner: opp.owner || "",
+					priority:
+						typeof opp.impact === "number" && opp.impact > 3
+							? "high"
+							: typeof opp.impact === "number" && opp.impact > 1
+								? "medium"
+								: "low",
+				})),
 		},
 	]
 
+	// Get unique owners from the data
+	const uniqueOwners = Array.from(new Set(opportunities.map((opp) => opp.owner_id || "").filter(Boolean)))
+
+	// Create a dynamic object with owners as keys
+	const opportunitiesByOwner: Record<string, OpportunityView[]> = {}
+	uniqueOwners.forEach((owner) => {
+		opportunitiesByOwner[owner] = opportunities.filter((opp) => opp.owner_id === owner)
+	})
+
 	return {
 		kanbanColumns,
-		opportunitiesByOwner: {
-			Alex: opportunities.filter((opp) => opp.owner === "Alex"),
-			Maria: opportunities.filter((opp) => opp.owner === "Maria"),
-			Jamie: opportunities.filter((opp) => opp.owner === "Jamie"),
-			Sam: opportunities.filter((opp) => opp.owner === "Sam"),
-		},
+		opportunitiesByOwner,
 		opportunitiesByStatus: {
-			explore: opportunities.filter((opp) => opp.status === "explore").length,
-			validate: opportunities.filter((opp) => opp.status === "validate").length,
-			build: opportunities.filter((opp) => opp.status === "build").length,
+			explore: opportunities.filter((opp) => opp.status?.toLowerCase() === "explore").length,
+			validate: opportunities.filter((opp) => opp.status?.toLowerCase() === "validate").length,
+			build: opportunities.filter((opp) => opp.status?.toLowerCase() === "build").length,
 		},
 	}
 }
@@ -72,7 +138,7 @@ export default function Opportunities() {
 			</div>
 
 			<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-				<div className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+				{/* <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
 					<h3 className="mb-2 font-medium text-lg">Status Overview</h3>
 					<div className="space-y-2">
 						<div className="flex justify-between">
@@ -100,7 +166,7 @@ export default function Opportunities() {
 							</div>
 						))}
 					</div>
-				</div>
+				</div> */}
 			</div>
 
 			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
@@ -134,14 +200,14 @@ export default function Opportunities() {
 										<td className="whitespace-nowrap px-4 py-3">
 											<span
 												className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-													item.status === "explore"
+													col.title.toLowerCase() === "explore"
 														? "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-														: item.status === "validate"
+														: col.title.toLowerCase() === "validate"
 															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
 															: "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 												}`}
 											>
-												{item.status.charAt(0).toUpperCase() + item.status.slice(1)}
+												{col.title.charAt(0).toUpperCase() + col.title.slice(1)}
 											</span>
 										</td>
 									</tr>

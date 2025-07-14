@@ -6,14 +6,14 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import type { InsightCardProps } from "./InsightCard"
+import type { InsightView } from "~/types"
 import InsightCardV2 from "./InsightCardV2"
 import { InsightsDataTable } from "./insights-data-table"
 
 interface InsightsListProps {
-	insights: InsightCardProps[]
+	insights: InsightView[]
 	/** Optional unique id field for insights */
-	getInsightId?: (insight: InsightCardProps, index: number) => string
+	getInsightId?: (insight: InsightView, index: number) => string
 	title?: string
 }
 

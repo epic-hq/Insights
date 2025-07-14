@@ -2,7 +2,7 @@ import { Link, useNavigate } from "react-router-dom"
 import type { TreeNode } from "../charts/TreeMap"
 import TreeMap from "../charts/TreeMap"
 import type { InsightCardProps } from "../insights/InsightCard"
-import type { Opportunity } from "../opportunities/OpportunitiesList"
+import type { OpportunityView } from "~/types"
 import UploadButton from "../upload/UploadButton"
 import FilterBar from "./FilterBar"
 import type { KPI } from "./KPIBar"
@@ -26,7 +26,7 @@ interface DashboardProps {
 		participant: string
 		status: "transcribed" | "processing" | "ready"
 	}[]
-	opportunities: Opportunity[]
+	opportunities: OpportunityView[]
 	themeTree: TreeNode[] // hierarchical data for treemap
 	insights: InsightCardProps[] // for filters/search later
 }
@@ -42,18 +42,33 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 		return kpi
 	})
 
+	// Transform OpportunityView items to match OpportunityItem interface requirements
+	const transformToKanbanItem = (o: OpportunityView): { id: string; title: string; owner: string; priority?: "high" | "medium" | "low" } => ({
+		id: o.id || '',
+		title: o.title || 'Untitled Opportunity',
+		owner: o.owner || 'Unassigned',
+		// Add a default priority based on impact if available
+		...(o.impact ? { priority: o.impact > 7 ? "high" : o.impact > 4 ? "medium" : "low" } : {})
+	});
+
 	const kanbanCols = [
 		{
 			title: "Explore",
-			items: opportunities.filter((o): o is Opportunity & { id: string } => o.status === "Explore" && !!o.id),
+			items: opportunities
+				.filter(o => o.status === "Explore" && !!o.id)
+				.map(transformToKanbanItem),
 		},
 		{
 			title: "Validate",
-			items: opportunities.filter((o): o is Opportunity & { id: string } => o.status === "Validate" && !!o.id),
+			items: opportunities
+				.filter(o => o.status === "Validate" && !!o.id)
+				.map(transformToKanbanItem),
 		},
 		{
 			title: "Build",
-			items: opportunities.filter((o): o is Opportunity & { id: string } => o.status === "Build" && !!o.id),
+			items: opportunities
+				.filter(o => o.status === "Build" && !!o.id)
+				.map(transformToKanbanItem),
 		},
 	]
 

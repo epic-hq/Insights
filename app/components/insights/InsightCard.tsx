@@ -1,44 +1,8 @@
-export interface InsightCardProps {
-	id: string
-	/** Callback when a tag, category, or related tag is clicked for filtering */
-	onTagClick?: (tag: string) => void
-	/** Main insight text (3-5 words, not a hashtag) */
-	/** Primary short title of the insight */
-	name?: string
-	/** @deprecated use `name` instead */
-	tag?: string
-	/** Optional title, used in some routes */
-	title?: string
-	category?: string
-	journeyStage?: string
-	impact?: number | string
-	novelty?: number
-	jtbD?: string
-	underlyingMotivation?: string
-	pain?: string
-	desiredOutcome?: string
-	description?: string
-	evidence?: string
-	opportunityIdeas?: string[]
-	confidence?: number | string
-	createdAt?: string
-	relatedTags?: string[]
-	contradictions?: string
-	sentiment?: string
-	source?:
-		| string
-		| {
-				type: string
-				id: string
-				participant: string
-				date: string
-		  }
-	/** @deprecated use evidence */
-	quote?: string
-	tags?: string[]
-	className?: string
+import type { InsightView } from "~/types"
 
-	/** Callbacks for insight actions */
+export interface InsightCardProps extends InsightView {
+	// UI-specific callbacks
+	onTagClick?: (tag: string) => void
 	onUpvote?: () => void
 	onDownvote?: () => void
 	onConvertToOpportunity?: () => void
@@ -48,6 +12,21 @@ export interface InsightCardProps {
 	/** Optional vote counts */
 	upvotes?: number
 	downvotes?: number
+
+	// Additional UI-specific fields not in the base InsightView
+	sentiment?: string
+	source?:
+		| string
+		| {
+				type: string
+				id: string
+				participant: string
+				date: string
+		  }
+	tags?: string[]
+
+	// UI styling
+	className?: string
 }
 
 export function InsightCard({
@@ -56,7 +35,7 @@ export function InsightCard({
 	journeyStage,
 	impact,
 	novelty,
-	jtbD,
+	jtbd, // Fixed property name to match InsightView interface
 	underlyingMotivation,
 	pain,
 	desiredOutcome,
@@ -87,7 +66,7 @@ export function InsightCard({
 
 				{/* Reordered fields: JTBD */}
 				<div className="mb-3">
-					<h3 className="font-semibold text-gray-800 text-md leading-snug dark:text-gray-200">{jtbD}</h3>
+					<h3 className="font-semibold text-gray-800 text-md leading-snug dark:text-gray-200">{jtbd}</h3>
 				</div>
 
 				{/* Reordered fields: Category & Journey Stage */}

@@ -1,8 +1,9 @@
-import { type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
-import type { InsightCardProps } from "~/components/insights/InsightCard"
-import InsightCard from "~/components/insights/InsightCard"
+import { json, type MetaFunction, useLoaderData } from "react-router"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
+import InsightCardV2 from "~/components/insights/InsightCardV2"
+import PersonaDetail from "~/components/personas/PersonaDetail"
+import { db } from "~/lib/db.server"
+import type { InsightView, Interview, PersonaView } from "~/types"
 
 export const meta: MetaFunction = ({ params }) => {
 	const personaName = params.personaId?.replace(/-/g, " ")
@@ -12,214 +13,128 @@ export const meta: MetaFunction = ({ params }) => {
 	]
 }
 
-// Mock data for demonstration purposes
-export function loader({ params }: { params: { personaId: string } }) {
+export async function loader({ params }: { params: { personaId: string } }) {
 	const personaId = params.personaId
-	const personaName = personaId.replace(/-/g, " ")
+	const personaSlug = personaId.toLowerCase()
 
-	const personaDetails = {
-		students: {
-			name: "Students",
-			color: "#4f46e5",
-			percentage: 45,
-			count: 19,
-			demographics: "18-24 years old, undergraduate and graduate students",
-			goals: "Complete coursework efficiently, collaborate with peers, track progress",
-			painPoints: "Complex navigation, inconsistent notifications, difficulty finding resources",
-			quotes: [
-				"I need to be able to quickly find my assignments and due dates.",
-				"Group collaboration features are essential for my project work.",
-			],
-		},
-		teachers: {
-			name: "Teachers",
-			color: "#10b981",
-			percentage: 35,
-			count: 15,
-			demographics: "30-55 years old, varying technical proficiency",
-			goals: "Create and grade assignments, communicate with students, track class progress",
-			painPoints: "Time-consuming grading process, limited customization options",
-			quotes: [
-				"I spend too much time setting up assignments in the system.",
-				"I need better analytics to understand how my students are performing.",
-			],
-		},
-		admins: {
-			name: "Admins",
-			color: "#f59e0b",
-			percentage: 20,
-			count: 8,
-			demographics: "35-60 years old, education administration professionals",
-			goals: "Manage user accounts, generate reports, ensure system compliance",
-			painPoints: "Limited reporting capabilities, complex user management",
-			quotes: ["Generating custom reports is too complicated.", "User management should be more streamlined."],
-		},
-		parents: {
-			name: "Parents",
-			color: "#ef4444",
-			percentage: 15,
-			count: 6,
-			demographics: "35-50 years old, parents of K-12 students",
-			goals: "Monitor child's progress, communicate with teachers, stay informed",
-			painPoints: "Difficulty accessing information, inconsistent communication",
-			quotes: [
-				"I want to easily see my child's upcoming assignments and grades.",
-				"I need a simple way to message teachers when I have questions.",
-			],
-		},
-		"it-staff": {
-			name: "IT Staff",
-			color: "#8b5cf6",
-			percentage: 10,
-			count: 4,
-			demographics: "25-45 years old, technical support professionals",
-			goals: "Maintain system, troubleshoot issues, support users",
-			painPoints: "Limited admin tools, complex deployment process",
-			quotes: ["The admin interface needs more powerful tools.", "Deployment and updates should be more streamlined."],
-		},
+	// Fetch personas from database
+	const { data: personasData } = await db.from("personas").select("*")
+	if (!personasData) {
+		throw new Response("No personas found", { status: 404 })
 	}
 
-	// Get the current persona details or use default values
-	const currentPersona = personaDetails[personaId as keyof typeof personaDetails] || {
-		name: personaName.charAt(0).toUpperCase() + personaName.slice(1),
-		color: "#6b7280",
-		percentage: 0,
-		count: 0,
-		demographics: "No demographic information available",
-		goals: "No goals information available",
-		painPoints: "No pain points information available",
-		quotes: [],
+	// Transform personas data to PersonaView
+	const personas: PersonaView[] = personasData.map((p) => {
+		const slug = p.name.toLowerCase().replace(/\s+/g, "-")
+		return {
+			...p,
+			percentage: p.percentage || 0,
+			count: 0, // Will be updated with interview count
+			color: p.color_hex || "#6b7280",
+			href: `/personas/${slug}`,
+		}
+	})
+
+	// Fetch interviews from database
+	const { data: interviewsData } = await db.from("interviews").select("*")
+	const interviews: Interview[] = interviewsData || []
+
+	// Count interviews per persona and update the count
+	interviews.forEach((interview) => {
+		if (interview.segment) {
+			const matchingPersona = personas.find((p) => p.name === interview.segment)
+			if (matchingPersona) {
+				matchingPersona.count = (matchingPersona.count || 0) + 1
+			}
+		}
+	})
+
+	// Find the current persona by matching the slug
+	const currentPersona = personas.find((p) => {
+		const slug = p.name.toLowerCase().replace(/\s+/g, "-")
+		return slug === personaSlug
+	})
+
+	if (!currentPersona) {
+		throw new Response(`Persona '${personaId}' not found`, { status: 404 })
 	}
 
-	// Mock insights related to this persona
-	const insights: InsightCardProps[] = [
-		{
-			id: "ins-001",
-			title: `${currentPersona.name} struggle with navigation`,
-			description: "Multiple participants expressed confusion about how to navigate the interface.",
-			sentiment: "negative",
-			impact: "high",
-			confidence: 85,
-			tags: [currentPersona.name.toLowerCase(), "usability", "navigation"],
-			source: {
-				type: "interview",
-				id: "int-001",
-				participant: "Alex Johnson",
-				date: "2025-07-10",
-			},
-			evidence: "I couldn't figure out where to find the settings for this feature.",
-		},
-		{
-			id: "ins-002",
-			title: `${currentPersona.name} need better notifications`,
-			description: "Participants mentioned issues with the notification system.",
-			sentiment: "neutral",
-			impact: "medium",
-			confidence: 75,
-			tags: [currentPersona.name.toLowerCase(), "notifications", "improvements"],
-			source: {
-				type: "interview",
-				id: "int-002",
-				participant: "Maria Garcia",
-				date: "2025-07-08",
-			},
-			evidence: "I often miss important updates because notifications are inconsistent.",
-		},
-		{
-			id: "ins-003",
-			title: `${currentPersona.name} appreciate recent UI changes`,
-			description: "Some participants appreciated the recent updates to the interface.",
-			sentiment: "positive",
-			impact: "medium",
-			confidence: 80,
-			tags: [currentPersona.name.toLowerCase(), "feedback", "ui"],
-			source: {
-				type: "interview",
-				id: "int-003",
-				participant: "Sam Taylor",
-				date: "2025-07-05",
-			},
-			evidence: "The new layout makes much more sense to me now.",
-		},
-	]
+	// Fetch insights related to this persona
+	const { data: insightsData } = await db
+		.from("insights")
+		.select("*")
+		.eq("category", currentPersona.name)
+		.order("created_at", { ascending: false })
 
-	return {
+	// Transform insights data to InsightView
+	const insights: InsightView[] = (insightsData || []).map((insight) => ({
+		id: insight.id,
+		name: insight.name,
+		title: insight.name,
+		category: insight.category,
+		journeyStage: insight.journey_stage,
+		impact: insight.impact,
+		novelty: insight.novelty,
+		jtbd: insight.jtbd,
+		pain: insight.pain,
+		desiredOutcome: insight.desired_outcome,
+		description: null, // Not in DB schema
+		evidence: null, // Not in DB schema
+		opportunityIdeas: insight.opportunity_ideas,
+		confidence: insight.confidence,
+		createdAt: insight.created_at,
+		relatedTags: [], // Will be populated if needed
+		contradictions: insight.contradictions,
+		interview_id: insight.interview_id,
+		underlyingMotivation: insight.motivation,
+	}))
+
+	// Fetch tags for insights if any
+	if (insights.length > 0) {
+		const insightIds = insights.map((i) => i.id).filter(Boolean)
+		if (insightIds.length > 0) {
+			const { data: tagsData } = await db
+				.from("insight_tags")
+				.select("*")
+				.in("insight_id", insightIds)
+
+			// Add tags to insights
+			if (tagsData) {
+				for (const tag of tagsData) {
+					const insight = insights.find((i) => i.id === tag.insight_id)
+					if (insight) {
+						if (!insight.relatedTags) {
+							insight.relatedTags = []
+						}
+						insight.relatedTags.push(tag.tag)
+					}
+				}
+			}
+		}
+	}
+
+	return json({
 		persona: currentPersona,
+		personas,
+		interviews,
 		insights,
-	}
+	})
 }
 
-export default function PersonaDetail() {
-	const { persona, insights } = useLoaderData<typeof loader>()
+export default function PersonaDetailRoute() {
+	const { persona, interviews, insights } = useLoaderData<typeof loader>()
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<div>
-					<div className="flex items-center gap-2">
-						<Link to="/personas" className="text-blue-600 hover:text-blue-800">
-							Personas
-						</Link>
-						<span className="text-gray-500">/</span>
-						<h1 className="font-bold text-2xl">{persona.name}</h1>
-					</div>
-				</div>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
-			</div>
+			{/* Use the centralized PersonaDetail component */}
+			<PersonaDetail personas={[persona]} interviews={interviews} />
 
-			<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-				<div className="mb-4 flex items-center gap-3">
-					<div className="h-6 w-6 rounded-full" style={{ backgroundColor: persona.color }} />
-					<h2 className="font-semibold text-xl">{persona.name} Profile</h2>
-				</div>
-
-				<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-					<div>
-						<h3 className="mb-2 font-medium">Demographics</h3>
-						<p className="text-gray-600 dark:text-gray-400">{persona.demographics}</p>
-
-						<h3 className="mt-4 mb-2 font-medium">Goals</h3>
-						<p className="text-gray-600 dark:text-gray-400">{persona.goals}</p>
-
-						<h3 className="mt-4 mb-2 font-medium">Pain Points</h3>
-						<p className="text-gray-600 dark:text-gray-400">{persona.painPoints}</p>
-					</div>
-
-					<div>
-						<h3 className="mb-2 font-medium">Representative Quotes</h3>
-						{persona.quotes.length > 0 ? (
-							<div className="space-y-3">
-								{persona.quotes.map((quote) => (
-									<div
-										key={quote}
-										className="rounded-lg border-l-4 bg-gray-50 p-3 dark:bg-gray-800"
-										style={{ borderColor: persona.color }}
-									>
-										<p className="text-gray-600 italic dark:text-gray-400">"{quote}"</p>
-									</div>
-								))}
-							</div>
-						) : (
-							<p className="text-gray-600 dark:text-gray-400">No quotes available</p>
-						)}
-
-						<div className="mt-4">
-							<h3 className="mb-2 font-medium">Distribution</h3>
-							<p className="text-gray-600 dark:text-gray-400">
-								{persona.percentage}% of participants ({persona.count} interviews)
-							</p>
-						</div>
-					</div>
-				</div>
-			</div>
-
+			{/* Display related insights */}
 			<div className="mb-6">
 				<h2 className="mb-4 font-semibold text-xl">Related Insights</h2>
 				<InsightCardGrid>
 					{insights.map((insight) => (
-						<InsightCard key={insight.id} {...insight} />
+						<InsightCardV2 key={insight.id} insight={insight} />
 					))}
 				</InsightCardGrid>
 			</div>

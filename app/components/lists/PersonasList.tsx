@@ -1,29 +1,18 @@
 // Component for displaying a list of personas
 
 import { Link } from "react-router-dom"
-import type { PersonaSlice } from "~/components/charts/PersonaDonut"
 import PersonaDonut from "~/components/charts/PersonaDonut"
 import PageHeader from "~/components/navigation/PageHeader"
-
-export interface Persona {
-	id?: string
-	name: string
-	percentage: number
-	count: number
-	color: string
-	description?: string
-	slices?: PersonaSlice[]
-	href?: string
-}
+import type { PersonaView } from "~/types"
 
 interface PersonasListProps {
-	personas: Persona[]
+	personas: PersonaView[]
 	title?: string
 	totalParticipants?: number
 }
 
 export default function PersonasList({ personas, title = "Personas", totalParticipants }: PersonasListProps) {
-	const total = totalParticipants || personas.reduce((sum, p) => sum + p.count, 0)
+	const total = totalParticipants ?? personas.reduce((sum, p) => sum + (p.count ?? 0), 0)
 
 	return (
 		<div className="space-y-6">

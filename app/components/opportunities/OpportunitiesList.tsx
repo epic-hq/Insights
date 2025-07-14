@@ -1,15 +1,7 @@
 // Component for displaying a list of opportunities
-import PageHeader from "../navigation/PageHeader"
 
-export interface Opportunity {
-	id?: string
-	title: string
-	owner: string
-	status?: string
-	impact?: number
-	effort?: number
-	description?: string
-}
+import type { OpportunityView as Opportunity } from "~/types"
+import PageHeader from "../navigation/PageHeader"
 
 interface OpportunitiesListProps {
 	opportunities: Opportunity[]

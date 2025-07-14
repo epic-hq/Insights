@@ -38,7 +38,7 @@ export default function PersonaCard({
 	return (
 		<Wrapper {...wrapperProps}>
 			{slices ? (
-				<PersonaDonut data={slices} centerLabel={centerLabel ?? `${percentage}%`} size={100} />
+				<PersonaDonut data={slices} centerLabel={centerLabel ?? `${percentage * 100}%`} size={100} />
 			) : (
 				<div className="h-3 w-3 rounded-full" style={{ backgroundColor: color }} />
 			)}
@@ -47,7 +47,7 @@ export default function PersonaCard({
 					<div>{name}</div>
 				</div>
 				<div className="text-gray-500 text-xs">
-					{count ? `${count} participants (${percentage}%)` : `${percentage}% of participants`}
+					{count ? `${count} participants` : `${percentage * 100}% of participants`}
 				</div>
 			</div>
 		</Wrapper>

@@ -3,10 +3,10 @@ import { useParams } from "react-router-dom"
 import PageHeader from "../navigation/PageHeader"
 
 // Import types
-import type { Opportunity } from "./OpportunitiesList"
+import type { OpportunityView } from "~/types"
 
 interface OpportunityDetailProps {
-	opportunities: Opportunity[]
+	opportunities: OpportunityView[]
 }
 
 // Mock data with stable IDs
@@ -68,7 +68,7 @@ const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunities }) 
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
 				{/* Header with status color */}
-				<div className="h-16 w-full" style={{ backgroundColor: getStatusColor(opportunity.status) }} />
+				<div className="h-16 w-full" style={{ backgroundColor: getStatusColor(opportunity.status ?? undefined) }} />
 
 				<div className="p-6">
 					<div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">

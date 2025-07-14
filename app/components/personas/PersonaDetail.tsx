@@ -1,15 +1,15 @@
 import type React from "react"
 import { Link, useParams } from "react-router-dom"
-import { sampleData } from "../../data/sampleData"
-// Import types
-import type { Persona } from "../lists/PersonasList"
-import PageHeader from "../navigation/PageHeader"
+import PageHeader from "~/components/navigation/PageHeader"
+// Import centralized types
+import type { Interview, PersonaView } from "~/types"
 
 interface PersonaDetailProps {
-	personas: Persona[]
+	personas: PersonaView[]
+	interviews: Interview[]
 }
 
-const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas }) => {
+const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) => {
 	const { personaId } = useParams<{ personaId: string }>()
 
 	// Find the persona by ID (slug)
@@ -152,28 +152,28 @@ const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas }) => {
 						<h2 className="mb-3 font-semibold text-lg">Interviewees in this Persona</h2>
 						<div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
 							{/* Filter interviewees by persona */}
-							{sampleData.interviews
-								.filter((interview) => interview.persona === persona.name)
+							{interviews
+								.filter((interview) => interview.segment === persona.name)
 								.map((interview) => (
 									<div
 										key={interview.id}
 										className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 									>
-										<Link
-											to={`/interviewees/${interview.id}`}
-											className="font-medium text-blue-600 hover:text-blue-800"
-										>
-											{interview.participant}
+										<Link to={`/interviews/${interview.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+											{interview.participant_pseudonym || "Anonymous"}
 										</Link>
-										<p className="mt-1 text-gray-500 text-sm">Role: {interview.role || "Not specified"}</p>
+										<p className="mt-1 text-gray-500 text-sm">Role: {interview.title || "Not specified"}</p>
 										<p className="text-gray-400 text-xs">
-											Interviewed on {new Date(interview.date).toLocaleDateString()}
+											Interviewed on{" "}
+											{interview.interview_date
+												? new Date(interview.interview_date).toLocaleDateString()
+												: "Unknown date"}
 										</p>
 									</div>
 								))}
 
 							{/* Show message if no interviewees match this persona */}
-							{sampleData.interviews.filter((interview) => interview.persona === persona.name).length === 0 && (
+							{interviews.filter((interview) => interview.segment === persona.name).length === 0 && (
 								<div className="col-span-full py-4 text-center text-gray-500">
 									No interviewees found for this persona.
 								</div>

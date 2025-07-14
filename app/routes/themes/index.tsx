@@ -6,8 +6,8 @@ export const meta: MetaFunction = () => {
 	return [{ title: "Themes | Insights" }, { name: "description", content: "Explore insight themes" }]
 }
 
-// Mock data for demonstration purposes
 export function loader() {
+	// TODO: Remove hardcoded test data and fetch from API
 	return {
 		themeTree: [
 			{

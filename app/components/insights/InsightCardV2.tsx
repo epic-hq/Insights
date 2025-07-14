@@ -1,5 +1,22 @@
 import { useState } from "react"
-import type { InsightCardProps } from "./InsightCard"
+import type { InsightView } from "~/types"
+
+export interface InsightCardV2Props extends InsightView {
+	// UI-specific callbacks
+	onTagClick?: (tag: string) => void
+	onUpvote?: () => void
+	onDownvote?: () => void
+	onConvertToOpportunity?: () => void
+	onArchive?: () => void
+	onDontShowMe?: () => void
+
+	/** Optional vote counts */
+	upvotes?: number
+	downvotes?: number
+
+	// UI styling
+	className?: string
+}
 
 export function InsightCardV2({
 	name,
@@ -8,7 +25,7 @@ export function InsightCardV2({
 	journeyStage,
 	impact,
 	novelty,
-	jtbD,
+	jtbd, // Fixed property name to match InsightView interface
 	underlyingMotivation,
 	pain,
 	desiredOutcome,
@@ -26,7 +43,7 @@ export function InsightCardV2({
 	onDontShowMe,
 	upvotes = 0,
 	downvotes = 0,
-}: InsightCardProps) {
+}: InsightCardV2Props) {
 	const [expanded, setExpanded] = useState(false)
 	const [showActions, setShowActions] = useState(false)
 
@@ -72,7 +89,7 @@ export function InsightCardV2({
 				{/* Main insight content */}
 				<h3 className="mb-2 font-bold text-gray-900 text-xl leading-tight dark:text-gray-100">{name ?? tag}</h3>
 
-				{jtbD && <p className="mb-4 text-gray-700 text-md leading-relaxed dark:text-gray-300">{jtbD}</p>}
+				{jtbd && <p className="mb-4 text-gray-700 text-md leading-relaxed dark:text-gray-300">{jtbd}</p>}
 
 				{/* Stats row */}
 				<div className="mb-4 flex flex-wrap gap-2">

@@ -1,15 +1,17 @@
 import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
-// Import types
-import type { InsightCardProps } from "~/components/insights/InsightCard"
+import type { TreeNode } from "~/components/charts/TreeMap"
 import PageHeader from "~/components/navigation/PageHeader"
-import { sampleData } from "~/data/sampleData"
+// Import centralized types
+import type { InsightView, Interview } from "~/types"
 
 interface ThemeDetailProps {
-	insights: InsightCardProps[]
+	insights: InsightView[]
+	interviews: Interview[]
+	themeTree: TreeNode[]
 }
 
-export default function ThemeDetail({ insights }: ThemeDetailProps) {
+export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDetailProps) {
 	const { themeId } = useParams<{ themeId: string }>()
 	const [groupBy, setGroupBy] = useState<"none" | "persona" | "user">("none")
 
@@ -17,7 +19,7 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 	const theme = useMemo<{ name: string; fill: string } | null>(() => {
 		let foundTheme: { name: string; fill: string } | null = null
 
-		sampleData.themeTree.forEach((category) => {
+		themeTree.forEach((category) => {
 			if (category.children) {
 				category.children.forEach((t) => {
 					// Ensure we have name and fill properties with defaults
@@ -33,44 +35,28 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 		})
 
 		return foundTheme
-	}, [themeId])
+	}, [themeId, themeTree])
 
 	// Find interviewees who evidence this theme
 	const relatedInterviewees = useMemo(() => {
-		if (!themeId) return []
+		if (!themeId || !theme?.name) return []
 
 		// Get unique interviewee IDs from insights related to this theme
 		const intervieweeIds = new Set<string>()
 
-		// Find the theme name from the theme ID
-		let themeName = ""
-		sampleData.themeTree.forEach((category) => {
-			if (category.children) {
-				category.children.forEach((t) => {
-					const slug = (t.name || "").toLowerCase().replace(/\s+/g, "-")
-					if (slug === themeId) {
-						themeName = t.name || ""
-					}
-				})
-			}
-		})
-
-		if (!themeName) return []
-
+		// Find insights related to this theme
 		insights.forEach((insight) => {
-			if (insight.name === themeName || insight.relatedTags?.includes(themeName)) {
-				// Find the interview for this insight to get the interviewee
-				const interview = sampleData.interviews.find((i) => insight.evidence?.includes(i.participant))
-
-				if (interview) {
-					intervieweeIds.add(interview.id)
+			if (insight.category === theme.name || insight.relatedTags?.includes(theme.name)) {
+				// If the insight has an interview_id, add it to the set
+				if (insight.interview_id) {
+					intervieweeIds.add(insight.interview_id)
 				}
 			}
 		})
 
 		// Get full interviewee data
-		return sampleData.interviews.filter((interview) => intervieweeIds.has(interview.id))
-	}, [insights, themeId])
+		return interviews.filter((interview) => intervieweeIds.has(interview.id))
+	}, [insights, interviews, themeId, theme])
 
 	// Filter insights related to this theme
 	const relatedInsights = useMemo(() => {
@@ -78,7 +64,7 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 
 		return insights.filter((insight) => {
 			if (!theme?.name) return false
-			return insight.name === theme.name || insight.relatedTags?.includes(theme.name)
+			return insight.category === theme.name || insight.relatedTags?.includes(theme.name)
 		})
 	}, [insights, theme])
 
@@ -88,20 +74,27 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 			return { "All Insights": relatedInsights }
 		}
 
-		const groups: Record<string, InsightCardProps[]> = {}
+		const groups: Record<string, InsightView[]> = {}
 
 		relatedInsights.forEach((insight) => {
 			let groupKey = ""
 
 			if (groupBy === "persona") {
 				// Find the interview for this insight to get the persona
-				// In a real app, insights would have direct persona references
-				const interview = sampleData.interviews.find((i) => insight.evidence?.includes(i.participant))
-				groupKey = interview?.persona || "Unknown Persona"
+				if (insight.interview_id) {
+					const interview = interviews.find((i) => i.id === insight.interview_id)
+					groupKey = interview?.segment || "Unknown Persona"
+				} else {
+					groupKey = "Unknown Persona"
+				}
 			} else if (groupBy === "user") {
 				// Find the interview for this insight to get the user
-				const interview = sampleData.interviews.find((i) => insight.evidence?.includes(i.participant))
-				groupKey = interview?.participant || "Unknown User"
+				if (insight.interview_id) {
+					const interview = interviews.find((i) => i.id === insight.interview_id)
+					groupKey = interview?.participant_pseudonym || "Unknown User"
+				} else {
+					groupKey = "Unknown User"
+				}
 			}
 
 			if (!groups[groupKey]) {
@@ -112,7 +105,7 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 		})
 
 		return groups
-	}, [relatedInsights, groupBy])
+	}, [relatedInsights, interviews, groupBy])
 
 	if (!theme?.name) {
 		return (
@@ -165,25 +158,24 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 								key={interview.id}
 								className="rounded-lg border border-gray-200 p-3 transition-shadow hover:shadow-md dark:border-gray-700"
 							>
-								<Link to={`/interviewees/${interview.id}`} className="font-medium text-blue-600 hover:text-blue-800">
-									{interview.participant}
+								<Link to={`/interviews/${interview.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+									{interview.participant_pseudonym || "Anonymous"}
 								</Link>
 								<div className="mt-2 flex items-center">
 									<div
 										className="mr-2 h-3 w-3 rounded-full"
 										style={{
 											backgroundColor:
-												interview.personaColor ||
-												(interview.persona === "Early Adopter"
+												interview.segment === "Early Adopter"
 													? "#2563EB"
-													: interview.persona === "Mainstream Learner"
+													: interview.segment === "Mainstream Learner"
 														? "#14B8A6"
-														: "#E11D48"),
+														: "#E11D48",
 										}}
 									/>
-									<span className="text-gray-600 text-sm dark:text-gray-400">{interview.persona}</span>
+									<span className="text-gray-600 text-sm dark:text-gray-400">{interview.segment || "Unknown"}</span>
 								</div>
-								<p className="mt-1 text-gray-500 text-xs">{interview.role || "Role not specified"}</p>
+								<p className="mt-1 text-gray-500 text-xs">{interview.title || "Interview"}</p>
 							</div>
 						))}
 					</div>
@@ -199,40 +191,39 @@ export default function ThemeDetail({ insights }: ThemeDetailProps) {
 					<div className="space-y-4">
 						{insights.map((insight) => {
 							// Find the interview for this insight to get user and persona info
-							const interview = sampleData.interviews.find((i) => insight.evidence?.includes(i.participant))
+							const interview = insight.interview_id ? interviews.find((i) => i.id === insight.interview_id) : null
 
 							return (
 								<div key={insight.id} className="rounded-lg bg-white p-4 shadow dark:bg-gray-900">
 									<div className="mb-2 flex flex-col md:flex-row md:items-center md:justify-between">
-										<h4 className="font-medium">{insight.tag}</h4>
+										<h4 className="font-medium">{insight.name}</h4>
 										<div className="text-gray-600 text-sm dark:text-gray-400">Category: {insight.category}</div>
 									</div>
 
-									<p className="mb-3 text-sm">"{insight.jtbD}"</p>
+									<p className="mb-3 text-sm">"{insight.jtbd || ""}"</p>
 
 									<div className="flex flex-wrap gap-2 text-xs">
-										<div className="rounded bg-blue-100 px-2 py-0.5 text-blue-800">Impact: {insight.impact}/5</div>
+										<div className="rounded bg-blue-100 px-2 py-0.5 text-blue-800">Impact: {insight.impact || 0}/5</div>
 										<div className="rounded bg-purple-100 px-2 py-0.5 text-purple-800">
-											Novelty: {insight.novelty}/5
+											Novelty: {insight.novelty || 0}/5
 										</div>
 										{interview && (
 											<>
 												<div className="rounded bg-green-100 px-2 py-0.5 text-green-800">
-													User: {interview.participant}
+													User: {interview.participant_pseudonym || "Anonymous"}
 												</div>
 												<div
 													className="rounded px-2 py-0.5 text-white"
 													style={{
 														backgroundColor:
-															interview.personaColor ||
-															(interview.persona === "Early Adopter"
+															interview.segment === "Early Adopter"
 																? "#2563EB"
-																: interview.persona === "Mainstream Learner"
+																: interview.segment === "Mainstream Learner"
 																	? "#14B8A6"
-																	: "#E11D48"),
+																	: "#E11D48",
 													}}
 												>
-													{interview.persona}
+													{interview.segment || "Unknown"}
 												</div>
 											</>
 										)}
