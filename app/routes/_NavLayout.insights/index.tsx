@@ -1,5 +1,5 @@
 import type { MetaFunction } from "react-router"
-import { Link, useLoaderData, useSearchParams } from "react-router-dom"
+import { useLoaderData, useSearchParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import type { InsightView } from "~/types"
@@ -147,14 +147,7 @@ export default function Insights() {
 	}
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="font-bold text-2xl">Insights</h1>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
-			</div>
-
+		<div className="mx-auto max-w-[1440px] px-4">
 			<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 				<div className="mb-4 flex flex-wrap items-center justify-between gap-4">
 					<div>

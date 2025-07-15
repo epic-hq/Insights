@@ -69,19 +69,8 @@ export default function InsightDetailPage() {
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<div>
-					<div className="flex items-center gap-2">
-						<Link to="/insights" className="text-blue-600 hover:text-blue-800">
-							Insights
-						</Link>
-						<span className="text-gray-500">/</span>
-						<h1 className="font-bold text-2xl">{insight.name}</h1>
-					</div>
-				</div>
-				<Link to="/insights" className="text-blue-600 hover:text-blue-800">
-					Back to Insights
-				</Link>
+			<div className="p-2">
+				<h1 className="font-bold text-2xl">{insight.name}</h1>
 			</div>
 
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">

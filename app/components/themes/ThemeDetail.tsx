@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import type { TreeNode } from "~/components/charts/TreeMap"
-import PageHeader from "~/components/navigation/PageHeader"
 // Import centralized types
 import type { InsightView, Interview } from "~/types"
 
@@ -110,7 +109,6 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 	if (!theme?.name) {
 		return (
 			<div className="mx-auto max-w-7xl px-4 py-8">
-				<PageHeader title="Theme Not Found" />
 				<div className="rounded-lg bg-white p-6 shadow dark:bg-gray-900">
 					<h1 className="mb-4 font-bold text-2xl text-red-600">Theme Not Found</h1>
 					<p>The requested theme could not be found.</p>
@@ -120,9 +118,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 	}
 
 	return (
-		<div className="mx-auto max-w-7xl px-4 py-8">
-			<PageHeader title={`Theme: ${theme?.name}`} />
-
+		<div className="mx-auto max-w-7xl px-4">
 			<div className="mb-6 flex flex-col sm:flex-row sm:items-center sm:justify-between">
 				<div className="mb-4 flex items-center sm:mb-0">
 					<div className="mr-2 h-4 w-4 rounded-full" style={{ backgroundColor: theme?.fill }} />

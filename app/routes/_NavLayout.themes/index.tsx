@@ -86,14 +86,7 @@ export default function Themes() {
 	const { themeTree } = useLoaderData<typeof loader>()
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="font-bold text-2xl">Themes</h1>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
-			</div>
-
+		<div className="mx-auto max-w-[1440px] px-4">
 			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 				<h2 className="mb-4 font-semibold text-xl">Theme Distribution</h2>
 				<div className="h-[500px]">

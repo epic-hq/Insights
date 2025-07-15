@@ -100,24 +100,7 @@ export default function InterviewDetail() {
 	const { interview, insights, transcriptData } = useLoaderData<typeof loader>()
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<div>
-					<div className="flex items-center gap-2">
-						<Link to="/interviews" className="text-blue-600 hover:text-blue-800">
-							Interviews
-						</Link>
-						<span className="text-gray-500">/</span>
-						<h1 className="font-bold text-2xl">
-							{interview.id}: {interview.participant_pseudonym || "Anonymous"}
-						</h1>
-					</div>
-				</div>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
-			</div>
-
+		<div className="mx-auto max-w-[1440px] px-4">
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<div className="lg:col-span-2">
 					<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">

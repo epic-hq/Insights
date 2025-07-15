@@ -1,4 +1,4 @@
-import { json, type MetaFunction, useLoaderData } from "react-router"
+import { type MetaFunction, useLoaderData } from "react-router"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
 import PersonaDetail from "~/components/personas/PersonaDetail"
@@ -112,12 +112,12 @@ export async function loader({ params }: { params: { personaId: string } }) {
 		}
 	}
 
-	return json({
+	return {
 		persona: currentPersona,
 		personas,
 		interviews,
 		insights,
-	})
+	}
 }
 
 export default function PersonaDetailRoute() {
