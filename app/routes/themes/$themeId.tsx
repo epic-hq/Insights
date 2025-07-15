@@ -2,26 +2,28 @@ import { type MetaFunction, useLoaderData } from "react-router"
 import type { TreeNode } from "~/components/charts/TreeMap"
 
 import ThemeDetail from "~/components/themes/ThemeDetail"
-import type { InsightView, Interview, Theme } from "~/types"
+import type { InsightView, Theme } from "~/types"
 import { db } from "~/utils/supabase.server"
 
-export const meta: MetaFunction = ({ params }) => {
-	const themeName = params.themeId?.replace(/-/g, " ")
-	return [
-		{ title: `${themeName ? themeName.charAt(0).toUpperCase() + themeName.slice(1) : "Theme"} | Insights` },
-		{ name: "description", content: `Insights related to ${themeName || "this theme"}` },
-	]
+export const meta: MetaFunction = () => {
+	return [{ title: "Theme | Insights" }, { name: "description", content: "Insights related to this theme" }]
 }
 
 export async function loader({ params }: { params: { themeId: string } }) {
 	const themeId = params.themeId
-	const themeName = themeId.replace(/-/g, " ")
 
-	// Fetch insights from database
+	// Fetch the current theme by ID
+	const { data: themeData, error: themeError } = await db.from("themes").select("*").eq("id", themeId).single()
+
+	if (themeError || !themeData) {
+		throw new Response(`Theme with ID '${themeId}' not found`, { status: 404 })
+	}
+
+	// Fetch insights related to this theme
 	const { data: insights } = await db
 		.from("insights")
 		.select("*")
-		.or(`category.ilike.${themeName},tags.cs.{${themeName}}`) // Search in category or tags
+		.or(`category.ilike.${themeData.name},tags.cs.{${themeData.name}}`) // Search in category or tags
 
 	// Fetch interviews that are referenced by these insights
 	const interviewIds =
@@ -55,10 +57,11 @@ export async function loader({ params }: { params: { themeId: string } }) {
 	}))
 
 	return {
-		themeName: themeName.charAt(0).toUpperCase() + themeName.slice(1),
+		themeName: themeData.name,
 		insights: insightViews,
 		interviews: interviews || [],
 		themeTree,
+		theme: themeData,
 	}
 }
 

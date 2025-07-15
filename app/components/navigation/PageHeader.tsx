@@ -53,7 +53,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title, showBreadcrumbs = true, 
 					<Breadcrumbs className="mb-4" />
 				))}
 
-			{title && <h1 className="font-bold text-2xl">{title}</h1>}
+			{/* {title && <h1 className="font-bold text-2xl">{title}</h1>} */}
 		</header>
 	)
 }

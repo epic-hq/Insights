@@ -2,22 +2,28 @@ import { json, type MetaFunction, useLoaderData } from "react-router"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
 import PersonaDetail from "~/components/personas/PersonaDetail"
-import { db } from "~/utils/supabase.server"
 import type { InsightView, Interview, PersonaView } from "~/types"
+import { db } from "~/utils/supabase.server"
 
-export const meta: MetaFunction = ({ params }) => {
-	const personaName = params.personaId?.replace(/-/g, " ")
-	return [
-		{ title: `${personaName ? personaName.charAt(0).toUpperCase() + personaName.slice(1) : "Persona"} | Insights` },
-		{ name: "description", content: `Insights related to ${personaName || "this persona"}` },
-	]
+export const meta: MetaFunction = () => {
+	return [{ title: "Persona | Insights" }, { name: "description", content: "Insights related to this persona" }]
 }
 
 export async function loader({ params }: { params: { personaId: string } }) {
 	const personaId = params.personaId
-	const personaSlug = personaId.toLowerCase()
 
-	// Fetch personas from database
+	// Fetch the current persona directly by ID
+	const { data: currentPersonaData, error: personaError } = await db
+		.from("personas")
+		.select("*")
+		.eq("id", personaId)
+		.single()
+
+	if (personaError || !currentPersonaData) {
+		throw new Response(`Persona with ID '${personaId}' not found`, { status: 404 })
+	}
+
+	// Fetch all personas for context
 	const { data: personasData } = await db.from("personas").select("*")
 	if (!personasData) {
 		throw new Response("No personas found", { status: 404 })
@@ -25,13 +31,12 @@ export async function loader({ params }: { params: { personaId: string } }) {
 
 	// Transform personas data to PersonaView
 	const personas: PersonaView[] = personasData.map((p) => {
-		const slug = p.name.toLowerCase().replace(/\s+/g, "-")
 		return {
 			...p,
 			percentage: p.percentage || 0,
 			count: 0, // Will be updated with interview count
 			color: p.color_hex || "#6b7280",
-			href: `/personas/${slug}`,
+			href: `/personas/${p.id}`,
 		}
 	})
 
@@ -49,11 +54,8 @@ export async function loader({ params }: { params: { personaId: string } }) {
 		}
 	})
 
-	// Find the current persona by matching the slug
-	const currentPersona = personas.find((p) => {
-		const slug = p.name.toLowerCase().replace(/\s+/g, "-")
-		return slug === personaSlug
-	})
+	// Find the current persona in the transformed list
+	const currentPersona = personas.find((p) => p.id === personaId)
 
 	if (!currentPersona) {
 		throw new Response(`Persona '${personaId}' not found`, { status: 404 })
@@ -63,7 +65,7 @@ export async function loader({ params }: { params: { personaId: string } }) {
 	const { data: insightsData } = await db
 		.from("insights")
 		.select("*")
-		.eq("category", currentPersona.name)
+		.eq("category", currentPersonaData.name)
 		.order("created_at", { ascending: false })
 
 	// Transform insights data to InsightView

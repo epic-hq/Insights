@@ -1,15 +1,20 @@
-import { type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
+import consola from "consola"
+import { Link, type MetaFunction, useLoaderData } from "react-router"
 import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
 import type { OpportunityView } from "~/types"
 import { db } from "~/utils/supabase.server"
-import consola from "consola"
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
 		{ title: `Opportunity ${params.opportunityId || ""} | Insights` },
 		{ name: "description", content: "Opportunity details" },
 	]
+}
+
+export const handle = {
+	crumb: ({ params }: { params: { opportunityId: string } }) => (
+		<Link to={`/opportunities/${params.opportunityId}`}>Opportunity {params.opportunityId}</Link>
+	),
 }
 
 export async function loader({ params }: { params: { opportunityId: string } }) {
@@ -35,18 +40,18 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 
 	// Define a type that extends the base opportunity type with optional fields needed for OpportunityView
 	type ExtendedOpportunity = typeof opportunityData & {
-		description?: string;
-		impact?: number;
-		effort?: number;
-		confidence?: number;
-		priority?: string;
-		tags?: string[];
-		assignee?: string;
-		due_date?: string;
-	};
+		description?: string
+		impact?: number
+		effort?: number
+		confidence?: number
+		priority?: string
+		tags?: string[]
+		assignee?: string
+		due_date?: string
+	}
 
 	// Safely cast to the extended type
-	const extendedOpportunity = opportunityData as ExtendedOpportunity;
+	const extendedOpportunity = opportunityData as ExtendedOpportunity
 
 	// Transform opportunity data to OpportunityView
 	const opportunity: OpportunityView = {
@@ -60,9 +65,13 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 		effort: extendedOpportunity.effort || undefined,
 		confidence: extendedOpportunity.confidence || undefined,
 		status: opportunityData.kanban_status || undefined,
-		priority: extendedOpportunity.priority || 
-			(extendedOpportunity.impact && extendedOpportunity.impact > 7 ? "high" : 
-			(extendedOpportunity.impact && extendedOpportunity.impact > 4 ? "medium" : "low")),
+		priority:
+			extendedOpportunity.priority ||
+			(extendedOpportunity.impact && extendedOpportunity.impact > 7
+				? "high"
+				: extendedOpportunity.impact && extendedOpportunity.impact > 4
+					? "medium"
+					: "low"),
 		tags: extendedOpportunity.tags || undefined,
 		insights: opportunityData.related_insight_ids || undefined,
 		owner: opportunityData.owner_id || undefined,
@@ -79,7 +88,7 @@ export default function OpportunityDetailPage() {
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
+			{/* <div className="mb-6 flex items-center justify-between">
 				<div>
 					<div className="flex items-center gap-2">
 						<Link to="/opportunities" className="text-blue-600 hover:text-blue-800">
@@ -92,7 +101,7 @@ export default function OpportunityDetailPage() {
 				<Link to="/opportunities" className="text-blue-600 hover:text-blue-800">
 					Back to Opportunities
 				</Link>
-			</div>
+			</div> */}
 
 			<OpportunityDetail opportunity={opportunity} />
 		</div>

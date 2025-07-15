@@ -26,6 +26,10 @@ export const meta: MetaFunction = () => {
 	]
 }
 
+// export const handle = {
+// 	crumb: () => <Link to="/opportunities">Opportunities</Link>,
+// }
+
 // Load opportunities from Supabase
 export async function loader() {
 	type OpportunityRow = Database["public"]["Tables"]["opportunities"]["Row"]
@@ -130,12 +134,12 @@ export default function Opportunities() {
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
+			{/* <div className="mb-6 flex items-center justify-between">
 				<h1 className="font-bold text-2xl">Opportunities</h1>
 				<Link to="/" className="text-blue-600 hover:text-blue-800">
 					Back to Dashboard
 				</Link>
-			</div>
+			</div> */}
 
 			<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
 				{/* <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
@@ -196,7 +200,10 @@ export default function Opportunities() {
 								col.items.map((item) => (
 									<tr key={item.id}>
 										<td className="whitespace-nowrap px-4 py-3">
-											<Link to={`/opportunities/${item.id}`} className="text-blue-600 hover:text-blue-800 hover:underline">
+											<Link
+												to={`/opportunities/${item.id}`}
+												className="text-blue-600 hover:text-blue-800 hover:underline"
+											>
 												{item.title}
 											</Link>
 										</td>
@@ -217,7 +224,6 @@ export default function Opportunities() {
 									</tr>
 								))
 							)}
-
 						</tbody>
 					</table>
 				</div>

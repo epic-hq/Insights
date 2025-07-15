@@ -663,7 +663,7 @@ type CompositeTypes<
 		: never
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-const DatabaseConstants = {
+const _DatabaseConstants = {
 	graphql_public: {
 		Enums: {},
 	},

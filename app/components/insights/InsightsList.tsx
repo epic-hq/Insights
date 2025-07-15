@@ -133,16 +133,21 @@ export default function InsightsList({
 					) : (
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 							{filteredInsights.map((insight, index) => (
-								<InsightCardV2
+								<Link
 									key={getInsightId ? getInsightId(insight, index) : index}
-									{...insight}
-									onTagClick={handleTagClick}
-									onUpvote={() => {}}
-									onDownvote={() => {}}
-									onConvertToOpportunity={() => {}}
-									onArchive={() => {}}
-									onDontShowMe={() => {}}
-								/>
+									to={`/insights/${insight.id}`}
+									className="no-underline hover:no-underline"
+								>
+									<InsightCardV2
+										{...insight}
+										onTagClick={handleTagClick}
+										onUpvote={() => {}}
+										onDownvote={() => {}}
+										onConvertToOpportunity={() => {}}
+										onArchive={() => {}}
+										onDontShowMe={() => {}}
+									/>
+								</Link>
 							))}
 						</div>
 					)}

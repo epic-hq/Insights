@@ -35,7 +35,6 @@ export async function loader() {
 
 	// Transform personas data to PersonaView
 	const personas: PersonaView[] = personasData.map((persona) => {
-		const slug = persona.name.toLowerCase().replace(/\s+/g, "-")
 		const interviewCount = segmentCounts.get(persona.name) || 0
 		const percentage = Math.round((interviewCount / totalInterviews) * 100) || persona.percentage || 0
 
@@ -44,7 +43,8 @@ export async function loader() {
 			percentage: percentage || 0, // Ensure percentage is never null
 			count: interviewCount,
 			color: persona.color_hex || "#6b7280",
-			href: `/personas/${slug}`,
+			// Use database ID for navigation instead of slug
+			href: `/personas/${persona.id}`,
 		}
 	})
 
@@ -91,7 +91,7 @@ export default function Personas() {
 
 			<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
 				{personas.map((persona: PersonaView) => (
-					<Link key={persona.name} to={persona.href || `/personas/${persona.name.toLowerCase()}`} className="block">
+					<Link key={persona.id} to={`/personas/${persona.id}`} className="block">
 						<div className="rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900">
 							<PersonaCard
 								name={persona.name}

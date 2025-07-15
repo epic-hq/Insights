@@ -1,6 +1,6 @@
 import { useState } from "react"
 import { Link } from "react-router-dom"
-import type { OpportunityItem, ColumnData } from "~/types"
+import type { ColumnData, OpportunityItem } from "~/types"
 
 interface OpportunityKanbanProps {
 	columns: ColumnData[]
@@ -80,9 +80,9 @@ export default function OpportunityKanban({ columns, className }: OpportunityKan
 								onDragStart={() => handleDragStart(item)}
 								onDragOver={(e) => handleDragOverItem(item.id, e)}
 								onDragEnd={handleDragEnd}
-								className={`active:shadow-sm active:translate-y-0 bg-gray-50 border cursor-move dark:bg-gray-800 hover:-translate-y-0.5 hover:shadow-md p-3 rounded text-sm transition-all ${getPriorityColor(item.priority)} ${draggedItem?.id === item.id ? "opacity-50 scale-95" : ""} ${dragOverItem === item.id ? "-translate-y-1 border-blue-400" : ""}`}
+								className={`hover:-translate-y-0.5 cursor-move rounded border bg-gray-50 p-3 text-sm transition-all hover:shadow-md active:translate-y-0 active:shadow-sm dark:bg-gray-800 ${getPriorityColor(item.priority)} ${draggedItem?.id === item.id ? "scale-95 opacity-50" : ""} ${dragOverItem === item.id ? "-translate-y-1 border-blue-400" : ""}`}
 							>
-								<Link to={`/opportunities/${item.id}`} className="block font-medium hover:text-blue-600 mb-1">
+								<Link to={`/opportunities/${item.id}`} className="mb-1 block font-medium hover:text-blue-600">
 									{item.title}
 								</Link>
 								<div className="flex items-center justify-between">

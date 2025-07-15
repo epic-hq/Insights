@@ -1,5 +1,7 @@
 {
-	"hi": "Rick & Jett Starter Kit",
+	"hi": "Hello World",
+	"welcome": "Welcome to the Rick & Jett Starter Kit",
+	"title": "Rick & Jett Starter Kit",
 	"navigation": {
 		"back": "Go back",
 		"home": "Back to home"

@@ -1,22 +1,19 @@
+import consola from "consola"
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import type { Database } from "~/../supabase/types"
 import TreeMap from "~/components/charts/TreeMap"
 import { db } from "~/utils/supabase.server"
-import type { Database } from "~/../supabase/types"
-import consola from "consola"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Themes | Insights" }, { name: "description", content: "Explore insight themes" }]
 }
 
 export async function loader() {
-	consola.info('Loading themes from database')
-	
+	consola.info("Loading themes from database")
+
 	// Fetch themes from database
-	const { data: themesData, error: themesError } = await db
-		.from("themes")
-		.select("*")
-		.order("category")
+	const { data: themesData, error: themesError } = await db.from("themes").select("*").order("category")
 
 	if (themesError) {
 		consola.error(`Error fetching themes: ${themesError.message}`)
@@ -24,14 +21,12 @@ export async function loader() {
 	}
 
 	if (!themesData || themesData.length === 0) {
-		consola.warn('No themes found in database')
+		consola.warn("No themes found in database")
 		return { themeTree: [] }
 	}
 
 	// Count insights per theme for sizing
-	const { data: insightsData, error: insightsError } = await db
-		.from("insights")
-		.select("category")
+	const { data: insightsData, error: insightsError } = await db.from("insights").select("category")
 
 	if (insightsError) {
 		consola.error(`Error fetching insights: ${insightsError.message}`)
@@ -48,10 +43,10 @@ export async function loader() {
 
 	// Define theme node type
 	type ThemeNode = {
-		name: string;
-		value: number;
-		fill: string;
-		id: string;
+		name: string
+		value: number
+		fill: string
+		id: string
 	}
 
 	// Group themes by category
@@ -61,12 +56,12 @@ export async function loader() {
 		if (!categoryMap.has(category)) {
 			categoryMap.set(category, [])
 		}
-		
+
 		categoryMap.get(category)?.push({
 			name: theme.name,
 			value: categoryCounts.get(theme.name) || 10, // Default value if no insights
-			fill: theme.color_hex || `#${Math.floor(Math.random()*16777215).toString(16)}`, // Use theme color or generate random
-			id: theme.id
+			fill: theme.color_hex || `#${Math.floor(Math.random() * 16777215).toString(16)}`, // Use theme color or generate random
+			id: theme.id,
 		})
 	})
 
@@ -74,12 +69,12 @@ export async function loader() {
 	const themeTree = Array.from(categoryMap.entries()).map(([category, themes]) => {
 		// Sum values of all themes in this category
 		const totalValue = themes.reduce((sum, theme) => sum + theme.value, 0)
-		
+
 		return {
 			name: category,
 			value: totalValue,
 			fill: themes[0]?.fill || "#6b7280", // Use first theme's color or default gray
-			children: themes
+			children: themes,
 		}
 	})
 
@@ -106,10 +101,9 @@ export default function Themes() {
 						data={themeTree}
 						height={500}
 						onClick={(node) => {
-							if (node && !node.children) {
-								// Navigate to specific theme using ID if available
-								const themeId = node.id || node.name.toLowerCase().replace(/\s+/g, "-")
-								window.location.href = `/themes/${themeId}`
+							if (node && !node.children && node.id) {
+								// Navigate to specific theme using database ID
+								window.location.href = `/themes/${node.id}`
 							}
 						}}
 					/>
@@ -120,8 +114,8 @@ export default function Themes() {
 				{themeTree.flatMap((category) =>
 					category.children?.map((theme) => (
 						<Link
-							key={theme.name}
-							to={`/themes/${theme.id || theme.name.toLowerCase().replace(/\s+/g, "-")}`}
+							key={theme.id || theme.name}
+							to={`/themes/${theme.id}`}
 							className="rounded-lg bg-white p-4 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 						>
 							<div className="flex items-center">

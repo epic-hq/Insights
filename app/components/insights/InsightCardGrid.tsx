@@ -13,9 +13,9 @@ export default function InsightCardGrid({ insights, children, className }: Insig
 	return (
 		<div className={`grid gap-6 md:grid-cols-2 ${className ?? ""}`}>
 			{insights?.map((insight) => (
-				<Link 
-					key={insight.id || insight.tag} 
-					to={`/insights/${insight.id}`} 
+				<Link
+					key={insight.id || insight.tag}
+					to={`/insights/${insight.id}`}
 					className="no-underline hover:no-underline"
 				>
 					<InsightCard {...insight} />

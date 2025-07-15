@@ -11,6 +11,7 @@ It includes a basic setup for a project with react-router v7 framework mode and:
 - Vitest (unit tests)
 - Scripting
 - Biome (linter & formatter)
+- Knip (remove unused code)
 - i18n support (client and server)
 - Icons spritesheet generator
 - lefthook hooks
@@ -57,7 +58,7 @@ inside the `entry.server.tsx` file.
 ## Encrypted .env Files (dotenvx)
 
 This stack uses dotenvx to encrypt your .env files. More information about dotenvx can be found [here](https://dotenvx.com/).
-We are committing .env.production and .env.example to the repository.
+We are committing .env.production and .env.example to the repository. env.keys has public and private keys and is NOT commited. Not sure how to share across team yet as there doesnt seem to be an integrated way.
 
 ## .env handling
 
@@ -74,30 +75,9 @@ The server will fail at runtime if you don't set your `.env` file properly.
 
 ## Getting started
 
-1. Fork the repository
-
-2. Install the dependencies:
+Fork the repository, Install the dependencies, and run:
 
 ```bash
 pnpm install
-```
-
-3. Read through the README.md files in the project to understand our decisions.
-
-4. Run the cleanup script:
-
-```bash
-pnpm cleanup
-```
-
-This will remove everything in the project related to the base-stack like README.md etc.
-This is the first thing you should run after initializing the project.
-After it is run it will remove itself from the package.json.
-
-5. Start the development server:
-
-```bash
 pnpm run dev
 ```
-
-6. Happy coding!

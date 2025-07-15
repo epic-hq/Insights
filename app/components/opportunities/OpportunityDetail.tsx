@@ -1,7 +1,6 @@
 import type React from "react"
 // Import types
 import type { OpportunityView } from "~/types"
-import PageHeader from "../navigation/PageHeader"
 
 interface OpportunityDetailProps {
 	opportunity: OpportunityView
@@ -25,7 +24,6 @@ const mockInterviews = [
 ]
 
 const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) => {
-
 	// Helper function to get status color
 	const getStatusColor = (status?: string) => {
 		switch (status) {
@@ -44,7 +42,7 @@ const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) =>
 
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-8">
-			<PageHeader title={opportunity.title} />
+			{/* <PageHeader title={opportunity.title} /> */}
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
 				{/* Header with status color */}
