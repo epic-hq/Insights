@@ -7,7 +7,7 @@ const i18next = new RemixI18Next({
 		supportedLanguages: i18n.supportedLngs,
 		fallbackLanguage: i18n.fallbackLng,
 		// Use searchParams for query parameter detection
-		order: ['searchParams', 'cookie', 'header']
+		order: ["searchParams", "cookie", "header"],
 		// Note: 'searchParams' is the correct property name for remix-i18next
 		// The query parameter name defaults to 'lng'
 	},

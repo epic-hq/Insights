@@ -16,10 +16,10 @@ export function LanguageSwitcher() {
 
 		// Parse the current search params
 		const searchParams = new URLSearchParams(location.search)
-		
+
 		// Set or update the lng query parameter to match remix-i18next's default
 		searchParams.set("lng", newLanguage)
-		
+
 		// Navigate to the same path but with updated query parameters
 		navigate({
 			pathname: location.pathname,
@@ -29,16 +29,14 @@ export function LanguageSwitcher() {
 	}
 
 	return (
-		<div className="fixed right-4 top-2 z-50">
+		<div className="fixed top-2 right-4 z-50">
 			<div className="flex items-center space-x-2">
 				{supportedLanguages.map((lang) => (
 					<button
 						key={lang}
 						onClick={() => handleLanguageChange(lang)}
 						className={`rounded px-2 py-1 text-sm ${
-							i18n.language === lang
-								? "bg-blue-600 text-white"
-								: "bg-gray-200 hover:bg-gray-300 text-gray-700"
+							i18n.language === lang ? "bg-blue-600 text-white" : "bg-gray-200 text-gray-700 hover:bg-gray-300"
 						}`}
 					>
 						{lang.toUpperCase()}
