@@ -133,7 +133,7 @@ export default function Opportunities() {
 	const { kanbanColumns, opportunitiesByOwner, opportunitiesByStatus } = useLoaderData<typeof loader>()
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4 py-4">
+		<div className="mx-auto max-w-[1440px] ">
 			{/* <div className="mb-6 flex items-center justify-between">
 				<h1 className="font-bold text-2xl">Opportunities</h1>
 				<Link to="/" className="text-blue-600 hover:text-blue-800">
@@ -141,8 +141,9 @@ export default function Opportunities() {
 				</Link>
 			</div> */}
 
+			{/*
 			<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-3">
-				{/* <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+				 <div className="rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
 					<h3 className="mb-2 font-medium text-lg">Status Overview</h3>
 					<div className="space-y-2">
 						<div className="flex justify-between">
@@ -170,15 +171,15 @@ export default function Opportunities() {
 							</div>
 						))}
 					</div>
-				</div> */}
-			</div>
+				</div>
+			</div>*/}
 
 			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 				<h2 className="mb-4 font-semibold text-xl">Opportunity Kanban</h2>
 				<OpportunityKanban columns={kanbanColumns} />
 			</div>
 
-			<div className="mt-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
+			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 				<h2 className="mb-4 font-semibold text-xl">All Opportunities</h2>
 				<div className="overflow-x-auto">
 					<table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">

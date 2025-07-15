@@ -1,6 +1,7 @@
 import consola from "consola"
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { z } from "zod"
 import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
 import type { OpportunityView } from "~/types"
 import { db } from "~/utils/supabase.server"
@@ -15,6 +16,12 @@ export const meta: MetaFunction = ({ params }) => {
 export async function loader({ params }: { params: { opportunityId: string } }) {
 	const opportunityId = params.opportunityId
 	consola.info(`Loading opportunity with ID: ${opportunityId}`)
+
+	// Validate UUID format
+	if (!z.string().uuid().safeParse(opportunityId).success) {
+		consola.error(`Invalid opportunity ID format: ${opportunityId}`)
+		throw new Response("Invalid opportunity ID", { status: 400 })
+	}
 
 	// Fetch opportunity data from database
 	const { data: opportunityData, error: opportunityError } = await db
@@ -82,7 +89,7 @@ export default function OpportunityDetailPage() {
 	const { opportunity } = useLoaderData<typeof loader>()
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4 py-4">
+		<div className="mx-auto max-w-[1440px] px-4">
 			<div className="mb-6 flex items-center justify-between">
 				<div>
 					<div className="flex items-center gap-2">

@@ -25,7 +25,7 @@ const mockInterviews = [
 
 const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) => {
 	// Helper function to get status color
-	const getStatusColor = (status?: string) => {
+	const _getStatusColor = (status?: string) => {
 		switch (status) {
 			case "Build":
 				return "bg-green-500"
@@ -41,14 +41,14 @@ const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) =>
 		opportunity.impact && opportunity.effort ? (opportunity.impact / opportunity.effort).toFixed(1) : "N/A"
 
 	return (
-		<div className="mx-auto max-w-7xl px-4 py-8">
+		<div className="mx-auto max-w-7xl ">
 			{/* <PageHeader title={opportunity.title} /> */}
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
 				{/* Header with status color */}
-				<div className="h-16 w-full" style={{ backgroundColor: getStatusColor(opportunity.status ?? undefined) }} />
+				{/* <div className="h-10 w-full" style={{ backgroundColor: getStatusColor(opportunity.status ?? undefined) }} /> */}
 
-				<div className="p-6">
+				<div className="p-4">
 					<div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
 						<div>
 							<h1 className="font-bold text-2xl">{opportunity.title}</h1>

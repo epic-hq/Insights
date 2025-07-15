@@ -1,5 +1,6 @@
 import consola from "consola"
 import { Link, type MetaFunction, useLoaderData } from "react-router"
+import { z } from "zod"
 import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
 import type { OpportunityView } from "~/types"
 import { db } from "~/utils/supabase.server"
@@ -13,13 +14,19 @@ export const meta: MetaFunction = ({ params }) => {
 
 export const handle = {
 	crumb: ({ params }: { params: { opportunityId: string } }) => (
-		<Link to={`/opportunities/${params.opportunityId}`}>Opportunity {params.opportunityId}</Link>
+		<Link to={`/opportunities/${params.opportunityId}`}>Opportunity {params?.opportunityId}</Link>
 	),
 }
 
 export async function loader({ params }: { params: { opportunityId: string } }) {
 	const opportunityId = params.opportunityId
 	consola.info(`Loading opportunity with ID: ${opportunityId}`)
+
+	// Validate UUID format
+	if (!z.string().uuid().safeParse(opportunityId).success) {
+		consola.error(`Invalid opportunity ID format: ${opportunityId}`)
+		throw new Response("Invalid opportunity ID", { status: 400 })
+	}
 
 	// Fetch opportunity data from database
 	const { data: opportunityData, error: opportunityError } = await db

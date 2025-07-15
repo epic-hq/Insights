@@ -1,5 +1,6 @@
 import type React from "react"
 import { Link, useLocation } from "react-router-dom"
+import { z } from "zod"
 
 interface BreadcrumbsProps {
 	className?: string
@@ -15,8 +16,6 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
 		insights: "Insights",
 		opportunities: "Opportunities",
 		personas: "Personas",
-		"early-adopters": "Early Adopters",
-		"mainstream-learners": "Mainstream Learners",
 		skeptics: "Skeptics",
 	}
 
@@ -38,7 +37,12 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
 				{pathnames.map((name, index) => {
 					const routeTo = `/${pathnames.slice(0, index + 1).join("/")}`
 					const isLast = index === pathnames.length - 1
-					const displayName = routeLabels[name] || name
+					const displayName =
+						typeof routeLabels[name] === "string"
+							? routeLabels[name]
+							: z.string().uuid().safeParse(name).success
+								? undefined
+								: name
 
 					return (
 						<li key={name}>
