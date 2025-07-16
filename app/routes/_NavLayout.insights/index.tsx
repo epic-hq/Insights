@@ -1,7 +1,11 @@
+import { LayoutGrid, Rows } from "lucide-react"
+import { useState } from "react"
 import type { MetaFunction } from "react-router"
 import { useLoaderData, useSearchParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
+import { InsightsDataTable } from "~/components/insights/insights-data-table"
+import { Button } from "~/components/ui/button"
 import type { InsightView } from "~/types"
 import { db } from "~/utils/supabase.server"
 
@@ -128,14 +132,14 @@ export async function loader({ request }: { request: Request }) {
 		},
 		stats: {
 			total: insights.length,
-			filtered: filteredInsights.length,
 		},
 	}
 }
 
 export default function Insights() {
-	const { insights, filters, stats } = useLoaderData<typeof loader>()
+	const { insights, filters } = useLoaderData<typeof loader>()
 	const [searchParams, setSearchParams] = useSearchParams()
+	const [view, setView] = useState<"card" | "table">("table")
 
 	const updateSort = (sort: string) => {
 		searchParams.set("sort", sort)
@@ -148,12 +152,11 @@ export default function Insights() {
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4">
-			<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-				<div className="mb-4 flex flex-wrap items-center justify-between gap-4">
-					<div>
-						<h2 className="font-semibold text-xl">Filters</h2>
+			<div className="mb-6 flex items-center justify-between">
+				{view === "table" && (
+					<div className="flex-1">
 						{(filters.interviewFilter || filters.themeFilter || filters.personaFilter) && (
-							<div className="mt-2 flex flex-wrap gap-2">
+							<div className="flex flex-wrap gap-2">
 								{filters.interviewFilter && (
 									<div className="flex items-center gap-1 rounded-full bg-blue-100 px-3 py-1 text-blue-800 text-sm dark:bg-blue-900 dark:text-blue-300">
 										<span>Interview: {filters.interviewFilter}</span>
@@ -209,34 +212,55 @@ export default function Insights() {
 							</div>
 						)}
 					</div>
-					<div className="flex items-center gap-2">
-						<span className="text-gray-500 text-sm dark:text-gray-400">Sort by:</span>
-						<select
-							value={filters.sort || "default"}
-							onChange={(e) => updateSort(e.target.value)}
-							className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
-						>
-							<option value="default">Default</option>
-							<option value="latest">Latest</option>
-							<option value="impact">Impact</option>
-							<option value="confidence">Confidence</option>
-						</select>
-					</div>
-				</div>
+				)}
 
-				<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-					<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-						<p className="text-gray-500 text-sm dark:text-gray-400">Total Insights</p>
-						<p className="font-bold text-2xl">
-							{stats.filtered} / {stats.total}
-						</p>
+				<div className="flex w-full items-center justify-between">
+					{view === "card" && (
+						<div className="ml-auto flex items-center gap-2">
+							<span className="text-sm text-gray-500 dark:text-gray-400">Sort by:</span>
+							<select
+								value={filters.sort || "default"}
+								onChange={(e) => updateSort(e.target.value)}
+								className="rounded border border-gray-300 bg-white px-2 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"
+							>
+								<option value="default">Default</option>
+								<option value="latest">Latest</option>
+								<option value="impact">Impact</option>
+								<option value="confidence">Confidence</option>
+							</select>
+						</div>
+					)}
+
+					<div className="flex items-center gap-1 rounded-md bg-gray-100 p-1 dark:bg-gray-800">
+						<Button
+							variant={view === "card" ? "default" : "ghost"}
+							size="sm"
+							onClick={() => setView("card")}
+							className="h-8 w-8 p-0"
+							title="Card view"
+						>
+							<LayoutGrid className="h-4 w-4" />
+						</Button>
+						<Button
+							variant={view === "table" ? "default" : "ghost"}
+							size="sm"
+							onClick={() => setView("table")}
+							className="h-8 w-8 p-0"
+							title="Table view"
+						>
+							<Rows className="h-4 w-4" />
+						</Button>
 					</div>
 				</div>
 			</div>
 
 			<div className="mb-6">
 				{insights.length > 0 ? (
-					<InsightCardGrid insights={insights} />
+					view === "card" ? (
+						<InsightCardGrid insights={insights} />
+					) : (
+						<InsightsDataTable insights={insights} />
+					)
 				) : (
 					<div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">
 						<p className="text-gray-600 text-lg dark:text-gray-400">No insights match your current filters</p>

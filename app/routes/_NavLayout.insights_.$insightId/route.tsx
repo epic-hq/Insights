@@ -1,6 +1,5 @@
 import consola from "consola"
 import { type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
 import type { InsightView } from "~/types"
 import { db } from "~/utils/supabase.server"
@@ -66,76 +65,17 @@ export async function loader({ params }: { params: { insightId: string } }) {
 
 export default function InsightDetailPage() {
 	const { insight, interviewData } = useLoaderData<typeof loader>()
+	consola.log("InsightDetailPage", insight)
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="p-2">
+			{/* <div className="p-2">
 				<h1 className="font-bold text-2xl">{insight.name}</h1>
-			</div>
+			</div> */}
 
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 				<div className="lg:col-span-2">
-					<InsightCardV2 insight={insight} expanded={true} />
-				</div>
-				<div className="lg:col-span-1">
-					<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-						<h2 className="mb-4 font-semibold text-xl">Related Information</h2>
-
-						{interviewData && (
-							<div className="mb-4">
-								<h3 className="mb-2 font-medium">Source Interview</h3>
-								<Link to={`/interviews/${interviewData.id}`} className="text-blue-600 hover:text-blue-800">
-									{interviewData.participant_pseudonym || "Anonymous"} -{" "}
-									{interviewData.interview_date?.split("T")[0] || interviewData.created_at?.split("T")[0] || ""}
-								</Link>
-							</div>
-						)}
-
-						{insight.category && (
-							<div className="mb-4">
-								<h3 className="mb-2 font-medium">Category</h3>
-								<span className="inline-flex items-center rounded-full bg-blue-100 px-2.5 py-0.5 font-medium text-blue-800 text-xs dark:bg-blue-900 dark:text-blue-300">
-									{insight.category}
-								</span>
-							</div>
-						)}
-
-						{insight.journeyStage && (
-							<div className="mb-4">
-								<h3 className="mb-2 font-medium">Journey Stage</h3>
-								<span className="inline-flex items-center rounded-full bg-purple-100 px-2.5 py-0.5 font-medium text-purple-800 text-xs dark:bg-purple-900 dark:text-purple-300">
-									{insight.journeyStage}
-								</span>
-							</div>
-						)}
-
-						<div className="mb-4">
-							<h3 className="mb-2 font-medium">Impact</h3>
-							<div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-								<div className="h-2 rounded-full bg-blue-600" style={{ width: `${(insight.impact || 0) * 10}%` }} />
-							</div>
-							<div className="mt-1 text-right text-gray-500 text-sm">{insight.impact || 0}/10</div>
-						</div>
-
-						<div className="mb-4">
-							<h3 className="mb-2 font-medium">Novelty</h3>
-							<div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-								<div className="h-2 rounded-full bg-purple-600" style={{ width: `${(insight.novelty || 0) * 10}%` }} />
-							</div>
-							<div className="mt-1 text-right text-gray-500 text-sm">{insight.novelty || 0}/10</div>
-						</div>
-
-						<div className="mb-4">
-							<h3 className="mb-2 font-medium">Confidence</h3>
-							<div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-								<div
-									className="h-2 rounded-full bg-green-600"
-									style={{ width: `${(insight.confidence || 0) * 10}%` }}
-								/>
-							</div>
-							<div className="mt-1 text-right text-gray-500 text-sm">{insight.confidence || 0}/10</div>
-						</div>
-					</div>
+					<InsightCardV2 insight={insight} />
 				</div>
 			</div>
 		</div>

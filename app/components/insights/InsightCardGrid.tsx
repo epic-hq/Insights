@@ -1,10 +1,10 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
-import type { InsightCardProps } from "./InsightCard"
-import { InsightCard } from "./InsightCard"
+import type { InsightView } from "~/types"
+import InsightCardV2 from "./InsightCardV2"
 
 interface InsightCardGridProps {
-	insights?: InsightCardProps[]
+	insights?: InsightView[]
 	children?: ReactNode
 	className?: string
 }
@@ -18,7 +18,7 @@ export default function InsightCardGrid({ insights, children, className }: Insig
 					to={`/insights/${insight.id}`}
 					className="no-underline hover:no-underline"
 				>
-					<InsightCard {...insight} />
+					<InsightCardV2 insight={insight} />
 				</Link>
 			))}
 			{children}

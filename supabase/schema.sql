@@ -123,6 +123,23 @@ create table if not exists personas (
 );
 
 -- 8. Opportunities --------------------------------------------------------------
+-- 7. Comments -------------------------------------------------------------------
+create table if not exists comments (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations (id) on delete cascade,
+  insight_id uuid not null references insights (id) on delete cascade,
+  user_id uuid not null references auth.users (id) on delete cascade,
+  content text not null,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
+create index if not exists comments_insight_id_idx on comments (insight_id);
+create index if not exists comments_org_id_idx on comments (org_id);
+create index if not exists comments_user_id_idx on comments (user_id);
+create index if not exists comments_created_at_idx on comments (created_at desc);
+
+-- 8. Opportunities ------------------------------------------------------------
 create table if not exists opportunities (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations (id) on delete cascade,

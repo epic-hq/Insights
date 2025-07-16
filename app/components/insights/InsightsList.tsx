@@ -1,7 +1,7 @@
 import { LayoutGrid, Table2, X } from "lucide-react"
 import type { ReactElement } from "react"
 import { useEffect, useState } from "react"
-import { useLocation, useNavigate } from "react-router-dom"
+import { Link, useLocation, useNavigate } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -132,23 +132,39 @@ export default function InsightsList({
 						</Card>
 					) : (
 						<div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
-							{filteredInsights.map((insight, index) => (
-								<Link
-									key={getInsightId ? getInsightId(insight, index) : index}
-									to={`/insights/${insight.id}`}
-									className="no-underline hover:no-underline"
-								>
-									<InsightCardV2
-										{...insight}
-										onTagClick={handleTagClick}
-										onUpvote={() => {}}
-										onDownvote={() => {}}
-										onConvertToOpportunity={() => {}}
-										onArchive={() => {}}
-										onDontShowMe={() => {}}
-									/>
-								</Link>
-							))}
+							{filteredInsights.map((insight, index) => {
+								// Map InsightView properties to InsightCardV2 props
+								const _cardProps = {
+									id: insight.id,
+									name: insight.name || insight.title || "Untitled Insight",
+									category: insight.category,
+									journeyStage: insight.journeyStage,
+									jtbd: insight.jtbd,
+									pain: insight.pain,
+									desiredOutcome: insight.desiredOutcome,
+									impact:
+										typeof insight.impact === "string" ? Number.parseInt(insight.impact, 10) || 0 : insight.impact || 0,
+									novelty: insight.novelty || 0,
+									contradictions: insight.contradictions,
+									opportunityIdeas: insight.opportunityIdeas || [],
+									onTagClick: handleTagClick,
+									onUpvote: () => {},
+									onDownvote: () => {},
+									onConvertToOpportunity: () => {},
+									onArchive: () => {},
+									onDontShowMe: () => {},
+								}
+
+								return (
+									<Link
+										key={getInsightId ? getInsightId(insight, index) : index}
+										to={`/insights/${insight.id}`}
+										className="no-underline hover:no-underline"
+									>
+										<InsightCardV2 insight={insight} />
+									</Link>
+								)
+							})}
 						</div>
 					)}
 				</TabsContent>

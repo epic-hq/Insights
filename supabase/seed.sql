@@ -46,7 +46,85 @@ values
   ('60000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000002', 'Prefers audio summaries', 'Accessibility', 'Pre-Study', 3, 4, 'Review material on commute', 'Limited time', 'Reading long articles on phone is hard', 'Get concise audio overview', 'medium', now()),
   ('60000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000003', 'AI reminders reduce cramming', 'Retention', 'Post Study', 5, 4, 'Receive prompts before forgetting', 'Wants better grades', 'Tends to procrastinate', 'Automated spaced-repetition nudges', 'high', now());
 
--- 8. Quotes --------------------------------------------------------------------
+-- 8. Comments ------------------------------------------------------------------
+-- First, create a function to safely add comments with error handling
+CREATE OR REPLACE FUNCTION safe_insert_comment(
+  p_id uuid,
+  p_org_id uuid,
+  p_insight_id uuid,
+  p_user_id uuid,
+  p_content text,
+  p_created_at timestamptz
+) RETURNS void AS $$
+BEGIN
+  -- Only insert if the user exists in auth.users
+  IF EXISTS (SELECT 1 FROM auth.users WHERE id = p_user_id) THEN
+    INSERT INTO public.comments (id, org_id, insight_id, user_id, content, created_at)
+    VALUES (p_id, p_org_id, p_insight_id, p_user_id, p_content, p_created_at)
+    ON CONFLICT (id) DO NOTHING;
+  END IF;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+-- Get a valid user ID from auth.users if available, or use NULL
+DO $$
+DECLARE
+  valid_user_id uuid;
+BEGIN
+  -- Try to get a valid user ID from auth.users
+  SELECT id INTO valid_user_id FROM auth.users LIMIT 1;
+  
+  -- Insert comments using the valid user ID if available, otherwise use NULL
+  PERFORM safe_insert_comment(
+    '60000000-0000-0000-0000-000000000001',
+    '00000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000001',
+    valid_user_id,
+    'This insight about micro-goals aligns with our previous research on student motivation. We should consider adding a progress visualization feature.',
+    now() - interval '2 days'
+  );
+  
+  PERFORM safe_insert_comment(
+    '60000000-0000-0000-0000-000000000002',
+    '00000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000001',
+    valid_user_id,
+    'We tested a similar approach last quarter but with daily goals instead of task-based ones. The completion rate was 15% higher with task-based goals.',
+    now() - interval '1 day'
+  );
+  
+  PERFORM safe_insert_comment(
+    '60000000-0000-0000-0000-000000000003',
+    '00000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000002',
+    valid_user_id,
+    'Audio summaries could be a game-changer for accessibility. We should explore text-to-speech integration options.',
+    now() - interval '3 hours'
+  );
+  
+  PERFORM safe_insert_comment(
+    '60000000-0000-0000-0000-000000000004',
+    '00000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000003',
+    valid_user_id,
+    'The AI reminder feature shows great potential. Lets consider A/B testing different notification frequencies to find the optimal balance.',
+    now() - interval '1 hour'
+  );
+  
+  PERFORM safe_insert_comment(
+    '60000000-0000-0000-0000-000000000005',
+    '00000000-0000-0000-0000-000000000001',
+    '60000000-0000-0000-0000-000000000003',
+    valid_user_id,
+    'We should check if this aligns with our existing spaced repetition algorithm or if we need to modify it.',
+    now() - interval '30 minutes'
+  );
+END $$;
+
+-- Clean up the helper function
+DROP FUNCTION IF EXISTS safe_insert_comment(uuid, uuid, uuid, uuid, text, timestamptz);
+
+-- 9. Quotes --------------------------------------------------------------------
 insert into public.quotes (id, org_id, insight_id, quote, timestamp_sec)
 values
   ('70000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '60000000-0000-0000-0000-000000000001', 'I lose track when a lesson drags on for 30 minutes straight.', 120),

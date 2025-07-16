@@ -2,7 +2,9 @@ import { formatDistanceToNow } from "date-fns"
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
+
 import type { Database } from "~/../supabase/types"
+import UploadButton from "~/components/upload/UploadButton"
 import type { InterviewStatus } from "~/types"
 import { InterviewStatus as InterviewStatusEnum } from "~/types"
 import { db } from "~/utils/supabase.server"
@@ -146,9 +148,7 @@ export default function Interviews() {
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="font-bold text-2xl">Interviews</h1>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
+				<UploadButton />
 			</div>
 
 			<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">

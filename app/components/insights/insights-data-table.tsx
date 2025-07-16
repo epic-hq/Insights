@@ -1,4 +1,5 @@
 import { ArrowDown, ArrowUp, ArrowUpDown, Eye, Filter, MoreHorizontal, Target, User } from "lucide-react"
+import { Link } from "react-router-dom"
 import { useMemo, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -294,8 +295,10 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
             {filteredAndSortedInsights.map(insight => (
               <TableRow key={insight.id}>
                 <TableCell>
-                  <div className="mb-1 font-medium">{insight.name}</div>
-                  <div className="line-clamp-2 text-muted-foreground text-xs">{insight.jtbd}</div>
+                  <Link to={`/insights/${insight.id}`} className="hover:underline">
+                    <div className="mb-1 font-medium">{insight.name}</div>
+                    <div className="line-clamp-2 text-muted-foreground text-xs">{insight.jtbd}</div>
+                  </Link>
                 </TableCell>
                 <TableCell>
                   {insight.category && <Badge variant="outline">{insight.category}</Badge>}
@@ -323,8 +326,10 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Eye className="mr-2 h-4 w-4" /> View
+                      <DropdownMenuItem asChild>
+                        <Link to={`/insights/${insight.id}`} className="flex items-center">
+                          <Eye className="mr-2 h-4 w-4" /> View
+                        </Link>
                       </DropdownMenuItem>
                       <DropdownMenuItem>
                         <Target className="mr-2 h-4 w-4" /> Opportunity
