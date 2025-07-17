@@ -1,7 +1,7 @@
 import consola from "consola"
 import { useEffect } from "react"
-import { Link } from "react-router-dom"
 import { type MetaFunction, useLoaderData } from "react-router"
+import { Link } from "react-router-dom"
 import MarkdownTranscript from "~/components/MarkdownTranscript"
 import TranscriptDisplay from "~/components/TranscriptDisplay"
 import { Button } from "~/components/ui/button"
@@ -104,7 +104,7 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 
 export default function InterviewDetail() {
 	// Only transcript section is rendered. Interview type is inferred from loader.
-	const data = useLoaderData<{ interview?: Interview }>()
+	const data = useLoaderData()
 	const interview = data?.interview
 	useEffect(() => {
 		consola.log("Detail interview:", interview)
@@ -123,140 +123,142 @@ export default function InterviewDetail() {
 	return (
 		<div className="mx-auto mt-8 w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 			<div className="flex-1 space-y-8">
-			{/* Header: Title, participant, persona, date, project */}
-			<div className="mb-4 flex flex-col gap-2 border-b pb-4">
-				<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
-				<div className="flex flex-wrap items-center gap-2 text-base">
-					{interview.participant_pseudonym && (
-						<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
-							{interview.participant_pseudonym}
-						</span>
+				{/* Header: Title, participant, persona, date, project */}
+				<div className="mb-4 flex flex-col gap-2 border-b pb-4">
+					<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
+					<div className="flex flex-wrap items-center gap-2 text-base">
+						{interview.participant_pseudonym && (
+							<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
+								{interview.participant_pseudonym}
+							</span>
+						)}
+						{interview.segment && (
+							<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
+								{interview.segment}
+							</span>
+						)}
+						{interview.interview_date && (
+							<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
+						)}
+						{interview.research_projects?.title && (
+							<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
+								Project: {interview.research_projects.title}
+							</span>
+						)}
+					</div>
+				</div>
+
+				{/* Interviewer info */}
+				{interviewerData?.name && (
+					<div className="mb-2 text-gray-600 text-sm">
+						Interviewer: <span className="font-medium text-gray-900">{interviewerData.name}</span>
+					</div>
+				)}
+
+				{/* Insights List */}
+				<div>
+					<h2 className="mb-2 font-semibold text-lg">Insights</h2>
+					{insights.length > 0 ? (
+						<ul className="space-y-2">
+							{insights.map((insight) => (
+								<li key={insight.id} className="rounded border bg-gray-50 p-3">
+									<Link to={`/insights/${insight.id}`} className="font-bold text-gray-900">
+										{insight.title || "Untitled"}
+									</Link>
+									<div className="text-gray-700 text-sm">{insight.category || "No category"}</div>
+									{insight.description && <div className="mt-1 text-gray-600">{insight.description}</div>}
+								</li>
+							))}
+						</ul>
+					) : (
+						<div className="text-gray-400 italic">No insights available for this interview.</div>
 					)}
-					{interview.segment && (
-						<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
-							{interview.segment}
-						</span>
-					)}
-					{interview.interview_date && (
-						<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
-					)}
-					{interview.research_projects?.title && (
-						<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
-							Project: {interview.research_projects.title}
-						</span>
+				</div>
+
+				{/* Transcript Section */}
+				<div>
+					<h2 className="mb-2 font-semibold text-lg">Transcript</h2>
+					{Array.isArray(interview.transcript) ? (
+						<div className="mb-6">
+							<div className="mb-2 flex justify-end">
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => {
+										const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
+										if (transcriptWindow) {
+											transcriptWindow.document.write(
+												'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
+													JSON.stringify(interview.transcript, null, 2) +
+													"</pre>"
+											)
+											transcriptWindow.document.title = "Interview Transcript"
+										}
+									}}
+									className="ml-auto"
+								>
+									Open Transcript in New Window
+								</Button>
+							</div>
+							<TranscriptDisplay transcript={interview.transcript ?? []} />
+						</div>
+					) : interview.transcript ? (
+						<div className="mb-6">
+							{/* <div className="mb-2 flex justify-end">
+								<Button
+									size="sm"
+									variant="outline"
+									onClick={() => {
+										const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
+										if (transcriptWindow) {
+											transcriptWindow.document.write(
+												'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
+													(interview.transcript ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+													"</pre>"
+											)
+											transcriptWindow.document.title = "Interview Transcript"
+										}
+									}}
+									className="ml-auto"
+								>
+									Open Transcript in New Window
+								</Button>
+							</div> */}
+							<MarkdownTranscript transcript={interview.transcript} />
+						</div>
+					) : (
+						<div className="py-12 text-center text-gray-500 italic">No transcript available for this interview.</div>
 					)}
 				</div>
 			</div>
-
-			{/* Interviewer info */}
-			{interviewerData?.name && (
-				<div className="mb-2 text-gray-600 text-sm">
-					Interviewer: <span className="font-medium text-gray-900">{interviewerData.name}</span>
-				</div>
-			)}
-
-			{/* Insights List */}
-			<div>
-				<h2 className="mb-2 font-semibold text-lg">Insights</h2>
-				{insights.length > 0 ? (
+			<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
+				<h2 className="mb-2 font-semibold text-lg">Related Interviews</h2>
+				{relatedInterviews.length > 0 ? (
 					<ul className="space-y-2">
-						{insights.map((insight) => (
-							<li key={insight.id} className="rounded border bg-gray-50 p-3">
-								<Link to={`/insights/${insight.id}`} className="font-bold text-gray-900">{insight.title || "Untitled"}</Link>
-								<div className="text-gray-700 text-sm">{insight.category || "No category"}</div>
-								{insight.description && <div className="mt-1 text-gray-600">{insight.description}</div>}
+						{relatedInterviews.map((r) => (
+							<li
+								key={r.id}
+								className="flex flex-col rounded border bg-gray-50 p-2 transition hover:bg-gray-100 sm:flex-row sm:items-center sm:justify-between"
+							>
+								<div>
+									<Link to={`/interviews/${r.id}`} className="font-medium text-gray-900">
+										{r.title || "Untitled"}
+									</Link>
+									{r.participant_pseudonym && <span className="ml-2 text-blue-700">{r.participant_pseudonym}</span>}
+									{r.interview_date && (
+										<span className="ml-2 text-gray-500">{new Date(r.interview_date).toLocaleDateString()}</span>
+									)}
+								</div>
+								<Link to={`/interviews/${r.id}`} className="mt-1 text-blue-600 text-sm hover:underline sm:mt-0">
+									View
+								</Link>
 							</li>
 						))}
 					</ul>
 				) : (
-					<div className="text-gray-400 italic">No insights available for this interview.</div>
+					<div className="text-gray-400 italic">No related interviews found.</div>
 				)}
-			</div>
-
-			{/* Transcript Section */}
-			<div>
-				<h2 className="mb-2 font-semibold text-lg">Transcript</h2>
-				{Array.isArray(interview.transcript) ? (
-					<div className="mb-6">
-						<div className="mb-2 flex justify-end">
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => {
-									const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
-									if (transcriptWindow) {
-										transcriptWindow.document.write(
-											'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
-												JSON.stringify(interview.transcript, null, 2) +
-												"</pre>"
-										)
-										transcriptWindow.document.title = "Interview Transcript"
-									}
-								}}
-								className="ml-auto"
-							>
-								Open Transcript in New Window
-							</Button>
-						</div>
-						<TranscriptDisplay transcript={interview.transcript ?? []} />
-					</div>
-				) : interview.transcript ? (
-					<div className="mb-6">
-						<div className="mb-2 flex justify-end">
-							<Button
-								size="sm"
-								variant="outline"
-								onClick={() => {
-									const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
-									if (transcriptWindow) {
-										transcriptWindow.document.write(
-											'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
-												(interview.transcript ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
-												"</pre>"
-										)
-										transcriptWindow.document.title = "Interview Transcript"
-									}
-								}}
-								className="ml-auto"
-							>
-								Open Transcript in New Window
-							</Button>
-						</div>
-						<MarkdownTranscript transcript={interview.transcript} />
-					</div>
-				) : (
-					<div className="py-12 text-center text-gray-500 italic">No transcript available for this interview.</div>
-				)}
-			</div>
+			</aside>
 		</div>
-		<aside className="mt-8 lg:mt-0 w-full lg:max-w-sm space-y-4">
-			<h2 className="mb-2 font-semibold text-lg">Related Interviews</h2>
-			{relatedInterviews.length > 0 ? (
-				<ul className="space-y-2">
-					{relatedInterviews.map((r) => (
-						<li
-							key={r.id}
-							className="flex flex-col rounded border bg-gray-50 p-2 hover:bg-gray-100 transition sm:flex-row sm:items-center sm:justify-between"
-						>
-							<div>
-								<Link to={`/interviews/${r.id}`} className="font-medium text-gray-900">{r.title || "Untitled"}</Link>
-								{r.participant_pseudonym && (
-									<span className="ml-2 text-blue-700">{r.participant_pseudonym}</span>
-								)}
-								{r.interview_date && (
-									<span className="ml-2 text-gray-500">{new Date(r.interview_date).toLocaleDateString()}</span>
-								)}
-							</div>
-							<Link to={`/interviews/${r.id}`} className="mt-1 text-blue-600 text-sm hover:underline sm:mt-0">
-								View
-							</Link>
-						</li>
-					))}
-				</ul>
-			) : (
-				<div className="text-gray-400 italic">No related interviews found.</div>
-			)}
-		</aside>
-	</div>
-)
+	)
 }
