@@ -1,5 +1,18 @@
 create extension if not exists "vector" with schema "public" version '0.8.0';
 
+create type "public"."interview_status" as enum ('draft', 'scheduled', 'uploaded', 'transcribed', 'processing', 'ready', 'tagged', 'archived');
+
+create table "public"."comments" (
+    "id" uuid not null default gen_random_uuid(),
+    "org_id" uuid not null,
+    "insight_id" uuid not null,
+    "user_id" uuid not null,
+    "content" text not null,
+    "created_at" timestamp with time zone not null default now(),
+    "updated_at" timestamp with time zone not null default now()
+);
+
+
 create table "public"."insight_tags" (
     "insight_id" uuid not null,
     "tag" text not null
@@ -10,7 +23,7 @@ create table "public"."insights" (
     "id" uuid not null default gen_random_uuid(),
     "org_id" uuid not null,
     "interview_id" uuid,
-    "tag" text not null,
+    "name" text not null,
     "category" text not null,
     "journey_stage" text,
     "impact" smallint,
@@ -37,8 +50,9 @@ create table "public"."interviews" (
     "interviewer_id" uuid,
     "participant_pseudonym" text,
     "segment" text,
+    "transcript" text,
     "duration_min" integer,
-    "status" text not null,
+    "status" interview_status not null default 'draft'::interview_status,
     "created_at" timestamp with time zone not null default now()
 );
 
@@ -122,16 +136,6 @@ create table "public"."themes" (
 );
 
 
-create table "public"."transcripts" (
-    "id" uuid not null default gen_random_uuid(),
-    "org_id" uuid not null,
-    "interview_id" uuid not null,
-    "text" text,
-    "source_json" jsonb,
-    "created_at" timestamp with time zone not null default now()
-);
-
-
 create table "public"."user_org_memberships" (
     "user_id" uuid not null,
     "org_id" uuid not null,
@@ -139,6 +143,8 @@ create table "public"."user_org_memberships" (
     "joined_at" timestamp with time zone not null default now()
 );
 
+
+CREATE UNIQUE INDEX comments_pkey ON public.comments USING btree (id);
 
 CREATE UNIQUE INDEX insight_tags_pkey ON public.insight_tags USING btree (insight_id, tag);
 
@@ -164,9 +170,9 @@ CREATE UNIQUE INDEX tags_pkey ON public.tags USING btree (tag);
 
 CREATE UNIQUE INDEX themes_pkey ON public.themes USING btree (id);
 
-CREATE UNIQUE INDEX transcripts_pkey ON public.transcripts USING btree (id);
-
 CREATE UNIQUE INDEX user_org_memberships_pkey ON public.user_org_memberships USING btree (user_id, org_id);
+
+alter table "public"."comments" add constraint "comments_pkey" PRIMARY KEY using index "comments_pkey";
 
 alter table "public"."insight_tags" add constraint "insight_tags_pkey" PRIMARY KEY using index "insight_tags_pkey";
 
@@ -190,9 +196,19 @@ alter table "public"."tags" add constraint "tags_pkey" PRIMARY KEY using index "
 
 alter table "public"."themes" add constraint "themes_pkey" PRIMARY KEY using index "themes_pkey";
 
-alter table "public"."transcripts" add constraint "transcripts_pkey" PRIMARY KEY using index "transcripts_pkey";
-
 alter table "public"."user_org_memberships" add constraint "user_org_memberships_pkey" PRIMARY KEY using index "user_org_memberships_pkey";
+
+alter table "public"."comments" add constraint "comments_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES insights(id) ON DELETE CASCADE not valid;
+
+alter table "public"."comments" validate constraint "comments_insight_id_fkey";
+
+alter table "public"."comments" add constraint "comments_org_id_fkey" FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE not valid;
+
+alter table "public"."comments" validate constraint "comments_org_id_fkey";
+
+alter table "public"."comments" add constraint "comments_user_id_fkey" FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE not valid;
+
+alter table "public"."comments" validate constraint "comments_user_id_fkey";
 
 alter table "public"."insight_tags" add constraint "insight_tags_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES insights(id) ON DELETE CASCADE not valid;
 
@@ -233,10 +249,6 @@ alter table "public"."interviews" validate constraint "interviews_org_id_fkey";
 alter table "public"."interviews" add constraint "interviews_project_id_fkey" FOREIGN KEY (project_id) REFERENCES research_projects(id) ON DELETE CASCADE not valid;
 
 alter table "public"."interviews" validate constraint "interviews_project_id_fkey";
-
-alter table "public"."interviews" add constraint "interviews_status_check" CHECK ((status = ANY (ARRAY['uploaded'::text, 'transcribed'::text, 'processed'::text]))) not valid;
-
-alter table "public"."interviews" validate constraint "interviews_status_check";
 
 alter table "public"."media_files" add constraint "media_files_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES interviews(id) ON DELETE SET NULL not valid;
 
@@ -284,14 +296,6 @@ alter table "public"."themes" add constraint "themes_org_id_fkey" FOREIGN KEY (o
 
 alter table "public"."themes" validate constraint "themes_org_id_fkey";
 
-alter table "public"."transcripts" add constraint "transcripts_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES interviews(id) ON DELETE CASCADE not valid;
-
-alter table "public"."transcripts" validate constraint "transcripts_interview_id_fkey";
-
-alter table "public"."transcripts" add constraint "transcripts_org_id_fkey" FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE not valid;
-
-alter table "public"."transcripts" validate constraint "transcripts_org_id_fkey";
-
 alter table "public"."user_org_memberships" add constraint "user_org_memberships_org_id_fkey" FOREIGN KEY (org_id) REFERENCES organizations(id) ON DELETE CASCADE not valid;
 
 alter table "public"."user_org_memberships" validate constraint "user_org_memberships_org_id_fkey";
@@ -311,6 +315,48 @@ create materialized view "public"."theme_counts_mv" as  SELECT t.id AS theme_id,
      LEFT JOIN insights i ON (((i.category = t.name) AND (i.org_id = t.org_id))))
   GROUP BY t.id, t.name;
 
+
+grant delete on table "public"."comments" to "anon";
+
+grant insert on table "public"."comments" to "anon";
+
+grant references on table "public"."comments" to "anon";
+
+grant select on table "public"."comments" to "anon";
+
+grant trigger on table "public"."comments" to "anon";
+
+grant truncate on table "public"."comments" to "anon";
+
+grant update on table "public"."comments" to "anon";
+
+grant delete on table "public"."comments" to "authenticated";
+
+grant insert on table "public"."comments" to "authenticated";
+
+grant references on table "public"."comments" to "authenticated";
+
+grant select on table "public"."comments" to "authenticated";
+
+grant trigger on table "public"."comments" to "authenticated";
+
+grant truncate on table "public"."comments" to "authenticated";
+
+grant update on table "public"."comments" to "authenticated";
+
+grant delete on table "public"."comments" to "service_role";
+
+grant insert on table "public"."comments" to "service_role";
+
+grant references on table "public"."comments" to "service_role";
+
+grant select on table "public"."comments" to "service_role";
+
+grant trigger on table "public"."comments" to "service_role";
+
+grant truncate on table "public"."comments" to "service_role";
+
+grant update on table "public"."comments" to "service_role";
 
 grant delete on table "public"."insight_tags" to "anon";
 
@@ -773,48 +819,6 @@ grant trigger on table "public"."themes" to "service_role";
 grant truncate on table "public"."themes" to "service_role";
 
 grant update on table "public"."themes" to "service_role";
-
-grant delete on table "public"."transcripts" to "anon";
-
-grant insert on table "public"."transcripts" to "anon";
-
-grant references on table "public"."transcripts" to "anon";
-
-grant select on table "public"."transcripts" to "anon";
-
-grant trigger on table "public"."transcripts" to "anon";
-
-grant truncate on table "public"."transcripts" to "anon";
-
-grant update on table "public"."transcripts" to "anon";
-
-grant delete on table "public"."transcripts" to "authenticated";
-
-grant insert on table "public"."transcripts" to "authenticated";
-
-grant references on table "public"."transcripts" to "authenticated";
-
-grant select on table "public"."transcripts" to "authenticated";
-
-grant trigger on table "public"."transcripts" to "authenticated";
-
-grant truncate on table "public"."transcripts" to "authenticated";
-
-grant update on table "public"."transcripts" to "authenticated";
-
-grant delete on table "public"."transcripts" to "service_role";
-
-grant insert on table "public"."transcripts" to "service_role";
-
-grant references on table "public"."transcripts" to "service_role";
-
-grant select on table "public"."transcripts" to "service_role";
-
-grant trigger on table "public"."transcripts" to "service_role";
-
-grant truncate on table "public"."transcripts" to "service_role";
-
-grant update on table "public"."transcripts" to "service_role";
 
 grant delete on table "public"."user_org_memberships" to "anon";
 

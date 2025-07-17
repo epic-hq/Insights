@@ -27,15 +27,18 @@
 **Ask for clarification**: Ask a question if anything is unclear, or could prevent a solid plan.
 
 **Supporting Research**: Based on best practices from Nielsen Norman Group and other vendors, we have a starting foundation for a template of insights and other data to generate from interview transcripts.
+
 ## Template
 
 ### Study Context
+
 Research Goal:
 Study Code / Folder:
 Recruitment Channel:
 Script Version:
 
 ### Interview Metadata
+
 Interview ID:
 Date:
 Interviewer:
@@ -45,22 +48,25 @@ Duration (min):
 Transcript Source: (file name or link)
 
 ### Participant Snapshot (≤ 7 sentences)
+
 A concise narrative: who they are, their workflow, top frustrations, aspirations, and any standout quotes that define them.
 
 ### High‑Impact Themes
+
 List the 5‑10 biggest takeaways as single lines, each starting with a tag and quick rating for synthesis:
-#theme_tag One‑sentence insight. (Impact 1‑5 · Novelty 1‑5)
+# theme_tag One‑sentence insight. (Impact 1‑5 · Novelty 1‑5)
 Impact ≈ severity or business value; Novelty ≈ differentiation/delight potential.
 
 ### Insight Cards (Create insight card for each #theme_tag)
 
 | Field | Entry |
 | --- | --- |
-| Tag | #theme_tag |
+| Name | Insight Name |
 | Category | 1-2 word high level category about the insight |
 | Journey Stage | Awareness · Onboarding · Planning · Learning · Assessing · Progress · Community · Support · Other |
 | Impact Severity | 1 (annoying) … 5 (blocker) |
 | JTBD | "When I … I want to … so I can …" |
+| Description | Insight description and any additional context |
 | Underlying Motivation | e.g., autonomy, mastery, recognition |
 | Pain / Friction |  |
 | Desired Outcome |  |

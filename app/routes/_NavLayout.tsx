@@ -1,4 +1,3 @@
-import consola from "consola"
 import { Outlet, useMatches } from "react-router"
 import PageHeader from "~/components/navigation/PageHeader"
 
@@ -11,7 +10,7 @@ function _Breadcrumbs() {
 		// data to each one
 		.map((match) => (match.pathname as { crumb: (data: unknown) => React.ReactNode }).crumb(match.data))
 
-	consola.log("crumbs", crumbs, "matches: ", matches)
+	// consola.log("crumbs", crumbs, "matches: ", matches)
 
 	return (
 		<ol>

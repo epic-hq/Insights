@@ -232,9 +232,6 @@ export default function Interviews() {
 						<thead>
 							<tr>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-									Date
-								</th>
-								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Participant
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
@@ -250,6 +247,9 @@ export default function Interviews() {
 									Insights
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
+									Date
+								</th>
+								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Actions
 								</th>
 							</tr>
@@ -257,9 +257,6 @@ export default function Interviews() {
 						<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 							{interviews.map((interview) => (
 								<tr key={interview.id}>
-									<td className="whitespace-nowrap px-4 py-3">
-										{formatDistanceToNow(interview.date, { addSuffix: true })}
-									</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.participant}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.role}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.duration}</td>
@@ -277,6 +274,9 @@ export default function Interviews() {
 										</span>
 									</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.insightCount}</td>
+									<td className="whitespace-nowrap px-4 py-3">
+										{formatDistanceToNow(interview.date, { addSuffix: true })}
+									</td>
 									<td className="whitespace-nowrap px-4 py-3">
 										<Link to={`/interviews/${interview.id}`} className="text-blue-600 hover:text-blue-800">
 											View

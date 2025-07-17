@@ -14,6 +14,7 @@ export default defineWorkspace([
 		extends: "./vitest.config.ts",
 		optimizeDeps: {
 			include: ["react/jsx-dev-runtime"],
+			exclude: ["@boundaryml/baml", "@boundaryml/baml-darwin-arm64"], // Exclude BAML native modules
 		},
 		server: {
 			fs: {

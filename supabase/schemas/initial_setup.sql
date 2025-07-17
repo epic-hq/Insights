@@ -46,16 +46,22 @@ create table if not exists interviews (
   interviewer_id uuid references auth.users (id),
   participant_pseudonym text,
   segment text,
+	transcript text,
+	transcript_formatted jsonb,
+	high_impact_themes text[],
+	open_questions_and_next_steps text,
+	observations_and_notes text,
   duration_min int,
   status interview_status not null default 'draft',
   created_at timestamptz not null default now()
 );
 
--- 4. Media Files & Transcripts --------------------------------------------------
+-- 4. Media Files --------------------------------------------------
 create table if not exists media_files (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations (id) on delete cascade,
   interview_id uuid references interviews (id) on delete set null,
+	url text,
   r2_path text not null,
   file_name text not null,
   mime_type text not null,
@@ -64,14 +70,14 @@ create table if not exists media_files (
   uploaded_at timestamptz not null default now()
 );
 
-create table if not exists transcripts (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references organizations (id) on delete cascade,
-  interview_id uuid not null references interviews (id) on delete cascade,
-  text text,
-  source_json jsonb,
-  created_at timestamptz not null default now()
-);
+-- create table if not exists transcripts (
+--   id uuid primary key default gen_random_uuid(),
+--   org_id uuid not null references organizations (id) on delete cascade,
+--   interview_id uuid not null references interviews (id) on delete cascade,
+--   text text,
+--   source_json jsonb,
+--   created_at timestamptz not null default now()
+-- );
 
 -- 5. Insights & Quotes ----------------------------------------------------------
 create table if not exists insights (
@@ -84,6 +90,7 @@ create table if not exists insights (
   impact smallint check (impact between 1 and 5),
   novelty smallint check (novelty between 1 and 5),
   jtbd text,
+	details text,
   motivation text,
   pain text,
   desired_outcome text,
@@ -91,7 +98,8 @@ create table if not exists insights (
   opportunity_ideas text[],
   confidence text check (confidence in ('low','medium','high')),
   contradictions text,
-  embedding vector(1536),
+	related_tags text[],
+  embedding vector(1536), -- jtbd embedding to aid searching
   created_at timestamptz not null default now()
 );
 
@@ -160,4 +168,18 @@ left join insights i on i.category = t.name and i.org_id = t.org_id
 group by t.id, t.name;
 
 -- -----------------------------------------------------------------------------
+
+-- 11. Interviewee --------------------------------------------------------------
+create table if not exists interviewee (
+  id uuid primary key default gen_random_uuid(),
+  org_id uuid not null references organizations (id) on delete cascade,
+  interview_id uuid references interviews (id) on delete set null,
+  name text,
+  persona text,
+  participant_description text,
+  segment text,
+	contact_info jsonb,
+  created_at timestamptz not null default now()
+);
+
 -- End of declarative schema

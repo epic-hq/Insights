@@ -217,7 +217,7 @@ export default function Insights() {
 				<div className="flex w-full items-center justify-between">
 					{view === "card" && (
 						<div className="ml-auto flex items-center gap-2">
-							<span className="text-sm text-gray-500 dark:text-gray-400">Sort by:</span>
+							<span className="text-gray-500 text-sm dark:text-gray-400">Sort by:</span>
 							<select
 								value={filters.sort || "default"}
 								onChange={(e) => updateSort(e.target.value)}

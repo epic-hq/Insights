@@ -48,6 +48,8 @@ export type Tag = Tables<"tags">
 // ------------------------------------
 export type InsightInsert = TablesInsert<"insights">
 export type InsightUpdate = TablesUpdate<"insights">
+export type InterviewInsert = TablesInsert<"interviews">
+export type InterviewUpdate = TablesUpdate<"interviews">
 export type OpportunityInsert = TablesInsert<"opportunities">
 export type OpportunityUpdate = TablesUpdate<"opportunities">
 

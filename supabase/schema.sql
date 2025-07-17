@@ -26,10 +26,12 @@ create table if not exists user_org_memberships (
 create table if not exists research_projects (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations (id) on delete cascade,
+	-- owner_id uuid not null references auth.users (id) on delete cascade,
   code text unique,
   title text not null,
   description text,
   created_at timestamptz not null default now()
+	updated_at timestamptz not null default now()
 );
 
 -- 3. Interviews -----------------------------------------------------------------
@@ -60,36 +62,41 @@ create table if not exists media_files (
   uploaded_at timestamptz not null default now()
 );
 
-create table if not exists transcripts (
-  id uuid primary key default gen_random_uuid(),
-  org_id uuid not null references organizations (id) on delete cascade,
-  interview_id uuid not null references interviews (id) on delete cascade,
-  text text,
-  source_json jsonb,
-  created_at timestamptz not null default now()
-);
+-- create table if not exists transcripts (
+--   id uuid primary key default gen_random_uuid(),
+--   org_id uuid not null references organizations (id) on delete cascade,
+--   interview_id uuid not null references interviews (id) on delete cascade,
+--   text text,
+--   source_json jsonb,
+--   created_at timestamptz not null default now()
+-- );
 
 -- 5. Insights & Quotes ----------------------------------------------------------
 create table if not exists insights (
   id uuid primary key default gen_random_uuid(),
   org_id uuid not null references organizations (id) on delete cascade,
   interview_id uuid references interviews (id),
-  tag text not null,
+  name text not null,
   category text not null,
   journey_stage text,
   impact smallint check (impact between 1 and 5),
   novelty smallint check (novelty between 1 and 5),
   jtbd text,
+	details text,
   motivation text,
   pain text,
   desired_outcome text,
   emotional_response text,
+	evidence text,
   opportunity_ideas text[],
   confidence text check (confidence in ('low','medium','high')),
   contradictions text,
+	related_tags text[],
   embedding vector(1536),
   created_at timestamptz not null default now()
+	updated_at timestamptz not null default now()
 );
+-- Consider adding multiple quotes and evidence with timestamps so user can see when they were said and rest of context.
 
 create table if not exists quotes (
   id uuid primary key default gen_random_uuid(),

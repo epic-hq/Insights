@@ -1,33 +1,53 @@
-type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
+export type Json = string | number | boolean | null | { [key: string]: Json | undefined } | Json[]
 
 export type Database = {
-	graphql_public: {
-		Tables: {
-			[_ in never]: never
-		}
-		Views: {
-			[_ in never]: never
-		}
-		Functions: {
-			graphql: {
-				Args: {
-					operationName?: string
-					extensions?: Json
-					variables?: Json
-					query?: string
-				}
-				Returns: Json
-			}
-		}
-		Enums: {
-			[_ in never]: never
-		}
-		CompositeTypes: {
-			[_ in never]: never
-		}
-	}
 	public: {
 		Tables: {
+			comments: {
+				Row: {
+					content: string
+					created_at: string
+					id: string
+					insight_id: string
+					org_id: string
+					updated_at: string
+					user_id: string
+				}
+				Insert: {
+					content: string
+					created_at?: string
+					id?: string
+					insight_id: string
+					org_id: string
+					updated_at?: string
+					user_id: string
+				}
+				Update: {
+					content?: string
+					created_at?: string
+					id?: string
+					insight_id?: string
+					org_id?: string
+					updated_at?: string
+					user_id?: string
+				}
+				Relationships: [
+					{
+						foreignKeyName: "comments_insight_id_fkey"
+						columns: ["insight_id"]
+						isOneToOne: false
+						referencedRelation: "insights"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "comments_org_id_fkey"
+						columns: ["org_id"]
+						isOneToOne: false
+						referencedRelation: "organizations"
+						referencedColumns: ["id"]
+					},
+				]
+			}
 			insight_tags: {
 				Row: {
 					insight_id: string
@@ -65,6 +85,7 @@ export type Database = {
 					contradictions: string | null
 					created_at: string
 					desired_outcome: string | null
+					details: string | null
 					embedding: string | null
 					emotional_response: string | null
 					id: string
@@ -78,6 +99,7 @@ export type Database = {
 					opportunity_ideas: string[] | null
 					org_id: string
 					pain: string | null
+					related_tags: string[] | null
 				}
 				Insert: {
 					category: string
@@ -85,6 +107,7 @@ export type Database = {
 					contradictions?: string | null
 					created_at?: string
 					desired_outcome?: string | null
+					details?: string | null
 					embedding?: string | null
 					emotional_response?: string | null
 					id?: string
@@ -98,6 +121,7 @@ export type Database = {
 					opportunity_ideas?: string[] | null
 					org_id: string
 					pain?: string | null
+					related_tags?: string[] | null
 				}
 				Update: {
 					category?: string
@@ -105,6 +129,7 @@ export type Database = {
 					contradictions?: string | null
 					created_at?: string
 					desired_outcome?: string | null
+					details?: string | null
 					embedding?: string | null
 					emotional_response?: string | null
 					id?: string
@@ -118,6 +143,7 @@ export type Database = {
 					opportunity_ideas?: string[] | null
 					org_id?: string
 					pain?: string | null
+					related_tags?: string[] | null
 				}
 				Relationships: [
 					{
@@ -136,45 +162,111 @@ export type Database = {
 					},
 				]
 			}
+			interviewee: {
+				Row: {
+					contact_info: Json | null
+					created_at: string
+					id: string
+					interview_id: string | null
+					name: string | null
+					org_id: string
+					participant_description: string | null
+					persona: string | null
+					segment: string | null
+				}
+				Insert: {
+					contact_info?: Json | null
+					created_at?: string
+					id?: string
+					interview_id?: string | null
+					name?: string | null
+					org_id: string
+					participant_description?: string | null
+					persona?: string | null
+					segment?: string | null
+				}
+				Update: {
+					contact_info?: Json | null
+					created_at?: string
+					id?: string
+					interview_id?: string | null
+					name?: string | null
+					org_id?: string
+					participant_description?: string | null
+					persona?: string | null
+					segment?: string | null
+				}
+				Relationships: [
+					{
+						foreignKeyName: "interviewee_interview_id_fkey"
+						columns: ["interview_id"]
+						isOneToOne: false
+						referencedRelation: "interviews"
+						referencedColumns: ["id"]
+					},
+					{
+						foreignKeyName: "interviewee_org_id_fkey"
+						columns: ["org_id"]
+						isOneToOne: false
+						referencedRelation: "organizations"
+						referencedColumns: ["id"]
+					},
+				]
+			}
 			interviews: {
 				Row: {
 					created_at: string
 					duration_min: number | null
+					high_impact_themes: string[] | null
 					id: string
 					interview_date: string | null
 					interviewer_id: string | null
+					observations_and_notes: string | null
+					open_questions_and_next_steps: string | null
 					org_id: string
 					participant_pseudonym: string | null
 					project_id: string
 					segment: string | null
-					status: string
+					status: Database["public"]["Enums"]["interview_status"]
 					title: string | null
+					transcript: string | null
+					transcript_formatted: Json | null
 				}
 				Insert: {
 					created_at?: string
 					duration_min?: number | null
+					high_impact_themes?: string[] | null
 					id?: string
 					interview_date?: string | null
 					interviewer_id?: string | null
+					observations_and_notes?: string | null
+					open_questions_and_next_steps?: string | null
 					org_id: string
 					participant_pseudonym?: string | null
 					project_id: string
 					segment?: string | null
-					status: string
+					status?: Database["public"]["Enums"]["interview_status"]
 					title?: string | null
+					transcript?: string | null
+					transcript_formatted?: Json | null
 				}
 				Update: {
 					created_at?: string
 					duration_min?: number | null
+					high_impact_themes?: string[] | null
 					id?: string
 					interview_date?: string | null
 					interviewer_id?: string | null
+					observations_and_notes?: string | null
+					open_questions_and_next_steps?: string | null
 					org_id?: string
 					participant_pseudonym?: string | null
 					project_id?: string
 					segment?: string | null
-					status?: string
+					status?: Database["public"]["Enums"]["interview_status"]
 					title?: string | null
+					transcript?: string | null
+					transcript_formatted?: Json | null
 				}
 				Relationships: [
 					{
@@ -204,6 +296,7 @@ export type Database = {
 					size_bytes: number | null
 					uploaded_at: string
 					uploaded_by: string | null
+					url: string | null
 				}
 				Insert: {
 					file_name: string
@@ -215,6 +308,7 @@ export type Database = {
 					size_bytes?: number | null
 					uploaded_at?: string
 					uploaded_by?: string | null
+					url?: string | null
 				}
 				Update: {
 					file_name?: string
@@ -226,6 +320,7 @@ export type Database = {
 					size_bytes?: number | null
 					uploaded_at?: string
 					uploaded_by?: string | null
+					url?: string | null
 				}
 				Relationships: [
 					{
@@ -468,48 +563,6 @@ export type Database = {
 					},
 				]
 			}
-			transcripts: {
-				Row: {
-					created_at: string
-					id: string
-					interview_id: string
-					org_id: string
-					source_json: Json | null
-					text: string | null
-				}
-				Insert: {
-					created_at?: string
-					id?: string
-					interview_id: string
-					org_id: string
-					source_json?: Json | null
-					text?: string | null
-				}
-				Update: {
-					created_at?: string
-					id?: string
-					interview_id?: string
-					org_id?: string
-					source_json?: Json | null
-					text?: string | null
-				}
-				Relationships: [
-					{
-						foreignKeyName: "transcripts_interview_id_fkey"
-						columns: ["interview_id"]
-						isOneToOne: false
-						referencedRelation: "interviews"
-						referencedColumns: ["id"]
-					},
-					{
-						foreignKeyName: "transcripts_org_id_fkey"
-						columns: ["org_id"]
-						isOneToOne: false
-						referencedRelation: "organizations"
-						referencedColumns: ["id"]
-					},
-				]
-			}
 			user_org_memberships: {
 				Row: {
 					joined_at: string
@@ -551,10 +604,109 @@ export type Database = {
 			}
 		}
 		Functions: {
-			[_ in never]: never
+			binary_quantize: {
+				Args: { "": string } | { "": unknown }
+				Returns: unknown
+			}
+			halfvec_avg: {
+				Args: { "": number[] }
+				Returns: unknown
+			}
+			halfvec_out: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			halfvec_send: {
+				Args: { "": unknown }
+				Returns: string
+			}
+			halfvec_typmod_in: {
+				Args: { "": unknown[] }
+				Returns: number
+			}
+			hnsw_bit_support: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			hnsw_halfvec_support: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			hnsw_sparsevec_support: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			hnswhandler: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			ivfflat_bit_support: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			ivfflat_halfvec_support: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			ivfflathandler: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			l2_norm: {
+				Args: { "": unknown } | { "": unknown }
+				Returns: number
+			}
+			l2_normalize: {
+				Args: { "": string } | { "": unknown } | { "": unknown }
+				Returns: string
+			}
+			sparsevec_out: {
+				Args: { "": unknown }
+				Returns: unknown
+			}
+			sparsevec_send: {
+				Args: { "": unknown }
+				Returns: string
+			}
+			sparsevec_typmod_in: {
+				Args: { "": unknown[] }
+				Returns: number
+			}
+			vector_avg: {
+				Args: { "": number[] }
+				Returns: string
+			}
+			vector_dims: {
+				Args: { "": string } | { "": unknown }
+				Returns: number
+			}
+			vector_norm: {
+				Args: { "": string }
+				Returns: number
+			}
+			vector_out: {
+				Args: { "": string }
+				Returns: unknown
+			}
+			vector_send: {
+				Args: { "": string }
+				Returns: string
+			}
+			vector_typmod_in: {
+				Args: { "": unknown[] }
+				Returns: number
+			}
 		}
 		Enums: {
-			[_ in never]: never
+			interview_status:
+				| "draft"
+				| "scheduled"
+				| "uploaded"
+				| "transcribed"
+				| "processing"
+				| "ready"
+				| "tagged"
+				| "archived"
 		}
 		CompositeTypes: {
 			[_ in never]: never
@@ -562,22 +714,25 @@ export type Database = {
 	}
 }
 
-type DefaultSchema = Database[Extract<keyof Database, "public">]
+type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
-// biome-ignore lint
-type Tables<
+type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
+
+export type Tables<
 	DefaultSchemaTableNameOrOptions extends
 		| keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-		| { schema: keyof Database },
+		| { schema: keyof DatabaseWithoutInternals },
 	TableName extends DefaultSchemaTableNameOrOptions extends {
-		schema: keyof Database
+		schema: keyof DatabaseWithoutInternals
 	}
-		? keyof (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-				Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
+		? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+				DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
 		: never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-	? (Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-			Database[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals
+}
+	? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
+			DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
 			Row: infer R
 		}
 		? R
@@ -590,16 +745,17 @@ type Tables<
 			: never
 		: never
 
-// biome-ignore lint
-type TablesInsert<
-	DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof Database },
+export type TablesInsert<
+	DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
 	TableName extends DefaultSchemaTableNameOrOptions extends {
-		schema: keyof Database
+		schema: keyof DatabaseWithoutInternals
 	}
-		? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+		? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
 		: never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-	? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals
+}
+	? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
 			Insert: infer I
 		}
 		? I
@@ -612,16 +768,17 @@ type TablesInsert<
 			: never
 		: never
 
-// biome-ignore lint
-type TablesUpdate<
-	DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof Database },
+export type TablesUpdate<
+	DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"] | { schema: keyof DatabaseWithoutInternals },
 	TableName extends DefaultSchemaTableNameOrOptions extends {
-		schema: keyof Database
+		schema: keyof DatabaseWithoutInternals
 	}
-		? keyof Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
+		? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
 		: never = never,
-> = DefaultSchemaTableNameOrOptions extends { schema: keyof Database }
-	? Database[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
+> = DefaultSchemaTableNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals
+}
+	? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
 			Update: infer U
 		}
 		? U
@@ -634,40 +791,42 @@ type TablesUpdate<
 			: never
 		: never
 
-// biome-ignore lint
-type Enums<
-	DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof Database },
+export type Enums<
+	DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"] | { schema: keyof DatabaseWithoutInternals },
 	EnumName extends DefaultSchemaEnumNameOrOptions extends {
-		schema: keyof Database
+		schema: keyof DatabaseWithoutInternals
 	}
-		? keyof Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
+		? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
 		: never = never,
-> = DefaultSchemaEnumNameOrOptions extends { schema: keyof Database }
-	? Database[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
+> = DefaultSchemaEnumNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals
+}
+	? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
 	: DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
 		? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
 		: never
 
-// biome-ignore lint
-type CompositeTypes<
-	PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"] | { schema: keyof Database },
+export type CompositeTypes<
+	PublicCompositeTypeNameOrOptions extends
+		| keyof DefaultSchema["CompositeTypes"]
+		| { schema: keyof DatabaseWithoutInternals },
 	CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-		schema: keyof Database
+		schema: keyof DatabaseWithoutInternals
 	}
-		? keyof Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
+		? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
 		: never = never,
-> = PublicCompositeTypeNameOrOptions extends { schema: keyof Database }
-	? Database[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
+> = PublicCompositeTypeNameOrOptions extends {
+	schema: keyof DatabaseWithoutInternals
+}
+	? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
 	: PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
 		? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
 		: never
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-const _DatabaseConstants = {
-	graphql_public: {
-		Enums: {},
-	},
+export const Constants = {
 	public: {
-		Enums: {},
+		Enums: {
+			interview_status: ["draft", "scheduled", "uploaded", "transcribed", "processing", "ready", "tagged", "archived"],
+		},
 	},
 } as const

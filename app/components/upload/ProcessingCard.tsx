@@ -1,4 +1,4 @@
-import { CheckCircleIcon, ExclamationCircleIcon } from "@heroicons/react/24/solid"
+import { AlertTriangleIcon, CheckCircle } from "lucide-react"
 import { useEffect, useState } from "react"
 
 export type ProcessingState = "uploaded" | "transcribing" | "analyzing" | "ready" | "error"
@@ -49,9 +49,9 @@ export default function ProcessingCard({ filename, progress = 0, state, onClick 
 					{filename}
 				</h4>
 				{state === "ready" ? (
-					<CheckCircleIcon className="h-5 w-5 text-green-500" />
+					<CheckCircle className="h-5 w-5 text-green-500" />
 				) : state === "error" ? (
-					<ExclamationCircleIcon className="h-5 w-5 text-red-500" />
+					<AlertTriangleIcon className="h-5 w-5 text-red-500" />
 				) : null}
 			</div>
 			<div className="h-2 w-full rounded-full bg-gray-200 dark:bg-gray-700">

@@ -8,6 +8,14 @@ import { iconsSpritesheet } from "vite-plugin-icons-spritesheet"
 import tsconfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
+	// Externalize BAML native modules to prevent bundling issues
+	optimizeDeps: {
+		exclude: ["@boundaryml/baml", "@boundaryml/baml-darwin-arm64"],
+	},
+	ssr: {
+		noExternal: [],
+		external: ["@boundaryml/baml", "@boundaryml/baml-darwin-arm64"],
+	},
 	plugins: [
 		tailwindcss(),
 		// Run the react-compiler on .tsx files only when bundling

@@ -189,10 +189,28 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
 
 ## 6. Media Storage & Access Flow
 
+We have several options for media storage: supabase using s3, cloudflare r2, google drive link. For expedience, we will use google drive links in phase 1.
+
+### 6A. Media Storage using Google Drive (phase 1)
+
+* Media files are stored in Google Drive under the path `org_id/<uuid>`.
+* Transcribe using AssemblyAI. [AssemblyAI docs](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file)
+* AssemblyAI can transcribe google drive files.
+* [how to convert google files to downloadable](https://www.assemblyai.com/docs/guides/transcribing-google-drive-file)
+
+### 6B. Media Storage using Supabase R2 (phase 2)
+
 1. Client obtains a pre-signed R2 upload URL via Edge Function (requires valid org JWT).
 2. Upload audio/video directly to R2.
 3. Edge Function stores `media_files` row with metadata.
 4. Downloads/stream: client calls Edge Function → function returns short-lived signed URL after ACL check.
+
+## 7. Setup pipeline
+
+* Add pgmq queue for transcript processing to supabase. Done. named 'transcribe' and added to schema
+* Define pipeline flow to handle transcript processing: Provide File URL -> transacribe audio with assembly AI  -> save to db -> notify user
+
+- <https://github.com/pgmq/pgmq?tab=readme-ov-file#sql-examples>
 
 ## 8. Transcript Processing Pipeline (o3 + BAML)
 
@@ -200,23 +218,29 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
 
 * Steps:
 
-  1. Pull transcript text from `transcripts.text`.
-  2. Use **o3** with BAML schema to produce structured JSON for insights, quotes, themes.
-  3. Insert/update rows in a single transaction via `@supabase/supabase-js`.
+  1. Pull transcript text from `interview.transcripts`.
+  2. Use **o3** with BAML schema to produce structured JSON for insights, quotes, themes, personas, opportunities.
+  3. Insert/update rows via `@supabase/supabase-js`.
 
-* Strong type-safety via BAML schemas; no separate Python service.
+* Strong type-safety via BAML schemas
 
 * Future: offload heavy workloads to a Supabase Edge Function/queue.
 
 ## 9. Migration & Seeding Strategy
 
-* All DDL lives under `supabase/migrations` auto-generated via `supabase db diff`.  
+* All DDL lives under `supabase/migrations` auto-generated via `supabase db diff`.
 * pgvector enabled in initial migration.
 * Seed scripts insert default categories, sample tags, and demo personas for Storybook/testing.
 
 ---
 
 Please **review** and confirm or suggest edits. Once approved I will:
-1. Scaffold the Supabase migration SQL.
-2. Add helper Edge Function stubs for R2 upload/download.
-3. Wire the front-end data fetching to these tables.
+
+1. Add helper Edge Function stubs for R2 upload/download.
+2. Add pgmq queue for transcript processing.
+
+- <https://github.com/pgmq/pgmq?tab=readme-ov-file#sql-examples>
+
+## Notes
+
+When we modify the schema, we should run `supabase db diff` to generate a migration. This will create a new migration file in the `supabase/migrations` directory. We should then run `supabase db push` to apply the migration to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.

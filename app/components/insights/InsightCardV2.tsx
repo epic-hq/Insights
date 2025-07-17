@@ -339,6 +339,17 @@ export default function InsightCardV2({
 						/>
 					</div>
 
+					<div>
+						<h4 className="mb-1 text-gray-500 text-xs uppercase">Description</h4>
+						<EditableText
+							value={localInsight.description || ""}
+							onSave={(value) => handleUpdateInsight("description", value)}
+							multiline
+							className="text-gray-900 text-md"
+							placeholder="Describe the insight..."
+						/>
+					</div>
+
 					<div className="flex items-center justify-between pt-2">
 						<div className="flex items-center gap-4">
 							<div className="flex items-center gap-1">
@@ -469,11 +480,7 @@ export default function InsightCardV2({
 								}}
 								className="flex-1"
 							/>
-							<Button
-								size="sm"
-								onClick={handleAddComment}
-								disabled={!newComments[localInsight.id]?.trim()}
-							>
+							<Button size="sm" onClick={handleAddComment} disabled={!newComments[localInsight.id]?.trim()}>
 								<Send className="h-4 w-4" />
 							</Button>
 						</div>

@@ -1,6 +1,5 @@
 import { Link, useNavigate } from "react-router-dom"
 import type { OpportunityView } from "~/types"
-import { log } from "~/utils/logger"
 import type { TreeNode } from "../charts/TreeMap"
 import TreeMap from "../charts/TreeMap"
 import type { InsightCardProps } from "../insights/InsightCard"
@@ -69,7 +68,6 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 		},
 	]
 
-	log.info("opportunities", opportunities)
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
 			{/* Filter bar - full width above sticky KPI bar */}

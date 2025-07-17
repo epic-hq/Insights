@@ -2,6 +2,7 @@ import { useTranslation } from "react-i18next"
 import type { LinksFunction } from "react-router"
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError } from "react-router"
 import { useChangeLanguage } from "remix-i18next/react"
+import { NotificationProvider } from "~/contexts/NotificationContext"
 import type { Route } from "./+types/root"
 import { LanguageSwitcher } from "./library/language-switcher"
 import { ClientHintCheck, getHints } from "./services/client-hints"
@@ -24,11 +25,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
 	const { lang, clientEnv } = loaderData
 	useChangeLanguage(lang)
 	return (
-		<>
+		<NotificationProvider>
 			<Outlet />
 			{/* biome-ignore lint/security/noDangerouslySetInnerHtml: We set the window.env variable to the client env */}
 			<script dangerouslySetInnerHTML={{ __html: `window.env = ${JSON.stringify(clientEnv)}` }} />
-		</>
+		</NotificationProvider>
 	)
 }
 

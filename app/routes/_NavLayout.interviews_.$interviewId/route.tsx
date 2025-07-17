@@ -1,10 +1,14 @@
-import { type MetaFunction, useLoaderData } from "react-router"
+import consola from "consola"
+import { useEffect } from "react"
 import { Link } from "react-router-dom"
-import InsightCard from "~/components/insights/InsightCard"
-import InsightCardGrid from "~/components/insights/InsightCardGrid"
-import InterviewMetadata from "~/components/interviews/InterviewMetadata"
-import type { InsightView } from "~/types"
+import { type MetaFunction, useLoaderData } from "react-router"
+import MarkdownTranscript from "~/components/MarkdownTranscript"
+import TranscriptDisplay from "~/components/TranscriptDisplay"
+import { Button } from "~/components/ui/button"
+import type { Insight, Interview } from "~/types"
 import { db } from "~/utils/supabase.server"
+
+// TODO: Clean up Transcript prop, participant name and persona more prominent
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
@@ -14,22 +18,19 @@ export const meta: MetaFunction = ({ params }) => {
 }
 
 // Define transcript entry type for type safety
-type TranscriptEntry = {
-	speaker: string
-	text: string
-}
 
-type TranscriptData = {
-	content?: string | TranscriptEntry[] | null
-}
+// Type for extended interview with transcript and research project data is defined inline with the data
 
 export async function loader({ params }: { params: { interviewId: string } }) {
 	const interviewId = params.interviewId
 
-	// Fetch interview data from database
+	// Fetch interview data from database with project information
 	const { data: interviewData, error: interviewError } = await db
 		.from("interviews")
-		.select("*")
+		.select(`
+			*,
+			research_projects(id, code, title, description)
+		`)
 		.eq("id", interviewId)
 		.single()
 
@@ -38,24 +39,17 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 	}
 
 	if (!interviewData) {
-		throw new Response(`Interview not found: ${interviewId}`, { status: 404 })
+		throw new Response("Interview not found", { status: 404 })
 	}
 
-	// Fetch transcript data if available - using the correct table name from the schema
-	let transcriptData: TranscriptData | null = null
-	try {
-		const { data, error } = await db.from("transcripts").select("content").eq("interview_id", interviewId).single()
+	const interview: Interview = interviewData // Supabase type includes transcript and transcript_formatted
 
-		if (!error && data) {
-			transcriptData = data as TranscriptData
-		}
-	} catch (_error) {
-		// Silently handle error - transcript is optional
-	}
-
-	// Format the interview data
-	const interview = {
-		...interviewData,
+	// Fetch interviewer information if available
+	let interviewerData = null
+	if (interview.interviewer_id) {
+		// Note: In a real implementation, you would use proper auth methods
+		// This is a simplified version that assumes interviewer_id is stored
+		interviewerData = { name: "Interviewer", id: interview.interviewer_id }
 	}
 
 	// Fetch insights related to this interview
@@ -69,7 +63,7 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 	}
 
 	// Transform insights to match the expected format for UI
-	const insights: InsightView[] = (insightsData || []).map((insight) => ({
+	const insights: Insight[] = (insightsData || []).map((insight) => ({
 		id: insight.id,
 		name: insight.name || "",
 		title: insight.name || "", // Use name as title for backward compatibility
@@ -80,152 +74,189 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 		jtbd: insight.jtbd,
 		pain: insight.pain,
 		desiredOutcome: insight.desired_outcome,
-		description: "", // No direct field in DB schema
-		evidence: "", // No direct evidence field in DB schema
+		description: insight.description, // No direct field in DB schema
+		evidence: insight.evidence, // No direct evidence field in DB schema
 		opportunityIdeas: insight.opportunity_ideas,
 		confidence: insight.confidence,
 		createdAt: insight.created_at,
-		relatedTags: [], // No direct field in DB schema
+		relatedTags: insight.related_tags, // No direct field in DB schema
 		contradictions: insight.contradictions,
+		interview_id: insight.interview_id,
 	}))
 
+	// Get related interviews from the same project
+	const { data: relatedInterviews } = await db
+		.from("interviews")
+		.select("id, title, participant_pseudonym, interview_date")
+		.eq("project_id", interview.project_id)
+		.neq("id", interviewId)
+		.limit(5)
+
+	consola.log("Detail interview:", interview)
 	return {
 		interview,
 		insights,
-		transcriptData,
+
+		interviewerData,
+		relatedInterviews: relatedInterviews || [],
 	}
 }
 
 export default function InterviewDetail() {
-	const { interview, insights, transcriptData } = useLoaderData<typeof loader>()
+	// Only transcript section is rendered. Interview type is inferred from loader.
+	const data = useLoaderData<{ interview?: Interview }>()
+	const interview = data?.interview
+	useEffect(() => {
+		consola.log("Detail interview:", interview)
+	}, [interview])
+
+	if (!interview) {
+		return (
+			<div className="mx-auto mt-16 w-full max-w-2xl text-center font-semibold text-lg text-red-600">
+				Interview not found or failed to load.
+			</div>
+		)
+	}
+
+	const { insights = [], interviewerData = null, relatedInterviews = [] } = data ?? {}
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4">
-			<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-				<div className="lg:col-span-2">
-					<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-						<h2 className="mb-4 font-semibold text-xl">Interview Transcript</h2>
-						<div className="space-y-4">
-							{(() => {
-								if (!transcriptData?.content) {
-									return (
-										<div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-											<p className="text-gray-700 dark:text-gray-300">Transcript not available</p>
-										</div>
-									)
-								}
-
-								try {
-									// Try to parse the content as JSON if it exists
-									let parsedTranscript: TranscriptEntry[] = []
-
-									if (typeof transcriptData.content === "string") {
-										parsedTranscript = JSON.parse(transcriptData.content)
-									} else if (Array.isArray(transcriptData.content)) {
-										parsedTranscript = transcriptData.content
-									}
-
-									if (!Array.isArray(parsedTranscript) || parsedTranscript.length === 0) {
-										return (
-											<div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-												<p className="text-gray-700 dark:text-gray-300">No transcript entries found</p>
-											</div>
-										)
-									}
-
-									return (
-										<>
-											{parsedTranscript.map((entry, index) => (
-												<div
-													key={`transcript-entry-${index}-${entry.speaker || "unknown"}`}
-													className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800"
-												>
-													<p className="mb-1 font-medium">{entry.speaker || "Unknown"}</p>
-													<p className="text-gray-700 dark:text-gray-300">{entry.text || ""}</p>
-												</div>
-											))}
-										</>
-									)
-								} catch (_error) {
-									// Catch parsing errors but don't use the error variable
-									return (
-										<div className="rounded-lg bg-gray-50 p-3 dark:bg-gray-800">
-											<p className="text-gray-700 dark:text-gray-300">Error parsing transcript</p>
-										</div>
-									)
-								}
-							})()}
-						</div>
-					</div>
-
-					<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-						<div className="mb-4 flex items-center justify-between">
-							<h2 className="font-semibold text-xl">Insights from this Interview</h2>
-							<Link to={`/insights?interview=${interview.id}`} className="text-blue-600 hover:text-blue-800">
-								View all
-							</Link>
-						</div>
-						<InsightCardGrid>
-							{insights.map((insight) => (
-								<InsightCard key={insight.id} {...insight} />
-							))}
-						</InsightCardGrid>
-					</div>
-				</div>
-
-				<div className="lg:col-span-1">
-					<div className="sticky top-4 mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
-						<h2 className="mb-4 font-semibold text-xl">Participant Information</h2>
-						<InterviewMetadata
-							date={interview.interview_date || interview.created_at?.split("T")[0] || ""}
-							participant={interview.participant_pseudonym || "Anonymous"}
-							interviewer={interview.interviewer_id || ""}
-							interviewId={interview.id}
-							duration={interview.duration_min || 0}
-							segment={interview.segment || ""}
-						/>
-
-						<div className="mt-6 border-gray-200 border-t pt-6 dark:border-gray-700">
-							<h3 className="mb-2 font-medium">Interview Status</h3>
-							<div className="flex items-center">
-								<span
-									className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-										interview.status === "ready"
-											? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-											: interview.status === "transcribed"
-												? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-												: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-									}`}
-								>
-									{(interview.status || "processing").charAt(0).toUpperCase() +
-										(interview.status || "processing").slice(1)}
-								</span>
-							</div>
-						</div>
-
-						<div className="mt-6 border-gray-200 border-t pt-6 dark:border-gray-700">
-							<h3 className="mb-2 font-medium">Actions</h3>
-							<div className="flex flex-col space-y-2">
-								<Link to={`/insights?interview=${interview.id}`} className="text-blue-600 hover:text-blue-800">
-									View all insights from this interview
-								</Link>
-								<button
-									className="text-left text-blue-600 hover:text-blue-800"
-									onClick={() => alert("Download functionality would be implemented here")}
-								>
-									Download transcript
-								</button>
-								<button
-									className="text-left text-blue-600 hover:text-blue-800"
-									onClick={() => alert("Share functionality would be implemented here")}
-								>
-									Share interview
-								</button>
-							</div>
-						</div>
-					</div>
+		<div className="mx-auto mt-8 w-full max-w-7xl px-4 lg:flex lg:space-x-8">
+			<div className="flex-1 space-y-8">
+			{/* Header: Title, participant, persona, date, project */}
+			<div className="mb-4 flex flex-col gap-2 border-b pb-4">
+				<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
+				<div className="flex flex-wrap items-center gap-2 text-base">
+					{interview.participant_pseudonym && (
+						<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
+							{interview.participant_pseudonym}
+						</span>
+					)}
+					{interview.segment && (
+						<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
+							{interview.segment}
+						</span>
+					)}
+					{interview.interview_date && (
+						<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
+					)}
+					{interview.research_projects?.title && (
+						<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
+							Project: {interview.research_projects.title}
+						</span>
+					)}
 				</div>
 			</div>
+
+			{/* Interviewer info */}
+			{interviewerData?.name && (
+				<div className="mb-2 text-gray-600 text-sm">
+					Interviewer: <span className="font-medium text-gray-900">{interviewerData.name}</span>
+				</div>
+			)}
+
+			{/* Insights List */}
+			<div>
+				<h2 className="mb-2 font-semibold text-lg">Insights</h2>
+				{insights.length > 0 ? (
+					<ul className="space-y-2">
+						{insights.map((insight) => (
+							<li key={insight.id} className="rounded border bg-gray-50 p-3">
+								<Link to={`/insights/${insight.id}`} className="font-bold text-gray-900">{insight.title || "Untitled"}</Link>
+								<div className="text-gray-700 text-sm">{insight.category || "No category"}</div>
+								{insight.description && <div className="mt-1 text-gray-600">{insight.description}</div>}
+							</li>
+						))}
+					</ul>
+				) : (
+					<div className="text-gray-400 italic">No insights available for this interview.</div>
+				)}
+			</div>
+
+			{/* Transcript Section */}
+			<div>
+				<h2 className="mb-2 font-semibold text-lg">Transcript</h2>
+				{Array.isArray(interview.transcript) ? (
+					<div className="mb-6">
+						<div className="mb-2 flex justify-end">
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={() => {
+									const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
+									if (transcriptWindow) {
+										transcriptWindow.document.write(
+											'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
+												JSON.stringify(interview.transcript, null, 2) +
+												"</pre>"
+										)
+										transcriptWindow.document.title = "Interview Transcript"
+									}
+								}}
+								className="ml-auto"
+							>
+								Open Transcript in New Window
+							</Button>
+						</div>
+						<TranscriptDisplay transcript={interview.transcript ?? []} />
+					</div>
+				) : interview.transcript ? (
+					<div className="mb-6">
+						<div className="mb-2 flex justify-end">
+							<Button
+								size="sm"
+								variant="outline"
+								onClick={() => {
+									const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
+									if (transcriptWindow) {
+										transcriptWindow.document.write(
+											'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
+												(interview.transcript ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
+												"</pre>"
+										)
+										transcriptWindow.document.title = "Interview Transcript"
+									}
+								}}
+								className="ml-auto"
+							>
+								Open Transcript in New Window
+							</Button>
+						</div>
+						<MarkdownTranscript transcript={interview.transcript} />
+					</div>
+				) : (
+					<div className="py-12 text-center text-gray-500 italic">No transcript available for this interview.</div>
+				)}
+			</div>
 		</div>
-	)
+		<aside className="mt-8 lg:mt-0 w-full lg:max-w-sm space-y-4">
+			<h2 className="mb-2 font-semibold text-lg">Related Interviews</h2>
+			{relatedInterviews.length > 0 ? (
+				<ul className="space-y-2">
+					{relatedInterviews.map((r) => (
+						<li
+							key={r.id}
+							className="flex flex-col rounded border bg-gray-50 p-2 hover:bg-gray-100 transition sm:flex-row sm:items-center sm:justify-between"
+						>
+							<div>
+								<Link to={`/interviews/${r.id}`} className="font-medium text-gray-900">{r.title || "Untitled"}</Link>
+								{r.participant_pseudonym && (
+									<span className="ml-2 text-blue-700">{r.participant_pseudonym}</span>
+								)}
+								{r.interview_date && (
+									<span className="ml-2 text-gray-500">{new Date(r.interview_date).toLocaleDateString()}</span>
+								)}
+							</div>
+							<Link to={`/interviews/${r.id}`} className="mt-1 text-blue-600 text-sm hover:underline sm:mt-0">
+								View
+							</Link>
+						</li>
+					))}
+				</ul>
+			) : (
+				<div className="text-gray-400 italic">No related interviews found.</div>
+			)}
+		</aside>
+	</div>
+)
 }
