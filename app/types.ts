@@ -97,6 +97,7 @@ export interface OpportunityView extends Opportunity {
 // --------------------------------------
 // Insight UI view type
 // --------------------------------------
+
 export interface InsightView {
 	id: string
 	name?: string // primary short title
@@ -113,10 +114,17 @@ export interface InsightView {
 	evidence?: string | null
 	opportunityIdeas?: string[] | null
 	confidence?: number | string | null
-	createdAt?: string | null
+	createdAt?: Date | null
+	updatedAt?: Date | null
 	relatedTags?: string[]
 	contradictions?: string | null
 	interview_id?: string | null
+	upvotes?: number
+	downvotes?: number
+	comments?: Comment[]
+	interviews?: Array<{ id: string; participant: string }>
+	personas?: Array<{ id: string; name: string }>
+	className?: string
 }
 
 export type PersonaView = Persona & {

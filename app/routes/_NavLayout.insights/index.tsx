@@ -69,11 +69,13 @@ export async function loader({ request }: { request: Request }) {
 		underlyingMotivation: r.motivation ?? "",
 		pain: r.pain ?? "",
 		desiredOutcome: r.desired_outcome ?? "",
-		evidence: "", // TODO join quotes or join with related table
+		evidence: r.evidence ?? "",
 		opportunityIdeas: r.opportunity_ideas ?? [],
 		confidence: r.confidence ?? "",
 		createdAt: r.created_at,
 		relatedTags: [],
+		contradictions: r.contradictions ?? "",
+		interview_id: r.interview_id,
 	}))
 
 	// Copy of results for additional in-memory filtering that is easier to do on the application side
