@@ -3,10 +3,11 @@
 import consola from "consola"
 import {
 	AlertTriangle,
+	Check,
 	CheckSquare,
-	Edit3,
 	Lightbulb,
 	MessageCircle,
+	Pencil,
 	QuoteIcon,
 	Send,
 	Sparkles,
@@ -16,47 +17,22 @@ import {
 	Users,
 } from "lucide-react"
 import { useState } from "react"
+
+// ... other imports
+
+import EditableTextarea from "~/components/EditableTextarea"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Separator } from "~/components/ui/separator"
-import { Textarea } from "~/components/ui/textarea"
+import type { InsightView } from "~/types"
+
 export interface Comment {
 	id: string
 	author: string
 	text: string
 	timestamp: string
-}
-
-export interface InsightView {
-	id: string
-	name?: string // primary short title
-	tag?: string // deprecated old name
-	title?: string
-	category?: string
-	journeyStage?: string
-	impact?: number | string | null
-	novelty?: number | null
-	jtbd?: string | null
-	details?: string | null
-	underlyingMotivation?: string | null
-	pain?: string | null
-	desiredOutcome?: string | null
-	description?: string | null
-	evidence?: string | null
-	opportunityIdeas?: string[] | null
-	confidence?: number | string | null
-	createdAt?: string | null
-	relatedTags?: string[]
-	contradictions?: string | null
-	interview_id?: string | null
-	upvotes?: number
-	downvotes?: number
-	comments?: Comment[]
-	interviews?: Array<{ id: string; participant: string }>
-	personas?: Array<{ id: string; name: string }>
-	className?: string
 }
 
 export interface InsightCardV2Props {
@@ -121,71 +97,6 @@ const getJourneyStageColor = (stage: string) => {
 	return colors[stage as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200"
 }
 
-interface EditableTextProps {
-	value: string
-	onSave: (value: string) => void
-	multiline?: boolean
-	className?: string
-	placeholder?: string
-}
-
-function EditableText({ value, onSave, multiline = false, className = "", placeholder }: EditableTextProps) {
-	const [isEditing, setIsEditing] = useState(false)
-	const [editValue, setEditValue] = useState(value)
-
-	const handleSave = async () => {
-		if (editValue !== value) {
-			await onSave(editValue)
-		}
-		setIsEditing(false)
-	}
-
-	const handleKeyDown = (e: React.KeyboardEvent) => {
-		if (e.key === "Enter" && !multiline) {
-			e.preventDefault()
-			handleSave()
-		}
-		if (e.key === "Escape") {
-			setEditValue(value)
-			setIsEditing(false)
-		}
-	}
-
-	if (isEditing) {
-		return multiline ? (
-			<Textarea
-				value={editValue}
-				onChange={(e) => setEditValue(e.target.value)}
-				onBlur={handleSave}
-				onKeyDown={handleKeyDown}
-				className={`${className} min-h-[60px]`}
-				placeholder={placeholder}
-				autoFocus
-			/>
-		) : (
-			<Input
-				value={editValue}
-				onChange={(e) => setEditValue(e.target.value)}
-				onBlur={handleSave}
-				onKeyDown={handleKeyDown}
-				className={className}
-				placeholder={placeholder}
-				autoFocus
-			/>
-		)
-	}
-
-	return (
-		<div
-			onClick={() => setIsEditing(true)}
-			className={`${className} -mx-2 -my-1 group relative cursor-pointer rounded px-2 py-1 hover:bg-gray-50`}
-		>
-			{value || placeholder}
-			<Edit3 className="absolute top-1 right-1 h-3 w-3 opacity-0 group-hover:opacity-50" />
-		</div>
-	)
-}
-
 export default function InsightCardV2({
 	insight,
 	onUpvote = () => {},
@@ -195,6 +106,46 @@ export default function InsightCardV2({
 	onDontShowMe = () => {},
 	onTagClick = () => {},
 }: InsightCardV2Props) {
+	const [editingField, setEditingField] = useState<string | null>(null)
+	const [editingValue, setEditingValue] = useState<string>("")
+
+	// Helper to handle save
+	const [savingField, setSavingField] = useState<string | null>(null)
+
+	const handleSaveField = async (field: string) => {
+		if (savingField === field) return // Prevent double-save
+		setSavingField(field)
+		try {
+			if (localInsight[field] !== editingValue) {
+				// Optimistically update local state
+				setLocalInsight((prev) => ({ ...prev, [field]: editingValue }))
+				// Persist change to DB
+				await fetch("/api/update-field", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						table: "insights",
+						id: localInsight.id,
+						field,
+						value: editingValue,
+					}),
+				})
+			}
+		} finally {
+			setEditingField(null)
+			setSavingField(null)
+		}
+	}
+
+	// Helper to handle edit start
+	const handleEditStart = (field: string) => {
+		// If another field is being edited, save it first
+		if (editingField && editingField !== field) {
+			handleSaveField(editingField)
+		}
+		setEditingField(field)
+		setEditingValue(localInsight[field] || "")
+	}
 	const [localInsight, setLocalInsight] = useState<InsightView>({
 		...insight,
 		comments: insight.comments || [],
@@ -221,15 +172,6 @@ export default function InsightCardV2({
 		}))
 
 		await mockAPI.vote(localInsight.id, voteType)
-	}
-
-	const handleUpdateInsight = async (field: string, value: string) => {
-		setLocalInsight((prev) => ({
-			...prev,
-			[field]: value,
-		}))
-
-		await mockAPI.updateInsight(localInsight.id, field, value)
 	}
 
 	const handleAddComment = async () => {
@@ -295,24 +237,67 @@ export default function InsightCardV2({
 					</div>
 				</div>
 
-				<EditableText
-					value={localInsight.name || ""}
-					onSave={(value) => handleUpdateInsight("name", value)}
-					className="mb-3 font-bold text-2xl text-gray-900"
-					placeholder="Enter insight name..."
-				/>
+				{/* Generic EditableField for Name */}
+				<div
+					className="group relative mb-3 flex min-h-[2.5rem] items-center"
+					onMouseLeave={() => editingField === "name" && handleSaveField("name")}
+				>
+					{editingField === "name" ? (
+						<>
+							<input
+								type="text"
+								value={editingValue}
+								autoFocus
+								onChange={(e) => setEditingValue(e.target.value)}
+								onBlur={() => handleSaveField("name")}
+								className="w-full border-blue-200 border-b bg-white pr-8 font-bold text-2xl text-gray-900 focus:outline-none"
+								style={{ minHeight: "2.5rem" }}
+							/>
+							<button
+								type="button"
+								className="p-1 opacity-100 transition-opacity"
+								onMouseDown={(e) => {
+									e.preventDefault()
+									handleSaveField("name")
+								}}
+								aria-label="Save name"
+							>
+								{savingField === "name" ? (
+									<CheckSquare className="h-5 w-5 animate-spin text-gray-400" />
+								) : (
+									<Check className="h-5 w-5 text-green-500 hover:text-green-700" />
+								)}
+							</button>
+						</>
+					) : (
+						<>
+							<span className="w-full truncate pr-8 font-bold text-2xl text-gray-900">
+								{localInsight.name || <span className="text-gray-400">(No name)</span>}
+							</span>
+							<button
+								type="button"
+								className="-translate-y-1/2 absolute top-1/2 right-0 z-10 p-1 opacity-0 transition-opacity group-hover:opacity-100"
+								onClick={() => handleEditStart("name")}
+								aria-label="Edit name"
+							>
+								<Pencil className="h-5 w-5 text-gray-400 hover:text-gray-700" />
+							</button>
+						</>
+					)}
+				</div>
 
 				<div className="rounded-r-md border-l-4 bg-slate-50 p-3">
 					<div className="flex items-start gap-2">
 						<CheckSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
 						<div className="flex-1">
 							<h4 className="mb-1 font-medium text-blue-700 text-xs">JTBD</h4>
-							<EditableText
-								value={localInsight.jtbd || ""}
-								onSave={(value) => handleUpdateInsight("jtbd", value)}
-								multiline
+							<EditableTextarea
+								table="insights"
+								id={localInsight.id}
+								field="jtbd"
+								initialValue={localInsight.jtbd || ""}
+								label=""
 								className="font-medium text-blue-800 text-sm leading-relaxed"
-								placeholder="The job to be done..."
 							/>
 						</div>
 					</div>
@@ -323,12 +308,13 @@ export default function InsightCardV2({
 						<QuoteIcon className="mt-0.5 h-4 w-4 flex-shrink-0 " />
 						<div className="flex-1">
 							{/* <h4 className="mb-1 font-medium text-blue-700 text-xs">Quote</h4> */}
-							<EditableText
-								value={localInsight.evidence || ""}
-								onSave={(value) => handleUpdateInsight("evidence", value)}
-								multiline
+							<EditableTextarea
+								table="insights"
+								id={localInsight.id}
+								field="evidence"
+								initialValue={localInsight.evidence || ""}
+								label=""
 								className="font-medium text-blue-800 text-sm leading-relaxed"
-								placeholder="Enter a quote from the interview..."
 							/>
 						</div>
 					</div>
@@ -339,34 +325,37 @@ export default function InsightCardV2({
 				<div className="space-y-3">
 					<div>
 						<h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4>
-						<EditableText
-							value={localInsight.pain || ""}
-							onSave={(value) => handleUpdateInsight("pain", value)}
-							multiline
+						<EditableTextarea
+							table="insights"
+							id={localInsight.id}
+							field="pain"
+							initialValue={localInsight.pain || ""}
+							label=""
 							className="text-gray-900 text-md"
-							placeholder="Describe the pain point..."
 						/>
 					</div>
 
 					<div>
 						<h4 className="mb-1 text-gray-500 text-xs uppercase">Desired Outcome</h4>
-						<EditableText
-							value={localInsight.desiredOutcome || ""}
-							onSave={(value) => handleUpdateInsight("desiredOutcome", value)}
-							multiline
+						<EditableTextarea
+							table="insights"
+							id={localInsight.id}
+							field="desiredOutcome"
+							initialValue={localInsight.desiredOutcome || ""}
+							label=""
 							className="text-gray-900 text-md"
-							placeholder="Describe the desired outcome..."
 						/>
 					</div>
 
 					<div>
 						<h4 className="mb-1 text-gray-500 text-xs uppercase">Context & Details</h4>
-						<EditableText
-							value={localInsight.details || ""}
-							onSave={(value) => handleUpdateInsight("details", value)}
-							multiline
+						<EditableTextarea
+							table="insights"
+							id={localInsight.id}
+							field="details"
+							initialValue={localInsight.details || ""}
+							label=""
 							className="text-gray-900 text-md"
-							placeholder="Add details and context..."
 						/>
 					</div>
 
@@ -411,12 +400,13 @@ export default function InsightCardV2({
 								<AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
 								<div className="flex-1">
 									<h4 className="font-medium text-amber-800 text-sm">Contradictions</h4>
-									<EditableText
-										value={localInsight.contradictions || ""}
-										onSave={(value) => handleUpdateInsight("contradictions", value)}
-										multiline
+									<EditableTextarea
+										table="insights"
+										id={localInsight.id}
+										field="contradictions"
+										initialValue={localInsight.contradictions || ""}
+										label=""
 										className="text-amber-700 text-xs"
-										placeholder="Note any contradictions..."
 									/>
 								</div>
 							</div>
