@@ -42,5 +42,6 @@
 	},
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
-	}
+	},
+	"deno.enable": true
 }
