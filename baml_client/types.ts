@@ -82,7 +82,7 @@ export interface InterviewMetadata {
   title: string
   date?: string | null
   interviewer: string
-  duration?: number | null
+  durationMin?: number | null
   
 }
 
@@ -91,6 +91,6 @@ export interface Interviewee {
   persona: string
   participantDescription: string
   segment: string
-  contact: string
+  contactInfo: string
   
 }

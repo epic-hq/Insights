@@ -35,7 +35,7 @@ export async function loader({ request }: { request: Request }) {
 	const _personaFilter = url.searchParams.get("persona") || null
 
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
-	const query = db.from("interviews").select("*")
+	const query = db.from("interviews").select("*").order("created_at", { ascending: false })
 
 	const { data: rows, error } = await query
 	if (error) throw new Response(error.message, { status: 500 })
@@ -100,7 +100,7 @@ export async function loader({ request }: { request: Request }) {
 		byStatus: statusCounts,
 		byRole: roleCounts,
 		totalInsights,
-		averageInsightsPerInterview: interviews.length > 0 ? totalInsights / interviews.length : 0,
+		averageInsightsPerInterview: interviews.length > 0 ? (totalInsights / interviews.length).toFixed(1) : 0,
 	}
 
 	return {

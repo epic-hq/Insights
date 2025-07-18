@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import MarkdownTranscript from "~/components/MarkdownTranscript"
 import TranscriptDisplay from "~/components/TranscriptDisplay"
 import { Button } from "~/components/ui/button"
+import EditableTextarea from "~/components/EditableTextarea"
 import type { Insight, Interview } from "~/types"
 import { db } from "~/utils/supabase.server"
 
@@ -154,6 +155,32 @@ export default function InterviewDetail() {
 						Interviewer: <span className="font-medium text-gray-900">{interviewerData.name}</span>
 					</div>
 				)}
+
+                {/* Interview Summary Fields */}
+                <div className="mb-4 space-y-4">
+                    <EditableTextarea
+                        table="interviews"
+                        id={interview.id}
+                        field="high_impact_themes"
+                        label="High Impact Themes"
+                        initialValue={interview.high_impact_themes}
+                        isArray
+                    />
+                    <EditableTextarea
+                        table="interviews"
+                        id={interview.id}
+                        field="open_questions_and_next_steps"
+                        label="Open Questions & Next Steps"
+                        initialValue={interview.open_questions_and_next_steps}
+                    />
+                    <EditableTextarea
+                        table="interviews"
+                        id={interview.id}
+                        field="observations_and_notes"
+                        label="Observations & Notes"
+                        initialValue={interview.observations_and_notes}
+                    />
+                </div>
 
 				{/* Insights List */}
 				<div>

@@ -91,6 +91,7 @@ create table if not exists insights (
   novelty smallint check (novelty between 1 and 5),
   jtbd text,
 	details text,
+	evidence text,
   motivation text,
   pain text,
   desired_outcome text,

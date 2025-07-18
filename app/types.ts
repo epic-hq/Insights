@@ -100,13 +100,12 @@ export interface OpportunityView extends Opportunity {
 export interface InsightView {
 	id: string
 	name?: string // primary short title
-	tag?: string // deprecated old name
-	title?: string
 	category?: string
 	journeyStage?: string
 	impact?: number | string | null
 	novelty?: number | null
 	jtbd?: string | null
+	details?: string | null
 	underlyingMotivation?: string | null
 	pain?: string | null
 	desiredOutcome?: string | null

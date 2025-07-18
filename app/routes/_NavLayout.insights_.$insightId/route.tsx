@@ -28,11 +28,10 @@ export async function loader({ params }: { params: { insightId: string } }) {
 		throw new Response(`Insight not found: ${insightId}`, { status: 404 })
 	}
 
-	// Transform insight data to InsightView
+	// Transform insight data to Insight
 	const insight: InsightView = {
 		id: insightData.id,
 		name: insightData.name || "",
-		title: insightData.name || "", // Use name as title for backward compatibility
 		category: insightData.category || "",
 		journeyStage: insightData.journey_stage || undefined, // Convert null to undefined
 		impact: insightData.impact,
@@ -40,8 +39,8 @@ export async function loader({ params }: { params: { insightId: string } }) {
 		jtbd: insightData.jtbd,
 		pain: insightData.pain,
 		desiredOutcome: insightData.desired_outcome,
-		description: undefined, // Not in DB schema
-		evidence: undefined, // Not in DB schema
+		details: insightData.details,
+		evidence: insightData.evidence,
 		opportunityIdeas: insightData.opportunity_ideas,
 		confidence: insightData.confidence,
 		createdAt: insightData.created_at,

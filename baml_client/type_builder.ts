@@ -29,9 +29,9 @@ export default class TypeBuilder {
     
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "highImpactThemes" | "insights" | "openQuestionsAndNextSteps" | "observationsAndNotes">;
     
-    InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "duration">;
+    InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
     
-    Interviewee: ClassViewer<'Interviewee', "name" | "persona" | "participantDescription" | "segment" | "contact">;
+    Interviewee: ClassViewer<'Interviewee', "name" | "persona" | "participantDescription" | "segment" | "contactInfo">;
     
     
 
@@ -55,11 +55,11 @@ export default class TypeBuilder {
         ]);
         
         this.InterviewMetadata = this.tb.classViewer("InterviewMetadata", [
-          "title","date","interviewer","duration",
+          "title","date","interviewer","durationMin",
         ]);
         
         this.Interviewee = this.tb.classViewer("Interviewee", [
-          "name","persona","participantDescription","segment","contact",
+          "name","persona","participantDescription","segment","contactInfo",
         ]);
         
         

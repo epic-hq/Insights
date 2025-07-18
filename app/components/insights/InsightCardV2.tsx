@@ -3,6 +3,7 @@
 import consola from "consola"
 import {
 	AlertTriangle,
+	CheckSquare,
 	Edit3,
 	Lightbulb,
 	MessageCircle,
@@ -38,6 +39,7 @@ export interface InsightView {
 	impact?: number | string | null
 	novelty?: number | null
 	jtbd?: string | null
+	details?: string | null
 	underlyingMotivation?: string | null
 	pain?: string | null
 	desiredOutcome?: string | null
@@ -274,19 +276,21 @@ export default function InsightCardV2({
 				<div className="mb-3 flex items-start justify-between">
 					<div className="flex-1" />
 					<div className="flex flex-wrap gap-2">
-						<Badge
-							variant="outline"
-							className={getCategoryColor(localInsight.category || "")}
-							onClick={() => onTagClick(localInsight.category || "")}
-						>
-							{localInsight.category || ""}
-						</Badge>
+						<div className="flex items-center gap-2 font-light text-xs uppercase">Stage: </div>
 						<Badge
 							variant="outline"
 							className={getJourneyStageColor(localInsight.journeyStage || "")}
 							onClick={() => onTagClick(localInsight.journeyStage || "")}
 						>
 							{localInsight.journeyStage || ""}
+						</Badge>
+						<div className="flex items-center gap-2 font-light text-xs uppercase">Category: </div>
+						<Badge
+							variant="outline"
+							className={getCategoryColor(localInsight.category || "")}
+							onClick={() => onTagClick(localInsight.category || "")}
+						>
+							{localInsight.category || ""}
 						</Badge>
 					</div>
 				</div>
@@ -298,17 +302,33 @@ export default function InsightCardV2({
 					placeholder="Enter insight name..."
 				/>
 
-				<div className="rounded-r-md border-blue-400 border-l-4 bg-blue-50 p-3">
+				<div className="rounded-r-md border-l-4 bg-slate-50 p-3">
 					<div className="flex items-start gap-2">
-						<QuoteIcon className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
+						<CheckSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
 						<div className="flex-1">
-							<h4 className="mb-1 font-medium text-blue-700 text-xs">Quote</h4>
+							<h4 className="mb-1 font-medium text-blue-700 text-xs">JTBD</h4>
 							<EditableText
 								value={localInsight.jtbd || ""}
 								onSave={(value) => handleUpdateInsight("jtbd", value)}
 								multiline
 								className="font-medium text-blue-800 text-sm leading-relaxed"
-								placeholder="Enter job to be done..."
+								placeholder="The job to be done..."
+							/>
+						</div>
+					</div>
+				</div>
+
+				<div className="rounded-r-md border-blue-400 bg-blue-50 p-3">
+					<div className="flex items-start gap-2">
+						<QuoteIcon className="mt-0.5 h-4 w-4 flex-shrink-0 " />
+						<div className="flex-1">
+							{/* <h4 className="mb-1 font-medium text-blue-700 text-xs">Quote</h4> */}
+							<EditableText
+								value={localInsight.evidence || ""}
+								onSave={(value) => handleUpdateInsight("evidence", value)}
+								multiline
+								className="font-medium text-blue-800 text-sm leading-relaxed"
+								placeholder="Enter a quote from the interview..."
 							/>
 						</div>
 					</div>
@@ -340,13 +360,13 @@ export default function InsightCardV2({
 					</div>
 
 					<div>
-						<h4 className="mb-1 text-gray-500 text-xs uppercase">Description</h4>
+						<h4 className="mb-1 text-gray-500 text-xs uppercase">Context & Details</h4>
 						<EditableText
-							value={localInsight.description || ""}
-							onSave={(value) => handleUpdateInsight("description", value)}
+							value={localInsight.details || ""}
+							onSave={(value) => handleUpdateInsight("details", value)}
 							multiline
 							className="text-gray-900 text-md"
-							placeholder="Describe the insight..."
+							placeholder="Add details and context..."
 						/>
 					</div>
 

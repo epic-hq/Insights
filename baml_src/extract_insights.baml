@@ -22,7 +22,7 @@ class InterviewMetadata {
 	title string @description("Title of interview")
 	date string | null	@description("Date of interview or Null if unknown")
 	interviewer string	@description("Interviewer name")
-	duration int | null @description("Duration of interview in minutes")
+	durationMin int | null @description("Duration of interview in minutes")
 }
 // Process
 // upload media (video, audio, etc.) create interview record points to media file
@@ -35,7 +35,7 @@ class Interviewee {
 	persona string	@description("A more fine-grained personalization within the segment that captures the interviewee's specific experiences, behavior, and preferences. up to 3 words.")
 	participantDescription string @description("A concise narrative: who they are, their workflow, top frustrations, aspirations, and any standout quotes that define them. <= 7 sentences.")
 	segment string	@description("Interviewee segment, eg. Teacher, Student, Parent, etc.")
-	contact string @description("Interviewee contact information if given")
+	contactInfo string @description("Interviewee contact information if given")
 }
 
 class InterviewExtraction {

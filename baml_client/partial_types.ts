@@ -67,13 +67,13 @@ export namespace partial_types {
       title?: string | null
       date?: string | null
       interviewer?: string | null
-      duration?: number | null
+      durationMin?: number | null
     }
     export interface Interviewee {
       name?: string | null
       persona?: string | null
       participantDescription?: string | null
       segment?: string | null
-      contact?: string | null
+      contactInfo?: string | null
     }
 }

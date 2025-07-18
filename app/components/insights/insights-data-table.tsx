@@ -115,43 +115,43 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 	}
 
 	return (
-		<Card className="overflow-hidden">
-			<div className="overflow-x-auto">
-				<Table>
+		<Card className="w-full">
+			<div className="w-full overflow-x-auto">
+				<Table className="w-full table-fixed">
 					<TableHeader>
 						<TableRow>
-							<TableHead className="min-w-[180px]">
+							<TableHead className="w-[25%]">
 								<Button variant="ghost" onClick={() => handleSort("name")}>
 									Name {getSortIcon("name")}
 								</Button>
 							</TableHead>
-							<TableHead>
+							<TableHead className="w-[15%]">
 								<Button variant="ghost" onClick={() => handleSort("category")}>
 									Category {getSortIcon("category")}
 								</Button>
 							</TableHead>
-							<TableHead>
+							<TableHead className="w-[10%]">
 								<Button variant="ghost" onClick={() => handleSort("journeyStage")}>
 									Journey Stage {getSortIcon("journeyStage")}
 								</Button>
 							</TableHead>
-							<TableHead>
+							<TableHead className="w-[10%]">
 								<Button variant="ghost" onClick={() => handleSort("impact")}>
 									Impact {getSortIcon("impact")}
 								</Button>
 							</TableHead>
-							<TableHead>
+							<TableHead className="w-[10%]">
 								<Button variant="ghost" onClick={() => handleSort("novelty")}>
 									Novelty {getSortIcon("novelty")}
 								</Button>
 							</TableHead>
-							<TableHead>
+							<TableHead className="w-[10%]">
 								<Button variant="ghost" onClick={() => handleSort("confidence")}>
 									Confidence {getSortIcon("confidence")}
 								</Button>
 							</TableHead>
-							<TableHead>Evidence</TableHead>
-							<TableHead className="text-right">Actions</TableHead>
+							<TableHead className="w-[10%]">Evidence</TableHead>
+							<TableHead className="w-[5%] text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
 					<TableBody>

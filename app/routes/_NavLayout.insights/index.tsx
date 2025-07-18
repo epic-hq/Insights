@@ -151,7 +151,7 @@ export default function Insights() {
 	}
 
 	return (
-		<div className="mx-auto max-w-[1440px] px-4">
+		<div className="-mx-2 w-full max-w-[99vw] px-2">
 			<div className="mb-6 flex items-center justify-between">
 				{view === "table" && (
 					<div className="flex-1">

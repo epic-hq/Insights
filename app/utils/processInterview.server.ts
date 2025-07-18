@@ -21,8 +21,7 @@ export interface InterviewMetadata {
 	interviewerName?: string
 	participantName?: string
 	segment?: string
-	contact?: string
-	duration?: int
+	durationMin?: number
 }
 
 export interface ExtractedInsight {
@@ -68,8 +67,7 @@ export async function processInterviewTranscript(
 		participant_pseudonym: metadata.participantName || "Anonymous",
 		segment: metadata.segment || null,
 		transcript,
-		contact: metadata.contact || null,
-		duration: metadata.duration || null,
+		duration_min: metadata.durationMin || null,
 		status: "processing" as const,
 		...(metadata.projectId ? { project_id: metadata.projectId } : {}),
 	} as InterviewInsert
@@ -99,6 +97,8 @@ export async function processInterviewTranscript(
 		category: i.category,
 		journey_stage: i.journeyStage ?? null, // BAML uses camelCase
 		jtbd: i.jtbd ?? null,
+		details: i.details ?? null,
+		evidence: i.evidence ?? null,
 		motivation: i.underlyingMotivation ?? null, // BAML uses different field name
 		pain: i.pain ?? null,
 		desired_outcome: i.desiredOutcome ?? null, // BAML uses camelCase
@@ -123,7 +123,7 @@ export async function processInterviewTranscript(
 			persona: interviewee.persona || null,
 			participant_description: interviewee.participantDescription || null,
 			segment: interviewee.segment || null,
-
+			contact_info: interviewee.contactInfo || null,
 		})
 	}
 
