@@ -2,7 +2,6 @@ import { Dialog, Transition } from "@headlessui/react"
 import { Fragment, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
 import { useNotification } from "~/contexts/NotificationContext"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 
@@ -129,48 +128,48 @@ export default function AddInterview({ open, onClose, onSuccess }: AddInterviewP
 									</div>
 								</div>
 							)}
-							<Input
+							{/* <Input
 								type="text"
 								placeholder="Enter URL"
 								value={mediaUrl}
 								onChange={(e) => setMediaUrl(e.target.value)}
-							/>
+							/> */}
 							<Button
-						disabled={!mediaUrl || isProcessing}
-						onClick={async () => {
-							try {
-								if (!mediaUrl) return
-								setIsProcessing(true)
-								setProcessingMessage("Submitting URL to AssemblyAI…")
+								disabled={!mediaUrl || isProcessing}
+								onClick={async () => {
+									try {
+										if (!mediaUrl) return
+										setIsProcessing(true)
+										setProcessingMessage("Submitting URL to AssemblyAI…")
 
-								const resp = await fetch("/api/upload-from-url", {
-									method: "POST",
-									headers: { "Content-Type": "application/json" },
-									body: JSON.stringify({ url: mediaUrl }),
-								})
-								if (!resp.ok) {
-									const err = await resp.json().catch(() => ({ error: "Unknown error" }))
-									throw new Error(err.error)
-								}
-								const data: ProcessingResult = await resp.json()
-								setProcessingMessage("Processing complete!")
-								onSuccess?.(data)
-								setTimeout(() => {
-									setIsProcessing(false)
-									setMediaUrl("")
-									onClose()
-								}, 1200)
-							} catch (e) {
-								const message = e instanceof Error ? e.message : "Upload failed"
-								setError(message)
-								setIsProcessing(false)
-								showNotification(message, "error", 6000)
-							}
-						}}
-					>
-						Upload
-					</Button>
-							
+										const resp = await fetch("/api/upload-from-url", {
+											method: "POST",
+											headers: { "Content-Type": "application/json" },
+											body: JSON.stringify({ url: mediaUrl }),
+										})
+										if (!resp.ok) {
+											const err = await resp.json().catch(() => ({ error: "Unknown error" }))
+											throw new Error(err.error)
+										}
+										const data: ProcessingResult = await resp.json()
+										setProcessingMessage("Processing complete!")
+										onSuccess?.(data)
+										setTimeout(() => {
+											setIsProcessing(false)
+											setMediaUrl("")
+											onClose()
+										}, 1200)
+									} catch (e) {
+										const message = e instanceof Error ? e.message : "Upload failed"
+										setError(message)
+										setIsProcessing(false)
+										showNotification(message, "error", 6000)
+									}
+								}}
+							>
+								Upload
+							</Button>
+
 							<div
 								{...getRootProps()}
 								className={`mb-6 flex cursor-pointer flex-col items-center justify-center rounded-md border-2 border-dashed p-8 transition-colors ${

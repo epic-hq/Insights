@@ -56,7 +56,7 @@ export async function processInterviewTranscript(
 	const response = await b.ExtractInsights(transcript, "")
 
 	// Extract insights from the BAML response
-	const { insights } = response
+	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
 
 	// 2. First, create the interview record
 	const interviewData: InterviewInsert = {
@@ -109,6 +109,30 @@ export async function processInterviewTranscript(
 	// 4. Bulk upsert insights into Supabase
 	const { data, error } = await db.from("insights").insert(rows).select()
 	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
+
+	// 4.1 Insert interviewee if present
+	if (interviewee) {
+		await db.from("interviewee").insert({
+			org_id: metadata.orgId,
+			interview_id: interviewRecord.id,
+			name: interviewee.name || null,
+			persona: interviewee.persona || null,
+			participant_description: interviewee.participantDescription || null,
+			segment: interviewee.segment || null,
+
+		})
+	}
+
+	// 4.2 Update interview with additional BAML fields
+	await db
+		.from("interviews")
+		.update({
+			segment: interviewee?.segment ?? null,
+			high_impact_themes: highImpactThemes ?? null,
+			open_questions_and_next_steps: openQuestionsAndNextSteps ?? null,
+			observations_and_notes: observationsAndNotes ?? null,
+		})
+		.eq("id", interviewRecord.id)
 
 	// 5. Update interview status to ready
 	await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
