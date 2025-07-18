@@ -4,7 +4,8 @@ create extension if not exists vector;
 create table if not exists organizations (
   id uuid primary key default gen_random_uuid(),
   name text not null,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 create table if not exists user_org_memberships (
@@ -22,7 +23,8 @@ create table if not exists research_projects (
   code text unique,
   title text not null,
   description text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- 3. Interviews -----------------------------------------------------------------
@@ -53,7 +55,8 @@ create table if not exists interviews (
 	observations_and_notes text,
   duration_min int,
   status interview_status not null default 'draft',
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- 4. Media Files --------------------------------------------------
@@ -101,7 +104,8 @@ create table if not exists insights (
   contradictions text,
 	related_tags text[],
   embedding vector(1536), -- jtbd embedding to aid searching
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 create table if not exists quotes (
@@ -110,7 +114,8 @@ create table if not exists quotes (
   insight_id uuid not null references insights (id) on delete cascade,
   quote text not null,
   timestamp_sec int,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- 6. Themes ---------------------------------------------------------------------
@@ -121,7 +126,8 @@ create table if not exists themes (
   category text,
   color_hex text,
   embedding vector(1536),
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- 7. Personas -------------------------------------------------------------------
@@ -132,7 +138,8 @@ create table if not exists personas (
   description text,
   percentage numeric,
   color_hex text,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- 8. Opportunities --------------------------------------------------------------
@@ -143,7 +150,8 @@ create table if not exists opportunities (
   owner_id uuid references auth.users (id),
   kanban_status text check (kanban_status in ('Explore','Validate','Build')),
   related_insight_ids uuid[],
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- 9. Tags (global) --------------------------------------------------------------
@@ -180,7 +188,8 @@ create table if not exists interviewee (
   participant_description text,
   segment text,
 	contact_info jsonb,
-  created_at timestamptz not null default now()
+  created_at timestamptz not null default now(),
+	updated_at timestamptz not null default now()
 );
 
 -- End of declarative schema
