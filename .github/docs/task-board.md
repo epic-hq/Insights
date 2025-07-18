@@ -16,9 +16,11 @@
 
 ## 🔜 Up Next (Sprint 0 – Walking Skeleton)
 
-- [ ] **Process Data** – upload recording, batch transcribe via AssemblyAI, store transcript in db
+- [x] **Process Data** – upload recording, batch transcribe via AssemblyAI, store transcript in db
 - [x] **Supabase Project & CI** – initialise local Supabase, add Vitest + Playwright pipelines.
 - [x] **Component PoC** – build Storybook for `<InsightCard>` and `<ThemeMatrix>`.
+- [ ] **Insight Card** – inline editable insight fields.
+- [ ] **Insight Clustering Visualization** - Cluster insights by category and JTBD to visualise themes.
 
 ## 🌓 Backlog / Later
 

@@ -101,7 +101,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 		return "bg-gray-100 text-gray-800 border-gray-200"
 	}
 
-	const getConfidenceColor = (confidence: string) => {
+	const _getConfidenceColor = (confidence: string) => {
 		switch (confidence) {
 			case "high":
 				return "bg-green-100 text-green-800 border-green-200"
@@ -120,7 +120,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 				<Table className="w-full table-fixed">
 					<TableHeader>
 						<TableRow>
-							<TableHead className="w-[25%]">
+							<TableHead className="w-[35%]">
 								<Button variant="ghost" onClick={() => handleSort("name")}>
 									Name {getSortIcon("name")}
 								</Button>
@@ -145,12 +145,12 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 									Novelty {getSortIcon("novelty")}
 								</Button>
 							</TableHead>
-							<TableHead className="w-[10%]">
+							{/* <TableHead className="w-[10%]">
 								<Button variant="ghost" onClick={() => handleSort("confidence")}>
 									Confidence {getSortIcon("confidence")}
 								</Button>
-							</TableHead>
-							<TableHead className="w-[10%]">Evidence</TableHead>
+							</TableHead> */}
+							<TableHead className="w-[15%]">Evidence</TableHead>
 							<TableHead className="w-[5%] text-right">Actions</TableHead>
 						</TableRow>
 					</TableHeader>
@@ -252,7 +252,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 									</SelectContent>
 								</Select>
 							</TableCell>
-							<TableCell>
+							{/* <TableCell>
 								<Select
 									onValueChange={(value) => {
 										setFilters((prev) => ({ ...prev, confidence: value === "all" ? null : value }))
@@ -290,7 +290,7 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 								>
 									Clear Filters
 								</Button>
-							</TableCell>
+							</TableCell> */}
 						</TableRow>
 						{filteredAndSortedInsights.map((insight) => (
 							<TableRow key={insight.id}>
@@ -312,11 +312,11 @@ export function InsightsDataTable({ insights }: InsightsDataTableProps) {
 										<Badge className={getNoveltyColor(Number(insight.novelty))}>{insight.novelty}</Badge>
 									)}
 								</TableCell>
-								<TableCell>
+								{/* <TableCell>
 									{insight.confidence != null && (
 										<Badge className={getConfidenceColor(String(insight.confidence))}>{insight.confidence}</Badge>
 									)}
-								</TableCell>
+								</TableCell> */}
 								<TableCell className="line-clamp-2 text-muted-foreground text-xs">{insight.evidence}</TableCell>
 								<TableCell className="text-right">
 									<DropdownMenu>

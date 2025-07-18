@@ -213,7 +213,8 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
 
 1. Generate OpenAI embedding for each `insights.jtbd`.
 2. Store vector in `insights.embedding`.
-3. (Optional) For theme scatter-plot: t-SNE to 2-D → Recharts Cartesian plot.
+3. Display insights clusters in Recharts Cartesian plot.
+4. Reduce dimensions to 2D. Use UMAP and DBSCAN to cluster insights by JTBD and Category. (t-SNE alternative)
 
 ### 6.5 User Notification
 

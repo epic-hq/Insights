@@ -9,7 +9,7 @@ class ExtractedInsight {
 	underlyingMotivation string | null @description("Underlying motivation of insight")
 	pain string | null @description("Pain or friction the user experiences in doing a task")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
-	evidence string | null @description("Supporting quotes or observations from the interview")
+	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
 	emotionalResponse string | null @description("The force or level of conviction of the interviewee’s feeling about this need. Low | Neutral | High")
 	opportunityIdeas string[] | null @description("Opportunity ideas of insight")
 	confidence int | null @description("Confidence of insight")
