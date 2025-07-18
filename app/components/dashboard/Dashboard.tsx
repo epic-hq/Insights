@@ -3,7 +3,7 @@ import type { OpportunityView } from "~/types"
 import type { TreeNode } from "../charts/TreeMap"
 import TreeMap from "../charts/TreeMap"
 import type { InsightCardProps } from "../insights/InsightCard"
-import UploadButton from "../upload/UploadButton"
+import AddInterviewButton from "../upload/AddInterviewButton"
 import FilterBar from "./FilterBar"
 import type { KPI } from "./KPIBar"
 import KPIBar from "./KPIBar"
@@ -73,12 +73,11 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 			{/* Filter bar - full width above sticky KPI bar */}
 			<div className="mb-4 flex items-center justify-between">
 				<FilterBar segments={["Students", "Teachers", "Admins"]} />
-				<UploadButton />
+				<AddInterviewButton />
 			</div>
 
 			{/* Sticky KPI Bar */}
 			<KPIBar kpis={dynamicKpis} />
-
 			{/* Main dashboard grid with 12-column layout */}
 			<div className="mt-4 grid grid-cols-12 gap-4">
 				{/* Insight Categories section - spans 8 columns on large screens, full width on smaller screens */}

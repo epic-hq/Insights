@@ -4,7 +4,7 @@ import { Link } from "react-router-dom"
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 import type { Database } from "~/../supabase/types"
-import UploadButton from "~/components/upload/UploadButton"
+import AddInterviewButton from "~/components/upload/AddInterviewButton"
 import type { InterviewStatus } from "~/types"
 import { InterviewStatus as InterviewStatusEnum } from "~/types"
 import { db } from "~/utils/supabase.server"
@@ -148,7 +148,7 @@ export default function Interviews() {
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
 			<div className="mb-6 flex items-center justify-between">
 				<h1 className="font-bold text-2xl">Interviews</h1>
-				<UploadButton />
+				<AddInterviewButton />
 			</div>
 
 			<div className="mb-6 grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -238,13 +238,13 @@ export default function Interviews() {
 									Role
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
+									Insights
+								</th>
+								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Duration
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Status
-								</th>
-								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-									Insights
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Date
@@ -257,8 +257,11 @@ export default function Interviews() {
 						<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 							{interviews.map((interview) => (
 								<tr key={interview.id}>
-									<td className="whitespace-nowrap px-4 py-3">{interview.participant}</td>
+									<td className="whitespace-nowrap px-4 py-3">
+										<Link to={`/interviews/${interview.id}`}>{interview.participant}</Link>
+									</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.role}</td>
+									<td className="whitespace-nowrap px-4 py-3">{interview.insightCount}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.duration}</td>
 									<td className="whitespace-nowrap px-4 py-3">
 										<span
@@ -273,7 +276,6 @@ export default function Interviews() {
 											{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 										</span>
 									</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.insightCount}</td>
 									<td className="whitespace-nowrap px-4 py-3">
 										{formatDistanceToNow(interview.date, { addSuffix: true })}
 									</td>

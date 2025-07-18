@@ -15,7 +15,7 @@ export interface ProcessingResult {
 
 export interface InterviewMetadata {
 	orgId: string
-	projectId: string
+	projectId?: string
 	interviewTitle?: string
 	interviewDate?: string
 	interviewerName?: string
@@ -60,15 +60,15 @@ export async function processInterviewTranscript(
 
 	// 2. First, create the interview record
 	const interviewData: InterviewInsert = {
-		org_id: metadata.orgId,
-		project_id: metadata.projectId,
-		title: metadata.interviewTitle || "Untitled Interview",
-		interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
-		participant_pseudonym: metadata.participantName || "Anonymous",
-		segment: metadata.segment || null,
-		transcript: transcript,
-		status: "processing" as const,
-	} as InterviewInsert
+  org_id: metadata.orgId,
+  title: metadata.interviewTitle || "Untitled Interview",
+  interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
+  participant_pseudonym: metadata.participantName || "Anonymous",
+  segment: metadata.segment || null,
+  transcript,
+  status: "processing" as const,
+  ...(metadata.projectId ? { project_id: metadata.projectId } : {}),
+} as InterviewInsert
 
 	const { data: interviewRecord, error: interviewError } = await db
 		.from("interviews")

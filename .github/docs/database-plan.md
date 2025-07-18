@@ -187,48 +187,65 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
 
 * Scatter-plot in the UI → fetch `SELECT id, name, embedding FROM themes` and apply PCA/UMAP in client.
 
-## 6. Media Storage & Access Flow
+## 6. Process Interview Media & Extract Insights
 
-We have several options for media storage: supabase using s3, cloudflare r2, google drive link. For expedience, we will use google drive links in phase 1.
+### 6.1 Ingestion & Storage
 
-### 6A. Media Storage using Google Drive (phase 1)
+| Phase | Storage | Key Steps |
+|-------|---------|-----------|
+| **1 – MVP** | Google Drive links | 1. User pastes a Drive URL.<br>2. Convert the link to a direct-download URL (per AssemblyAI guide). ** Note we had issues, Google did not return clean download links, instead had virus scan html etc. files too large. So we are doing local file upload. Temp storage on AAI who then deletes it. for now. TODO: upgrade to store in r2. |
+| **2 – Prod** | Supabase R2 (S3-compatible) | 1. Client requests a presigned upload URL via Edge Function (JWT-authenticated).<br>2. Client uploads media directly to R2.<br>3. Edge Function inserts a `media_files` row with metadata.<br>4. Client requests short-lived signed download URLs the same way. |
 
-* Media files are stored in Google Drive under the path `org_id/<uuid>`.
-* Transcribe using AssemblyAI. [AssemblyAI docs](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file)
-* AssemblyAI can transcribe google drive files.
-* [how to convert google files to downloadable](https://www.assemblyai.com/docs/guides/transcribing-google-drive-file)
+### 6.2 Transcription
 
-### 6B. Media Storage using Supabase R2 (phase 2)
+1. Submit media URL to AssemblyAI.
+2. Poll for completion.
+3. Store full transcript in `interview.transcript`.
 
-1. Client obtains a pre-signed R2 upload URL via Edge Function (requires valid org JWT).
-2. Upload audio/video directly to R2.
-3. Edge Function stores `media_files` row with metadata.
-4. Downloads/stream: client calls Edge Function → function returns short-lived signed URL after ACL check.
+### 6.3 Insight Generation
 
-## 7. Setup pipeline
+1. Push a job to **pgmq** queue `transcribe` once the transcript is saved.
+2. Worker (or Remix action for MVP) pulls transcript text.
+3. Run **o3** + **BAML** to produce structured JSON: insights, quotes, themes, personas, opportunities.
+4. Insert rows via `@supabase/supabase-js` with full type safety.
+
+### 6.4 Embeddings & Clustering
+
+1. Generate OpenAI embedding for each `insights.jtbd`.
+2. Store vector in `insights.embedding`.
+3. (Optional) For theme scatter-plot: t-SNE to 2-D → Recharts Cartesian plot.
+
+### 6.5 User Notification
+
+1. On success, notify with insight count and link to interview.
+2. On failure, notify with error message.
+
+## 7. Pipeline Orchestration
+
+```mermaid
+graph TD
+    A(User uploads media) --> B[Store URL (Drive or R2)]
+    B --> C[AssemblyAI Transcription]
+    C -->|transcript ready| D[Save transcript to DB]
+    D --> E[pgmq: enqueue 'transcribe']
+    E --> F[o3 + BAML worker]
+    F --> G[Insert insights & embeddings]
+    G --> H[Notify user]
+```
+
+* **Queues / Workers** – `pgmq` for reliable jobs; future heavy processing via Edge Function.
+* **Security** – presigned R2 URLs validated by org JWT.
+
+## 8. Setup pipeline
 
 * Add pgmq queue for transcript processing to supabase. Done. named 'transcribe' and added to schema
 * Define pipeline flow to handle transcript processing: Provide File URL -> transacribe audio with assembly AI  -> save to db -> notify user
 
-- <https://github.com/pgmq/pgmq?tab=readme-ov-file#sql-examples>
-
-## 8. Transcript Processing Pipeline (o3 + BAML)
-
-* Runs inside Remix **action** triggered after transcript generation.
-
-* Steps:
-
-  1. Pull transcript text from `interview.transcripts`.
-  2. Use **o3** with BAML schema to produce structured JSON for insights, quotes, themes, personas, opportunities.
-  3. Insert/update rows via `@supabase/supabase-js`.
-
-* Strong type-safety via BAML schemas
-
-* Future: offload heavy workloads to a Supabase Edge Function/queue.
+* <https://github.com/pgmq/pgmq?tab=readme-ov-file#sql-examples>
 
 ## 9. Migration & Seeding Strategy
 
-* All DDL lives under `supabase/migrations` auto-generated via `supabase db diff`.
+* All DB structure is defined with declarative schemas in `supabase/schemas`.  Migrations are auto-generated via `supabase db diff` and stored in `supabase/migrations`. We then run `supabase db push` to apply the migrations to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.
 * pgvector enabled in initial migration.
 * Seed scripts insert default categories, sample tags, and demo personas for Storybook/testing.
 
@@ -239,8 +256,17 @@ Please **review** and confirm or suggest edits. Once approved I will:
 1. Add helper Edge Function stubs for R2 upload/download.
 2. Add pgmq queue for transcript processing.
 
-- <https://github.com/pgmq/pgmq?tab=readme-ov-file#sql-examples>
+* <https://github.com/pgmq/pgmq?tab=readme-ov-file#sql-examples>
+
+3. Implement adaptive embedding search: <https://supabase.com/blog/matryoshka-embeddings>
 
 ## Notes
 
 When we modify the schema, we should run `supabase db diff` to generate a migration. This will create a new migration file in the `supabase/migrations` directory. We should then run `supabase db push` to apply the migration to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.
+
+## Reference docs and code samples
+
+* Transcribe using AssemblyAI. [AssemblyAI docs](https://www.assemblyai.com/docs/getting-started/transcribe-an-audio-file)
+* AssemblyAI can transcribe google drive files.
+* [how to convert google files to downloadable](https://www.assemblyai.com/docs/guides/transcribing-google-drive-file)
+* [supabase automatic embeddings](https://supabase.com/docs/guides/ai/automatic-embeddings)
