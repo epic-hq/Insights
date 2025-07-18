@@ -27,6 +27,7 @@
 - Real-time transcription upgrade path.
 - Auto-merge tag governance UI.
 - Persona clustering tuning dashboard.
+- Add Project route, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 
 ---
 
