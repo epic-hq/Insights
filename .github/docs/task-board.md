@@ -22,8 +22,9 @@
 
 ## 🔜 Up Next (Sprint 1 – Get Valuable Insights)
 
+- [ ] **Enable User-Org** - needed for basic record ownership
 - [ ] **Insight Card** – inline editable insight fields.
-- [ ] **Embeddings Pipeline** – generate embeddings for insights and themes.
+- [x] **Embeddings Pipeline** – generate embeddings for insights and themes.
 - [ ] **Insight Clustering Visualization** - Cluster insights by category and JTBD to visualise themes.
 
 ## 🌓 Backlog / Later
