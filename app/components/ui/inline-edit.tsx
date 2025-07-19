@@ -67,7 +67,7 @@ export default function InlineEdit({
 		}
 	}, [multiline, autoSize])
 
-	const minRows = 3;
+	const minRows = 3
 
 	const handleClick = () => {
 		setIsEditing(true)
@@ -113,10 +113,7 @@ export default function InlineEdit({
 						autoFocus={autoFocus}
 						onKeyDown={handleKeyDown}
 						rows={minRows}
-						className={cn(
-							"scrollbar-none min-h-0 resize-none h-auto w-full",
-							inputClassName
-						)}
+						className={cn("scrollbar-none h-auto min-h-0 w-full resize-none", inputClassName)}
 					/>
 					{showConfirmationButtons && (
 						<div className="mt-1 flex justify-end gap-2">
@@ -127,36 +124,32 @@ export default function InlineEdit({
 						</div>
 					)}
 				</>
-			);
-		} else {
-			return (
-				<>
-					<Input
-						ref={inputRef as any}
-						value={value}
-						onChange={handleChange}
-						onBlur={handleBlur}
-						autoFocus={autoFocus}
-						onKeyDown={handleKeyDown}
-						className={cn(
-							"h-8 w-full focus-visible:ring-black/40",
-							inputClassName
-						)}
-					/>
-					{showConfirmationButtons && (
-						<div className="mt-1 flex justify-end gap-2">
-							<Button variant="ghost" onClick={handleCancel}>
-								Cancel
-							</Button>
-							<Button onClick={() => onSubmit?.(value)}>Save</Button>
-						</div>
-					)}
-				</>
-			);
+			)
 		}
+		return (
+			<>
+				<Input
+					ref={inputRef as any}
+					value={value}
+					onChange={handleChange}
+					onBlur={handleBlur}
+					autoFocus={autoFocus}
+					onKeyDown={handleKeyDown}
+					className={cn("h-8 w-full focus-visible:ring-black/40", inputClassName)}
+				/>
+				{showConfirmationButtons && (
+					<div className="mt-1 flex justify-end gap-2">
+						<Button variant="ghost" onClick={handleCancel}>
+							Cancel
+						</Button>
+						<Button onClick={() => onSubmit?.(value)}>Save</Button>
+					</div>
+				)}
+			</>
+		)
 	}
 
-	const TextComponent = textComponent;
+	const TextComponent = textComponent
 
 	return (
 		<div
@@ -170,23 +163,22 @@ export default function InlineEdit({
 				<ReactMarkdown>{markdown}</ReactMarkdown>
 			) : (
 				<TextComponent
-					className={cn(
-						"min-w-0 px-1 text-gray-800",
-						showEditButton ? "flex-1" : "w-full",
-						textClassName
-					)}
+					className={cn("min-w-0 px-1 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}
 				>
-					{multiline
-						? value
-							? value.split("\n").map((line, i) => (
-									<span key={i}>
-										{line}
-										<br />
-									</span>
-								))
-							: <span className="text-gray-400 text-xs italic">{placeholder}</span>
-						: value || <span className="text-gray-400 text-xs italic">{placeholder}</span>
-					}
+					{multiline ? (
+						value ? (
+							value.split("\n").map((line, i) => (
+								<span key={i}>
+									{line}
+									<br />
+								</span>
+							))
+						) : (
+							<span className="text-gray-400 text-xs italic">{placeholder}</span>
+						)
+					) : (
+						value || <span className="text-gray-400 text-xs italic">{placeholder}</span>
+					)}
 				</TextComponent>
 			)}
 			{showEditButton && (
@@ -195,5 +187,5 @@ export default function InlineEdit({
 				</Button>
 			)}
 		</div>
-	);
+	)
 }

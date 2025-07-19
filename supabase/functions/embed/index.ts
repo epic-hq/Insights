@@ -2,6 +2,7 @@
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
+
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
@@ -16,15 +17,13 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 //     { headers: { "Content-Type": "application/json" } },
 //   )
 // })
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
-import { serve } from "https://deno.land/x/sift@0.5.0/mod.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-
-serve(async (req) => {
+Deno.serve(async (req) => {
 	try {
-		const { id, category, jtbd } = await req.json();
+		const { id, category, jtbd } = await req.json()
 		if (!id || !category || !jtbd) {
-			return new Response("Missing `id`, `category` or `jtbd`", { status: 400 });
+			return new Response("Missing `id`, `category` or `jtbd`", { status: 400 })
 		}
 
 		// 1) Fetch embedding from OpenAI
@@ -32,44 +31,42 @@ serve(async (req) => {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				"Authorization": `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+				Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
 			},
 			body: JSON.stringify({
 				model: "text-embedding-ada-002",
 				input: `${category}: ${jtbd}`,
 			}),
-		});
+		})
 
 		if (!openaiRes.ok) {
-			const err = await openaiRes.text();
-			throw new Error(`OpenAI error: ${err}`);
+			const err = await openaiRes.text()
+			throw new Error(`OpenAI error: ${err}`)
 		}
 
-		const { data } = await openaiRes.json();
-		const embedding: number[] = data[0].embedding;
+		const { data } = await openaiRes.json()
+		const embedding: number[] = data[0].embedding
 
 		// 2) Write back to Supabase
-		const supabase = createClient(
-			Deno.env.get("SUPABASE_URL")!,
-			Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-		);
+		const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
 
-		const { error } = await supabase
-			.from("insights")
-			.update({ embedding })
-			.eq("id", id);
+		const { error } = await supabase.from("insights").update({ embedding: embedding }).eq("id", id)
 
-		if (error) throw error;
+		if (error) throw error
 
 		return new Response(JSON.stringify({ success: true }), {
 			headers: { "Content-Type": "application/json" },
-		});
+		})
 	} catch (err) {
-		return new Response(JSON.stringify({ success: false, message: err.message }),
-			{ status: 500, headers: { "Content-Type": "application/json" } }
+		return new Response(
+			JSON.stringify({ success: false, message: err.message, stack: err.stack }),
+			{
+				status: 500,
+				headers: { "Content-Type": "application/json" },
+			}
 		);
 	}
-});
+})
 
 /* To invoke locally:
 

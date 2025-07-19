@@ -115,7 +115,7 @@ export default function InsightCardV2({
 		if (savingField === field) return // Prevent double-save
 		setSavingField(field)
 		try {
-			const newValue = typeof value === 'string' ? value : editingValue
+			const newValue = typeof value === "string" ? value : editingValue
 			if (localInsight[field] !== newValue) {
 				// Optimistically update local state
 				setLocalInsight((prev) => ({ ...prev, [field]: newValue }))
@@ -348,19 +348,19 @@ export default function InsightCardV2({
 							/> */}
 							{/* Testing Jett's InlineEdit */}
 							<InlineEdit
-  value={localInsight.jtbd || ""}
-  onSubmit={async (newValue: string) => {
-    // Optimistically update local state
-    setLocalInsight((prev) => ({ ...prev, jtbd: newValue }));
-    await handleSaveField("jtbd", newValue);
-  }}
-  textClassName="font-medium text-blue-800 text-sm leading-relaxed"
-  inputClassName="text-sm"
-  submitOnBlur
-  autoFocus={false}
-  showEditButton={false}
-  multiline
-/>
+								value={localInsight.jtbd || ""}
+								onSubmit={async (newValue: string) => {
+									// Optimistically update local state
+									setLocalInsight((prev) => ({ ...prev, jtbd: newValue }))
+									await handleSaveField("jtbd", newValue)
+								}}
+								textClassName="font-medium text-blue-800 text-sm leading-relaxed"
+								inputClassName="text-sm"
+								submitOnBlur
+								autoFocus={false}
+								showEditButton={false}
+								multiline
+							/>
 						</div>
 					</div>
 				</div>
@@ -371,19 +371,19 @@ export default function InsightCardV2({
 						<div className="flex-1">
 							{/* <h4 className="mb-1 font-medium text-blue-700 text-xs">Quote</h4> */}
 							<InlineEdit
-  value={localInsight.evidence || ""}
-  onSubmit={async (newValue: string) => {
-    setLocalInsight((prev) => ({ ...prev, evidence: newValue }));
-    await handleSaveField("evidence", newValue);
-  }}
-  textClassName="font-medium text-blue-800 text-sm leading-relaxed"
-  inputClassName="text-sm"
-  submitOnBlur
-  autoFocus={false}
-  showEditButton={false}
-  multiline
-  placeholder="Supporting quote or evidence"
-/>
+								value={localInsight.evidence || ""}
+								onSubmit={async (newValue: string) => {
+									setLocalInsight((prev) => ({ ...prev, evidence: newValue }))
+									await handleSaveField("evidence", newValue)
+								}}
+								textClassName="font-medium text-blue-800 text-sm leading-relaxed"
+								inputClassName="text-sm"
+								submitOnBlur
+								autoFocus={false}
+								showEditButton={false}
+								multiline
+								placeholder="Supporting quote or evidence"
+							/>
 						</div>
 					</div>
 				</div>
@@ -394,55 +394,55 @@ export default function InsightCardV2({
 					<div>
 						<h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4>
 						<InlineEdit
-  value={localInsight.pain || ""}
-  onSubmit={async (newValue: string) => {
-    setLocalInsight((prev) => ({ ...prev, pain: newValue }));
-    await handleSaveField("pain", newValue);
-  }}
-  textClassName="text-gray-900 text-md"
-  inputClassName="text-sm"
-  submitOnBlur
-  autoFocus={false}
-  showEditButton={false}
-  multiline
-  placeholder="What pain or friction does the user experience?"
-/>
+							value={localInsight.pain || ""}
+							onSubmit={async (newValue: string) => {
+								setLocalInsight((prev) => ({ ...prev, pain: newValue }))
+								await handleSaveField("pain", newValue)
+							}}
+							textClassName="text-gray-900 text-md"
+							inputClassName="text-sm"
+							submitOnBlur
+							autoFocus={false}
+							showEditButton={false}
+							multiline
+							placeholder="What pain or friction does the user experience?"
+						/>
 					</div>
 
 					<div>
 						<h4 className="mb-1 text-gray-500 text-xs uppercase">Desired Outcome</h4>
 						<InlineEdit
-  value={localInsight.desiredOutcome || ""}
-  onSubmit={async (newValue: string) => {
-    setLocalInsight((prev) => ({ ...prev, desiredOutcome: newValue }));
-    await handleSaveField("desiredOutcome", newValue);
-  }}
-  textClassName="text-gray-900 text-md"
-  inputClassName="text-sm"
-  submitOnBlur
-  autoFocus={false}
-  showEditButton={false}
-  multiline
-  placeholder="What outcome does the user want to achieve?"
-/>
+							value={localInsight.desiredOutcome || ""}
+							onSubmit={async (newValue: string) => {
+								setLocalInsight((prev) => ({ ...prev, desiredOutcome: newValue }))
+								await handleSaveField("desiredOutcome", newValue)
+							}}
+							textClassName="text-gray-900 text-md"
+							inputClassName="text-sm"
+							submitOnBlur
+							autoFocus={false}
+							showEditButton={false}
+							multiline
+							placeholder="What outcome does the user want to achieve?"
+						/>
 					</div>
 
 					<div>
 						<h4 className="mb-1 text-gray-500 text-xs uppercase">Context & Details</h4>
 						<InlineEdit
-  value={localInsight.details || ""}
-  onSubmit={async (newValue: string) => {
-    setLocalInsight((prev) => ({ ...prev, details: newValue }));
-    await handleSaveField("details", newValue);
-  }}
-  textClassName="text-gray-900 text-md"
-  inputClassName="text-sm"
-  submitOnBlur
-  autoFocus={false}
-  showEditButton={false}
-  multiline
-  placeholder="Additional context and details"
-/>
+							value={localInsight.details || ""}
+							onSubmit={async (newValue: string) => {
+								setLocalInsight((prev) => ({ ...prev, details: newValue }))
+								await handleSaveField("details", newValue)
+							}}
+							textClassName="text-gray-900 text-md"
+							inputClassName="text-sm"
+							submitOnBlur
+							autoFocus={false}
+							showEditButton={false}
+							multiline
+							placeholder="Additional context and details"
+						/>
 					</div>
 
 					<div className="flex items-center justify-between pt-2">

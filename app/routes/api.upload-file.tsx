@@ -44,33 +44,33 @@ export async function action({ request }: ActionFunctionArgs) {
 		// 3. Determine org & project (TODO: use session). For now static org and first project.
 		const orgId = "00000000-0000-0000-0000-000000000001"
 		let projectId: string | null = null
-const { data: projectRow, error: projErr } = await db
-  .from("research_projects")
-  .select("id")
-  .eq("org_id", orgId)
-  .order("created_at", { ascending: false })
-  .limit(1)
-  .maybeSingle()
-if (projErr) throw new Error(`Failed fetching projects: ${projErr.message}`)
+		const { data: projectRow, error: projErr } = await db
+			.from("research_projects")
+			.select("id")
+			.eq("org_id", orgId)
+			.order("created_at", { ascending: false })
+			.limit(1)
+			.maybeSingle()
+		if (projErr) throw new Error(`Failed fetching projects: ${projErr.message}`)
 
-if (projectRow?.id) {
-  projectId = projectRow.id as string
-} else {
-  // create temp project
-  const slug = `temp_${Date.now()}`
-  const { data: newProj, error: createErr } = await db
-    .from("research_projects")
-    .insert({
-      org_id: orgId,
-      code: slug,
-      title: "Untitled Project",
-      description: "Auto-created by upload flow",
-    })
-    .select("id")
-    .single()
-  if (createErr || !newProj) throw new Error(`Failed creating temp project: ${createErr?.message}`)
-  projectId = newProj.id as string
-}
+		if (projectRow?.id) {
+			projectId = projectRow.id as string
+		} else {
+			// create temp project
+			const slug = `temp_${Date.now()}`
+			const { data: newProj, error: createErr } = await db
+				.from("research_projects")
+				.insert({
+					org_id: orgId,
+					code: slug,
+					title: "Untitled Project",
+					description: "Auto-created by upload flow",
+				})
+				.select("id")
+				.single()
+			if (createErr || !newProj) throw new Error(`Failed creating temp project: ${createErr?.message}`)
+			projectId = newProj.id as string
+		}
 
 		const metadata = {
 			orgId,

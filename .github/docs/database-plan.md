@@ -250,6 +250,8 @@ graph TD
 * pgvector enabled in initial migration.
 * Seed scripts insert default categories, sample tags, and demo personas for Storybook/testing.
 
+- [ ] Figure out how to run embedding migrations to install extensions
+
 ---
 
 Please **review** and confirm or suggest edits. Once approved I will:
@@ -271,3 +273,4 @@ When we modify the schema, we should run `supabase db diff` to generate a migrat
 * AssemblyAI can transcribe google drive files.
 * [how to convert google files to downloadable](https://www.assemblyai.com/docs/guides/transcribing-google-drive-file)
 * [supabase automatic embeddings](https://supabase.com/docs/guides/ai/automatic-embeddings)
+* Using Supabase functions to generate embeddings. see [supabase-howto.md](supabase-howto.md)
