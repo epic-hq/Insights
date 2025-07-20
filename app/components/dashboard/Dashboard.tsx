@@ -4,7 +4,6 @@ import type { TreeNode } from "../charts/TreeMap"
 import TreeMap from "../charts/TreeMap"
 import type { InsightCardProps } from "../insights/InsightCard"
 import AddInterviewButton from "../upload/AddInterviewButton"
-import FilterBar from "./FilterBar"
 import type { KPI } from "./KPIBar"
 import KPIBar from "./KPIBar"
 import OpportunityKanban from "./OpportunityKanban"
@@ -71,9 +70,11 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
 			{/* Filter bar - full width above sticky KPI bar */}
-			<div className="mb-4 flex items-center justify-between">
-				<FilterBar segments={["Students", "Teachers", "Admins"]} />
+
+			<div className="mr-10 mb-4 ml-4 flex items-center justify-between">
+				<div className="ml-4 font-bold text-xl">Quick Summary</div>
 				<AddInterviewButton />
+				{/* <FilterBar segments={["Students", "Teachers", "Admins"]} /> */}
 			</div>
 
 			{/* Sticky KPI Bar */}

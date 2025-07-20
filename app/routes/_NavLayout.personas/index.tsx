@@ -56,13 +56,6 @@ export default function Personas() {
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
-			<div className="mb-6 flex items-center justify-between">
-				<h1 className="font-bold text-2xl">Personas</h1>
-				<Link to="/" className="text-blue-600 hover:text-blue-800">
-					Back to Dashboard
-				</Link>
-			</div>
-
 			<div className="mb-6 rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 				<h2 className="mb-4 font-semibold text-xl">Persona Distribution</h2>
 				<div className="flex flex-wrap gap-4">
@@ -95,7 +88,7 @@ export default function Personas() {
 						<div className="rounded-lg bg-white p-6 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900">
 							<PersonaCard
 								name={persona.name}
-								percentage={persona.percentage * 100 || 0}
+								percentage={persona?.percentage * 100 || 0}
 								count={persona.count || 0}
 								color={persona.color || "#6b7280"}
 							/>

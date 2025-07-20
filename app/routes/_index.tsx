@@ -193,14 +193,16 @@ export default function Index() {
 	const data = useLoaderData<typeof loader>()
 
 	return (
-		<AuthGuard>
-			<div className="relative">
-				{/* User profile in top right corner */}
-				<div className="absolute top-4 right-4 z-10">
-					<UserProfile />
+		<div>
+			<AuthGuard>
+				<div className="relative">
+					{/* User profile in top right corner */}
+					<div className="absolute top-4 right-4 z-10">
+						<UserProfile />
+					</div>
+					<Dashboard {...data} />
 				</div>
-				<Dashboard {...data} />
-			</div>
-		</AuthGuard>
+			</AuthGuard>
+		</div>
 	)
 }

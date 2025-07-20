@@ -5,7 +5,7 @@ import { useChangeLanguage } from "remix-i18next/react"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import type { Route } from "./+types/root"
-import { LanguageSwitcher } from "./library/language-switcher"
+import MainNav from "./components/navigation/MainNav"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 // @ts-expect-error - CSS URL import
 import tailwindcss from "./tailwind.css?url"
@@ -48,7 +48,8 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 				<Links />
 			</head>
 			<body className="h-full w-full">
-				<LanguageSwitcher />
+				<MainNav />
+				{/* <LanguageSwitcher /> */}
 				{children}
 				<ScrollRestoration />
 				<Scripts />

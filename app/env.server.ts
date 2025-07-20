@@ -4,6 +4,7 @@ const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 	APP_ENV: z.enum(["development", "staging", "production"]).default("development"),
 	HELLO: z.string().optional(),
+	DEV_FAKE_AUTH: z.string().optional(),
 	SUPABASE_URL: z.string(),
 	SUPABASE_ANON_KEY: z.string(),
 })
@@ -49,6 +50,7 @@ export function getClientEnv() {
 	return {
 		NODE_ENV: serverEnv.NODE_ENV,
 		HELLO: serverEnv.HELLO,
+		DEV_FAKE_AUTH: serverEnv.DEV_FAKE_AUTH,
 		SUPABASE_URL: serverEnv.SUPABASE_URL,
 		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
 	}
