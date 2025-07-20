@@ -23,7 +23,7 @@ export const supabaseAdmin = createClient<Database>(supabaseUrl, serviceKey, {
 
 /* Per-request helper: returns client with user JWT set for RLS queries */
 // Backward-compat: existing loaders may still import { db }
-export const db = supabaseAnon;
+export const db = supabaseAnon
 
 export function getRlsClient(jwt: string) {
 	return createClient<Database>(supabaseUrl, anonKey, {

@@ -2,7 +2,6 @@
 // https://deno.land/manual/getting_started/setup_your_environment
 // This enables autocomplete, go to definition, etc.
 
-
 // Setup type definitions for built-in Supabase Runtime APIs
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 
@@ -58,13 +57,10 @@ Deno.serve(async (req) => {
 			headers: { "Content-Type": "application/json" },
 		})
 	} catch (err) {
-		return new Response(
-			JSON.stringify({ success: false, message: err.message, stack: err.stack }),
-			{
-				status: 500,
-				headers: { "Content-Type": "application/json" },
-			}
-		);
+		return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
+			status: 500,
+			headers: { "Content-Type": "application/json" },
+		})
 	}
 })
 

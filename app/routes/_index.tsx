@@ -1,5 +1,7 @@
 import { type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
+import { AuthGuard } from "~/components/auth/AuthGuard"
+import { UserProfile } from "~/components/auth/UserProfile"
 import type { TreeNode } from "~/components/charts/TreeMap"
 import Dashboard from "~/components/dashboard/Dashboard"
 import type { KPI } from "~/components/dashboard/KPIBar"
@@ -190,5 +192,15 @@ function lightenColor(hex: string, percent: number): string {
 export default function Index() {
 	const data = useLoaderData<typeof loader>()
 
-	return <Dashboard {...data} />
+	return (
+		<AuthGuard>
+			<div className="relative">
+				{/* User profile in top right corner */}
+				<div className="absolute top-4 right-4 z-10">
+					<UserProfile />
+				</div>
+				<Dashboard {...data} />
+			</div>
+		</AuthGuard>
+	)
 }

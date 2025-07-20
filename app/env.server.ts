@@ -4,6 +4,8 @@ const envSchema = z.object({
 	NODE_ENV: z.enum(["development", "production", "test"]).default("development"),
 	APP_ENV: z.enum(["development", "staging", "production"]).default("development"),
 	HELLO: z.string().optional(),
+	SUPABASE_URL: z.string(),
+	SUPABASE_ANON_KEY: z.string(),
 })
 
 type ServerEnv = z.infer<typeof envSchema>
@@ -47,6 +49,8 @@ export function getClientEnv() {
 	return {
 		NODE_ENV: serverEnv.NODE_ENV,
 		HELLO: serverEnv.HELLO,
+		SUPABASE_URL: serverEnv.SUPABASE_URL,
+		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
 	}
 }
 
