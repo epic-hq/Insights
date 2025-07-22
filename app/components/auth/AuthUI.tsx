@@ -1,8 +1,20 @@
 import { Auth } from "@supabase/auth-ui-react"
 import { ThemeSupa, type ThemeVariables } from "@supabase/auth-ui-shared"
+import consola from "consola"
 import { getSupabaseClient } from "~/lib/supabase/client"
 
+interface AuthUIProps {
+	/** Absolute or relative URL to redirect after successful auth */
+	redirectTo?: string
+	/** Optional appearance overrides for Supabase Auth UI */
+	appearance?: Parameters<typeof Auth>[0]["appearance"]
+}
+
 export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
+	// const { clientEnv } = useRouteLoaderData("root") as { clientEnv: Env }
+	// const supabase = createClient(clientEnv.SUPABASE_URL, clientEnv.SUPABASE_ANON_KEY)
+
+	consola.log("redirectTo", redirectTo)
 	let supabase: ReturnType<typeof getSupabaseClient> | undefined
 	try {
 		supabase = getSupabaseClient()

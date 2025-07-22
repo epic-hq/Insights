@@ -1,4 +1,3 @@
-import consola from "consola"
 import { Outlet, redirect, useLoaderData, useMatches } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
@@ -19,10 +18,8 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 		const supabase = getSupabaseClient()
 		await supabase.auth.signOut()
 	}
-	consola.log("navlayout signout ", signOut)
 
 	if (!user) {
-		consola.log("_navLayout redirecting to login")
 		return redirect("/login")
 	}
 
@@ -57,11 +54,11 @@ function _Breadcrumbs() {
 }
 
 export default function NavLayout() {
-	const { auth, signOut } = useLoaderData<typeof loader>()
+	const { auth } = useLoaderData<typeof loader>()
 	// consola.log("AuthProvider  user:", auth.user)
 	return (
 		// <div className="mx-auto max-w-[1440px] pt-4">
-		<AuthProvider user={auth.user} signOut={signOut}>
+		<AuthProvider user={auth.user}>
 			<MainNav />
 			<PageHeader title="" />
 			<Outlet />

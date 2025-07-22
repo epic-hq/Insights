@@ -1,6 +1,7 @@
 import type { User } from "@supabase/supabase-js"
 import consola from "consola"
 import { createContext, useContext } from "react"
+import { PATHS } from "~/paths"
 
 interface AuthContextType {
 	user: User | null
@@ -25,14 +26,17 @@ export const useAuth = () => {
 interface AuthProviderProps {
 	children: React.ReactNode
 	user?: User | null
-	signOut?: () => Promise<void>
 }
 
-export function AuthProvider({ children, user, signOut }: AuthProviderProps) {
+export function AuthProvider({ children, user }: AuthProviderProps) {
 	consola.log("AuthProvider user:", user)
 	const loading = false // No loading needed with SSR data
 
 	// Sign out function
+	async function signOut() {
+		await fetch("/auth/signout", { method: "POST" }) // server does the heavy lifting
+		window.location.assign(PATHS.DASHBOARD) // ensures the UI resets
+	}
 	// const signOut = async () => {
 	// 	const supabase = createClient()
 	// 	await supabase.auth.signOut()
