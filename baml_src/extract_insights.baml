@@ -1,17 +1,17 @@
 class ExtractedInsight {
 	name string @description("Short Text description of the insight in up to 5 words")
-	category string @description("General category of insight")
+	category string @description("General category of insight") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
 	impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")
-	novelty int | null @description("How differentiated or delight‑creating (1 = common expectation, 5 = breakthrough idea)")
+	novelty int | null @description("How unique or unexpected is the insight? (1 = common expectation, 5 = breakthrough idea)")
 	jtbd string | null @description("Job to be done style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
-	details string | null @description("Additional details or background that supports the insight, like history, context, etc. several pithy sentences.	")
+	details string | null @description("Details or background that provide context around the user's pain, friction, behavior or desired outcome. Multiple sentences or bullet points as needed.	")
 	underlyingMotivation string | null @description("Underlying motivation of insight")
 	pain string | null @description("Pain or friction the user experiences in doing a task")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
 	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
 	emotionalResponse string | null @description("The force or level of conviction of the interviewee’s feeling about this need. Low | Neutral | High")
-	opportunityIdeas string[] | null @description("Opportunity ideas of insight")
+	// opportunityIdeas string[] | null @description("Opportunity ideas of insight")
 	confidence int | null @description("Confidence of insight")
 	createdAt string | null @description("Created at of insight")
 	relatedTags string[] @description("Related tags or keywords to the insight. Make tags conceptual, not UI feature names (e.g. social_accountability, not leaderboard)")
@@ -47,6 +47,18 @@ class InterviewExtraction {
 	observationsAndNotes string @description("Non‑verbal cues, environment, surprising behaviours—anything that adds colour but doesn’t belong in an insight. In markdown format")
 }
 
+// Sets are used to group and add structure to unstructured content; e.g. what User Journey Stages we care about, Personas, types of User Segments, etc.
+class SetRecord {
+	term string @description("Short, descriptive name (1 - 5 words usually). These are usually tags or keywords, phases, stages, or themes.")
+	definition string @description("Succinct definition of the term.")
+}
+
+class Set {
+	name string @description("Name of the set")
+	description string @description("A succinct description of the set and how it will be used.")
+	members SetRecord[] @description("A set of terms and definitions. These are usually tags or keywords, phases, stages, or themes that can be applied in various situations to force clarity.")
+}
+
 function ExtractInsights(transcript: string, userCustomInstructions: string) -> InterviewExtraction {
   client "CustomGPTo3"
   prompt #"
@@ -62,6 +74,41 @@ function ExtractInsights(transcript: string, userCustomInstructions: string) -> 
 		Output format:
 		{{ ctx.output_format }}
   "#
+}
+
+function CreateSet(instructions: string) -> Set {
+	client "CustomGPT4oMini"
+	prompt #"
+		Create a set of terms with definitions, based on the following instructions.
+		When creating the set, try to use simple terms and concise definitions that are easy to understand.
+		Try not to repeat words if not needed. e.g instead of A stage, B stage, C stage. Just A, B, C.
+
+		Instructions:
+		{{ instructions }}
+		Output format:
+		{{ ctx.output_format }}
+	"#
+}
+
+test create_set_Personas {
+	functions [CreateSet]
+	args {
+		instructions #"
+			Up to 3 Suggested User Personas for an AI Learning Platform. We will use this to test our hypothesis of user problems with learning, organizing and studying.
+			We suspect many younger students have some kind of learning difference or accomodation, such as dyslexia, ADHD, Autism, etc..
+			Keep it fun and personal.
+		"#
+	}
+}
+
+test create_set_JourneyStages {
+	functions [CreateSet]
+	args {
+		instructions #"
+			Create a set of User Journey Stages for an AI Learning App.
+
+		"#
+	}
 }
 
 test extract_insights_Jerad {
