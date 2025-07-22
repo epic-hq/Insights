@@ -14,5 +14,6 @@ export const PATHS = {
 	OPPORTUNITIES: '/opportunities',
 	PERSONAS: '/personas',
 	PROJECTS: '/projects',
+	ABOUT: '/about',
 	AUTH,
 } as const

@@ -1,5 +1,4 @@
 import type { User } from "@supabase/supabase-js"
-import consola from "consola"
 import { createContext, useContext } from "react"
 import { PATHS } from "~/paths"
 
@@ -29,7 +28,6 @@ interface AuthProviderProps {
 }
 
 export function AuthProvider({ children, user }: AuthProviderProps) {
-	consola.log("AuthProvider user:", user)
 	const loading = false // No loading needed with SSR data
 
 	// Sign out function

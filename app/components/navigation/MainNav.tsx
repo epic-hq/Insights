@@ -1,4 +1,3 @@
-import consola from "consola"
 import { Link, NavLink, useLocation } from "react-router-dom"
 import { PATHS } from "~/paths"
 import { useAuth } from "../../contexts/AuthContext"
@@ -11,6 +10,7 @@ const navItems = [
 	{ to: PATHS.PERSONAS, label: "Personas", authOnly: true },
 	// { to: "/opportunities", label: "Opportunities", authOnly: true },
 	{ to: PATHS.PROJECTS, label: "Projects", authOnly: true },
+	// { to: PATHS.ABOUT, label: "About", authOnly: false },
 	// { to: "/themes", label: "Themes", authOnly: true },
 ]
 
@@ -45,9 +45,8 @@ export default function MainNav() {
 	const { user } = useAuth()
 	const { pathname } = useLocation()
 	const _isMainRoute =
-		pathname !== "/" && /^\/(themes|personas|opportunities|interviews|insights|projects|people)/.test(pathname)
+		pathname !== "/" && /^\/(themes|personas|opportunities|interviews|insights|projects|people|about)/.test(pathname)
 
-	consola.log("Nav user:", user)
 	return (
 		<>
 			<nav className="bg-white shadow-sm dark:bg-gray-800">
