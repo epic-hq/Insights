@@ -1,6 +1,7 @@
 import type React from "react"
 import { Link, useLocation } from "react-router-dom"
 import { z } from "zod"
+import { PATHS } from "~/paths"
 
 interface BreadcrumbsProps {
 	className?: string
@@ -24,7 +25,7 @@ const Breadcrumbs: React.FC<BreadcrumbsProps> = ({ className = "" }) => {
 			<ol className="inline-flex items-center space-x-1 md:space-x-3">
 				<li className="inline-flex items-center">
 					<Link
-						to="/"
+						to={PATHS.DASHBOARD}
 						className="inline-flex items-center font-medium text-gray-700 text-sm hover:text-blue-600 dark:text-gray-400 dark:hover:text-white"
 					>
 						<svg className="mr-2 h-4 w-4" fill="currentColor" viewBox="0 0 20 20" xmlns="http://www.w3.org/2000/svg">

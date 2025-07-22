@@ -1,8 +1,8 @@
 import consola from "consola"
 import { type MetaFunction, useLoaderData } from "react-router"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
+import { db } from "~/lib/supabase/server"
 import type { InsightView } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = ({ params }) => {
 	return [

@@ -6,8 +6,8 @@ import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import { InsightsDataTable } from "~/components/insights/insights-data-table"
 import { Button } from "~/components/ui/button"
+import { db } from "~/lib/supabase/server"
 import type { InsightView } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = () => {
 	return [

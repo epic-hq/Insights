@@ -3,7 +3,7 @@ import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import TreeMap from "~/components/charts/TreeMap"
-import { db } from "~/utils/supabase.server"
+import { db } from "~/lib/supabase/server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Themes | Insights" }, { name: "description", content: "Explore insight themes" }]

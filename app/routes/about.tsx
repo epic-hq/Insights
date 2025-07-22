@@ -1,20 +1,17 @@
-import { useEffect } from "react"
-import { useNavigate } from "react-router-dom"
 import { AuthUI } from "../components/auth/AuthUI"
 import { useAuth } from "../contexts/AuthContext"
-
 export default function AboutPage() {
-	const { user, loading } = useAuth()
-	const navigate = useNavigate()
+	// const { user, loading } = useAuth()
+	// const navigate = useNavigate()
 
-	useEffect(() => {
-		if (!loading && user) {
-			// If already authenticated, send the user to the main dashboard
-			navigate("/", { replace: true })
-		}
-	}, [user, loading, navigate])
+	// useEffect(() => {
+	// 	if (!loading && user) {
+	// 		// If already authenticated, send the user to the main dashboard
+	// 		navigate("/", { replace: true })
+	// 	}
+	// }, [user, loading, navigate])
 
-	if (loading || user) return null
+	// if (loading) return null
 
 	return (
 		<div className="flex min-h-screen flex-col items-center justify-center bg-gray-50 px-4 py-12 dark:bg-gray-900">

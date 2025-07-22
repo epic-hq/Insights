@@ -3,8 +3,8 @@ import { useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import OpportunityKanban from "~/components/dashboard/OpportunityKanban"
+import { db } from "~/lib/supabase/server"
 import type { OpportunityView } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 // Define interfaces to match the OpportunityKanban component's expected types
 interface OpportunityItem {

@@ -4,9 +4,8 @@
 // is accessible via `~/../baml_client`.
 // Import BAML client - this file is server-only so it's safe to import directly
 import { b } from "~/../baml_client"
-
+import { db } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
-import { db } from "~/utils/supabase.server"
 
 export interface ProcessingResult {
 	stored: InsightInsert[]

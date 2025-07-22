@@ -2,7 +2,7 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
-import { db } from "~/utils/supabase.server"
+import { db } from "~/lib/supabase/server"
 
 // Remix action to handle multipart/form-data file uploads, stream the file to
 // AssemblyAI's /upload endpoint, then run the existing transcript->insights pipeline.

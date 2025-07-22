@@ -1,3 +1,4 @@
+import consola from "consola"
 import { LogOut, User } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import {
@@ -9,15 +10,17 @@ import {
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { useAuth } from "~/contexts/AuthContext"
-import { createClient } from "~/lib/supabase/client"
 
 export function UserProfile() {
-	const { user } = useAuth()
-	const supabase = createClient()
+	const { user, signOut } = useAuth()
 
 	const handleSignOut = async () => {
-		if (supabase) {
-			await supabase.auth.signOut()
+		try {
+			consola.log("click signout")
+			await signOut()
+		} catch {
+			// Error handling is managed by the AuthContext
+			// Page will reload to sync auth state
 		}
 	}
 

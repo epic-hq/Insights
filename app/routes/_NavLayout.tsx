@@ -1,5 +1,40 @@
-import { Outlet, useMatches } from "react-router"
+import consola from "consola"
+import { Outlet, redirect, useLoaderData, useMatches } from "react-router"
+import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
+import { AuthProvider } from "~/contexts/AuthContext"
+import { getSupabaseClient } from "~/lib/supabase/client"
+import { getServerClient } from "~/lib/supabase/server"
+import type { Route } from "../+types/root"
+
+export async function loader({ context, request }: Route.LoaderArgs) {
+	const { lang, clientEnv } = context
+	// Get server-side authentication state
+	const { client: supabase } = getServerClient(request)
+	const {
+		data: { user },
+	} = await supabase.auth.getUser()
+	const _claims = await supabase.auth.getClaims()
+	const signOut = async () => {
+		const supabase = getSupabaseClient()
+		await supabase.auth.signOut()
+	}
+	consola.log("navlayout signout ", signOut)
+
+	if (!user) {
+		consola.log("_navLayout redirecting to login")
+		return redirect("/login")
+	}
+
+	return {
+		lang,
+		clientEnv,
+		auth: {
+			user,
+		},
+		signOut,
+	}
+}
 
 function _Breadcrumbs() {
 	const matches = useMatches()
@@ -22,11 +57,15 @@ function _Breadcrumbs() {
 }
 
 export default function NavLayout() {
+	const { auth, signOut } = useLoaderData<typeof loader>()
+	// consola.log("AuthProvider  user:", auth.user)
 	return (
-		<div className="mx-auto max-w-[1440px] pt-4">
-			{/* <_Breadcrumbs /> */}
-			<PageHeader title="Opportunities" />
+		// <div className="mx-auto max-w-[1440px] pt-4">
+		<AuthProvider user={auth.user} signOut={signOut}>
+			<MainNav />
+			<PageHeader title="" />
 			<Outlet />
-		</div>
+		</AuthProvider>
+		// </div>
 	)
 }

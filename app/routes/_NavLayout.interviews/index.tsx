@@ -5,9 +5,9 @@ import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } fro
 
 import type { Database } from "~/../supabase/types"
 import AddInterviewButton from "~/components/upload/AddInterviewButton"
+import { db } from "~/lib/supabase/server"
 import type { InterviewStatus } from "~/types"
 import { InterviewStatus as InterviewStatusEnum } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 // Define interview view type if not in centralized types
 interface InterviewView {

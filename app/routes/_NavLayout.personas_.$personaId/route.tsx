@@ -2,8 +2,8 @@ import { type MetaFunction, useLoaderData } from "react-router"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
 import PersonaDetail from "~/components/personas/PersonaDetail"
+import { db } from "~/lib/supabase/server"
 import type { InsightView, Interview, PersonaView } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Persona | Insights" }, { name: "description", content: "Insights related to this persona" }]

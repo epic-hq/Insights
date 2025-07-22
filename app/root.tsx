@@ -2,18 +2,21 @@ import { useTranslation } from "react-i18next"
 import type { LinksFunction } from "react-router"
 import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError } from "react-router"
 import { useChangeLanguage } from "remix-i18next/react"
-import { AuthProvider } from "~/contexts/AuthContext"
+import { ClientOnly } from "~/components/ClientOnly"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import type { Route } from "./+types/root"
-import MainNav from "./components/navigation/MainNav"
 import { ClientHintCheck, getHints } from "./services/client-hints"
-// @ts-expect-error - CSS URL import
 import tailwindcss from "./tailwind.css?url"
 
 export async function loader({ context, request }: Route.LoaderArgs) {
 	const { lang, clientEnv } = context
 	const hints = getHints(request)
-	return { lang, clientEnv, hints }
+
+	return {
+		lang,
+		clientEnv,
+		hints,
+	}
 }
 
 export const links: LinksFunction = () => [{ rel: "stylesheet", href: tailwindcss }]
@@ -26,13 +29,15 @@ export default function App({ loaderData }: Route.ComponentProps) {
 	const { lang, clientEnv } = loaderData
 	useChangeLanguage(lang)
 	return (
-		<AuthProvider>
+		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
+			{/* <AuthProvider initialAuth={auth}> */}
 			<NotificationProvider>
 				<Outlet />
 				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: We set the window.env variable to the client env */}
 				<script dangerouslySetInnerHTML={{ __html: `window.env = ${JSON.stringify(clientEnv)}` }} />
 			</NotificationProvider>
-		</AuthProvider>
+			{/* </AuthProvider> */}
+		</ClientOnly>
 	)
 }
 
@@ -48,7 +53,6 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 				<Links />
 			</head>
 			<body className="h-full w-full">
-				<MainNav />
 				{/* <LanguageSwitcher /> */}
 				{children}
 				<ScrollRestoration />

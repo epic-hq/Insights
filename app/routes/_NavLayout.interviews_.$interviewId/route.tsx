@@ -6,8 +6,8 @@ import EditableTextarea from "~/components/EditableTextarea"
 import MarkdownTranscript from "~/components/MarkdownTranscript"
 import TranscriptDisplay from "~/components/TranscriptDisplay"
 import { Button } from "~/components/ui/button"
+import { db } from "~/lib/supabase/server"
 import type { Insight, Interview } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 // TODO: Clean up Transcript prop, participant name and persona more prominent
 

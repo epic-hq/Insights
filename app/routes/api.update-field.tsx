@@ -1,6 +1,6 @@
 import type { ActionFunction } from "react-router"
 
-import { db } from "~/utils/supabase.server"
+import { db } from "~/lib/supabase/server"
 
 interface Payload {
 	table: string

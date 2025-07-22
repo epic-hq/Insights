@@ -2,8 +2,8 @@ import consola from "consola"
 import { Link, type MetaFunction, useLoaderData } from "react-router"
 import { z } from "zod"
 import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
+import { db } from "~/lib/supabase/server"
 import type { OpportunityView } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = ({ params }) => {
 	return [

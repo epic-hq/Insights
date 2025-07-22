@@ -1,8 +1,8 @@
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import PersonaCard from "~/components/dashboard/PersonaCard"
+import { db } from "~/lib/supabase/server"
 import type { PersonaView } from "~/types"
-import { db } from "~/utils/supabase.server"
 
 export const meta: MetaFunction = () => {
 	return [

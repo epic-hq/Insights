@@ -1,5 +1,6 @@
 import React from "react"
 import { Link } from "react-router-dom"
+import { PATHS } from "~/paths"
 import Breadcrumbs from "./Breadcrumbs"
 
 interface BreadcrumbItem {
@@ -14,13 +15,13 @@ interface PageHeaderProps {
 	className?: string
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ title, showBreadcrumbs = true, breadcrumbs, className = "" }) => {
+const PageHeader: React.FC<PageHeaderProps> = ({ title = "", showBreadcrumbs = true, breadcrumbs, className = "" }) => {
 	return (
-		<header className={`mb-6 ${className}`}>
+		<header className={`py-2 ${className}`}>
 			<div className="px-6">
 				{/* Only show back link if breadcrumbs are hidden */}
 				{!showBreadcrumbs && (
-					<Link to="/" className="mb-4 flex items-center text-blue-600 hover:text-blue-800">
+					<Link to={PATHS.DASHBOARD} className="mb-4 flex items-center text-blue-600 hover:text-blue-800">
 						<svg
 							className="mr-1 h-5 w-5"
 							fill="none"
