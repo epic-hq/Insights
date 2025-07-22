@@ -1,16 +1,16 @@
 class ExtractedInsight {
 	name string @description("Short Text description of the insight in up to 5 words")
+	details string | null @description("Details or background that provide context around the causes of the user's pain, friction, and specifics about their behavior or desired outcomes. Multiple sentences or bullet points as needed.")
+	pain string | null @description("Pain or friction the user experiences in doing a task")
+	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
+	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
+	emotionalResponse string | null @description("The force or level of conviction of the interviewee’s feeling about this need. Low | Neutral | High")
+	underlyingMotivation string | null @description("Underlying motivation of insight")
 	category string @description("General category of insight") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
 	impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")
 	novelty int | null @description("How unique or unexpected is the insight? (1 = common expectation, 5 = breakthrough idea)")
 	jtbd string | null @description("Job to be done style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
-	details string | null @description("Details or background that provide context around the user's pain, friction, behavior or desired outcome. Multiple sentences or bullet points as needed.	")
-	underlyingMotivation string | null @description("Underlying motivation of insight")
-	pain string | null @description("Pain or friction the user experiences in doing a task")
-	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
-	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
-	emotionalResponse string | null @description("The force or level of conviction of the interviewee’s feeling about this need. Low | Neutral | High")
 	// opportunityIdeas string[] | null @description("Opportunity ideas of insight")
 	confidence int | null @description("Confidence of insight")
 	createdAt string | null @description("Created at of insight")
@@ -41,10 +41,10 @@ class Interviewee {
 class InterviewExtraction {
 	metadata InterviewMetadata
 	interviewee Interviewee
-	highImpactThemes string[] @description("List the biggest takeaways as single lines, each starting with a tag and a quick rating. Example: \"Tag: One-sentence insight (Rating: 1-5)\"")
 	insights ExtractedInsight[]
-	openQuestionsAndNextSteps string @description("What don't we know yet? What do we need to learn more about? What are the next steps we should take to validate our hypotheses or address our knowledge gaps? A bullet list of open questions and next steps in markdown format")
 	observationsAndNotes string @description("Non‑verbal cues, environment, surprising behaviours—anything that adds colour but doesn’t belong in an insight. In markdown format")
+	highImpactThemes string[] @description("List the biggest takeaways from the insights as single lines, each starting with a tag and a quick rating. Example: \"Tag: One-sentence insight (Rating: 1-5)\"")
+	openQuestionsAndNextSteps string @description("What don't we know yet? What do we need to learn more about? What are the next steps we should take to validate our hypotheses or address our knowledge gaps? A bullet list of open questions and next steps in markdown format")
 }
 
 // Sets are used to group and add structure to unstructured content; e.g. what User Journey Stages we care about, Personas, types of User Segments, etc.
@@ -62,8 +62,10 @@ class Set {
 function ExtractInsights(transcript: string, userCustomInstructions: string) -> InterviewExtraction {
   client "CustomGPTo3"
   prompt #"
-    Using the following interview transcript, extract details about the interview, interviewee and key insights that will help us understand the user's experiences, motivations and needs.
-		We will use this information to improve our products and services.
+    Using the following interview transcript, extract key statements and insights about the interview, interviewee, and their key activities, behaviors, objectives, and any pain or friction they encounter along the way.
+		Also identify desired outcomes as specifically as possible. key insights that will help us understand the user's experiences, motivations and needs.
+		We will use this information to improve our products and services, so it's important to
+		be specific and actionable.
 
 		Custom user instructions:
 		{{userCustomInstructions}}

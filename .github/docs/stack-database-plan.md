@@ -49,14 +49,31 @@ opportunities (per org)
 | id | uuid PK | `gen_random_uuid()` |
 | name | text | |
 | created_at | timestamptz | default `now()` |
+| updated_at | timestamptz | default `now()` |
 
 `user_org_memberships`
 | user_id | uuid PK ↗ auth.users.id |
 | org_id | uuid PK ↗ organizations.id |
 | role | text | `owner`, `member` |
 | joined_at | timestamptz default `now()` |
+| updated_at | timestamptz | default `now()` |
+
+`user_settings`
+| user_id | uuid PK ↗ auth.users.id |
+| org_id | uuid PK ↗ organizations.id |
+| theme | text | `light`, `dark` |
+| language | text | `en`, `es`, `fr`, `de`, `ja`, `ko`, `pt`, `ru`, `zh` |
+| title | text | e.g. `VP Product` |
+| role | text | e.g. `interviewer`, `researcher`, `manager` |
+| onboarding_completed | boolean | default `false` |
+| app_activity | jsonb | {} | e.g. {"interviews": 1, "themes": 1, "insights": 1} |
+| metadata | jsonb | {} |
+| created_at | timestamptz | default `now()` |
+| updated_at | timestamptz | default `now()` |
 
 ### 4.2  Research Projects
+
+Make one by default on org creation.
 
 `research_projects`
 | id | uuid PK |
@@ -65,6 +82,7 @@ opportunities (per org)
 | title | text |
 | description | text |
 | created_at | timestamptz |
+| updated_at | timestamptz |
 
 ### 4.3  Interviews & Media
 
@@ -72,14 +90,16 @@ opportunities (per org)
 | id | uuid PK |
 | org_id | uuid FK |
 | project_id | uuid FK ↗ research_projects.id |
+| people_id | uuid FK ↗ people.id |
 | title | text |
 | interview_date | date |
 | interviewer_id | uuid FK ↗ auth.users.id |
-| participant_pseudonym | text |
+| transcript | text |
 | segment | text |
 | duration_min | int |
 | status | text `uploaded` / `transcribed` / `processed` |
 | created_at | timestamptz |
+| updated_at | timestamptz |
 
 `media_files`
 | id | uuid PK |
@@ -92,6 +112,7 @@ opportunities (per org)
 | uploaded_by | uuid FK auth.users.id |
 | uploaded_at | timestamptz |
 
+<!-- TODO: Deprecate since we store in interviews -->
 `transcripts`
 | id | uuid PK |
 | org_id | uuid FK |
@@ -100,7 +121,10 @@ opportunities (per org)
 | source_json | jsonb |
 | created_at | timestamptz |
 
-### 4.4  Qualitative Data
+### 4.4  Qualitative Insights
+
+The focus is on identifying key statements and insights that can be used to inform product development.
+We want to identify pain points, friction, and desired outcomes the user has. These can be related or not.
 
 `insights`
 | id | uuid PK |
@@ -121,6 +145,7 @@ opportunities (per org)
 | contradictions | text |
 | embedding | vector (pgvector) NULL | semantic representation of insight text |
 | created_at | timestamptz |
+| updated_at | timestamptz |
 
 `quotes`
 | id | uuid PK |
@@ -173,7 +198,29 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
 | insight_id | uuid FK |
 | tag | text FK tags.tag |
 
-## 5. Vector Similarity (pgvector)
+### 4.8  People
+
+These are mostly going to be interviewees, or test subjects, people we observe using product in some way.
+
+`people`
+| id | uuid PK |
+| org_id | uuid FK |
+| name | text |
+| description | text |
+| segment | text |
+| persona | text |
+| age | int |
+| gender | text |
+| income | int |
+| education | text |
+| occupation | text |
+| location | text |
+| contact_info | jsonb |
+| preferences | text |
+| created_at | timestamptz |
+| updated_at | timestamptz |
+
+## 4.10 Vector Similarity (pgvector)
 
 * Enable `CREATE EXTENSION IF NOT EXISTS pgvector;` on Supabase.
 * Store `embedding` vectors for `themes` & optionally `insights`.
@@ -185,7 +232,80 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
   where embedding is null;
   ```
 
-* Scatter-plot in the UI → fetch `SELECT id, name, embedding FROM themes` and apply PCA/UMAP in client.
+## 4.11 Creation & Updates & ACLs
+
+### 4.11.1 Creation
+
+When a user signs up, they are created in `auth.users` by Supabase,
+Triggers should then:
+
+* create a default `organizations` record with `name: "My Team"` and `role: owner`.
+* create a default `user_org_memberships` record with `role: owner`.
+* create a default `user_settings` record with `theme: "dark"`, `language: "en"`, `title: ""`, `role: "interviewer"`, `onboarding_completed: false`, `app_activity: {}`, `metadata: {}`.
+* create a default `research_projects` record with `code: "001"` and `title: "My First Project"` and `org_id` linked to the default `organizations` record.
+
+### 4.11.2 Updates
+
+* Create a trigger for insert and update to set field `updated_at` to `now()`.
+* Run this trigger on all tables that have an `updated_at` field.
+
+### 4.11.3 ACLs
+
+* Row-Level Security (RLS) policies restrict CRUD to members of the same `org_id`.
+
+## 4.11.3 ACLs
+
+* Row-Level Security (RLS) policies restrict CRUD to members of the same `org_id`.
+**`insights`**, **`quotes`**, **`themes`**, **`opportunities`**, **`personas`**, **`research_projects`**, **`people`**, **`interviews`**, **`media_files`**:
+ 	* Members of the org can read, create, update, delete rows in these tables
+
+The following tables have additional policies:
+
+* **`organizations`**:
+ 	* `insert` open only to API/service role; users never create orgs directly.
+ 	* No delete by user.
+ 	* Only owner can update.
+ 	* (Prevent spam orgs.)
+
+* **`user_org_memberships`**:
+ 	* `select` owners; members see only their own row.
+ 	* `insert/delete` owners only.
+ 	* (Hide the full roster from non-admins.)
+
+* **`user_settings`**:
+ 	* Use `user_id = auth.uid()` in addition to `is_in_org(org_id)` for read/write.
+ 	* (Each user edits only their prefs.)
+
+* **`media_files`**:
+ 	* Allow `insert` when `uploaded_by = auth.uid()` and `is_in_org(org_id)`.
+ 	* (Enforce proper attribution.)
+
+* **`tags`** (global):
+ 	* Leave RLS **off** or make it read-only for everyone, insert/update restricted to service role.
+ 	* (Shared glossary.)
+
+Materialized views (`theme_counts_mv`) refresh under service role; add `for select using (is_in_org(org_id))` if it has `org_id`. (Keep isolation consistent.)
+
+* Media ACL: files stored in R2 under path `org_id/<uuid>`.  Download/stream via **signed URLs** generated by a Supabase Edge Function that validates the caller’s JWT & org membership.
+
+## 5. Routing
+
+Flatroutes in react-router 7 enabled
+
+| Syntax                         | Resulting URL / behaviour                                                                       | Built‑in?                                                         |
+| ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
+| `_index.tsx`                   | Parent URL itself (index route)                                                                 | ✔                                                                 |
+| `parent.child.tsx`             | `/parent/child` (the dot adds **/** and nests layouts)                                          | ✔ ([React Router][1])                                             |
+| `$id.tsx`                      | `/123` dynamic segment → `params.id`                                                            | ✔ ([React Router][1])                                             |
+| `($lang).page.tsx`             | `/page` **or** `/en/page` – segment wrapped in **()** is *optional*                             | ✔ ([React Router][1])                                             |
+| `_auth.login.tsx`              | `/login` but rendered inside a hidden “auth” layout (leading `_` creates a **pathless layout**) | ✔ ([React Router][1])                                             |
+| `parent_.mine.tsx`             | `/parent/mine` with **no** parent layout (trailing `_` removes layout nesting)                  | ✔ ([React Router][1])                                             |
+| `$.tsx` or `files.$.tsx`       | Splat / catch‑all (`/anything`)                                                                 | ✔ ([React Router][1])                                             |
+| `sitemap[.]xml.tsx`            | Escapes special chars → `/sitemap.xml`                                                          | ✔ ([React Router][1])                                             |
+| `folder+` (e.g. `_dashboard+`) | Treat folder as a route segment **and** let you co‑locate extra files without becoming routes   | **➕ Requires** community add‑on `remix-flat-routes` ([GitHub][2]) |
+
+[1]: https://reactrouter.com/how-to/file-route-conventions "File Route Conventions  | React Router"
+[2]: https://github.com/remix-run/remix/discussions/8473 "Nested folders and nested / non-nested routes · remix-run remix · Discussion #8473 · GitHub"
 
 ## 6. Process Interview Media & Extract Insights
 
@@ -215,6 +335,8 @@ Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboa
 2. Store vector in `insights.embedding`.
 3. Display insights clusters in Recharts Cartesian plot.
 4. Reduce dimensions to 2D. Use UMAP and DBSCAN to cluster insights by JTBD and Category. (t-SNE alternative)
+
+* Scatter-plot in the UI → fetch `SELECT id, name, embedding FROM themes` and apply PCA/UMAP in client.
 
 ### 6.5 User Notification
 
@@ -250,7 +372,7 @@ graph TD
 * pgvector enabled in initial migration.
 * Seed scripts insert default categories, sample tags, and demo personas for Storybook/testing.
 
-- [ ] Figure out how to run embedding migrations to install extensions
+* [ ] Figure out how to run embedding migrations to install extensions
 
 ---
 

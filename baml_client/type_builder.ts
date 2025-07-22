@@ -25,9 +25,9 @@ import { DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME } from "./
 export default class TypeBuilder {
     private tb: _TypeBuilder;
     
-    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "details" | "underlyingMotivation" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "confidence" | "createdAt" | "relatedTags" | "contradictions">;
+    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "details" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "underlyingMotivation" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "confidence" | "createdAt" | "relatedTags" | "contradictions">;
     
-    InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "highImpactThemes" | "insights" | "openQuestionsAndNextSteps" | "observationsAndNotes">;
+    InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
     InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
     
@@ -51,11 +51,11 @@ export default class TypeBuilder {
         });
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
-          "name","category","journeyStage","impact","novelty","jtbd","details","underlyingMotivation","pain","desiredOutcome","evidence","emotionalResponse","confidence","createdAt","relatedTags","contradictions",
+          "name","details","pain","desiredOutcome","evidence","emotionalResponse","underlyingMotivation","category","journeyStage","impact","novelty","jtbd","confidence","createdAt","relatedTags","contradictions",
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [
-          "metadata","interviewee","highImpactThemes","insights","openQuestionsAndNextSteps","observationsAndNotes",
+          "metadata","interviewee","insights","observationsAndNotes","highImpactThemes","openQuestionsAndNextSteps",
         ]);
         
         this.InterviewMetadata = this.tb.classViewer("InterviewMetadata", [

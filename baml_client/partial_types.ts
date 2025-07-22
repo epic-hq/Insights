@@ -38,17 +38,17 @@ export interface StreamState<T> {
 export namespace partial_types {
     export interface ExtractedInsight {
       name?: string | null
+      details?: string | null
+      pain?: string | null
+      desiredOutcome?: string | null
+      evidence?: string | null
+      emotionalResponse?: string | null
+      underlyingMotivation?: string | null
       category?: string | null
       journeyStage?: string | null
       impact?: number | null
       novelty?: number | null
       jtbd?: string | null
-      details?: string | null
-      underlyingMotivation?: string | null
-      pain?: string | null
-      desiredOutcome?: string | null
-      evidence?: string | null
-      emotionalResponse?: string | null
       confidence?: number | null
       createdAt?: string | null
       relatedTags: string[]
@@ -58,10 +58,10 @@ export namespace partial_types {
     export interface InterviewExtraction {
       metadata?: InterviewMetadata | null
       interviewee?: Interviewee | null
-      highImpactThemes: string[]
       insights: ExtractedInsight[]
-      openQuestionsAndNextSteps?: string | null
       observationsAndNotes?: string | null
+      highImpactThemes: string[]
+      openQuestionsAndNextSteps?: string | null
     }
     export interface InterviewMetadata {
       title?: string | null

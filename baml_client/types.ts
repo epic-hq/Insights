@@ -49,17 +49,17 @@ export function get_checks<CheckName extends string>(checks: Record<CheckName, C
 }
 export interface ExtractedInsight {
   name: string
+  details?: string | null
+  pain?: string | null
+  desiredOutcome?: string | null
+  evidence?: string | null
+  emotionalResponse?: string | null
+  underlyingMotivation?: string | null
   category: string
   journeyStage: string
   impact?: number | null
   novelty?: number | null
   jtbd?: string | null
-  details?: string | null
-  underlyingMotivation?: string | null
-  pain?: string | null
-  desiredOutcome?: string | null
-  evidence?: string | null
-  emotionalResponse?: string | null
   confidence?: number | null
   createdAt?: string | null
   relatedTags: string[]
@@ -71,10 +71,10 @@ export interface ExtractedInsight {
 export interface InterviewExtraction {
   metadata: InterviewMetadata
   interviewee: Interviewee
-  highImpactThemes: string[]
   insights: ExtractedInsight[]
-  openQuestionsAndNextSteps: string
   observationsAndNotes: string
+  highImpactThemes: string[]
+  openQuestionsAndNextSteps: string
   
 }
 

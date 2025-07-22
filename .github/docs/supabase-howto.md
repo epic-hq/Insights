@@ -37,7 +37,7 @@ export const supabase = createServerClient(
 )
 ```
 
-To Protect Routes (from server side first and in client)
+**Protected Routes** - do it from server side and redirect so you can assume on the route page they’re authenticated
 
 ```ts
 // routes/_protected.tsx
