@@ -55,45 +55,14 @@ export default function MainNav() {
 						{/* Brand */}
 						<Link to={PATHS.DASHBOARD} className="flex items-center">
 							<svg
-								className="h-8 w-8 text-blue-600"
-								viewBox="0 0 24 24"
-								fill="none"
-								aria-label="Insights Logo"
-								xmlns="http://www.w3.org/2000/svg"
-							>
-								<path
-									d="M12 2L2 7L12 12L22 7L12 2Z"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-								<path
-									d="M2 12L12 17L22 12"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-								<path
-									d="M2 17L12 22L22 17"
-									stroke="currentColor"
-									strokeWidth="2"
-									strokeLinecap="round"
-									strokeLinejoin="round"
-								/>
-							</svg>
-							<svg
-								xmlns="http://www.w3.org/2000/svg"
-								width="24"
-								height="24"
+								className="lucide lucide-scan-eye-icon h-8 w-8 text-blue-600"
 								viewBox="0 0 24 24"
 								fill="none"
 								stroke="currentColor"
-								stroke-width="2"
-								stroke-linecap="round"
-								stroke-linejoin="round"
-								class="lucide lucide-scan-eye-icon lucide-scan-eye"
+								strokeWidth="2"
+								strokeLinecap="round"
+								strokeLinejoin="round"
+								aria-label="Scan Eye Icon"
 							>
 								<path d="M3 7V5a2 2 0 0 1 2-2h2" />
 								<path d="M17 3h2a2 2 0 0 1 2 2v2" />
@@ -102,6 +71,7 @@ export default function MainNav() {
 								<circle cx="12" cy="12" r="1" />
 								<path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0" />
 							</svg>
+
 							<span className="ml-2 font-bold text-gray-900 text-xl dark:text-white">Insights</span>
 						</Link>
 

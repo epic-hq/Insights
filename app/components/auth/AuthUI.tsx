@@ -51,7 +51,7 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 				},
 				...appearance,
 			}}
-			providers={[]}
+			providers={["google"]}
 			redirectTo={redirectTo}
 		/>
 	)

@@ -10,7 +10,7 @@ export default function AuthPage() {
 					<h1 className="font-bold text-2xl text-gray-900">Get your free Insights Now</h1>
 					<p className="mt-2 text-gray-600">Sign up to access your dashboard</p>
 				</div>
-				<AuthUI redirectTo={`${origin}${PATHS.DASHBOARD}`} />
+				<AuthUI redirectTo={`${origin}${PATHS.AUTH.CALLBACK}`} />
 			</div>
 		</div>
 	)
