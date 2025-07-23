@@ -16,12 +16,38 @@ We should then run `supabase db push` to apply the migration to the database. or
 supabase gen types typescript --project-id rbginqvgkonnoktrttqv > supabase/types.ts
 ```
 
-## Functions
+## Queues
+
+Great pattern to use to offload long running tasks from the main thread, DB.
+Using for embeddings, and transcriptions (goal).
+Inspired by: [blog](https://supabase.com/docs/guides/ai/automatic-embeddings?queryGroups=database-method&database-method=dashboard)
+
+### pgmq
+
+[pgmq](https://github.com/pgmq/pgmq)
+[supabase quick start](https://supabase.com/blog/supabase-queues)
+
+### Cron Jobs
+
+[supabase quick start](https://supabase.com/blog/supabase-cron)
+
+## Edge Functions
+
+[quickstart](https://supabase.com/docs/guides/functions/quickstart)
 
 Run deno locally. `supabase functions serve --env-file .env`
 But note we can't run pgmq in local setup as it's not included in the supabase docker image that runs locally. Future we could build custom docker with it. Opting to run it in the cloud for now.
 
-## Storage
+## Vault
+
+[supabase quick start](https://supabase.com/blog/supabase-vault)
+
+## Object Storage
+
+For big objects, use cloudflare R2. TODO: setup.
+Temp sample data in public bucket here: <https://pub-42266a6f0dc2457390b9226bc379c90d.r2.dev/sample_interviews/1007%20Participant%207.m4a>
+
+How To Setup: [ref](https://developers.cloudflare.com/r2/buckets/public-buckets/)
 
 ## Auth with JWT-Signing in Remix/ReactRouter7
 
