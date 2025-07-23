@@ -61,9 +61,9 @@ export interface ExtractedInsight {
   novelty?: number | null
   jtbd?: string | null
   confidence?: number | null
-  createdAt?: string | null
-  relatedTags: string[]
   contradictions?: string | null
+  relatedTags: string[]
+  createdAt?: string | null
   
   [key: string]: any;
 }

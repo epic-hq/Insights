@@ -13,9 +13,9 @@ class ExtractedInsight {
 	jtbd string | null @description("Job to be done style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
 	// opportunityIdeas string[] | null @description("Opportunity ideas of insight")
 	confidence int | null @description("Confidence of insight")
-	createdAt string | null @description("Created at of insight")
-	relatedTags string[] @description("Related tags or keywords to the insight. Make tags conceptual, not UI feature names (e.g. social_accountability, not leaderboard)")
 	contradictions string | null @description("Potential contradictions and themes explicitly or implicitly by omission, things that the interviewee doesn’t say, e.g. given an opportunity to discuss A,B,C, they only discussed A. Does the user discuss opposing claims?")
+	relatedTags string[] @description("Related tags or keywords to the insight. Make tags conceptual, not UI feature names (e.g. social_accountability, not leaderboard)")
+	createdAt string | null @description("Created at of insight")
 }
 
 class InterviewMetadata {

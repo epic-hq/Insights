@@ -10,26 +10,31 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 	const { lang, clientEnv } = context
 	// Get server-side authentication state
 	const { client: supabase } = getServerClient(request)
-	const {
-		data: { user },
-	} = await supabase.auth.getUser()
-	const _claims = await supabase.auth.getClaims()
+	const { data: jwt } = await supabase.auth.getClaims()
 	const signOut = async () => {
 		const supabase = getSupabaseClient()
 		await supabase.auth.signOut()
 	}
 
-	if (!user) {
+	if (!jwt?.claims) {
 		return redirect("/login")
 	}
+
+	// TODO rename accounts
+	const { data: organizations } = await supabase
+		.from("organizations")
+		.select("*, projects(*)")
+		.eq("user_id", jwt?.claims.user_id)
+		.order("created_at", { ascending: false })
 
 	return {
 		lang,
 		clientEnv,
 		auth: {
-			user,
+			user: jwt?.claims,
 		},
 		signOut,
+		organizations,
 	}
 }
 
@@ -54,11 +59,11 @@ function _Breadcrumbs() {
 }
 
 export default function NavLayout() {
-	const { auth } = useLoaderData<typeof loader>()
+	const { auth, organizations } = useLoaderData<typeof loader>()
 	// consola.log("AuthProvider  user:", auth.user)
 	return (
 		// <div className="mx-auto max-w-[1440px] pt-4">
-		<AuthProvider user={auth.user}>
+		<AuthProvider user={auth.user} organizations={organizations}>
 			<MainNav />
 			<PageHeader title="" />
 			<Outlet />

@@ -1,6 +1,6 @@
--- 64_embedding_pipeline.sql
+-- queues.sql
+-- setup queue for embeddings and transcriptions separately
 
--- embedding_extensions.sql
 set search_path to public;
 create extension if not exists vector;
 create extension if not exists pg_net;

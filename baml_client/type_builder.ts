@@ -25,7 +25,7 @@ import { DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME } from "./
 export default class TypeBuilder {
     private tb: _TypeBuilder;
     
-    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "details" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "underlyingMotivation" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "confidence" | "createdAt" | "relatedTags" | "contradictions">;
+    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "details" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "underlyingMotivation" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "confidence" | "contradictions" | "relatedTags" | "createdAt">;
     
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
@@ -51,7 +51,7 @@ export default class TypeBuilder {
         });
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
-          "name","details","pain","desiredOutcome","evidence","emotionalResponse","underlyingMotivation","category","journeyStage","impact","novelty","jtbd","confidence","createdAt","relatedTags","contradictions",
+          "name","details","pain","desiredOutcome","evidence","emotionalResponse","underlyingMotivation","category","journeyStage","impact","novelty","jtbd","confidence","contradictions","relatedTags","createdAt",
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [

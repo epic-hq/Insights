@@ -2,7 +2,6 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
-import { db } from "~/lib/supabase/server"
 
 // Remix action to handle multipart/form-data file uploads, stream the file to
 // AssemblyAI's /upload endpoint, then run the existing transcript->insights pipeline.
@@ -15,6 +14,12 @@ export async function action({ request }: ActionFunctionArgs) {
 	const file = formData.get("file") as File | null
 	if (!file) {
 		return Response.json({ error: "No file uploaded" }, { status: 400 })
+	}
+	const body = await request.json()
+	const orgId = body.orgId || ""
+	const projectId = body.projectId || ""
+	if (!orgId || !projectId) {
+		return Response.json({ error: "No orgId or projectId provided" }, { status: 400 })
 	}
 
 	try {
@@ -41,47 +46,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		const transcript = await transcribeAudioFromUrl(upload_url)
 		consola.log("Transcript: ", transcript)
 
-		// 3. Determine org & project (TODO: use session). For now static org and first project.
-		const orgId = "00000000-0000-0000-0000-000000000001"
-		let projectId: string | null = null
-		const { data: projectRow, error: projErr } = await db
-			.from("research_projects")
-			.select("id")
-			.eq("org_id", orgId)
-			.order("created_at", { ascending: false })
-			.limit(1)
-			.maybeSingle()
-		if (projErr) throw new Error(`Failed fetching projects: ${projErr.message}`)
-
-		if (projectRow?.id) {
-			projectId = projectRow.id as string
-		} else {
-			// create temp project
-			const slug = `temp_${Date.now()}`
-			const { data: newProj, error: createErr } = await db
-				.from("research_projects")
-				.insert({
-					org_id: orgId,
-					code: slug,
-					title: "Untitled Project",
-					description: "Auto-created by upload flow",
-				})
-				.select("id")
-				.single()
-			if (createErr || !newProj) throw new Error(`Failed creating temp project: ${createErr?.message}`)
-			projectId = newProj.id as string
-		}
-
 		const metadata = {
 			orgId,
 			projectId,
-
 			interviewTitle: `Interview - ${new Date().toISOString()}`,
 			participantName: "Anonymous",
 			segment: "Unknown",
 		}
 
-		// 4. Run insight extraction + store in Supabase
+		// 3. Run insight extraction + store in Supabase
 		const result = await processInterviewTranscript(metadata, transcript)
 
 		return Response.json({ success: true, insights: result.stored })

@@ -9,9 +9,11 @@ interface AddInterviewProps {
 	open: boolean
 	onClose: () => void
 	onSuccess?: (result: ProcessingResult) => void
+	orgId: string
+	projectId: string
 }
 
-export default function AddInterview({ open, onClose, onSuccess }: AddInterviewProps) {
+export default function AddInterview({ open, onClose, onSuccess, orgId, projectId }: AddInterviewProps) {
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [processingMessage, setProcessingMessage] = useState("")
 	const [error, setError] = useState<string | null>(null)
@@ -31,6 +33,10 @@ export default function AddInterview({ open, onClose, onSuccess }: AddInterviewP
 		try {
 			const formData = new FormData()
 			formData.append("file", file)
+
+			// TODO: Get orgId and projectId from AuthContext
+			formData.append("orgId", orgId)
+			formData.append("projectId", projectId)
 
 			setProcessingMessage("Processing transcript with AI...")
 			const response = await fetch("/api/upload-file", {
