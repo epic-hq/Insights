@@ -42,7 +42,49 @@ But note we can't run pgmq in local setup as it's not included in the supabase d
 
 [supabase quick start](https://supabase.com/blog/supabase-vault)
 
-## Object Storage
+```sql
+-- show all secrets
+select *
+from vault.decrypted_secrets
+order by created_at desc
+limit 3;
+```
+
+## Triggers & Functions
+
+Useful queries to troubleshoot. Show all triggers:
+
+```sql
+SELECT
+  event_object_table AS table_name,
+  trigger_name,
+  action_timing AS timing,
+  event_manipulation AS event,
+  action_statement AS function
+FROM information_schema.triggers
+WHERE trigger_schema = 'public'
+ORDER BY table_name, trigger_name;
+```
+
+Show all functions:
+
+```sql
+SELECT
+  n.nspname AS schema,
+  p.proname AS function_name,
+  pg_catalog.pg_get_function_identity_arguments(p.oid) AS arguments,
+  pg_catalog.pg_get_function_result(p.oid) AS return_type,
+  l.lanname AS language,
+  pg_catalog.pg_get_functiondef(p.oid) AS definition
+FROM pg_proc p
+JOIN pg_namespace n ON p.pronamespace = n.oid
+JOIN pg_language l ON p.prolang = l.oid
+WHERE n.nspname = 'public'
+  AND p.prokind = 'f'  -- 'f' = function, 'p' = procedure, 'a' = aggregate
+ORDER BY function_name;
+```
+
+### Object Storage
 
 For big objects, use cloudflare R2. TODO: setup.
 Temp sample data in public bucket here: <https://pub-42266a6f0dc2457390b9226bc379c90d.r2.dev/sample_interviews/1007%20Participant%207.m4a>
@@ -128,4 +170,12 @@ useEffect(() => {
   })
   return () => listener.subscription.unsubscribe()
 }, [])
+```
+
+## Query details
+
+Running queries across schemas can be difficult with joins and foreign keys. Had to add `account` to the schemas array in config.toml to expose the account schema to PostgREST.
+
+```toml
+schemas = ["public", "graphql_public", "accounts", "pgmq_public"]
 ```

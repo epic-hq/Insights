@@ -258,7 +258,7 @@ create or replace function accounts.has_role_on_account(account_id uuid, account
     returns boolean
     language sql
     security definer
-    set search_path = public
+    set search_path = accounts, public
 as
 $$
 select exists(

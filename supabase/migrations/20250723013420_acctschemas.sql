@@ -240,7 +240,7 @@ CREATE OR REPLACE FUNCTION accounts.has_role_on_account(account_id uuid, account
  RETURNS boolean
  LANGUAGE sql
  SECURITY DEFINER
- SET search_path TO 'public'
+ SET search_path TO 'accounts', 'public'
 AS $function$
 select exists(
                select 1

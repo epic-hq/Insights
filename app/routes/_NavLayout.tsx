@@ -1,3 +1,4 @@
+import consola from "consola"
 import { Outlet, redirect, useLoaderData, useMatches } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
@@ -20,12 +21,16 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 		return redirect("/login")
 	}
 
-	// TODO rename accounts
-	const { data: organizations } = await supabase
-		.from("organizations")
-		.select("*, projects(*)")
-		.eq("user_id", jwt?.claims.user_id)
-		.order("created_at", { ascending: false })
+	// Get user's accounts and projects using the new cloud function
+	// This function is now deployed to the cloud instance with proper schema access
+	const { data: accounts, error: accountsError } = await supabase.rpc("get_user_accounts")
+
+	if (accountsError) {
+		consola.error("Get user accounts error:", accountsError)
+		throw new Response(accountsError.message, { status: 500 })
+	}
+
+	consola.log("Projects data:", accounts?.[0].projects)
 
 	return {
 		lang,
@@ -34,7 +39,7 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 			user: jwt?.claims,
 		},
 		signOut,
-		organizations,
+		accounts,
 	}
 }
 
@@ -59,11 +64,11 @@ function _Breadcrumbs() {
 }
 
 export default function NavLayout() {
-	const { auth, organizations } = useLoaderData<typeof loader>()
+	const { auth, accounts } = useLoaderData<typeof loader>()
 	// consola.log("AuthProvider  user:", auth.user)
 	return (
 		// <div className="mx-auto max-w-[1440px] pt-4">
-		<AuthProvider user={auth.user} organizations={organizations}>
+		<AuthProvider user={auth.user} organizations={accounts}>
 			<MainNav />
 			<PageHeader title="" />
 			<Outlet />
