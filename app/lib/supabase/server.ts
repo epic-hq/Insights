@@ -45,13 +45,13 @@ export async function getAuthenticatedUser(request: Request) {
 
 	try {
 		const {
-			data: { user },
+			data: claims,
 			error,
-		} = await supabase.client.auth.getUser()
-		if (error || !user) {
+		} = await supabase.client.auth.getClaims()
+		if (error || !claims) {
 			return null
 		}
-		return user
+		return claims.claims
 	} catch {
 		return null
 	}

@@ -3,7 +3,7 @@
 create table if not exists opportunities (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
-	project_id uuid not null references research_projects (id) on delete cascade,
+	project_id uuid not null references projects (id) on delete cascade,
   title text not null,
   owner_id uuid references auth.users (id),
   kanban_status text check (kanban_status in ('Explore','Validate','Build')),

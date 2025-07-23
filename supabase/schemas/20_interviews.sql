@@ -13,7 +13,7 @@ create type interview_status as enum (
 create table if not exists interviews (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
-  project_id uuid not null references research_projects (id) on delete cascade,
+  project_id uuid not null references projects (id) on delete cascade,
   title text,
   interview_date date,
   interviewer_id uuid references auth.users (id),

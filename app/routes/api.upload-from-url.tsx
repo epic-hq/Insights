@@ -38,7 +38,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// 2. Mock metadata (replace later with real user/org info)
 		const metadata = {
-			orgId: "00000000-0000-0000-0000-000000000001",
+			accountId: "00000000-0000-0000-0000-000000000001",
 			projectId: "00000000-0000-0000-0000-000000000002",
 			interviewTitle: `Interview - ${new Date().toISOString()}`,
 			participantName: "Anonymous",

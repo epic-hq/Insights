@@ -21,7 +21,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		// TODO: Replace with actual user/org context from session
 		// For now, using placeholder values that match DB schema requirements
 		const metadata = {
-			orgId: "00000000-0000-0000-0000-000000000001", // Default org UUID
+			accountId: "00000000-0000-0000-0000-000000000001", // Default org UUID
 			projectId: "00000000-0000-0000-0000-000000000002", // Default project UUID
 			interviewTitle: `Interview - ${file.name}`,
 			interviewDate: new Date().toISOString().split("T")[0],

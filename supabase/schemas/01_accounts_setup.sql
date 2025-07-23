@@ -54,6 +54,24 @@ $$
 $$;
 
 /**
+  accounts.generate_token(length)
+  Generates a secure token - used internally for invitation tokens
+  but could be used elsewhere.  Check out the invitations table for more info on
+  how it's used
+ */
+CREATE OR REPLACE FUNCTION accounts.generate_token(length int)
+    RETURNS text AS
+$$
+select regexp_replace(replace(
+                              replace(replace(replace(encode(gen_random_bytes(length)::bytea, 'base64'), '/', ''), '+',
+                                              ''), '\\', ''),
+                              '=',
+                              ''), E'[\\n\\r]+', '', 'g');
+$$ LANGUAGE sql;
+
+grant execute on function accounts.generate_token(int) to authenticated;
+
+/**
   * -------------------------------------------------------
   * Section - accounts settings
   * -------------------------------------------------------
@@ -166,21 +184,3 @@ BEGIN
     RETURN NEW;
 END
 $$ LANGUAGE plpgsql;
-
-/**
-  accounts.generate_token(length)
-  Generates a secure token - used internally for invitation tokens
-  but could be used elsewhere.  Check out the invitations table for more info on
-  how it's used
- */
-CREATE OR REPLACE FUNCTION accounts.generate_token(length int)
-    RETURNS text AS
-$$
-select regexp_replace(replace(
-                              replace(replace(replace(encode(gen_random_bytes(length)::bytea, 'base64'), '/', ''), '+',
-                                              ''), '\', ''),
-                              '=',
-                              ''), E'[\\n\\r]+', '', 'g');
-$$ LANGUAGE sql;
-
-grant execute on function accounts.generate_token(int) to authenticated;

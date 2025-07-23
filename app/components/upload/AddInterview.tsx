@@ -9,11 +9,11 @@ interface AddInterviewProps {
 	open: boolean
 	onClose: () => void
 	onSuccess?: (result: ProcessingResult) => void
-	orgId: string
+	accountId: string
 	projectId: string
 }
 
-export default function AddInterview({ open, onClose, onSuccess, orgId, projectId }: AddInterviewProps) {
+export default function AddInterview({ open, onClose, onSuccess, accountId, projectId }: AddInterviewProps) {
 	const [isProcessing, setIsProcessing] = useState(false)
 	const [processingMessage, setProcessingMessage] = useState("")
 	const [error, setError] = useState<string | null>(null)
@@ -34,8 +34,8 @@ export default function AddInterview({ open, onClose, onSuccess, orgId, projectI
 			const formData = new FormData()
 			formData.append("file", file)
 
-			// TODO: Get orgId and projectId from AuthContext
-			formData.append("orgId", orgId)
+			// TODO: Get accountId and projectId from AuthContext
+			formData.append("accountId", accountId)
 			formData.append("projectId", projectId)
 
 			setProcessingMessage("Processing transcript with AI...")

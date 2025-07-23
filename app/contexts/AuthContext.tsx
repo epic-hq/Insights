@@ -8,7 +8,7 @@ interface AuthContextType {
 	user: JwtPayload | null
 	loading: boolean
 	signOut: () => Promise<void>
-	orgId: string
+	accountId: string
 	projectId: string
 }
 
@@ -16,7 +16,7 @@ const AuthContext = createContext<AuthContextType>({
 	user: null,
 	loading: true,
 	signOut: async () => {},
-	orgId: "",
+	accountId: "",
 	projectId: "",
 })
 
@@ -43,14 +43,14 @@ export function AuthProvider({ children, user, organizations }: AuthProviderProp
 
 	const params = useParams()
 
-	const orgId = useMemo(() => {
-		if (!params.orgId) {
-			consola.error("No orgId provided")
-			// TODO: Get orgId from supabase
+	const accountId = useMemo(() => {
+		if (!params.accountId) {
+			consola.error("No accountId provided")
+			// TODO: Get accountId from supabase
 			return ""
 		}
-		return params.orgId
-	}, [params.orgId])
+		return params.accountId
+	}, [params.accountId])
 	const projectId = useMemo(() => {
 		if (!params.projectId) {
 			return ""
@@ -75,7 +75,7 @@ export function AuthProvider({ children, user, organizations }: AuthProviderProp
 		user: user || null,
 		loading,
 		signOut,
-		orgId,
+		accountId,
 		projectId,
 		organizations,
 	}

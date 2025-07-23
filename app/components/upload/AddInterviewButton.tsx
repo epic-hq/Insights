@@ -6,7 +6,7 @@ import AddInterview from "./AddInterview"
 
 export default function AddInterviewButton() {
 	const [open, setOpen] = useState(false)
-	const { orgId, projectId } = useAuth()
+	const { accountId, projectId } = useAuth()
 
 	const handleSuccess = (_result: ProcessingResult) => {
 		// You could navigate to the new interview here once API returns the id
@@ -15,11 +15,11 @@ export default function AddInterviewButton() {
 	return (
 		<>
 			<Button onClick={() => setOpen(true)}>Add Interview</Button>
-			<AddInterview 
-				open={open} 
-				onClose={() => setOpen(false)} 
+			<AddInterview
+				open={open}
+				onClose={() => setOpen(false)}
 				onSuccess={handleSuccess}
-				orgId={orgId}
+				accountId={accountId}
 				projectId={projectId}
 			/>
 		</>

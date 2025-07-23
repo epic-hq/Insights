@@ -1,19 +1,38 @@
--- Sample seed data for AI Learning App research project
+-- Sample seed data for Insights application
 -- Uses fixed UUIDs so front-end can reference deterministically
 
--- 1. Organizations ------------------------------------------------------------
-insert into public.organizations (id, name)
-values
-  ('00000000-0000-0000-0000-000000000001', 'StudySmart Inc.');
+-- 1. Create users in auth schema ----------------------------------------------
+-- Note: In production, users would be created through Supabase Auth, not direct inserts
+-- These are placeholder users for development purposes only
+INSERT INTO auth.users (id, email, encrypted_password, email_confirmed_at, created_at, updated_at, raw_app_meta_data, raw_user_meta_data)
+VALUES 
+  ('00000000-0000-0000-0000-000000000001', 'owner@example.com', '$2a$10$abcdefghijklmnopqrstuvwxyz', NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{"name":"Account Owner"}'),
+  ('00000000-0000-0000-0000-000000000002', 'member@example.com', '$2a$10$abcdefghijklmnopqrstuvwxyz', NOW(), NOW(), NOW(), '{"provider":"email","providers":["email"]}', '{"name":"Team Member"}');
 
--- 2. Research Projects ---------------------------------------------------------
-insert into public.research_projects (id, org_id, code, title, description)
-values
-  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'STUDY-AI-2025', 'AI Learning App Student Study Habits', 'Qualitative research interviews with students to understand study patterns when using AI-assisted learning.');
+-- 2. Create account in accounts schema ---------------------------------------
+INSERT INTO accounts.accounts (id, primary_owner_user_id, name, slug, personal_account, created_at, updated_at, created_by, updated_by)
+VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'StudySmart Inc.', 'studysmart', false, NOW(), NOW(), '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001');
 
--- 3. Interviews ---------------------------------------------------------------
-insert into public.interviews (id, org_id, project_id, title, interview_date, participant_pseudonym, segment, duration_min, status, transcript)
-values
+-- 3. Create account members --------------------------------------------------
+INSERT INTO accounts.account_user (account_id, user_id, account_role)
+VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'owner'),
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'member');
+
+-- 4. Create account settings -------------------------------------------------
+INSERT INTO public.account_settings (id, account_id, title, onboarding_completed, created_at, updated_at, created_by, updated_by)
+VALUES
+  ('00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'StudySmart Settings', true, NOW(), NOW(), '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001');
+
+-- 5. Create projects ---------------------------------------------------------
+INSERT INTO public.projects (id, account_id, title, description, status, created_at, updated_at)
+VALUES
+  ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'AI Learning App Student Study Habits', 'Qualitative research interviews with students to understand study patterns when using AI-assisted learning.', 'active', NOW(), NOW());
+
+-- 6. Create interviews -------------------------------------------------------
+INSERT INTO public.interviews (id, account_id, project_id, title, interview_date, participant_pseudonym, segment, duration_min, status, transcript)
+VALUES
   ('20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'Interview – Freshman JC Student', '2025-06-10', '"Kai"', 'Undergraduate', 45, 'transcribed',
 	$$
 	Kai K, College Freshman Rick 6/11
@@ -527,6 +546,20 @@ Speaker B [49:33 - 49:36]: Okay. Take care. Thank you.
 
 
 	$$);
+
+-- 7. Create insights ---------------------------------------------------------
+INSERT INTO public.insights (id, account_id, interview_id, name, category, journey_stage, impact, novelty, jtbd, details, evidence, confidence, related_tags, created_at, updated_at, created_by, updated_by)
+VALUES
+  ('30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'AI as Writing Assistant', 'Writing Process', 'Execution', 4, 3, 'Help me connect ideas in my writing when I lose my train of thought', 'Students use AI to connect ideas and evidence in their writing when they get stuck', 'Student uses AI to help connect evidence with analysis in essays when they lose their train of thought', 'high', ARRAY['writing', 'essays', 'academic'], NOW(), NOW(), '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001'),
+  ('30000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'AI for Math Problem Solving', 'Problem Solving', 'Learning', 5, 4, 'Show me step-by-step solutions to math problems I am struggling with', 'Students use AI to learn math problem-solving techniques by requesting step-by-step solutions', 'Student mentions using AI to get step-by-step solutions for math problems they cannot solve, then applying those techniques to other problems', 'high', ARRAY['math', 'problem-solving', 'learning'], NOW(), NOW(), '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001'),
+  ('30000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', '20000000-0000-0000-0000-000000000001', 'Side-by-Side Document Comparison', 'Workflow', 'Evaluation', 3, 2, 'Help me compare AI suggestions with my own work', 'Students work with multiple documents side-by-side to compare their work with AI suggestions', 'Student describes using separate Google Docs to compare their original writing with AI-assisted versions', 'medium', ARRAY['workflow', 'comparison', 'editing'], NOW(), NOW(), '00000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001');
+
+-- 8. Create comments ---------------------------------------------------------
+INSERT INTO public.comments (id, account_id, insight_id, user_id, content, created_at, updated_at)
+VALUES
+  ('40000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'This matches what we heard in other interviews with English majors.', NOW(), NOW()),
+  ('40000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', 'We should explore how this connects to the revision process.', NOW(), NOW()),
+  ('40000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', '30000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'This is a high-impact insight that could inform our tutoring feature.', NOW(), NOW());
 
 -- 4. Transcripts (simplified) --------------------------------------------------
 -- Merged into interviews

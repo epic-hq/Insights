@@ -15,11 +15,13 @@ export async function action({ request }: ActionFunctionArgs) {
 	if (!file) {
 		return Response.json({ error: "No file uploaded" }, { status: 400 })
 	}
-	const body = await request.json()
-	const orgId = body.orgId || ""
-	const projectId = body.projectId || ""
-	if (!orgId || !projectId) {
-		return Response.json({ error: "No orgId or projectId provided" }, { status: 400 })
+	// const body = formData.get("body") as string | null
+	const accountId = (formData.get("accountId") as string) || ""
+	const projectId = (formData.get("projectId") as string) || ""
+	consola.log("formdata ", formData, accountId, projectId)
+
+	if (!accountId || !projectId) {
+		return Response.json({ error: "No accountId or projectId provided" }, { status: 400 })
 	}
 
 	try {
@@ -47,7 +49,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.log("Transcript: ", transcript)
 
 		const metadata = {
-			orgId,
+			accountId,
 			projectId,
 			interviewTitle: `Interview - ${new Date().toISOString()}`,
 			participantName: "Anonymous",

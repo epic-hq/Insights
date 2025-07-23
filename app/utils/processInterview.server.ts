@@ -13,7 +13,7 @@ export interface ProcessingResult {
 }
 
 export interface InterviewMetadata {
-	orgId: string
+	accountId: string
 	projectId?: string
 	interviewTitle?: string
 	interviewDate?: string
@@ -60,7 +60,7 @@ export async function processInterviewTranscript(
 
 	// 2. First, create the interview record
 	const interviewData: InterviewInsert = {
-		org_id: metadata.orgId,
+		account_id: metadata.accountId,
 		title: metadata.interviewTitle || "Untitled Interview",
 		interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
 		participant_pseudonym: metadata.participantName || "Anonymous",
@@ -90,7 +90,7 @@ export async function processInterviewTranscript(
 
 	// 3. Transform insights into DB rows - map BAML types to database schema
 	const rows: InsightInsert[] = insights.map((i) => ({
-		org_id: metadata.orgId,
+		account_id: metadata.accountId,
 		interview_id: interviewRecord.id,
 		name: i.name, // Database uses 'name' field, not 'tag'
 		category: i.category,
@@ -115,8 +115,8 @@ export async function processInterviewTranscript(
 
 	// 4.1 Insert interviewee if present
 	if (interviewee) {
-		await db.from("interviewee").insert({
-			org_id: metadata.orgId,
+		await db.from("people").insert({
+			account_id: metadata.accountId,
 			interview_id: interviewRecord.id,
 			name: interviewee.name || null,
 			persona: interviewee.persona || null,

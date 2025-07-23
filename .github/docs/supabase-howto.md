@@ -1,12 +1,20 @@
 # Supabase How To
 
-## Schema
+## Supabase Declarative Schemas
 
-create in supabase/schemas
+All data definitions start in this manner, defining a schema in `supabase/schemas`, then letting supabase generate migration files. [docs](https://supabase.com/docs/guides/local-development/declarative-database-schemas)
 
-`supabase db diff -f description` to generate a migration. This will create a new migration file in the `supabase/migrations` directory. We should then run `supabase db push` to apply the migration to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.
+`supabase db diff -f description` to generate a migration. This will create a new migration file in the `supabase/migrations` directory. then `supabase migrations up` to apply the migration to the local database.
+
+We should then run `supabase db push` to apply the migration to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.
 
 `supabase db push --linked` to apply the migration to the database in the cloud.
+
+## Generate types for Typescript
+
+```bash
+supabase gen types typescript --project-id rbginqvgkonnoktrttqv > supabase/types.ts
+```
 
 ## Functions
 

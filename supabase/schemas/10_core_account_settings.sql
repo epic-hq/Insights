@@ -1,3 +1,6 @@
+-- Ensure accounts schema exists first
+CREATE SCHEMA IF NOT EXISTS accounts;
+
 create table
   public.account_settings (
   id uuid primary key default gen_random_uuid(),

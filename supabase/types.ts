@@ -14,31 +14,73 @@ export type Database = {
   }
   public: {
     Tables: {
+      account_settings: {
+        Row: {
+          account_id: string | null
+          app_activity: Json
+          created_at: string
+          created_by: string | null
+          id: string
+          metadata: Json
+          onboarding_completed: boolean
+          role: string | null
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          app_activity?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          onboarding_completed?: boolean
+          role?: string | null
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          app_activity?: Json
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          metadata?: Json
+          onboarding_completed?: boolean
+          role?: string | null
+          title?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       comments: {
         Row: {
+          account_id: string
           content: string
           created_at: string
           id: string
           insight_id: string
-          org_id: string
           updated_at: string
           user_id: string
         }
         Insert: {
+          account_id: string
           content: string
           created_at?: string
           id?: string
           insight_id: string
-          org_id: string
           updated_at?: string
           user_id: string
         }
         Update: {
+          account_id?: string
           content?: string
           created_at?: string
           id?: string
           insight_id?: string
-          org_id?: string
           updated_at?: string
           user_id?: string
         }
@@ -50,47 +92,11 @@ export type Database = {
             referencedRelation: "insights"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "comments_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      insight_tags: {
-        Row: {
-          insight_id: string
-          tag: string
-        }
-        Insert: {
-          insight_id: string
-          tag: string
-        }
-        Update: {
-          insight_id?: string
-          tag?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "insight_tags_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "insight_tags_tag_fkey"
-            columns: ["tag"]
-            isOneToOne: false
-            referencedRelation: "tags"
-            referencedColumns: ["tag"]
-          },
         ]
       }
       insights: {
         Row: {
+          account_id: string
           category: string
           confidence: string | null
           contradictions: string | null
@@ -109,12 +115,12 @@ export type Database = {
           name: string
           novelty: number | null
           opportunity_ideas: string[] | null
-          org_id: string
           pain: string | null
           related_tags: string[] | null
           updated_at: string
         }
         Insert: {
+          account_id: string
           category: string
           confidence?: string | null
           contradictions?: string | null
@@ -133,12 +139,12 @@ export type Database = {
           name: string
           novelty?: number | null
           opportunity_ideas?: string[] | null
-          org_id: string
           pain?: string | null
           related_tags?: string[] | null
           updated_at?: string
         }
         Update: {
+          account_id?: string
           category?: string
           confidence?: string | null
           contradictions?: string | null
@@ -157,7 +163,6 @@ export type Database = {
           name?: string
           novelty?: number | null
           opportunity_ideas?: string[] | null
-          org_id?: string
           pain?: string | null
           related_tags?: string[] | null
           updated_at?: string
@@ -170,71 +175,11 @@ export type Database = {
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
-          {
-            foreignKeyName: "insights_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      interviewee: {
-        Row: {
-          contact_info: Json | null
-          created_at: string
-          id: string
-          interview_id: string | null
-          name: string | null
-          org_id: string
-          participant_description: string | null
-          persona: string | null
-          segment: string | null
-          updated_at: string
-        }
-        Insert: {
-          contact_info?: Json | null
-          created_at?: string
-          id?: string
-          interview_id?: string | null
-          name?: string | null
-          org_id: string
-          participant_description?: string | null
-          persona?: string | null
-          segment?: string | null
-          updated_at?: string
-        }
-        Update: {
-          contact_info?: Json | null
-          created_at?: string
-          id?: string
-          interview_id?: string | null
-          name?: string | null
-          org_id?: string
-          participant_description?: string | null
-          persona?: string | null
-          segment?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "interviewee_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "interviews"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "interviewee_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
         ]
       }
       interviews: {
         Row: {
+          account_id: string
           created_at: string
           duration_min: number | null
           high_impact_themes: string[] | null
@@ -243,7 +188,6 @@ export type Database = {
           interviewer_id: string | null
           observations_and_notes: string | null
           open_questions_and_next_steps: string | null
-          org_id: string
           participant_pseudonym: string | null
           project_id: string
           segment: string | null
@@ -254,6 +198,7 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          account_id: string
           created_at?: string
           duration_min?: number | null
           high_impact_themes?: string[] | null
@@ -262,7 +207,6 @@ export type Database = {
           interviewer_id?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
-          org_id: string
           participant_pseudonym?: string | null
           project_id: string
           segment?: string | null
@@ -273,6 +217,7 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          account_id?: string
           created_at?: string
           duration_min?: number | null
           high_impact_themes?: string[] | null
@@ -281,7 +226,6 @@ export type Database = {
           interviewer_id?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
-          org_id?: string
           participant_pseudonym?: string | null
           project_id?: string
           segment?: string | null
@@ -293,361 +237,283 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "interviews_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "interviews_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "research_projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      media_files: {
-        Row: {
-          file_name: string
-          id: string
-          interview_id: string | null
-          mime_type: string
-          org_id: string
-          r2_path: string
-          size_bytes: number | null
-          uploaded_at: string
-          uploaded_by: string | null
-          url: string | null
-        }
-        Insert: {
-          file_name: string
-          id?: string
-          interview_id?: string | null
-          mime_type: string
-          org_id: string
-          r2_path: string
-          size_bytes?: number | null
-          uploaded_at?: string
-          uploaded_by?: string | null
-          url?: string | null
-        }
-        Update: {
-          file_name?: string
-          id?: string
-          interview_id?: string | null
-          mime_type?: string
-          org_id?: string
-          r2_path?: string
-          size_bytes?: number | null
-          uploaded_at?: string
-          uploaded_by?: string | null
-          url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "media_files_interview_id_fkey"
-            columns: ["interview_id"]
-            isOneToOne: false
-            referencedRelation: "interviews"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "media_files_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
       }
       opportunities: {
         Row: {
+          account_id: string
           created_at: string
           id: string
           kanban_status: string | null
-          org_id: string
           owner_id: string | null
+          project_id: string
           related_insight_ids: string[] | null
           title: string
           updated_at: string
         }
         Insert: {
+          account_id: string
           created_at?: string
           id?: string
           kanban_status?: string | null
-          org_id: string
           owner_id?: string | null
+          project_id: string
           related_insight_ids?: string[] | null
           title: string
           updated_at?: string
         }
         Update: {
+          account_id?: string
           created_at?: string
           id?: string
           kanban_status?: string | null
-          org_id?: string
           owner_id?: string | null
+          project_id?: string
           related_insight_ids?: string[] | null
           title?: string
           updated_at?: string
         }
         Relationships: [
           {
-            foreignKeyName: "opportunities_org_id_fkey"
-            columns: ["org_id"]
+            foreignKeyName: "opportunities_project_id_fkey"
+            columns: ["project_id"]
             isOneToOne: false
-            referencedRelation: "organizations"
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
       }
-      organizations: {
+      people: {
         Row: {
+          account_id: string | null
+          age: number | null
+          contact_info: Json | null
           created_at: string
+          description: string | null
+          education: string | null
+          gender: string | null
           id: string
-          name: string
+          income: number | null
+          location: string | null
+          name: string | null
+          occupation: string | null
+          persona: string | null
+          preferences: string | null
+          segment: string | null
           updated_at: string
         }
         Insert: {
+          account_id?: string | null
+          age?: number | null
+          contact_info?: Json | null
           created_at?: string
+          description?: string | null
+          education?: string | null
+          gender?: string | null
           id?: string
-          name: string
+          income?: number | null
+          location?: string | null
+          name?: string | null
+          occupation?: string | null
+          persona?: string | null
+          preferences?: string | null
+          segment?: string | null
           updated_at?: string
         }
         Update: {
+          account_id?: string | null
+          age?: number | null
+          contact_info?: Json | null
           created_at?: string
+          description?: string | null
+          education?: string | null
+          gender?: string | null
           id?: string
-          name?: string
+          income?: number | null
+          location?: string | null
+          name?: string | null
+          occupation?: string | null
+          persona?: string | null
+          preferences?: string | null
+          segment?: string | null
           updated_at?: string
         }
         Relationships: []
       }
       personas: {
         Row: {
+          account_id: string
           color_hex: string | null
           created_at: string
           description: string | null
           id: string
           name: string
-          org_id: string
           percentage: number | null
           updated_at: string
         }
         Insert: {
+          account_id: string
           color_hex?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name: string
-          org_id: string
           percentage?: number | null
           updated_at?: string
         }
         Update: {
+          account_id?: string
           color_hex?: string | null
           created_at?: string
           description?: string | null
           id?: string
           name?: string
-          org_id?: string
           percentage?: number | null
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "personas_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
-      quotes: {
+      projects: {
         Row: {
-          created_at: string
-          id: string
-          insight_id: string
-          org_id: string
-          quote: string
-          timestamp_sec: number | null
-          updated_at: string
-        }
-        Insert: {
-          created_at?: string
-          id?: string
-          insight_id: string
-          org_id: string
-          quote: string
-          timestamp_sec?: number | null
-          updated_at?: string
-        }
-        Update: {
-          created_at?: string
-          id?: string
-          insight_id?: string
-          org_id?: string
-          quote?: string
-          timestamp_sec?: number | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "quotes_insight_id_fkey"
-            columns: ["insight_id"]
-            isOneToOne: false
-            referencedRelation: "insights"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "quotes_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      research_projects: {
-        Row: {
-          code: string | null
+          account_id: string
           created_at: string
           description: string | null
           id: string
-          org_id: string
+          status: string | null
           title: string
           updated_at: string
         }
         Insert: {
-          code?: string | null
+          account_id: string
           created_at?: string
           description?: string | null
           id?: string
-          org_id: string
+          status?: string | null
           title: string
           updated_at?: string
         }
         Update: {
-          code?: string | null
+          account_id?: string
           created_at?: string
           description?: string | null
           id?: string
-          org_id?: string
+          status?: string | null
           title?: string
           updated_at?: string
         }
-        Relationships: [
-          {
-            foreignKeyName: "research_projects_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       tags: {
         Row: {
-          description: string | null
-          tag: string
-        }
-        Insert: {
-          description?: string | null
-          tag: string
-        }
-        Update: {
-          description?: string | null
-          tag?: string
-        }
-        Relationships: []
-      }
-      themes: {
-        Row: {
-          category: string | null
-          color_hex: string | null
+          account_id: string
           created_at: string
+          definition: string | null
           embedding: string | null
-          id: string
-          name: string
-          org_id: string
+          set_name: string | null
+          tag: string
+          term: string | null
           updated_at: string
         }
         Insert: {
-          category?: string | null
-          color_hex?: string | null
+          account_id: string
           created_at?: string
+          definition?: string | null
           embedding?: string | null
-          id?: string
-          name: string
-          org_id: string
+          set_name?: string | null
+          tag: string
+          term?: string | null
           updated_at?: string
         }
         Update: {
-          category?: string | null
-          color_hex?: string | null
+          account_id?: string
           created_at?: string
+          definition?: string | null
           embedding?: string | null
-          id?: string
-          name?: string
-          org_id?: string
+          set_name?: string | null
+          tag?: string
+          term?: string | null
           updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "themes_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      user_org_memberships: {
-        Row: {
-          joined_at: string
-          org_id: string
-          role: Database["public"]["Enums"]["membership_role"]
-          user_id: string
-        }
-        Insert: {
-          joined_at?: string
-          org_id: string
-          role?: Database["public"]["Enums"]["membership_role"]
-          user_id: string
-        }
-        Update: {
-          joined_at?: string
-          org_id?: string
-          role?: Database["public"]["Enums"]["membership_role"]
-          user_id?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_org_memberships_org_id_fkey"
-            columns: ["org_id"]
-            isOneToOne: false
-            referencedRelation: "organizations"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-    }
-    Views: {
-      theme_counts_mv: {
-        Row: {
-          insight_count: number | null
-          name: string | null
-          theme_id: string | null
         }
         Relationships: []
       }
     }
+    Views: {
+      [_ in never]: never
+    }
     Functions: {
+      accept_invitation: {
+        Args: { lookup_invitation_token: string }
+        Returns: Json
+      }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
         Returns: unknown
+      }
+      create_account: {
+        Args: { slug?: string; name?: string }
+        Returns: Json
+      }
+      create_invitation: {
+        Args: {
+          account_id: string
+          account_role: "owner" | "member"
+          invitation_type: "one_time" | "24_hour"
+        }
+        Returns: Json
+      }
+      current_user_account_role: {
+        Args: { account_id: string }
+        Returns: Json
+      }
+      delete_invitation: {
+        Args: { invitation_id: string }
+        Returns: undefined
+      }
+      get_account: {
+        Args: { account_id: string }
+        Returns: Json
+      }
+      get_account_billing_status: {
+        Args: { account_id: string }
+        Returns: Json
+      }
+      get_account_by_slug: {
+        Args: { slug: string }
+        Returns: Json
+      }
+      get_account_id: {
+        Args: { slug: string }
+        Returns: string
+      }
+      get_account_invitations: {
+        Args: {
+          account_id: string
+          results_limit?: number
+          results_offset?: number
+        }
+        Returns: Json
+      }
+      get_account_members: {
+        Args: {
+          account_id: string
+          results_limit?: number
+          results_offset?: number
+        }
+        Returns: Json
+      }
+      get_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      get_personal_account: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       halfvec_avg: {
         Args: { "": number[] }
@@ -703,10 +569,22 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
+        Returns: string
+      }
+      lookup_invitation: {
+        Args: { lookup_invitation_token: string }
+        Returns: Json
       }
       process_embedding_queue: {
         Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      remove_account_member: {
+        Args: { account_id: string; user_id: string }
+        Returns: undefined
+      }
+      service_role_upsert_customer_subscription: {
+        Args: { account_id: string; customer?: Json; subscription?: Json }
         Returns: undefined
       }
       sparsevec_out: {
@@ -720,6 +598,25 @@ export type Database = {
       sparsevec_typmod_in: {
         Args: { "": unknown[] }
         Returns: number
+      }
+      update_account: {
+        Args: {
+          account_id: string
+          slug?: string
+          name?: string
+          public_metadata?: Json
+          replace_metadata?: boolean
+        }
+        Returns: Json
+      }
+      update_account_user_role: {
+        Args: {
+          account_id: string
+          user_id: string
+          new_account_role: "owner" | "member"
+          make_primary_owner?: boolean
+        }
+        Returns: undefined
       }
       vector_avg: {
         Args: { "": number[] }
@@ -756,7 +653,6 @@ export type Database = {
         | "ready"
         | "tagged"
         | "archived"
-      membership_role: "owner" | "member"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -894,7 +790,6 @@ export const Constants = {
         "tagged",
         "archived",
       ],
-      membership_role: ["owner", "member"],
     },
   },
 } as const
