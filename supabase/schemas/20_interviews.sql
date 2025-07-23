@@ -19,7 +19,7 @@ create table if not exists interviews (
   interviewer_id uuid references auth.users (id),
   participant_pseudonym text,
   segment text,
-	media_url text,
+	media_url text, -- url to the media file
 	transcript text,
 	transcript_formatted jsonb,
 	high_impact_themes text[],

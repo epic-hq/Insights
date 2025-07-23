@@ -186,6 +186,7 @@ export type Database = {
           id: string
           interview_date: string | null
           interviewer_id: string | null
+          media_url: string | null
           observations_and_notes: string | null
           open_questions_and_next_steps: string | null
           participant_pseudonym: string | null
@@ -205,6 +206,7 @@ export type Database = {
           id?: string
           interview_date?: string | null
           interviewer_id?: string | null
+          media_url?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
@@ -224,6 +226,7 @@ export type Database = {
           id?: string
           interview_date?: string | null
           interviewer_id?: string | null
+          media_url?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
@@ -577,7 +580,7 @@ export type Database = {
       }
       process_embedding_queue: {
         Args: Record<PropertyKey, never>
-        Returns: undefined
+        Returns: string
       }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
