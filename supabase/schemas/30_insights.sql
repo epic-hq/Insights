@@ -24,6 +24,35 @@ create table if not exists insights (
 	updated_at timestamptz not null default now()
 );
 
+
+-- Table comment
+comment on table insights is 'LLM/BAML-extracted user research insights tied to interviews/accounts.';
+
+-- Column comments
+comment on column insights.id                 is 'Primary key.';
+comment on column insights.account_id         is 'Owning account (tenant). Cascades on delete.';
+comment on column insights.interview_id       is 'Source interview that produced this insight.';
+
+comment on column insights.name               is 'Short (≤5 words) label for the insight.';
+comment on column insights.details            is 'Context/background: causes of pain, behavior specifics, desired outcomes. Sentences or bullets.';
+comment on column insights.pain               is 'Pain or friction the user experiences.';
+comment on column insights.desired_outcome    is 'Outcome/benefit the user wants to achieve.';
+comment on column insights.evidence           is 'Verbatim quote w/ timestamp from interviewee.';
+comment on column insights.emotional_response is 'Perceived strength of feeling: Low | Neutral | High.';
+comment on column insights.motivation         is 'Underlying motivation driving the insight.';
+comment on column insights.category           is 'General category bucket for the insight.';
+comment on column insights.journey_stage      is 'User journey stage (e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other).';
+comment on column insights.impact             is 'Impact/severity to user or biz value (1 minor → 5 critical).';
+comment on column insights.novelty            is 'Uniqueness/“surprise” factor (1 common → 5 breakthrough).';
+comment on column insights.jtbd               is 'Job-to-be-done phrasing: “When I…, I want to…, so I can…”.';
+comment on column insights.opportunity_ideas  is 'Potential opportunity ideas sparked by this insight.';
+comment on column insights.confidence         is 'Our confidence in the insight (low | medium | high).';
+comment on column insights.contradictions     is 'Explicit/implicit contradictions or notable omissions.';
+comment on column insights.related_tags       is 'Conceptual tags/keywords (not UI feature names).';
+comment on column insights.embedding          is '1536-dim vector embedding (e.g., of JTBD) for semantic search.';
+comment on column insights.created_at         is 'Row creation timestamp.';
+comment on column insights.updated_at         is 'Row last-updated timestamp.';
+
 -- Indexes for performance based on common queries
 CREATE INDEX idx_insights_account_id ON public.insights(account_id);
 CREATE INDEX idx_insights_interview_id ON public.insights(interview_id);

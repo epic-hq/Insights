@@ -5,7 +5,13 @@
 // Import BAML client - this file is server-only so it's safe to import directly
 import { b } from "~/../baml_client"
 import { getServerClient } from "~/lib/supabase/server"
+import type { Database } from "~/../supabase/types"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
+
+// Supabase table types
+type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"]
+type InterviewPeopleInsert = Database["public"]["Tables"]["interview_people"]["Insert"]
+type PersonasRow = Database["public"]["Tables"]["personas"]["Row"]
 
 export interface ProcessingResult {
 	stored: InsightInsert[]
@@ -127,17 +133,75 @@ export async function processInterviewTranscript({
 	const { data, error } = await db.from("insights").insert(rows).select()
 	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
 
-	// 4.1 Insert interviewee if present
-	if (interviewee) {
-		await db.from("people").insert({
+	// 4.1 Upsert person and link to interview
+	if (interviewee?.name && interviewee.name.trim()) {
+		// Prepare person data with proper typing
+		const personInsertData: PeopleInsert = {
 			account_id: metadata.accountId,
-			interview_id: interviewRecord.id,
-			name: interviewee.name || null,
-			persona: interviewee.persona || null,
-			participant_description: interviewee.participantDescription || null,
-			segment: interviewee.segment || null,
+			name: interviewee.name.trim(),
+			description: interviewee.participantDescription?.trim() || null,
+			segment: interviewee.segment?.trim() || null,
 			contact_info: interviewee.contactInfo || null,
-		})
+		}
+
+		// Upsert person by normalized name + account_id
+		const { data: personData, error: personError } = await db
+			.from("people")
+			.upsert(personInsertData, { onConflict: "account_id,name_hash" })
+			.select("id")
+			.single()
+
+		if (personError) {
+			throw new Error(`Failed to upsert person: ${personError.message}`)
+		}
+
+		if (!personData?.id) {
+			throw new Error("Person upsert succeeded but no ID returned")
+		}
+
+		// Find persona by name or use null for "Other"
+		let personaData: PersonasRow | null = null
+		if (interviewee.persona?.trim()) {
+			const { data, error: personaError } = await db
+				.from("personas")
+				.select("*")
+				.eq("account_id", metadata.accountId)
+				.ilike("name", interviewee.persona.trim())
+				.maybeSingle()
+
+			if (personaError) {
+				console.warn(`Failed to lookup persona "${interviewee.persona}": ${personaError.message}`)
+			} else {
+				personaData = data
+			}
+		}
+
+		// Insert into interview_people junction table
+		const junctionData: InterviewPeopleInsert = {
+			interview_id: interviewRecord.id,
+			person_id: personData.id,
+			role: "participant",
+		}
+
+		const { error: junctionError } = await db
+			.from("interview_people")
+			.insert(junctionData)
+
+		if (junctionError) {
+			throw new Error(`Failed to link person to interview: ${junctionError.message}`)
+		}
+
+		// Update person with persona reference if found
+		if (personaData?.id) {
+			const { error: updateError } = await db
+				.from("people")
+				.update({ persona: personaData.id })
+				.eq("id", personData.id)
+
+			if (updateError) {
+				console.warn(`Failed to update person with persona: ${updateError.message}`)
+			}
+		}
 	}
 
 	// 4.2 Update interview with additional BAML fields

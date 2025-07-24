@@ -21,7 +21,7 @@ class ExtractedInsight {
 class InterviewMetadata {
 	title string @description("Title of interview")
 	date string | null	@description("Date of interview in ISO format: YYYY-MM-DD, (e.g. 2024-07-23) or Null if unknown")
-	interviewer string	@description("Interviewer name")
+	interviewer string | null	@description("Interviewer name, or null if not identifiable")
 	durationMin int | null @description("Duration of interview in minutes")
 }
 // Process
@@ -31,9 +31,9 @@ class InterviewMetadata {
 // -> save interview wrapper, interviewee, insights :: Some DB Mapping
 
 class Interviewee {
-	name string	@description("Interviewee name")
-	persona string	@description("A more fine-grained personalization within the segment that captures the interviewee's specific experiences, behavior, and preferences. up to 3 words.")
-	participantDescription string @description("A concise narrative: who they are, their workflow, top frustrations, aspirations, and any standout quotes that define them. <= 7 sentences.")
+	name string | null	@description("Interviewee name, or null if not identifiable from transcript")
+	persona string | null	@description("A more fine-grained personalization within the segment that captures the interviewee's specific experiences, behavior, and preferences. up to 3 words. Null if unclear.")
+	participantDescription string | null @description("A concise narrative: who they are, their workflow, top frustrations, aspirations, and any standout quotes that define them. <= 7 sentences. Null if insufficient information.")
 	segment string? @description("Interviewee segment, eg. Teacher, Student, Parent, etc.")
 	contactInfo string? @description("Interviewee contact information if given")
 }

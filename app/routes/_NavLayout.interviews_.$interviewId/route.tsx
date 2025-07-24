@@ -28,7 +28,7 @@ export async function loader({ request, params }: { request: Request; params: { 
 	const interviewId = params.interviewId
 
 	// consola.log("interviewId", interviewId, accountId)
-	// Fetch interview data from database with project information
+	// Fetch interview data from database (simple query first to avoid junction table issues)
 	const { data: interviewData, error: interviewError } = await supabase
 		.from("interviews")
 		.select("*")
@@ -46,7 +46,44 @@ export async function loader({ request, params }: { request: Request; params: { 
 		throw new Response("Interview not found", { status: 404 })
 	}
 
-	const interview: Interview = interviewData // Supabase type includes transcript and transcript_formatted
+	// Fetch participant data separately to avoid junction table query issues
+	let participants: any[] = []
+	let primaryParticipant: any = null
+	
+	try {
+		const { data: participantData } = await supabase
+			.from("interview_people")
+			.select(`
+				role,
+				people(
+					id,
+					name,
+					segment,
+					description,
+					contact_info,
+					personas(
+						id,
+						name,
+						description
+					)
+				)
+			`)
+			.eq("interview_id", interviewId)
+		
+		participants = participantData || []
+		primaryParticipant = participants[0]?.people
+	} catch (error) {
+		console.log("Could not fetch participant data:", error)
+	}
+	
+	const interview: Interview & {
+		participants: typeof participants
+		primaryParticipant: typeof primaryParticipant
+	} = {
+		...interviewData,
+		participants,
+		primaryParticipant,
+	}
 
 	// Fetch interviewer information if available
 	let interviewerData = null
@@ -132,12 +169,26 @@ export default function InterviewDetail() {
 				<div className="mb-4 flex flex-col gap-2 border-b pb-4">
 					<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
 					<div className="flex flex-wrap items-center gap-2 text-base">
-						{interview.participant_pseudonym && (
+						{/* Show participant from junction table if available, fallback to legacy field */}
+						{interview.primaryParticipant?.name ? (
+							<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
+								{interview.primaryParticipant.name}
+							</span>
+						) : interview.participant_pseudonym && (
 							<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
 								{interview.participant_pseudonym}
 							</span>
 						)}
-						{interview.segment && (
+						{/* Show persona from junction table if available, fallback to legacy field */}
+						{interview.primaryParticipant?.personas?.name ? (
+							<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
+								{interview.primaryParticipant.personas.name}
+							</span>
+						) : interview.primaryParticipant?.segment ? (
+							<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
+								{interview.primaryParticipant.segment}
+							</span>
+						) : interview.segment && (
 							<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
 								{interview.segment}
 							</span>
@@ -186,25 +237,7 @@ export default function InterviewDetail() {
 					/>
 				</div>
 
-				{/* Insights List */}
-				<div>
-					<h2 className="mb-2 font-semibold text-lg">Insights</h2>
-					{insights.length > 0 ? (
-						<ul className="space-y-2">
-							{insights.map((insight) => (
-								<li key={insight.id} className="rounded border bg-gray-50 p-3">
-									<Link to={`/insights/${insight.id}`} className="font-bold text-gray-900">
-										{insight.title || "Untitled"}
-									</Link>
-									<div className="text-gray-700 text-sm">{insight.category || "No category"}</div>
-									{insight.description && <div className="mt-1 text-gray-600">{insight.description}</div>}
-								</li>
-							))}
-						</ul>
-					) : (
-						<div className="text-gray-400 italic">No insights available for this interview.</div>
-					)}
-				</div>
+
 
 				{/* Transcript Section */}
 				<div>
@@ -263,6 +296,26 @@ export default function InterviewDetail() {
 				</div>
 			</div>
 			<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
+				{/* Insights Section */}
+				<div className="mb-6">
+					<h2 className="mb-2 font-semibold text-lg">Insights</h2>
+					{insights.length > 0 ? (
+						<ul className="space-y-2">
+							{insights.map((insight) => (
+								<li key={insight.id} className="rounded border bg-gray-50 p-3">
+									<Link to={`/insights/${insight.id}`} className="font-bold text-gray-900">
+										{insight.title || "Untitled"}
+									</Link>
+									<div className="text-gray-700 text-sm">{insight.category || "No category"}</div>
+									{insight.description && <div className="mt-1 text-gray-600">{insight.description}</div>}
+								</li>
+							))}
+						</ul>
+					) : (
+						<div className="text-gray-400 italic">No insights available for this interview.</div>
+					)}
+				</div>
+				
 				<h2 className="mb-2 font-semibold text-lg">Related Interviews</h2>
 				{relatedInterviews.length > 0 ? (
 					<ul className="space-y-2">

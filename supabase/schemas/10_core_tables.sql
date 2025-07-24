@@ -11,6 +11,7 @@ create table if not exists people (
   id uuid primary key default gen_random_uuid(),
   account_id uuid references accounts.accounts (id) on delete cascade,
   name text,
+  name_hash text generated always as (lower(name)) stored,
   description text,
   segment text,
   persona text,
@@ -42,6 +43,10 @@ CREATE TRIGGER set_people_user_tracking
 EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
 
 create index if not exists idx_people_account_id on public.people using btree (account_id) tablespace pg_default;
+
+-- Unique index for deduplication by normalized name within account
+create unique index if not exists uniq_people_account_namehash
+  on public.people (account_id, name_hash);
 
 -- enable RLS on the table
 ALTER TABLE public.people ENABLE ROW LEVEL SECURITY;

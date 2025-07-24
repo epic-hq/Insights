@@ -29,7 +29,34 @@ export async function loader({ request }: { request: Request }) {
 	const _personaFilter = url.searchParams.get("persona") || null
 
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
+	
+	// Extended type for interviews with participant data from junction table
+	type InterviewWithParticipants = InterviewRow & {
+		interview_people: {
+			role: string
+			people: {
+				id: string
+				name: string
+				segment: string | null
+				personas: {
+					id: string
+					name: string
+				} | null
+			}
+		}[]
+	}
+	
+	// UI interview type with computed participant fields
+	type InterviewUI = InterviewRow & {
+		participant: string
+		role: string
+		persona: string
+		date: string
+		duration: string
+		insightCount: number
+	}
 
+	// Use simple query for now - junction table integration needs backfill script first
 	const query = supabase
 		.from("interviews")
 		.select("*")
@@ -58,21 +85,28 @@ export async function loader({ request }: { request: Request }) {
 		})
 	}
 
-	const interviews: InterviewRow[] = (rows || []).map((interview: InterviewRow) => ({
-		id: interview.id,
-		date: interview.interview_date || interview.created_at.split("T")[0],
-		participant: interview.participant_pseudonym || "Anonymous",
-		role: interview.segment || "User",
-		duration: interview.duration_min ? `${interview.duration_min} min` : "N/A",
-		status: interview.status as InterviewStatus,
-		insightCount: insightCountMap.get(interview.id) || 0,
-		title: interview.title || "",
-		interviewer: interview.interviewer_id || "",
-		createdAt: interview.created_at,
-	}))
+	const interviews: InterviewUI[] = (rows || []).map((interview: any) => {
+		// Use legacy fields until backfill script migrates existing data
+		const participantName = interview.participant_pseudonym || "Anonymous"
+		const participantSegment = interview.segment || "User"
+		const personaName = "Other" // Will be populated after backfill
+		
+		return {
+			// Core interview data
+			...interview,
+			// Override with computed participant fields
+			participant: participantName,
+			role: participantSegment,
+			persona: personaName,
+			date: interview.interview_date || interview.created_at.split("T")[0],
+			duration: interview.duration_min ? `${interview.duration_min} min` : "N/A",
+			insightCount: insightCountMap.get(interview.id) || 0,
+		}
+	})
 
 	const statusOptions = InterviewStatusEnum.options
-	const roleMap: Record<string, { role: string } & Record<InterviewStatus, number>> = {}
+	type RoleMapEntry = { role: string } & Record<InterviewStatus, number>
+	const roleMap: Record<string, RoleMapEntry> = {}
 	const roleCounts: Record<string, number> = {}
 	const statusCounts: Record<InterviewStatus, number> = Object.fromEntries(statusOptions.map((s) => [s, 0])) as Record<
 		InterviewStatus,
@@ -81,12 +115,15 @@ export async function loader({ request }: { request: Request }) {
 	let totalInsights = 0
 
 	interviews.forEach((interview) => {
-		const role = interview.segment || "Unknown"
+		const role = interview.role || "Unknown" // Now using role from participant data
 		const status = interview.status
 		const count = interview.high_impact_themes?.length || 0
 
 		if (!roleMap[role]) {
-			roleMap[role] = { role, ...Object.fromEntries(statusOptions.map((s) => [s, 0])) } as any
+			roleMap[role] = { 
+				role, 
+				...Object.fromEntries(statusOptions.map((s) => [s, 0])) 
+			} as RoleMapEntry
 		}
 		roleMap[role][status]++
 		statusCounts[status]++
@@ -105,25 +142,22 @@ export async function loader({ request }: { request: Request }) {
 	return {
 		interviews,
 		stackedData: (() => {
-			const roleMap: Record<string, { role: string } & Record<InterviewStatus, number>> = {}
+			const roleMapForChart: Record<string, RoleMapEntry> = {}
 
 			interviews.forEach((interview) => {
-				const role = interview.segment || "Unknown"
+				const role = interview.role || "Unknown" // Now using role from participant data
 				const status = interview.status
 
-				if (!roleMap[role]) {
-					roleMap[role] = {
+				if (!roleMapForChart[role]) {
+					roleMapForChart[role] = {
 						role,
-						...(Object.fromEntries(InterviewStatusEnum.options.map((s) => [s, 0])) as Record<InterviewStatus, number>),
-					}
+						...Object.fromEntries(statusOptions.map((s) => [s, 0])),
+					} as RoleMapEntry
 				}
-
-				if (InterviewStatusEnum.options.includes(status)) {
-					roleMap[role][status]++
-				}
+				roleMapForChart[role][status]++
 			})
 
-			return Object.values(roleMap)
+			return Object.values(roleMapForChart)
 		})(),
 		stats,
 	}
@@ -259,7 +293,7 @@ export default function Interviews() {
 									<td className="whitespace-nowrap px-4 py-3">
 										<Link to={`/interviews/${interview.id}`}>{interview.title}</Link>
 									</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.segment}</td>
+									<td className="whitespace-nowrap px-4 py-3">{interview.role}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.high_impact_themes?.length}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.duration_min}</td>
 									<td className="whitespace-nowrap px-4 py-3">
