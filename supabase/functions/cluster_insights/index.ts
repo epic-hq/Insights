@@ -1,47 +1,84 @@
 // supabase/functions/cluster_insights/index.ts
+/** biome-ignore-all lint/suspicious/noFocusedTests: <explanation> */
+// Supabase Edge Function: cluster_insights
+// -------------------------------------------------------------
+// Accepts POST { items: [ { id: string; embedding: number[]; text?: string } , ... ] }
+// Returns   [{ id, x, y, cluster, text }]
+// -------------------------------------------------------------
+// Usage (curl):
+// curl -X POST \
+//   -H "Authorization: Bearer $SERVICE_ROLE" \
+//   -H "Content-Type: application/json" \
+//   -d @payload.json \
+//   https://<project>.functions.supabase.co/cluster_insights
+
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { HDBSCAN } from "npm:hdbscan-ts@1.0.16"
+import { UMAP } from "npm:umap-js@1.4.0"
 
-import { HDBSCAN } from "https://esm.sh/hdbscan-ts@1.0.16"
-// pure-ESM builds of both libs
-import { UMAP } from "https://esm.sh/umap-js@1.4.0"
-import type { UUID } from "node:crypto"
+// import { HDBSCAN } from "https://esm.sh/hdbscan-ts@1.0.16"
+// // Pure‑ESM builds that work in Deno Edge
+// import { UMAP } from "https://esm.sh/umap-js@1.4.0?bundle"
 
-type Item = { id: UUID; embedding: number[]; text?: string }
-
-const l2norm = (v: number[]) => {
+/** L2‑normalize a vector so cosine distance ⇔ Euclidean. */
+const l2 = (v: number[]): number[] => {
 	const len = Math.hypot(...v)
-	return v.map((x) => x / len)
+	return len === 0 ? v : v.map((x) => x / len)
 }
 
+/** Build a JSON Response helper */
+const json = (body: unknown, status = 200) =>
+	new Response(JSON.stringify(body), {
+		status,
+		headers: { "Content-Type": "application/json" },
+	})
+
+// -------------------------------------------------------------
 Deno.serve(async (req) => {
 	try {
-		const { items }: { items: Item[] } = await req.json()
-		if (!items?.length) {
-			return new Response("Expected body { items: [...] }", { status: 400 })
+		if (req.method !== "POST") {
+			return json({ error: "POST only" }, 405)
 		}
 
-		/* 1.  prep embeddings ------------------------------------------------ */
-		const vecs = items.map((it) => l2norm(it.embedding))
+		const { items } = await req.json()
+		if (!Array.isArray(items) || items.length === 0) {
+			return json({ error: "Body must be { items: [...] }" }, 400)
+		}
 
-		/* 2.  UMAP ↓ 1536 → 50 dims (faster + denoise) ----------------------- */
-		const umap = new UMAP({ nComponents: 50, nNeighbors: 15, minDist: 0.1 })
-		const reduced = umap.it(vecs) // number[][]
+		/* 1️⃣  Normalise embeddings */
+		const vecs: number[][] = items.map((it: any) => l2(it.embedding))
+		const n = vecs.length
 
-		/* 3.  HDBSCAN clustering -------------------------------------------- */
-		const hdb = new HDBSCAN({ minClusterSize: 5, minSamples: 5 })
-		hdb.it(reduced) // fills labels_
-		const labels = hdb.labels_ // int[] (-1 = noise)
+		/* 2️⃣  UMAP to 2‑D (skip if n <= 2) */
+		let coords: number[][] = vecs.map(() => [0, 0])
+		if (n > 2) {
+			const umap = new UMAP({
+				nComponents: 2,
+				nNeighbors: Math.max(2, Math.min(15, n - 1)),
+				minDist: 0.1,
+			})
+			coords = umap.fit(vecs)
+		}
 
-		/* 4.  return id-to-cluster map -------------------------------------- */
-		const result = Object.fromEntries(items.map((it, i) => [it.id, labels[i]]))
-
-		return new Response(JSON.stringify(result), {
-			headers: { "Content-Type": "application/json" },
+		/* 3️⃣  HDBSCAN clustering (robust defaults) */
+		const hdb = new HDBSCAN({
+			minClusterSize: Math.max(2, Math.floor(n / 3)),
+			minSamples: Math.max(2, Math.floor(n / 4)),
 		})
-	} catch (err) {
-		return new Response(JSON.stringify({ error: err.message }), {
-			status: 500,
-			headers: { "Content-Type": "application/json" },
-		})
+		hdb.fit(coords)
+		const labels: number[] = hdb.labels_
+
+		/* 4️⃣  Build output */
+		const out = items.map((it: any, i: number) => ({
+			id: it.id,
+			x: coords[i][0],
+			y: coords[i][1],
+			cluster: labels[i], // -1 == noise
+			text: it.text ?? "",
+		}))
+
+		return json(out)
+	} catch (err: any) {
+		return json({ error: err.message, stack: err.stack }, 500)
 	}
 })

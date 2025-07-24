@@ -14,7 +14,7 @@ create table if not exists people (
   name_hash text generated always as (lower(name)) stored,
   description text,
   segment text,
-  persona text,
+  persona_id uuid references personas (id) on delete set null,
   age int,
   gender text,
   income int,

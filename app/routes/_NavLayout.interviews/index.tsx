@@ -56,24 +56,33 @@ export async function loader({ request }: { request: Request }) {
 		insightCount: number
 	}
 
-	// Use simple query for now - junction table integration needs backfill script first
-	const query = supabase
+	// Simplified interviews query - just basic interview data first
+	const { data: rows, error } = await supabase
 		.from("interviews")
 		.select("*")
-		.order("created_at", { ascending: false })
 		.eq("account_id", accountId)
+		.order("created_at", { ascending: false })
 
-	const { data: rows, error } = await query
-	if (error) throw new Response(error.message, { status: 500 })
+	if (error) {
+		console.error("Interviews query error:", error)
+		throw new Response(error.message, { status: 500 })
+	}
 
 	const { data: allInsights, error: insightsError } = await supabase
-		.from("interviews")
-		.select("*")
+		.from("insights")
+		.select("id, interview_id")
 		.eq("account_id", accountId)
 
-	if (insightsError) {
-		throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
-	}
+	if (insightsError) throw new Response(insightsError.message, { status: 500 })
+
+	// Fetch persona distribution analytics
+	const { data: personaDistribution, error: personaError } = await supabase
+		.from("persona_distribution")
+		.select("*")
+		.eq("account_id", accountId)
+		.order("total_interview_count", { ascending: false })
+
+	if (personaError) console.log("Persona distribution error:", personaError)
 
 	const insightCountMap = new Map<string, number>()
 	if (allInsights) {
@@ -86,15 +95,15 @@ export async function loader({ request }: { request: Request }) {
 	}
 
 	const interviews: InterviewUI[] = (rows || []).map((interview: any) => {
-		// Use legacy fields until backfill script migrates existing data
+		// Simplified - use legacy fields for now
 		const participantName = interview.participant_pseudonym || "Anonymous"
 		const participantSegment = interview.segment || "User"
-		const personaName = "Other" // Will be populated after backfill
+		const personaName = "Other" // TODO: Add personas back later
 		
 		return {
 			// Core interview data
 			...interview,
-			// Override with computed participant fields
+			// Use legacy fields for now
 			participant: participantName,
 			role: participantSegment,
 			persona: personaName,
@@ -160,6 +169,7 @@ export async function loader({ request }: { request: Request }) {
 			return Object.values(roleMapForChart)
 		})(),
 		stats,
+		personaDistribution: personaDistribution || [],
 	}
 }
 

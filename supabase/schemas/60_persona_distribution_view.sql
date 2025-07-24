@@ -1,10 +1,10 @@
 -- Persona distribution view calculates interview counts and percentages
--- by two methods: participant_pseudonym matching persona name, and
--- segment matching persona name. This view is account-scoped and read-only.
+-- using the interview_people junction table for accurate participant-persona relationships.
+-- This view is account-scoped and read-only.
 
 CREATE OR REPLACE VIEW persona_distribution AS
-WITH participant_counts AS (
-  -- Count interviews by participant assignment (interviews.participant_pseudonym field)
+WITH persona_interview_counts AS (
+  -- Count interviews by persona assignment via junction table
   SELECT
     p.id          AS persona_id,
     p.account_id,
@@ -13,69 +13,84 @@ WITH participant_counts AS (
     p.description,
     p.created_at,
     p.updated_at,
-    COUNT(i1.id)  AS participant_interview_count,
-    -- Total interviews with participant assignments for this account
+    COUNT(DISTINCT i.id) AS interview_count,
+    -- Total interviews for this account that have participants
     (
-      SELECT COUNT(*)
+      SELECT COUNT(DISTINCT i_total.id)
       FROM interviews i_total
+      JOIN interview_people ip_total ON ip_total.interview_id = i_total.id
       WHERE i_total.account_id = p.account_id
-        AND i_total.participant_pseudonym IS NOT NULL
-    ) AS total_participant_interviews
+    ) AS total_interviews_with_participants
   FROM personas p
-  LEFT JOIN interviews i1 ON (
-    i1.account_id = p.account_id
-    AND i1.participant_pseudonym = p.name
-  )
+  LEFT JOIN people ppl ON (ppl.persona_id = p.id AND ppl.account_id = p.account_id)
+  LEFT JOIN interview_people ip ON ip.person_id = ppl.id
+  LEFT JOIN interviews i ON (i.id = ip.interview_id AND i.account_id = p.account_id)
   GROUP BY p.id, p.account_id, p.name, p.color_hex, p.description, p.created_at, p.updated_at
 ),
-segment_counts AS (
-  -- Count interviews by segment assignment (interviews.segment field)
+legacy_fallback_counts AS (
+  -- Fallback to legacy fields for interviews without junction table data
   SELECT
-    p.id         AS persona_id,
-    COUNT(i2.id) AS segment_interview_count,
-    -- Total interviews with segment assignments for this account
+    p.id          AS persona_id,
+    COUNT(DISTINCT i_legacy.id) AS legacy_interview_count,
+    -- Total legacy interviews for this account
     (
-      SELECT COUNT(*)
+      SELECT COUNT(DISTINCT i_total.id)
       FROM interviews i_total
       WHERE i_total.account_id = p.account_id
-        AND i_total.segment IS NOT NULL
-    ) AS total_segment_interviews
+        AND (i_total.participant_pseudonym IS NOT NULL OR i_total.segment IS NOT NULL)
+        AND NOT EXISTS (
+          SELECT 1 FROM interview_people ip_check WHERE ip_check.interview_id = i_total.id
+        )
+    ) AS total_legacy_interviews
   FROM personas p
-  LEFT JOIN interviews i2 ON (
-    i2.account_id = p.account_id
-    AND i2.segment = p.name
+  LEFT JOIN interviews i_legacy ON (
+    i_legacy.account_id = p.account_id
+    AND (i_legacy.participant_pseudonym = p.name OR i_legacy.segment = p.name)
+    AND NOT EXISTS (
+      SELECT 1 FROM interview_people ip_check WHERE ip_check.interview_id = i_legacy.id
+    )
   )
   GROUP BY p.id, p.account_id
 )
 SELECT
-  pc.persona_id,
-  pc.account_id,
-  pc.persona_name,
-  pc.color_hex,
-  pc.description,
-  pc.created_at,
-  pc.updated_at,
+  pic.persona_id,
+  pic.account_id,
+  pic.persona_name,
+  pic.color_hex,
+  pic.description,
+  pic.created_at,
+  pic.updated_at,
 
-  -- Participant-based calculations
-  pc.participant_interview_count,
-  pc.total_participant_interviews,
+  -- Junction table based counts (primary)
+  pic.interview_count,
+  pic.total_interviews_with_participants,
   CASE
-    WHEN pc.total_participant_interviews > 0 THEN
-      ROUND((pc.participant_interview_count::numeric / pc.total_participant_interviews::numeric) * 100, 1)
+    WHEN pic.total_interviews_with_participants > 0 THEN
+      ROUND((pic.interview_count::numeric / pic.total_interviews_with_participants::numeric) * 100, 1)
     ELSE 0
-  END AS participant_percentage,
+  END AS interview_percentage,
 
-  -- Segment-based calculations
-  sc.segment_interview_count,
-  sc.total_segment_interviews,
+  -- Legacy fallback counts (for backwards compatibility)
+  lfc.legacy_interview_count,
+  lfc.total_legacy_interviews,
   CASE
-    WHEN sc.total_segment_interviews > 0 THEN
-      ROUND((sc.segment_interview_count::numeric / sc.total_segment_interviews::numeric) * 100, 1)
+    WHEN lfc.total_legacy_interviews > 0 THEN
+      ROUND((lfc.legacy_interview_count::numeric / lfc.total_legacy_interviews::numeric) * 100, 1)
     ELSE 0
-  END AS segment_percentage
-FROM participant_counts pc
-JOIN segment_counts   sc ON pc.persona_id = sc.persona_id
-ORDER BY pc.account_id, pc.participant_interview_count DESC;
+  END AS legacy_percentage,
+
+  -- Combined totals
+  (pic.interview_count + lfc.legacy_interview_count) AS total_interview_count,
+  (pic.total_interviews_with_participants + lfc.total_legacy_interviews) AS total_interviews,
+  CASE
+    WHEN (pic.total_interviews_with_participants + lfc.total_legacy_interviews) > 0 THEN
+      ROUND(((pic.interview_count + lfc.legacy_interview_count)::numeric / (pic.total_interviews_with_participants + lfc.total_legacy_interviews)::numeric) * 100, 1)
+    ELSE 0
+  END AS combined_percentage
+
+FROM persona_interview_counts pic
+JOIN legacy_fallback_counts lfc ON pic.persona_id = lfc.persona_id
+ORDER BY pic.account_id, (pic.interview_count + lfc.legacy_interview_count) DESC;
 
 -- Grant access to the view
 GRANT SELECT ON persona_distribution TO authenticated;

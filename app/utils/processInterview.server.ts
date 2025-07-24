@@ -195,7 +195,7 @@ export async function processInterviewTranscript({
 		if (personaData?.id) {
 			const { error: updateError } = await db
 				.from("people")
-				.update({ persona: personaData.id })
+				.update({ persona_id: personaData.id })
 				.eq("id", personData.id)
 
 			if (updateError) {
