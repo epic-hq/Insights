@@ -1,49 +1,48 @@
-import { formatDistanceToNow } from "date-fns"
-import { type MetaFunction, useLoaderData } from "react-router"
-import { Link } from "react-router-dom"
+import consola from "consola"
+import type { MetaFunction } from "react-router"
+import { Link, useLoaderData } from "react-router-dom"
 import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 import type { Database } from "~/../supabase/types"
 import AddInterviewButton from "~/components/upload/AddInterviewButton"
-import { db } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/server"
 import type { InterviewStatus } from "~/types"
 import { InterviewStatus as InterviewStatusEnum } from "~/types"
 
 // Define interview view type if not in centralized types
-interface InterviewView {
-	id: string
-	date: string
-	participant: string
-	role: string
-	duration: string
-	status: InterviewStatus
-	insightCount: number
-	title: string
-	interviewer: string
-	createdAt: string
-}
+
 export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
 }
 
 export async function loader({ request }: { request: Request }) {
-	const url = new URL(request.url)
+	const { client: supabase } = getServerClient(request)
+	const { data: jwt } = await supabase.auth.getClaims()
+	const accountId = jwt?.claims.sub
 
+	consola.log("accountId", accountId)
+
+	const url = new URL(request.url)
 	const _sort = url.searchParams.get("sort") || "default"
 	const _interviewFilter = url.searchParams.get("interview") || null
 	const _themeFilter = url.searchParams.get("theme") || null
 	const _personaFilter = url.searchParams.get("persona") || null
 
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
-	const query = db.from("interviews").select("*").order("created_at", { ascending: false })
+
+	const query = supabase
+		.from("interviews")
+		.select("*")
+		.order("created_at", { ascending: false })
+		.eq("account_id", accountId)
 
 	const { data: rows, error } = await query
 	if (error) throw new Response(error.message, { status: 500 })
 
-	const { data: allInsights, error: insightsError } = await db
-		.from("insights")
-		.select("interview_id")
-		.not("interview_id", "is", null)
+	const { data: allInsights, error: insightsError } = await supabase
+		.from("interviews")
+		.select("*")
+		.eq("account_id", accountId)
 
 	if (insightsError) {
 		throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
@@ -59,7 +58,7 @@ export async function loader({ request }: { request: Request }) {
 		})
 	}
 
-	const interviews: InterviewView[] = (rows || []).map((interview: InterviewRow) => ({
+	const interviews: InterviewRow[] = (rows || []).map((interview: InterviewRow) => ({
 		id: interview.id,
 		date: interview.interview_date || interview.created_at.split("T")[0],
 		participant: interview.participant_pseudonym || "Anonymous",
@@ -82,9 +81,9 @@ export async function loader({ request }: { request: Request }) {
 	let totalInsights = 0
 
 	interviews.forEach((interview) => {
-		const role = interview.role || "Unknown"
+		const role = interview.segment || "Unknown"
 		const status = interview.status
-		const count = interview.insightCount || 0
+		const count = interview.high_impact_themes?.length || 0
 
 		if (!roleMap[role]) {
 			roleMap[role] = { role, ...Object.fromEntries(statusOptions.map((s) => [s, 0])) } as any
@@ -109,7 +108,7 @@ export async function loader({ request }: { request: Request }) {
 			const roleMap: Record<string, { role: string } & Record<InterviewStatus, number>> = {}
 
 			interviews.forEach((interview) => {
-				const role = interview.role || "Unknown"
+				const role = interview.segment || "Unknown"
 				const status = interview.status
 
 				if (!roleMap[role]) {
@@ -258,11 +257,11 @@ export default function Interviews() {
 							{interviews.map((interview) => (
 								<tr key={interview.id}>
 									<td className="whitespace-nowrap px-4 py-3">
-										<Link to={`/interviews/${interview.id}`}>{interview.participant}</Link>
+										<Link to={`/interviews/${interview.id}`}>{interview.title}</Link>
 									</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.role}</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.insightCount}</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.duration}</td>
+									<td className="whitespace-nowrap px-4 py-3">{interview.segment}</td>
+									<td className="whitespace-nowrap px-4 py-3">{interview.high_impact_themes?.length}</td>
+									<td className="whitespace-nowrap px-4 py-3">{interview.duration_min}</td>
 									<td className="whitespace-nowrap px-4 py-3">
 										<span
 											className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
@@ -277,7 +276,8 @@ export default function Interviews() {
 										</span>
 									</td>
 									<td className="whitespace-nowrap px-4 py-3">
-										{formatDistanceToNow(interview.date, { addSuffix: true })}
+										{/* {formatDistanceToNow(new Date(interview.interview_date as string), { addSuffix: true })} */}
+										{interview.interview_date}
 									</td>
 									<td className="whitespace-nowrap px-4 py-3">
 										<Link to={`/interviews/${interview.id}`} className="text-blue-600 hover:text-blue-800">

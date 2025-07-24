@@ -1,13 +1,11 @@
-import consola from "consola"
-import { useEffect } from "react"
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import EditableTextarea from "~/components/EditableTextarea"
 import MarkdownTranscript from "~/components/MarkdownTranscript"
 import TranscriptDisplay from "~/components/TranscriptDisplay"
 import { Button } from "~/components/ui/button"
-import { db } from "~/lib/supabase/server"
-import type { Insight, Interview } from "~/types"
+import { getServerClient } from "~/lib/supabase/server"
+import type { Interview } from "~/types"
 
 // TODO: Clean up Transcript prop, participant name and persona more prominent
 
@@ -22,18 +20,23 @@ export const meta: MetaFunction = ({ params }) => {
 
 // Type for extended interview with transcript and research project data is defined inline with the data
 
-export async function loader({ params }: { params: { interviewId: string } }) {
+export async function loader({ request, params }: { request: Request; params: { interviewId: string } }) {
+	const { client: supabase } = getServerClient(request)
+	const { data: jwt } = await supabase.auth.getClaims()
+	const accountId = jwt?.claims.sub
+
 	const interviewId = params.interviewId
 
+	// consola.log("interviewId", interviewId, accountId)
 	// Fetch interview data from database with project information
-	const { data: interviewData, error: interviewError } = await db
+	const { data: interviewData, error: interviewError } = await supabase
 		.from("interviews")
-		.select(`
-			*,
-			research_projects(id, code, title, description)
-		`)
+		.select("*")
 		.eq("id", interviewId)
+		.eq("account_id", accountId)
 		.single()
+
+	// consola.log("interviewData", interviewData)
 
 	if (interviewError) {
 		throw new Response(`Error fetching interview: ${interviewError.message}`, { status: 500 })
@@ -54,7 +57,7 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 	}
 
 	// Fetch insights related to this interview
-	const { data: insightsData, error: insightsError } = await db
+	const { data: insightsData, error: insightsError } = await supabase
 		.from("insights")
 		.select("*")
 		.eq("interview_id", interviewId)
@@ -64,7 +67,7 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 	}
 
 	// Transform insights to match the expected format for UI
-	const insights: Insight[] = (insightsData || []).map((insight) => ({
+	const insights: any[] = (insightsData || []).map((insight) => ({
 		id: insight.id,
 		name: insight.name || "",
 		title: insight.name || "", // Use name as title for backward compatibility
@@ -86,14 +89,15 @@ export async function loader({ params }: { params: { interviewId: string } }) {
 	}))
 
 	// Get related interviews from the same project
-	const { data: relatedInterviews } = await db
+	const { data: relatedInterviews } = await supabase
 		.from("interviews")
-		.select("id, title, participant_pseudonym, interview_date")
+		.select("*")
+		.eq("account_id", accountId)
 		.eq("project_id", interview.project_id)
 		.neq("id", interviewId)
 		.limit(5)
 
-	consola.log("Detail interview:", interview)
+	// consola.log("Detail interview:", interview)
 	return {
 		interview,
 		insights,
@@ -107,9 +111,9 @@ export default function InterviewDetail() {
 	// Only transcript section is rendered. Interview type is inferred from loader.
 	const data = useLoaderData()
 	const interview = data?.interview
-	useEffect(() => {
-		consola.log("Detail interview:", interview)
-	}, [interview])
+	// useEffect(() => {
+	// 	consola.log("Detail interview:", interview)
+	// }, [interview])
 
 	if (!interview) {
 		return (

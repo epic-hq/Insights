@@ -1,4 +1,4 @@
-import { env } from "process"
+import { env } from "node:process"
 
 const ASSEMBLY_API_URL = "https://api.assemblyai.com/v2"
 
@@ -48,6 +48,7 @@ export async function transcribeAudioFromUrl(url: string): Promise<string> {
 		body: JSON.stringify({
 			audio_url: url,
 			// additional recommended params
+			speaker_labels: true,
 			auto_chapters: false,
 			sentiment_analysis: false,
 		}),

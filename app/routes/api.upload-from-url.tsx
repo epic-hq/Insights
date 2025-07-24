@@ -1,3 +1,4 @@
+import type { UUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { transcribeRemoteFile } from "~/utils/assemblyai.server"
@@ -27,26 +28,44 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 	try {
-		const { url } = (await request.json()) as { url?: string }
+		const formData = await request.formData()
+		const accountId = formData.get("accountId") as UUID
+		const projectId = formData.get("projectId") as UUID
+		const url = formData.get("url") as string
+		consola.log("url", url)
 		if (!url) {
 			return Response.json({ error: "No URL provided" }, { status: 400 })
 		}
 		const directUrl = toDirectDownloadUrl(url)
 
 		// 1. Upload then transcribe via AssemblyAI
+		consola.log("Starting transcription for URL:", directUrl)
 		const transcript = await transcribeRemoteFile(directUrl)
+		consola.log("Transcription result:", transcript ? `${transcript.length} characters` : "null/empty")
+
+		if (!transcript || transcript.trim().length === 0) {
+			return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
+		}
 
 		// 2. Mock metadata (replace later with real user/org info)
 		const metadata = {
-			accountId: "00000000-0000-0000-0000-000000000001",
-			projectId: "00000000-0000-0000-0000-000000000002",
+			accountId,
+			projectId,
 			interviewTitle: `Interview - ${new Date().toISOString()}`,
 			participantName: "Anonymous",
 			segment: "Unknown",
 		}
 
+		const userCustomInstructions = (formData.get("userCustomInstructions") as string) || ""
+
 		// 3. Process transcript with BAML pipeline
-		const result = await processInterviewTranscript(metadata, transcript)
+		const result = await processInterviewTranscript({
+			metadata,
+			mediaUrl: url,
+			transcript,
+			userCustomInstructions,
+			request,
+		})
 
 		return Response.json({ success: true, insights: result.stored })
 	} catch (error) {

@@ -37,6 +37,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 			// TODO: Get accountId and projectId from AuthContext
 			formData.append("accountId", accountId)
 			formData.append("projectId", projectId)
+			formData.append("userCustomInstructions", "")
 
 			setProcessingMessage("Processing transcript with AI...")
 			const response = await fetch("/api/upload-file", {

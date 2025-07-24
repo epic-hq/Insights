@@ -1,3 +1,4 @@
+import type { UUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
@@ -16,8 +17,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "No file uploaded" }, { status: 400 })
 	}
 	// const body = formData.get("body") as string | null
-	const accountId = (formData.get("accountId") as string) || ""
-	const projectId = (formData.get("projectId") as string) || ""
+	const accountId = formData.get("accountId") as UUID
+	const projectId = formData.get("projectId") as UUID
 	consola.log("formdata ", formData, accountId, projectId)
 
 	if (!accountId || !projectId) {
@@ -45,8 +46,16 @@ export async function action({ request }: ActionFunctionArgs) {
 		const { upload_url } = (await uploadResp.json()) as { upload_url: string }
 
 		// 2. Transcribe the uploaded media
+		consola.log("Starting transcription for uploaded file")
 		const transcript = await transcribeAudioFromUrl(upload_url)
-		consola.log("Transcript: ", transcript)
+		consola.log(
+			"Transcription result:",
+			transcript ? `${transcript.length} characters\n${transcript.slice(0, 500)}` : "null/empty"
+		)
+
+		if (!transcript || transcript.trim().length === 0) {
+			return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
+		}
 
 		const metadata = {
 			accountId,
@@ -56,8 +65,16 @@ export async function action({ request }: ActionFunctionArgs) {
 			segment: "Unknown",
 		}
 
+		const userCustomInstructions = (formData.get("userCustomInstructions") as string) || ""
+
 		// 3. Run insight extraction + store in Supabase
-		const result = await processInterviewTranscript(metadata, transcript)
+		const result = await processInterviewTranscript({
+			metadata,
+			transcript,
+			mediaUrl: upload_url,
+			userCustomInstructions,
+			request,
+		})
 
 		return Response.json({ success: true, insights: result.stored })
 	} catch (err) {

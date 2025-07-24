@@ -90,8 +90,8 @@ export interface Interviewee {
   name: string
   persona: string
   participantDescription: string
-  segment: string
-  contactInfo: string
+  segment?: string | null
+  contactInfo?: string | null
   
 }
 

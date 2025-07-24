@@ -30,8 +30,6 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 		throw new Response(accountsError.message, { status: 500 })
 	}
 
-	consola.log("Projects data:", accounts?.[0].projects)
-
 	return {
 		lang,
 		clientEnv,

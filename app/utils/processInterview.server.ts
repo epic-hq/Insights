@@ -4,7 +4,7 @@
 // is accessible via `~/../baml_client`.
 // Import BAML client - this file is server-only so it's safe to import directly
 import { b } from "~/../baml_client"
-import { db } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 
 export interface ProcessingResult {
@@ -46,14 +46,26 @@ export interface ExtractedInsight {
  * Assumes the following environment variable is set:
  *   OPENAI_API_KEY – forwarded automatically by BAML runtime.
  */
-export async function processInterviewTranscript(
-	metadata: InterviewMetadata,
+export async function processInterviewTranscript({
+	metadata,
+	mediaUrl,
+	transcript,
+	userCustomInstructions,
+	request,
+}: {
+	metadata: InterviewMetadata
 	transcript: string
-): Promise<ProcessingResult> {
+	mediaUrl: string
+	userCustomInstructions?: string
+	request: Request
+}): Promise<ProcessingResult> {
+	// Create authenticated client to respect RLS policies
+	const { client: db } = getServerClient(request)
+
 	// 1. Call the BAML process – this will invoke OpenAI GPT-4o under the hood
 	// Per BAML conventions, call the generated function directly on the `b` client.
 	// The function name must match the declaration in `baml_src/extract_insights.baml`.
-	const response = await b.ExtractInsights(transcript, "")
+	const response = await b.ExtractInsights(transcript, userCustomInstructions || "")
 
 	// Extract insights from the BAML response
 	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
@@ -65,6 +77,8 @@ export async function processInterviewTranscript(
 		interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
 		participant_pseudonym: metadata.participantName || "Anonymous",
 		segment: metadata.segment || null,
+		// interviewer_name: metadata.interviewerName || null,
+		media_url: mediaUrl || null,
 		transcript,
 		duration_min: metadata.durationMin || null,
 		status: "processing" as const,
