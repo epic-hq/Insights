@@ -4,6 +4,8 @@
 
 All data definitions start in this manner, defining a schema in `supabase/schemas`, then letting supabase generate migration files. [docs](https://supabase.com/docs/guides/local-development/declarative-database-schemas)
 
+**NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
+
 `supabase db diff -f description` to generate a migration. This will create a new migration file in the `supabase/migrations` directory. then `supabase migrations up` to apply the migration to the local database.
 
 We should then run `supabase db push` to apply the migration to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.
