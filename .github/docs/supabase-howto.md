@@ -101,7 +101,7 @@ This uses cookies to store the JWT token and syncs the session with the cookie a
 
 ### Server - use in loaders and actions (SSR)
 
-Use createServerClient in your loaders and actions to let your Remix app interact with Supabase on the server-side (e.g., protected routes, server-side rendering, API calls)
+We have created helper function to get the user from the request (specifically the cookie token claims which contains the user metadata object if authenticated):
 
 ```ts
 // app/lib/supabase.server.ts
@@ -111,6 +111,62 @@ export const supabase = createServerClient(
   process.env.SUPABASE_URL!,
   process.env.SUPABASE_ANON_KEY!
 )
+```
+
+The pattern to use in loaders/actions is this:
+
+```ts
+import { getServerClient } from "~/lib/supabase/server"
+import type { InsightView } from "~/types"
+
+export const meta: MetaFunction = () => {
+ return [
+  { title: "Insights | Research Insights" },
+  { name: "description", content: "All research insights from interviews" },
+ ]
+}
+
+// Load insights from Supabase
+export async function loader({ request }: { request: Request }) {
+ const { client: supabase } = getServerClient(request)
+ const { data: jwt } = await supabase.auth.getClaims()
+ const accountId = jwt?.claims.sub
+
+ const url = new URL(request.url)
+
+ // Query params
+ const sort = url.searchParams.get("sort") || "default"
+ const interviewFilter = url.searchParams.get("interview") || null
+ const themeFilter = url.searchParams.get("theme") || null
+ const personaFilter = url.searchParams.get("persona") || null
+
+ // Build base query with account filtering for RLS
+ type InsightRow = Database["public"]["Tables"]["insights"]["Row"]
+ let query = supabase
+  .from("insights")
+  .select("*")
+  .eq("account_id", accountId)
+
+ const { data: rows, error } = await query
+ if (error) {
+  throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
+ }
+ return {insights: rows }
+}
+```
+
+Then in the React FE components use loader data, or grab objects we previously loaded and stored in AuthContext:
+
+```ts
+export default function Insights() {
+ const { insights, filters } = useLoaderData<typeof loader>()
+
+ return (
+  <div>
+   <InsightsDataTable insights={insights} filters={filters} />
+  </div>
+ )
+}
 ```
 
 **Protected Routes** - do it from server side and redirect so you can assume on the route page they’re authenticated

@@ -7,10 +7,360 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
+  accounts: {
+    Tables: {
+      account_user: {
+        Row: {
+          account_id: string
+          account_role: Database["accounts"]["Enums"]["account_role"]
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          account_role: Database["accounts"]["Enums"]["account_role"]
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          account_role?: Database["accounts"]["Enums"]["account_role"]
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "account_user_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      accounts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          name: string | null
+          personal_account: boolean
+          primary_owner_user_id: string
+          private_metadata: Json | null
+          public_metadata: Json | null
+          slug: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string | null
+          personal_account?: boolean
+          primary_owner_user_id?: string
+          private_metadata?: Json | null
+          public_metadata?: Json | null
+          slug?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          name?: string | null
+          personal_account?: boolean
+          primary_owner_user_id?: string
+          private_metadata?: Json | null
+          public_metadata?: Json | null
+          slug?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
+      billing_customers: {
+        Row: {
+          account_id: string
+          active: boolean | null
+          email: string | null
+          id: string
+          provider: string | null
+        }
+        Insert: {
+          account_id: string
+          active?: boolean | null
+          email?: string | null
+          id: string
+          provider?: string | null
+        }
+        Update: {
+          account_id?: string
+          active?: boolean | null
+          email?: string | null
+          id?: string
+          provider?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_customers_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_subscriptions: {
+        Row: {
+          account_id: string
+          billing_customer_id: string
+          cancel_at: string | null
+          cancel_at_period_end: boolean | null
+          canceled_at: string | null
+          created: string
+          current_period_end: string
+          current_period_start: string
+          ended_at: string | null
+          id: string
+          metadata: Json | null
+          plan_name: string | null
+          price_id: string | null
+          provider: string | null
+          quantity: number | null
+          status: Database["accounts"]["Enums"]["subscription_status"] | null
+          trial_end: string | null
+          trial_start: string | null
+        }
+        Insert: {
+          account_id: string
+          billing_customer_id: string
+          cancel_at?: string | null
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          created?: string
+          current_period_end?: string
+          current_period_start?: string
+          ended_at?: string | null
+          id: string
+          metadata?: Json | null
+          plan_name?: string | null
+          price_id?: string | null
+          provider?: string | null
+          quantity?: number | null
+          status?: Database["accounts"]["Enums"]["subscription_status"] | null
+          trial_end?: string | null
+          trial_start?: string | null
+        }
+        Update: {
+          account_id?: string
+          billing_customer_id?: string
+          cancel_at?: string | null
+          cancel_at_period_end?: boolean | null
+          canceled_at?: string | null
+          created?: string
+          current_period_end?: string
+          current_period_start?: string
+          ended_at?: string | null
+          id?: string
+          metadata?: Json | null
+          plan_name?: string | null
+          price_id?: string | null
+          provider?: string | null
+          quantity?: number | null
+          status?: Database["accounts"]["Enums"]["subscription_status"] | null
+          trial_end?: string | null
+          trial_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_subscriptions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_subscriptions_billing_customer_id_fkey"
+            columns: ["billing_customer_id"]
+            isOneToOne: false
+            referencedRelation: "billing_customers"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      config: {
+        Row: {
+          billing_provider: string | null
+          enable_personal_account_billing: boolean | null
+          enable_team_account_billing: boolean | null
+          enable_team_accounts: boolean | null
+        }
+        Insert: {
+          billing_provider?: string | null
+          enable_personal_account_billing?: boolean | null
+          enable_team_account_billing?: boolean | null
+          enable_team_accounts?: boolean | null
+        }
+        Update: {
+          billing_provider?: string | null
+          enable_personal_account_billing?: boolean | null
+          enable_team_account_billing?: boolean | null
+          enable_team_accounts?: boolean | null
+        }
+        Relationships: []
+      }
+      invitations: {
+        Row: {
+          account_id: string
+          account_name: string | null
+          account_role: Database["accounts"]["Enums"]["account_role"]
+          created_at: string | null
+          id: string
+          invitation_type: Database["accounts"]["Enums"]["invitation_type"]
+          invited_by_user_id: string
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          account_id: string
+          account_name?: string | null
+          account_role: Database["accounts"]["Enums"]["account_role"]
+          created_at?: string | null
+          id?: string
+          invitation_type: Database["accounts"]["Enums"]["invitation_type"]
+          invited_by_user_id: string
+          token?: string
+          updated_at?: string | null
+        }
+        Update: {
+          account_id?: string
+          account_name?: string | null
+          account_role?: Database["accounts"]["Enums"]["account_role"]
+          created_at?: string | null
+          id?: string
+          invitation_type?: Database["accounts"]["Enums"]["invitation_type"]
+          invited_by_user_id?: string
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "invitations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      generate_token: {
+        Args: { length: number }
+        Returns: string
+      }
+      get_accounts_with_role: {
+        Args: { passed_in_role?: Database["accounts"]["Enums"]["account_role"] }
+        Returns: string[]
+      }
+      get_config: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
+      has_role_on_account: {
+        Args: {
+          account_role?: Database["accounts"]["Enums"]["account_role"]
+          account_id: string
+        }
+        Returns: boolean
+      }
+      is_set: {
+        Args: { field_name: string }
+        Returns: boolean
+      }
+    }
+    Enums: {
+      account_role: "owner" | "member"
+      invitation_type: "one_time" | "24_hour"
+      subscription_status:
+        | "trialing"
+        | "active"
+        | "canceled"
+        | "incomplete"
+        | "incomplete_expired"
+        | "past_due"
+        | "unpaid"
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          extensions?: Json
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
+  pgmq_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      archive: {
+        Args: { message_id: number; queue_name: string }
+        Returns: boolean
+      }
+      delete: {
+        Args: { queue_name: string; message_id: number }
+        Returns: boolean
+      }
+      pop: {
+        Args: { queue_name: string }
+        Returns: unknown[]
+      }
+      read: {
+        Args: { sleep_seconds: number; queue_name: string; n: number }
+        Returns: unknown[]
+      }
+      send: {
+        Args: { sleep_seconds?: number; queue_name: string; message: Json }
+        Returns: number[]
+      }
+      send_batch: {
+        Args: { sleep_seconds?: number; queue_name: string; messages: Json[] }
+        Returns: number[]
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
   }
   public: {
     Tables: {
@@ -173,6 +523,51 @@ export type Database = {
             columns: ["interview_id"]
             isOneToOne: false
             referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      interview_people: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          interview_id: string
+          person_id: string
+          role: string | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          interview_id: string
+          person_id: string
+          role?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          interview_id?: string
+          person_id?: string
+          role?: string | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_people_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
             referencedColumns: ["id"]
           },
         ]
@@ -453,11 +848,14 @@ export type Database = {
           color_hex: string | null
           created_at: string | null
           description: string | null
-          interview_count: number | null
-          percentage: number | null
+          participant_interview_count: number | null
+          participant_percentage: number | null
           persona_id: string | null
           persona_name: string | null
-          total_interviews: number | null
+          segment_interview_count: number | null
+          segment_percentage: number | null
+          total_participant_interviews: number | null
+          total_segment_interviews: number | null
           updated_at: string | null
         }
         Relationships: []
@@ -473,14 +871,14 @@ export type Database = {
         Returns: unknown
       }
       create_account: {
-        Args: { slug?: string; name?: string }
+        Args: { name?: string; slug?: string }
         Returns: Json
       }
       create_invitation: {
         Args: {
+          account_role: Database["accounts"]["Enums"]["account_role"]
+          invitation_type: Database["accounts"]["Enums"]["invitation_type"]
           account_id: string
-          account_role: "owner" | "member"
-          invitation_type: "one_time" | "24_hour"
         }
         Returns: Json
       }
@@ -510,9 +908,9 @@ export type Database = {
       }
       get_account_invitations: {
         Args: {
-          account_id: string
           results_limit?: number
           results_offset?: number
+          account_id: string
         }
         Returns: Json
       }
@@ -529,10 +927,6 @@ export type Database = {
         Returns: Json
       }
       get_personal_account: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_user_accounts: {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
@@ -569,7 +963,7 @@ export type Database = {
         Returns: unknown
       }
       invoke_edge_function: {
-        Args: { func_name: string; payload: Json }
+        Args: { payload: Json; func_name: string }
         Returns: undefined
       }
       ivfflat_bit_support: {
@@ -604,16 +998,12 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: string
       }
-      refresh_persona_distribution: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       remove_account_member: {
-        Args: { account_id: string; user_id: string }
+        Args: { user_id: string; account_id: string }
         Returns: undefined
       }
       service_role_upsert_customer_subscription: {
-        Args: { account_id: string; customer?: Json; subscription?: Json }
+        Args: { customer?: Json; subscription?: Json; account_id: string }
         Returns: undefined
       }
       sparsevec_out: {
@@ -630,20 +1020,20 @@ export type Database = {
       }
       update_account: {
         Args: {
-          account_id: string
           slug?: string
           name?: string
           public_metadata?: Json
           replace_metadata?: boolean
+          account_id: string
         }
         Returns: Json
       }
       update_account_user_role: {
         Args: {
-          account_id: string
           user_id: string
-          new_account_role: "owner" | "member"
+          new_account_role: Database["accounts"]["Enums"]["account_role"]
           make_primary_owner?: boolean
+          account_id: string
         }
         Returns: undefined
       }
@@ -807,6 +1197,27 @@ export type CompositeTypes<
     : never
 
 export const Constants = {
+  accounts: {
+    Enums: {
+      account_role: ["owner", "member"],
+      invitation_type: ["one_time", "24_hour"],
+      subscription_status: [
+        "trialing",
+        "active",
+        "canceled",
+        "incomplete",
+        "incomplete_expired",
+        "past_due",
+        "unpaid",
+      ],
+    },
+  },
+  graphql_public: {
+    Enums: {},
+  },
+  pgmq_public: {
+    Enums: {},
+  },
   public: {
     Enums: {
       interview_status: [
@@ -822,3 +1233,4 @@ export const Constants = {
     },
   },
 } as const
+
