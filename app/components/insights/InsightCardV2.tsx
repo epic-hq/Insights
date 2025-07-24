@@ -14,7 +14,6 @@ import {
 	ThumbsDown,
 	ThumbsUp,
 	TrendingUp,
-	Users,
 } from "lucide-react"
 import { useState } from "react"
 
@@ -234,14 +233,17 @@ export default function InsightCardV2({
 		)
 	}
 
+	// TODO get away from defining local views unless necessary
 	const [localInsight, setLocalInsight] = useState<InsightView>({
 		...insight,
-		comments: insight.comments || [],
-		upvotes: insight.upvotes || 0,
-		downvotes: insight.downvotes || 0,
-		opportunityIdeas: insight.opportunityIdeas || [],
-		interviews: insight.interviews || [],
-		personas: insight.personas || [],
+		// comments: insight.comments || [],
+		// upvotes: insight.upvotes || 0,
+		// downvotes: insight.downvotes || 0,
+		// opportunityIdeas: insight.opportunityIdeas || [],
+		// interviews: insight.interviews || [],
+		// personas: insight.personas || [],
+		// emotional_response: insight.emotional_response || "",
+		// confidence: insight.confidence || "",
 	})
 	const [_showMore, _setShowMoree] = useState(false)
 
@@ -305,10 +307,28 @@ export default function InsightCardV2({
 			<CardHeader className="pb-4">
 				{/* Name field with Stage and Category on same row */}
 				<div className="mb-3 flex items-start justify-between gap-4">
-					<div className="flex-1">
+					<div className="w-3/4 flex-1">
 						<EditableField field="name" className="font-bold text-2xl text-gray-900" placeholder="Enter insight name" />
+						{/* Pain */}
+						<div>
+							<h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4>
+							<InlineEdit
+								value={localInsight.pain || ""}
+								onSubmit={async (newValue: string) => {
+									setLocalInsight((prev) => ({ ...prev, pain: newValue }))
+									await handleSaveField("pain", newValue)
+								}}
+								textClassName="text-gray-900 text-xl"
+								inputClassName="text-sm"
+								submitOnBlur
+								autoFocus={false}
+								showEditButton={false}
+								multiline
+								placeholder="What pain or friction does the user experience?"
+							/>
+						</div>
 					</div>
-					<div className="flex w-1/5 flex-col gap-2">
+					<div className="flex w-1/4 flex-col gap-2">
 						<div className="flex flex-col gap-1">
 							<div className="font-light text-xs uppercase">Stage</div>
 							<Badge
@@ -335,63 +355,6 @@ export default function InsightCardV2({
 
 			<CardContent className="flex-1 space-y-4">
 				<div className="space-y-3">
-					{/* Details */}
-					<div>
-						<h4 className="mb-1 text-gray-500 text-xs uppercase">Context & Details</h4>
-						<InlineEdit
-							value={localInsight.details || ""}
-							onSubmit={async (newValue: string) => {
-								setLocalInsight((prev) => ({ ...prev, details: newValue }))
-								await handleSaveField("details", newValue)
-							}}
-							textClassName="text-gray-900 text-md"
-							inputClassName="text-sm"
-							submitOnBlur
-							autoFocus={false}
-							showEditButton={false}
-							multiline
-							placeholder="Additional context and details"
-						/>
-					</div>
-
-					{/* Pain */}
-					<div>
-						<h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4>
-						<InlineEdit
-							value={localInsight.pain || ""}
-							onSubmit={async (newValue: string) => {
-								setLocalInsight((prev) => ({ ...prev, pain: newValue }))
-								await handleSaveField("pain", newValue)
-							}}
-							textClassName="text-gray-900 text-md"
-							inputClassName="text-sm"
-							submitOnBlur
-							autoFocus={false}
-							showEditButton={false}
-							multiline
-							placeholder="What pain or friction does the user experience?"
-						/>
-					</div>
-
-					{/* Desired Outcome */}
-					<div>
-						<h4 className="mb-1 text-gray-500 text-xs uppercase">Desired Outcome</h4>
-						<InlineEdit
-							value={localInsight.desiredOutcome || ""}
-							onSubmit={async (newValue: string) => {
-								setLocalInsight((prev) => ({ ...prev, desiredOutcome: newValue }))
-								await handleSaveField("desiredOutcome", newValue)
-							}}
-							textClassName="text-gray-900 text-md"
-							inputClassName="text-sm"
-							submitOnBlur
-							autoFocus={false}
-							showEditButton={false}
-							multiline
-							placeholder="What outcome does the user want to achieve?"
-						/>
-					</div>
-
 					{/* Evidence */}
 					<div className="rounded-r-md border-blue-400 bg-blue-50 p-3">
 						<div className="flex items-start gap-2">
@@ -416,12 +379,50 @@ export default function InsightCardV2({
 						</div>
 					</div>
 
+					{/* Details */}
+					<div>
+						<h4 className="mb-1 text-gray-500 text-xs uppercase">Context & Details</h4>
+						<InlineEdit
+							value={localInsight.details || ""}
+							onSubmit={async (newValue: string) => {
+								setLocalInsight((prev) => ({ ...prev, details: newValue }))
+								await handleSaveField("details", newValue)
+							}}
+							textClassName="text-gray-900 text-md"
+							inputClassName="text-sm"
+							submitOnBlur
+							autoFocus={false}
+							showEditButton={false}
+							multiline
+							placeholder="Additional context and details"
+						/>
+					</div>
+
+					{/* Desired Outcome */}
+					<div>
+						<h4 className="mb-1 text-gray-500 text-xs uppercase">Desired Outcome</h4>
+						<InlineEdit
+							value={localInsight.desiredOutcome || ""}
+							onSubmit={async (newValue: string) => {
+								setLocalInsight((prev) => ({ ...prev, desiredOutcome: newValue }))
+								await handleSaveField("desiredOutcome", newValue)
+							}}
+							textClassName="text-gray-900 text-md"
+							inputClassName="text-sm"
+							submitOnBlur
+							autoFocus={false}
+							showEditButton={false}
+							multiline
+							placeholder="What outcome does the user want to achieve?"
+						/>
+					</div>
+
 					{/* Emotional Response */}
-					{localInsight.emotionalResponse && (
+					{localInsight.emotional_response && (
 						<div>
 							<h4 className="mb-1 text-gray-500 text-xs uppercase">Emotional Response</h4>
 							<InlineEdit
-								value={localInsight.emotionalResponse || ""}
+								value={localInsight.emotional_response || ""}
 								onSubmit={async (newValue: string) => {
 									setLocalInsight((prev) => ({ ...prev, emotionalResponse: newValue }))
 									await handleSaveField("emotionalResponse", newValue)
@@ -519,7 +520,7 @@ export default function InsightCardV2({
 					</div>
 
 					{/* Confidence */}
-					{localInsight.confidence && (
+					{/* {localInsight.confidence && (
 						<div>
 							<h4 className="mb-1 text-gray-500 text-xs uppercase">Confidence</h4>
 							<div className="flex items-center gap-1">
@@ -536,7 +537,7 @@ export default function InsightCardV2({
 								</div>
 							</div>
 						</div>
-					)}
+					)} */}
 
 					{/* Contradictions */}
 					{localInsight.contradictions && (
@@ -580,7 +581,7 @@ export default function InsightCardV2({
 
 				<Separator />
 
-				<div>
+				{/* <div>
 					<h4 className="mb-2 flex items-center gap-1 font-medium text-gray-700 text-sm">
 						<Users className="h-4 w-4" />
 						Source
@@ -593,7 +594,7 @@ export default function InsightCardV2({
 							</div>
 						)) || "No interview data available"}
 					</div>
-				</div>
+				</div> */}
 
 				{localInsight.opportunityIdeas && localInsight.opportunityIdeas.length > 0 && (
 					<div className="rounded-lg border border-gray-200 bg-green-50 p-3">

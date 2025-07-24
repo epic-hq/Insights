@@ -113,11 +113,12 @@ export interface InsightView {
 	description?: string | null
 	evidence?: string | null
 	opportunityIdeas?: string[] | null
-	confidence?: number | string | null
+	confidence?: string | null
 	createdAt?: Date | null
 	updatedAt?: Date | null
 	relatedTags?: string[]
 	contradictions?: string | null
+	emotional_response?: string | null
 	interview_id?: string | null
 	upvotes?: number
 	downvotes?: number

@@ -518,6 +518,10 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_user_accounts: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
+      }
       halfvec_avg: {
         Args: { "": number[] }
         Returns: unknown
@@ -579,6 +583,10 @@ export type Database = {
         Returns: Json
       }
       process_embedding_queue: {
+        Args: Record<PropertyKey, never>
+        Returns: string
+      }
+      process_transcribe_queue: {
         Args: Record<PropertyKey, never>
         Returns: string
       }

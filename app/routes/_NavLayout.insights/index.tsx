@@ -6,7 +6,7 @@ import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import { InsightsDataTable } from "~/components/insights/insights-data-table"
 import { Button } from "~/components/ui/button"
-import { db } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/server"
 import type { InsightView } from "~/types"
 
 export const meta: MetaFunction = () => {
@@ -18,6 +18,10 @@ export const meta: MetaFunction = () => {
 
 // Load insights from Supabase
 export async function loader({ request }: { request: Request }) {
+	const { client: supabase } = getServerClient(request)
+	const { data: jwt } = await supabase.auth.getClaims()
+	const accountId = jwt?.claims.sub
+
 	const url = new URL(request.url)
 
 	// Query params
@@ -26,9 +30,12 @@ export async function loader({ request }: { request: Request }) {
 	const themeFilter = url.searchParams.get("theme") || null
 	const personaFilter = url.searchParams.get("persona") || null
 
-	// Build base query
+	// Build base query with account filtering for RLS
 	type InsightRow = Database["public"]["Tables"]["insights"]["Row"]
-	let query = db.from("insights").select("*")
+	let query = supabase
+		.from("insights")
+		.select("*")
+		.eq("account_id", accountId)
 
 	// Apply filters (simple examples – adjust field names as needed)
 	if (interviewFilter) {
@@ -54,78 +61,59 @@ export async function loader({ request }: { request: Request }) {
 	)
 
 	const { data: rows, error } = await query
-	if (error) throw new Response(error.message, { status: 500 })
+	if (error) {
+		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
+	}
 
-	// Map to component props
-	const insights: InsightView[] = (rows || []).map((r: InsightRow) => ({
-		id: r.id,
-		name: r.name,
-		tag: r.name,
-		category: r.category,
-		journeyStage: r.journey_stage ?? "",
-		impact: r.impact ?? 0,
-		novelty: r.novelty ?? 0,
-		jtbd: r.jtbd ?? "",
-		underlyingMotivation: r.motivation ?? "",
-		pain: r.pain ?? "",
-		desiredOutcome: r.desired_outcome ?? "",
-		evidence: r.evidence ?? "",
-		opportunityIdeas: r.opportunity_ideas ?? [],
-		confidence: r.confidence ?? "",
-		createdAt: r.created_at,
-		relatedTags: [],
-		contradictions: r.contradictions ?? "",
-		interview_id: r.interview_id,
-	}))
+	// Use Supabase types directly like interviews pattern
+	const insights: InsightRow[] = rows || []
 
-	// Copy of results for additional in-memory filtering that is easier to do on the application side
+	// Apply additional in-memory filtering and sorting
 	let filteredInsights = [...insights]
 
-	// Filter by interview (not covered by DB query above because it is a partial match on the tag field)
+	// Filter by interview name
 	if (interviewFilter) {
 		filteredInsights = filteredInsights.filter((insight) =>
 			insight.name?.toLowerCase().includes(interviewFilter.toLowerCase())
 		)
 	}
 
-	if (themeFilter) {
-		filteredInsights = filteredInsights.filter((insight) =>
-			insight.relatedTags?.some((tag: string) => tag.toLowerCase() === themeFilter.toLowerCase())
-		)
-	}
-
-	if (personaFilter) {
-		// For demo purposes, we'll just filter based on participant name containing the persona name
-		// In a real app, you'd have more structured data about which insights relate to which personas
-		filteredInsights = filteredInsights.filter((insight: InsightView) => {
-			const personaName = personaFilter.toLowerCase()
-			if (personaName === "students") {
-				return insight.name?.toLowerCase().includes("student") || insight.name?.toLowerCase().includes("students")
-			}
-			if (personaName === "teachers") {
-				return insight.name?.toLowerCase().includes("teacher") || insight.name?.toLowerCase().includes("teachers")
-			}
-			if (personaName === "admins") {
-				return insight.name?.toLowerCase().includes("admin") || insight.name?.toLowerCase().includes("admins")
-			}
-			return false
+	// Apply sorting
+	if (sort === "latest") {
+		filteredInsights.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
+	} else if (sort === "impact") {
+		filteredInsights.sort((a, b) => (b.impact || 0) - (a.impact || 0))
+	} else if (sort === "confidence") {
+		filteredInsights.sort((a, b) => {
+			const aConf = typeof a.confidence === "string" ? parseInt(a.confidence) || 0 : a.confidence || 0
+			const bConf = typeof b.confidence === "string" ? parseInt(b.confidence) || 0 : b.confidence || 0
+			return bConf - aConf
 		})
 	}
 
-	// Apply sorting
-	if (sort === "latest") {
-		filteredInsights.sort((a, b) => new Date(b.createdAt || "").getTime() - new Date(a.createdAt || "").getTime())
-	} else if (sort === "impact") {
-		filteredInsights.sort((a: InsightView, b: InsightView) => Number(b.impact) - Number(a.impact))
-	} else if (sort === "confidence") {
-		filteredInsights.sort(
-			(a: InsightView & { upvotes?: number }, b: InsightView & { upvotes?: number }) =>
-				Number(b.upvotes || 0) - Number(a.upvotes || 0)
-		)
-	}
+	// Transform for UI components that expect InsightView format
+	const transformedInsights: InsightView[] = filteredInsights.map((r: InsightRow) => ({
+		id: r.id,
+		name: r.name || "",
+		category: r.category || "",
+		journeyStage: r.journey_stage || "",
+		impact: r.impact || 0,
+		novelty: r.novelty || 0,
+		jtbd: r.jtbd || "",
+		underlyingMotivation: r.motivation || "",
+		pain: r.pain || "",
+		desiredOutcome: r.desired_outcome || "",
+		evidence: r.evidence || "",
+		opportunityIdeas: r.opportunity_ideas || [],
+		confidence: r.confidence || "",
+		createdAt: new Date(r.created_at),
+		relatedTags: [],
+		contradictions: r.contradictions || "",
+		interview_id: r.interview_id,
+	}))
 
 	return {
-		insights: filteredInsights,
+		insights: transformedInsights,
 		filters: {
 			sort,
 			interviewFilter,
