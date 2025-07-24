@@ -447,7 +447,21 @@ export type Database = {
       }
     }
     Views: {
-      [_ in never]: never
+      persona_distribution: {
+        Row: {
+          account_id: string | null
+          color_hex: string | null
+          created_at: string | null
+          description: string | null
+          interview_count: number | null
+          percentage: number | null
+          persona_id: string | null
+          persona_name: string | null
+          total_interviews: number | null
+          updated_at: string | null
+        }
+        Relationships: []
+      }
     }
     Functions: {
       accept_invitation: {
@@ -589,6 +603,10 @@ export type Database = {
       process_transcribe_queue: {
         Args: Record<PropertyKey, never>
         Returns: string
+      }
+      refresh_persona_distribution: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
       }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
