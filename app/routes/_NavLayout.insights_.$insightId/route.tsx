@@ -1,7 +1,7 @@
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
-import InsightCardV2 from "~/components/insights/InsightCardV2"  
+import InsightCardV2 from "~/components/insights/InsightCardV2"
 import { getServerClient } from "~/lib/supabase/server"
 
 export const meta: MetaFunction = ({ params }) => {
@@ -86,26 +86,30 @@ export default function InsightDetailPage() {
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-4">
 				<div className="lg:col-span-3">
 					{/* Transform to InsightView for component compatibility */}
-					<InsightCardV2 insight={{
-						id: insight.id,
-						name: insight.name || "",
-						category: insight.category || "",
-						journeyStage: insight.journey_stage || "",
-						impact: insight.impact || 0,
-						novelty: insight.novelty || 0,
-						jtbd: insight.jtbd || "",
-						pain: insight.pain || "",
-						desiredOutcome: insight.desired_outcome || "",
-						details: insight.details || "",
-						evidence: insight.evidence || "",
-						opportunityIdeas: insight.opportunity_ideas || [],
-						confidence: insight.confidence || "",
-						createdAt: new Date(insight.created_at),
-						relatedTags: [],
-						contradictions: insight.contradictions || "",
-						interview_id: insight.interview_id,
-						underlyingMotivation: insight.motivation || "",
-					} as any} />
+					<InsightCardV2
+						insight={
+							{
+								id: insight.id,
+								name: insight.name || "",
+								category: insight.category || "",
+								journeyStage: insight.journey_stage || "",
+								impact: insight.impact || 0,
+								novelty: insight.novelty || 0,
+								jtbd: insight.jtbd || "",
+								pain: insight.pain || "",
+								desiredOutcome: insight.desired_outcome || "",
+								details: insight.details || "",
+								evidence: insight.evidence || "",
+								opportunityIdeas: insight.opportunity_ideas || [],
+								confidence: insight.confidence || "",
+								createdAt: new Date(insight.created_at),
+								relatedTags: [],
+								contradictions: insight.contradictions || "",
+								interview_id: insight.interview_id,
+								underlyingMotivation: insight.motivation || "",
+							} as any
+						}
+					/>
 
 					{/* Related Interview Section */}
 					{interviewData && (
@@ -125,10 +129,7 @@ export default function InsightDetailPage() {
 										</span>
 									)}
 								</div>
-								<Link
-									to={`/interviews/${interviewData.id}`}
-									className="text-blue-600 text-sm hover:underline"
-								>
+								<Link to={`/interviews/${interviewData.id}`} className="text-blue-600 text-sm hover:underline">
 									View Interview
 								</Link>
 							</div>
@@ -154,7 +155,7 @@ export default function InsightDetailPage() {
 								))}
 							</ul>
 						) : (
-							<div className="text-gray-400 italic text-sm">No related insights found.</div>
+							<div className="text-gray-400 text-sm italic">No related insights found.</div>
 						)}
 					</div>
 				</aside>

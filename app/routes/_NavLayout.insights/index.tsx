@@ -32,10 +32,7 @@ export async function loader({ request }: { request: Request }) {
 
 	// Build base query with account filtering for RLS
 	type InsightRow = Database["public"]["Tables"]["insights"]["Row"]
-	let query = supabase
-		.from("insights")
-		.select("*")
-		.eq("account_id", accountId)
+	let query = supabase.from("insights").select("*").eq("account_id", accountId)
 
 	// Apply filters (simple examples – adjust field names as needed)
 	if (interviewFilter) {
@@ -85,8 +82,8 @@ export async function loader({ request }: { request: Request }) {
 		filteredInsights.sort((a, b) => (b.impact || 0) - (a.impact || 0))
 	} else if (sort === "confidence") {
 		filteredInsights.sort((a, b) => {
-			const aConf = typeof a.confidence === "string" ? parseInt(a.confidence) || 0 : a.confidence || 0
-			const bConf = typeof b.confidence === "string" ? parseInt(b.confidence) || 0 : b.confidence || 0
+			const aConf = typeof a.confidence === "string" ? Number.parseInt(a.confidence) || 0 : a.confidence || 0
+			const bConf = typeof b.confidence === "string" ? Number.parseInt(b.confidence) || 0 : b.confidence || 0
 			return bConf - aConf
 		})
 	}

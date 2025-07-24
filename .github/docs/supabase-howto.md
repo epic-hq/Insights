@@ -235,3 +235,25 @@ Running queries across schemas can be difficult with joins and foreign keys. Had
 ```toml
 schemas = ["public", "graphql_public", "accounts", "pgmq_public"]
 ```
+
+## Local Development
+
+Your local DB container is missing the pgmq extension, so any migration that references its objects can’t run locally. That leaves the migration in an “applied-remote / pending-local” limbo, which is why supabase migration list shows it only on the cloud side.
+
+Recommended path:
+
+Make the migration resilient
+Wrap every CREATE EXTENSION pgmq (or any pgmq DDL) in an IF NOT EXISTS guard.
+For objects that simply use the extension (e.g. SELECT pgmq.create_queue()), add a fast-exit when the extension is absent:
+
+```sql
+DO $$
+BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_extension WHERE extname = 'pgmq') THEN
+    RAISE NOTICE 'pgmq not installed; skipping queue setup';
+    RETURN;
+  END IF;
+  PERFORM pgmq.create_queue('transcribe');
+END$$;
+With those guards, the migration will succeed locally even though the queues won’t function.
+```

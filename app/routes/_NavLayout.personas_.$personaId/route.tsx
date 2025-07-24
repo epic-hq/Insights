@@ -1,8 +1,8 @@
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import InsightCardV2 from "~/components/insights/InsightCardV2"
-import type { Database } from "~/../supabase/types"
 import { getServerClient } from "~/lib/supabase/server"
 
 export const meta: MetaFunction = ({ params }) => {
@@ -108,15 +108,10 @@ export default function PersonaDetailRoute() {
 					<div className="mb-6 rounded-lg bg-white p-6 shadow-sm">
 						<div className="mb-4 flex items-start justify-between">
 							<div className="flex items-center gap-3">
-								<div
-									className="h-12 w-12 rounded-full"
-									style={{ backgroundColor: persona.color_hex || "#6b7280" }}
-								/>
+								<div className="h-12 w-12 rounded-full" style={{ backgroundColor: persona.color_hex || "#6b7280" }} />
 								<div>
 									<h1 className="font-bold text-3xl text-gray-900">{persona.name || "Untitled Persona"}</h1>
-									{persona.description && (
-										<p className="mt-1 text-gray-600">{persona.description}</p>
-									)}
+									{persona.description && <p className="mt-1 text-gray-600">{persona.description}</p>}
 								</div>
 							</div>
 						</div>
@@ -220,9 +215,7 @@ export default function PersonaDetailRoute() {
 												className="h-3 w-3 rounded-full"
 												style={{ backgroundColor: related.color_hex || "#6b7280" }}
 											/>
-											<span className="text-gray-500">
-												{new Date(related.updated_at).toLocaleDateString()}
-											</span>
+											<span className="text-gray-500">{new Date(related.updated_at).toLocaleDateString()}</span>
 										</div>
 									</li>
 								))}
