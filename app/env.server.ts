@@ -7,6 +7,8 @@ const envSchema = z.object({
 	DEV_FAKE_AUTH: z.string().optional(),
 	SUPABASE_URL: z.string(),
 	SUPABASE_ANON_KEY: z.string(),
+	SUPABASE_SERVICE_ROLE_KEY: z.string().optional(), // TODO: remove
+	SUPABASE_FUNCTIONS_URL: z.string().optional(),
 })
 
 type ServerEnv = z.infer<typeof envSchema>
