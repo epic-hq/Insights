@@ -1,0 +1,1 @@
+-- add composite constraint on (account_id, tag)\nALTER TABLE public.tags ADD CONSTRAINT tags_account_tag_unique UNIQUE (account_id, tag);

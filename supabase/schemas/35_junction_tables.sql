@@ -5,26 +5,26 @@
 CREATE TABLE IF NOT EXISTS insight_tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
-    tag TEXT NOT NULL REFERENCES tags(tag) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     account_id UUID NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id),
     
     -- Ensure unique insight-tag pairs per account
-    UNIQUE(insight_id, tag, account_id)
+    UNIQUE(insight_id, tag_id, account_id)
 );
 
 -- Interview-Tags junction table (tag interviews directly)
 CREATE TABLE IF NOT EXISTS interview_tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     interview_id UUID NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
-    tag TEXT NOT NULL REFERENCES tags(tag) ON DELETE CASCADE,
+    tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     account_id UUID NOT NULL,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id),
     
     -- Ensure unique interview-tag pairs per account
-    UNIQUE(interview_id, tag, account_id)
+    UNIQUE(interview_id, tag_id, account_id)
 );
 
 -- Opportunity-Insights junction table (replaces related_insight_ids array)
@@ -73,11 +73,11 @@ CREATE TABLE IF NOT EXISTS persona_insights (
 
 -- Add indexes for performance
 CREATE INDEX IF NOT EXISTS idx_insight_tags_insight_id ON insight_tags(insight_id);
-CREATE INDEX IF NOT EXISTS idx_insight_tags_tag ON insight_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_insight_tags_tag_id ON insight_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_insight_tags_account_id ON insight_tags(account_id);
 
 CREATE INDEX IF NOT EXISTS idx_interview_tags_interview_id ON interview_tags(interview_id);
-CREATE INDEX IF NOT EXISTS idx_interview_tags_tag ON interview_tags(tag);
+CREATE INDEX IF NOT EXISTS idx_interview_tags_tag_id ON interview_tags(tag_id);
 CREATE INDEX IF NOT EXISTS idx_interview_tags_account_id ON interview_tags(account_id);
 
 CREATE INDEX IF NOT EXISTS idx_opportunity_insights_opportunity_id ON opportunity_insights(opportunity_id);

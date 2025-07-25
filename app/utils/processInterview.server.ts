@@ -62,7 +62,7 @@ export async function processInterviewTranscript({
 	request,
 }: {
 	metadata: InterviewMetadata
-	transcriptData: Record<string, any>
+	transcriptData: Record<string, unknown>
 	mediaUrl: string
 	userCustomInstructions?: string
 	request: Request
@@ -73,7 +73,8 @@ export async function processInterviewTranscript({
 	// 1. Call the BAML process – this will invoke OpenAI GPT-4o under the hood
 	// Per BAML conventions, call the generated function directly on the `b` client.
 	// The function name must match the declaration in `baml_src/extract_insights.baml`.
-	const response = await b.ExtractInsights(transcriptData.full_transcript, userCustomInstructions || "")
+	const fullTranscript = transcriptData.full_transcript as string
+	const response = await b.ExtractInsights(fullTranscript, userCustomInstructions || "")
 
 	// Extract insights from the BAML response
 	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
@@ -87,9 +88,9 @@ export async function processInterviewTranscript({
 		segment: metadata.segment || null,
 		// interviewer_name: metadata.interviewerName || null,
 		media_url: mediaUrl || null,
-		transcript: transcriptData.full_transcript,
+		transcript: fullTranscript,
 		transcript_formatted: transcriptData,
-		duration_min: transcriptData.duration / 60 || null,
+		duration_min: transcriptData.audio_duration ? Math.round((transcriptData.audio_duration as number) / 60) : null,
 		status: "processing" as const,
 		...(metadata.projectId ? { project_id: metadata.projectId } : {}),
 	} as InterviewInsert
@@ -112,20 +113,19 @@ export async function processInterviewTranscript({
 	}
 
 	// 3. Transform insights into DB rows - map BAML types to database schema
-	const rows: InsightInsert[] = insights.map((i) => ({
+	const rows = insights.map((i) => ({
 		account_id: metadata.accountId,
 		interview_id: interviewRecord.id,
-		name: i.name, // Database uses 'name' field, not 'tag'
+		name: i.name,
 		category: i.category,
-		journey_stage: i.journeyStage ?? null, // BAML uses camelCase
+		// Note: tag field removed - we use relatedTags array for junction table
+		journey_stage: i.journeyStage ?? null,
 		jtbd: i.jtbd ?? null,
-		details: i.details ?? null,
-		evidence: i.evidence ?? null,
-		motivation: i.underlyingMotivation ?? null, // BAML uses different field name
+		motivation: i.underlyingMotivation ?? null,
 		pain: i.pain ?? null,
-		desired_outcome: i.desiredOutcome ?? null, // BAML uses camelCase
-		emotional_response: i.emotionalResponse ?? null, // BAML uses camelCase
-		opportunity_ideas: i.opportunityIdeas ?? null, // BAML uses camelCase
+		desired_outcome: i.desiredOutcome ?? null,
+		emotional_response: i.emotionalResponse ?? null,
+		evidence: i.evidence ?? null,
 		confidence: i.confidence ? (i.confidence > 3 ? "high" : i.confidence > 1 ? "medium" : "low") : null, // Convert number to enum
 		contradictions: i.contradictions ?? null,
 		impact: i.impact ?? null,
@@ -191,20 +191,42 @@ export async function processInterviewTranscript({
 		throw new Error("Person upsert succeeded but no ID returned")
 	}
 
-	// Find persona by name or use null for "Other"
+	// Find or create persona
 	let personaData: PersonasRow | null = null
 	if (interviewee?.persona?.trim()) {
-		const { data, error: personaError } = await db
+		const personaName = interviewee.persona.trim()
+
+		// First try to find existing persona
+		const { data: existingPersona, error: lookupError } = await db
 			.from("personas")
 			.select("*")
 			.eq("account_id", metadata.accountId)
-			.ilike("name", interviewee.persona.trim())
+			.ilike("name", personaName)
 			.maybeSingle()
 
-		if (personaError) {
-			consola.warn(`Failed to lookup persona "${interviewee.persona}": ${personaError.message}`)
+		if (lookupError) {
+			consola.warn(`Failed to lookup persona "${personaName}": ${lookupError.message}`)
+		} else if (existingPersona) {
+			personaData = existingPersona
+			consola.log(`Found existing persona: ${personaName}`)
 		} else {
-			personaData = data
+			// Create new persona if not found
+			const { data: newPersona, error: createError } = await db
+				.from("personas")
+				.insert({
+					account_id: metadata.accountId,
+					name: personaName,
+					description: `Auto-generated from interview: ${interviewRecord.title}`,
+				})
+				.select("*")
+				.single()
+
+			if (createError) {
+				consola.warn(`Failed to create persona "${personaName}": ${createError.message}`)
+			} else {
+				personaData = newPersona
+				consola.log(`Created new persona: ${personaName}`)
+			}
 		}
 	}
 
@@ -246,7 +268,68 @@ export async function processInterviewTranscript({
 		})
 		.eq("id", interviewRecord.id)
 
-	// 5. Update interview status to ready
+	// 5. Create tags from relatedTags array and populate junction tables
+	// Collect all unique tags from all insights' relatedTags arrays
+	const allTags = insights.flatMap(insight => insight.relatedTags || [])
+	const uniqueTags = [...new Set(allTags.filter(Boolean))]
+
+	consola.log(`Creating ${uniqueTags.length} unique tags:`, uniqueTags)
+
+	for (const tagName of uniqueTags) {
+		// Upsert tag
+		const { data: tagData, error: tagError } = await db
+			.from("tags")
+			.upsert(
+				{ account_id: metadata.accountId, tag: tagName },
+				{ onConflict: "account_id,tag" }
+			)
+			.select("id")
+			.single()
+
+		if (tagError) {
+			consola.warn(`Failed to create tag "${tagName}": ${tagError.message}`)
+			continue
+		}
+
+		// Link insights to tags based on relatedTags array
+		for (let i = 0; i < insights.length; i++) {
+			const originalInsight = insights[i]
+			const storedInsight = data?.[i]
+
+			if (!storedInsight || !originalInsight.relatedTags?.includes(tagName)) {
+				continue
+			}
+
+			const { error: junctionError } = await db
+				.from("insight_tags")
+				.insert({
+					insight_id: storedInsight.id,
+					tag_id: tagData.id,
+					account_id: metadata.accountId,
+				})
+				.select()
+				.single()
+
+			if (junctionError && !junctionError.message.includes('duplicate')) {
+				consola.warn(`Failed to link insight ${storedInsight.id} to tag ${tagName}: ${junctionError.message}`)
+			}
+		}
+	}
+
+	// 6. Trigger persona-insight linking for all created insights
+	if (data?.length) {
+		for (const insight of data) {
+			const { error: personaLinkError } = await db.rpc('auto_link_persona_insights', {
+				p_insight_id: insight.id
+			})
+
+			if (personaLinkError) {
+				consola.warn(`Failed to auto-link persona insights for ${insight.id}: ${personaLinkError.message}`)
+			}
+		}
+	}
+
+	// 7. Update interview status to ready
 	await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
 
 	return { stored: data as InsightInsert[], interview: interviewRecord }

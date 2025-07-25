@@ -76,7 +76,7 @@ describe('Persona-Insight Integration Tests', () => {
 
 		// 5. Test the persona-insight relationship function
 		// This should call the function that was failing with "pe.persona does not exist"
-		const { data: personaInsights, error } = await supabase.rpc('link_insight_to_personas', {
+		const { data: personaInsights, error } = await supabase.rpc('auto_link_persona_insights', {
 			p_insight_id: insight.id,
 		})
 
@@ -144,7 +144,7 @@ describe('Persona-Insight Integration Tests', () => {
 
 		// 4. Test the function with a person who has no persona
 		// This should not fail and should handle null persona_id gracefully
-		const { error } = await supabase.rpc('link_insight_to_personas', {
+		const { error } = await supabase.rpc('auto_link_persona_insights', {
 			p_insight_id: insight.id,
 		})
 

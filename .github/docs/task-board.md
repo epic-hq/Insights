@@ -54,3 +54,22 @@ Type alignment: Make confidence smallint (1–3) or an enum if you want strictne
 **Add CHECK (journey_stage in (...)) if your stages are fixed.
 
 - [ ] Enable user to re-generate insights with custom user instructions (optional) and add into a new queue called: `generate_insights_queue`. Default redoes the given interviewid from 'transcript' column. This would call BAML with the given instructions and generate new insights. we should expose this as an action API and callable from the UI or a db trigger (would want as edge function?)
+
+- [ ] “Smart” tagging (medium effort)
+Problem: users may create semantically-duplicate tags (safety, transport_safety, night_travel).
+
+Plan:
+
+Fetch existing tags for the account (SELECT tag FROM tags WHERE account_id = …).
+Call BAML with:
+system: You are TagNormalizer.  Given `candidate_tags` and `existing_tags`, return
+        a mapping: {candidate_tag: canonical_tag}.
+        If there is no suitable existing tag, return NEW.
+This is a lightweight, single-shot mapping – no schema change.
+Apply mapping
+If canonical_tag === 'NEW' → insert new tag
+else → reuse existing canonical_tag.
+Benefits
+
+Reuses semantically-close tags automatically
+Keeps tag table clean without manual admin

@@ -179,15 +179,17 @@ create policy "Account owners can delete" on public.personas
 
 -- 9. Tags (global) --------------------------------------------------------------
 create table if not exists tags (
-  tag text NOT NULL primary key,
+  id uuid primary key default gen_random_uuid(),
+  tag text NOT NULL,
 	account_id uuid not null references accounts.accounts (id) on delete cascade,
 	term text,
 	definition text,
 	set_name text,
 	embedding vector(1536),
 	updated_at timestamptz not null default now(),
-	created_at timestamptz not null default now()
-);
+	created_at timestamptz not null default now(),
+  constraint tags_account_tag_unique unique (account_id, tag)
+ );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_tags_account_id ON public.tags(account_id);
