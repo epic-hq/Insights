@@ -1,5 +1,6 @@
 import type { UUID } from "node:crypto"
 import consola from "consola"
+import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { transcribeRemoteFile } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
@@ -40,20 +41,20 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// 1. Upload then transcribe via AssemblyAI
 		consola.log("Starting transcription for URL:", directUrl)
-		const transcript = await transcribeRemoteFile(directUrl)
-		consola.log("Transcription result:", transcript ? `${transcript.length} characters` : "null/empty")
+		const transcriptData = await transcribeRemoteFile(directUrl)
+		consola.log("Transcription result:", transcriptData ? `${transcriptData.length} characters` : "null/empty")
 
-		if (!transcript || transcript.trim().length === 0) {
+		if (!transcriptData || transcriptData.full_transcript.trim().length === 0) {
 			return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
 		}
 
-		// 2. Mock metadata (replace later with real user/org info)
+		// 2. metadata to pass to BAML pipeline
 		const metadata = {
 			accountId,
 			projectId,
-			interviewTitle: `Interview - ${new Date().toISOString()}`,
-			participantName: "Anonymous",
-			segment: "Unknown",
+			interviewTitle: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
+			participantName: "TBD",
+			segment: "TBD",
 		}
 
 		const userCustomInstructions = (formData.get("userCustomInstructions") as string) || ""

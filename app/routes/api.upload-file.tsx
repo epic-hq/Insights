@@ -1,5 +1,6 @@
 import type { UUID } from "node:crypto"
 import consola from "consola"
+import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
@@ -47,20 +48,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// 2. Transcribe the uploaded media
 		consola.log("Starting transcription for uploaded file")
-		const transcript = await transcribeAudioFromUrl(upload_url)
+		const transcriptData = await transcribeAudioFromUrl(upload_url)
 		consola.log(
 			"Transcription result:",
-			transcript ? `${transcript.length} characters\n${transcript.slice(0, 500)}` : "null/empty"
+			transcriptData
+				? `${transcriptData.full_transcript.length} characters\n${transcriptData.full_transcript.slice(0, 500)}`
+				: "null/empty"
 		)
 
-		if (!transcript || transcript.trim().length === 0) {
+		if (!transcriptData || transcriptData.full_transcript.trim().length === 0) {
 			return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
 		}
 
 		const metadata = {
 			accountId,
 			projectId,
-			interviewTitle: `Interview - ${new Date().toISOString()}`,
+			fileName: file?.name,
+			interviewTitle: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
 			participantName: "Anonymous",
 			segment: "Unknown",
 		}
@@ -70,7 +74,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		// 3. Run insight extraction + store in Supabase
 		const result = await processInterviewTranscript({
 			metadata,
-			transcript,
+			transcriptData,
 			mediaUrl: upload_url,
 			userCustomInstructions,
 			request,

@@ -3,9 +3,10 @@
 // NOTE: tsconfig path alias `~` maps to `app/`, so baml_client (generated at project root)
 // is accessible via `~/../baml_client`.
 // Import BAML client - this file is server-only so it's safe to import directly
+import consola from "consola"
 import { b } from "~/../baml_client"
-import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/../supabase/types"
+import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 
 // Supabase table types
@@ -27,6 +28,7 @@ export interface InterviewMetadata {
 	participantName?: string
 	segment?: string
 	durationMin?: number
+	fileName?: string
 }
 
 export interface ExtractedInsight {
@@ -55,12 +57,12 @@ export interface ExtractedInsight {
 export async function processInterviewTranscript({
 	metadata,
 	mediaUrl,
-	transcript,
+	transcriptData,
 	userCustomInstructions,
 	request,
 }: {
 	metadata: InterviewMetadata
-	transcript: string
+	transcriptData: Record<string, any>
 	mediaUrl: string
 	userCustomInstructions?: string
 	request: Request
@@ -71,7 +73,7 @@ export async function processInterviewTranscript({
 	// 1. Call the BAML process – this will invoke OpenAI GPT-4o under the hood
 	// Per BAML conventions, call the generated function directly on the `b` client.
 	// The function name must match the declaration in `baml_src/extract_insights.baml`.
-	const response = await b.ExtractInsights(transcript, userCustomInstructions || "")
+	const response = await b.ExtractInsights(transcriptData.full_transcript, userCustomInstructions || "")
 
 	// Extract insights from the BAML response
 	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
@@ -79,14 +81,15 @@ export async function processInterviewTranscript({
 	// 2. First, create the interview record
 	const interviewData: InterviewInsert = {
 		account_id: metadata.accountId,
-		title: metadata.interviewTitle || "Untitled Interview",
+		title: metadata.interviewTitle || metadata.fileName,
 		interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
 		participant_pseudonym: metadata.participantName || "Anonymous",
 		segment: metadata.segment || null,
 		// interviewer_name: metadata.interviewerName || null,
 		media_url: mediaUrl || null,
-		transcript,
-		duration_min: metadata.durationMin || null,
+		transcript: transcriptData.full_transcript,
+		transcript_formatted: transcriptData,
+		duration_min: transcriptData.duration / 60 || null,
 		status: "processing" as const,
 		...(metadata.projectId ? { project_id: metadata.projectId } : {}),
 	} as InterviewInsert
@@ -134,7 +137,7 @@ export async function processInterviewTranscript({
 	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
 
 	// 4.1 Upsert person and link to interview
-	if (interviewee?.name && interviewee.name.trim()) {
+	if (interviewee?.name?.trim()) {
 		// Prepare person data with proper typing
 		const personInsertData: PeopleInsert = {
 			account_id: metadata.accountId,
@@ -143,7 +146,7 @@ export async function processInterviewTranscript({
 			segment: interviewee.segment?.trim() || null,
 			contact_info: interviewee.contactInfo || null,
 		}
-
+		consola.log("personInsertData", personInsertData)
 		// Upsert person by normalized name + account_id
 		const { data: personData, error: personError } = await db
 			.from("people")
@@ -170,7 +173,6 @@ export async function processInterviewTranscript({
 				.maybeSingle()
 
 			if (personaError) {
-				console.warn(`Failed to lookup persona "${interviewee.persona}": ${personaError.message}`)
 			} else {
 				personaData = data
 			}
@@ -183,9 +185,7 @@ export async function processInterviewTranscript({
 			role: "participant",
 		}
 
-		const { error: junctionError } = await db
-			.from("interview_people")
-			.insert(junctionData)
+		const { error: junctionError } = await db.from("interview_people").insert(junctionData)
 
 		if (junctionError) {
 			throw new Error(`Failed to link person to interview: ${junctionError.message}`)
@@ -199,7 +199,7 @@ export async function processInterviewTranscript({
 				.eq("id", personData.id)
 
 			if (updateError) {
-				console.warn(`Failed to update person with persona: ${updateError.message}`)
+				consola.warn(`Failed to update person with persona reference: ${updateError.message}`)
 			}
 		}
 	}

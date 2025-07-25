@@ -1,9 +1,8 @@
+import consola from "consola"
 import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import EditableTextarea from "~/components/EditableTextarea"
-import MarkdownTranscript from "~/components/MarkdownTranscript"
-import TranscriptDisplay from "~/components/TranscriptDisplay"
-import { Button } from "~/components/ui/button"
+import { TranscriptResults } from "~/components/interviews/TranscriptResults"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Interview } from "~/types"
 
@@ -49,7 +48,7 @@ export async function loader({ request, params }: { request: Request; params: { 
 	// Fetch participant data separately to avoid junction table query issues
 	let participants: any[] = []
 	let primaryParticipant: any = null
-	
+
 	try {
 		const { data: participantData } = await supabase
 			.from("interview_people")
@@ -69,13 +68,11 @@ export async function loader({ request, params }: { request: Request; params: { 
 				)
 			`)
 			.eq("interview_id", interviewId)
-		
+
 		participants = participantData || []
 		primaryParticipant = participants[0]?.people
-	} catch (error) {
-		console.log("Could not fetch participant data:", error)
-	}
-	
+	} catch (_error) {}
+
 	const interview: Interview & {
 		participants: typeof participants
 		primaryParticipant: typeof primaryParticipant
@@ -85,6 +82,7 @@ export async function loader({ request, params }: { request: Request; params: { 
 		primaryParticipant,
 	}
 
+	consola.log("interview", interview)
 	// Fetch interviewer information if available
 	let interviewerData = null
 	if (interview.interviewer_id) {
@@ -174,10 +172,12 @@ export default function InterviewDetail() {
 							<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
 								{interview.primaryParticipant.name}
 							</span>
-						) : interview.participant_pseudonym && (
-							<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
-								{interview.participant_pseudonym}
-							</span>
+						) : (
+							interview.participant_pseudonym && (
+								<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
+									{interview.participant_pseudonym}
+								</span>
+							)
 						)}
 						{/* Show persona from junction table if available, fallback to legacy field */}
 						{interview.primaryParticipant?.personas?.name ? (
@@ -188,10 +188,12 @@ export default function InterviewDetail() {
 							<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
 								{interview.primaryParticipant.segment}
 							</span>
-						) : interview.segment && (
-							<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
-								{interview.segment}
-							</span>
+						) : (
+							interview.segment && (
+								<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
+									{interview.segment}
+								</span>
+							)
 						)}
 						{interview.interview_date && (
 							<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
@@ -237,62 +239,15 @@ export default function InterviewDetail() {
 					/>
 				</div>
 
-
-
 				{/* Transcript Section */}
 				<div>
-					<h2 className="mb-2 font-semibold text-lg">Transcript</h2>
-					{Array.isArray(interview.transcript) ? (
-						<div className="mb-6">
-							<div className="mb-2 flex justify-end">
-								<Button
-									size="sm"
-									variant="outline"
-									onClick={() => {
-										const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
-										if (transcriptWindow) {
-											transcriptWindow.document.write(
-												'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
-													JSON.stringify(interview.transcript, null, 2) +
-													"</pre>"
-											)
-											transcriptWindow.document.title = "Interview Transcript"
-										}
-									}}
-									className="ml-auto"
-								>
-									Open Transcript in New Window
-								</Button>
-							</div>
-							<TranscriptDisplay transcript={interview.transcript ?? []} />
-						</div>
-					) : interview.transcript ? (
-						<div className="mb-6">
-							{/* <div className="mb-2 flex justify-end">
-								<Button
-									size="sm"
-									variant="outline"
-									onClick={() => {
-										const transcriptWindow = window.open("", "_blank", "width=800,height=600,resizable,scrollbars")
-										if (transcriptWindow) {
-											transcriptWindow.document.write(
-												'<pre style="white-space: pre-wrap; word-break: break-word; font-size: 1rem; font-family: inherit; margin: 1em;">' +
-													(interview.transcript ?? "").replace(/</g, "&lt;").replace(/>/g, "&gt;") +
-													"</pre>"
-											)
-											transcriptWindow.document.title = "Interview Transcript"
-										}
-									}}
-									className="ml-auto"
-								>
-									Open Transcript in New Window
-								</Button>
-							</div> */}
-							<MarkdownTranscript transcript={interview.transcript} />
-						</div>
-					) : (
-						<div className="py-12 text-center text-gray-500 italic">No transcript available for this interview.</div>
-					)}
+					<TranscriptResults
+						data={{
+							utterances: interview.transcript_formatted.speaker_transcripts,
+							iab_categories_result: interview.transcript_formatted.topic_detection,
+							sentiment_analysis_results: interview.transcript_formatted.sentiment_analysis,
+						}}
+					/>
 				</div>
 			</div>
 			<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
@@ -315,7 +270,7 @@ export default function InterviewDetail() {
 						<div className="text-gray-400 italic">No insights available for this interview.</div>
 					)}
 				</div>
-				
+
 				<h2 className="mb-2 font-semibold text-lg">Related Interviews</h2>
 				{relatedInterviews.length > 0 ? (
 					<ul className="space-y-2">

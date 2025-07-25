@@ -1,9 +1,10 @@
 import { env } from "node:process"
+import consola from "consola"
 
 const ASSEMBLY_API_URL = "https://api.assemblyai.com/v2"
 
 // Upload a remote file to AssemblyAI then transcribe
-export async function transcribeRemoteFile(url: string): Promise<string> {
+export async function transcribeRemoteFile(url: string): Promise<Record<string, any>> {
 	const apiKey = process.env.ASSEMBLYAI_API_KEY
 	if (!apiKey) throw new Error("ASSEMBLYAI_API_KEY env var not set")
 
@@ -33,7 +34,7 @@ export async function transcribeRemoteFile(url: string): Promise<string> {
 }
 
 // Keep the original public-URL transcription helper
-export async function transcribeAudioFromUrl(url: string): Promise<string> {
+export async function transcribeAudioFromUrl(url: string): Promise<Record<string, any>> {
 	const apiKey = env.ASSEMBLYAI_API_KEY
 	if (!apiKey) {
 		throw new Error("ASSEMBLYAI_API_KEY not set in environment variables")
@@ -49,7 +50,10 @@ export async function transcribeAudioFromUrl(url: string): Promise<string> {
 			audio_url: url,
 			// additional recommended params
 			speaker_labels: true,
-			auto_chapters: false,
+			iab_categories: true,
+			format_text: true,
+			punctuate: true,
+			auto_chapters: true,
 			sentiment_analysis: false,
 		}),
 	})
@@ -74,7 +78,23 @@ export async function transcribeAudioFromUrl(url: string): Promise<string> {
 		}
 		const data = (await statusResp.json()) as any
 		if (data.status === "completed") {
-			return data.text as string
+			// consola.log("AssemblyAI transcription completed")
+			const transcriptionData = {
+				assembly_id: data.id,
+				full_transcript: data.text || "",
+				speaker_transcripts: data.utterances || [],
+				sentiment_analysis: data.sentiment_analysis_results || [],
+				topic_detection: data.iab_categories_result || {},
+				language_code: data.language_code,
+				confidence: data.confidence,
+				audio_duration: data.audio_duration,
+				word_count: data.words?.length || 0,
+				speaker_count: data.utterances ? new Set(data.utterances.map((u) => u.speaker)).size : 0,
+				is_processed: true, // Mark as successfully processed
+				processed_at: new Date().toISOString(), // Set processing timestamp
+			}
+			consola.log("AssemblyAI transcription completed", transcriptionData)
+			return transcriptionData
 		}
 		if (data.status === "error") {
 			throw new Error(`AssemblyAI transcription error: ${data.error}`)

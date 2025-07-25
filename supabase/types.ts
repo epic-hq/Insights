@@ -343,14 +343,6 @@ export type Database = {
         Args: { queue_name: string; message_id: number }
         Returns: boolean
       }
-      pop: {
-        Args: { queue_name: string }
-        Returns: unknown[]
-      }
-      read: {
-        Args: { queue_name: string; sleep_seconds: number; n: number }
-        Returns: unknown[]
-      }
       send: {
         Args: { queue_name: string; message: Json; sleep_seconds?: number }
         Returns: number[]
@@ -442,6 +434,41 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "comments_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      insight_tags: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          insight_id: string
+          tag: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insight_id: string
+          tag: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insight_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insight_tags_insight_id_fkey"
             columns: ["insight_id"]
             isOneToOne: false
             referencedRelation: "insights"
@@ -577,6 +604,41 @@ export type Database = {
           },
         ]
       }
+      interview_tags: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          created_by: string | null
+          id: string
+          interview_id: string
+          tag: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          interview_id: string
+          tag: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          interview_id?: string
+          tag?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interview_tags_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       interviews: {
         Row: {
           account_id: string
@@ -692,6 +754,48 @@ export type Database = {
           },
         ]
       }
+      opportunity_insights: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          insight_id: string
+          opportunity_id: string
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insight_id: string
+          opportunity_id: string
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insight_id?: string
+          opportunity_id?: string
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "opportunity_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_insights_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           account_id: string | null
@@ -752,6 +856,55 @@ export type Database = {
         }
         Relationships: []
       }
+      persona_insights: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          id: string
+          insight_id: string
+          persona_id: string
+          relevance_score: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insight_id: string
+          persona_id: string
+          relevance_score?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          id?: string
+          insight_id?: string
+          persona_id?: string
+          relevance_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "persona_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_insights_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "persona_distribution"
+            referencedColumns: ["persona_id"]
+          },
+          {
+            foreignKeyName: "persona_insights_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       personas: {
         Row: {
           account_id: string
@@ -784,6 +937,63 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      project_people: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          first_seen_at: string | null
+          id: string
+          interview_count: number | null
+          last_seen_at: string | null
+          person_id: string
+          project_id: string
+          role: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          first_seen_at?: string | null
+          id?: string
+          interview_count?: number | null
+          last_seen_at?: string | null
+          person_id: string
+          project_id: string
+          role?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          first_seen_at?: string | null
+          id?: string
+          interview_count?: number | null
+          last_seen_at?: string | null
+          person_id?: string
+          project_id?: string
+          role?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_people_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       projects: {
         Row: {
