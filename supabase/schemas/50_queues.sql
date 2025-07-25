@@ -53,8 +53,8 @@ begin
       json_build_object(
         'table', TG_TABLE_NAME,
         'id',    new.id::text,
-        'category',  new.category,
-        'jtbd',  new.jtbd
+        'name',  new.name,
+        'pain',  new.pain
       )::jsonb
     );
   end if;

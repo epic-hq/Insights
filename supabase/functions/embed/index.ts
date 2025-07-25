@@ -20,9 +20,9 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 Deno.serve(async (req) => {
 	try {
-		const { id, category, jtbd } = await req.json()
-		if (!id || !category || !jtbd) {
-			return new Response("Missing `id`, `category` or `jtbd`", { status: 400 })
+		const { id, name, pain } = await req.json()
+		if (!id || !name || !pain) {
+			return new Response("Missing `id`, `name` or `pain`", { status: 400 })
 		}
 
 		// 1) Fetch embedding from OpenAI
@@ -34,7 +34,7 @@ Deno.serve(async (req) => {
 			},
 			body: JSON.stringify({
 				model: "text-embedding-ada-002",
-				input: `${category}: ${jtbd}`,
+				input: `${name}: ${pain}`,
 			}),
 		})
 
@@ -72,6 +72,6 @@ Deno.serve(async (req) => {
 	curl -i --location --request POST 'http://127.0.0.1:54321/functions/v1/embed' \
 		--header 'Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZS1kZW1vIiwicm9sZSI6ImFub24iLCJleHAiOjE5ODM4MTI5OTZ9.CRXP1A7WOeoJeXxjNni43kdQwgnWNReilDMblYTn_I0' \
 		--header 'Content-Type: application/json' \
-		--data '{"name":"Functions"}'
+		--data '{"name":"Functions", "pain":"Functions"}'
 
 */

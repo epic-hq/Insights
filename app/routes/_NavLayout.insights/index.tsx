@@ -1,7 +1,7 @@
 import { LayoutGrid, Rows } from "lucide-react"
 import { useState } from "react"
 import type { MetaFunction } from "react-router"
-import { useLoaderData, useSearchParams } from "react-router-dom"
+import { Link, useLoaderData, useSearchParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
 import { InsightsDataTable } from "~/components/insights/insights-data-table"
@@ -82,8 +82,8 @@ export async function loader({ request }: { request: Request }) {
 		filteredInsights.sort((a, b) => (b.impact || 0) - (a.impact || 0))
 	} else if (sort === "confidence") {
 		filteredInsights.sort((a, b) => {
-			const aConf = typeof a.confidence === "string" ? Number.parseInt(a.confidence) || 0 : a.confidence || 0
-			const bConf = typeof b.confidence === "string" ? Number.parseInt(b.confidence) || 0 : b.confidence || 0
+			const aConf = typeof a.confidence === "string" ? Number.parseInt(a.confidence, 10) || 0 : a.confidence || 0
+			const bConf = typeof b.confidence === "string" ? Number.parseInt(b.confidence, 10) || 0 : b.confidence || 0
 			return bConf - aConf
 		})
 	}
@@ -242,6 +242,9 @@ export default function Insights() {
 			</div>
 
 			<div className="mb-6">
+				<Button className="p-6">
+					<Link to="/insights-map">Insights Clustering (experimental)</Link>
+				</Button>
 				{insights.length > 0 ? (
 					view === "card" ? (
 						<InsightCardGrid insights={insights} />
