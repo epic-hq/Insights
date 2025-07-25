@@ -28,10 +28,20 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 		throw new Response("Invalid opportunity ID", { status: 400 })
 	}
 
-	// Fetch opportunity data from database
+	// Fetch opportunity data from database with junction table insights
 	const { data: opportunityData, error: opportunityError } = await db
 		.from("opportunities")
-		.select("*")
+		.select(`
+			*,
+			opportunity_insights (
+				weight,
+				insights (
+					id,
+					name,
+					category
+				)
+			)
+		`)
 		.eq("id", opportunityId)
 		.single()
 
@@ -80,7 +90,8 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 					? "medium"
 					: "low"),
 		tags: extendedOpportunity.tags || undefined,
-		insights: opportunityData.related_insight_ids || undefined,
+		// Extract insights from junction table instead of array field
+		insights: (opportunityData.opportunity_insights || []).map((oi: any) => oi.insights?.id).filter(Boolean),
 		owner: opportunityData.owner_id || undefined,
 		assignee: extendedOpportunity.assignee || undefined,
 		due_date: extendedOpportunity.due_date || undefined,

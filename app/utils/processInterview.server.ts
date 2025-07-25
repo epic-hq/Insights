@@ -136,73 +136,104 @@ export async function processInterviewTranscript({
 	const { data, error } = await db.from("insights").insert(rows).select()
 	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
 
-	// 4.1 Upsert person and link to interview
-	if (interviewee?.name?.trim()) {
-		// Prepare person data with proper typing
-		const personInsertData: PeopleInsert = {
-			account_id: metadata.accountId,
-			name: interviewee.name.trim(),
-			description: interviewee.participantDescription?.trim() || null,
-			segment: interviewee.segment?.trim() || null,
-			contact_info: interviewee.contactInfo || null,
-		}
-		consola.log("personInsertData", personInsertData)
-		// Upsert person by normalized name + account_id
-		const { data: personData, error: personError } = await db
-			.from("people")
-			.upsert(personInsertData, { onConflict: "account_id,name_hash" })
-			.select("id")
-			.single()
+	// 4.1 Upsert person and link to interview - ALWAYS create a person record
+	// Smart fallback naming: use AI-extracted name, or generate from filename/metadata
+	const generateFallbackName = (): string => {
+		// Try filename first (remove extension and clean up)
+		if (metadata.fileName) {
+			const nameFromFile = metadata.fileName
+				.replace(/\.[^/.]+$/, "") // Remove extension
+				.replace(/[_-]/g, " ") // Replace underscores/hyphens with spaces
+				.replace(/\b\w/g, (l) => l.toUpperCase()) // Title case
+				.trim()
 
-		if (personError) {
-			throw new Error(`Failed to upsert person: ${personError.message}`)
-		}
-
-		if (!personData?.id) {
-			throw new Error("Person upsert succeeded but no ID returned")
-		}
-
-		// Find persona by name or use null for "Other"
-		let personaData: PersonasRow | null = null
-		if (interviewee.persona?.trim()) {
-			const { data, error: personaError } = await db
-				.from("personas")
-				.select("*")
-				.eq("account_id", metadata.accountId)
-				.ilike("name", interviewee.persona.trim())
-				.maybeSingle()
-
-			if (personaError) {
-			} else {
-				personaData = data
+			if (nameFromFile.length > 0) {
+				return `Participant (${nameFromFile})`
 			}
 		}
 
-		// Insert into interview_people junction table
-		const junctionData: InterviewPeopleInsert = {
-			interview_id: interviewRecord.id,
-			person_id: personData.id,
-			role: "participant",
+		// Fallback to interview title or generic name
+		if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) {
+			return `Participant (${metadata.interviewTitle})`
 		}
 
-		const { error: junctionError } = await db.from("interview_people").insert(junctionData)
+		// Final fallback with timestamp
+		const timestamp = new Date().toISOString().split("T")[0]
+		return `Participant (${timestamp})`
+	}
 
-		if (junctionError) {
-			throw new Error(`Failed to link person to interview: ${junctionError.message}`)
-		}
+	// Determine the person name: AI-extracted name or smart fallback
+	const personName = interviewee?.name?.trim() || generateFallbackName()
 
-		// Update person with persona reference if found
-		if (personaData?.id) {
-			const { error: updateError } = await db
-				.from("people")
-				.update({ persona_id: personaData.id })
-				.eq("id", personData.id)
+	// Prepare person data with proper typing
+	const personInsertData: PeopleInsert = {
+		account_id: metadata.accountId,
+		name: personName,
+		description: interviewee?.participantDescription?.trim() || null,
+		segment: interviewee?.segment?.trim() || metadata.segment || null,
+		contact_info: interviewee?.contactInfo || null,
+	}
 
-			if (updateError) {
-				consola.warn(`Failed to update person with persona reference: ${updateError.message}`)
-			}
+	consola.log("Creating person with data:", personInsertData)
+
+	// Upsert person by normalized name + account_id
+	const { data: personData, error: personError } = await db
+		.from("people")
+		.upsert(personInsertData, { onConflict: "account_id,name_hash" })
+		.select("id")
+		.single()
+
+	if (personError) {
+		throw new Error(`Failed to upsert person: ${personError.message}`)
+	}
+
+	if (!personData?.id) {
+		throw new Error("Person upsert succeeded but no ID returned")
+	}
+
+	// Find persona by name or use null for "Other"
+	let personaData: PersonasRow | null = null
+	if (interviewee?.persona?.trim()) {
+		const { data, error: personaError } = await db
+			.from("personas")
+			.select("*")
+			.eq("account_id", metadata.accountId)
+			.ilike("name", interviewee.persona.trim())
+			.maybeSingle()
+
+		if (personaError) {
+			consola.warn(`Failed to lookup persona "${interviewee.persona}": ${personaError.message}`)
+		} else {
+			personaData = data
 		}
 	}
+
+	// Insert into interview_people junction table
+	const junctionData: InterviewPeopleInsert = {
+		interview_id: interviewRecord.id,
+		person_id: personData.id,
+		role: "participant",
+	}
+
+	const { error: junctionError } = await db.from("interview_people").insert(junctionData)
+
+	if (junctionError) {
+		throw new Error(`Failed to link person to interview: ${junctionError.message}`)
+	}
+
+	// Update person with persona reference if found
+	if (personaData?.id) {
+		const { error: updateError } = await db
+			.from("people")
+			.update({ persona_id: personaData.id })
+			.eq("id", personData.id)
+
+		if (updateError) {
+			consola.warn(`Failed to update person with persona reference: ${updateError.message}`)
+		}
+	}
+
+	consola.log(`Successfully created/linked person "${personName}" to interview ${interviewRecord.id}`)
 
 	// 4.2 Update interview with additional BAML fields
 	await db

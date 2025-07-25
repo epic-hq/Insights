@@ -1,20 +1,39 @@
-import { type MetaFunction, useLoaderData } from "react-router"
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
 import Dashboard from "~/components/dashboard/Dashboard"
 import type { KPI } from "~/components/dashboard/KPIBar"
-import { db } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/server"
 import type { InsightView, OpportunityView } from "~/types"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Insights Dashboard" }, { name: "description", content: "Insights for conversations" }]
 }
 
-export async function loader() {
+export async function loader({ request }: LoaderFunctionArgs) {
+	const { client: supabase } = getServerClient(request)
+	const { data: jwt } = await supabase.auth.getClaims()
+	const accountId = jwt?.claims.sub
+
+	if (!accountId) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+
 	// Fetch KPIs - count of interviews, insights, and opportunities
-	const { count: interviewCount } = await db.from("interviews").select("*", { count: "exact", head: true })
-	const { count: insightCount } = await db.from("insights").select("*", { count: "exact", head: true })
-	const { count: opportunityCount } = await db.from("opportunities").select("*", { count: "exact", head: true })
+	const { count: interviewCount } = await supabase
+		.from("interviews")
+		.select("*", { count: "exact", head: true })
+		.eq("account_id", accountId)
+
+	const { count: insightCount } = await supabase
+		.from("insights")
+		.select("*", { count: "exact", head: true })
+		.eq("account_id", accountId)
+
+	const { count: opportunityCount } = await supabase
+		.from("opportunities")
+		.select("*", { count: "exact", head: true })
+		.eq("account_id", accountId)
 
 	// Define KPIs with live counts
 	const kpis: KPI[] = [
@@ -30,7 +49,7 @@ export async function loader() {
 
 	// Fetch personas with counts
 	type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
-	const { data: personaRows } = await db.from("personas").select("*")
+	const { data: personaRows } = await supabase.from("personas").select("*").eq("account_id", accountId)
 
 	// Transform personas into the expected format
 	const personas = (personaRows || []).map((p: PersonaRow, index) => {
@@ -53,9 +72,10 @@ export async function loader() {
 
 	// Fetch recent interviews
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
-	const { data: interviewRows } = await db
+	const { data: interviewRows } = await supabase
 		.from("interviews")
 		.select("*")
+		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 		.limit(5)
 
@@ -69,7 +89,7 @@ export async function loader() {
 
 	// Fetch opportunities
 	type OpportunityRow = Database["public"]["Tables"]["opportunities"]["Row"]
-	const { data: opportunityRows } = await db.from("opportunities").select("*")
+	const { data: opportunityRows } = await supabase.from("opportunities").select("*").eq("account_id", accountId)
 
 	// Transform opportunities into the expected format
 	const opportunities: OpportunityView[] = (opportunityRows || []).map((o: OpportunityRow) => ({
@@ -81,8 +101,8 @@ export async function loader() {
 		description: "",
 	}))
 
-	// Fetch insights for filters/search
-	const { data: insightRows } = await db.from("insights").select("*").limit(10)
+	// Fetch insights for the theme tree
+	const { data: insightRows } = await supabase.from("insights").select("*").eq("account_id", accountId).limit(10)
 
 	// Transform insights into the expected format
 	const insights: InsightView[] = (insightRows || []).map((insight) => ({
@@ -102,46 +122,65 @@ export async function loader() {
 		opportunityIdeas: insight.opportunity_ideas,
 		confidence: insight.confidence,
 		createdAt: insight.created_at,
-		relatedTags: [], // No related_tags field in DB schema
+		// relatedTags: removed - now using insight_tags junction table
 		contradictions: insight.contradictions,
 	}))
 
-	// // Fetch real insights
-	// const { data: insights } = await db
-	// .from("insights")
-	// .select("id, category, name, title")
-	// .not("category", "is", null)
+	// Fetch insights with their tags from junction table
+	const { data: insightTags } = await supabase
+		.from("insight_tags")
+		.select(`
+			tag,
+			insights!inner (
+				id,
+				name,
+				title
+			)
+		`)
+		.eq("account_id", accountId)
 
-	if (!insights) throw new Error("No insights found")
-
-	// Group insights by category
-	const categoryMap = new Map<string, TreeNode>()
-
-	insights.forEach((insight: InsightView) => {
-		const category = insight.category!
-		if (!categoryMap.has(category)) {
-			categoryMap.set(category, {
-				name: category,
-				value: 0,
-				children: [],
-				fill: "",
-			})
-		}
-
-		const categoryNode = categoryMap.get(category)!
-		categoryNode.value += 1
-		categoryNode.children?.push({
-			name: insight.name || insight.title || `Insight ${insight.id.slice(0, 6)}`,
-			value: 1,
-			fill: "",
-		})
+	// Debug logging
+	console.log('Dashboard Debug:', {
+		insightRowsCount: insightRows?.length || 0,
+		insightTagsCount: insightTags?.length || 0,
+		personaRowsCount: personaRows?.length || 0
 	})
 
-	// Sort and apply colors to top N categories
+	// Group insights by tags using junction table data
+	const tagMap = new Map<string, TreeNode>()
+
+	// Process insight-tag relationships
+	if (insightTags) {
+		insightTags.forEach((record: { tag: string; insights: { id: string; name?: string; title?: string } }) => {
+			const tag = record.tag
+			const insight = record.insights
+
+			if (!tagMap.has(tag)) {
+				tagMap.set(tag, {
+					name: tag,
+					value: 0,
+					children: [],
+					fill: "",
+				})
+			}
+
+			const tagNode = tagMap.get(tag)
+			if (tagNode) {
+				tagNode.value += 1
+				tagNode.children?.push({
+					name: insight.name || insight.title || `Insight ${insight.id.slice(0, 6)}`,
+					value: 1,
+					fill: "",
+				})
+			}
+		})
+	}
+
+	// Sort and apply colors to top N tags
 	const baseColors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1"]
 	const topN = 5
 
-	const themeTree: TreeNode[] = Array.from(categoryMap.values())
+	const themeTree: TreeNode[] = Array.from(tagMap.values())
 		.sort((a, b) => b.value - a.value)
 		.slice(0, topN)
 		.map((node, i) => {

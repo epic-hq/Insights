@@ -18,6 +18,9 @@ coverage
 .yarn*
 .env*
 !.env.example
+
+# Test screenshots (usually blank error images)
+**/__screenshots__/
 !.env.production
 .swp*
 .turbo

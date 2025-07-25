@@ -103,7 +103,7 @@ export default function InsightDetailPage() {
 								opportunityIdeas: insight.opportunity_ideas || [],
 								confidence: insight.confidence || "",
 								createdAt: new Date(insight.created_at),
-								relatedTags: [],
+								// relatedTags: removed - now using insight_tags junction table
 								contradictions: insight.contradictions || "",
 								interview_id: insight.interview_id,
 								underlyingMotivation: insight.motivation || "",

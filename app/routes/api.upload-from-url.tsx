@@ -63,7 +63,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const result = await processInterviewTranscript({
 			metadata,
 			mediaUrl: url,
-			transcript,
+			transcriptData,
 			userCustomInstructions,
 			request,
 		})

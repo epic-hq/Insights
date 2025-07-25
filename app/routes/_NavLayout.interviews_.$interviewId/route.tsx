@@ -91,10 +91,15 @@ export async function loader({ request, params }: { request: Request; params: { 
 		interviewerData = { name: "Interviewer", id: interview.interviewer_id }
 	}
 
-	// Fetch insights related to this interview
+	// Fetch insights related to this interview with junction table tags
 	const { data: insightsData, error: insightsError } = await supabase
 		.from("insights")
-		.select("*")
+		.select(`
+			*,
+			insight_tags (
+				tag
+			)
+		`)
 		.eq("interview_id", interviewId)
 
 	if (insightsError) {
@@ -118,7 +123,8 @@ export async function loader({ request, params }: { request: Request; params: { 
 		opportunityIdeas: insight.opportunity_ideas,
 		confidence: insight.confidence,
 		createdAt: insight.created_at,
-		relatedTags: insight.related_tags, // No direct field in DB schema
+		// Extract tags from junction table instead of array field
+		relatedTags: (insight.insight_tags || []).map((it: any) => it.tag).filter(Boolean),
 		contradictions: insight.contradictions,
 		interview_id: insight.interview_id,
 	}))
@@ -243,9 +249,9 @@ export default function InterviewDetail() {
 				<div>
 					<TranscriptResults
 						data={{
-							utterances: interview.transcript_formatted.speaker_transcripts,
-							iab_categories_result: interview.transcript_formatted.topic_detection,
-							sentiment_analysis_results: interview.transcript_formatted.sentiment_analysis,
+							utterances: interview.transcript_formatted?.speaker_transcripts,
+							iab_categories_result: interview.transcript_formatted?.topic_detection,
+							sentiment_analysis_results: interview.transcript_formatted?.sentiment_analysis,
 						}}
 					/>
 				</div>

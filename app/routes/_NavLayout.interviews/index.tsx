@@ -1,9 +1,9 @@
 import consola from "consola"
 import type { MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
-import { Bar, BarChart, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts"
 
 import type { Database } from "~/../supabase/types"
+import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import AddInterviewButton from "~/components/upload/AddInterviewButton"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InterviewStatus } from "~/types"
@@ -29,7 +29,7 @@ export async function loader({ request }: { request: Request }) {
 	const _personaFilter = url.searchParams.get("persona") || null
 
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
-	
+
 	// Extended type for interviews with participant data from junction table
 	type InterviewWithParticipants = InterviewRow & {
 		interview_people: {
@@ -45,7 +45,7 @@ export async function loader({ request }: { request: Request }) {
 			}
 		}[]
 	}
-	
+
 	// UI interview type with computed participant fields
 	type InterviewUI = InterviewRow & {
 		participant: string
@@ -64,7 +64,6 @@ export async function loader({ request }: { request: Request }) {
 		.order("created_at", { ascending: false })
 
 	if (error) {
-		console.error("Interviews query error:", error)
 		throw new Response(error.message, { status: 500 })
 	}
 
@@ -82,7 +81,9 @@ export async function loader({ request }: { request: Request }) {
 		.eq("account_id", accountId)
 		.order("total_interview_count", { ascending: false })
 
-	if (personaError) console.log("Persona distribution error:", personaError)
+	if (personaError) {
+		throw new Response(personaError.message, { status: 500 })
+	}
 
 	const insightCountMap = new Map<string, number>()
 	if (allInsights) {
@@ -99,7 +100,7 @@ export async function loader({ request }: { request: Request }) {
 		const participantName = interview.participant_pseudonym || "Anonymous"
 		const participantSegment = interview.segment || "User"
 		const personaName = "Other" // TODO: Add personas back later
-		
+
 		return {
 			// Core interview data
 			...interview,
@@ -129,9 +130,9 @@ export async function loader({ request }: { request: Request }) {
 		const count = interview.high_impact_themes?.length || 0
 
 		if (!roleMap[role]) {
-			roleMap[role] = { 
-				role, 
-				...Object.fromEntries(statusOptions.map((s) => [s, 0])) 
+			roleMap[role] = {
+				role,
+				...Object.fromEntries(statusOptions.map((s) => [s, 0])),
 			} as RoleMapEntry
 		}
 		roleMap[role][status]++
@@ -176,16 +177,17 @@ export async function loader({ request }: { request: Request }) {
 export default function Interviews() {
 	const { interviews, stackedData, stats } = useLoaderData<typeof loader>()
 
-	const statusColors: Partial<Record<InterviewStatus, string>> = {
-		draft: "#0acf00",
-		scheduled: "#a855f7",
-		uploaded: "#06b6d4",
-		transcribed: "#facc15",
-		processing: "#60a5fa",
-		ready: "#4ade80",
-		tagged: "#f97316",
-		archived: "#9ca3af",
+	type StackedRow<S extends string> = { role: string } & Partial<Record<S, number>>
+	type SegmentDatum = { name: string; value: number }
+
+	function toSegmentData<S extends string>(rows: StackedRow<S>[], statuses: readonly S[]): SegmentDatum[] {
+		return rows.map((r) => ({
+			name: r.role,
+			value: statuses.reduce((sum, s) => sum + (r[s] ?? 0), 0),
+		}))
 	}
+
+	const segmentData = toSegmentData(stackedData, InterviewStatusEnum.options)
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">
@@ -242,8 +244,9 @@ export default function Interviews() {
 					</div>
 				</div> */}
 				<div className="mt-6">
-					<h2 className="mb-4 font-semibold text-xl">Interview Segments by Status</h2>
-					<ResponsiveContainer width="100%" height={200}>
+					<h2 className="mb-4 font-semibold text-xl">Interview Segments</h2>
+					<PrettySegmentPie data={segmentData} />
+					{/* <ResponsiveContainer width="100%" height={200}>
 						<BarChart data={stackedData}>
 							<XAxis dataKey="role" />
 							<YAxis allowDecimals={false} />
@@ -259,7 +262,7 @@ export default function Interviews() {
 								/>
 							))}
 						</BarChart>
-					</ResponsiveContainer>
+					</ResponsiveContainer> */}
 				</div>
 			</div>
 

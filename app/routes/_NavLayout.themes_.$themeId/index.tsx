@@ -52,7 +52,7 @@ export async function loader({ params }: { params: { themeId: string } }) {
 		confidence: insight.confidence,
 		novelty: insight.novelty,
 		impact: insight.impact,
-		relatedTags: insight.tags ? insight.tags : [],
+		// relatedTags: removed - now using insight_tags junction table
 		interview_id: insight.interview_id,
 	}))
 

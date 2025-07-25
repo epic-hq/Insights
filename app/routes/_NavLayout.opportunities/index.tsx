@@ -47,7 +47,7 @@ export async function loader() {
 		kanban_status: r.kanban_status,
 		org_id: r.org_id,
 		owner_id: r.owner_id,
-		related_insight_ids: r.related_insight_ids,
+		// related_insight_ids: removed - now using opportunity_insights junction table
 		// Add UI-specific fields
 		owner: r.owner_id || "", // Use owner_id as owner name for now
 		status: r.kanban_status || "explore", // Use kanban_status as status

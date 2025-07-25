@@ -104,7 +104,7 @@ export async function loader({ request }: { request: Request }) {
 		opportunityIdeas: r.opportunity_ideas || [],
 		confidence: r.confidence || "",
 		createdAt: new Date(r.created_at),
-		relatedTags: [],
+		// relatedTags: removed - now using insight_tags junction table
 		contradictions: r.contradictions || "",
 		interview_id: r.interview_id,
 	}))

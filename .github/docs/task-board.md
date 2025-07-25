@@ -18,7 +18,8 @@
 - [x] Draft UI style & component palette (`ui-style.md`)
 - [x] Implement Jett's inline edit component (`inline-edit.tsx`) resolve Markdown dependency issue.
 - [x] **Insight Card** – inline editable insight fields.
-- [ ] inline edit in other fields like interviews etc.
+- [ ] add 'inline edit' in other records like interviews etc.
+- [ ] CRUD functions for people, projects, personas, tags, opportunities
 - [ ] How to make UX Better to get maximum WOW insights? (revise `user-flow.md`)
 
 ## 🔜 Up Next (Sprint 1 – Get Valuable Insights)
@@ -26,7 +27,8 @@
 - [x] **Enable User-Org** - needed for basic record ownership
 - [x] **Embeddings Pipeline** – generate embeddings for insights and themes.
 - [x] **Fix remaining routes** - interview list and detail pages done. See `_NavLayout.insights/index.tsx` and `_NavLayout.interviews/$interviewId/route.tsx`. Use as templates for display indexes, detaili pages for insights, projects, personas, people, opportunities.
-- [ ] **Insight Clustering Visualization** - Cluster insights by category and JTBD to visualise themes.
+- [ ] **Insight Clustering Visualization** - Cluster insights by category and pain points to visualise themes. [clustering-howto.md](clustering-howto.md)
+- [ ] Intro Testing framework and coverage [howto test](testing-howto.md)
 
 ## 🌓 Backlog / Later
 
@@ -51,6 +53,4 @@ Type alignment: Make confidence smallint (1–3) or an enum if you want strictne
 
 **Add CHECK (journey_stage in (...)) if your stages are fixed.
 
----
-
-Feel free to check items off or reprioritise; we’ll keep this board synced with development progress.
+- [ ] Enable user to re-generate insights with custom user instructions (optional) and add into a new queue called: `generate_insights_queue`. Default redoes the given interviewid from 'transcript' column. This would call BAML with the given instructions and generate new insights. we should expose this as an action API and callable from the UI or a db trigger (would want as edge function?)

@@ -31,8 +31,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 					insight_count: 0,
 					last_interview_date: null,
 					personas: null,
-				}
-			]
+				},
+			],
 		}
 	} catch (error) {
 		consola.error("People loader error:", error)

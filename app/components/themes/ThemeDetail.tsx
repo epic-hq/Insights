@@ -45,7 +45,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 
 		// Find insights related to this theme
 		insights.forEach((insight) => {
-			if (insight.category === theme.name || insight.relatedTags?.includes(theme.name)) {
+			if (insight.category === theme.name) {
 				// If the insight has an interview_id, add it to the set
 				if (insight.interview_id) {
 					intervieweeIds.add(insight.interview_id)
@@ -63,7 +63,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 
 		return insights.filter((insight) => {
 			if (!theme?.name) return false
-			return insight.category === theme.name || insight.relatedTags?.includes(theme.name)
+			return insight.category === theme.name
 		})
 	}, [insights, theme])
 

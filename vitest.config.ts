@@ -9,7 +9,7 @@ export default defineConfig({
 		coverage: {
 			all: false,
 			include: ["app/**"],
-			reporter: ["text", "json-summary", "json"],
+			reporter: ["text", "json-summary", "json", "html"],
 			reportOnFailure: true,
 		},
 	},

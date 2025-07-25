@@ -23,10 +23,17 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 		throw new Response("Invalid opportunity ID", { status: 400 })
 	}
 
-	// Fetch opportunity data from database
+	// Fetch opportunity data from database with linked insights
 	const { data: opportunityData, error: opportunityError } = await db
 		.from("opportunities")
-		.select("*")
+		.select(`
+			*,
+			opportunity_insights(
+				insight_id,
+				weight,
+				insights(id, name)
+			)
+		`)
 		.eq("id", opportunityId)
 		.single()
 
@@ -75,7 +82,7 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 					? "medium"
 					: "low"),
 		tags: extendedOpportunity.tags || undefined,
-		insights: opportunityData.related_insight_ids || undefined,
+		insights: opportunityData.opportunity_insights?.map(oi => oi.insight_id) || undefined,
 		owner: opportunityData.owner_id || undefined,
 		assignee: extendedOpportunity.assignee || undefined,
 		due_date: extendedOpportunity.due_date || undefined,
