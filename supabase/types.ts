@@ -478,7 +478,7 @@ export type Database = {
           name: string | null
           name_hash: string | null
           occupation: string | null
-          persona_id: string | null
+          persona: string | null
           preferences: string | null
           segment: string | null
           updated_at: string
@@ -497,7 +497,7 @@ export type Database = {
           name?: string | null
           name_hash?: string | null
           occupation?: string | null
-          persona_id?: string | null
+          persona?: string | null
           preferences?: string | null
           segment?: string | null
           updated_at?: string
@@ -516,7 +516,7 @@ export type Database = {
           name?: string | null
           name_hash?: string | null
           occupation?: string | null
-          persona_id?: string | null
+          persona?: string | null
           preferences?: string | null
           segment?: string | null
           updated_at?: string
@@ -734,19 +734,16 @@ export type Database = {
         Row: {
           account_id: string | null
           color_hex: string | null
-          combined_percentage: number | null
           created_at: string | null
           description: string | null
-          interview_count: number | null
-          interview_percentage: number | null
-          legacy_interview_count: number | null
-          legacy_percentage: number | null
+          participant_interview_count: number | null
+          participant_percentage: number | null
           persona_id: string | null
           persona_name: string | null
-          total_interview_count: number | null
-          total_interviews: number | null
-          total_interviews_with_participants: number | null
-          total_legacy_interviews: number | null
+          segment_interview_count: number | null
+          segment_percentage: number | null
+          total_participant_interviews: number | null
+          total_segment_interviews: number | null
           updated_at: string | null
         }
         Relationships: []
@@ -756,10 +753,6 @@ export type Database = {
       accept_invitation: {
         Args: { lookup_invitation_token: string }
         Returns: Json
-      }
-      auto_link_persona_insights: {
-        Args: { p_insight_id: string }
-        Returns: undefined
       }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
@@ -883,11 +876,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
-      }
-      link_insight_to_personas: {
-        Args: { p_insight_id: string }
-        Returns: undefined
+        Returns: unknown
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
@@ -921,18 +910,6 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
-      sync_insight_tags: {
-        Args: {
-          p_insight_id: string
-          p_tag_names: string[]
-          p_account_id: string
-        }
-        Returns: undefined
-      }
-      sync_opportunity_insights: {
-        Args: { p_opportunity_id: string; p_insight_ids: string[] }
-        Returns: undefined
-      }
       update_account: {
         Args: {
           account_id: string
@@ -950,10 +927,6 @@ export type Database = {
           new_account_role: "owner" | "member"
           make_primary_owner?: boolean
         }
-        Returns: undefined
-      }
-      update_project_people_stats: {
-        Args: { p_project_id: string; p_person_id: string }
         Returns: undefined
       }
       vector_avg: {

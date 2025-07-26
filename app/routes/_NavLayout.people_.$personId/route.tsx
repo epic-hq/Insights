@@ -58,11 +58,16 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		.from("people")
 		.select(`
 			*,
-			personas(
-				id,
-				name,
-				description,
-				color_hex
+			people_personas(
+				confidence_score,
+				source,
+				assigned_at,
+				personas(
+					id,
+					name,
+					description,
+					color_hex
+				)
 			)
 		`)
 		.eq("id", personId)
@@ -97,8 +102,15 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			insight_count: 0, // We'll add this back later if needed
 		}))
 
+	// Map primary persona (highest confidence or first) for backward-compat UI
+	const primaryPersona = (person as any).people_personas?.[0]?.personas ?? null
+	const transformedPerson = {
+		...person,
+		personas: primaryPersona,
+	} as PersonDetail
+
 	return {
-		person: person as PersonDetail,
+		person: transformedPerson,
 		interviews,
 		totalInsights: 0, // Simplified for now
 	}

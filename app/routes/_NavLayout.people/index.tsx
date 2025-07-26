@@ -28,31 +28,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	// Fetch people with personas via junction table
 	const { data: peopleData, error: peopleError } = await supabase
 		.from("people")
-		.select(`
-			*,
-			people_personas!inner(
-				confidence_score,
-				source,
-				assigned_at,
-				personas(
-					id,
-					name,
-					description,
-					color_hex
-				)
-			)
-		`)
+		.select("*,people_personas(*)") // add !inner after people_personas if you want to exclude people with no persona
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 
 	if (peopleError) {
 		throw new Response(`Error fetching people: ${peopleError.message}`, { status: 500 })
 	}
-
+	consola.log("People Data:", peopleData)
 	// Count interviews per person
-	const { data: interviewCounts } = await supabase
-		.from("interview_people")
-		.select("person_id")
+	const { data: interviewCounts } = await supabase.from("interview_people").select("person_id")
 
 	const interviewCountMap = new Map<string, number>()
 	if (interviewCounts) {
