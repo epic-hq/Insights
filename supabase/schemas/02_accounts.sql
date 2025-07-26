@@ -195,52 +195,6 @@ CREATE TRIGGER accounts_add_current_user_to_new_account
 EXECUTE FUNCTION accounts.add_current_user_to_new_account();
 
 /**
-  * When a user signs up, we need to create a personal account for them
-  * and add them to the account_user table so they can act on it
- */
-create or replace function accounts.run_new_user_setup()
-    returns trigger
-    language plpgsql
-    security definer
-    set search_path = public
-as
-$$
-declare
-    first_account_id    uuid;
-    generated_user_name text;
-begin
-
-    -- first we setup the user profile
-    -- TODO: see if we can get the user's name from the auth.users table once we learn how oauth works
-    if new.email IS NOT NULL then
-        generated_user_name := split_part(new.email, '@', 1);
-    end if;
-    -- create the new users's personal account
-    insert into accounts.accounts (name, primary_owner_user_id, personal_account, id)
-    values (generated_user_name, NEW.id, true, NEW.id)
-    returning id into first_account_id;
-
-    -- add them to the account_user table so they can act on it
-    insert into accounts.account_user (account_id, user_id, account_role)
-    values (first_account_id, NEW.id, 'owner');
-
-		-- creating user_settings
-    insert into account_settings(account_id) values (first_account_id);
-    -- default research project
-    insert into projects(account_id, title) values (first_account_id, 'My First Project');
-
-    return NEW;
-end;
-$$;
-
--- trigger the function every time a user is created
-create trigger on_auth_user_created
-    after insert
-    on auth.users
-    for each row
-execute procedure accounts.run_new_user_setup();
-
-/**
   * -------------------------------------------------------
   * Section - Account permission utility functions
   * -------------------------------------------------------
