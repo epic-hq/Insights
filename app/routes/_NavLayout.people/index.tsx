@@ -16,27 +16,90 @@ export const meta: MetaFunction = () => {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	try {
-		// Test 1: Just return hardcoded data
-		return {
-			people: [
-				{
-					id: "test-1",
-					name: "Test Person",
-					segment: "Test Segment",
-					description: "Test Description",
-					created_at: new Date().toISOString(),
-					updated_at: new Date().toISOString(),
-					interview_count: 0,
-					insight_count: 0,
-					last_interview_date: null,
-					personas: null,
-				},
-			],
+	const { client: supabase } = getServerClient(request)
+	const { data: jwt } = await supabase.auth.getClaims()
+	const accountId = jwt?.claims.sub
+
+	if (!accountId) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+	consola.log("Account ID:", accountId)
+
+	// Fetch people with personas via junction table
+	const { data: peopleData, error: peopleError } = await supabase
+		.from("people")
+		.select(`
+			*,
+			people_personas!inner(
+				confidence_score,
+				source,
+				assigned_at,
+				personas(
+					id,
+					name,
+					description,
+					color_hex
+				)
+			)
+		`)
+		.eq("account_id", accountId)
+		.order("created_at", { ascending: false })
+
+	if (peopleError) {
+		throw new Response(`Error fetching people: ${peopleError.message}`, { status: 500 })
+	}
+
+	// Count interviews per person
+	const { data: interviewCounts } = await supabase
+		.from("interview_people")
+		.select("person_id")
+
+	const interviewCountMap = new Map<string, number>()
+	if (interviewCounts) {
+		interviewCounts.forEach((ip) => {
+			const current = interviewCountMap.get(ip.person_id) || 0
+			interviewCountMap.set(ip.person_id, current + 1)
+		})
+	}
+
+	// Fetch insights and map via interviews
+	const { data: insights } = await supabase.from("insights").select("interview_id")
+	const { data: interviewPeople } = await supabase.from("interview_people").select("interview_id, person_id")
+	const interviewToPerson = new Map<string, string>()
+	interviewPeople?.forEach((ip) => interviewToPerson.set(ip.interview_id, ip.person_id))
+
+	const insightCountMap = new Map<string, number>()
+	insights?.forEach((insight) => {
+		const personId = insight.interview_id ? interviewToPerson.get(insight.interview_id) : undefined
+		if (personId) {
+			insightCountMap.set(personId, (insightCountMap.get(personId) || 0) + 1)
 		}
-	} catch (error) {
-		consola.error("People loader error:", error)
-		throw new Response("Internal server error", { status: 500 })
+	})
+
+	// Transform data for UI
+	const people = (peopleData || []).map((person: any) => {
+		const primaryPersona = person.people_personas?.[0]?.personas || null
+		const allPersonas =
+			person.people_personas?.map((pp: any) => ({
+				...pp.personas,
+				confidence_score: pp.confidence_score,
+				source: pp.source,
+				assigned_at: pp.assigned_at,
+			})) || []
+
+		return {
+			...person,
+			interview_count: interviewCountMap.get(person.id) || 0,
+			insight_count: insightCountMap.get(person.id) || 0,
+			last_interview_date: null,
+			personas: primaryPersona,
+			all_personas: allPersonas,
+			persona_count: allPersonas.length,
+		}
+	})
+
+	return {
+		people,
 	}
 }
 

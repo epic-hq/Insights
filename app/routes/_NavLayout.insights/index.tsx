@@ -2,12 +2,10 @@ import { LayoutGrid, Rows } from "lucide-react"
 import { useState } from "react"
 import type { MetaFunction } from "react-router"
 import { Link, useLoaderData, useSearchParams } from "react-router-dom"
-import type { Database } from "~/../supabase/types"
 import InsightCardGrid from "~/components/insights/InsightCardGrid"
-import { InsightsDataTable } from "~/components/insights/insights-data-table"
+import { InsightsDataTable } from "~/components/insights/InsightsDataTableTS"
 import { Button } from "~/components/ui/button"
 import { getServerClient } from "~/lib/supabase/server"
-import type { InsightView } from "~/types"
 
 export const meta: MetaFunction = () => {
 	return [
@@ -31,10 +29,8 @@ export async function loader({ request }: { request: Request }) {
 	const personaFilter = url.searchParams.get("persona") || null
 
 	// Build base query with account filtering for RLS
-	type InsightRow = Database["public"]["Tables"]["insights"]["Row"]
 	let query = supabase.from("insights").select("*").eq("account_id", accountId)
 
-	// Apply filters (simple examples – adjust field names as needed)
 	if (interviewFilter) {
 		query = query.ilike("name", `%${interviewFilter}%`)
 	}
@@ -42,10 +38,9 @@ export async function loader({ request }: { request: Request }) {
 		query = query.ilike("category", `%${themeFilter}%`)
 	}
 	if (personaFilter) {
-		query = query.ilike("persona", `%${personaFilter}%`) // assuming a persona column exists
+		query = query.ilike("persona", `%${personaFilter}%`)
 	}
 
-	// Sorting
 	query = query.order(
 		sort === "latest"
 			? "created_at"
@@ -57,60 +52,13 @@ export async function loader({ request }: { request: Request }) {
 		{ ascending: false }
 	)
 
-	const { data: rows, error } = await query
+	const { data: insights, error } = await query
 	if (error) {
 		throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
 	}
 
-	// Use Supabase types directly like interviews pattern
-	const insights: InsightRow[] = rows || []
-
-	// Apply additional in-memory filtering and sorting
-	let filteredInsights = [...insights]
-
-	// Filter by interview name
-	if (interviewFilter) {
-		filteredInsights = filteredInsights.filter((insight) =>
-			insight.name?.toLowerCase().includes(interviewFilter.toLowerCase())
-		)
-	}
-
-	// Apply sorting
-	if (sort === "latest") {
-		filteredInsights.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime())
-	} else if (sort === "impact") {
-		filteredInsights.sort((a, b) => (b.impact || 0) - (a.impact || 0))
-	} else if (sort === "confidence") {
-		filteredInsights.sort((a, b) => {
-			const aConf = typeof a.confidence === "string" ? Number.parseInt(a.confidence, 10) || 0 : a.confidence || 0
-			const bConf = typeof b.confidence === "string" ? Number.parseInt(b.confidence, 10) || 0 : b.confidence || 0
-			return bConf - aConf
-		})
-	}
-
-	// Transform for UI components that expect InsightView format
-	const transformedInsights: InsightView[] = filteredInsights.map((r: InsightRow) => ({
-		id: r.id,
-		name: r.name || "",
-		category: r.category || "",
-		journeyStage: r.journey_stage || "",
-		impact: r.impact || 0,
-		novelty: r.novelty || 0,
-		jtbd: r.jtbd || "",
-		underlyingMotivation: r.motivation || "",
-		pain: r.pain || "",
-		desiredOutcome: r.desired_outcome || "",
-		evidence: r.evidence || "",
-		opportunityIdeas: r.opportunity_ideas || [],
-		confidence: r.confidence || "",
-		createdAt: new Date(r.created_at),
-		// relatedTags: removed - now using insight_tags junction table
-		contradictions: r.contradictions || "",
-		interview_id: r.interview_id,
-	}))
-
 	return {
-		insights: transformedInsights,
+		insights: insights || [],
 		filters: {
 			sort,
 			interviewFilter,
@@ -118,7 +66,7 @@ export async function loader({ request }: { request: Request }) {
 			personaFilter,
 		},
 		stats: {
-			total: insights.length,
+			total: (insights || []).length,
 		},
 	}
 }
@@ -249,7 +197,7 @@ export default function Insights() {
 					view === "card" ? (
 						<InsightCardGrid insights={insights} />
 					) : (
-						<InsightsDataTable insights={insights} />
+						<InsightsDataTable data={insights} />
 					)
 				) : (
 					<div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">

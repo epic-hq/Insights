@@ -9,6 +9,7 @@ const navItems = [
 	{ to: PATHS.INSIGHTS, label: "Insights", authOnly: true },
 	{ to: PATHS.PERSONAS, label: "Personas", authOnly: true },
 	// { to: "/opportunities", label: "Opportunities", authOnly: true },
+	{ to: PATHS.PEOPLE, label: "People", authOnly: true },
 	{ to: PATHS.PROJECTS, label: "Projects", authOnly: true },
 	{ to: PATHS.AUTO_INSIGHTS, label: "Auto-Insights", authOnly: true },
 	// { to: PATHS.ABOUT, label: "About", authOnly: false },

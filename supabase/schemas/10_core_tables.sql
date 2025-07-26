@@ -14,7 +14,7 @@ create table if not exists people (
   name_hash text generated always as (lower(name)) stored,
   description text,
   segment text,
-  persona_id uuid, -- Will add foreign key constraint after personas table is created
+
   age int,
   gender text,
   income int,

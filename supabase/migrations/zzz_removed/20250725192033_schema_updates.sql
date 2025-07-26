@@ -8,13 +8,13 @@ alter table "public"."people" drop column "persona";
 
 alter table "public"."people" add column "persona_id" uuid;
 
-CREATE INDEX idx_insight_tags_account_id ON public.insight_tags USING btree (account_id);
+CREATE INDEX IF NOT EXISTS idx_insight_tags_account_id ON public.insight_tags USING btree (account_id);
 
-CREATE INDEX idx_interview_tags_account_id ON public.interview_tags USING btree (account_id);
+CREATE INDEX IF NOT EXISTS idx_interview_tags_account_id ON public.interview_tags USING btree (account_id);
 
-CREATE INDEX idx_insight_tags_tag ON public.insight_tags USING btree (tag);
+CREATE INDEX IF NOT EXISTS idx_insight_tags_tag_id ON public.insight_tags USING btree (tag_id);
 
-CREATE INDEX idx_interview_tags_tag ON public.interview_tags USING btree (tag);
+CREATE INDEX IF NOT EXISTS idx_interview_tags_tag_id ON public.interview_tags USING btree (tag_id);
 
 set check_function_bodies = off;
 

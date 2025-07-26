@@ -22,8 +22,9 @@ WITH persona_interview_counts AS (
       WHERE i_total.account_id = p.account_id
     ) AS total_interviews_with_participants
   FROM personas p
-  LEFT JOIN people ppl ON (ppl.persona_id = p.id AND ppl.account_id = p.account_id)
-  LEFT JOIN interview_people ip ON ip.person_id = ppl.id
+  -- Use new people_personas junction table instead of deprecated people.persona_id
+  LEFT JOIN people_personas pp ON pp.persona_id = p.id
+  LEFT JOIN interview_people ip ON ip.person_id = pp.person_id
   LEFT JOIN interviews i ON (i.id = ip.interview_id AND i.account_id = p.account_id)
   GROUP BY p.id, p.account_id, p.name, p.color_hex, p.description, p.created_at, p.updated_at
 ),
