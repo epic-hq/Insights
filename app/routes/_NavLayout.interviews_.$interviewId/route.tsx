@@ -97,7 +97,9 @@ export async function loader({ request, params }: { request: Request; params: { 
 		.select(`
 			*,
 			insight_tags (
-				tag
+				tags (
+					tag
+				)
 			)
 		`)
 		.eq("interview_id", interviewId)
@@ -124,7 +126,7 @@ export async function loader({ request, params }: { request: Request; params: { 
 		confidence: insight.confidence,
 		createdAt: insight.created_at,
 		// Extract tags from junction table instead of array field
-		relatedTags: (insight.insight_tags || []).map((it: any) => it.tag).filter(Boolean),
+		relatedTags: (insight.insight_tags || []).map((it: any) => it.tags?.tag).filter(Boolean),
 		contradictions: insight.contradictions,
 		interview_id: insight.interview_id,
 	}))
