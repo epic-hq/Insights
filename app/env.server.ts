@@ -11,7 +11,7 @@ const envSchema = z.object({
 	SUPABASE_FUNCTIONS_URL: z.string().optional(),
 })
 
-type ServerEnv = z.infer<typeof envSchema>
+export type ServerEnv = z.infer<typeof envSchema>
 let env: ServerEnv
 
 /**
@@ -58,7 +58,7 @@ export function getClientEnv() {
 	}
 }
 
-type ClientEnvVars = ReturnType<typeof getClientEnv>
+export type ClientEnvVars = ReturnType<typeof getClientEnv>
 
 declare global {
 	interface Window {

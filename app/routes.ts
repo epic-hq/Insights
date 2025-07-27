@@ -1,24 +1,17 @@
-import { flatRoutes } from "@react-router/fs-routes"
+import { layout, type RouteConfig, route } from "@react-router/dev/routes"
+import dashboardRoutes from "./features/dashboard/routes"
+import personasRoutes from "./features/personas/routes"
 
-// export default flatRoutes({
-// 	ignoredRouteFiles: ["**/*.test.{ts,tsx}"],
-// })
+const routes = [
+	layout("./routes/_NavLayout.tsx", [
+		...dashboardRoutes,
+		...personasRoutes]),
+	route("/resource/locales", "./routes/resource.locales.ts"),
+	// route("/.well-known/appspecific/com.chrome.devtools.json", ".well-known/appspecific/com.chrome.devtools.json.ts"),
+	route("login", "./routes/login.tsx"),
+	route("register", "./routes/register.tsx"),
+	route("signout", "./routes/auth.signout.tsx"),
 
-const routes = flatRoutes({
-	ignoredRouteFiles: ["**/*.test.{ts,tsx}"],
-	rootDirectory: "./routes",
-	// ".well-known/appspecific/com.chrome.devtools.json": "./routes/.well-known/appspecific/com.chrome.devtools.json",
-	// "/": "./routes/index.tsx",
-	// "/about": "./routes/about.tsx",
-	// "/login": "./routes/login.tsx",
-	// "/register": "./routes/register.tsx",
-	// "/dashboard": "./routes/dashboard.tsx",
-	// "/interviews": "./routes/interviews.tsx",
-	// "/insights": "./routes/insights.tsx",
-	// "/personas": "./routes/personas.tsx",
-	// "/projects": "./routes/projects.tsx",
-})
-// const routes: RouteConfig = [route("/hello", "./routes/about.tsx"), ...(await flatRoutes({
-// 	rootDirectory: "fs-routes",
-// }))]
+] satisfies RouteConfig
+
 export default routes

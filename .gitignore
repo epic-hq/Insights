@@ -5,7 +5,7 @@ dist
 out
 coverage
 .history
-.react-router
+.react-router/
 
 # Other Coverage tools
 *.lcov

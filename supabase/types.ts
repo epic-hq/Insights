@@ -523,6 +523,78 @@ export type Database = {
         }
         Relationships: []
       }
+      people_personas: {
+        Row: {
+          assigned_at: string | null
+          confidence_score: number | null
+          created_at: string | null
+          created_by: string | null
+          interview_id: string | null
+          person_id: string
+          persona_id: string
+          project_id: string | null
+          source: string | null
+        }
+        Insert: {
+          assigned_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          interview_id?: string | null
+          person_id: string
+          persona_id: string
+          project_id?: string | null
+          source?: string | null
+        }
+        Update: {
+          assigned_at?: string | null
+          confidence_score?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          interview_id?: string | null
+          person_id?: string
+          persona_id?: string
+          project_id?: string | null
+          source?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_personas_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_personas_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_personas_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "persona_distribution"
+            referencedColumns: ["persona_id"]
+          },
+          {
+            foreignKeyName: "people_personas_persona_id_fkey"
+            columns: ["persona_id"]
+            isOneToOne: false
+            referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_personas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       persona_insights: {
         Row: {
           created_at: string | null
@@ -579,6 +651,7 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          image_url: string | null
           name: string
           percentage: number | null
           updated_at: string
@@ -589,6 +662,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           name: string
           percentage?: number | null
           updated_at?: string
@@ -599,6 +673,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          image_url?: string | null
           name?: string
           percentage?: number | null
           updated_at?: string

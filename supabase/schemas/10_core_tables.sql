@@ -104,6 +104,7 @@ create table if not exists personas (
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   name text not null,
   description text,
+	image_url text,
   percentage numeric,
   color_hex text,
   created_at timestamptz not null default now(),
