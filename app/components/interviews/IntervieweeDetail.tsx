@@ -3,107 +3,94 @@ import { Link, useParams } from "react-router-dom"
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts"
 import PageHeader from "../navigation/PageHeader"
 
-// Import types
-import type { Interview } from "./InterviewsList"
+// Supabase generated types
+import type { Database } from "~/../supabase/types"
+
+type Person = Database["public"]["Tables"]["people"]["Row"] & {
+	interview_role?: string
+	personas?: {
+		persona_id: string
+		personas: { id: string; name: string; color_hex: string | null }
+	}[]
+}
 
 interface IntervieweeDetailProps {
-	interviews: Interview[]
+	participants: Person[]
+	interview?: Database["public"]["Tables"]["interviews"]["Row"]
 }
 
-// Extended interviewee data (in a real app, this would come from an API)
-interface IntervieweeData {
-	name: string
-	role: string
-	company: string
-	email?: string
-	persona?: string
-	personaColor?: string
-	yearsExperience?: number
-	keyInsights?: string[]
-	sentimentScore?: number
-}
-
-const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => {
+const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, interview }) => {
 	const { intervieweeId } = useParams<{ intervieweeId: string }>()
 
-	// Find the interview by participant ID
-	const interview = interviews.find(
-		(i) => i.id === intervieweeId || i.participant.toLowerCase().replace(/\s+/g, "-") === intervieweeId
-	)
+	// Find the person by ID
+	const person = participants.find((p) => p.id === intervieweeId)
 
-	if (!interview) {
+	if (!person) {
 		return (
 			<div className="mx-auto max-w-7xl px-4 py-8">
-				<PageHeader title="Interviewee Not Found" />
+				<PageHeader title="Person Not Found" />
 				<div className="rounded-lg bg-white p-6 shadow dark:bg-gray-900">
-					<h1 className="mb-4 font-bold text-2xl text-red-600">Interviewee Not Found</h1>
-					<p>The requested interviewee could not be found.</p>
+					<h1 className="mb-4 font-bold text-2xl text-red-600">Person Not Found</h1>
+					<p>The requested person could not be found.</p>
 				</div>
 			</div>
 		)
 	}
 
-	// Mock additional data about the interviewee (in a real app, this would come from an API)
-	const intervieweeData: IntervieweeData = {
-		name: interview.participant,
-		role: ["Product Manager", "Developer", "Designer", "Marketing"][Math.floor(Math.random() * 4)],
-		company: ["Acme Corp", "TechGiant", "StartupXYZ", "Enterprise Inc"][Math.floor(Math.random() * 4)],
-		email: `${interview.participant.toLowerCase().replace(/\s+/g, ".")}@example.com`,
-		persona: ["Early Adopters", "Mainstream Learners", "Skeptics"][Math.floor(Math.random() * 3)],
-		personaColor: ["#4285F4", "#42E3A9", "#FF6B6B"][Math.floor(Math.random() * 3)],
-		yearsExperience: Math.floor(Math.random() * 15) + 1,
+	// Get primary persona for display
+	const primaryPersona = person.personas?.[0]?.personas
+
+	// Mock additional data - in real app, this could come from person record or be computed
+	const personData = {
+		name: person.name,
+		role: person.interview_role || "Participant",
+		company: person.segment || "Unknown",
+		email: person.contact_info || undefined,
+		persona: primaryPersona?.name,
+		personaColor: primaryPersona?.color_hex || "#3b82f6",
+		yearsExperience: 8, // Could be computed from person data
 		keyInsights: [
-			"Prefers visual documentation over text",
-			"Uses the product daily for core workflows",
-			"Struggles with advanced features",
-			"Values quick response times",
+			"Extracted from interview insights",
+			"Could be computed from related insights",
+			"Based on persona characteristics",
 		],
-		sentimentScore: Math.random() * 10,
+		sentimentScore: 0.7, // Could be computed from insights
 	}
 
-	// Format date
-	const interviewDate = new Date(interview.date)
-	const formattedDate = interviewDate.toLocaleDateString("en-US", {
-		year: "numeric",
-		month: "long",
-		day: "numeric",
-	})
+	// Remove unused date formatting
 
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-8">
-			<PageHeader
-				title={intervieweeData.name}
-				breadcrumbs={[
-					{ label: "Dashboard", path: "/" },
-					{ label: "Interviews", path: "/interviews" },
-					{ label: intervieweeData.name, path: `/interviewees/${intervieweeId}` },
-				]}
-			/>
+			<PageHeader title={`${personData.name} - Interview Analysis`} breadcrumbs={[
+				{ label: "Dashboard", path: "/" },
+				{ label: "Interviews", path: "/interviews" },
+				{ label: personData.name, path: `/interviewees/${intervieweeId}` },
+			]} />
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
 				{/* Header with persona color */}
-				<div className="h-16 w-full" style={{ backgroundColor: intervieweeData.personaColor }} />
+				<div className="h-16 w-full" style={{ backgroundColor: personData.personaColor }} />
 
 				<div className="p-6">
 					<div className="mb-6 flex flex-col md:flex-row md:items-center md:justify-between">
 						<div>
-							<h1 className="font-bold text-2xl">{intervieweeData.name}</h1>
+							<h1 className="font-bold text-2xl">{personData.name}</h1>
 							<p className="text-gray-600 dark:text-gray-400">
-								{intervieweeData.role} at {intervieweeData.company}
+								{personData.role} at {personData.company}
 							</p>
 						</div>
 
 						<div className="mt-4 flex items-center md:mt-0">
-							{intervieweeData.persona && (
+							{personData.persona && (
 								<Link
-									to={`/personas/${intervieweeData.persona.toLowerCase().replace(/\s+/g, "-")}`}
+									to={`/personas/${personData.persona.toLowerCase().replace(/\s+/g, "-")}`}
 									className="flex items-center"
 								>
 									<span
 										className="mr-2 inline-block h-4 w-4 rounded-full"
-										style={{ backgroundColor: intervieweeData.personaColor }}
+										style={{ backgroundColor: personData.personaColor }}
 									/>
-									<span className="font-medium text-sm">{intervieweeData.persona}</span>
+									<span className="font-medium text-sm">{personData.persona}</span>
 								</Link>
 							)}
 						</div>
@@ -112,47 +99,44 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 					{/* Interviewee details */}
 					<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-							<h2 className="mb-3 font-semibold text-lg">Contact Information</h2>
-							<div className="space-y-3">
-								<div>
-									<span className="block text-gray-500 text-sm">Email</span>
-									<p>{intervieweeData.email}</p>
-								</div>
-								<div>
-									<span className="block text-gray-500 text-sm">Company</span>
-									<p>{intervieweeData.company}</p>
-								</div>
-								<div>
-									<span className="block text-gray-500 text-sm">Years of Experience</span>
-									<p>{intervieweeData.yearsExperience} years</p>
-								</div>
+							<h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">{personData.name}</h1>
+							<div className="mb-4 flex flex-wrap gap-2">
+								<span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+									{personData.role}
+								</span>
+								<span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+									{personData.company}
+								</span>
+								{personData.persona && (
+									<span
+										className="rounded-full px-3 py-1 text-sm font-medium text-white"
+										style={{ backgroundColor: personData.personaColor }}
+									>
+										{personData.persona}
+									</span>
+								)}
 							</div>
+							<p className="text-gray-600 dark:text-gray-300">
+								Interview Date: {interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString() : 'N/A'}
+							</p>
 						</div>
 
 						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-							<h2 className="mb-3 font-semibold text-lg">Interview Details</h2>
+							<h2 className="mb-3 font-semibold text-lg">Contact Information</h2>
 							<div className="space-y-3">
 								<div>
-									<span className="block text-gray-500 text-sm">Interview Date</span>
-									<p>{formattedDate}</p>
+									<p className="text-gray-600 text-sm dark:text-gray-400">Email</p>
+									<p className="font-medium text-gray-900 dark:text-white">
+										{personData.email || "Not provided"}
+									</p>
 								</div>
 								<div>
-									<span className="block text-gray-500 text-sm">Interview ID</span>
-									<p>{interview.id}</p>
+									<p className="text-gray-600 text-sm dark:text-gray-400">Company</p>
+									<p className="font-medium text-gray-900 dark:text-white">{personData.company}</p>
 								</div>
 								<div>
-									<span className="block text-gray-500 text-sm">Status</span>
-									<span
-										className={`rounded-full px-2 py-1 font-semibold text-xs ${
-											interview.status === "ready"
-												? "bg-green-100 text-green-800"
-												: interview.status === "transcribed"
-													? "bg-blue-100 text-blue-800"
-													: "bg-yellow-100 text-yellow-800"
-										}`}
-									>
-										{interview.status}
-									</span>
+									<p className="text-gray-600 text-sm dark:text-gray-400">Years of Experience</p>
+									<p className="font-medium text-gray-900 dark:text-white">{personData.yearsExperience} years</p>
 								</div>
 							</div>
 						</div>
@@ -160,7 +144,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 						<div className="rounded-lg bg-gray-50 p-4 md:col-span-2 dark:bg-gray-800">
 							<h2 className="mb-3 font-semibold text-lg">Key Insights</h2>
 							<ul className="list-inside list-disc space-y-2">
-								{intervieweeData.keyInsights?.map((insight) => (
+								{personData.keyInsights?.map((insight) => (
 									<li key={insight}>{insight}</li>
 								))}
 							</ul>
@@ -173,8 +157,8 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 											<PieChart>
 												<Pie
 													data={[
-														{ name: "Positive", value: intervieweeData.sentimentScore || 0 },
-														{ name: "Negative", value: 100 - (intervieweeData.sentimentScore || 0) },
+														{ name: "Positive", value: Math.round((personData.sentimentScore || 0) * 100) },
+														{ name: "Negative", value: 100 - Math.round((personData.sentimentScore || 0) * 100) },
 													]}
 													cx="50%"
 													cy="50%"
@@ -190,7 +174,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 										</ResponsiveContainer>
 									</div>
 									<span className="font-medium text-sm">
-										{intervieweeData.sentimentScore ? intervieweeData.sentimentScore.toFixed(1) : "0"}/10
+										{personData.sentimentScore ? personData.sentimentScore.toFixed(1) : "0"}/10
 									</span>
 								</div>
 							</div>
@@ -202,7 +186,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 						<div className="mb-3 flex items-center justify-between">
 							<h2 className="font-semibold text-lg">Interview Transcript</h2>
 							<Link
-								to={`/interviews/${interview.id}`}
+								to={`/interviews/${interview?.id}`}
 								className="inline-flex items-center text-blue-600 text-sm hover:text-blue-800"
 							>
 								View Full Transcript
@@ -227,7 +211,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 									<p className="ml-4">Can you tell me about your experience with our product?</p>
 								</div>
 								<div>
-									<p className="font-semibold text-gray-700 dark:text-gray-300">{intervieweeData.name}:</p>
+									<p className="font-semibold text-gray-700 dark:text-gray-300">{personData.name}:</p>
 									<p className="ml-4">
 										I've been using it for about 6 months now. Overall, I find it quite intuitive, but there are some
 										features that I think could be improved.
@@ -238,7 +222,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ interviews }) => 
 									<p className="ml-4">Could you elaborate on which features specifically?</p>
 								</div>
 								<div>
-									<p className="font-semibold text-gray-700 dark:text-gray-300">{intervieweeData.name}:</p>
+									<p className="font-semibold text-gray-700 dark:text-gray-300">{personData.name}:</p>
 									<p className="ml-4">
 										The reporting functionality is a bit cumbersome. It takes too many clicks to generate the reports I
 										need regularly...

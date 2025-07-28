@@ -28,7 +28,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	// Fetch people with personas via junction table
 	const { data: peopleData, error: peopleError } = await supabase
 		.from("people")
-		.select("*,people_personas(*)") // add !inner after people_personas if you want to exclude people with no persona
+		.select("*, people_personas()") // add !inner after people_personas if you want to exclude people with no persona
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 

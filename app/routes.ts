@@ -3,7 +3,7 @@ import dashboardRoutes from "./features/dashboard/routes"
 import personasRoutes from "./features/personas/routes"
 
 const routes = [
-	layout("./routes/_NavLayout.tsx", [
+	layout("./routes/_ProtectedLayout.tsx", [
 		...dashboardRoutes,
 		...personasRoutes]),
 	route("/resource/locales", "./routes/resource.locales.ts"),

@@ -1,4 +1,3 @@
-import consola from "consola"
 import { motion } from "framer-motion"
 import { Palette, Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router-dom"
@@ -8,7 +7,6 @@ import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Database } from "~/types"
 
@@ -23,11 +21,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const loadContextInstance = context.get(loadContext)
-	const { clientEnv } = loadContextInstance
-
-	consola.log("account id from ctx: ", accountId)
-	consola.log("clientEn from loader", clientEnv)
 
 	const personaId = params.personaId
 
@@ -40,7 +33,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
 	type InsightRow = Database["public"]["Tables"]["insights"]["Row"]
 
-	consola.log("personaId", params)
 	// Fetch the current persona directly by ID with account filtering for RLS
 	const { data: currentPersonaData, error: personaError } = await supabase
 		.from("personas")
@@ -105,7 +97,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function PersonaDetailRoute() {
 	const { persona, interviews, insights, relatedPersonas } = useLoaderData<typeof loader>()
-	consola.log("personadetailroute", { persona, interviews, insights, relatedPersonas })
+
 	if (!persona) {
 		return (
 			<div className="flex h-64 items-center justify-center">
@@ -158,24 +150,21 @@ export default function PersonaDetailRoute() {
 								<motion.div className="relative" whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
 									<Avatar className="h-36 w-36 border-4" style={{ borderColor: themeColor }}>
 										{persona.image_url ? (
-											<img 
-												src={persona.image_url} 
-												alt={persona.name} 
+											<img
+												src={persona.image_url}
+												alt={persona.name}
 												className="h-full w-full object-cover"
 												onError={(e) => {
 													// Fallback to initials if image fails to load
-													e.currentTarget.style.display = 'none';
-													const fallback = e.currentTarget.nextElementSibling as HTMLElement | null;
+													e.currentTarget.style.display = "none"
+													const fallback = e.currentTarget.nextElementSibling as HTMLElement | null
 													if (fallback) {
-														fallback.style.display = 'flex';
+														fallback.style.display = "flex"
 													}
-												}} 
+												}}
 											/>
 										) : null}
-										<AvatarFallback 
-											className="font-bold text-2xl text-white" 
-											style={{ backgroundColor: themeColor }}
-										>
+										<AvatarFallback className="font-bold text-2xl text-white" style={{ backgroundColor: themeColor }}>
 											{initials}
 										</AvatarFallback>
 									</Avatar>

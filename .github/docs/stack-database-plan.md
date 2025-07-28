@@ -12,7 +12,7 @@ This document captures the agreed-upon architectural decisions for persistence, 
 | Auth | **Supabase Auth** | Email / SSO; interviewer accounts map to `auth.users`. |
 | Media Storage | **Cloudflare R2** | Low-cost object storage for large audio / video files. Supabase stores only signed-URL + metadata. |
 | Vector Search (future) | **pgvector** extension on Supabase | Enables semantic similarity between themes / categories. |
-| App Framework | **Remix (React Router 7)** | Universal React routing; fits Supabase + edge functions; allows o3/BAML processing in Remix actions/loaders. |
+| App Framework | **React Router 7** | Universal React routing with feature-based organization; middleware-based auth; context-driven data access; allows o3/BAML processing in loaders/actions. |
 
 ## 2. Tenancy & ACL Model
 
@@ -330,7 +330,7 @@ create policy "only owners can delete"
 
 ## 5. Routing
 
-Flatroutes in react-router 7 enabled
+we currently have Flatroutes in react-router 7 setup, but we want to convert to explicit route file config to support  feature consolidation, where a feature directory has components, pages and a route file. Each feature route file gets aggregated into a single app/routes.ts. [docs](https://reactrouter.com/start/framework/routing)
 
 | Syntax                         | Resulting URL / behaviour                                                                       | Built‑in?                                                         |
 | ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |

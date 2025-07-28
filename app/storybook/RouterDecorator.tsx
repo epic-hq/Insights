@@ -1,7 +1,6 @@
 import type { Decorator } from "@storybook/react"
 import { useEffect, useState } from "react"
 import { HashRouter, useLocation } from "react-router-dom"
-import Dashboard from "../components/dashboard/Dashboard"
 import InsightsList from "../components/insights/InsightsList"
 import InterviewsList from "../components/interviews/InterviewsList"
 import PersonasList from "../components/lists/PersonasList"
@@ -9,6 +8,7 @@ import Breadcrumbs from "../components/navigation/Breadcrumbs"
 import OpportunitiesList from "../components/opportunities/OpportunitiesList"
 import PersonaDetail from "../components/personas/PersonaDetail"
 import { sampleData } from "../data/sampleData"
+import Dashboard from "../features/dashboard/components/Dashboard"
 
 // Map of route segments to display names
 const routeLabels: Record<string, string> = {

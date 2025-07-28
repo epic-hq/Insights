@@ -20,6 +20,10 @@ export async function loader({ request }: { request: Request }) {
 	const { data: jwt } = await supabase.auth.getClaims()
 	const accountId = jwt?.claims.sub
 
+	if (!accountId) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+
 	consola.log("accountId", accountId)
 
 	const url = new URL(request.url)
@@ -38,10 +42,13 @@ export async function loader({ request }: { request: Request }) {
 				id: string
 				name: string
 				segment: string | null
-				personas: {
-					id: string
-					name: string
-				} | null
+				people_personas: {
+					personas: {
+						id: string
+						name: string
+						color_hex: string | null
+					}
+				}[]
 			}
 		}[]
 	}
@@ -56,138 +63,174 @@ export async function loader({ request }: { request: Request }) {
 		insightCount: number
 	}
 
-	// Simplified interviews query - just basic interview data first
-	const { data: rows, error } = await supabase
-		.from("interviews")
-		.select("*")
-		.eq("account_id", accountId)
-		.order("created_at", { ascending: false })
+	// Fetch interviews with participants via junction table
+	try {
+		consola.log("Fetching interviews for account:", accountId)
+		const { data: rows, error } = await supabase
+			.from("interviews")
+			.select(`
+				*,
+				interview_people(
+					role,
+					people(
+						id,
+						name,
+						segment,
+						people_personas(
+							personas(
+								id,
+								name,
+								color_hex
+							)
+						)
+					)
+				)
+			`)
+			.eq("account_id", accountId)
+			.order("created_at", { ascending: false })
 
-	if (error) {
-		throw new Response(error.message, { status: 500 })
-	}
+		if (error) {
+			consola.error("Interviews query error:", error)
+			throw new Response(`Error fetching interviews: ${error.message}`, { status: 500 })
+		}
 
-	const { data: allInsights, error: insightsError } = await supabase
-		.from("insights")
-		.select("id, interview_id")
-		.eq("account_id", accountId)
+		consola.log(`Found ${rows?.length || 0} interviews`)
 
-	if (insightsError) throw new Response(insightsError.message, { status: 500 })
+		const { data: allInsights, error: insightsError } = await supabase
+			.from("insights")
+			.select("id, interview_id")
+			.eq("account_id", accountId)
 
-	// Fetch persona distribution analytics
-	const { data: personaDistribution, error: personaError } = await supabase
-		.from("persona_distribution")
-		.select("*")
-		.eq("account_id", accountId)
-		.order("total_interview_count", { ascending: false })
+		if (insightsError) {
+			consola.error("Insights query error:", insightsError)
+			throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
+		}
 
-	if (personaError) {
-		throw new Response(personaError.message, { status: 500 })
-	}
+		const insightCountMap = new Map<string, number>()
+		if (allInsights) {
+			allInsights.forEach((insight) => {
+				if (insight.interview_id) {
+					const currentCount = insightCountMap.get(insight.interview_id) || 0
+					insightCountMap.set(insight.interview_id, currentCount + 1)
+				}
+			})
+		}
 
-	const insightCountMap = new Map<string, number>()
-	if (allInsights) {
-		allInsights.forEach((insight) => {
-			if (insight.interview_id) {
-				const currentCount = insightCountMap.get(insight.interview_id) || 0
-				insightCountMap.set(insight.interview_id, currentCount + 1)
+		// TODO: Fix persona_distribution view - temporarily disabled
+		// const { data: personaDistribution, error: personaError } = await supabase
+		//   .from("persona_distribution")
+		//   .select("*")
+		//   .eq("account_id", accountId)
+		consola.log("Skipping persona distribution for now")
+		const personaDistribution: any[] = []
+
+		const segmentData = (personaDistribution || []).map((stats) => ({
+			name: stats?.persona_name || "Unknown",
+			value: stats?.total_interview_count || 0,
+			color: stats?.color_hex || "#d1d5db",
+		}))
+
+		const interviews: InterviewUI[] = (rows as InterviewWithParticipants[] || []).map((interview) => {
+			// Get primary participant from interview_people junction
+			const primaryParticipant = interview.interview_people?.[0]
+			const person = primaryParticipant?.people
+			const primaryPersona = person?.people_personas?.[0]?.personas
+
+			return {
+				// Core interview data
+				...interview,
+				// Computed participant fields from junction data
+				participant: person?.name || interview.title || "Anonymous",
+				role: primaryParticipant?.role || person?.segment || "Participant",
+				persona: primaryPersona?.name || "Unassigned",
+				date: interview.interview_date || interview.created_at.split("T")[0],
+				duration: interview.duration_min ? `${interview.duration_min} min` : "N/A",
+				insightCount: insightCountMap.get(interview.id) || 0,
 			}
 		})
-	}
 
-	const interviews: InterviewUI[] = (rows || []).map((interview: any) => {
-		// Simplified - use legacy fields for now
-		const participantName = interview.participant_pseudonym || "Anonymous"
-		const participantSegment = interview.segment || "User"
-		const personaName = "Other" // TODO: Add personas back later
+		consola.log(`Processed ${interviews.length} interviews for UI`)
+
+		// Initialize analytics data
+		const statusOptions = InterviewStatusEnum.options
+		type RoleMapEntry = { role: string } & Record<InterviewStatus, number>
+		const roleMap: Record<string, RoleMapEntry> = {}
+		const roleCounts: Record<string, number> = {}
+		const statusCounts: Record<InterviewStatus, number> = Object.fromEntries(statusOptions.map((s) => [s, 0])) as Record<
+			InterviewStatus,
+			number
+		>
+		let totalInsights = 0
+
+		interviews.forEach((interview) => {
+			const role = interview.role
+			const status = interview.status as InterviewStatus
+
+			// Count roles
+			if (!roleCounts[role]) {
+				roleCounts[role] = 0
+			}
+			roleCounts[role]++
+
+			// Initialize role in roleMap if not exists
+			if (!roleMap[role]) {
+				roleMap[role] = { role, ...Object.fromEntries(statusOptions.map((s) => [s, 0])) } as RoleMapEntry
+			}
+
+			// Count status for this role
+			roleMap[role][status]++
+			statusCounts[status]++
+			totalInsights += interview.insightCount
+		})
+
+		const stats = {
+			total: interviews.length,
+			byStatus: statusCounts,
+			byRole: roleCounts,
+			totalInsights,
+			averageInsightsPerInterview: interviews.length > 0 ? (totalInsights / interviews.length).toFixed(1) : 0,
+		}
+
+		const stackedData = Object.values(roleMap)
 
 		return {
-			// Core interview data
-			...interview,
-			// Use legacy fields for now
-			participant: participantName,
-			role: participantSegment,
-			persona: personaName,
-			date: interview.interview_date || interview.created_at.split("T")[0],
-			duration: interview.duration_min ? `${interview.duration_min} min` : "N/A",
-			insightCount: insightCountMap.get(interview.id) || 0,
+			interviews,
+			personaDistribution: personaDistribution || [],
+			totalInsights,
+			statusOptions,
+			roleMap,
+			roleCounts,
+			statusCounts,
+			segmentData,
+			stackedData,
 		}
-	})
+	} catch (error) {
+		consola.error("Loader error:", error)
+		throw new Response(`Internal server error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 })
+	}
+}
 
-	const statusOptions = InterviewStatusEnum.options
-	type RoleMapEntry = { role: string } & Record<InterviewStatus, number>
-	const roleMap: Record<string, RoleMapEntry> = {}
-	const roleCounts: Record<string, number> = {}
-	const statusCounts: Record<InterviewStatus, number> = Object.fromEntries(statusOptions.map((s) => [s, 0])) as Record<
-		InterviewStatus,
-		number
-	>
-	let totalInsights = 0
+export default function Interviews() {
+	const { interviews, segmentData, stackedData, totalInsights, statusCounts, roleCounts } = useLoaderData<typeof loader>()
 
-	interviews.forEach((interview) => {
-		const role = interview.role || "Unknown" // Now using role from participant data
-		const status = interview.status
-		const count = interview.high_impact_themes?.length || 0
+	type StackedRow<S extends string> = { role: string } & Partial<Record<S, number>>
+	type SegmentDatum = { name: string; value: number }
 
-		if (!roleMap[role]) {
-			roleMap[role] = {
-				role,
-				...Object.fromEntries(statusOptions.map((s) => [s, 0])),
-			} as RoleMapEntry
-		}
-		roleMap[role][status]++
-		statusCounts[status]++
-		roleCounts[role] = (roleCounts[role] || 0) + 1
-		totalInsights += count
-	})
-
+	// Create stats object for UI
 	const stats = {
 		total: interviews.length,
 		byStatus: statusCounts,
 		byRole: roleCounts,
 		totalInsights,
-		averageInsightsPerInterview: interviews.length > 0 ? (totalInsights / interviews.length).toFixed(1) : 0,
+		averageInsightsPerInterview: interviews.length > 0 ? (totalInsights / interviews.length).toFixed(1) : '0',
 	}
-
-	return {
-		interviews,
-		stackedData: (() => {
-			const roleMapForChart: Record<string, RoleMapEntry> = {}
-
-			interviews.forEach((interview) => {
-				const role = interview.role || "Unknown" // Now using role from participant data
-				const status = interview.status
-
-				if (!roleMapForChart[role]) {
-					roleMapForChart[role] = {
-						role,
-						...Object.fromEntries(statusOptions.map((s) => [s, 0])),
-					} as RoleMapEntry
-				}
-				roleMapForChart[role][status]++
-			})
-
-			return Object.values(roleMapForChart)
-		})(),
-		stats,
-		personaDistribution: personaDistribution || [],
-	}
-}
-
-export default function Interviews() {
-	const { interviews, stackedData, stats } = useLoaderData<typeof loader>()
-
-	type StackedRow<S extends string> = { role: string } & Partial<Record<S, number>>
-	type SegmentDatum = { name: string; value: number }
 
 	function toSegmentData<S extends string>(rows: StackedRow<S>[], statuses: readonly S[]): SegmentDatum[] {
-		return rows.map((r) => ({
-			name: r.role,
-			value: statuses.reduce((sum, s) => sum + (r[s] ?? 0), 0),
+		return statuses.map((status) => ({
+			name: status,
+			value: rows.reduce((sum, row) => sum + (row[status] || 0), 0),
 		}))
 	}
-
-	const segmentData = toSegmentData(stackedData, InterviewStatusEnum.options)
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4 py-4">

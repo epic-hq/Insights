@@ -53,66 +53,90 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response("Person ID required", { status: 400 })
 	}
 
-	// Simple person fetch - back to basics
-	const { data: person, error: personError } = await supabase
-		.from("people")
-		.select(`
-			*,
-			people_personas(
-				confidence_score,
-				source,
-				assigned_at,
-				personas(
-					id,
-					name,
-					description,
-					color_hex
-				)
-			)
-		`)
-		.eq("id", personId)
-		.eq("account_id", accountId)
-		.single()
+	try {
+		// First, try simple person fetch without junction table
+		const { data: person, error: personError } = await supabase
+			.from("people")
+			.select("*")
+			.eq("id", personId)
+			.eq("account_id", accountId)
+			.single()
 
-	if (personError) {
-		throw new Response(`Error fetching person: ${personError.message}`, { status: 500 })
-	}
+		if (personError) {
+			console.error("Person fetch error:", personError)
+			throw new Response(`Error fetching person: ${personError.message}`, { status: 500 })
+		}
 
-	if (!person) {
-		throw new Response("Person not found", { status: 404 })
-	}
+		if (!person) {
+			throw new Response("Person not found", { status: 404 })
+		}
 
-	// Fetch interviews for this person
-	const { data: interviewData, error: interviewError } = await supabase
-		.from("interview_people")
-		.select("role, interviews(id, title, interview_date, created_at, status, duration_min)")
-		.eq("person_id", personId)
-		.order("created_at", { ascending: false, referencedTable: "interviews" })
+		// Try to fetch personas via junction table (with error handling)
+		let personaData = null
+		try {
+			const { data: personas, error: personaError } = await supabase
+				.from("people_personas")
+				.select(`
+					confidence_score,
+					source,
+					assigned_at,
+					personas(
+						id,
+						name,
+						description,
+						color_hex
+					)
+				`)
+				.eq("person_id", personId)
 
-	if (interviewError) {
-		throw new Response(`Error fetching interviews: ${interviewError.message}`, { status: 500 })
-	}
+			if (!personaError && personas) {
+				personaData = personas
+			} else {
+				console.warn("Persona fetch error (non-fatal):", personaError)
+			}
+		} catch (err) {
+			console.warn("Persona fetch failed (non-fatal):", err)
+		}
 
-	// Simple interview transformation
-	const interviews: InterviewSummary[] = (interviewData || [])
-		.map((ip: any) => ip.interviews)
-		.filter(Boolean)
-		.map((interview: any) => ({
-			...interview,
-			insight_count: 0, // We'll add this back later if needed
-		}))
+		// Try to fetch interviews (with error handling)
+		let interviews: InterviewSummary[] = []
+		try {
+			const { data: interviewData, error: interviewError } = await supabase
+				.from("interview_people")
+				.select("role, interviews(id, title, interview_date, created_at, status, duration_min)")
+				.eq("person_id", personId)
+				.order("created_at", { ascending: false, referencedTable: "interviews" })
 
-	// Map primary persona (highest confidence or first) for backward-compat UI
-	const primaryPersona = (person as any).people_personas?.[0]?.personas ?? null
-	const transformedPerson = {
-		...person,
-		personas: primaryPersona,
-	} as PersonDetail
+			if (!interviewError && interviewData) {
+				interviews = interviewData
+					.map((ip: any) => ip.interviews)
+					.filter(Boolean)
+					.map((interview: any) => ({
+						...interview,
+						insight_count: 0,
+					}))
+			} else {
+				console.warn("Interview fetch error (non-fatal):", interviewError)
+			}
+		} catch (err) {
+			console.warn("Interview fetch failed (non-fatal):", err)
+		}
 
-	return {
-		person: transformedPerson,
-		interviews,
-		totalInsights: 0, // Simplified for now
+		// Map primary persona for backward-compat UI
+		const primaryPersona = personaData?.[0]?.personas ?? null
+		const transformedPerson = {
+			...person,
+			personas: primaryPersona,
+		} as PersonDetail
+
+		return {
+			person: transformedPerson,
+			interviews,
+			totalInsights: 0,
+		}
+	} catch (error) {
+		console.error("Loader error:", error)
+		throw new Response(`Server error: ${error instanceof Error ? error.message : 'Unknown error'}`, { status: 500 })
 	}
 }
 

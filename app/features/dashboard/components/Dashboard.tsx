@@ -1,14 +1,14 @@
 import { Link, useNavigate } from "react-router-dom"
+import type { TreeNode } from "~/components/charts/TreeMap"
+import TreeMap from "~/components/charts/TreeMap"
+import type { KPI } from "~/components/dashboard/KPIBar"
+import KPIBar from "~/components/dashboard/KPIBar"
+import OpportunityKanban from "~/components/dashboard/OpportunityKanban"
+import RecentInterviewsTable from "~/components/dashboard/RecentInterviewsTable"
+import type { InsightCardProps } from "~/components/insights/InsightCard"
+import EnhancedPersonaCard from "~/components/personas/EnhancedPersonaCard"
+import AddInterviewButton from "~/components/upload/AddInterviewButton"
 import type { OpportunityView } from "~/types"
-import type { TreeNode } from "../charts/TreeMap"
-import TreeMap from "../charts/TreeMap"
-import type { InsightCardProps } from "../insights/InsightCard"
-import AddInterviewButton from "../upload/AddInterviewButton"
-import type { KPI } from "./KPIBar"
-import KPIBar from "./KPIBar"
-import OpportunityKanban from "./OpportunityKanban"
-import PersonaCard from "./PersonaCard"
-import RecentInterviewsTable from "./RecentInterviewsTable"
 
 interface DashboardProps {
 	kpis: KPI[]
@@ -109,8 +109,8 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 						</Link>
 					</div>
 					<div className="grid gap-4">
-						{personas.map((p) => (
-							<PersonaCard key={p.name} {...p} />
+						{personas.map((persona) => (
+							<EnhancedPersonaCard key={persona.id} persona={persona} />
 						))}
 					</div>
 				</div>

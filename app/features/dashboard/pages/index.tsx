@@ -1,8 +1,10 @@
+import consola from "consola"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
 import type { KPI } from "~/components/dashboard/KPIBar"
 import Dashboard from "~/features/dashboard/components/Dashboard"
+import { getPersonas } from "~/features/personas/db"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightView, OpportunityView } from "~/types"
 
@@ -48,17 +50,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	]
 
 	// Fetch personas with counts
-	type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
-	const { data: personaRows } = await supabase.from("personas").select("*").eq("account_id", accountId)
+	const { data, error } = await getPersonas({ supabase, accountId })
 
 	// Transform personas into the expected format
-	const personas = (personaRows || []).map((p: PersonaRow, index) => {
+	const personas = (data || []).map((p, index) => {
 		// Generate a color based on index if not available in database
 		const colors = ["#2563EB", "#14B8A6", "#E11D48", "#8B5CF6", "#F59E0B"]
 		const colorValue = p.color_hex || colors[index % colors.length]
 
 		return {
-			name: p.name,
+			...p,
 			percentage: p.percentage || 33, // Use DB value or default
 			count: 10, // This would ideally be calculated based on actual data
 			color: colorValue,
@@ -138,6 +139,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			)
 		`)
 		.eq("account_id", accountId)
+
+	// Debug logging
+	consola.log("Dashboard Debug:", {
+		insightRowsCount: insightRows?.length || 0,
+		insightTagsCount: insightTags?.length || 0,
+		personaRowsCount: data?.length || 0,
+	})
 
 	// Group insights by tags using junction table data
 	const tagMap = new Map<string, TreeNode>()

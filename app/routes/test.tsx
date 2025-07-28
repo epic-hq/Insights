@@ -43,7 +43,7 @@ export default function Index() {
 				},
 				"404": {
 					title: "Page Not found!",
-					description: "Oops! The page you're looking for seems to have vanished into thin air.",
+					description: "Oops!",
 				},
 				"403": {
 					title: "Unauthorized!",
