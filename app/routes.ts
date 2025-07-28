@@ -1,17 +1,26 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
 import dashboardRoutes from "./features/dashboard/routes"
+import insightsRoutes from "./features/insights/routes"
+import interviewsRoutes from "./features/interviews/routes"
+import opportunitiesRoutes from "./features/opportunities/routes"
+import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
+import projectsRoutes from "./features/projects/routes"
 
 const routes = [
 	layout("./routes/_ProtectedLayout.tsx", [
 		...dashboardRoutes,
-		...personasRoutes]),
+		...interviewsRoutes,
+		...insightsRoutes,
+		...opportunitiesRoutes,
+		...peopleRoutes,
+		...personasRoutes,
+		...projectsRoutes,
+	]),
 	route("/resource/locales", "./routes/resource.locales.ts"),
-	// route("/.well-known/appspecific/com.chrome.devtools.json", ".well-known/appspecific/com.chrome.devtools.json.ts"),
 	route("login", "./routes/login.tsx"),
 	route("register", "./routes/register.tsx"),
 	route("signout", "./routes/auth.signout.tsx"),
-
 ] satisfies RouteConfig
 
 export default routes

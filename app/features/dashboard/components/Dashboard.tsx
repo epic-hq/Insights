@@ -1,14 +1,13 @@
 import { Link, useNavigate } from "react-router-dom"
 import type { TreeNode } from "~/components/charts/TreeMap"
 import TreeMap from "~/components/charts/TreeMap"
-import type { KPI } from "~/components/dashboard/KPIBar"
-import KPIBar from "~/components/dashboard/KPIBar"
-import OpportunityKanban from "~/components/dashboard/OpportunityKanban"
-import RecentInterviewsTable from "~/components/dashboard/RecentInterviewsTable"
-import type { InsightCardProps } from "~/components/insights/InsightCard"
-import EnhancedPersonaCard from "~/components/personas/EnhancedPersonaCard"
-import AddInterviewButton from "~/components/upload/AddInterviewButton"
+import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
+import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
 import type { OpportunityView } from "~/types"
+import type { KPI } from "./KPIBar"
+import KPIBar from "./KPIBar"
+import OpportunityKanban from "./OpportunityKanban"
+import RecentInterviewsTable from "./RecentInterviewsTable"
 
 interface DashboardProps {
 	kpis: KPI[]

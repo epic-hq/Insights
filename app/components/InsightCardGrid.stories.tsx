@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react"
+import InsightCardGrid from "../features/insights/components/InsightCardGrid"
 import type { InsightCardProps } from "./insights/InsightCard"
-import InsightCardGrid from "./insights/InsightCardGrid"
 
 const meta: Meta<typeof InsightCardGrid> = {
 	title: "Interview Record/InsightCardGrid",

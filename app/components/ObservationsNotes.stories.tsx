@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react"
-import ObservationsNotes from "./ObservationsNotes"
+import ObservationsNotes from "../features/interviews/components/ObservationsNotes"
 
 const meta: Meta<typeof ObservationsNotes> = {
 	title: "Interview Record/ObservationsNotes",

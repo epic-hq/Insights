@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react"
-import StudyContextCard from "./StudyContextCard"
+import StudyContextCard from "../features/projects/components/ProjectContextCard"
 
 const meta: Meta<typeof StudyContextCard> = {
 	title: "Interview Record/StudyContextCard",

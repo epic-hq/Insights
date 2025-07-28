@@ -1,14 +1,10 @@
 import type { Decorator } from "@storybook/react"
 import { useEffect, useState } from "react"
 import { HashRouter, useLocation } from "react-router-dom"
-import InsightsList from "../components/insights/InsightsList"
-import InterviewsList from "../components/interviews/InterviewsList"
-import PersonasList from "../components/lists/PersonasList"
-import Breadcrumbs from "../components/navigation/Breadcrumbs"
-import OpportunitiesList from "../components/opportunities/OpportunitiesList"
-import PersonaDetail from "../components/personas/PersonaDetail"
-import { sampleData } from "../data/sampleData"
-import Dashboard from "../features/dashboard/components/Dashboard"
+import Breadcrumbs from "~/components/navigation/Breadcrumbs"
+import { sampleData } from "~/data/sampleData"
+import Dashboard from "~/features/dashboard/components/Dashboard"
+import InterviewsList from "~/features/interviews/components/InterviewsList"
 
 // Map of route segments to display names
 const routeLabels: Record<string, string> = {
@@ -50,19 +46,19 @@ const RouteDisplay = () => {
 		// Check for persona detail routes
 		if (activeRoute.startsWith("/personas/")) {
 			// No need to extract personaId here as useParams in PersonaDetail will handle it
-			return <PersonaDetail personas={sampleData.personas} />
+			// return <PersonaDetail personas={sampleData.personas} />
 		}
 
 		// Handle other routes
 		switch (activeRoute) {
 			case "/interviews":
 				return <InterviewsList interviews={sampleData.interviews} />
-			case "/insights":
-				return <InsightsList insights={sampleData.insights || []} getInsightId={(_, index) => `insight-${index}`} />
-			case "/opportunities":
-				return <OpportunitiesList opportunities={sampleData.opportunities || []} />
-			case "/personas":
-				return <PersonasList personas={sampleData.personas} totalParticipants={80} />
+			// case "/insights":
+			// 	return <InsightsList insights={sampleData.insights || []} getInsightId={(_, index) => `insight-${index}`} />
+			// case "/opportunities":
+			// 	return <OpportunitiesList opportunities={sampleData.opportunities || []} />
+			// case "/personas":
+			// 	return <PersonasList personas={sampleData.personas} totalParticipants={80} />
 			case "/":
 				return <Dashboard {...sampleData} />
 			default:

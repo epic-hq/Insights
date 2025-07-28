@@ -1,7 +1,7 @@
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 import { Link } from "react-router-dom"
-import EnhancedPersonaCard from "~/components/personas/EnhancedPersonaCard"
 import { Button } from "~/components/ui/button"
+import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
 import { getServerClient } from "~/lib/supabase/server"
 
 export const meta: MetaFunction = () => {

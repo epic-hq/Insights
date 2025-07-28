@@ -1,0 +1,108 @@
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "~/types"
+
+export const getProjects = async ({
+	supabase,
+	accountId,
+}: {
+	supabase: SupabaseClient<Database>
+	accountId: string
+}) => {
+	return await supabase
+		.from("projects")
+		.select(`
+			*,
+			project_people (
+				people (
+					id,
+					name,
+					segment,
+					personas (
+						name,
+						color_hex
+					)
+				)
+			)
+		`)
+		.eq("account_id", accountId)
+		.order("created_at", { ascending: false })
+}
+
+export const getProjectById = async ({
+	supabase,
+	accountId,
+	id,
+}: {
+	supabase: SupabaseClient<Database>
+	accountId: string
+	id: string
+}) => {
+	return await supabase
+		.from("projects")
+		.select(`
+			*,
+			project_people (
+				people (
+					id,
+					name,
+					segment,
+					personas (
+						name,
+						color_hex
+					)
+				),
+				interview_count,
+				first_seen_at,
+				last_seen_at
+			)
+		`)
+		.eq("account_id", accountId)
+		.eq("id", id)
+		.single()
+}
+
+export const createProject = async ({
+	supabase,
+	data,
+}: {
+	supabase: SupabaseClient<Database>
+	data: Database["public"]["Tables"]["projects"]["Insert"]
+}) => {
+	return await supabase.from("projects").insert(data).select().single()
+}
+
+export const updateProject = async ({
+	supabase,
+	id,
+	accountId,
+	data,
+}: {
+	supabase: SupabaseClient<Database>
+	id: string
+	accountId: string
+	data: Database["public"]["Tables"]["projects"]["Update"]
+}) => {
+	return await supabase
+		.from("projects")
+		.update(data)
+		.eq("id", id)
+		.eq("account_id", accountId)
+		.select()
+		.single()
+}
+
+export const deleteProject = async ({
+	supabase,
+	id,
+	accountId,
+}: {
+	supabase: SupabaseClient<Database>
+	id: string
+	accountId: string
+}) => {
+	return await supabase
+		.from("projects")
+		.delete()
+		.eq("id", id)
+		.eq("account_id", accountId)
+}

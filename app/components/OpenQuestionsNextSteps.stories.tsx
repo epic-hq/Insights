@@ -1,5 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react"
-import OpenQuestionsNextSteps from "./OpenQuestionsNextSteps"
+import OpenQuestionsNextSteps from "../features/interviews/components/OpenQuestionsNextSteps"
 
 const meta: Meta<typeof OpenQuestionsNextSteps> = {
 	title: "Interview Record/OpenQuestionsNextSteps",

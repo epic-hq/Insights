@@ -21,7 +21,9 @@ create table if not exists insights (
 	related_tags text[],
   embedding vector(1536), -- jtbd embedding to aid searching
   created_at timestamptz not null default now(),
-	updated_at timestamptz not null default now()
+	updated_at timestamptz not null default now(),
+	created_by uuid not null references auth.users (id) on delete cascade,
+	updated_by uuid not null references auth.users (id) on delete cascade
 );
 
 

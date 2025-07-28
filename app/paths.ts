@@ -10,7 +10,7 @@ export const PATHS = {
 	INTERVIEWS: "/interviews",
 	PEOPLE: "/people",
 	INSIGHTS: "/insights",
-	AUTO_INSIGHTS: "/auto-insights",
+	AUTO_INSIGHTS: "/insights/auto",
 	OPPORTUNITIES: "/opportunities",
 	PERSONAS: "/personas",
 	PROJECTS: "/projects",

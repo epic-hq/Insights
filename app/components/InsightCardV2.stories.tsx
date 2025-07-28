@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react"
+import { InsightCardV2 } from "../features/insights/components/InsightCardV2"
 import type { InsightCardProps } from "./insights/InsightCard"
-import { InsightCardV2 } from "./insights/InsightCardV2"
 
 const meta: Meta<typeof InsightCardV2> = {
 	title: "Interview Insights/InsightCardV2",

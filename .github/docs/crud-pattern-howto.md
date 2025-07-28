@@ -3,6 +3,7 @@
 This document provides a comprehensive guide for implementing full CRUD (Create, Read, Update, Delete) operations in our React Router 7 + Supabase application using the new feature-based routing and middleware context architecture.
 
 ## Table of Contents
+
 1. [Architecture Overview](#architecture-overview)
 2. [Feature-Based Route Structure](#feature-based-route-structure)
 3. [Database Schema Requirements](#database-schema-requirements)
@@ -15,6 +16,7 @@ This document provides a comprehensive guide for implementing full CRUD (Create,
 ## Architecture Overview
 
 Our application uses a modern architecture with:
+
 - **Feature-based routing**: Routes organized by entity in `app/features/{entity}/routes.ts`
 - **Middleware authentication**: `_ProtectedLayout.tsx` handles auth and context setup
 - **Context-based data access**: `userContext` and `loadContext` provide authenticated data access
@@ -43,12 +45,12 @@ app/features/{entity}/
 import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
 
 export default [
-	...prefix("{entity}", [
-		index("./features/{entity}/pages/index.tsx"),
-		route("new", "./features/{entity}/pages/new.tsx"),
-		route(":id", "./features/{entity}/pages/{entity}Detail.tsx"),
-		route(":id/edit", "./features/{entity}/pages/edit.tsx"),
-	]),
+ ...prefix("{entity}", [
+  index("./features/{entity}/pages/index.tsx"),
+  route("new", "./features/{entity}/pages/new.tsx"),
+  route(":{entity}Id", "./features/{entity}/pages/{entity}Detail.tsx"),
+  route(":{entity}Id/edit", "./features/{entity}/pages/edit.tsx"),
+ ]),
 ] satisfies RouteConfig
 ```
 
@@ -59,19 +61,114 @@ import { layout, type RouteConfig, route } from "@react-router/dev/routes"
 import {entity}Routes from "./features/{entity}/routes"
 
 const routes = [
-	layout("./routes/_ProtectedLayout.tsx", [
-		...{entity}Routes,
-		// ... other feature routes
-	]),
-	// ... public routes
+ layout("./routes/_ProtectedLayout.tsx", [
+  ...{entity}Routes,
+  // ... other feature routes
+ ]),
+ // ... public routes
 ] satisfies RouteConfig
 
 export default routes
 ```
 
+## Typed Database Query Functions
+
+### Feature-Local Database Access
+
+For clean, reusable, and type-safe database access, create feature-local `db.ts` files:
+
+**File:** `app/features/{entity}/db.ts`
+
+```typescript
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "~/types"
+
+export const get{Entity}s = async ({
+ supabase,
+ accountId,
+}: {
+ supabase: SupabaseClient<Database>
+ accountId: string
+}) => {
+ return await supabase.from("{entity}").select("*").eq("account_id", accountId)
+}
+
+export const get{Entity}ById = async ({
+ supabase,
+ accountId,
+ id,
+}: {
+ supabase: SupabaseClient<Database>
+ accountId: string
+ id: string
+}) => {
+ return await supabase
+  .from("{entity}")
+  .select("*")
+  .eq("account_id", accountId)
+  .eq("id", id)
+  .single()
+}
+
+export const create{Entity} = async ({
+ supabase,
+ data,
+}: {
+ supabase: SupabaseClient<Database>
+ data: Database["public"]["Tables"]["{entity}"]["Insert"]
+}) => {
+ return await supabase.from("{entity}").insert(data).select().single()
+}
+
+export const update{Entity} = async ({
+ supabase,
+ id,
+ accountId,
+ data,
+}: {
+ supabase: SupabaseClient<Database>
+ id: string
+ accountId: string
+ data: Database["public"]["Tables"]["{entity}"]["Update"]
+}) => {
+ return await supabase
+  .from("{entity}")
+  .update(data)
+  .eq("id", id)
+  .eq("account_id", accountId)
+  .select()
+  .single()
+}
+
+export const delete{Entity} = async ({
+ supabase,
+ id,
+ accountId,
+}: {
+ supabase: SupabaseClient<Database>
+ id: string
+ accountId: string
+}) => {
+ return await supabase
+  .from("{entity}")
+  .delete()
+  .eq("id", id)
+  .eq("account_id", accountId)
+}
+```
+
+### Benefits of This Pattern
+
+- **Type Safety**: Full TypeScript support with Supabase-generated types
+- **Reusability**: Functions can be used across multiple routes
+- **Testability**: Easy to unit test database operations
+- **Consistency**: Standardized query patterns across features
+- **Account Scoping**: Built-in RLS compliance
+
 ## Database Schema Requirements
 
 ### Base Table Structure
+
 ```sql
 CREATE TABLE {entity} (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -95,6 +192,7 @@ CREATE INDEX idx_{entity}_created_at ON {entity}(created_at DESC);
 ```
 
 ### Junction Tables (if needed)
+
 ```sql
 CREATE TABLE {entity1}_{entity2} (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -547,11 +645,11 @@ export default function EntityCard({ entity }: EntityCardProps) {
             <Card className="group cursor-pointer transition-all hover:shadow-md">
                 <CardHeader className="pb-3">
                     <div className="flex items-center gap-3">
-                        <Avatar 
-                            className="h-10 w-10 border-2" 
+                        <Avatar
+                            className="h-10 w-10 border-2"
                             style={{ borderColor: entity.color_hex || "#6b7280" }}
                         >
-                            <AvatarFallback 
+                            <AvatarFallback
                                 className="text-white text-sm font-medium"
                                 style={{ backgroundColor: entity.color_hex || "#6b7280" }}
                             >
@@ -571,11 +669,11 @@ export default function EntityCard({ entity }: EntityCardProps) {
                             {entity.description}
                         </p>
                     )}
-                    
+
                     <div className="flex flex-wrap gap-1">
                         {/* Add related badges/info here */}
                     </div>
-                    
+
                     <div className="mt-3 flex items-center justify-between text-gray-500 text-xs">
                         <span>Created {new Date(entity.created_at).toLocaleDateString()}</span>
                         <span>Updated {new Date(entity.updated_at).toLocaleDateString()}</span>
@@ -591,21 +689,23 @@ export default function EntityCard({ entity }: EntityCardProps) {
 
 The personas implementation in our codebase demonstrates this pattern perfectly:
 
-- **Index:** `/app/routes/_NavLayout.personas/index.tsx`
-- **Detail:** `/app/routes/_NavLayout.personas_.$personaId/route.tsx`
-- **Create:** `/app/routes/_NavLayout.personas_.new/route.tsx`
-- **Edit:** `/app/routes/_NavLayout.personas_.$personaId_.edit/route.tsx`
-- **Component:** `/app/components/dashboard/PersonaCard.tsx`
+- **Index:** `/app/features/dashboard/pages/index.tsx`
+- **Detail:** `/app/features/dashboard/pages/personaDetail.tsx`
+- **Create:** `/app/features/dashboard/pages/new.tsx`
+- **Edit:** `/app/features/dashboard/pages/edit.tsx`
+- **Component:** `/app/features/dashboard/components/PersonaCard.tsx`
 
 ## Best Practices
 
 ### 1. Authentication & Authorization
+
 - Always validate `accountId` from JWT claims
 - Use RLS policies for database-level security
 - Return 401 for unauthorized requests
 - Return 404 for not found resources
 
 ### 2. Error Handling
+
 ```typescript
 if (error) {
     return { error: `Failed to ${action} entity: ${error.message}` }
@@ -613,21 +713,25 @@ if (error) {
 ```
 
 ### 3. Form Validation
+
 - Validate required fields server-side
 - Use `defaultValue` for edit forms, not `value`
 - Handle form submission states with `useNavigation()`
 
 ### 4. Type Safety
+
 - Use Supabase-generated types from `~/types`
 - Define specific Insert/Update types
 - Avoid `any` types
 
 ### 5. Performance
+
 - Use `select()` to limit returned fields
 - Add proper database indexes
 - Use `order()` for consistent sorting
 
 ### 6. User Experience
+
 - Show loading states during submissions
 - Provide confirmation dialogs for destructive actions
 - Use proper redirects after successful operations
@@ -636,6 +740,7 @@ if (error) {
 ## Testing Strategy
 
 ### Integration Tests
+
 ```typescript
 import { describe, it, expect } from "vitest"
 import { seedTestData, testDb } from "~/utils/testDb"
@@ -643,7 +748,7 @@ import { seedTestData, testDb } from "~/utils/testDb"
 describe("Entity CRUD", () => {
     it("should create, read, update, and delete entity", async () => {
         const { accountId } = await seedTestData()
-        
+
         // Test CREATE
         const createData = { name: "Test Entity", account_id: accountId }
         const { data: created } = await testDb
@@ -651,18 +756,18 @@ describe("Entity CRUD", () => {
             .insert(createData)
             .select()
             .single()
-        
+
         expect(created.name).toBe("Test Entity")
-        
+
         // Test READ
         const { data: read } = await testDb
             .from("{entity}")
             .select("*")
             .eq("id", created.id)
             .single()
-        
+
         expect(read.id).toBe(created.id)
-        
+
         // Test UPDATE
         const { data: updated } = await testDb
             .from("{entity}")
@@ -670,21 +775,22 @@ describe("Entity CRUD", () => {
             .eq("id", created.id)
             .select()
             .single()
-        
+
         expect(updated.name).toBe("Updated Entity")
-        
+
         // Test DELETE
         const { error } = await testDb
             .from("{entity}")
             .delete()
             .eq("id", created.id)
-        
+
         expect(error).toBeNull()
     })
 })
 ```
 
 ### Route Tests
+
 ```typescript
 import { createRemixStub } from "@remix-run/testing"
 import { render, screen } from "@testing-library/react"
@@ -701,7 +807,7 @@ describe("Entity Routes", () => {
         ])
 
         render(<RemixStub initialEntries={["/{entity}"]} />)
-        
+
         expect(screen.getByText("0 Entities")).toBeInTheDocument()
     })
 })

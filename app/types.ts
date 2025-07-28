@@ -41,8 +41,13 @@ export type Insight = Tables<"insights">
 export type Interview = Tables<"interviews">
 export type Persona = Tables<"personas"> // ensure table exists in DB
 export type Opportunity = Tables<"opportunities"> // ensure table exists in DB
-export type Theme = Tables<"themes">
 export type Tag = Tables<"tags">
+export type Person = Tables<"people">
+export type Project = Tables<"projects">
+export type InterviewTag = Tables<"interview_tags">
+export type InsightTag = Tables<"insight_tags">
+export type PeoplePersona = Tables<"people_personas">
+export type Comment = Tables<"comments">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
@@ -52,6 +57,18 @@ export type InterviewInsert = TablesInsert<"interviews">
 export type InterviewUpdate = TablesUpdate<"interviews">
 export type OpportunityInsert = TablesInsert<"opportunities">
 export type OpportunityUpdate = TablesUpdate<"opportunities">
+export type PersonInsert = TablesInsert<"people">
+export type PersonUpdate = TablesUpdate<"people">
+export type ProjectInsert = TablesInsert<"projects">
+export type ProjectUpdate = TablesUpdate<"projects">
+export type InterviewTagInsert = TablesInsert<"interview_tags">
+export type InterviewTagUpdate = TablesUpdate<"interview_tags">
+export type InsightTagInsert = TablesInsert<"insight_tags">
+export type InsightTagUpdate = TablesUpdate<"insight_tags">
+export type PeoplePersonaInsert = TablesInsert<"people_personas">
+export type PeoplePersonaUpdate = TablesUpdate<"people_personas">
+export type CommentInsert = TablesInsert<"comments">
+export type CommentUpdate = TablesUpdate<"comments">
 
 // 4. View-model helpers
 // ---------------------
@@ -92,40 +109,37 @@ export interface OpportunityView extends Opportunity {
 	insights?: string[] | null
 	assignee?: string | null
 	due_date?: string | null
+	comments?: CommentView[]
 }
 
 // --------------------------------------
 // Insight UI view type
 // --------------------------------------
 
-export interface InsightView {
+// DB-aligned insight view (snake_case + nested relations)
+export interface InsightView extends Insight {
+	// convenience aliases expected by existing UI (snake_case)
+	title?: string | null // maps to name
+	impact_score?: number | null // maps to impact
+	content?: string | null // maps to details
+	tags?: Array<{ id: string; tag: string }> // flattened tags array
 	id: string
-	name?: string // primary short title
-	category?: string
-	journeyStage?: string
-	impact?: number | string | null
-	novelty?: number | null
-	jtbd?: string | null
-	details?: string | null
-	underlyingMotivation?: string | null
-	pain?: string | null
-	desiredOutcome?: string | null
-	description?: string | null
-	evidence?: string | null
-	opportunityIdeas?: string[] | null
-	confidence?: string | null
-	createdAt?: Date | null
-	updatedAt?: Date | null
-	relatedTags?: string[]
-	contradictions?: string | null
-	emotional_response?: string | null
-	interview_id?: string | null
-	upvotes?: number
-	downvotes?: number
-	comments?: Comment[]
-	interviews?: Array<{ id: string; participant: string }>
-	personas?: Array<{ id: string; name: string }>
-	className?: string
+
+	// Relations
+	insight_tags?: Array<{ tags: Tag }>
+	interviews?: Array<{
+		id: string
+		title: string | null
+		interview_date: string | null
+	}>
+	comments?: CommentView[]
+}
+
+// Rich comment shape used in UI
+export interface CommentView extends Comment {
+	author?: string
+	timestamp?: string
+	text?: string
 }
 
 export type PersonaView = Persona & {
@@ -141,6 +155,17 @@ export interface PersonaWithCounts extends Persona {
 	insight_count: number
 }
 
+// Composite view-models ------------------------------------------
+export interface InterviewBundle {
+	interview: Interview
+	insights: Insight[]
+	comments: Comment[]
+}
+
+export interface PersonaBundle {
+	persona: Persona
+	people: Person[]
+}
 // -------------------------------------------------------
 // Usage example in a component or loader:
 // import { Insight } from "~/app/types"

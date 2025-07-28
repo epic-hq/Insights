@@ -49,7 +49,7 @@ Opinionated tweak suggestions (optional):
 
 Type alignment: Make confidence smallint (1–3) or an enum if you want strictness; same for emotional_response.
 
-**Rename motivation → underlying_motivation for clarity with your BAML schema.
+**Rename motivation → motivation for clarity with your BAML schema.
 
 **Add CHECK (journey_stage in (...)) if your stages are fixed.
 

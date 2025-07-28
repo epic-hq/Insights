@@ -195,6 +195,33 @@ create table if not exists tags (
 -- Indexes for performance based on common queries
 CREATE INDEX idx_tags_account_id ON public.tags(account_id);
 
+ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Account members can select"
+  ON public.tags
+  FOR SELECT
+  TO authenticated
+  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
+
+CREATE POLICY "Account members can insert"
+  ON public.tags
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (account_id IN (SELECT accounts.get_accounts_with_role()));
+
+CREATE POLICY "Account members can update"
+  ON public.tags
+  FOR UPDATE
+  TO authenticated
+  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
+
+CREATE POLICY "Account owners can delete"
+  ON public.tags
+  FOR DELETE
+  TO authenticated
+  USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
+
+
 -- Views ---------------------------------------------------------------------
 -- FUTURE think this out better
 -- Materialized view to count insights per theme for treemap dashboard

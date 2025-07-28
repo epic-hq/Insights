@@ -2,8 +2,8 @@ import consola from "consola"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
-import type { KPI } from "~/components/dashboard/KPIBar"
 import Dashboard from "~/features/dashboard/components/Dashboard"
+import type { KPI } from "~/features/dashboard/components/KPIBar"
 import { getPersonas } from "~/features/personas/db"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightView, OpportunityView } from "~/types"
@@ -115,7 +115,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		impact: insight.impact,
 		novelty: insight.novelty,
 		jtbd: insight.jtbd,
-		underlyingMotivation: "", // No underlying_motivation field in DB schema
+		underlyingMotivation: "", // No motivation field in DB schema
 		pain: insight.pain,
 		desiredOutcome: insight.desired_outcome,
 		description: "", // No description field in DB schema

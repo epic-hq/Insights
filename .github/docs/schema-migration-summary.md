@@ -6,8 +6,8 @@ Successfully completed migration from array-based tag relationships to normalize
 
 ## Migration Completed
 
-**Date:** 2025-01-25  
-**Status:** ✅ Complete and deployed to production  
+**Date:** 2025-01-25
+**Status:** ✅ Complete and deployed to production
 **Database Changes:** Applied to both local and remote Supabase instances
 
 ## Schema Changes
@@ -80,6 +80,7 @@ All routes updated to use junction table queries:
 ### Query Patterns
 
 **Before (Array-based):**
+
 ```typescript
 const { data } = await supabase
   .from('insights')
@@ -88,6 +89,7 @@ const { data } = await supabase
 ```
 
 **After (Junction-based):**
+
 ```typescript
 const { data } = await supabase
   .from('insights')
@@ -191,3 +193,213 @@ For questions or issues:
 - Review helper function examples in `app/lib/database/junction-examples.ts`
 - Check integration tests for usage patterns
 - Consult testing documentation in `.github/docs/testing-howto.md`
+
+## Additional DB Changes (7/28/2025)
+
+### Where FKs vs. junctions are best
+
+**One‑to‑many → Foreign key**
+insights.account_id → accounts.accounts.id (already).
+
+insights.interview_id → interviews.id (already).
+
+interviews.project_id → projects.id (already).
+
+people.account_id → accounts.accounts.id — present but nullable; make NOT NULL.
+
+**Many‑to‑many → Junction table**
+Already correct and should stay:
+
+People ↔ Interviews → interview_people (PK (interview_id, person_id)).
+
+People ↔ Personas → people_personas. But revise PK, see below.
+
+Opportunities ↔ Insights → opportunity_insights (unique (opportunity_id, insight_id)).
+
+Personas ↔ Insights → persona_insights (unique (persona_id, insight_id)).
+
+Interviews ↔ Tags → interview_tags (unique triple).
+
+Insights ↔ Tags → insight_tags (unique triple).
+
+### Concrete fixes & migrations
+
+1) CONSIDER: Let a person hold the same persona multiple times (time series)
+Problem: PK on people_personas is (person_id, persona_id); you also capture interview_id and assigned_at. You can’t store another assignment of the same persona for the same person.
+
+Change (recommended):
+
+Add surrogate id uuid default gen_random_uuid() as PK.
+
+Add optional uniqueness you actually want, e.g. allow duplicates over time but prevent duplicates within the same interview.
+
+```sql
+ALTER TABLE public.people_personas
+  ADD COLUMN id uuid DEFAULT gen_random_uuid() PRIMARY KEY;
+
+-- Drop old PK
+ALTER TABLE public.people_personas
+  DROP CONSTRAINT people_personas_pkey;
+
+-- Prevent duplicate assignments within the same interview
+CREATE UNIQUE INDEX people_personas_unique_per_interview
+  ON public.people_personas(person_id, persona_id, interview_id)
+  WHERE interview_id IS NOT NULL;
+
+-- Optionally, if you also want to prevent exact duplicates per day:
+
+CREATE UNIQUE INDEX people_personas_unique_daily
+  ON public.people_personas(person_id, persona_id, date_trunc('day', assigned_at));
+```
+
+2) CONSIDER: Make people.account_id NOT NULL
+
+**people is mainly for interview subjects who dont have an account on our system**
+
+You use it everywhere for tenancy; keeping it nullable invites orphaned data and RLS surprises.
+
+```sql
+CREATE UNIQUE INDEX people_personas_unique_daily
+  ON public.people_personas(person_id, persona_id, date_trunc('day', assigned_at));
+ ```
+
+2) Make people.account_id NOT NULL
+You use it everywhere for tenancy; keeping it nullable invites orphaned data and RLS surprises.
+
+```sql
+-- Backfill if any nulls exist; set to a safe account or delete
+-- UPDATE public.people SET account_id = '<some-account-uuid>' WHERE account_id IS NULL;
+
+ALTER TABLE public.people
+  ALTER COLUMN account_id SET NOT NULL;
+```
+
+#### 3) TODO: Remove duplicated relationship on opportunities
+
+You have both:
+
+opportunities.related_insight_ids uuid[] and
+
+opportunity_insights junction (the source of truth).
+
+Keep the junction; drop the array.
+
+```sql
+ALTER TABLE public.opportunities
+  DROP COLUMN related_insight_ids;
+```
+
+If you like a cached array for quick reads, make it derived (materialized view or trigger-maintained), not the writable truth.
+
+#### 4) DONE: Align trigger_set_user_tracking with columns
+
+You attach set_insights_user_tracking but insights lacks created_by/updated_by. Either add the columns or remove the trigger from that table.
+
+Option A – add columns:
+
+```sql
+ALTER TABLE public.insights
+  ADD COLUMN created_by uuid,
+  ADD COLUMN updated_by uuid;
+
+ALTER TABLE public.insights
+  ADD CONSTRAINT insights_created_by_fkey FOREIGN KEY (created_by) REFERENCES auth.users(id),
+  ADD CONSTRAINT insights_updated_by_fkey FOREIGN KEY (updated_by) REFERENCES auth.users(id);
+```
+
+Option B – drop the tracking trigger on insights:
+
+```sql
+DROP TRIGGER IF EXISTS set_insights_user_tracking ON public.insights;
+(Repeat this audit for any other table with that trigger but without the columns.)
+
+#### 5) CONSIDER: carrying account_id on junctions
+
+Today you enforce tenancy via EXISTS to parent tables in RLS policies (works, but every read does an extra join). Example for people_personas uses an EXISTS against people.
+
+Trade‑off:
+
+Add account_id to junctions + FK to accounts.accounts gives simpler policies and faster filters/indexes.
+
+Slight redundancy, but you can enforce correctness with a constraint or trigger that checks account consistency across referenced parents.
+
+If you adopt it, add composite indexes like (account_id, person_id) / (account_id, persona_id) for common filters.
+
+#### 6) DONE: RLS for tags
+
+I see RLS enabled broadly, but not an explicit ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY in the visible block, though there are GRANTs and an index. Ensure RLS is enabled and add policies mirroring insight_tags/interview_tags.
+
+Example:
+
+```sql
+ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
+
+CREATE POLICY "Account members can select"
+  ON public.tags
+  FOR SELECT
+  TO authenticated
+  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
+
+CREATE POLICY "Account members can insert"
+  ON public.tags
+  FOR INSERT
+  TO authenticated
+  WITH CHECK (account_id IN (SELECT accounts.get_accounts_with_role()));
+
+CREATE POLICY "Account members can update"
+  ON public.tags
+  FOR UPDATE
+  TO authenticated
+  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
+
+CREATE POLICY "Account owners can delete"
+  ON public.tags
+  FOR DELETE
+  TO authenticated
+  USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
+```
+
+#### 7) TODO: Indexing upgrades
+
+You already have strong coverage (account_id, foreign keys, HNSW for vectors). Add:
+
+GIN on arrays used for search:
+
+```sql
+CREATE INDEX idx_insights_opportunity_ideas_gin ON public.insights USING gin (opportunity_ideas);
+CREATE INDEX idx_insights_related_tags_gin   ON public.insights USING gin (related_tags);
+```
+
+Trigram search for fuzzy matching on names / pain / JTBD if you’ll support it:
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+CREATE INDEX idx_people_name_trgm   ON public.people   USING gin (name gin_trgm_ops);
+CREATE INDEX idx_insights_name_trgm ON public.insights USING gin (name gin_trgm_ops);
+CREATE INDEX idx_insights_pain_trgm ON public.insights USING gin (pain gin_trgm_ops);
+CREATE INDEX idx_insights_jtbd_trgm ON public.insights USING gin (jtbd gin_trgm_ops);
+```
+
+Status/date combos for dashboards:
+
+```sql
+CREATE INDEX idx_interviews_status_date
+  ON public.interviews (status, interview_date);
+```
+
+#### 8) TODO: CRITICAL De-dupe persona modeling on people
+
+people has a persona text column plus the normalized people_personas table. Decide on your canonical source. If you want a “primary persona” cache on people, keep it but document that it’s derived from the latest/highest-confidence people_personas. Or drop the column to remove ambiguity.
+
+#### 9) CONSIDER: Metrics views
+
+You built a nice persona_distribution view from interviews’ segment/participant_pseudonym. Consider a second view that aggregates from people_personas (confidence‑weighted, latest‑only, etc.) to complement it.
+
+Sanity checklist for your app’s flows
+Multiple interviews per person: Supported via interview_people. To get latest, order by interviews.updated_at or interview_date.
+
+Evolving personas over time: Enable by changing people_personas PK as above and sort by assigned_at/confidence_score.
+
+Opportunity weighting: You already have opportunity_insights.weight. Lean on that and drop the array column.
+
+Embeddings & queues: HNSW index is in place; embedding/enqueue triggers look good.

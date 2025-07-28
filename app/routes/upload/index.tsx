@@ -1,6 +1,6 @@
 import type { MetaFunction } from "react-router"
 import { Link } from "react-router-dom"
-import UploadButton from "~/components/upload/UploadButton"
+import UploadButton from "~/features/upload/components/UploadButton"
 
 export const meta: MetaFunction = () => {
 	return [

@@ -1,8 +1,8 @@
 import { createBrowserClient } from "@supabase/ssr"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { useRouteLoaderData } from "react-router"
-import type { Env } from "~/+types/root"
-import type { Database } from "../../../supabase/types"
+import type { Env } from "~/../+types"
+import type { Database } from "~/../supabase/types"
 
 let supabaseClient: SupabaseClient<Database> | undefined
 

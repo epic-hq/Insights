@@ -1,11 +1,11 @@
 import type { Meta, StoryObj } from "@storybook/react"
+import ObservationsNotes from "../features/interviews/components/ObservationsNotes"
+import OpenQuestionsNextSteps from "../features/interviews/components/OpenQuestionsNextSteps"
+import ParticipantSnapshot from "../features/interviews/components/ParticipantSnapshot"
+import StudyContextCard from "../features/projects/components/ProjectContextCard"
 import InsightAccordion from "./insights/InsightAccordion"
 import type { InsightCardProps } from "./insights/InsightCard"
 import InterviewMetadata from "./interviews/InterviewMetadata"
-import ObservationsNotes from "./ObservationsNotes"
-import OpenQuestionsNextSteps from "./OpenQuestionsNextSteps"
-import ParticipantSnapshot from "./ParticipantSnapshot"
-import StudyContextCard from "./StudyContextCard"
 import HighImpactThemesList from "./themes/HighImpactThemesList"
 
 const meta: Meta = {

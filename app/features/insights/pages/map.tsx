@@ -1,0 +1,173 @@
+// app/features/insights/pages/map.tsx
+// -----------------------------------------------------------------------------
+// Insights map visualization that:
+//   1. Loads insight rows (id, name, embedding) that belong to the user
+//   2. Sends them to the `cluster_insights` Supabase Edge Function
+//   3. Receives [{ id, x, y, cluster, text }] back
+//   4. Renders a Recharts scatter plot
+// -----------------------------------------------------------------------------
+
+import consola from "consola"
+import { type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
+import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
+import { getServerClient } from "~/lib/supabase/server"
+
+/* -------------------------------------------------------------------------- */
+
+/** Tuple coming back from edge function */
+export interface ClusterPoint {
+	id: string
+	x: number
+	y: number
+	cluster: number // -1 = noise
+	text: string
+}
+
+export async function loader({ request }: LoaderFunctionArgs) {
+	/* 1️⃣  get Supabase rows -------------------------------------------------- */
+	const { client: supabase } = getServerClient(request)
+	const { data: jwt } = await supabase.auth.getClaims()
+	const accountId = jwt?.claims.sub
+
+	if (!accountId) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+
+	// Fetch insights with embeddings
+	const { data: insights, error } = await supabase
+		.from("insights")
+		// .select("*")
+		.select("id, pain, embedding")
+		.eq("account_id", accountId)
+		.not("embedding", "is", null)
+
+	if (error) {
+		consola.error("Error fetching insights:", error)
+		throw new Response("Error fetching insights", { status: 500 })
+	}
+
+	if (!insights || insights.length === 0) {
+		return { clusterData: [] }
+	}
+
+	/* 2️⃣  prepare data for edge function ------------------------------------ */
+	const insightRows = insights
+		.map((r) => {
+			let embedding: number[]
+			try {
+				// Parse embedding from JSON string to array
+				embedding = typeof r.embedding === "string" ? JSON.parse(r.embedding) : r.embedding
+			} catch (err) {
+				consola.error(`Failed to parse embedding for insight ${r.id}:`, err)
+				return null
+			}
+
+			return {
+				id: r.id,
+				text: r.pain || "NA",
+				embedding,
+			}
+		})
+		.filter(Boolean) // Remove null entries
+
+	if (insightRows.length === 0) {
+		return { clusterData: [] }
+	}
+
+	/* 3️⃣  call edge function ------------------------------------------------ */
+	const SUPABASE_URL = process.env.SUPABASE_URL
+	const SUPABASE_FUNCTIONS_URL = process.env.SUPABASE_FUNCTIONS_URL || `${SUPABASE_URL}/functions/v1/`
+	const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
+
+	if (!SERVICE_ROLE_KEY) {
+		throw new Response("Missing service role key", { status: 500 })
+	}
+
+	try {
+		const response = await fetch(`${SUPABASE_FUNCTIONS_URL}cluster_insights`, {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+				Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+			},
+			body: JSON.stringify({ insights: insightRows }),
+		})
+
+		if (!response.ok) {
+			const errorText = await response.text()
+			consola.error("Edge function error:", response.status, errorText)
+			throw new Response(`Edge function error: ${response.status}`, { status: 500 })
+		}
+
+		const clusterData: ClusterPoint[] = await response.json()
+		consola.info(`Successfully clustered ${clusterData.length} insights`)
+
+		return { clusterData }
+	} catch (err) {
+		consola.error("Error calling cluster_insights edge function:", err)
+		return { clusterData: [] }
+	}
+}
+
+export default function InsightsMapPage() {
+	const { clusterData } = useLoaderData<typeof loader>()
+
+	if (!clusterData || clusterData.length === 0) {
+		return (
+			<div className="p-8">
+				<h1 className="mb-4 font-bold text-2xl">Insights Map</h1>
+				<p className="text-gray-600">
+					No insights with embeddings found. Upload some interviews to see the clustering visualization.
+				</p>
+			</div>
+		)
+	}
+
+	// Color mapping for clusters
+	const getClusterColor = (cluster: number) => {
+		const colors = ["#8884d8", "#82ca9d", "#ffc658", "#ff7c7c", "#8dd1e1", "#d084d0"]
+		return cluster === -1 ? "#999999" : colors[cluster % colors.length]
+	}
+
+	return (
+		<div className="p-8">
+			<h1 className="mb-4 font-bold text-2xl">Insights Map</h1>
+			<p className="mb-6 text-gray-600">
+				Visualization of {clusterData.length} insights clustered by semantic similarity
+			</p>
+
+			<div className="h-96 w-full">
+				<ResponsiveContainer width="100%" height="100%">
+					<ScatterChart data={clusterData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
+						<CartesianGrid />
+						<XAxis type="number" dataKey="x" name="X" />
+						<YAxis type="number" dataKey="y" name="Y" />
+						<Tooltip
+							cursor={{ strokeDasharray: "3 3" }}
+							content={({ active, payload }) => {
+								if (active && payload && payload.length) {
+									const data = payload[0].payload as ClusterPoint
+									return (
+										<div className="max-w-xs rounded border bg-white p-3 shadow-lg">
+											<p className="font-semibold">Cluster {data.cluster === -1 ? "Noise" : data.cluster}</p>
+											<p className="mt-1 text-gray-600 text-sm">{data.text}</p>
+										</div>
+									)
+								}
+								return null
+							}}
+						/>
+						{clusterData.map((point, index) => (
+							<Scatter key={`cluster-${point.cluster}-${index}`} data={[point]} fill={getClusterColor(point.cluster)} />
+						))}
+					</ScatterChart>
+				</ResponsiveContainer>
+			</div>
+
+			<div className="mt-4 text-gray-500 text-sm">
+				<p>Each point represents an insight. Points are clustered by semantic similarity using AI embeddings.</p>
+				<p>Hover over points to see the insight content.</p>
+			</div>
+		</div>
+	)
+}

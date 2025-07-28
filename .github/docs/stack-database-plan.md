@@ -8,6 +8,7 @@ This document captures the agreed-upon architectural decisions for persistence, 
 
 | Layer | Choice | Rationale |
 |-------|--------|----------|
+| Types | snake_case everywhere - DB & App | Supabase uses snake_case for table names and variables, and this is easy to read and no surprises or need to convert in FE. transient variables in react can still use camelCase if desired. |
 | Relational DB | **Postgres (Supabase)** | Managed Postgres with integrated auth & RLS; fits structured research data. |
 | Auth | **Supabase Auth** | Email / SSO; interviewer accounts map to `auth.users`. |
 | Media Storage | **Cloudflare R2** | Low-cost object storage for large audio / video files. Supabase stores only signed-URL + metadata. |
@@ -37,7 +38,7 @@ accounts──┐
 
 ```
 
-## 4. Table Specifications (supabase schema `public`)
+## 4. Table & Types Specifications (supabase schema `public`)
 
 General process for defining DB is to create individual schema files in `supabase/schemas` that include indexes, triggers, RLS. Then run `supabase db diff` to generate migration files. Then run `supabase db push` to apply the migrations to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql. `supabase db reset --linked` will reset the hosted database.
 
@@ -45,6 +46,32 @@ Exception: Local DB can't run pgmq extension.
 
 * so we need to run `CREATE EXTENSION IF NOT EXISTS pgmq;` in the database.
 * separate migration file to run to setup queues `supabase/migrations/99Custom_pgmq.sql`
+
+### 4.x Types
+
+Types are generated from the DB schema using `supabase/types.ts`. Run `supabase gen types typescript --project-id rbginqvgkonnoktrttqv > supabase/types.ts` to generate the types and then add the one-line export type … = Tables<"..."> helper in the relevant feature’s types.ts.
+
+Auto-generate types from queries in our db.ts files that components can import. We can get the nested CountriesWithCities type like this:
+
+```ts
+import { QueryResult, QueryData, QueryError } from '@supabase/supabase-js'
+const countriesWithCitiesQuery = supabase.from('countries').select(`
+  id,
+  name,
+  cities (
+    id,
+    name
+  )
+`)
+type CountriesWithCities = QueryData<typeof countriesWithCitiesQuery>
+const { data, error } = await countriesWithCitiesQuery
+if (error) throw error
+const countriesWithCities: CountriesWithCities = data
+```
+
+Reference: [docs](https://supabase.com/docs/guides/api/rest/generating-types#type-shorthands)
+
+Prefer typed columns for data, but in future if we need to store JSONB, use `https://supabase.com/docs/guides/api/rest/generating-types#defining-custom-json-types` to define custom JSON types.
 
 ### 4.1  Core Multi-Tenant Accounts in schema `accounts`
 
@@ -330,7 +357,7 @@ create policy "only owners can delete"
 
 ## 5. Routing
 
-we currently have Flatroutes in react-router 7 setup, but we want to convert to explicit route file config to support  feature consolidation, where a feature directory has components, pages and a route file. Each feature route file gets aggregated into a single app/routes.ts. [docs](https://reactrouter.com/start/framework/routing)
+We are using programmatic route files, rolled up into app/routes.ts to support feature consolidation, where a feature directory has components, pages and a route file. Each feature route file gets aggregated into a single app/routes.ts. [docs](https://reactrouter.com/start/framework/routing)
 
 | Syntax                         | Resulting URL / behaviour                                                                       | Built‑in?                                                         |
 | ------------------------------ | ----------------------------------------------------------------------------------------------- | ----------------------------------------------------------------- |
