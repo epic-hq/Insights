@@ -84,3 +84,6 @@ blob-report
 *.sqlite
 *.sqlite3
 *.db-journal
+
+# Local Netlify folder
+.netlify

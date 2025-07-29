@@ -47,7 +47,7 @@ create or replace function public.enqueue_insight_embedding()
 returns trigger language plpgsql as $$
 begin
   if (TG_OP = 'INSERT'
-      or (TG_OP = 'UPDATE' and old.jtbd is distinct from new.jtbd)) then
+      or (TG_OP = 'UPDATE' and old.pain is distinct from new.pain)) then
     perform pgmq.send(
       'insights_embedding_queue',
       json_build_object(

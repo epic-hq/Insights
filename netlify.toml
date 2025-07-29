@@ -1,0 +1,19 @@
+# Netlify configuration for Remix + Vite app
+[build]
+  command = "npm run build"
+  publish = "public"
+  functions = "netlify/functions"
+
+[dev]
+  command = "npm run dev"
+
+# Redirect all requests to Remix handler (except static assets in /public)
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/server/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/.netlify/functions/server"
+  status = 200

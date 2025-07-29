@@ -46,12 +46,21 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				},
 			},
 			{
-				accessorKey: "persona",
-				header: () => "Persona",
-				filterFn: "includesString",
+				id: "personas",
+				header: () => "Personas",
+				accessorFn: (row: any) =>
+					(row.persona_insights ?? []).map((pi: any) => pi.personas?.name).filter(Boolean),
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const value = cell.getValue() as string | null
-					return value ? <Badge variant="outline">{value}</Badge> : null
+					const personas = cell.getValue() as string[]
+					return personas.length > 0 ? (
+						<div className="flex flex-wrap gap-1">
+							{personas.map((p) => (
+								<Badge key={p} variant="outline">
+									{p}
+								</Badge>
+							))}
+						</div>
+					) : null
 				},
 			},
 			{
@@ -120,7 +129,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 								{headerGroup.headers.map((header) => {
 									const colId = header.column.id
 									const col = table.getColumn(colId)
-									const isFacet = ["journey_stage", "persona", "priority"].includes(colId)
+									const isFacet = ["journey_stage", "priority"].includes(colId)
 									if (!isFacet) return <TableHead key={colId} />
 									const uniqueValues = Array.from(
 										new Set(data.map((row) => row[colId as keyof Insight]).filter(Boolean))

@@ -308,7 +308,6 @@ export default function InsightCardV2({
 				{/* Name field with Stage and Category on same row */}
 				<div className="mb-3 flex items-start justify-between gap-4">
 					<div className="w-3/4 flex-1">
-						<EditableField field="name" className="font-bold text-2xl text-gray-900" placeholder="Enter insight name" />
 						{/* Pain */}
 						<div>
 							<h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4>
@@ -327,6 +326,7 @@ export default function InsightCardV2({
 								placeholder="What pain or friction does the user experience?"
 							/>
 						</div>
+						<EditableField field="name" className="font-thin text-gray-500 text-lg" placeholder="Enter insight name" />
 					</div>
 					<div className="flex w-1/4 flex-col gap-2">
 						<div className="flex flex-col gap-1">

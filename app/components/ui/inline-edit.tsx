@@ -162,9 +162,7 @@ export default function InlineEdit({
 			{markdown ? (
 				<ReactMarkdown>{markdown}</ReactMarkdown>
 			) : (
-				<TextComponent
-					className={cn("min-w-0 px-1 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}
-				>
+				<TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{multiline ? (
 						value ? (
 							value.split("\n").map((line, i) => (
