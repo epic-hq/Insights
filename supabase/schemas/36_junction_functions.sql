@@ -126,14 +126,15 @@ DECLARE
 BEGIN
     -- Find personas for people involved in the interview that generated this insight
     FOR persona_record IN
-        SELECT DISTINCT pe.persona_id, p.name as persona
+        SELECT DISTINCT pp.persona_id, p.name as persona
         FROM insights i
         JOIN interviews iv ON i.interview_id = iv.id
         JOIN interview_people ip ON iv.id = ip.interview_id
         JOIN people pe ON ip.person_id = pe.id
-        JOIN personas p ON pe.persona_id = p.id AND pe.account_id = p.account_id
+        JOIN people_personas pp ON pe.id = pp.person_id
+        JOIN personas p ON pp.persona_id = p.id AND pe.account_id = p.account_id
         WHERE i.id = p_insight_id
-        AND pe.persona_id IS NOT NULL
+        AND pp.persona_id IS NOT NULL
     LOOP
         -- Calculate relevance score (simplified - could be more sophisticated)
         relevance_score_var := 1.0;

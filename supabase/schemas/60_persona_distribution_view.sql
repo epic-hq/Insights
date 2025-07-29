@@ -97,27 +97,6 @@ ORDER BY pic.account_id, (pic.interview_count + lfc.legacy_interview_count) DESC
 GRANT SELECT ON persona_distribution TO authenticated;
 
 
--- Set primary persona once for a person
--- presumes people_personas junction table is used
-
--- helper function: pick primary persona for a person
-create or replace function public.set_primary_persona_once()
-returns trigger
-language plpgsql
-as $$
-begin
-  -- Set only if not already set
-  update public.people p
-     set primary_persona_id = new.persona_id
-   where p.id = new.person_id
-     and p.primary_persona_id is null;
-
-  return null; -- statement is complete
-end;
-$$;
-
--- drop trigger if exists trg_people_personas_set_primary_once on public.people_personas;
-create trigger trg_people_personas_set_primary_once
-after insert on public.people_personas
-for each row
-execute function public.set_primary_persona_once();
+-- NOTE: Primary persona functionality removed as people table doesn't have primary_persona_id column
+-- The people_personas junction table handles the many-to-many relationship directly
+-- If primary persona functionality is needed, add primary_persona_id column to people table first

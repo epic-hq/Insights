@@ -119,7 +119,7 @@ export async function processInterviewTranscript({
 		interview_id: interviewRecord.id,
 		name: i.name,
 		category: i.category,
-		// Note: tag field removed - we use relatedTags array for junction table
+		details: i.details ?? null,
 		journey_stage: i.journeyStage ?? null,
 		jtbd: i.jtbd ?? null,
 		motivation: i.underlyingMotivation ?? null,
@@ -244,15 +244,22 @@ export async function processInterviewTranscript({
 		throw new Error(`Failed to link person to interview: ${junctionError.message}`)
 	}
 
-	// Update person with persona reference if found
+	// Link person to persona via junction table if found
 	if (personaData?.id) {
-		const { error: updateError } = await db
-			.from("people")
-			.update({ persona_id: personaData.id })
-			.eq("id", personData.id)
+		const { error: personaLinkError } = await db
+			.from("people_personas")
+			.upsert({
+				person_id: personData.id,
+				persona_id: personaData.id,
+				interview_id: interviewRecord.id,
+				confidence_score: 1.0,
+				source: 'ai_extraction'
+			}, {
+				onConflict: 'person_id,persona_id'
+			})
 
-		if (updateError) {
-			consola.warn(`Failed to update person with persona reference: ${updateError.message}`)
+		if (personaLinkError) {
+			consola.warn(`Failed to link person to persona: ${personaLinkError.message}`)
 		}
 	}
 
@@ -277,12 +284,12 @@ export async function processInterviewTranscript({
 	consola.log(`Creating ${uniqueTags.length} unique tags:`, uniqueTags)
 
 	for (const tagName of uniqueTags) {
-		// Upsert tag - use constraint name for ON CONFLICT
+		// Upsert tag - use column names for ON CONFLICT
 		const { data: tagData, error: tagError } = await db
 			.from("tags")
 			.upsert(
 				{ account_id: metadata.accountId, tag: tagName },
-				{ onConflict: "tags_account_tag_unique" }
+				{ onConflict: "account_id,tag" }
 			)
 			.select("id")
 			.single()
