@@ -19,6 +19,7 @@ const routes = [
 	]),
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("/resource/locales", "./routes/resource.locales.ts"),
+	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("login", "./routes/login.tsx"),
 	route("register", "./routes/register.tsx"),
 	route("signout", "./routes/auth.signout.tsx"),

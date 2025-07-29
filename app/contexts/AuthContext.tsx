@@ -69,7 +69,7 @@ export function AuthProvider({ children, user, organizations }: AuthProviderProp
 	// Sign out function
 	async function signOut() {
 		await fetch("/auth/signout", { method: "POST" }) // server does the heavy lifting
-		window.location.assign(PATHS.DASHBOARD) // ensures the UI resets
+		window.location.assign(PATHS.AUTH.LOGIN) // redirect to login page
 	}
 	// const signOut = async () => {
 	// 	const supabase = createClient()

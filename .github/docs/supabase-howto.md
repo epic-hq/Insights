@@ -190,6 +190,28 @@ select cron.schedule(
 
 ```
 
+added all that to a migration we ran.
+
+### Add Transcript Test
+
+```Processing Error
+Failed to insert insights: column pe.persona_id does not exist
+```
+
+** Login:
+
+ ```bash
+ ERROR  Authentication middleware error: Response { status: 302,                                                                                                                                                                        1:53:21 AM
+  statusText: '',
+  headers: Headers { Location: '/login' },
+  body: null,
+  bodyUsed: false,
+  ok: false,
+  redirected: false,
+  type: 'default',
+  url: '' }
+```
+
 ## Generate types for Typescript
 
 ```bash

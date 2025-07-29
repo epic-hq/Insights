@@ -1,7 +1,7 @@
 import { Auth } from "@supabase/auth-ui-react"
 import { ThemeSupa, type ThemeVariables } from "@supabase/auth-ui-shared"
+import { createBrowserClient } from "@supabase/ssr"
 import consola from "consola"
-import { getSupabaseClient } from "~/lib/supabase/client"
 
 interface AuthUIProps {
 	/** Absolute or relative URL to redirect after successful auth */
@@ -12,13 +12,15 @@ interface AuthUIProps {
 
 export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 	// const { clientEnv } = useRouteLoaderData("root") as { clientEnv: Env }
-	// const supabase = createClient(clientEnv.SUPABASE_URL, clientEnv.SUPABASE_ANON_KEY)
 
 	consola.log("redirectTo", redirectTo)
-	let supabase: ReturnType<typeof getSupabaseClient> | undefined
-	try {
-		supabase = getSupabaseClient()
-	} catch {
+
+	const supabase = createBrowserClient(
+		"https://rbginqvgkonnoktrttqv.supabase.co",
+		"sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
+	)
+	// sup_supabasegetSupabaseClient()
+	if (!supabase) {
 		return (
 			<div className="rounded-md border border-red-200 bg-red-50 p-4">
 				<p className="text-red-800 text-sm">Authentication unavailable. Please check your Supabase configuration.</p>

@@ -4,7 +4,7 @@ import { type LoaderFunctionArgs, redirect } from "react-router"
 export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
 	const code = requestUrl.searchParams.get("code")
-	const next = requestUrl.searchParams.get("next") || "/"
+	const next = requestUrl.searchParams.get("next") || "/dashboard"
 	const headers = new Headers()
 
 	if (code) {
@@ -24,12 +24,25 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const { error } = await supabase.auth.exchangeCodeForSession(code)
 
 		if (!error) {
+			// Successfully authenticated, redirect to dashboard
 			return redirect(next, { headers })
 		}
 	}
 
-	// return the user to an error page with instructions
-	return redirect("/auth/auth-code-error", { headers })
+	// If no code or error, redirect back to login with error message
+	return redirect("/login?error=auth_failed", { headers })
+}
+
+// Default component for cases where loader doesn't redirect immediately
+export default function AuthCallback() {
+	return (
+		<div className="flex h-screen items-center justify-center">
+			<div className="text-center">
+				<h2 className="text-lg font-semibold">Completing sign in...</h2>
+				<p className="text-gray-600">Please wait while we redirect you.</p>
+			</div>
+		</div>
+	)
 }
 
 // import { redirect } from "react-router"

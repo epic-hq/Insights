@@ -19,9 +19,10 @@ export function createClient(): SupabaseClient<Database> {
 	}
 
 	// Access environment variables from loader
-	const supabaseUrl = clientEnv?.SUPABASE_URL || "http://127.0.0.1:54321"
-	const supabaseAnonKey = clientEnv?.SUPABASE_ANON_KEY
-
+	const supabaseUrl = clientEnv?.SUPABASE_URL || "SUPABASE_URL=https://rbginqvgkonnoktrttqv.supabase.co"
+	const supabaseAnonKey = clientEnv?.SUPABASE_ANON_KEY || "sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
+	// consola.log("supabaseUrl", supabaseUrl)
+	// consola.log("supabaseAnonKey", supabaseAnonKey)
 	if (!supabaseAnonKey) {
 		throw new Error("Missing SUPABASE_ANON_KEY environment variable")
 	}
