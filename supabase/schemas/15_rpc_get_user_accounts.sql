@@ -22,7 +22,7 @@ AS $$
           (SELECT json_agg(
             json_build_object(
               'id', p.id,
-              'title', p.title,
+              'name', p.name,
               'description', p.description,
               'status', p.status,
               'created_at', p.created_at,

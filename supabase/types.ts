@@ -143,6 +143,7 @@ export type Database = {
           confidence: string | null
           contradictions: string | null
           created_at: string
+          created_by: string | null
           desired_outcome: string | null
           details: string | null
           embedding: string | null
@@ -160,6 +161,7 @@ export type Database = {
           pain: string | null
           related_tags: string[] | null
           updated_at: string
+          updated_by: string | null
         }
         Insert: {
           account_id: string
@@ -167,6 +169,7 @@ export type Database = {
           confidence?: string | null
           contradictions?: string | null
           created_at?: string
+          created_by?: string | null
           desired_outcome?: string | null
           details?: string | null
           embedding?: string | null
@@ -184,6 +187,7 @@ export type Database = {
           pain?: string | null
           related_tags?: string[] | null
           updated_at?: string
+          updated_by?: string | null
         }
         Update: {
           account_id?: string
@@ -191,6 +195,7 @@ export type Database = {
           confidence?: string | null
           contradictions?: string | null
           created_at?: string
+          created_by?: string | null
           desired_outcome?: string | null
           details?: string | null
           embedding?: string | null
@@ -208,6 +213,7 @@ export type Database = {
           pain?: string | null
           related_tags?: string[] | null
           updated_at?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -743,8 +749,8 @@ export type Database = {
           created_at: string
           description: string | null
           id: string
+          name: string
           status: string | null
-          title: string
           updated_at: string
         }
         Insert: {
@@ -752,8 +758,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          name: string
           status?: string | null
-          title: string
           updated_at?: string
         }
         Update: {
@@ -761,8 +767,8 @@ export type Database = {
           created_at?: string
           description?: string | null
           id?: string
+          name?: string
           status?: string | null
-          title?: string
           updated_at?: string
         }
         Relationships: []
@@ -809,16 +815,19 @@ export type Database = {
         Row: {
           account_id: string | null
           color_hex: string | null
+          combined_percentage: number | null
           created_at: string | null
           description: string | null
-          participant_interview_count: number | null
-          participant_percentage: number | null
+          interview_count: number | null
+          interview_percentage: number | null
+          legacy_interview_count: number | null
+          legacy_percentage: number | null
           persona_id: string | null
           persona_name: string | null
-          segment_interview_count: number | null
-          segment_percentage: number | null
-          total_participant_interviews: number | null
-          total_segment_interviews: number | null
+          total_interview_count: number | null
+          total_interviews: number | null
+          total_interviews_with_participants: number | null
+          total_legacy_interviews: number | null
           updated_at: string | null
         }
         Relationships: []
@@ -828,6 +837,10 @@ export type Database = {
       accept_invitation: {
         Args: { lookup_invitation_token: string }
         Returns: Json
+      }
+      auto_link_persona_insights: {
+        Args: { p_insight_id: string }
+        Returns: undefined
       }
       binary_quantize: {
         Args: { "": string } | { "": unknown }
@@ -951,7 +964,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
+        Returns: string
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
@@ -985,6 +998,18 @@ export type Database = {
         Args: { "": unknown[] }
         Returns: number
       }
+      sync_insight_tags: {
+        Args: {
+          p_insight_id: string
+          p_tag_names: string[]
+          p_account_id: string
+        }
+        Returns: undefined
+      }
+      sync_opportunity_insights: {
+        Args: { p_opportunity_id: string; p_insight_ids: string[] }
+        Returns: undefined
+      }
       update_account: {
         Args: {
           account_id: string
@@ -1002,6 +1027,10 @@ export type Database = {
           new_account_role: "owner" | "member"
           make_primary_owner?: boolean
         }
+        Returns: undefined
+      }
+      update_project_people_stats: {
+        Args: { p_project_id: string; p_person_id: string }
         Returns: undefined
       }
       vector_avg: {

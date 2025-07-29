@@ -16,6 +16,180 @@ The minimal declarative loop:
 
 **NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
 
+## Reapairing 7/28
+
+- [x] re-created schema `35_junction_tables.sql` - was missing
+- [x] changed projects.title to projects.name
+- [x] drop policy "Users can delete people_personas for their account" on "public"."people_personas"
+- [x] drop view if exists "public"."persona_distribution"
+- [ ] function sync_insight_tags missing trigger
+should we do this?
+
+after db reset --linked
+
+- missing cron job
+- missing trigger on insights
+- missing q transcribe
+
+```sql
+
+/**
+  * When a user signs up, we need to create a personal account for them
+  * and add them to the account_user table so they can act on it
+ */
+create or replace function accounts.run_new_user_setup()
+    returns trigger
+    language plpgsql
+    security definer
+    set search_path = public
+as
+$$
+declare
+    first_account_id    uuid;
+    generated_user_name text;
+begin
+
+    -- first we setup the user profile
+    -- TODO: see if we can get the user's name from the auth.users table once we learn how oauth works
+    if new.email IS NOT NULL then
+        generated_user_name := split_part(new.email, '@', 1);
+    end if;
+    -- create the new users's personal account
+    insert into accounts.accounts (name, primary_owner_user_id, personal_account, id)
+    values (generated_user_name, NEW.id, true, NEW.id)
+    returning id into first_account_id;
+
+    -- add them to the account_user table so they can act on it
+    insert into accounts.account_user (account_id, user_id, account_role)
+    values (first_account_id, NEW.id, 'owner');
+
+  -- creating user_settings
+    insert into account_settings(account_id) values (first_account_id);
+    -- default research project
+    insert into projects(account_id, name) values (first_account_id, 'My First Project');
+
+    return NEW;
+end;
+$$;
+
+-- trigger the function every time a user is created
+create trigger on_auth_user_created
+    after insert
+    on auth.users
+    for each row
+execute procedure accounts.run_new_user_setup();
+
+
+-- Create trigger to sync insight tags
+CREATE TRIGGER sync_insight_tags
+    AFTER INSERT OR UPDATE ON insights
+    FOR EACH ROW EXECUTE FUNCTION sync_insight_tags(
+        NEW.id,
+        NEW.tags,
+        NEW.account_id
+    );
+
+
+-- a) create the queue for embeddings
+select pgmq.create('transcribe_interview_queue');
+-- grant access to the queue table
+grant insert, select, delete on table pgmq.q_transcribe_interview_queue to authenticated;
+
+-- (optional) enable RLS and define policies
+-- Enable RLS
+alter table pgmq.q_transcribe_interview_queue enable row level security;
+
+-- Allow insert
+create policy "authenticated can enqueue"
+on pgmq.q_transcribe_interview_queue
+for insert
+to authenticated
+with check (true);
+
+-- Allow select
+create policy "authenticated can read"
+on pgmq.q_transcribe_interview_queue
+for select
+to authenticated
+USING (true);
+
+-- Allow delete
+create policy "authenticated can delete"
+on pgmq.q_transcribe_interview_queue
+for delete
+to authenticated
+USING (true);
+
+
+-- b) trigger fn to enqueue transcription job
+-- Update functions to use extensions schema for pgmq and cron
+create or replace function public.enqueue_transcribe_interview()
+returns trigger language plpgsql as $$
+begin
+  if (TG_OP = 'INSERT'
+      or (TG_OP = 'UPDATE' and old.media_url is distinct from new.media_url)) then
+    perform pgmq.send(
+      'transcribe_interview_queue',
+      json_build_object(
+        'table', TG_TABLE_NAME,
+        'id',    new.id::text,
+        'media_url',  new.media_url
+      )::jsonb
+    );
+  end if;
+  return new;
+end;
+$$;
+
+create or replace trigger trg_enqueue_transcribe_interview
+  after insert or update on public.interviews
+  for each row execute function public.enqueue_transcribe_interview();
+
+-- c) helper to invoke your Edge Function:: Generic. dont' need to replicate. already setup in 50_queues
+-- create or replace function public.invoke_edge_function(func_name text, payload jsonb)
+-- returns void
+
+
+-- d) processor that drains the queue and processes the job
+
+create or replace function public.process_transcribe_queue()
+returns text
+language plpgsql
+as $$
+declare
+  job record;
+  count int := 0;
+begin
+  for job in
+    select * from pgmq.read(
+      'transcribe_interview_queue',
+      5,
+      30
+    )
+  loop
+    perform public.invoke_edge_function('transcribe', job.message::jsonb);
+    perform pgmq.delete(
+      'transcribe_interview_queue',
+      job.msg_id
+    );
+    count := count + 1;
+  end loop;
+
+  return format('Processed %s message(s) from transcribe queue.', count);
+end;
+$$;
+
+
+
+
+-- e) cron-job to run every minute
+select cron.schedule(
+  '*/1 * * * *',
+  'select public.process_transcribe_queue()'
+);
+
+```
+
 ## Generate types for Typescript
 
 ```bash

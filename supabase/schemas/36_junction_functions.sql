@@ -12,22 +12,22 @@ DECLARE
 BEGIN
     -- Remove existing tags for this insight
     DELETE FROM insight_tags WHERE insight_id = p_insight_id;
-    
+
     -- Add new tags
     IF p_tag_names IS NOT NULL AND array_length(p_tag_names, 1) > 0 THEN
         FOREACH tag_record.tag IN ARRAY p_tag_names LOOP
             -- Find or create the tag
-            SELECT account_id, tag INTO tag_id_var 
-            FROM tags 
+            SELECT account_id, tag INTO tag_id_var
+            FROM tags
             WHERE account_id = p_account_id AND tag = tag_record.tag;
-            
+
             -- If tag doesn't exist, create it
             IF NOT FOUND THEN
                 INSERT INTO tags (account_id, tag, created_at)
                 VALUES (p_account_id, tag_record.tag, NOW());
                 tag_id_var := p_account_id || tag_record.tag; -- Composite key reference
             END IF;
-            
+
             -- Insert junction record
             INSERT INTO insight_tags (insight_id, tag_id, created_at)
             VALUES (p_insight_id, tag_id_var, NOW())
@@ -37,6 +37,15 @@ BEGIN
 END;
 $$ LANGUAGE plpgsql SECURITY DEFINER;
 
+-- -- Create trigger to sync insight tags
+-- CREATE TRIGGER sync_insight_tags
+--     AFTER INSERT OR UPDATE ON insights
+--     FOR EACH ROW EXECUTE FUNCTION sync_insight_tags(
+--         NEW.id,
+--         NEW.tags,
+--         NEW.account_id
+--     );
+
 -- Function to sync opportunity insights from array to junction table
 CREATE OR REPLACE FUNCTION sync_opportunity_insights(
     p_opportunity_id UUID,
@@ -45,7 +54,7 @@ CREATE OR REPLACE FUNCTION sync_opportunity_insights(
 BEGIN
     -- Remove existing insights for this opportunity
     DELETE FROM opportunity_insights WHERE opportunity_id = p_opportunity_id;
-    
+
     -- Add new insights
     IF p_insight_ids IS NOT NULL AND array_length(p_insight_ids, 1) > 0 THEN
         INSERT INTO opportunity_insights (opportunity_id, insight_id, created_at)
@@ -66,25 +75,25 @@ DECLARE
     last_interview_date TIMESTAMPTZ;
 BEGIN
     -- Calculate stats for this person in this project
-    SELECT 
+    SELECT
         COUNT(*),
         MIN(i.interview_date),
         MAX(i.interview_date)
-    INTO 
+    INTO
         interview_count_var,
         first_interview_date,
         last_interview_date
     FROM interviews i
     JOIN interview_people ip ON i.id = ip.interview_id
-    WHERE i.project_id = p_project_id 
+    WHERE i.project_id = p_project_id
     AND ip.person_id = p_person_id;
-    
+
     -- Update or insert project_people record
     INSERT INTO project_people (
-        project_id, 
-        person_id, 
-        interview_count, 
-        first_seen_at, 
+        project_id,
+        person_id,
+        interview_count,
+        first_seen_at,
         last_seen_at,
         created_at,
         updated_at
@@ -98,7 +107,7 @@ BEGIN
         NOW(),
         NOW()
     )
-    ON CONFLICT (project_id, person_id) 
+    ON CONFLICT (project_id, person_id)
     DO UPDATE SET
         interview_count = COALESCE(interview_count_var, 0),
         first_seen_at = COALESCE(first_interview_date, project_people.first_seen_at),
@@ -128,7 +137,7 @@ BEGIN
     LOOP
         -- Calculate relevance score (simplified - could be more sophisticated)
         relevance_score_var := 1.0;
-        
+
         -- Insert persona-insight link
         INSERT INTO persona_insights (persona_id, insight_id, relevance_score, created_at)
         VALUES (persona_record.persona_id, p_insight_id, relevance_score_var, NOW())

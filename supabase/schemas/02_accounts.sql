@@ -227,7 +227,7 @@ begin
 		-- creating user_settings
     insert into account_settings(account_id) values (first_account_id);
     -- default research project
-    insert into projects(account_id, title) values (first_account_id, 'My First Project');
+    insert into projects(account_id, name) values (first_account_id, 'My First Project');
 
     return NEW;
 end;
