@@ -192,8 +192,11 @@ create table if not exists tags (
   constraint tags_account_tag_unique unique (account_id, tag)
  );
 
+
 -- Indexes for performance based on common queries
 CREATE INDEX idx_tags_account_id ON public.tags(account_id);
+CREATE UNIQUE INDEX tags_account_tag_unique ON public.tags USING btree (account_id, tag);
+
 
 ALTER TABLE public.tags ENABLE ROW LEVEL SECURITY;
 

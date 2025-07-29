@@ -4,7 +4,7 @@
 create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
-  title text not null,
+  name text not null,
   description text,
 	status text,
   created_at timestamptz not null default now(),
@@ -13,7 +13,7 @@ create table if not exists projects (
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_projects_account_id ON public.projects(account_id);
-CREATE INDEX idx_projects_title ON public.projects(title);
+CREATE INDEX idx_projects_name ON public.projects(name);
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_projects_timestamp

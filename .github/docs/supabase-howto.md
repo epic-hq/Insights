@@ -4,13 +4,17 @@
 
 All data definitions start in this manner, defining a schema in `supabase/schemas`, then letting supabase generate migration files. [docs](https://supabase.com/docs/guides/local-development/declarative-database-schemas)
 
+The minimal declarative loop:
+
+1. Edit `supabase/schemas/*.sql` (or add a new one).
+2. `supabase db diff -f <brief_name>`
+→ auto-generates a new file in `supabase/migrations/`
+3. `supabase migrations up`
+→ applies that migration to your local database and marks it as executed.
+4. `supabase db push --linked` (or `supabase db push` if you’ve already linked)
+→ runs every unapplied migration on the remote project.
+
 **NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
-
-`supabase db diff -f description` to generate a migration. This will create a new migration file in the `supabase/migrations` directory. then `supabase migrations up` to apply the migration to the local database.
-
-We should then run `supabase db push` to apply the migration to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql.
-
-`supabase db push --linked` to apply the migration to the database in the cloud.
 
 ## Generate types for Typescript
 
