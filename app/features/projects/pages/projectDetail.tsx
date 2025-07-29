@@ -1,13 +1,14 @@
+import consola from "consola"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
 import { getProjectById } from "~/features/projects/db"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
-		{ title: `${data?.project?.name || "Project"} | Insights` },
+		{ title: `${data?.project?.title || "Project"} | Insights` },
 		{ name: "description", content: "Project details" },
 	]
 }
@@ -35,7 +36,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 		return { project }
 	} catch (error) {
-		console.error("Error loading project:", error)
+		consola.error("Error loading project:", error)
 		throw new Response("Failed to load project", { status: 500 })
 	}
 }
@@ -67,20 +68,11 @@ export default function ProjectDetail() {
 		<div className="mx-auto max-w-4xl">
 			<div className="mb-8 flex items-center justify-between">
 				<div>
-					<div className="mb-2 flex items-center gap-2">
-						<Link to="/projects" className="text-blue-600 hover:text-blue-800">
-							Projects
-						</Link>
-						<span className="text-gray-500">/</span>
-						<span className="text-gray-900">{project.name}</span>
-					</div>
-					<h1 className="text-3xl font-bold text-gray-900">{project.name}</h1>
-					
+					<h1 className="font-bold text-3xl text-gray-900">{project.name}</h1>
+
 					<div className="mt-2 flex flex-wrap items-center gap-2">
 						{project.status && (
-							<Badge className={getStatusColor(project.status)}>
-								{project.status.replace("_", " ")}
-							</Badge>
+							<Badge className={getStatusColor(project.status)}>{project.status.replace("_", " ")}</Badge>
 						)}
 					</div>
 				</div>
@@ -88,18 +80,15 @@ export default function ProjectDetail() {
 					<Button asChild variant="outline">
 						<Link to={`/projects/${project.id}/edit`}>Edit</Link>
 					</Button>
-					<Button asChild variant="outline">
-						<Link to="/projects">Back to Projects</Link>
-					</Button>
 				</div>
 			</div>
 
 			<div className="grid gap-8 lg:grid-cols-3">
 				<div className="lg:col-span-2">
 					<div className="rounded-lg border bg-white p-6">
-						<h2 className="mb-4 text-xl font-semibold">Description</h2>
+						<h2 className="mb-4 font-semibold text-xl">Description</h2>
 						{project.description ? (
-							<p className="text-gray-700 whitespace-pre-wrap">{project.description}</p>
+							<p className="whitespace-pre-wrap text-gray-700">{project.description}</p>
 						) : (
 							<p className="text-gray-500 italic">No description provided</p>
 						)}
@@ -107,10 +96,10 @@ export default function ProjectDetail() {
 
 					{people.length > 0 && (
 						<div className="mt-8 rounded-lg border bg-white p-6">
-							<h2 className="mb-4 text-xl font-semibold">Team Members</h2>
+							<h2 className="mb-4 font-semibold text-xl">Team Members</h2>
 							<div className="space-y-3">
 								{people.map((projectPerson) => (
-									<div key={projectPerson.people.id} className="border-l-4 border-blue-500 pl-4">
+									<div key={projectPerson.people.id} className="border-blue-500 border-l-4 pl-4">
 										<Link
 											to={`/people/${projectPerson.people.id}`}
 											className="font-medium text-blue-600 hover:text-blue-800"
@@ -130,17 +119,17 @@ export default function ProjectDetail() {
 
 					{personas.length > 0 && (
 						<div className="mt-8 rounded-lg border bg-white p-6">
-							<h2 className="mb-4 text-xl font-semibold">Target Personas</h2>
+							<h2 className="mb-4 font-semibold text-xl">Target Personas</h2>
 							<div className="space-y-3">
 								{personas.map((projectPersona) => (
-									<div key={projectPersona.personas.id} className="border-l-4 border-green-500 pl-4">
+									<div key={projectPersona.personas.id} className="border-green-500 border-l-4 pl-4">
 										<Link
 											to={`/personas/${projectPersona.personas.id}`}
 											className="font-medium text-blue-600 hover:text-blue-800"
 										>
 											{projectPersona.personas.name}
 										</Link>
-										<Badge 
+										<Badge
 											className="ml-2 text-white"
 											style={{ backgroundColor: projectPersona.personas.color_hex || "#6B7280" }}
 										>
@@ -158,7 +147,7 @@ export default function ProjectDetail() {
 						<h3 className="mb-4 font-semibold">Details</h3>
 						<div className="space-y-3">
 							<div>
-								<label className="text-sm font-medium text-gray-500">Status</label>
+								<label className="font-medium text-gray-500 text-sm">Status</label>
 								<div className="mt-1">
 									<Badge className={getStatusColor(project.status || "")}>
 										{project.status?.replace("_", " ") || "Unknown"}
@@ -168,35 +157,27 @@ export default function ProjectDetail() {
 
 							{project.start_date && (
 								<div>
-									<label className="text-sm font-medium text-gray-500">Start Date</label>
-									<div className="mt-1 text-sm text-gray-900">
-										{new Date(project.start_date).toLocaleDateString()}
-									</div>
+									<label className="font-medium text-gray-500 text-sm">Start Date</label>
+									<div className="mt-1 text-gray-900 text-sm">{new Date(project.start_date).toLocaleDateString()}</div>
 								</div>
 							)}
 
 							{project.end_date && (
 								<div>
-									<label className="text-sm font-medium text-gray-500">End Date</label>
-									<div className="mt-1 text-sm text-gray-900">
-										{new Date(project.end_date).toLocaleDateString()}
-									</div>
+									<label className="font-medium text-gray-500 text-sm">End Date</label>
+									<div className="mt-1 text-gray-900 text-sm">{new Date(project.end_date).toLocaleDateString()}</div>
 								</div>
 							)}
 
 							<div>
-								<label className="text-sm font-medium text-gray-500">Created</label>
-								<div className="mt-1 text-sm text-gray-900">
-									{new Date(project.created_at).toLocaleDateString()}
-								</div>
+								<label className="font-medium text-gray-500 text-sm">Created</label>
+								<div className="mt-1 text-gray-900 text-sm">{new Date(project.created_at).toLocaleDateString()}</div>
 							</div>
 
 							{project.updated_at && (
 								<div>
-									<label className="text-sm font-medium text-gray-500">Last Updated</label>
-									<div className="mt-1 text-sm text-gray-900">
-										{new Date(project.updated_at).toLocaleDateString()}
-									</div>
+									<label className="font-medium text-gray-500 text-sm">Last Updated</label>
+									<div className="mt-1 text-gray-900 text-sm">{new Date(project.updated_at).toLocaleDateString()}</div>
 								</div>
 							)}
 						</div>
@@ -206,13 +187,13 @@ export default function ProjectDetail() {
 						<h3 className="mb-4 font-semibold">Statistics</h3>
 						<div className="space-y-3">
 							<div>
-								<label className="text-sm font-medium text-gray-500">Team Size</label>
-								<div className="mt-1 text-2xl font-bold text-gray-900">{people.length}</div>
+								<label className="font-medium text-gray-500 text-sm">Team Size</label>
+								<div className="mt-1 font-bold text-2xl text-gray-900">{people.length}</div>
 							</div>
 
 							<div>
-								<label className="text-sm font-medium text-gray-500">Target Personas</label>
-								<div className="mt-1 text-2xl font-bold text-gray-900">{personas.length}</div>
+								<label className="font-medium text-gray-500 text-sm">Target Personas</label>
+								<div className="mt-1 font-bold text-2xl text-gray-900">{personas.length}</div>
 							</div>
 						</div>
 					</div>

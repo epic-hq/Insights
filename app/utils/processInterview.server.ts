@@ -75,6 +75,7 @@ export async function processInterviewTranscript({
 	// The function name must match the declaration in `baml_src/extract_insights.baml`.
 	const fullTranscript = transcriptData.full_transcript as string
 	const response = await b.ExtractInsights(fullTranscript, userCustomInstructions || "")
+	consola.log("BAML response:", response)
 
 	// Extract insights from the BAML response
 	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
@@ -276,12 +277,12 @@ export async function processInterviewTranscript({
 	consola.log(`Creating ${uniqueTags.length} unique tags:`, uniqueTags)
 
 	for (const tagName of uniqueTags) {
-		// Upsert tag
+		// Upsert tag - use constraint name for ON CONFLICT
 		const { data: tagData, error: tagError } = await db
 			.from("tags")
 			.upsert(
 				{ account_id: metadata.accountId, tag: tagName },
-				{ onConflict: "account_id,tag" }
+				{ onConflict: "tags_account_tag_unique" }
 			)
 			.select("id")
 			.single()

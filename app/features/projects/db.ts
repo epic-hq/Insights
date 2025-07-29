@@ -1,5 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import type { Database, ProjectInsert, ProjectUpdate } from "~/types"
 
 export const getProjects = async ({
 	supabase,
@@ -66,7 +66,7 @@ export const createProject = async ({
 	data,
 }: {
 	supabase: SupabaseClient<Database>
-	data: Database["public"]["Tables"]["projects"]["Insert"]
+	data: ProjectInsert
 }) => {
 	return await supabase.from("projects").insert(data).select().single()
 }
@@ -80,7 +80,7 @@ export const updateProject = async ({
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
-	data: Database["public"]["Tables"]["projects"]["Update"]
+	data: ProjectUpdate
 }) => {
 	return await supabase
 		.from("projects")

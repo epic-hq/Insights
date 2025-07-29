@@ -1,8 +1,8 @@
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Badge } from "~/components/ui/badge"
 import { getProjects } from "~/features/projects/db"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -49,13 +49,11 @@ export default function ProjectsIndexPage() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 px-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Projects</h1>
-					<p className="text-muted-foreground">
-						Manage research and product development projects.
-					</p>
+					<h1 className="font-bold text-3xl tracking-tight">Projects</h1>
+					<p className="text-muted-foreground">Manage research and product development projects.</p>
 				</div>
 				<Button asChild>
 					<Link to="/projects/new">Create Project</Link>
@@ -65,8 +63,8 @@ export default function ProjectsIndexPage() {
 			{projects.length === 0 ? (
 				<Card>
 					<CardContent className="flex flex-col items-center justify-center py-12">
-						<h3 className="text-lg font-semibold mb-2">No projects yet</h3>
-						<p className="text-muted-foreground mb-4">
+						<h3 className="mb-2 font-semibold text-lg">No projects yet</h3>
+						<p className="mb-4 text-muted-foreground">
 							Create your first project to start organizing your research and development work.
 						</p>
 						<Button asChild>
@@ -77,40 +75,21 @@ export default function ProjectsIndexPage() {
 			) : (
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{projects.map((project) => (
-						<Card key={project.id} className="hover:shadow-md transition-shadow">
+						<Card key={project.id} className="transition-shadow hover:shadow-md">
 							<CardHeader>
 								<div className="flex items-start justify-between">
 									<CardTitle className="text-lg">
-										<Link
-											to={`/projects/${project.id}`}
-											className="hover:underline"
-										>
+										<Link to={`/projects/${project.id}`} className="hover:underline">
 											{project.name}
 										</Link>
 									</CardTitle>
-									<Badge className={getStatusColor(project.status || "")}>
-										{project.status}
-									</Badge>
+									<Badge className={getStatusColor(project.status || "")}>{project.status}</Badge>
 								</div>
-								<CardDescription className="line-clamp-2">
-									{project.description}
-								</CardDescription>
+								<CardDescription className="line-clamp-2">{project.description}</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-2">
-									{project.start_date && (
-										<div className="text-sm">
-											<span className="font-medium">Start Date:</span>{" "}
-											{new Date(project.start_date).toLocaleDateString()}
-										</div>
-									)}
-									{project.end_date && (
-										<div className="text-sm">
-											<span className="font-medium">End Date:</span>{" "}
-											{new Date(project.end_date).toLocaleDateString()}
-										</div>
-									)}
-									<div className="text-sm text-muted-foreground">
+									<div className="text-muted-foreground text-sm">
 										Created {new Date(project.created_at).toLocaleDateString()}
 									</div>
 								</div>

@@ -1,9 +1,9 @@
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Badge } from "~/components/ui/badge"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { getPeople } from "~/features/people/db"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -42,13 +42,11 @@ export default function PeopleIndexPage() {
 	}
 
 	return (
-		<div className="space-y-6">
+		<div className="space-y-6 px-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">People</h1>
-					<p className="text-muted-foreground">
-						Manage research participants, contacts, and interview subjects.
-					</p>
+					<h1 className="font-bold text-3xl tracking-tight">People</h1>
+					<p className="text-muted-foreground">Manage research participants, contacts, and interview subjects.</p>
 				</div>
 				<Button asChild>
 					<Link to="/people/new">Add Person</Link>
@@ -58,8 +56,8 @@ export default function PeopleIndexPage() {
 			{people.length === 0 ? (
 				<Card>
 					<CardContent className="flex flex-col items-center justify-center py-12">
-						<h3 className="text-lg font-semibold mb-2">No people yet</h3>
-						<p className="text-muted-foreground mb-4">
+						<h3 className="mb-2 font-semibold text-lg">No people yet</h3>
+						<p className="mb-4 text-muted-foreground">
 							Add your first person to start tracking research participants and contacts.
 						</p>
 						<Button asChild>
@@ -70,7 +68,7 @@ export default function PeopleIndexPage() {
 			) : (
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{people.map((person) => (
-						<Card key={person.id} className="hover:shadow-md transition-shadow">
+						<Card key={person.id} className="transition-shadow hover:shadow-md">
 							<CardHeader>
 								<div className="flex items-center gap-3">
 									<Avatar className="h-12 w-12">
@@ -80,29 +78,32 @@ export default function PeopleIndexPage() {
 									</Avatar>
 									<div className="flex-1">
 										<CardTitle className="text-lg">
-											<Link
-												to={`/people/${person.id}`}
-												className="hover:underline"
-											>
+											<Link to={`/people/${person.id}`} className="hover:underline">
 												{person.name}
 											</Link>
 										</CardTitle>
-										{person.job_title && (
-											<CardDescription>{person.job_title}</CardDescription>
-										)}
+										{person.segment && <CardDescription>{person.segment}</CardDescription>}
 									</div>
 								</div>
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-2">
-									{person.company && (
+									{person.people_personas && person.people_personas.length > 0 && (
 										<div className="text-sm">
-											<span className="font-medium">Company:</span> {person.company}
+											<span className="font-medium">Persona:</span>{" "}
+											<Badge variant="outline" className="ml-1">
+												{person.people_personas[0].personas?.name || "Unknown"}
+											</Badge>
 										</div>
 									)}
-									{person.location && (
+									{person.segment && (
 										<div className="text-sm">
-											<span className="font-medium">Location:</span> {person.location}
+											<span className="font-medium">Segment:</span> {person.segment}
+										</div>
+									)}
+									{person.description && (
+										<div className="text-sm">
+											<span className="font-medium">Description:</span> {person.description}
 										</div>
 									)}
 									{person.age && (
@@ -110,7 +111,7 @@ export default function PeopleIndexPage() {
 											<span className="font-medium">Age:</span> {person.age}
 										</div>
 									)}
-									<div className="text-sm text-muted-foreground">
+									<div className="text-muted-foreground text-sm">
 										Added {new Date(person.created_at).toLocaleDateString()}
 									</div>
 								</div>

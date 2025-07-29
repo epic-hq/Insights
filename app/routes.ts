@@ -17,6 +17,7 @@ const routes = [
 		...personasRoutes,
 		...projectsRoutes,
 	]),
+	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("login", "./routes/login.tsx"),
 	route("register", "./routes/register.tsx"),

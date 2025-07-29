@@ -1,3 +1,4 @@
+import consola from "consola"
 import type { ActionFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
@@ -21,8 +22,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	const name = formData.get("name") as string
 	const description = formData.get("description") as string
 	const status = formData.get("status") as string
-	const startDate = formData.get("start_date") as string
-	const endDate = formData.get("end_date") as string
 
 	if (!name?.trim()) {
 		return { error: "Name is required" }
@@ -35,20 +34,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				name: name.trim(),
 				description: description?.trim() || null,
 				status: status || "planning",
-				start_date: startDate || null,
-				end_date: endDate || null,
 				account_id: accountId,
 			},
 		})
 
 		if (error) {
-			console.error("Error creating project:", error)
 			return { error: "Failed to create project" }
 		}
 
 		return redirect(`/projects/${data.id}`)
 	} catch (error) {
-		console.error("Error creating project:", error)
+		consola.error("Error creating project:", error)
 		return { error: "Failed to create project" }
 	}
 }
@@ -59,21 +55,14 @@ export default function NewProject() {
 	return (
 		<div className="mx-auto max-w-2xl">
 			<div className="mb-8">
-				<h1 className="text-3xl font-bold text-gray-900">New Project</h1>
+				<h1 className="font-bold text-3xl text-gray-900">New Project</h1>
 				<p className="mt-2 text-gray-600">Create a new project</p>
 			</div>
 
 			<Form method="post" className="space-y-6">
 				<div>
 					<Label htmlFor="name">Name *</Label>
-					<Input
-						id="name"
-						name="name"
-						type="text"
-						required
-						placeholder="Enter project name"
-						className="mt-1"
-					/>
+					<Input id="name" name="name" type="text" required placeholder="Enter project name" className="mt-1" />
 				</div>
 
 				<div>
@@ -105,27 +94,17 @@ export default function NewProject() {
 
 				<div>
 					<Label htmlFor="start_date">Start Date</Label>
-					<Input
-						id="start_date"
-						name="start_date"
-						type="date"
-						className="mt-1"
-					/>
+					<Input id="start_date" name="start_date" type="date" className="mt-1" />
 				</div>
 
 				<div>
 					<Label htmlFor="end_date">End Date</Label>
-					<Input
-						id="end_date"
-						name="end_date"
-						type="date"
-						className="mt-1"
-					/>
+					<Input id="end_date" name="end_date" type="date" className="mt-1" />
 				</div>
 
 				{actionData?.error && (
 					<div className="rounded-md bg-red-50 p-4">
-						<p className="text-sm text-red-700">{actionData.error}</p>
+						<p className="text-red-700 text-sm">{actionData.error}</p>
 					</div>
 				)}
 

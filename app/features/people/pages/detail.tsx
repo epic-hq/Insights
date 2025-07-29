@@ -3,6 +3,7 @@ import { Link, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { getPersonById } from "~/features/people/db"
+import MiniPersonaCard from "~/features/personas/components/MiniPersonaCard"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -43,7 +44,10 @@ export default function PersonDetail() {
 	const { person } = useLoaderData<typeof loader>()
 
 	const interviews = person.interview_people || []
-	const persona = Array.isArray(person.personas) ? person.personas[0] : person.personas
+	// Get personas from junction table - people_personas contains the relationship data
+	const people_personas = person.people_personas || []
+	const primaryPersona = people_personas.length > 0 ? people_personas[0] : null
+	const persona = primaryPersona?.personas
 
 	return (
 		<div className="mx-auto max-w-4xl">
@@ -53,11 +57,6 @@ export default function PersonDetail() {
 
 					<div className="mt-2 flex flex-wrap items-center gap-2">
 						{person.segment && <Badge variant="secondary">{person.segment}</Badge>}
-						{persona && (
-							<Badge className="text-white" style={{ backgroundColor: persona.color_hex || "#6B7280" }}>
-								{persona.name}
-							</Badge>
-						)}
 					</div>
 				</div>
 				<div className="flex gap-2">
@@ -66,6 +65,14 @@ export default function PersonDetail() {
 					</Button>
 				</div>
 			</div>
+
+			{/* Persona Section */}
+			{persona && (
+				<div className="mb-8">
+					<h2 className="mb-4 font-semibold text-gray-900 text-lg">Persona</h2>
+					<MiniPersonaCard persona={persona} className="max-w-md" />
+				</div>
+			)}
 
 			<div className="grid gap-8 lg:grid-cols-3">
 				<div className="lg:col-span-2">
@@ -78,19 +85,6 @@ export default function PersonDetail() {
 							<div className="mb-4">
 								<label className="font-medium text-gray-500 text-sm">Segment</label>
 								<div className="mt-1 text-gray-900">{person.segment}</div>
-							</div>
-						)}
-
-						{persona && (
-							<div className="mb-4">
-								<label className="font-medium text-gray-500 text-sm">Persona</label>
-								<div className="mt-1">
-									<Link to={`/personas/${persona.id}`} className="inline-flex items-center gap-2">
-										<Badge className="text-white" style={{ backgroundColor: persona.color_hex || "#6B7280" }}>
-											{persona.name}
-										</Badge>
-									</Link>
-								</div>
 							</div>
 						)}
 

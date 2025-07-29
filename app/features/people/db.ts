@@ -12,8 +12,13 @@ export const getPeople = async ({
 		.from("people")
 		.select(`
 			*,
-			personas (
-				*
+			people_personas (
+				personas (
+					*
+				),
+				confidence_score,
+				source,
+				assigned_at
 			),
 			interview_people (
 				interviews (
@@ -38,8 +43,15 @@ export const getPersonById = async ({
 		.from("people")
 		.select(`
 			*,
-			personas (
-				*
+			people_personas (
+				personas (
+					*
+				),
+				confidence_score,
+				source,
+				assigned_at,
+				interview_id,
+				project_id
 			),
 			interview_people (
 				interviews (
@@ -89,13 +101,24 @@ export const updatePerson = async ({
 	accountId: string
 	data: Database["public"]["Tables"]["people"]["Update"]
 }) => {
-	return await supabase
+	const updatePersonQuery = supabase
 		.from("people")
 		.update(data)
 		.eq("id", id)
 		.eq("account_id", accountId)
 		.select()
 		.single()
+
+	type UpdatedPerson = QueryData<typeof updatePersonQuery>
+
+	const { data: updatedData, error } = await updatePersonQuery
+
+	if (error) {
+		throw new Response("Failed to update person", { status: 500 })
+	}
+
+	const personData: UpdatedPerson = updatedData
+	return personData
 }
 
 export const deletePerson = async ({

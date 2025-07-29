@@ -387,9 +387,9 @@ CREATE INDEX idx_interviews_status_date
   ON public.interviews (status, interview_date);
 ```
 
-#### 8) TODO: CRITICAL De-dupe persona modeling on people
+#### 8) DONE: CRITICAL De-dupe persona modeling on people
 
-people has a persona text column plus the normalized people_personas table. Decide on your canonical source. If you want a “primary persona” cache on people, keep it but document that it’s derived from the latest/highest-confidence people_personas. Or drop the column to remove ambiguity.
+Deleted people persona text column; now using normalized people_personas table as our canonical source.
 
 #### 9) CONSIDER: Metrics views
 
