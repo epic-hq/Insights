@@ -16,18 +16,12 @@ export async function loader({ request }: { request: Request }) {
 	const { data: jwt } = await supabase.auth.getClaims()
 	const accountId = jwt?.claims.sub
 
-	// Fetch personas with related people data
+	// Fetch personas with people count
 	const { data: personas, error: personasError } = await supabase
 		.from("personas")
 		.select(`
 			*,
-			people_personas(
-				people(
-					id,
-					name,
-					segment
-				)
-			)
+			people_personas(count)
 		`)
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })

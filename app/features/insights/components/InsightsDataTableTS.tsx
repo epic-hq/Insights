@@ -23,7 +23,6 @@ interface InsightsDataTableProps {
 }
 
 export function InsightsDataTable({ data }: InsightsDataTableProps) {
-	const [globalFilter, setGlobalFilter] = useState("")
 	const [sorting, setSorting] = useState<SortingState>([])
 	const [columnFilters, setColumnFilters] = useState<any[]>([])
 
@@ -32,6 +31,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 			{
 				accessorKey: "pain",
 				header: () => "Pain",
+				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => (
 					<div className="font-medium">{cell.getValue() as string | null}</div>
 				),
@@ -49,9 +49,10 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				id: "personas",
 				header: () => "Personas",
 				accessorFn: (row: any) =>
-					(row.persona_insights ?? []).map((pi: any) => pi.personas?.name).filter(Boolean),
+					(row.persona_insights ?? []).map((pi: any) => pi.personas?.name).filter(Boolean).join(", "),
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const personas = cell.getValue() as string[]
+					const personasStr = cell.getValue() as string
+					const personas = personasStr ? personasStr.split(/,\s*/) : []
 					return personas.length > 0 ? (
 						<div className="flex flex-wrap gap-1">
 							{personas.map((p) => (
@@ -86,7 +87,6 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 		data,
 		columns,
 		state: {
-			globalFilter,
 			sorting,
 			columnFilters,
 		},
@@ -95,20 +95,10 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 		getCoreRowModel: getCoreRowModel(),
 		getSortedRowModel: getSortedRowModel(),
 		getFilteredRowModel: getFilteredRowModel(),
-		globalFilterFn: "includesString",
 	})
 
 	return (
 		<div>
-			<div className="mb-4">
-				<Input
-					placeholder="Search insights..."
-					value={globalFilter}
-					onChange={(e) => setGlobalFilter(e.target.value)}
-					className="w-64"
-				/>
-			</div>
-
 			<Table>
 				<TableHeader>
 					{table.getHeaderGroups().map((headerGroup) => (
@@ -129,11 +119,39 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 								{headerGroup.headers.map((header) => {
 									const colId = header.column.id
 									const col = table.getColumn(colId)
-									const isFacet = ["journey_stage", "priority"].includes(colId)
-									if (!isFacet) return <TableHead key={colId} />
-									const uniqueValues = Array.from(
-										new Set(data.map((row) => row[colId as keyof Insight]).filter(Boolean))
-									)
+									const isFacet = ["journey_stage", "personas", "priority"].includes(colId)
+									const isTextFilter = colId === "pain"
+									if (!isFacet && !isTextFilter) return <TableHead key={colId} />
+
+									// Handle text filter for Pain column
+									if (isTextFilter) {
+										const filterValue = col?.getFilterValue() as string | undefined
+										return (
+											<TableHead key={colId}>
+												<Input
+													placeholder="Filter pain..."
+													value={filterValue ?? ""}
+													onChange={(e) => col?.setFilterValue(e.target.value || undefined)}
+													className="h-7 w-full text-xs"
+												/>
+											</TableHead>
+										)
+									}
+
+									let uniqueValues: string[] = []
+									if (colId === "personas") {
+										uniqueValues = Array.from(
+											new Set(
+												data.flatMap((row: any) =>
+													(row.persona_insights ?? []).map((pi: any) => pi.personas?.name).filter(Boolean)
+												)
+											)
+										)
+									} else {
+										uniqueValues = Array.from(
+											new Set(data.map((row) => row[colId as keyof Insight]).filter(Boolean) as string[])
+										)
+									}
 									const filterValue = col?.getFilterValue() as string | undefined
 
 									if (colId === "journey_stage") {

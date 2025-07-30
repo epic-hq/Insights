@@ -12,7 +12,20 @@
 
 **User Story 5 - product opportunities**: As a product manager I can view product opportunities based on the insights from the interviews so I can evaluate, flesh out, prioritize, and implement product opportunities.
 
-**Flow Skeleton**: upload interview recordings → generate transcripts → generate insights and other data according to a template→ store in db → user views dashboard and can see aggregated insights, and drill into insights by persona, or individual interview. Allow cross-filtering between personas, insights and product opportunities (using tags).
+**Flow Skeleton 1: upload interview**: upload interview recordings → generate transcripts → generate insights and other data according to a template→ store in db → user views dashboard and can see aggregated insights, and drill into insights by persona, or individual interview. Allow cross-filtering between personas, insights and product opportunities (using tags).
+
+**Flow Skeleton 2: Analyze insights**:
+
+**Onboarding**: Ask user what their goal is. (used to guide LLM) types of questions they want to uncover. This can guide the LLM to generate insights, recommend follow on questions, etc.
+Simple questions:
+
+- What kind of content? interviews with customers, live conversations, focus groups, etc.
+- What is the task? understand their pain, motivations, preferences, etc.
+- What is the goal? decide on pricing, new features, changes in service terms, etc.
+Template: I want to ___ so I can ____.
+While trying to do **GOAL/Desired_outcome**, people struggle with **pain** because **WHY: Details/context**.
+
+**Dashboard**: Quickly tell me top insights and persona coverage, next questions to ask, and product opportunities.
 
 **Code Context**: TBD
 
@@ -54,7 +67,9 @@ A concise narrative: who they are, their workflow, top frustrations, aspirations
 ### High‑Impact Themes
 
 List the 5‑10 biggest takeaways as single lines, each starting with a tag and quick rating for synthesis:
+
 # theme_tag One‑sentence insight. (Impact 1‑5 · Novelty 1‑5)
+
 Impact ≈ severity or business value; Novelty ≈ differentiation/delight potential.
 
 ### Insight Cards (Create insight card for each #theme_tag)
@@ -89,15 +104,15 @@ Non‑verbal cues, environment, surprising behaviours—anything that adds colou
 
 ### Tagging Rules
 
-* Use lower_snake_case.
-* Make tags conceptual, not UI feature names (#social_accountability, not #leaderboard).
-* Re‑use existing tags to aid cross‑study synthesis; maintain a master tag glossary.
-* Optionally prefix with journey stage (progress_visibility).
+- Use lower_snake_case.
+- Make tags conceptual, not UI feature names (#social_accountability, not #leaderboard).
+- Re‑use existing tags to aid cross‑study synthesis; maintain a master tag glossary.
+- Optionally prefix with journey stage (progress_visibility).
 
 ### Impact / Novelty Scales
 
 Rate each insight:
 
-* Impact — severity to the user or business value (1 = minor annoyance, 5 = critical blocker).
+- Impact — severity to the user or business value (1 = minor annoyance, 5 = critical blocker).
 
-* Novelty — how differentiated or delight‑creating (1 = common expectation, 5 = breakthrough idea).
+- Novelty — how differentiated or delight‑creating (1 = common expectation, 5 = breakthrough idea).

@@ -17,8 +17,8 @@ interface PageHeaderProps {
 
 const PageHeader: React.FC<PageHeaderProps> = ({ title = "", showBreadcrumbs = true, breadcrumbs, className = "" }) => {
 	return (
-		<header className={`py-2 ${className}`}>
-			<div className="px-6">
+		<header className={`mx-auto max-w-[1440px] px-4 py-2 ${className}`}>
+			<div className="">
 				{/* Only show back link if breadcrumbs are hidden */}
 				{!showBreadcrumbs && (
 					<Link to={PATHS.DASHBOARD} className="mb-4 flex items-center text-blue-600 hover:text-blue-800">

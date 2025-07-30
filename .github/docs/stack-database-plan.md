@@ -1,4 +1,4 @@
-# Database & Storage Plan – Interview Insights
+# Tech Stack and Conventions
 
 ## Last updated: 2025-07-09
 
@@ -24,28 +24,11 @@ This document captures the agreed-upon architectural decisions for persistence, 
 
 ## 3. High-Level Entity Diagram
 
-```text
-accounts──┐
-          ├─< user_accounts >─auth.users
-          │
- research_projects──┐
-                    ├─< interviews >─┐
-                    │               ├─< media_files > (R2)
-                    │               └─< transcripts >
-                    │
- insignts──┐                ┌─< quotes >
-           └─< insight_tags >──tags (global)
-
-```
+<!-- TODO: add diagram -->
 
 ## 4. Table & Types Specifications (supabase schema `public`)
 
-General process for defining DB is to create individual schema files in `supabase/schemas` that include indexes, triggers, RLS. Then run `supabase db diff` to generate migration files. Then run `supabase db push` to apply the migrations to the database. or `supabase db reset` to reset the database to the state of the migration files. It will drop the database and recreate it from the migration files and run seed.sql. `supabase db reset --linked` will reset the hosted database.
-
-Exception: Local DB can't run pgmq extension.
-
-* so we need to run `CREATE EXTENSION IF NOT EXISTS pgmq;` in the database.
-* separate migration file to run to setup queues `supabase/migrations/99Custom_pgmq.sql`
+This project strictly follows the declarative schema definition approach defined (here)[`/docs/supabase-howto.md`].
 
 ### 4.x Types
 
@@ -79,163 +62,26 @@ Using basejump inspired separate accounts schema
 Migration files for setting up and configuration done.
 Definitive table specs to be stored in `supabase/schemas`
 
+### Core Tables
+
+accounts
+accounts_users
+projects
+people
+personas
+interviews
+insights
+tags
+opportunities
+
 TODO:
 
 * [x] separate tables into files
 * [x] add indexes, triggers, RLS policies
 * [x] renamed research_projects -> projects. modify in FE too
 * [x] error saving new user (maybe due to missing org_id and incomplete setup of new schema. Redo and retry)
-* [ ] New user signup should create account and project
-* [ ] AddInterview button needs accountId and projectId to send to /api/upload-file in body. _NavLayout loader gets this db and passes it down in AuthContext. So AddInterviewButton should get it from there via useAuthContext?
-
-### 4.2  Research Projects
-
-Make one by default on org creation.
-
-`research_projects`
-| id | uuid PK |
-| org_id | uuid FK |
-| code | text | slug/short label e.g. `teacher_research` |
-| title | text |
-| description | text |
-| created_at | timestamptz |
-| updated_at | timestamptz |
-
-### 4.3  Interviews & Media
-
-`interviews`
-| id | uuid PK |
-| org_id | uuid FK |
-| project_id | uuid FK ↗ research_projects.id |
-| people_id | uuid FK ↗ people.id |
-| title | text |
-| interview_date | date |
-| interviewer_id | uuid FK ↗ auth.users.id |
-| transcript | text |
-| segment | text |
-| duration_min | int |
-| status | text `uploaded` / `transcribed` / `processed` |
-| created_at | timestamptz |
-| updated_at | timestamptz |
-
-`media_files`
-| id | uuid PK |
-| org_id | uuid FK |
-| interview_id | uuid FK nullable |
-| r2_path | text | `org_id/<uuid>` |
-| file_name | text |
-| mime_type | text |
-| size_bytes | bigint |
-| uploaded_by | uuid FK auth.users.id |
-| uploaded_at | timestamptz |
-
-<!-- TODO: Deprecate since we store in interviews -->
-`transcripts`
-| id | uuid PK |
-| org_id | uuid FK |
-| interview_id | uuid FK |
-| text | text |
-| source_json | jsonb |
-| created_at | timestamptz |
-
-### 4.4  Qualitative Insights
-
-The focus is on identifying key statements and insights that can be used to inform product development.
-We want to identify pain points, friction, and desired outcomes the user has. These can be related or not.
-
-`insights`
-| id | uuid PK |
-| org_id | uuid FK |
-| interview_id | uuid FK |
-| tag | text |
-| category | text |
-| journey_stage | text |
-| impact | smallint 1-5 |
-| novelty | smallint 1-5 |
-| jtbd | text |
-| motivation | text |
-| pain | text |
-| desired_outcome | text |
-| emotional_response | text low/neutral/high |
-| opportunity_ideas | text[] |
-| confidence | text low/medium/high |
-| contradictions | text |
-| embedding | vector (pgvector) NULL | semantic representation of insight text |
-| created_at | timestamptz |
-| updated_at | timestamptz |
-
-`quotes`
-| id | uuid PK |
-| org_id | uuid FK |
-| insight_id | uuid FK |
-| quote | text |
-| timestamp_sec | int |
-| created_at | timestamptz |
-
-### 4.5  Themes & Categories (flat)
-
-`themes`
-| id | uuid PK |
-| org_id | uuid FK |
-| name | text |
-| category | text | discrete, no parent |
-| color_hex | text |
-| embedding | vector | generated from `name` for similarity search |
-| created_at | timestamptz |
-
-Materialized view `theme_counts_mv` aggregates `insights` → themes for dashboard treemap.
-
-### 4.6  Personas & Opportunities
-
-`personas`
-| id | uuid PK |
-| org_id | uuid FK |
-| name | text |
-| description | text |
-| percentage | numeric |
-| color_hex | text |
-| created_at | timestamptz |
-
-`opportunities`
-| id | uuid PK |
-| org_id | uuid FK |
-| title | text |
-| owner_id | uuid FK auth.users.id nullable |
-| kanban_status | text explore/validate/build |
-| related_insight_ids | uuid[] |
-| created_at | timestamptz |
-
-### 4.7  Global Tag Glossary
-
-`tags` (GLOBAL scope)
-| tag | text PK |
-| description | text |
-
-`insight_tags`
-| insight_id | uuid FK |
-| tag | text FK tags.tag |
-
-### 4.8  People
-
-These are mostly going to be interviewees, or test subjects, people we observe using product in some way.
-
-`people`
-| id | uuid PK |
-| org_id | uuid FK |
-| name | text |
-| description | text |
-| segment | text |
-| persona | text |
-| age | int |
-| gender | text |
-| income | int |
-| education | text |
-| occupation | text |
-| location | text |
-| contact_info | jsonb |
-| preferences | text |
-| created_at | timestamptz |
-| updated_at | timestamptz |
+* [x] New user signup should create account and project
+* [x] AddInterview button needs accountId and projectId to send to /api/upload-file in body. _NavLayout loader gets this db and passes it down in AuthContext. So AddInterviewButton should get it from there via useAuthContext?
 
 ## 4.10 Vector Similarity (pgvector)
 

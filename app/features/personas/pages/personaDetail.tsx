@@ -1,3 +1,4 @@
+import consola from "consola"
 import { motion } from "framer-motion"
 import { Palette, Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router-dom"
@@ -51,53 +52,85 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const persona: PersonaRow = currentPersonaData
 
-	// Fetch interviews related to this persona with account filtering
+	consola.log("personaDetail: ", persona)
+	// Fetch people linked via junction table
+	const { data: peopleData, error: peopleError } = await supabase
+		.from("people_personas")
+		.select("people ( * )")
+		.eq("persona_id", personaId)
+	// .eq("account_id", accountId)
+
+	if (peopleError) {
+		throw new Response(`Error fetching people: ${peopleError.message}`, { status: 500 })
+	}
+
+	const people: Array<{ id: string; name: string | null; segment: string | null; description: string | null }> =
+		peopleData?.map((pp: any) => pp.people) ?? []
+
+	// Fetch interviews where people with this persona participated
+	const peopleIds = people.map((p) => p.id)
+	consola.log("people: ", peopleIds)
+	if (peopleIds.length === 0) {
+		return {
+			interviews: [],
+			insights: [],
+			relatedPersonas: [],
+			people: [],
+		}
+	}
+	// Fetch interviews where people with this persona participated
 	const { data: interviewsData, error: interviewsError } = await supabase
-		.from("interviews")
-		.select("*")
-		.eq("segment", persona.name)
-		.eq("account_id", accountId)
-		.order("created_at", { ascending: false })
+		.from("interview_people")
+		.select(`
+			interviews (
+				*
+			)
+		`)
+		.in("person_id", peopleIds)
 
 	if (interviewsError) {
-		throw new Response(`Error fetching interviews: ${interviewsError.message}`, { status: 500 })
+		consola.error("Error fetching interviews:", interviewsError)
 	}
 
-	const interviews: InterviewRow[] = interviewsData || []
+	const interviews: InterviewRow[] = interviewsData?.map((ip: any) => ip.interviews).filter(Boolean) || []
 
-	// Fetch insights related to this persona with account filtering
+	// Fetch insights related to this persona via junction table
 	const { data: insightsData, error: insightsError } = await supabase
-		.from("insights")
-		.select("*")
-		.eq("category", persona.name)
-		.eq("account_id", accountId)
-		.order("created_at", { ascending: false })
+		.from("persona_insights")
+		.select(`
+			insights (
+				*
+			)
+		`)
+		.eq("persona_id", personaId)
 
 	if (insightsError) {
-		throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
+		consola.error("Error fetching insights:", insightsError)
 	}
 
-	const insights: InsightRow[] = insightsData || []
+	const insights: InsightRow[] = insightsData?.map((pi: any) => pi.insights).filter(Boolean) || []
 
 	// Get related personas (same account, different persona)
-	const { data: relatedPersonas } = await supabase
-		.from("personas")
-		.select("id, name, color_hex, updated_at")
-		.eq("account_id", accountId)
-		.neq("id", personaId)
-		.limit(5)
+	// const { data: relatedPersonas } = await supabase
+	// 	.from("personas")
+	// 	.select("id, name, color_hex, updated_at")
+	// 	.eq("account_id", accountId)
+	// 	.neq("id", personaId)
+	// 	.limit(5)
 
 	return {
 		persona,
 		interviews,
 		insights,
-		relatedPersonas: relatedPersonas || [],
+		relatedPersonas: [],
+		people,
 	}
 }
 
 export default function PersonaDetailRoute() {
-	const { persona, interviews, insights, relatedPersonas } = useLoaderData<typeof loader>()
+	const { persona, interviews, insights, relatedPersonas, people } = useLoaderData<typeof loader>()
 
+	consola.log("personaDetail: ", persona)
 	if (!persona) {
 		return (
 			<div className="flex h-64 items-center justify-center">
@@ -355,6 +388,28 @@ export default function PersonaDetailRoute() {
 						</Card>
 					</motion.div>
 
+					{/* Linked People Section */}
+					{people.length > 0 && (
+						<div className="rounded-lg bg-white p-6 shadow-sm">
+							<div className="mb-4 flex items-center justify-between">
+								<h2 className="flex items-center gap-2 font-semibold text-xl">
+									<Users className="h-5 w-5" />
+									People with this Persona
+								</h2>
+							</div>
+							<ul className="space-y-2">
+								{people.map((person) => (
+									<li key={person.id} className="flex items-center justify-between rounded border p-2">
+										<Link to={`/people/${person.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+											{person.name || "Unnamed"}
+										</Link>
+										{person.segment && <Badge variant="outline">{person.segment}</Badge>}
+									</li>
+								))}
+							</ul>
+						</div>
+					)}
+
 					{/* Related Insights Section */}
 					{insights.length > 0 && (
 						<div className="rounded-lg bg-white p-6 shadow-sm">
@@ -374,7 +429,7 @@ export default function PersonaDetailRoute() {
 				</div>
 
 				{/* Sidebar with Related Personas */}
-				<aside className="space-y-4">
+				{/* <aside className="space-y-4">
 					<div className="rounded-lg bg-white p-4 shadow-sm">
 						<h2 className="mb-3 font-semibold text-lg">Related Personas</h2>
 						{relatedPersonas.length > 0 ? (
@@ -398,7 +453,7 @@ export default function PersonaDetailRoute() {
 							<div className="text-gray-400 text-sm italic">No related personas found.</div>
 						)}
 					</div>
-				</aside>
+				</aside> */}
 			</div>
 		</div>
 	)

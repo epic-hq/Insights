@@ -26,6 +26,9 @@
 		"check:unused": "knip --max-issues 100 --no-exit-code",
 		"check:unused:fix": "knip --fix",
 		"typegen": "react-router typegen",
+		"db:types": "supabase gen types typescript --linked > supabase/types.ts",
+		"migrate": "supabase migrations up",
+		"postmigrate": "pnpm run db:types",
 		"baml-generate": "baml-cli generate"
 	},
 	"dependencies": {

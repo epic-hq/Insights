@@ -119,10 +119,10 @@ export default function InterviewsIndex() {
 						<thead>
 							<tr>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-									Participant
+									People
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-									Role
+									Persona
 								</th>
 								<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 									Insights
@@ -157,7 +157,9 @@ export default function InterviewsIndex() {
 											</div>
 										</Link>
 									</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.role}</td>
+									<td className="whitespace-nowrap px-4 py-3">
+										{interview.interview_people?.[0]?.people?.segment || "Participant"}
+									</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.insightCount}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.duration}</td>
 									<td className="whitespace-nowrap px-4 py-3">

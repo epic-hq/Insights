@@ -4,21 +4,16 @@ import { Palette, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
+
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
-type PersonRow = Database["public"]["Tables"]["people"]["Row"]
 
 interface EnhancedPersonaCardProps {
 	persona: PersonaRow & {
-		people?: Array<
-			PersonRow & {
-				segment?: string
-			}
-		>
+		people_personas?: Array<{ count: number }>
 	}
 	className?: string
 }
@@ -26,8 +21,8 @@ interface EnhancedPersonaCardProps {
 export default function EnhancedPersonaCard({ persona, className }: EnhancedPersonaCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
 
-	// Calculate people count
-	const peopleCount = persona.people?.length || 0
+	// Calculate people count from junction table
+	const peopleCount = persona.people_personas?.[0]?.count || 0
 
 	// Get persona details with fallbacks
 	const name = persona.name || "Untitled Persona"
@@ -117,35 +112,11 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 						{/* Description */}
 						<p className="mb-4 line-clamp-3 text-muted-foreground text-sm leading-relaxed">{description}</p>
 
-						{/* People section */}
-						{persona.people && persona.people.length > 0 && (
+						{/* People count display */}
+						{peopleCount > 0 && (
 							<div className="space-y-3">
 								<div className="flex items-center justify-between">
-									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">
-										People ({peopleCount})
-									</span>
-								</div>
-
-								<div className="flex flex-wrap gap-1">
-									{persona.people.slice(0, 3).map((person) => (
-										<Badge
-											key={person.id}
-											variant="secondary"
-											className="text-xs"
-											style={{
-												backgroundColor: `${themeColor}20`,
-												color: themeColor,
-												borderColor: `${themeColor}40`,
-											}}
-										>
-											{person.name}
-										</Badge>
-									))}
-									{peopleCount > 3 && (
-										<Badge variant="outline" className="text-xs">
-											+{peopleCount - 3} more
-										</Badge>
-									)}
+									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">People</span>
 								</div>
 							</div>
 						)}

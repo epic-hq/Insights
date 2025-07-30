@@ -102,36 +102,23 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 		// Handle persona assignment via junction table
 		if (personaId && personaId !== "none") {
-			// First, remove any existing persona assignments for this person
-			await supabase
-				.from("people_personas")
-				.delete()
-				.eq("person_id", personId)
-
-			// Then add the new persona assignment
-			await supabase
-				.from("people_personas")
-				.insert({
+			await supabase.from("people_personas").upsert(
+				{
 					person_id: personId,
 					persona_id: personaId,
-					confidence_score: 1.0,
-					source: "manual_assignment",
-					created_by: accountId,
-					updated_by: accountId,
-				})
+				},
+				{ onConflict: "person_id,persona_id" }
+			)
 		} else {
 			// Remove all persona assignments if "none" is selected
-			await supabase
-				.from("people_personas")
-				.delete()
-				.eq("person_id", personId)
+			await supabase.from("people_personas").delete().eq("person_id", personId)
 		}
 
 		return redirect(`/people/${data.id}`)
 	} catch (error) {
 		// Log error for debugging without using console
-		if (typeof window !== 'undefined') {
-			(window as any).debugError = error
+		if (typeof window !== "undefined") {
+			;(window as any).debugError = error
 		}
 		return { error: "Failed to update person" }
 	}

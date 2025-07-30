@@ -8,5 +8,11 @@ export const getPersonas = async ({
 	supabase: SupabaseClient<Database>
 	accountId: string
 }) => {
-	return await supabase.from("personas").select("*").eq("account_id", accountId)
+	return await supabase
+		.from("personas")
+		.select(`
+			*,
+			people_personas(count)
+		`)
+		.eq("account_id", accountId)
 }

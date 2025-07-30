@@ -13,6 +13,8 @@ The minimal declarative loop:
 → applies that migration to your local database and marks it as executed.
 4. `supabase db push --linked` (or `supabase db push` if you’ve already linked)
 → runs every unapplied migration on the remote project.
+5. `npx supabase gen types typescript  > supabase/types.ts`
+→ regenerates typescript types for the database.
 
 **NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
 
@@ -343,7 +345,7 @@ export async function loader({ request }: { request: Request }) {
  const personaFilter = url.searchParams.get("persona") || null
 
  // Build base query with account filtering for RLS
- type InsightRow = Database["public"]["Tables"]["insights"]["Row"]
+ type InsightRow =
  let query = supabase
   .from("insights")
   .select("*")

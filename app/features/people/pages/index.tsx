@@ -1,6 +1,6 @@
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -72,8 +72,9 @@ export default function PeopleIndexPage() {
 							<CardHeader>
 								<div className="flex items-center gap-3">
 									<Avatar className="h-12 w-12">
+										{person.image_url && <AvatarImage src={person.image_url} alt={person.name || 'Person'} />}
 										<AvatarFallback className="bg-primary text-primary-foreground">
-											{getInitials(person.name)}
+											{getInitials(person.name || 'Unknown')}
 										</AvatarFallback>
 									</Avatar>
 									<div className="flex-1">

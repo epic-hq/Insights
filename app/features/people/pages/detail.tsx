@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { getPersonById } from "~/features/people/db"
@@ -58,6 +59,10 @@ export default function PersonDetail() {
 					<div className="mt-2 flex flex-wrap items-center gap-2">
 						{person.segment && <Badge variant="secondary">{person.segment}</Badge>}
 					</div>
+					<Avatar className="h-16 w-16">
+						<AvatarImage src={person.image_url} />
+						<AvatarFallback>NA</AvatarFallback>
+					</Avatar>
 				</div>
 				<div className="flex gap-2">
 					<Button asChild variant="outline">
@@ -67,9 +72,10 @@ export default function PersonDetail() {
 			</div>
 
 			{/* Persona Section */}
+			<label className="font-medium text-gray-500 text-sm">Persona</label>
 			{persona && (
 				<div className="mb-8">
-					<h2 className="mb-4 font-semibold text-gray-900 text-lg">Persona</h2>
+					{/* <h2 className="mb-4 font-semibold text-gray-900 text-lg">Persona</h2> */}
 					<MiniPersonaCard persona={persona} className="max-w-md" />
 				</div>
 			)}
@@ -77,16 +83,16 @@ export default function PersonDetail() {
 			<div className="grid gap-8 lg:grid-cols-3">
 				<div className="lg:col-span-2">
 					<div className="rounded-lg border bg-white p-6">
-						<h2 className="mb-4 font-semibold text-xl">Details</h2>
+						{/* <h2 className="mb-4 font-semibold text-xl">Details</h2> */}
 
 						{/* Email field not available in current schema */}
 
-						{person.segment && (
+						{/* {person.segment && (
 							<div className="mb-4">
 								<label className="font-medium text-gray-500 text-sm">Segment</label>
 								<div className="mt-1 text-gray-900">{person.segment}</div>
 							</div>
-						)}
+						)} */}
 
 						{person.description && (
 							<div className="mb-4">
