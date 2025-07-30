@@ -23,8 +23,8 @@ import { getServerClient } from "~/lib/supabase/server"
 
 export const meta: MetaFunction = () => {
 	return [
-		{ title: "Auto-Insights | Insights Platform" },
-		{ name: "description", content: "AI-powered executive insights from your user research" },
+		{ title: "Auto-Takeaways | Insights Platform" },
+		{ name: "description", content: "AI-powered takeaways from your conversations and insights" },
 	]
 }
 
@@ -71,7 +71,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			insightsCount: insightsCount.count || 0,
 			interviewsCount: interviewsCount.count || 0,
 			message: hasMinimumData
-				? "Ready to generate auto-insights"
+				? "Ready to generate auto-takeaways"
 				: "Need at least 5 insights from 2+ interviews for meaningful analysis",
 		}
 	} catch (error) {
@@ -102,15 +102,15 @@ export default function AutoInsights() {
 	}
 
 	return (
-		<div className="container mx-auto space-y-6 py-6">
+		<div className="container mx-auto max-w-2xl space-y-6 py-6">
 			{/* Header */}
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="flex items-center gap-2 font-bold text-3xl">
 						<Brain className="h-8 w-8 text-blue-600" />
-						Auto-Insights
+						Auto-Takeaways
 					</h1>
-					<p className="mt-1 text-muted-foreground">AI-powered executive insights from your user research data</p>
+					<p className="mt-1 text-muted-foreground">Suggested next steps from your data and goals.</p>
 				</div>
 				<div className="flex items-center gap-2 text-muted-foreground text-sm">
 					<Badge variant="outline">{insightsCount} insights</Badge>
@@ -142,7 +142,7 @@ export default function AutoInsights() {
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
 							<Sparkles className="h-5 w-5 text-purple-600" />
-							Generate Auto-Insights
+							Generate Auto-Takeaways
 						</CardTitle>
 						<CardDescription>Provide context to generate more targeted insights and recommendations</CardDescription>
 					</CardHeader>
@@ -178,12 +178,12 @@ export default function AutoInsights() {
 								{isGenerating ? (
 									<>
 										<Brain className="mr-2 h-4 w-4 animate-spin" />
-										Generating Insights...
+										Generating Takeaways...
 									</>
 								) : (
 									<>
 										<Sparkles className="mr-2 h-4 w-4" />
-										Generate Auto-Insights
+										Generate Auto-Takeaways
 									</>
 								)}
 							</Button>

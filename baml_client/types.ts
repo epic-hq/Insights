@@ -150,6 +150,30 @@ export interface PersonaAnalysis {
   
 }
 
+export interface PersonaDemographics {
+  age_range?: string | null
+  gender_distribution?: Record<string, number> | null
+  locations?: string[] | null
+  education_levels?: string[] | null
+  occupations?: string[] | null
+  other_demographics?: string | null
+  
+}
+
+export interface PersonaInsightSummary {
+  name: string
+  details?: string | null
+  
+}
+
+export interface PersonaSummary {
+  personaName: string
+  personaDescription: string
+  demographics: PersonaDemographics
+  summarized_insights: PersonaInsightSummary[]
+  
+}
+
 export interface Set {
   name: string
   description: string

@@ -25,7 +25,12 @@ Simple questions:
 Template: I want to ___ so I can ____.
 While trying to do **GOAL/Desired_outcome**, people struggle with **pain** because **WHY: Details/context**.
 
-**Dashboard**: Quickly tell me top insights and persona coverage, next questions to ask, and product opportunities.
+**Dashboard Key Value**: Quickly tell users:
+
+- top pain points or insights (impact vs frequency) & themes
+- suggested next steps, questions
+- product/service opportunities.
+- dynamic persona descriptions
 
 **Code Context**: TBD
 

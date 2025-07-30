@@ -1,11 +1,13 @@
 class ExtractedInsight {
+	// While trying to do **GOAL/Desired_outcome**, people struggle with **pain** because **WHY: Details/context**.
+
 	name string @description("Short Text description of the insight in up to 5 words")
-	details string | null @description("Details or background that provide context around the causes of the user's pain, friction, and specifics about their behavior or desired outcomes. Multiple sentences or bullet points as needed.")
+	details string | null @description("They why or cause of the pain. Details and background leading to or causing the pain. Multiple sentences or bullet points as needed.")
 	pain string | null @description("Pain or friction the user experiences in doing a task")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
 	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
-	emotionalResponse string | null @description("The force or level of conviction of the interviewee’s feeling about this need. Low | Neutral | High")
-	underlyingMotivation string | null @description("Underlying motivation of insight")
+	emotionalResponse string | null @description("How strongly do they feel about this need. Low | Neutral | High")
+	underlyingMotivation string | null @description("why do they want to achieve this, or overcome the pain?")
 	category string @description("General category of insight") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
 	impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")

@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  PersonaAnalysis,  Set,  SetRecord } from "./types"
+import type {  ActionButton,  AutoInsightsResponse,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  PersonaAnalysis,  PersonaDemographics,  PersonaInsightSummary,  PersonaSummary,  Set,  SetRecord } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -120,6 +120,24 @@ export namespace partial_types {
       willingness_to_pay?: string | null
       recommended_solutions: string[]
       competitive_threats: string[]
+    }
+    export interface PersonaDemographics {
+      age_range?: string | null
+      gender_distribution?: Record<string, number> | null
+      locations?: string[] | null
+      education_levels?: string[] | null
+      occupations?: string[] | null
+      other_demographics?: string | null
+    }
+    export interface PersonaInsightSummary {
+      name?: string | null
+      details?: string | null
+    }
+    export interface PersonaSummary {
+      personaName?: string | null
+      personaDescription?: string | null
+      demographics?: PersonaDemographics | null
+      summarized_insights: PersonaInsightSummary[]
     }
     export interface Set {
       name?: string | null

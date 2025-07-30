@@ -46,9 +46,9 @@ export default function Insights() {
 	return (
 		<div className="w-full px-[5%]">
 			<div className="mb-6 flex items-center justify-between">
-				<div className="flex w-full items-center justify-between">
+				<div>
 					{view === "card" && (
-						<div className="ml-auto flex items-center gap-2">
+						<div className="flex gap-2">
 							<span className="text-gray-500 text-sm dark:text-gray-400">Sort by:</span>
 							<select
 								value={filters.sort || "default"}
@@ -62,48 +62,48 @@ export default function Insights() {
 							</select>
 						</div>
 					)}
-
-					<div className="flex items-center gap-1 rounded-md bg-gray-100 p-1 dark:bg-gray-800">
-						<Button
-							variant={view === "card" ? "default" : "ghost"}
-							size="sm"
-							onClick={() => setView("card")}
-							className="h-8 w-8 p-0"
-							title="Card view"
-						>
-							<LayoutGrid className="h-4 w-4" />
-						</Button>
-						<Button
-							variant={view === "table" ? "default" : "ghost"}
-							size="sm"
-							onClick={() => setView("table")}
-							className="h-8 w-8 p-0"
-							title="Table view"
-						>
-							<Rows className="h-4 w-4" />
-						</Button>
-					</div>
+				</div>
+				<div className="flex items-center gap-4 rounded-md bg-gray-100 p-1 dark:bg-gray-800">
+					<Button
+						variant={view === "card" ? "default" : "ghost"}
+						size="sm"
+						onClick={() => setView("card")}
+						className="p-2"
+						title="Card view"
+					>
+						<LayoutGrid className="h-4 w-4" /> Table
+					</Button>
+					<Button
+						variant={view === "table" ? "default" : "ghost"}
+						size="sm"
+						onClick={() => setView("table")}
+						className="p-2"
+						title="Table view"
+					>
+						<Rows className="h-4 w-4" /> Cards
+					</Button>
 				</div>
 			</div>
+			{insights.length > 0 ? (
+				view === "card" ? (
+					<InsightCardGrid insights={insights} />
+				) : (
+					<InsightsDataTable data={insights} />
+				)
+			) : (
+				<div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">
+					<p className="text-gray-600 text-lg dark:text-gray-400">No insights match your current filters</p>
+					<button type="button" onClick={clearFilters} className="mt-4 text-blue-600 hover:text-blue-800">
+						Clear all filters
+					</button>
+				</div>
+			)}
 
+			{/*  */}
 			<div className="mb-6">
 				<Button className="m-6 p-6">
 					<Link to="/insights/map">Insights Clustering (experimental)</Link>
 				</Button>
-				{insights.length > 0 ? (
-					view === "card" ? (
-						<InsightCardGrid insights={insights} />
-					) : (
-						<InsightsDataTable data={insights} />
-					)
-				) : (
-					<div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">
-						<p className="text-gray-600 text-lg dark:text-gray-400">No insights match your current filters</p>
-						<button type="button" onClick={clearFilters} className="mt-4 text-blue-600 hover:text-blue-800">
-							Clear all filters
-						</button>
-					</div>
-				)}
 			</div>
 		</div>
 	)

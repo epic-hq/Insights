@@ -43,6 +43,12 @@ export default class TypeBuilder {
     
     PersonaAnalysis: ClassViewer<'PersonaAnalysis', "persona_name" | "key_pain_points" | "unmet_needs" | "revenue_potential" | "willingness_to_pay" | "recommended_solutions" | "competitive_threats">;
     
+    PersonaDemographics: ClassViewer<'PersonaDemographics', "age_range" | "gender_distribution" | "locations" | "education_levels" | "occupations" | "other_demographics">;
+    
+    PersonaInsightSummary: ClassViewer<'PersonaInsightSummary', "name" | "details">;
+    
+    PersonaSummary: ClassViewer<'PersonaSummary', "personaName" | "personaDescription" | "demographics" | "summarized_insights">;
+    
     Set: ClassViewer<'Set', "name" | "description" | "members">;
     
     SetRecord: ClassViewer<'SetRecord', "term" | "definition">;
@@ -52,7 +58,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AutoInsightsResponse","ExecutiveInsight","ExtractedInsight","InterviewExtraction","InterviewMetadata","Interviewee","OpportunityRecommendation","PersonaAnalysis","Set","SetRecord",
+            "ActionButton","AutoInsightsResponse","ExecutiveInsight","ExtractedInsight","InterviewExtraction","InterviewMetadata","Interviewee","OpportunityRecommendation","PersonaAnalysis","PersonaDemographics","PersonaInsightSummary","PersonaSummary","Set","SetRecord",
           ]),
           enums: new Set([
             
@@ -94,6 +100,18 @@ export default class TypeBuilder {
         
         this.PersonaAnalysis = this.tb.classViewer("PersonaAnalysis", [
           "persona_name","key_pain_points","unmet_needs","revenue_potential","willingness_to_pay","recommended_solutions","competitive_threats",
+        ]);
+        
+        this.PersonaDemographics = this.tb.classViewer("PersonaDemographics", [
+          "age_range","gender_distribution","locations","education_levels","occupations","other_demographics",
+        ]);
+        
+        this.PersonaInsightSummary = this.tb.classViewer("PersonaInsightSummary", [
+          "name","details",
+        ]);
+        
+        this.PersonaSummary = this.tb.classViewer("PersonaSummary", [
+          "personaName","personaDescription","demographics","summarized_insights",
         ]);
         
         this.Set = this.tb.classViewer("Set", [

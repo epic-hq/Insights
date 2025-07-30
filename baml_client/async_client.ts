@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, PersonaAnalysis, Set, SetRecord} from "./types"
+import type {ActionButton, AutoInsightsResponse, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, PersonaAnalysis, PersonaDemographics, PersonaInsightSummary, PersonaSummary, Set, SetRecord} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -143,6 +143,34 @@ export class BamlAsyncClient {
     }
   }
   
+  async ExtractPersona(
+      people: string,insights: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.PersonaSummary> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "ExtractPersona",
+        {
+          "people": people,"insights": insights
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.PersonaSummary
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   async GenerateAutoInsights(
       research_data: string,competitive_context: string,business_goals: string,
       __baml_options__?: BamlCallOptions
@@ -246,6 +274,40 @@ class BamlStreamClient {
         raw,
         (a): partial_types.InterviewExtraction => a,
         (a): types.InterviewExtraction => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractPersona(
+      people: string,insights: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.PersonaSummary, types.PersonaSummary> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "ExtractPersona",
+        {
+          "people": people,"insights": insights
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.PersonaSummary, types.PersonaSummary>(
+        raw,
+        (a): partial_types.PersonaSummary => a,
+        (a): types.PersonaSummary => a,
         this.ctxManager.cloneContext(),
       )
     } catch (error) {
