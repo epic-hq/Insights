@@ -5,7 +5,7 @@ import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 
-import { Card, CardContent, CardHeader } from "~/components/ui/card"
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 
@@ -68,7 +68,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 				<Card className="border-0 bg-transparent shadow-none">
 					<CardHeader className="pb-3">
 						{/* Header with avatar and people count */}
-						<div className="flex items-start justify-between">
+						<div className="flex items-start">
 							<motion.div className="relative" whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
 								<Avatar className="h-16 w-16 border-2" style={{ borderColor: themeColor }}>
 									<AvatarFallback className="font-medium text-lg text-white" style={{ backgroundColor: themeColor }}>
@@ -89,6 +89,33 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 								</motion.div>
 							</motion.div>
 
+							{/* Title */}
+							<div>
+								<motion.h3
+									className="mb-3 ml-4 font-bold text-foreground text-xl leading-tight"
+									style={{ color: isHovered ? themeColor : undefined }}
+									transition={{ duration: 0.3 }}
+								>
+									{name}
+								</motion.h3>
+							</div>
+						</div>
+					</CardHeader>
+
+					<CardContent className="pt-0">
+						{/* Description */}
+						<p className="mb-4 line-clamp-3 text-muted-foreground text-sm leading-relaxed">{description}</p>
+
+						{/* People count display
+						{peopleCount > 0 && (
+							<div className="space-y-3">
+								<div className="flex items-center justify-between">
+									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">People</span>
+								</div>
+							</div>
+						)} */}
+						{/* People Count */}
+						<div className="flex items-center gap-1">
 							<motion.div
 								className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 font-medium text-muted-foreground text-xs"
 								whileHover={{ scale: 1.05 }}
@@ -98,33 +125,12 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 							</motion.div>
 						</div>
 
-						{/* Title */}
-						<motion.h3
-							className="mb-3 font-bold text-foreground text-xl leading-tight"
-							style={{ color: isHovered ? themeColor : undefined }}
-							transition={{ duration: 0.3 }}
-						>
-							{name}
-						</motion.h3>
-					</CardHeader>
-
-					<CardContent className="pt-0">
-						{/* Description */}
-						<p className="mb-4 line-clamp-3 text-muted-foreground text-sm leading-relaxed">{description}</p>
-
-						{/* People count display */}
-						{peopleCount > 0 && (
-							<div className="space-y-3">
-								<div className="flex items-center justify-between">
-									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">People</span>
-								</div>
+						<CardFooter>
+							{/* Metadata */}
+							<div className="flex flex-col items-end text-muted-foreground text-xs">
+								<span>Updated {formatDistance(new Date(persona.updated_at), new Date(), { addSuffix: true })}</span>
 							</div>
-						)}
-
-						{/* Metadata */}
-						<div className="mt-4 flex items-end text-muted-foreground text-xs">
-							<span>Updated {formatDistance(new Date(persona.updated_at), new Date(), { addSuffix: true })}</span>
-						</div>
+						</CardFooter>
 					</CardContent>
 				</Card>
 
