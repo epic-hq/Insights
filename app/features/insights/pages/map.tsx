@@ -10,7 +10,7 @@
 import consola from "consola"
 import { type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
 import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient, getSession } from "~/lib/supabase/server"
 
 /* -------------------------------------------------------------------------- */
 
@@ -27,7 +27,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	/* 1️⃣  get Supabase rows -------------------------------------------------- */
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()
+	// consola.info("JWT object from getClaims:", jwt)
 	const accountId = jwt?.claims.sub
+
+	// Get the user's session and access token
+	const session = await getSession(request)
+	const accessToken = session?.access_token
 
 	if (!accountId) {
 		throw new Response("Unauthorized", { status: 401 })
@@ -77,20 +82,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	/* 3️⃣  call edge function ------------------------------------------------ */
 	const SUPABASE_URL = process.env.SUPABASE_URL
 	const SUPABASE_FUNCTIONS_URL = process.env.SUPABASE_FUNCTIONS_URL || `${SUPABASE_URL}/functions/v1/`
-	const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
-
-	if (!SERVICE_ROLE_KEY) {
-		throw new Response("Missing service role key", { status: 500 })
+	if (!accessToken) {
+		throw new Response("Missing user access token", { status: 401 })
 	}
 
 	try {
-		const response = await fetch(`${SUPABASE_FUNCTIONS_URL}cluster_insights`, {
+		consola.info("SUPABASE_FUNCTIONS_URL:", SUPABASE_FUNCTIONS_URL)
+		consola.info("Fetch URL:", `${SUPABASE_FUNCTIONS_URL}/cluster_insights`)
+		const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/cluster_insights`, {
 			method: "POST",
 			headers: {
 				"Content-Type": "application/json",
-				Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
+				Authorization: `Bearer ${accessToken}`,
 			},
-			body: JSON.stringify({ insights: insightRows }),
+			body: JSON.stringify({ items: insightRows }),
 		})
 
 		if (!response.ok) {

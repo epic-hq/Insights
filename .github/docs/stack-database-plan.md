@@ -220,41 +220,7 @@ We are using programmatic route files, rolled up into app/routes.ts to support f
 [1]: https://reactrouter.com/how-to/file-route-conventions "File Route Conventions  | React Router"
 [2]: https://github.com/remix-run/remix/discussions/8473 "Nested folders and nested / non-nested routes · remix-run remix · Discussion #8473 · GitHub"
 
-## 6. Process Interview Media & Extract Insights
-
-### 6.1 Ingestion & Storage
-
-| Phase | Storage | Key Steps |
-|-------|---------|-----------|
-| **1 – MVP** | Google Drive links | 1. User pastes a Drive URL.<br>2. Convert the link to a direct-download URL (per AssemblyAI guide). ** Note we had issues, Google did not return clean download links, instead had virus scan html etc. files too large. So we are doing local file upload. Temp storage on AAI who then deletes it. for now. TODO: upgrade to store in r2. |
-| **2 – Prod** | Supabase R2 (S3-compatible) | 1. Client requests a presigned upload URL via Edge Function (JWT-authenticated).<br>2. Client uploads media directly to R2.<br>3. Edge Function inserts a `media_files` row with metadata.<br>4. Client requests short-lived signed download URLs the same way. |
-
-### 6.2 Transcription
-
-1. Submit media URL to AssemblyAI.
-2. Poll for completion.
-3. Store full transcript in `interview.transcript`.
-
-### 6.3 Insight Generation
-
-1. Push a job to **pgmq** queue `transcribe` once the transcript is saved.
-2. Worker (or Remix action for MVP) pulls transcript text.
-3. Run **o3** + **BAML** to produce structured JSON: insights, quotes, themes, personas, opportunities.
-4. Insert rows via `@supabase/supabase-js` with full type safety.
-
-### 6.4 Embeddings & Clustering
-
-1. Generate OpenAI embedding for each `insights.jtbd`.
-2. Store vector in `insights.embedding`.
-3. Display insights clusters in Recharts Cartesian plot.
-4. Reduce dimensions to 2D. Use UMAP and DBSCAN to cluster insights by JTBD and Category. (t-SNE alternative)
-
-* Scatter-plot in the UI → fetch `SELECT id, name, embedding FROM themes` and apply PCA/UMAP in client.
-
-### 6.5 User Notification
-
-1. On success, notify with insight count and link to interview.
-2. On failure, notify with error message.
+## 6 in sep file. `feature-spec-ingest.md`
 
 ## 7. Pipeline Orchestration
 

@@ -19,7 +19,17 @@ import "jsr:@supabase/functions-js/edge-runtime.d.ts"
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2"
 
 Deno.serve(async (req) => {
-	try {
+	// Debug: Log Authorization header specifically
+	const authHeader = req.headers.get("authorization")
+
+	if (authHeader?.startsWith("Bearer ")) {
+		try {
+			const jwt = authHeader.split(" ")[1]
+			const payload = jwt.split(".")[1]
+			const decoded = JSON.parse(atob(payload))
+			console.log("Decoded JWT Payload:", decod
+			console.log("Failed to decode JWT:", e)
+		}
 		const { id, name, pain } = await req.json()
 		if (!id || !name || !pain) {
 			return new Response("Missing `id`, `name` or `pain`", { status: 400 })
@@ -56,12 +66,12 @@ Deno.serve(async (req) => {
 		return new Response(JSON.stringify({ success: true }), {
 			headers: { "Content-Type": "application/json" },
 		})
-	} catch (err) {
-		return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
-			status: 500,
-			headers: { "Content-Type": "application/json" },
-		})
 	}
+	catch (err)
+	return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
+		status: 500,
+		headers: { "Content-Type": "application/json" },
+	})
 })
 
 /* To invoke locally:

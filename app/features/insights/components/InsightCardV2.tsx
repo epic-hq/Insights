@@ -24,7 +24,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Input } from "~/components/ui/input"
 import { Separator } from "~/components/ui/separator"
-import type { Insight } from "~/types"
+import type { Insight, InsightView } from "~/types"
 
 export interface Comment {
 	id: string
@@ -236,9 +236,9 @@ export default function InsightCardV2({
 	// TODO get away from defining local views unless necessary
 	const [localInsight, setLocalInsight] = useState<InsightView>({
 		...insight,
-		// comments: insight.comments || [],
-		// upvotes: insight.upvotes || 0,
-		// downvotes: insight.downvotes || 0,
+		comments: insight.comments || [],
+		upvotes: insight.upvotes || 0,
+		downvotes: insight.downvotes || 0,
 		// opportunityIdeas: insight.opportunityIdeas || [],
 		// interviews: insight.interviews || [],
 		// personas: insight.personas || [],

@@ -13,6 +13,7 @@
 //   https://<project>.functions.supabase.co/cluster_insights
 
 import "jsr:@supabase/functions-js/edge-runtime.d.ts"
+import { getUser } from "jsr:@supabase/functions-js"
 import { HDBSCAN } from "npm:hdbscan-ts@1.0.16"
 import { UMAP } from "npm:umap-js@1.4.0"
 
@@ -36,6 +37,12 @@ const json = (body: unknown, status = 200) =>
 // -------------------------------------------------------------
 Deno.serve(async (req) => {
 	try {
+		// Authenticate user via JWT in Authorization header
+		const { user, error: userError } = await getUser(req)
+		if (userError || !user) {
+			return json({ error: "Unauthorized: invalid or missing JWT" }, 401)
+		}
+
 		if (req.method !== "POST") {
 			return json({ error: "POST only" }, 405)
 		}
