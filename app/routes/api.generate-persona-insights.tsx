@@ -42,12 +42,49 @@ export async function action({ request }: ActionFunctionArgs) {
 			throw new Response("Failed to fetch insights", { status: 500 })
 		}
 
+		// 3. Aggregate interviews for this persona using junction tables
+		const peopleIds = (people ?? []).map((p: any) => p.person_id).filter(Boolean)
+		let interviewsRecords: any[] = []
+		if (peopleIds.length > 0) {
+			const { data: interviewPeopleData, error: interviewPeopleError } = await supabase
+				.from("interview_people")
+				.select("interview_id")
+				.in("person_id", peopleIds)
+
+			if (interviewPeopleError) {
+				consola.error("[Persona Insights API] Error fetching interview_people:", interviewPeopleError)
+				throw new Response("Failed to fetch interviews", { status: 500 })
+			}
+
+			const interviewIds = interviewPeopleData?.map((ip: any) => ip.interview_id).filter(Boolean) || []
+			if (interviewIds.length > 0) {
+				const { data: interviewsData, error: interviewsError } = await supabase
+					.from("interviews")
+					.select("*")
+					.in("id", interviewIds)
+
+				if (interviewsError) {
+					consola.error("[Persona Insights API] Error fetching interviews:", interviewsError)
+					throw new Response("Failed to fetch interviews", { status: 500 })
+				}
+				interviewsRecords = interviewsData || []
+			}
+		}
+
 		// 3. Prepare data for baml
 		const peopleRecords = (people ?? []).map((p: any) => p.people).filter(Boolean)
 		const insightsRecords = (personaInsights ?? []).map((i: any) => i.insights).filter(Boolean)
 
+		consola.log("[Persona Insights API] People Records:", peopleRecords)
+		consola.log("[Persona Insights API] Insights Records:", insightsRecords)
+		consola.log("[Persona Insights API] Interviews Records:", interviewsRecords)
+
 		// 4. Call baml ExtractPersona
-		const bamlResult = await b.ExtractPersona(JSON.stringify(peopleRecords), JSON.stringify(insightsRecords))
+		const bamlResult = await b.ExtractPersona(
+			JSON.stringify(peopleRecords),
+			JSON.stringify(insightsRecords),
+			JSON.stringify(interviewsRecords)
+		)
 
 		consola.log("[Persona Insights API] BAML Result:", bamlResult)
 
@@ -55,9 +92,34 @@ export async function action({ request }: ActionFunctionArgs) {
 		const { error: updateError } = await supabase
 			.from("personas")
 			.update({
+				name: bamlResult.name,
 				description: bamlResult.description,
-				demographics: bamlResult.demographics,
-				summarized_insights: bamlResult.summarized_insights,
+				age: bamlResult.age,
+				gender: bamlResult.gender,
+				location: bamlResult.location,
+				education: bamlResult.education,
+				occupation: bamlResult.occupation,
+				income: bamlResult.income,
+				languages: bamlResult.languages,
+				segment: bamlResult.segment,
+				role: bamlResult.role,
+				color_hex: bamlResult.color_hex,
+				image_url: bamlResult.image_url,
+				motivations: bamlResult.motivations,
+				values: bamlResult.values,
+				frustrations: bamlResult.frustrations,
+				preferences: bamlResult.preferences,
+				learning_style: bamlResult.learning_style,
+				tech_comfort_level: bamlResult.tech_comfort_level,
+				frequency_of_purchase: bamlResult.frequency_of_purchase,
+				frequency_of_use: bamlResult.frequency_of_use,
+				key_tasks: bamlResult.key_tasks,
+				tools_used: bamlResult.tools_used,
+				primary_goal: bamlResult.primary_goal,
+				secondary_goals: bamlResult.secondary_goals,
+				sources: bamlResult.sources,
+				quotes: bamlResult.quotes,
+				percentage: bamlResult.percentage,
 				updated_at: new Date().toISOString(),
 			})
 			.eq("id", personaId)

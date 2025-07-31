@@ -13,10 +13,41 @@ The minimal declarative loop:
 → applies that migration to your local database and marks it as executed.
 4. `supabase db push --linked` (or `supabase db push` if you’ve already linked)
 → runs every unapplied migration on the remote project.
-5. `npx supabase gen types typescript  > supabase/types.ts`
+5. `supabase gen types --project-id rbginqvgkonnoktrttqv typescript  > supabase/types.ts`
 → regenerates typescript types for the database.
 
 **NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
+
+6. Wire the types in code
+
+```ts
+import { Database } from "~/supabase/types"   // barrel-export in /app/types.ts
+type DB = Database["public"]
+const supabase = createClient<Database>(...credentials)
+```
+
+7. Use the helper pattern per feature
+app/features/<entity>/db.ts should use imported types and functions from supabase/types.ts
+like People, PeopleInsert, PeopleUpdate
+
+- wrap common queries (selectById, upsertMany, etc.) so components import functions, not SQL.
+- Surface only the columns you need; leverage column pick lists for safer updates.
+
+8. Query checklist before committing code
+
+- 🔍 Scan migration or table for required columns / defaults.
+- 🧩 Import the correct Row | Insert | Update type.
+- 🏷️ Match payload shape to that type (TS will scream if a field is missing/extra).
+- 🔒 Remember RLS—add account_id only if the table actually has that column.
+- 🧪 Run pnpm typecheck (or tsc --noEmit) to catch mistakes early.
+
+9. Reference docs quickly
+`.github/docs/supabase-howto.md`
+ – declarative schema & CLI loop.
+`docs/db-query-examples.md` (TODO) – copy-paste snippets per pattern (simple CRUD, junction-table upsert, filtered joins).
+
+VS Code tip
+Add this path to tsconfig.json typeRoots so IntelliSense auto-completes column names.
 
 ## Reapairing 7/28
 

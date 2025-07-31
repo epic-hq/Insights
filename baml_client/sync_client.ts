@@ -22,7 +22,7 @@ import type { BamlRuntime, FunctionResult, BamlCtxManager, Image, Audio, Pdf, Vi
 import { toBamlError, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, PersonaAnalysis, PersonaDemographics, PersonaInsightSummary, PersonaSummary, Set, SetRecord} from "./types"
+import type {ActionButton, AutoInsightsResponse, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, Persona, PersonaAnalysis, Set, SetRecord} from "./types"
 import type TypeBuilder from "./type_builder"
 import { HttpRequest, HttpStreamRequest } from "./sync_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -146,9 +146,9 @@ export class BamlSyncClient {
   }
   
   ExtractPersona(
-      people: string,insights: string,
+      people: string,insights: string,interviews: string,
       __baml_options__?: BamlCallOptions
-  ): types.PersonaSummary {
+  ): types.Persona {
     try {
       const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
       const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
@@ -159,7 +159,7 @@ export class BamlSyncClient {
       const raw = this.runtime.callFunctionSync(
         "ExtractPersona",
         {
-          "people": people,"insights": insights
+          "people": people,"insights": insights,"interviews": interviews
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),
@@ -167,7 +167,7 @@ export class BamlSyncClient {
         collector,
         env,
       )
-      return raw.parsed(false) as types.PersonaSummary
+      return raw.parsed(false) as types.Persona
     } catch (error: any) {
       throw toBamlError(error);
     }

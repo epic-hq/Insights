@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  PersonaAnalysis,  PersonaDemographics,  PersonaInsightSummary,  PersonaSummary,  Set,  SetRecord } from "./types"
+import type {  ActionButton,  AutoInsightsResponse,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  Persona,  PersonaAnalysis,  Set,  SetRecord } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -112,6 +112,36 @@ export namespace partial_types {
       competitive_advantage?: string | null
       recommended_actions: ActionButton[]
     }
+    export interface Persona {
+      name?: string | null
+      description?: string | null
+      age?: string | null
+      gender?: string | null
+      location?: string | null
+      education?: string | null
+      occupation?: string | null
+      income?: string | null
+      languages?: string | null
+      segment?: string | null
+      role?: string | null
+      color_hex?: string | null
+      image_url?: string | null
+      motivations?: string[] | null
+      values?: string[] | null
+      frustrations?: string[] | null
+      preferences?: string | null
+      learning_style?: string | null
+      tech_comfort_level?: string | null
+      frequency_of_purchase?: string | null
+      frequency_of_use?: string | null
+      key_tasks?: string[] | null
+      tools_used?: string[] | null
+      primary_goal?: string | null
+      secondary_goals?: string[] | null
+      sources?: string[] | null
+      quotes?: string[] | null
+      percentage?: number | null
+    }
     export interface PersonaAnalysis {
       persona_name?: string | null
       key_pain_points: string[]
@@ -120,24 +150,6 @@ export namespace partial_types {
       willingness_to_pay?: string | null
       recommended_solutions: string[]
       competitive_threats: string[]
-    }
-    export interface PersonaDemographics {
-      age_range?: string | null
-      gender_distribution?: Record<string, number> | null
-      locations?: string[] | null
-      education_levels?: string[] | null
-      occupations?: string[] | null
-      other_demographics?: string | null
-    }
-    export interface PersonaInsightSummary {
-      name?: string | null
-      details?: string | null
-    }
-    export interface PersonaSummary {
-      personaName?: string | null
-      personaDescription?: string | null
-      demographics?: PersonaDemographics | null
-      summarized_insights: PersonaInsightSummary[]
     }
     export interface Set {
       name?: string | null

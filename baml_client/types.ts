@@ -139,6 +139,38 @@ export interface OpportunityRecommendation {
   
 }
 
+export interface Persona {
+  name: string
+  description?: string | null
+  age?: string | null
+  gender?: string | null
+  location?: string | null
+  education?: string | null
+  occupation?: string | null
+  income?: string | null
+  languages?: string | null
+  segment?: string | null
+  role?: string | null
+  color_hex?: string | null
+  image_url?: string | null
+  motivations?: string[] | null
+  values?: string[] | null
+  frustrations?: string[] | null
+  preferences?: string | null
+  learning_style?: string | null
+  tech_comfort_level?: string | null
+  frequency_of_purchase?: string | null
+  frequency_of_use?: string | null
+  key_tasks?: string[] | null
+  tools_used?: string[] | null
+  primary_goal?: string | null
+  secondary_goals?: string[] | null
+  sources?: string[] | null
+  quotes?: string[] | null
+  percentage?: number | null
+  
+}
+
 export interface PersonaAnalysis {
   persona_name: string
   key_pain_points: string[]
@@ -147,30 +179,6 @@ export interface PersonaAnalysis {
   willingness_to_pay: string
   recommended_solutions: string[]
   competitive_threats: string[]
-  
-}
-
-export interface PersonaDemographics {
-  age_range?: string | null
-  gender_distribution?: Record<string, number> | null
-  locations?: string[] | null
-  education_levels?: string[] | null
-  occupations?: string[] | null
-  other_demographics?: string | null
-  
-}
-
-export interface PersonaInsightSummary {
-  name: string
-  details?: string | null
-  
-}
-
-export interface PersonaSummary {
-  personaName: string
-  personaDescription: string
-  demographics: PersonaDemographics
-  summarized_insights: PersonaInsightSummary[]
   
 }
 

@@ -9,7 +9,7 @@ import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import InsightCardGrid from "~/features/insights/components/InsightCardGrid"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
 import { userContext } from "~/server/user-context"
-import type { Database, Insight, Interview, Interview } from "~/types"
+import type { Database, Insight, Interview } from "~/types"
 
 export const meta: MetaFunction = ({ params }) => {
 	return [
@@ -109,20 +109,30 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	}
 	// Fetch interviews where people with this persona participated
-	const { data: interviewsData, error: interviewsError } = await supabase
+	// Fetch interview_people rows for these people
+	const { data: interviewPeopleData, error: interviewPeopleError } = await supabase
 		.from("interview_people")
-		.select(`
-			interviews (
-				*
-			)
-		`)
+		.select("interview_id")
 		.in("person_id", peopleIds)
 
-	if (interviewsError) {
-		consola.error("Error fetching interviews:", interviewsError)
+	if (interviewPeopleError) {
+		consola.error("Error fetching interview_people:", interviewPeopleError)
 	}
 
-	const interviews: Interview[] = interviewsData?.map((ip: any) => ip.interviews).filter(Boolean) || []
+	const interviewIds = interviewPeopleData?.map((ip: any) => ip.interview_id).filter(Boolean) || []
+
+	let interviews: Interview[] = []
+	if (interviewIds.length > 0) {
+		const { data: interviewsData, error: interviewsError } = await supabase
+			.from("interviews")
+			.select("*")
+			.in("id", interviewIds)
+
+		if (interviewsError) {
+			consola.error("Error fetching interviews:", interviewsError)
+		}
+		interviews = interviewsData || []
+	}
 
 	// Fetch insights related to this persona via junction table
 	const { data: insightsData, error: insightsError } = await supabase
@@ -364,6 +374,98 @@ export default function PersonaDetailRoute() {
 					</CardContent>
 				</Card>
 			</motion.div>
+
+			{/* Persona Details Card */}
+			<Card className="mb-8">
+				<CardHeader>
+					<h2 className="font-semibold text-xl">Details</h2>
+				</CardHeader>
+				<CardContent>
+					<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
+						{[
+							{ label: "Age", value: persona.age },
+							{ label: "Gender", value: persona.gender },
+							{ label: "Location", value: persona.location },
+							{ label: "Education", value: persona.education },
+							{ label: "Occupation", value: persona.occupation },
+							{ label: "Income", value: persona.income },
+							{ label: "Languages", value: persona.languages },
+							{ label: "Segment", value: persona.segment },
+							{ label: "Role", value: persona.role },
+							{
+								label: "Motivations",
+								value:
+									Array.isArray(persona.motivations) && persona.motivations.length > 0
+										? persona.motivations.join(", ")
+										: null,
+							},
+							{
+								label: "Values",
+								value: Array.isArray(persona.values) && persona.values.length > 0 ? persona.values.join(", ") : null,
+							},
+							{
+								label: "Frustrations",
+								value:
+									Array.isArray(persona.frustrations) && persona.frustrations.length > 0
+										? persona.frustrations.join(", ")
+										: null,
+							},
+							{ label: "Preferences", value: persona.preferences },
+							{ label: "Learning Style", value: persona.learning_style },
+							{ label: "Tech Comfort Level", value: persona.tech_comfort_level },
+							{ label: "Frequency of Purchase", value: persona.frequency_of_purchase },
+							{ label: "Frequency of Use", value: persona.frequency_of_use },
+							{
+								label: "Key Tasks",
+								value:
+									Array.isArray(persona.key_tasks) && persona.key_tasks.length > 0
+										? persona.key_tasks.join(", ")
+										: null,
+							},
+							{
+								label: "Tools Used",
+								value:
+									Array.isArray(persona.tools_used) && persona.tools_used.length > 0
+										? persona.tools_used.join(", ")
+										: null,
+							},
+							{ label: "Primary Goal", value: persona.primary_goal },
+							{
+								label: "Secondary Goals",
+								value:
+									Array.isArray(persona.secondary_goals) && persona.secondary_goals.length > 0
+										? persona.secondary_goals.join(", ")
+										: null,
+							},
+							{
+								label: "Sources",
+								value: Array.isArray(persona.sources) && persona.sources.length > 0 ? persona.sources.join(", ") : null,
+							},
+							{
+								label: "Quotes",
+								value:
+									Array.isArray(persona.quotes) && persona.quotes.length > 0
+										? persona.quotes.map((q) => `“${q}”`).join(" ")
+										: null,
+							},
+							{
+								label: "Percentage",
+								value:
+									typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
+										? `${persona.percentage}%`
+										: null,
+							},
+						]
+							.filter((item) => item.value && String(item.value).trim() !== "")
+							.map((item, _idx) => (
+								<div key={item.label} className="flex">
+									<span className="w-40 font-medium text-foreground">{item.label}:</span>
+									<span className="text-muted-foreground">{item.value}</span>
+								</div>
+							))}
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Persona Insights Section */}
 			{(persona.demographics || persona.summarized_insights) && (

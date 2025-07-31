@@ -89,15 +89,27 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 								</motion.div>
 							</motion.div>
 
-							{/* Title */}
-							<div>
-								<motion.h3
-									className="mb-3 ml-4 font-bold text-foreground text-xl leading-tight"
-									style={{ color: isHovered ? themeColor : undefined }}
-									transition={{ duration: 0.3 }}
-								>
-									{name}
-								</motion.h3>
+							<div className="flex w-full items-start justify-between">
+								{/* Title */}
+								<div>
+									<motion.h3
+										className="mb-3 ml-4 font-bold text-foreground text-xl leading-tight"
+										style={{ color: isHovered ? themeColor : undefined }}
+										transition={{ duration: 0.3 }}
+									>
+										{name}
+									</motion.h3>
+								</div>
+								{/* People Count */}
+								<div className="flex items-center gap-1">
+									<motion.div
+										className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 font-medium text-muted-foreground text-xs"
+										whileHover={{ scale: 1.05 }}
+									>
+										<Users className="h-3 w-3" />
+										{peopleCount}
+									</motion.div>
+								</div>
 							</div>
 						</div>
 					</CardHeader>
@@ -114,20 +126,10 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 								</div>
 							</div>
 						)} */}
-						{/* People Count */}
-						<div className="flex items-center gap-1">
-							<motion.div
-								className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 font-medium text-muted-foreground text-xs"
-								whileHover={{ scale: 1.05 }}
-							>
-								<Users className="h-3 w-3" />
-								{peopleCount}
-							</motion.div>
-						</div>
 
 						<CardFooter>
 							{/* Metadata */}
-							<div className="flex flex-col items-end text-muted-foreground text-xs">
+							<div className="flex w-full justify-end text-muted-foreground/50 text-xs">
 								<span>Updated {formatDistance(new Date(persona.updated_at), new Date(), { addSuffix: true })}</span>
 							</div>
 						</CardFooter>

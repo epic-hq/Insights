@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, ClientRegistry, Image, Audio, Pdf, Vi
 import { toBamlError, HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, PersonaAnalysis, PersonaDemographics, PersonaInsightSummary, PersonaSummary, Set, SetRecord} from "./types"
+import type {ActionButton, AutoInsightsResponse, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, Persona, PersonaAnalysis, Set, SetRecord} from "./types"
 import type TypeBuilder from "./type_builder"
 
 type BamlCallOptions = {
@@ -86,7 +86,7 @@ export class HttpRequest {
   }
   
   ExtractPersona(
-      people: string,insights: string,
+      people: string,insights: string,interviews: string,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -97,7 +97,7 @@ export class HttpRequest {
       return this.runtime.buildRequestSync(
         "ExtractPersona",
         {
-          "people": people,"insights": insights
+          "people": people,"insights": insights,"interviews": interviews
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -192,7 +192,7 @@ export class HttpStreamRequest {
   }
   
   ExtractPersona(
-      people: string,insights: string,
+      people: string,insights: string,interviews: string,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -203,7 +203,7 @@ export class HttpStreamRequest {
       return this.runtime.buildRequestSync(
         "ExtractPersona",
         {
-          "people": people,"insights": insights
+          "people": people,"insights": insights,"interviews": interviews
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

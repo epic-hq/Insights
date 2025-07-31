@@ -31,6 +31,7 @@ While trying to do **GOAL/Desired_outcome**, people struggle with **pain** becau
 - suggested next steps, questions
 - product/service opportunities.
 - dynamic persona descriptions
+Feature: Button on Persona View to generate insights for that persona. How: Collect descriptions and insights from all people of that persona and generate a persona description, common demographics, and summarized insights (list of insights for that persona)
 
 **Code Context**: TBD
 
@@ -121,3 +122,46 @@ Rate each insight:
 - Impact — severity to the user or business value (1 = minor annoyance, 5 = critical blocker).
 
 - Novelty — how differentiated or delight‑creating (1 = common expectation, 5 = breakthrough idea).
+
+## Persona Definition
+
+Use role to anchor what they are doing
+
+Use segment to encode which behavioral cluster they belong to
+
+personas:
+
+```ts
+          account_id: string
+          age: string | null
+          color_hex: string | null
+          created_at: string
+          description: string | null
+          education: string | null
+          frequency_of_purchase: string | null
+          frequency_of_use: string | null
+          frustrations: string[] | null
+          gender: string | null
+          id: string
+          image_url: string | null
+          income: string | null
+          key_tasks: string[] | null
+          languages: string | null
+          learning_style: string | null
+          location: string | null
+          motivations: string[] | null
+          name: string
+          occupation: string | null
+          percentage: number | null
+          preferences: string | null
+          primary_goal: string | null
+          quotes: string[] | null
+          role: string | null
+          secondary_goals: string[] | null
+          segment: string | null
+          sources: string[] | null
+          tech_comfort_level: string | null
+          tools_used: string[] | null
+          updated_at: string
+          values: string[] | null
+```
