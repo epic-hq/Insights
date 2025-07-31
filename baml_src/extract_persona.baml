@@ -64,6 +64,32 @@ function ExtractPersona(people: string, insights: string, interviews: string) ->
   "#
 }
 
+function GeneratePersonas(interviews: string, people: string, insights: string) -> Persona[] {
+  client "CustomGPT4oMini"
+  prompt #"
+    You are an expert UX researcher and persona strategist. Given the following interviews, people records, and insights, identify all unique persona types present in the data set.
+
+    1. Cluster the data to find distinct persona archetypes, summarizing each as a Persona object.
+    2. For each persona, fill out all fields in the Persona schema, using the most representative or common values.
+    3. In addition to personas found in the data, project 1-3 likely personas that are not present but would be expected in this context, based on gaps or patterns in the data. Mark these as 'projected' in the description.
+    4. For array fields, provide 2-5 representative items. For string fields, provide the most common or relevant value.
+    5. Use direct quotes from the data where possible for the 'quotes' field.
+    6. If a field is not present in the data, return null.
+
+    Interview records:
+    {{ interviews }}
+
+    People records:
+    {{ people }}
+
+    Insights:
+    {{ insights }}
+
+    Output format:
+    {{ ctx.output_format }}
+  "#
+}
+
 test ExtractPersona_Sample {
   functions [ExtractPersona]
   args {

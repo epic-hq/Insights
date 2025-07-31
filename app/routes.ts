@@ -26,6 +26,7 @@ const routes = [
 	route("login", "./routes/login.tsx"),
 	route("register", "./routes/register.tsx"),
 	route("signout", "./routes/auth.signout.tsx"),
+	route("api.generate-personas", "./routes/api.generate-personas.tsx"),
 ] satisfies RouteConfig
 
 export default routes

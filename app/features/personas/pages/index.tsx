@@ -54,9 +54,13 @@ export default function Personas() {
 				<div>
 					<h1 className="font-bold text-3xl text-gray-900">Personas</h1>
 				</div>
-				<Button asChild>
-					<Link to="/personas/new">Add Persona</Link>
-				</Button>
+				<div className="flex gap-2">
+					{/* Generate Personas Button */}
+					<GeneratePersonasButton />
+					<Button asChild>
+						<Link to="/personas/new">Add Persona</Link>
+					</Button>
+				</div>
 			</div>
 
 			<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -65,5 +69,26 @@ export default function Personas() {
 				))}
 			</div>
 		</div>
+	)
+}
+
+import { useEffect } from "react"
+// GeneratePersonasButton component
+import { useFetcher } from "react-router-dom"
+
+function GeneratePersonasButton() {
+	const fetcher = useFetcher()
+	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
+	useEffect(() => {
+		if (fetcher.data?.success) {
+			window.location.reload()
+		}
+	}, [fetcher.data])
+	return (
+		<fetcher.Form method="post" action="/api.generate-personas">
+			<Button type="submit" variant="secondary" disabled={isGenerating}>
+				{isGenerating ? "Generating..." : "Generate Personas"}
+			</Button>
+		</fetcher.Form>
 	)
 }
