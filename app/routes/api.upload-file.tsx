@@ -20,7 +20,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	// const body = formData.get("body") as string | null
 	const accountId = formData.get("accountId") as UUID
 	const projectId = formData.get("projectId") as UUID
-	consola.log("formdata ", formData, accountId, projectId)
+	consola.log(`api.upload-file accountId: ${accountId}, projectId: ${projectId}`)
 
 	if (!accountId || !projectId) {
 		return Response.json({ error: "No accountId or projectId provided" }, { status: 400 })
@@ -80,7 +80,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			request,
 		})
 
-		return Response.json({ success: true, insights: result.stored })
+		return Response.json({ success: true, insights: result.stored, interviewId: result.interview.id })
 	} catch (err) {
 		const message = err instanceof Error ? err.message : "Unknown error"
 		return Response.json({ error: message }, { status: 500 })

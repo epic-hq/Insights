@@ -32,6 +32,7 @@ interface AuthProviderProps {
 	children: React.ReactNode
 	user?: JwtPayload | null
 	organizations?: any
+	currentProjectId?: string | null
 }
 
 export function AuthProvider({ children, user, organizations }: AuthProviderProps) {

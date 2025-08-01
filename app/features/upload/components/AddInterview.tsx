@@ -147,7 +147,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 									try {
 										if (!mediaUrl) return
 										setIsProcessing(true)
-										setProcessingMessage("Submitting URL to AssemblyAI…")
+										setProcessingMessage("Transcribing interview...")
 
 										const resp = await fetch("/api/upload-from-url", {
 											method: "POST",

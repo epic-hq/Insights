@@ -47,6 +47,25 @@ Feature: Button on Persona View to generate insights for that persona. How: Coll
 
 **Supporting Research**: Based on best practices from Nielsen Norman Group and other vendors, we have a starting foundation for a template of insights and other data to generate from interview transcripts.
 
+## Information architecture
+
+- Product users sign up and authenticate using email and password or google Oauth (using supabase and are created in auth.users table)
+- Users have accounts and account_settings to store preferences and settings
+- Other users can be invited to accounts so they can share access on projects
+- A project could be for a specific product or service, or community. It is a collection of interviews and insights and other data. 'My first project' is created by default when a user signs up.
+- Users can upload `interviews` (in form of audio/video, eventually just text transcripts) to projects and they will be processed to generate `insights`, `people`,`personas`, and other data
+- `insights` contain the main insights and other data generated from the interviews
+- `people` contain the people and personas generated from the interviews
+- `personas` contain the personas generated from the interviews
+- `opportunity_ideas` represent the product opportunities to beetter serve customers. They can be manually created, or generated from the insights.
+- `tags` = TBD
+- `conversation_timeline` is a distilled "play-by-play" of the conversation, with **key statements or chunks of conversation** with timestamps and quotes (e.g. "I need to generate a lot of social media to stay relevant"). It is generated from the full transcript. The goal is to make it easy to navigate the transcript and understand the context of the conversation. timeline is linked to interview_id and project_id?? where ach row is a 'play' or 'chunk' of the conversation. this should enable us to drill into the transcript and understand the context of the conversation and skip filler content.
+- `annotations` are **notes or commments** users make about any entity (e.g. insights, personas, opportunity_ideas, etc). AI can also generate annotations that are linked to the entity. When we chat with AI about anything, it will respond referring to personas or insights for example. If it generates a new piece of knowledge, or a suggestion like "dig deeper into causes of pain" or "TODO: test pricing model withi early adopters". We don't want these to just live in chat history (and become lost).
+- AI can augment the data by generating insights, personas, opportunity_ideas, etc, but also adding comments and being part of a conversation, even commenting and responding to human comments in a thread. eg. it seems like we're in agreement then, I'll update the list of questions to reflect a focus on 'willingness to pay'. This gives traceability to the AI's role in the conversation and makes it easier to understand the context of the conversation.
+- These Entities (interviews, insights, personas, etc) are scoped to the project (so database queries should be scoped to the project to keep information segmented andother users can't access them)
+- Accounts can have multiple projects depending on the user's subscription plan. Content from one project can't be accessed by another project (for now).
+- List views can be further filtered by query fields (e.g. interviews by persona_id, insights by persona_id). We can use url search params for this
+
 ## Template
 
 ### Study Context

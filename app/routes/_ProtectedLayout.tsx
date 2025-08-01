@@ -12,7 +12,7 @@ import type { Route } from "../+types/root"
 // This middleware runs before every loader in protected routes
 // It ensures the user is authenticated and sets up the user context
 export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
-	async ({ request, context }) => {
+	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
 			if (!user) {
@@ -23,6 +23,9 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			const { getServerClient } = await import("~/lib/supabase/server")
 			const { client, headers } = getServerClient(request)
 
+			// Extract current projectId from URL params (or fallback to null)
+			const currentProjectId = params?.projectId || null
+
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {
 				claims: user,
@@ -30,6 +33,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				user_metadata: user.user_metadata,
 				supabase: client,
 				headers,
+				current_project_id: currentProjectId,
 			})
 		} catch (error) {
 			consola.error("Authentication middleware error:", error)
@@ -61,6 +65,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 			auth: {
 				user: claims,
 				accountId,
+				currentProjectId: user.current_project_id || null,
 			},
 			accounts: accounts || [],
 		}
@@ -74,7 +79,7 @@ export default function ProtectedLayout() {
 	const { auth, accounts } = useLoaderData<typeof loader>()
 
 	return (
-		<AuthProvider user={auth.user} organizations={accounts}>
+		<AuthProvider user={auth.user} organizations={accounts} currentProjectId={auth.currentProjectId}>
 			<MainNav />
 			<PageHeader title="" />
 			<Outlet />
