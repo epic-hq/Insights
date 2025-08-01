@@ -24,7 +24,9 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			const { client, headers } = getServerClient(request)
 
 			// Extract current projectId from URL params (or fallback to null)
+			// TODO: Move currentProjectId to specific route segment file then delete this from context
 			const currentProjectId = params?.projectId || null
+			// consola.log("mw: ", currentProjectId)
 
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {

@@ -1,8 +1,10 @@
 import consola from "consola"
+import { formatDistance } from "date-fns"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { getInterviews } from "~/features/interviews/db"
+import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
 import { userContext } from "~/server/user-context"
 
@@ -153,12 +155,16 @@ export default function InterviewsIndex() {
 												<div className="text-gray-500 text-sm">
 													{interview.interview_people?.[0]?.people?.segment || "Participant"}
 												</div>
-												<div className="text-gray-500 text-sm">{interview.interview_date || "No date"}</div>
+												{/* <div className="text-gray-500 text-sm">{interview.interview_date || "No date"}</div> */}
 											</div>
 										</Link>
 									</td>
 									<td className="whitespace-nowrap px-4 py-3">
-										{interview.interview_people?.[0]?.people?.segment || "Participant"}
+										{interview.interview_people?.[0]?.people?.people_personas?.[0]?.personas ? (
+											<InlinePersonaBadge persona={interview.interview_people[0].people.people_personas[0].personas} />
+										) : (
+											interview.interview_people?.[0]?.people?.segment || "No Persona"
+										)}
 									</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.insightCount}</td>
 									<td className="whitespace-nowrap px-4 py-3">{interview.duration}</td>
@@ -175,7 +181,7 @@ export default function InterviewsIndex() {
 											{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 										</span>
 									</td>
-									<td className="whitespace-nowrap px-4 py-3">{interview.date}</td>
+									<td className="whitespace-nowrap px-4 py-3">{formatDistance(interview.date, new Date())}</td>
 									<td className="whitespace-nowrap px-4 py-3">
 										<Link to={`/interviews/${interview.id}`} className="text-blue-600 hover:text-blue-800">
 											View

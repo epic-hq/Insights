@@ -1,8 +1,8 @@
 import { Separator } from "@radix-ui/react-separator"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router-dom"
-import EditableTextarea from "~/components/EditableTextarea"
+import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import InlineEdit from "~/components/ui/inline-edit"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { userContext } from "~/server/user-context"
 import { TranscriptResults } from "../components/TranscriptResults"
@@ -84,6 +84,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export default function InterviewDetail() {
 	const { interview, insights, interviewerData } = useLoaderData<typeof loader>()
+	const fetcher = useFetcher()
 
 	const participants = interview.participants || []
 	const _primaryParticipant = participants[0]?.people
@@ -100,7 +101,7 @@ export default function InterviewDetail() {
 							<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
 							<Link
 								to={`/interviews/${interview.id}/edit`}
-								className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm text-white shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
+								className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
 							>
 								Edit Interview
 							</Link>
@@ -137,9 +138,9 @@ export default function InterviewDetail() {
 							{interview.interview_date && (
 								<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
 							)}
-							{interview.research_projects?.title && (
+							{interview.project?.title && (
 								<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
-									Project: {interview.research_projects.title}
+									Project: {interview.project.title}
 								</span>
 							)}
 						</div>
@@ -155,28 +156,75 @@ export default function InterviewDetail() {
 
 					{/* Interview Summary Fields */}
 					<div className="mb-4 space-y-4">
-						<EditableTextarea
-							table="interviews"
-							id={interview.id}
-							field="high_impact_themes"
-							label="High Impact Themes"
-							initialValue={interview.high_impact_themes}
-							isArray
-						/>
-						<EditableTextarea
-							table="interviews"
-							id={interview.id}
-							field="open_questions_and_next_steps"
-							label="Open Questions & Next Steps"
-							initialValue={interview.open_questions_and_next_steps}
-						/>
-						<EditableTextarea
-							table="interviews"
-							id={interview.id}
-							field="observations_and_notes"
-							label="Observations & Notes"
-							initialValue={interview.observations_and_notes}
-						/>
+						<div>
+							<label className="mb-1 block font-medium text-gray-700">High Impact Themes</label>
+							<InlineEdit
+								value={
+									Array.isArray(interview.high_impact_themes)
+										? interview.high_impact_themes.join("\n")
+										: (interview.high_impact_themes ?? "")
+								}
+								multiline
+								placeholder="High Impact Themes"
+								onSubmit={(value) => {
+									fetcher.submit(
+										JSON.stringify({
+											table: "interviews",
+											id: interview.id,
+											field: "high_impact_themes",
+											value: value.split(/\n+/).filter(Boolean),
+										}),
+										{ method: "post", encType: "application/json", action: "/insights/api/update-field" }
+									)
+								}}
+							/>
+						</div>
+						<div>
+							<label className="mb-1 block font-medium text-gray-700">Open Questions & Next Steps</label>
+							<InlineEdit
+								value={
+									Array.isArray(interview.open_questions_and_next_steps)
+										? interview.open_questions_and_next_steps.join("\n")
+										: (interview.open_questions_and_next_steps ?? "")
+								}
+								multiline
+								placeholder="Open Questions & Next Steps"
+								onSubmit={(value) => {
+									fetcher.submit(
+										JSON.stringify({
+											table: "interviews",
+											id: interview.id,
+											field: "open_questions_and_next_steps",
+											value,
+										}),
+										{ method: "post", encType: "application/json", action: "/insights/api/update-field" }
+									)
+								}}
+							/>
+						</div>
+						<div>
+							<label className="mb-1 block font-medium text-gray-700">Observations & Notes</label>
+							<InlineEdit
+								value={
+									Array.isArray(interview.observations_and_notes)
+										? interview.observations_and_notes.join("\n")
+										: (interview.observations_and_notes ?? "")
+								}
+								multiline
+								placeholder="Observations & Notes"
+								onSubmit={(value) => {
+									fetcher.submit(
+										JSON.stringify({
+											table: "interviews",
+											id: interview.id,
+											field: "observations_and_notes",
+											value,
+										}),
+										{ method: "post", encType: "application/json", action: "/insights/api/update-field" }
+									)
+								}}
+							/>
+						</div>
 					</div>
 
 					{/* Transcript Section */}

@@ -1,3 +1,4 @@
+import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useSearchParams } from "react-router-dom"
 import { InsightsDataTable } from "~/features/insights/components/InsightsDataTableTS"
@@ -8,7 +9,9 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const insights = await getInsights({ supabase, accountId })
+	const projectId = ctx.current_project_id || ""
+	consola.log("ctx", ctx)
+	const insights = await getInsights({ supabase, accountId, projectId })
 	if (!insights) throw new Response("Failed to load insights", { status: 500 })
 	return { insights: insights || [], filters: { sort: null } }
 }

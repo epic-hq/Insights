@@ -5,15 +5,47 @@ create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   name text not null,
+	slug text,
   description text,
 	status text,
+	constraint projects_account_id_slug_unique unique (account_id, slug),
   created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_projects_account_id ON public.projects(account_id);
-CREATE INDEX idx_projects_name ON public.projects(name);
+CREATE INDEX idx_projects_slug ON public.projects(slug);
+
+-- convert any character in the slug that's not a letter, number, or dash to a dash on insert/update for accounts
+CREATE OR REPLACE FUNCTION public.slugify_project_name()
+  RETURNS TRIGGER AS
+$$
+BEGIN
+  IF NEW.name IS NOT NULL AND NEW.name IS DISTINCT FROM OLD.name THEN
+    -- 1a) replace non-alnum/dash → dash
+    -- 1b) collapse multiple dashes → one
+    -- 1c) trim dashes off ends
+    -- 1d) lowercase
+    NEW.slug := lower(
+      trim(both '-' FROM
+        regexp_replace(
+          regexp_replace(NEW.name, '[^A-Za-z0-9-]+', '-', 'g'),
+        '-+', '-', 'g')
+      )
+    );
+  END IF;
+  RETURN NEW;
+END
+$$ LANGUAGE plpgsql;
+
+-- trigger to slugify the project name
+CREATE TRIGGER projects_slugify_project_slug
+    BEFORE INSERT OR UPDATE
+    ON public.projects
+    FOR EACH ROW
+EXECUTE FUNCTION public.slugify_project_name();
+
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_projects_timestamp
@@ -26,8 +58,6 @@ CREATE TRIGGER set_projects_user_tracking
     BEFORE INSERT OR UPDATE ON public.projects
     FOR EACH ROW
 EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
-
-create index if not exists idx_projects_account_id on public.projects using btree (account_id) tablespace pg_default;
 
 -- enable RLS on the table
 ALTER TABLE public.projects ENABLE ROW LEVEL SECURITY;

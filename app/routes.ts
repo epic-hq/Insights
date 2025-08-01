@@ -21,6 +21,7 @@ const routes = [
 	]),
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
+	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("login", "./routes/login.tsx"),

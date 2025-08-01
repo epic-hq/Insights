@@ -37,28 +37,29 @@ export default function MiniPersonaCard({ persona, className, showLink = true }:
 				showLink && "hover:bg-gray-50 dark:hover:bg-gray-800",
 				className
 			)}
+			style={{ borderColor: themeColor }}
 		>
-				{/* Theme color accent bar */}
-				<div className="h-1 w-full" style={{ backgroundColor: themeColor }} />
+			{/* Theme color accent bar */}
+			<div className="h-1 w-full" style={{ backgroundColor: themeColor }} />
 
 			<CardContent className="p-4">
 				<div className="flex items-center gap-3">
 					{/* Avatar */}
 					<Avatar className="h-10 w-10 flex-shrink-0 border-2" style={{ borderColor: themeColor }}>
-						<AvatarFallback className="text-sm font-medium text-white" style={{ backgroundColor: themeColor }}>
-								{persona.image_url ? (
-									<img src={persona.image_url} alt={name} className="h-full w-full object-cover" />
-								) : (
-									initials
-								)}
-							</AvatarFallback>
-						</Avatar>
+						<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
+							{persona.image_url ? (
+								<img src={persona.image_url} alt={name} className="h-full w-full object-cover" />
+							) : (
+								initials
+							)}
+						</AvatarFallback>
+					</Avatar>
 
 					{/* Content */}
 					<div className="min-w-0 flex-1">
 						<div className="flex items-center justify-between gap-2">
-							<h4 className="text-sm font-semibold text-gray-900 truncate">{name}</h4>
-								{percentage > 0 && (
+							<h4 className="truncate font-semibold text-gray-900 text-sm">{name}</h4>
+							{percentage > 0 && (
 								<Badge
 									variant="secondary"
 									className="flex-shrink-0 text-xs"
@@ -68,20 +69,16 @@ export default function MiniPersonaCard({ persona, className, showLink = true }:
 										borderColor: `${themeColor}40`,
 									}}
 								>
-										{percentage}%
-									</Badge>
-								)}
-							</div>
-						<p className="mt-1 text-xs text-gray-600 line-clamp-2">{description}</p>
+									{percentage}%
+								</Badge>
+							)}
+						</div>
+						<p className="mt-1 line-clamp-2 text-gray-600 text-xs">{description}</p>
 					</div>
 				</div>
 			</CardContent>
 		</Card>
 	)
 
-	return showLink ? (
-		<Link to={`/personas/${persona.id}`}>{content}</Link>
-	) : (
-		content
-	)
+	return showLink ? <Link to={`/personas/${persona.id}`}>{content}</Link> : content
 }

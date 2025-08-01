@@ -1,4 +1,5 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
 import type { Database } from "~/types"
 
 // This is our pattern for defining typed queries and returning results.
@@ -6,9 +7,11 @@ import type { Database } from "~/types"
 export const getInsights = async ({
 	supabase,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId?: string
 }) => {
 	const insightsQuery = supabase
 		.from("insights")
@@ -17,22 +20,25 @@ export const getInsights = async ({
     persona_insights:persona_insights (
       persona_id,
       relevance_score,
-      personas (
+      people_personas (
         id,
-        name,
-        color_hex
+        people (
+          id,
+          name,
+          color_hex
+        )
       )
     ),
     persona_type_count:persona_insights(count)
   `)
 		.eq("account_id", accountId)
+		// .eq("project_id", projectId)
 		.order("created_at", { ascending: false })
-
 
 	type Insights = QueryData<typeof insightsQuery>
 
 	const { data, error } = await insightsQuery
-
+	consola.log("insights result: ", data)
 	if (error) {
 		throw new Response("Failed to load insights", { status: 500 })
 	}
@@ -43,10 +49,12 @@ export const getInsights = async ({
 export const getInsightById = async ({
 	supabase,
 	accountId,
+	projectId,
 	id,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId: string
 	id: string
 }) => {
 	const insightByIdQuery = supabase
@@ -59,6 +67,7 @@ export const getInsightById = async ({
 			)
 		`)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.eq("id", id)
 		.single()
 
@@ -78,7 +87,7 @@ export const createInsight = async ({
 	data,
 }: {
 	supabase: SupabaseClient<Database>
-	data: Database["public"]["Tables"]["insights"]["Insert"]
+	data: Database["public"]["Tables"]["insights"]["Insert"] & { project_id: string }
 }) => {
 	return await supabase.from("insights").insert(data).select().single()
 }
@@ -87,24 +96,35 @@ export const updateInsight = async ({
 	supabase,
 	id,
 	accountId,
+	projectId,
 	data,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
+	projectId: string
 	data: Database["public"]["Tables"]["insights"]["Update"]
 }) => {
-	return await supabase.from("insights").update(data).eq("id", id).eq("account_id", accountId).select().single()
+	return await supabase
+		.from("insights")
+		.update(data)
+		.eq("id", id)
+		.eq("account_id", accountId)
+		.eq("project_id", projectId)
+		.select()
+		.single()
 }
 
 export const deleteInsight = async ({
 	supabase,
 	id,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
+	projectId: string
 }) => {
-	return await supabase.from("insights").delete().eq("id", id).eq("account_id", accountId)
+	return await supabase.from("insights").delete().eq("id", id).eq("account_id", accountId).eq("project_id", projectId)
 }

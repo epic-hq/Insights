@@ -17,7 +17,15 @@ export const getInterviews = async ({
 				people (
 					id,
 					name,
-					segment
+					segment,
+					people_personas (
+						persona_id,
+						personas (
+							id,
+							name,
+							color_hex
+						)
+					)
 				)
 			)
 		`)

@@ -49,8 +49,10 @@ Feature: Button on Persona View to generate insights for that persona. How: Coll
 
 ## Information architecture
 
-- Product users sign up and authenticate using email and password or google Oauth (using supabase and are created in auth.users table)
+- Product users sign up and authenticate using email and password or google Oauth (using supabase and are created in auth.users table - auth.user_id())
 - Users have accounts and account_settings to store preferences and settings
+ Personal Account: id = accounts table, personal_account = true, primary_owner_user_id = auth.uid()
+ TEAM account: diff ID, personal_account = false, primary_owner_user_id = auth.uid()
 - Other users can be invited to accounts so they can share access on projects
 - A project could be for a specific product or service, or community. It is a collection of interviews and insights and other data. 'My first project' is created by default when a user signs up.
 - Users can upload `interviews` (in form of audio/video, eventually just text transcripts) to projects and they will be processed to generate `insights`, `people`,`personas`, and other data

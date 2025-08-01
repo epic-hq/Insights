@@ -68,7 +68,7 @@ CREATE TABLE IF NOT EXISTS accounts.accounts
 ALTER TABLE accounts.accounts
     ADD CONSTRAINT accounts_accounts_slug_null_if_personal_account_true CHECK (
             (personal_account = true AND slug is null)
-            OR (personal_account = false AND slug is not null)
+						OR (personal_account = false) -- slug can be null or undef for TEAM accounts
         );
 
 -- Open up access to accounts
@@ -111,7 +111,13 @@ CREATE OR REPLACE FUNCTION accounts.slugify_account_slug()
 $$
 BEGIN
     if NEW.slug is not null then
-        NEW.slug = lower(regexp_replace(NEW.slug, '[^a-zA-Z0-9-]+', '-', 'g'));
+        NEW.slug := lower(
+      trim(both '-' FROM
+        regexp_replace(
+          regexp_replace(NEW.slug, '[^A-Za-z0-9-]+', '-', 'g'),
+        '-+', '-', 'g')
+      )
+    );
     end if;
 
     RETURN NEW;
@@ -207,6 +213,7 @@ as
 $$
 declare
     first_account_id    uuid;
+    team_account_id     uuid;
     generated_user_name text;
 begin
 
@@ -224,10 +231,18 @@ begin
     insert into accounts.account_user (account_id, user_id, account_role)
     values (first_account_id, NEW.id, 'owner');
 
+-- create first TEAM account, make user owner
+-- call the create_account_id function
+select create_account_id(NEW.id, NULL, generated_user_name) into team_account_id;
+insert into accounts.account_user (account_id, user_id, account_role)
+values (team_account_id, NEW.id, 'owner');
+
+-- select update_account_user_role(team_account_id, team_account_id, true);
+
 		-- creating user_settings
     insert into account_settings(account_id) values (first_account_id);
     -- default research project
-    insert into projects(account_id, name) values (first_account_id, 'My First Project');
+    insert into projects(account_id, name) values (team_account_id, 'My First Project');
 
     return NEW;
 end;
@@ -608,7 +623,28 @@ EXCEPTION
 END;
 $$;
 
+create or replace function public.create_account_id(primary_owner_user_id uuid default null, slug text default null, name text default null)
+    returns uuid
+    language plpgsql
+as
+$$
+DECLARE
+    new_account_id uuid;
+BEGIN
+    insert into accounts.accounts (primary_owner_user_id, slug, name)
+    values (primary_owner_user_id, slug, name)
+    returning id into new_account_id;
+
+    return new_account_id;
+EXCEPTION
+    WHEN unique_violation THEN
+        raise exception 'An account with that unique ID already exists';
+END;
+$$;
+
+
 grant execute on function public.create_account(slug text, name text) to authenticated;
+grant execute on function public.create_account_id(primary_owner_user_id uuid, slug text, name text) to authenticated;
 
 /**
   Update an account with passed in info. None of the info is required except for account ID.

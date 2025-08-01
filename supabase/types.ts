@@ -161,7 +161,7 @@ export type Database = {
           pain: string | null
           related_tags: string[] | null
           updated_at: string
-          updated_by: string
+          updated_by: string | null
         }
         Insert: {
           account_id: string
@@ -187,7 +187,7 @@ export type Database = {
           pain?: string | null
           related_tags?: string[] | null
           updated_at?: string
-          updated_by: string
+          updated_by?: string | null
         }
         Update: {
           account_id?: string
@@ -213,7 +213,7 @@ export type Database = {
           pain?: string | null
           related_tags?: string[] | null
           updated_at?: string
-          updated_by?: string
+          updated_by?: string | null
         }
         Relationships: [
           {
@@ -487,6 +487,7 @@ export type Database = {
           name_hash: string | null
           occupation: string | null
           preferences: string | null
+          project_id: string | null
           segment: string | null
           updated_at: string
         }
@@ -507,6 +508,7 @@ export type Database = {
           name_hash?: string | null
           occupation?: string | null
           preferences?: string | null
+          project_id?: string | null
           segment?: string | null
           updated_at?: string
         }
@@ -527,10 +529,19 @@ export type Database = {
           name_hash?: string | null
           occupation?: string | null
           preferences?: string | null
+          project_id?: string | null
           segment?: string | null
           updated_at?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "people_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       people_personas: {
         Row: {
@@ -678,6 +689,7 @@ export type Database = {
           percentage: number | null
           preferences: string | null
           primary_goal: string | null
+          project_id: string | null
           quotes: string[] | null
           role: string | null
           secondary_goals: string[] | null
@@ -712,6 +724,7 @@ export type Database = {
           percentage?: number | null
           preferences?: string | null
           primary_goal?: string | null
+          project_id?: string | null
           quotes?: string[] | null
           role?: string | null
           secondary_goals?: string[] | null
@@ -746,6 +759,7 @@ export type Database = {
           percentage?: number | null
           preferences?: string | null
           primary_goal?: string | null
+          project_id?: string | null
           quotes?: string[] | null
           role?: string | null
           secondary_goals?: string[] | null
@@ -756,7 +770,15 @@ export type Database = {
           updated_at?: string
           values?: string[] | null
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "personas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       project_people: {
         Row: {
@@ -822,6 +844,7 @@ export type Database = {
           description: string | null
           id: string
           name: string
+          slug: string | null
           status: string | null
           updated_at: string
         }
@@ -831,6 +854,7 @@ export type Database = {
           description?: string | null
           id?: string
           name: string
+          slug?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -840,6 +864,7 @@ export type Database = {
           description?: string | null
           id?: string
           name?: string
+          slug?: string | null
           status?: string | null
           updated_at?: string
         }
@@ -921,6 +946,10 @@ export type Database = {
       create_account: {
         Args: { slug?: string; name?: string }
         Returns: Json
+      }
+      create_account_id: {
+        Args: { primary_owner_user_id?: string; slug?: string; name?: string }
+        Returns: string
       }
       create_invitation: {
         Args: {

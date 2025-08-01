@@ -24,12 +24,17 @@ create table if not exists people (
   location text,
   contact_info jsonb,
   preferences text,
+	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_people_account_id ON public.people(account_id);
+
+-- Project scoping support
+CREATE INDEX IF NOT EXISTS idx_people_account_project_created
+    ON public.people (account_id, project_id, created_at);
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_people_timestamp
@@ -134,12 +139,17 @@ create table if not exists personas (
 	values text[],
   quotes text[],
   sources text[],
+	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_personas_account_id ON public.personas(account_id);
+
+-- Project scoping support
+CREATE INDEX IF NOT EXISTS idx_personas_account_project_created
+    ON public.personas (account_id, project_id, created_at);
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_personas_timestamp

@@ -26,6 +26,7 @@ interface OnboardingCardData {
 	description: string
 	icon: React.ReactNode
 	content: React.ReactNode
+	progress?: number
 }
 
 const UserOnboardingWidget = () => {
@@ -50,18 +51,11 @@ const UserOnboardingWidget = () => {
 			description: "We're analyzing your interview using advanced AI to extract meaningful insights.",
 			icon: <Loader className="h-8 w-8 animate-spin text-primary" />,
 			content: (
-				<div className="space-y-4">
-					<div className="h-2 w-full rounded-full bg-secondary">
-						<motion.div
-							className="h-2 rounded-full bg-primary"
-							initial={{ width: 0 }}
-							animate={{ width: `${processingProgress}%` }}
-							transition={{ duration: 0.5 }}
-						/>
-					</div>
+				<div className="space-y-2">
 					<p className="text-muted-foreground text-sm">{processingMessage}</p>
 				</div>
 			),
+			progress: processingProgress,
 		},
 		{
 			id: 2,
@@ -253,7 +247,7 @@ const UserOnboardingWidget = () => {
 										if (status.is_processed) {
 											setProcessingProgress(100)
 											setProcessingMessage("Processing complete!")
-											setTimeout(() => navigate(`/app/interviews/${interviewId}`), 800)
+											setTimeout(() => navigate(`/interviews/${interviewId}`), 500)
 											return
 										}
 										if (pollCount++ < 30) setTimeout(pollStatus, 2000)
@@ -331,46 +325,25 @@ const UserOnboardingWidget = () => {
 		return (
 			<div className="mx-auto flex w-full max-w-2xl justify-center p-6">
 				<div
-					className="relative w-full"
+					className="relative"
 					style={{
 						maxWidth: 480,
 						minWidth: 360,
+						height: 440,
 						margin: "0 auto",
-						display: "flex",
-						justifyContent: "center",
-						alignItems: "center",
 					}}
 				>
-					<AnimatePresence initial={false} mode="popLayout">
+					<AnimatePresence initial={false} mode="wait">
 						<motion.div
 							key={card.id}
-							initial={{ opacity: 0, x: 100 }}
-							animate={{ opacity: 1, x: 0 }}
-							exit={{ opacity: 0, x: -100 }}
-							transition={{ duration: 0.5 }}
-							className="w-full"
+							initial={{ opacity: 0 }}
+							animate={{ opacity: 1 }}
+							exit={{ opacity: 0 }}
+							transition={{ duration: 0.3 }}
+							className="absolute inset-0"
 						>
-							<Card className="w-full overflow-hidden" style={{ minHeight: 340 }}>
+							<Card className="h-full w-full overflow-hidden">
 								<CardHeader className="space-y-4 text-center">
-									{/* Spinner/progress for every card */}
-									<div className="mb-2 flex flex-col items-center">
-										<div className="mb-2 h-2 w-full rounded-full bg-secondary">
-											<motion.div
-												className="h-2 rounded-full bg-primary"
-												initial={{ width: 0 }}
-												animate={{ width: `${processingProgress}%` }}
-												transition={{ duration: 0.5 }}
-											/>
-										</div>
-										<div className="flex items-center justify-center">
-											<Loader className="mr-2 h-5 w-5 animate-spin text-primary" />
-											<span className="text-muted-foreground text-xs">
-												{processingProgress < 100
-													? `Processing... ${Math.round(processingProgress)}%`
-													: "Processing complete!"}
-											</span>
-										</div>
-									</div>
 									<div className="flex justify-center">{card.icon}</div>
 									<CardTitle className="text-2xl">{card.title}</CardTitle>
 									<p className="text-muted-foreground">{card.description}</p>
@@ -379,6 +352,17 @@ const UserOnboardingWidget = () => {
 									{card.content}
 									{error && <div className="rounded-md bg-red-50 p-4 text-red-700 text-sm">{error}</div>}
 								</CardContent>
+								{/* Progress Bar */}
+								<div className="px-4 pb-4">
+									<div className="h-2 w-full rounded-full bg-secondary">
+										<motion.div
+											className="h-2 rounded-full bg-primary"
+											initial={{ width: 0 }}
+											animate={{ width: `${processingProgress}%` }}
+											transition={{ duration: 0.5 }}
+										/>
+									</div>
+								</div>
 							</Card>
 						</motion.div>
 					</AnimatePresence>
