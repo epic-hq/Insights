@@ -19,6 +19,12 @@ export default async function handleRequest(
 	context: EntryContext,
 	appContext: AppLoadContext
 ) {
+	// Handle /.well-known/* requests with a 404 response to match dev server behavior
+	const url = new URL(request.url)
+	if (url.pathname.startsWith("/.well-known/")) {
+		return new Response("Not found", { status: 404 })
+	}
+
 	const callbackName = isbot(request.headers.get("user-agent")) ? "onAllReady" : "onShellReady"
 	const instance = createInstance()
 	const lng = appContext.lang

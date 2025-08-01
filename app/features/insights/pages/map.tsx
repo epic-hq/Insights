@@ -9,7 +9,7 @@
 
 import consola from "consola"
 import { type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
-import { CartesianGrid, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
+import { CartesianGrid, LabelList, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
 import { getServerClient, getSession } from "~/lib/supabase/server"
 
 /* -------------------------------------------------------------------------- */
@@ -87,8 +87,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}
 
 	try {
-		consola.info("SUPABASE_FUNCTIONS_URL:", SUPABASE_FUNCTIONS_URL)
-		consola.info("Fetch URL:", `${SUPABASE_FUNCTIONS_URL}/cluster_insights`)
 		const response = await fetch(`${SUPABASE_FUNCTIONS_URL}/cluster_insights`, {
 			method: "POST",
 			headers: {
@@ -117,6 +115,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function InsightsMapPage() {
 	const { clusterData } = useLoaderData<typeof loader>()
 
+	// Debug: log the first few points to inspect available fields
+	if (clusterData && clusterData.length > 0) {
+		consola.info("Sample clusterData:", clusterData.slice(0, 3))
+	}
+
 	if (!clusterData || clusterData.length === 0) {
 		return (
 			<div className="p-8">
@@ -134,6 +137,28 @@ export default function InsightsMapPage() {
 		return cluster === -1 ? "#999999" : colors[cluster % colors.length]
 	}
 
+	// Custom label renderer for dots
+	const _renderDotLabel = (props: any) => {
+		const { x, y, value } = props
+		// value is the "text" field (pain) from ClusterPoint
+		return (
+			<text
+				x={x}
+				y={y - 10}
+				textAnchor="middle"
+				fontSize={12}
+				fill="#222"
+				style={{
+					pointerEvents: "none",
+					fontWeight: 500,
+					textShadow: "0 1px 2px #fff, 0 0px 2px #fff",
+				}}
+			>
+				{value.length > 24 ? `${value.slice(0, 24)}…` : value}
+			</text>
+		)
+	}
+
 	return (
 		<div className="p-8">
 			<h1 className="mb-4 font-bold text-2xl">Insights Map</h1>
@@ -141,12 +166,12 @@ export default function InsightsMapPage() {
 				Visualization of {clusterData.length} insights clustered by semantic similarity
 			</p>
 
-			<div className="h-96 w-full">
+			<div className="h-[700px] w-full">
 				<ResponsiveContainer width="100%" height="100%">
-					<ScatterChart data={clusterData} margin={{ top: 20, right: 20, bottom: 20, left: 20 }}>
-						<CartesianGrid />
-						<XAxis type="number" dataKey="x" name="X" />
-						<YAxis type="number" dataKey="y" name="Y" />
+					<ScatterChart data={clusterData} margin={{ top: 40, right: 40, bottom: 40, left: 40 }}>
+						<CartesianGrid strokeDasharray="3 3" />
+						<XAxis type="number" dataKey="x" name="X" hide tick={false} axisLine={false} />
+						<YAxis type="number" dataKey="y" name="Y" hide tick={false} axisLine={false} />
 						<Tooltip
 							cursor={{ strokeDasharray: "3 3" }}
 							content={({ active, payload }) => {
@@ -154,8 +179,11 @@ export default function InsightsMapPage() {
 									const data = payload[0].payload as ClusterPoint
 									return (
 										<div className="max-w-xs rounded border bg-white p-3 shadow-lg">
-											<p className="font-semibold">Cluster {data.cluster === -1 ? "Noise" : data.cluster}</p>
-											<p className="mt-1 text-gray-600 text-sm">{data.text}</p>
+											<p className="mb-1 font-semibold">Cluster {data.cluster === -1 ? "Noise" : data.cluster}</p>
+											<p className="mb-1 font-bold text-base text-gray-800">
+												{data.text && data.text.length > 64 ? `${data.text.slice(0, 64)}…` : data.text}
+											</p>
+											<p className="text-gray-600 text-xs">Insight ID: {data.id}</p>
 										</div>
 									)
 								}
@@ -163,7 +191,36 @@ export default function InsightsMapPage() {
 							}}
 						/>
 						{clusterData.map((point, index) => (
-							<Scatter key={`cluster-${point.cluster}-${index}`} data={[point]} fill={getClusterColor(point.cluster)} />
+							<Scatter
+								key={`cluster-${point.cluster}-${index}`}
+								data={[point]}
+								fill={getClusterColor(point.cluster)}
+								shape="circle"
+							>
+								{/* Add a label for each dot */}
+								<LabelList
+									dataKey="text"
+									content={(props: any) => {
+										const { x, y, value } = props
+										return (
+											<text
+												x={x}
+												y={y - 14}
+												textAnchor="middle"
+												fontSize={14}
+												fill="#222"
+												style={{
+													pointerEvents: "none",
+													fontWeight: 500,
+													textShadow: "0 1px 2px #fff, 0 0px 2px #fff",
+												}}
+											>
+												{value && value.length > 48 ? `${value.slice(0, 48)}…` : value}
+											</text>
+										)
+									}}
+								/>
+							</Scatter>
 						))}
 					</ScatterChart>
 				</ResponsiveContainer>

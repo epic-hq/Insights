@@ -1,3 +1,4 @@
+import { Sparkle } from "lucide-react"
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
@@ -87,6 +88,7 @@ function GeneratePersonasButton() {
 	return (
 		<fetcher.Form method="post" action="/api.generate-personas">
 			<Button type="submit" variant="secondary" disabled={isGenerating}>
+				<Sparkle className="mr-2 h-4 w-4" />
 				{isGenerating ? "Generating..." : "Generate Personas"}
 			</Button>
 		</fetcher.Form>

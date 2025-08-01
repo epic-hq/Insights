@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  Persona,  PersonaAnalysis,  Set,  SetRecord } from "./types"
+import type {  ActionButton,  AutoInsightsResponse,  BBValues,  Emotions,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  Persona,  PersonaAnalysis,  Set,  SetRecord } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -68,8 +68,9 @@ export namespace partial_types {
       pain?: string | null
       desiredOutcome?: string | null
       evidence?: string | null
-      emotionalResponse?: string | null
+      emotionalResponse?: types.Emotions | null
       underlyingMotivation?: string | null
+      values: types.BBValues[]
       category?: string | null
       journeyStage?: string | null
       impact?: number | null

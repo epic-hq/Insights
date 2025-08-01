@@ -31,7 +31,7 @@ export default class TypeBuilder {
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
-    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "details" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "underlyingMotivation" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "confidence" | "contradictions" | "relatedTags" | "createdAt">;
+    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "details" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "confidence" | "contradictions" | "relatedTags" | "createdAt">;
     
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
@@ -50,6 +50,10 @@ export default class TypeBuilder {
     SetRecord: ClassViewer<'SetRecord', "term" | "definition">;
     
     
+    BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
+    
+    Emotions: EnumViewer<'Emotions', "Abandoned" | "Accepted" | "Aggressive" | "Amazed" | "Angry" | "Annoyed" | "Anxious" | "Apathetic" | "Appalled" | "Aroused" | "Ashamed" | "Astonished" | "Awe" | "Awful" | "Bad" | "Betrayed" | "Bitter" | "Bored" | "Busy" | "Cheeky" | "Confident" | "Confused" | "Content" | "Courageous" | "Creative" | "Critical" | "Curious" | "Depressed" | "Despair" | "Detestable" | "Disappointed" | "Disapproving" | "Disgusted" | "Disillusioned" | "Dismayed" | "Dismissive" | "Disrespected" | "Distant" | "Eager" | "Embarrassed" | "Empty" | "Energetic" | "Excited" | "Excluded" | "Exposed" | "Fearful" | "Fragile" | "Free" | "Frightened" | "Frustrated" | "Furious" | "Grief" | "Guilty" | "Happy" | "Helpless" | "Hesitant" | "Hopeful" | "Horrified" | "Hostile" | "Humiliated" | "Hurt" | "Inadequate" | "Indifferent" | "Indignant" | "Inferior" | "Infuriated" | "Inquisitive" | "Insecure" | "Insignificant" | "Inspired" | "Interested" | "Intimate" | "Isolated" | "Jealous" | "Joyful" | "Judgmental" | "Let_down" | "Lonely" | "Loving" | "Mad" | "Nauseated" | "Nervous" | "Numb" | "Optimistic" | "Out_of_control" | "Overwhelmed" | "Peaceful" | "Perplexed" | "Persecuted" | "Playful" | "Powerful" | "Powerless" | "Pressured" | "Proud" | "Provoked" | "Rejected" | "Remorseful" | "Repelled" | "Resentful" | "Respected" | "Revolted" | "Ridiculed" | "Rushed" | "Sad" | "Scared" | "Sensitive" | "Shocked" | "Skeptical" | "Sleepy" | "Startled" | "Stressed" | "Successful" | "Surprised" | "Thankful" | "Threatened" | "Tired" | "Trusting" | "Unfocussed" | "Valued" | "Victimized" | "Violated" | "Vulnerable" | "Weak" | "Withdrawn" | "Worried" | "Worthless">;
+    
 
     constructor() {
         this.tb = new _TypeBuilder({
@@ -57,7 +61,7 @@ export default class TypeBuilder {
             "ActionButton","AutoInsightsResponse","ExecutiveInsight","ExtractedInsight","InterviewExtraction","InterviewMetadata","Interviewee","OpportunityRecommendation","Persona","PersonaAnalysis","Set","SetRecord",
           ]),
           enums: new Set([
-            
+            "BBValues","Emotions",
           ]),
           runtime: DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME
         });
@@ -75,7 +79,7 @@ export default class TypeBuilder {
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
-          "name","details","pain","desiredOutcome","evidence","emotionalResponse","underlyingMotivation","category","journeyStage","impact","novelty","jtbd","confidence","contradictions","relatedTags","createdAt",
+          "name","details","pain","desiredOutcome","evidence","emotionalResponse","underlyingMotivation","values","category","journeyStage","impact","novelty","jtbd","confidence","contradictions","relatedTags","createdAt",
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [
@@ -110,6 +114,14 @@ export default class TypeBuilder {
           "term","definition",
         ]);
         
+        
+        this.BBValues = this.tb.enumViewer("BBValues", [
+          "Accountability","Achievement","Adaptability","Adventure","Altruism","Ambition","Authenticity","Balance","Beauty","Being_the_best","Belonging","Career","Caring","Collaboration","Commitment","Community","Compassion","Competence","Confidence","Connection","Contentment","Contribution","Cooperation","Courage","Creativity","Curiosity","Dignity","Diversity","Environment","Efficiency","Equality","Ethics","Excellence","Fairness","Faith","Family","Financial_stability","Forgiveness","Freedom","Friendship","Fun","Future_generations","Generosity","Giving_back","Grace","Gratitude","Growth","Harmony","Health","Home","Honesty","Hope","Humility","Humor","Inclusion","Independence","Initiative","Integrity","Intuition","Job_security","Joy","Justice","Kindness","Knowledge","Leadership","Learning","Legacy","Leisure","Love","Loyalty","Making_a_difference","Nature","Openness","Optimism","Order","Parenting","Patience","Patriotism","Peace","Perseverance","Personal_fulfillment","Power","Pride","Recognition","Reliability","Resourcefulness","Respect","Responsibility","Risk_taking","Safety","Security","Self_discipline","Self_expression","Self_respect","Serenity","Service","Simplicity","Spirituality","Sportsmanship","Stewardship","Success","Teamwork","Thrift","Time","Tradition","Travel","Trust","Truth","Understanding","Uniqueness","Usefulness","Vision","Vulnerability","Wealth","Well_being","Wholeheartedness","Wisdom",
+        ]);
+        
+        this.Emotions = this.tb.enumViewer("Emotions", [
+          "Abandoned","Accepted","Aggressive","Amazed","Angry","Annoyed","Anxious","Apathetic","Appalled","Aroused","Ashamed","Astonished","Awe","Awful","Bad","Betrayed","Bitter","Bored","Busy","Cheeky","Confident","Confused","Content","Courageous","Creative","Critical","Curious","Depressed","Despair","Detestable","Disappointed","Disapproving","Disgusted","Disillusioned","Dismayed","Dismissive","Disrespected","Distant","Eager","Embarrassed","Empty","Energetic","Excited","Excluded","Exposed","Fearful","Fragile","Free","Frightened","Frustrated","Furious","Grief","Guilty","Happy","Helpless","Hesitant","Hopeful","Horrified","Hostile","Humiliated","Hurt","Inadequate","Indifferent","Indignant","Inferior","Infuriated","Inquisitive","Insecure","Insignificant","Inspired","Interested","Intimate","Isolated","Jealous","Joyful","Judgmental","Let_down","Lonely","Loving","Mad","Nauseated","Nervous","Numb","Optimistic","Out_of_control","Overwhelmed","Peaceful","Perplexed","Persecuted","Playful","Powerful","Powerless","Pressured","Proud","Provoked","Rejected","Remorseful","Repelled","Resentful","Respected","Revolted","Ridiculed","Rushed","Sad","Scared","Sensitive","Shocked","Skeptical","Sleepy","Startled","Stressed","Successful","Surprised","Thankful","Threatened","Tired","Trusting","Unfocussed","Valued","Victimized","Violated","Vulnerable","Weak","Withdrawn","Worried","Worthless",
+        ]);
         
     }
 

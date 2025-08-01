@@ -9,6 +9,8 @@ import { iconsSpritesheet } from "vite-plugin-icons-spritesheet"
 import tsconfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
+	base: "/",
+	resolve: { alias: { "@": "/src" } },
 	// Externalize BAML native modules to prevent bundling issues
 	optimizeDeps: {
 		exclude: ["@boundaryml/baml", "@boundaryml/baml-darwin-arm64"],

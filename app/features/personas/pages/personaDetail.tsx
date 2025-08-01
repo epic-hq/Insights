@@ -304,7 +304,7 @@ export default function PersonaDetailRoute() {
 										}
 									}}
 								>
-									Generate Insights
+									Generate Persona
 								</Button>
 							</motion.div>
 						</div>
@@ -379,6 +379,7 @@ export default function PersonaDetailRoute() {
 			<Card className="mb-8">
 				<CardHeader>
 					<h2 className="font-semibold text-xl">Details</h2>
+					<p className="text-muted-foreground text-xs">Only showing available fields</p>
 				</CardHeader>
 				<CardContent>
 					<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">

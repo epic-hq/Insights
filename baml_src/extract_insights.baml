@@ -1,3 +1,254 @@
+enum Emotions {
+  Abandoned
+  Accepted
+  Aggressive
+  Amazed
+  Angry
+  Annoyed
+  Anxious
+  Apathetic
+  Appalled
+  Aroused
+  Ashamed
+  Astonished
+  Awe
+  Awful
+  Bad
+  Betrayed
+  Bitter
+  Bored
+  Busy
+  Cheeky
+  Confident
+  Confused
+  Content
+  Courageous
+  Creative
+  Critical
+  Curious
+  Depressed
+  Despair
+  Detestable
+  Disappointed
+  Disapproving
+  Disgusted
+  Disillusioned
+  Dismayed
+  Dismissive
+  Disrespected
+  Distant
+  Eager
+  Embarrassed
+  Empty
+  Energetic
+  Excited
+  Excluded
+  Exposed
+  Fearful
+  Fragile
+  Free
+  Frightened
+  Frustrated
+  Furious
+  Grief
+  Guilty
+  Happy
+  Helpless
+  Hesitant
+  Hopeful
+  Horrified
+  Hostile
+  Humiliated
+  Hurt
+  Inadequate
+  Indifferent
+  Indignant
+  Inferior
+  Infuriated
+  Inquisitive
+  Insecure
+  Insignificant
+  Inspired
+  Interested
+  Intimate
+  Isolated
+  Jealous
+  Joyful
+  Judgmental
+  Let_down
+  Lonely
+  Loving
+  Mad
+  Nauseated
+  Nervous
+  Numb
+  Optimistic
+  Out_of_control
+  Overwhelmed
+  Peaceful
+  Perplexed
+  Persecuted
+  Playful
+  Powerful
+  Powerless
+  Pressured
+  Proud
+  Provoked
+  Rejected
+  Remorseful
+  Repelled
+  Resentful
+  Respected
+  Revolted
+  Ridiculed
+  Rushed
+  Sad
+  Scared
+  Sensitive
+  Shocked
+  Skeptical
+  Sleepy
+  Startled
+  Stressed
+  Successful
+  Surprised
+  Thankful
+  Threatened
+  Tired
+  Trusting
+  Unfocussed
+  Valued
+  Victimized
+  Violated
+  Vulnerable
+  Weak
+  Withdrawn
+  Worried
+  Worthless
+}
+
+
+enum BBValues {
+    Accountability
+    Achievement
+    Adaptability
+    Adventure
+    Altruism
+    Ambition
+    Authenticity
+    Balance
+    Beauty
+    Being_the_best
+    Belonging
+    Career
+    Caring
+    Collaboration
+    Commitment
+    Community
+    Compassion
+    Competence
+    Confidence
+    Connection
+    Contentment
+    Contribution
+    Cooperation
+    Courage
+    Creativity
+    Curiosity
+    Dignity
+    Diversity
+    Environment
+    Efficiency
+    Equality
+    Ethics
+    Excellence
+    Fairness
+    Faith
+    Family
+    Financial_stability
+    Forgiveness
+    Freedom
+    Friendship
+    Fun
+    Future_generations
+    Generosity
+    Giving_back
+    Grace
+    Gratitude
+    Growth
+    Harmony
+    Health
+    Home
+    Honesty
+    Hope
+    Humility
+    Humor
+    Inclusion
+    Independence
+    Initiative
+    Integrity
+    Intuition
+    Job_security
+    Joy
+    Justice
+    Kindness
+    Knowledge
+    Leadership
+    Learning
+    Legacy
+    Leisure
+    Love
+    Loyalty
+    Making_a_difference
+    Nature
+    Openness
+    Optimism
+    Order
+    Parenting
+    Patience
+    Patriotism
+    Peace
+    Perseverance
+    Personal_fulfillment
+    Power
+    Pride
+    Recognition
+    Reliability
+    Resourcefulness
+    Respect
+    Responsibility
+    Risk_taking
+    Safety
+    Security
+    Self_discipline
+    Self_expression
+    Self_respect
+    Serenity
+    Service
+    Simplicity
+    Spirituality
+    Sportsmanship
+    Stewardship
+    Success
+    Teamwork
+    Thrift
+    Time
+    Tradition
+    Travel
+    Trust
+    Truth
+    Understanding
+    Uniqueness
+    Usefulness
+    Vision
+    Vulnerability
+    Wealth
+    Well_being
+    Wholeheartedness
+    Wisdom
+}
+
+
 class ExtractedInsight {
 	// While trying to do **GOAL/Desired_outcome**, people struggle with **pain** because **WHY: Details/context**.
 
@@ -6,8 +257,9 @@ class ExtractedInsight {
 	pain string | null @description("Pain or friction the user experiences in doing a task")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
 	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
-	emotionalResponse string | null @description("How strongly do they feel about this need. Low | Neutral | High")
+	emotionalResponse Emotions @description("describe the emotion the person feels about this.")
 	underlyingMotivation string | null @description("why do they want to achieve this, or overcome the pain?")
+	values BBValues[] @description("Which values is the person expressing?")
 	category string @description("General category of insight") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
 	impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")
@@ -119,7 +371,7 @@ test extract_insights_Jerad {
   functions [ExtractInsights]
   args {
 		userCustomInstructions #"
-		Give me at least 4 insights that only a german scientist would notice, in German.
+		Give me at least 4 insights that only a german scientist would notice.
 		"#
     transcript #"
 			Speaker B[0:00 - 0:01]: Hey, so today is June 11th, 2025 and I'm Rick and here speaking with Jerad, a friend and tutor.

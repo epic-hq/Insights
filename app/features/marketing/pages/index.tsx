@@ -1,7 +1,9 @@
 import { ArrowRight, BarChart2, Lightbulb, MessageSquare, Target, Users, Zap } from "lucide-react"
-import { Link, type MetaFunction, type LoaderFunctionArgs, redirect } from "react-router"
+import { Link, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
+import MainNav from "~/components/navigation/MainNav"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card } from "~/components/ui/card"
+import { PATHS } from "~/paths"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Insights Platform" }, { name: "description", content: "Insights for conversations" }]
@@ -11,19 +13,15 @@ export const meta: MetaFunction = () => {
 export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
 	const code = url.searchParams.get("code")
-	
+
 	// If there's an OAuth code, redirect to the proper callback handler
 	if (code) {
-		console.log("[MARKETING] OAuth code detected, redirecting to callback:", code)
 		return redirect(`/auth/callback?code=${code}`)
 	}
-	
+
 	// No OAuth code, continue with normal marketing page
 	return null
 }
-
-import MainNav from "~/components/navigation/MainNav"
-import { PATHS } from "~/paths"
 
 export default function LandingPage() {
 	return (
@@ -34,7 +32,7 @@ export default function LandingPage() {
 				<section className="w-full bg-gradient-to-r from-blue-500 to-purple-600 py-12 text-white md:py-24 lg:py-32 xl:py-48">
 					<div className="container px-4 text-center md:px-6">
 						<div className="space-y-6">
-							<h1 className="font-bold text-4xl tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none">
+							<h1 className="font-semibold text-4xl tracking-tighter sm:text-5xl md:text-6xl lg:text-7xl/none">
 								Understand your customers like never before
 							</h1>
 							<p className="mx-auto max-w-[700px] text-lg md:text-xl">
@@ -72,71 +70,71 @@ export default function LandingPage() {
 							</div>
 						</div>
 						<div className="mx-auto grid max-w-5xl items-start gap-8 py-12 sm:grid-cols-2 lg:grid-cols-3">
-							<Card className="flex flex-col items-center p-6 text-center">
-								<CardHeader>
-									<Zap className="mb-4 h-10 w-10 text-blue-600" />
-									<CardTitle>Real-time AI Insights</CardTitle>
-								</CardHeader>
-								<CardContent>
+							<Card className="flex h-full flex-col items-center p-6 text-center">
+								<div className="flex flex-1 flex-col items-center">
+									<div className="mb-4">
+										<Zap className="h-10 w-10 text-blue-600" />
+									</div>
+									<h3 className="mb-2 font-semibold">Real-time AI Insights</h3>
 									<p className="text-gray-600 text-sm">
 										Get instant, actionable discoveries pushed directly to you as new data emerges.
 									</p>
-								</CardContent>
+								</div>
 							</Card>
-							<Card className="flex flex-col items-center p-6 text-center">
-								<CardHeader>
-									<Target className="mb-4 h-10 w-10 text-green-600" />
-									<CardTitle>Intelligent Suggestions</CardTitle>
-								</CardHeader>
-								<CardContent>
+							<Card className="flex h-full flex-col items-center p-6 text-center">
+								<div className="flex flex-1 flex-col items-center">
+									<div className="mb-4">
+										<Target className="h-10 w-10 text-green-600" />
+									</div>
+									<h3 className="mb-2 font-semibold">Intelligent Suggestions</h3>
 									<p className="text-gray-600 text-sm">
 										Receive AI-driven recommendations for your next strategic move, guiding your decisions.
 									</p>
-								</CardContent>
+								</div>
 							</Card>
-							<Card className="flex flex-col items-center p-6 text-center">
-								<CardHeader>
-									<BarChart2 className="mb-4 h-10 w-10 text-purple-600" />
-									<CardTitle>Clustered Visualization</CardTitle>
-								</CardHeader>
-								<CardContent>
+							<Card className="flex h-full flex-col items-center p-6 text-center">
+								<div className="flex flex-1 flex-col items-center">
+									<div className="mb-4">
+										<BarChart2 className="h-10 w-10 text-purple-600" />
+									</div>
+									<h3 className="mb-2 font-semibold">Clustered Visualization</h3>
 									<p className="text-gray-600 text-sm">
 										See patterns in your data at a glance with intuitive 2D dimensionality reduction.
 									</p>
-								</CardContent>
+								</div>
 							</Card>
-							<Card className="flex flex-col items-center p-6 text-center">
-								<CardHeader>
-									<Users className="mb-4 h-10 w-10 text-orange-600" />
-									<CardTitle>Dynamic User Personas</CardTitle>
-								</CardHeader>
-								<CardContent>
+							<Card className="flex h-full flex-col items-center p-6 text-center">
+								<div className="flex flex-1 flex-col items-center">
+									<div className="mb-4">
+										<Users className="h-10 w-10 text-orange-600" />
+									</div>
+									<h3 className="mb-2 font-semibold">Dynamic User Personas</h3>
 									<p className="text-gray-600 text-sm">
 										Understand your audience segments with rich, data-driven persona definitions.
 									</p>
-								</CardContent>
+								</div>
 							</Card>
-							<Card className="flex flex-col items-center p-6 text-center">
-								<CardHeader>
-									<MessageSquare className="mb-4 h-10 w-10 text-red-600" />
-									<CardTitle>Interactive AI Chat</CardTitle>
-								</CardHeader>
-								<CardContent>
+							<Card className="flex h-full flex-col items-center p-6 text-center">
+								<div className="flex flex-1 flex-col items-center">
+									<div className="mb-4">
+										<MessageSquare className="h-10 w-10 text-red-600" />
+									</div>
+									<h3 className="mb-2 font-semibold">Interactive AI Chat</h3>
 									<p className="text-gray-600 text-sm">
 										Converse directly with your data and AI assistant for deeper exploration.
 									</p>
-								</CardContent>
+								</div>
 							</Card>
-							<Card className="flex flex-col items-center p-6 text-center">
-								<CardHeader>
-									<Lightbulb className="mb-4 h-10 w-10 text-blue-600" />
-									<CardTitle>Track Key Questions</CardTitle>
-								</CardHeader>
-								<CardContent>
+							<Card className="flex h-full flex-col items-center p-6 text-center">
+								<div className="flex flex-1 flex-col items-center">
+									<div className="mb-4">
+										<Lightbulb className="h-10 w-10 text-blue-400" />
+									</div>
+									<h3 className="mb-2 font-semibold">Track Key Questions</h3>
 									<p className="text-gray-600 text-sm">
 										Measure insight coverage against your core business questions and research goals.
 									</p>
-								</CardContent>
+								</div>
 							</Card>
 						</div>
 					</div>
@@ -191,7 +189,7 @@ export default function LandingPage() {
 							</div>
 							<div className="flex justify-center">
 								<img
-									src="https://cdn.freebiesupply.com/images/large/2x/dashboard-q16.jpg"
+									src="/images/dashboardScreen.jpg"
 									width="600"
 									height="400"
 									alt="Dashboard Screenshot"
@@ -212,7 +210,7 @@ export default function LandingPage() {
 							Join thousands of businesses already making smarter decisions with InsightFlow AI.
 						</p>
 						<Button asChild className="bg-white px-10 py-4 font-semibold text-blue-600 text-xl hover:bg-gray-100">
-							<Link href="/signup">Get Started Today</Link>
+							<Link to={PATHS.AUTH.REGISTER}>Get Started Today</Link>
 						</Button>
 					</div>
 				</section>
