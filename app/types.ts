@@ -1,4 +1,5 @@
 import { z } from "zod" // Centralized application type definitions
+
 // -------------------------------------------------------
 // All UI components should import domain types from this
 // file instead of defining duplicates scattered across
@@ -7,6 +8,7 @@ import { z } from "zod" // Centralized application type definitions
 // for our key domain entities.
 // -------------------------------------------------------
 
+import type { SupabaseClient as UntypedSupabaseClient } from "@supabase/supabase-js"
 // 1. Core Supabase types
 // ----------------------
 // These come from `supabase/types.ts`, generated via the
@@ -19,6 +21,7 @@ import type { PersonaSlice } from "~/components/charts/PersonaDonut"
 // Narrow helpers to the "public" schema for brevity. Extend if you
 // ever need other schemas.
 export type Database = SupabaseDB
+export type SupabaseClient = UntypedSupabaseClient<Database>
 
 export type Tables<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Row"]
 
@@ -183,3 +186,20 @@ export const InterviewStatus = z.enum([
 	"archived",
 ])
 export type InterviewStatus = z.infer<typeof InterviewStatus>
+
+// TODO: Double check the types here
+export type GetAccount = {
+	account_id: string,
+	account_role: string,
+	is_primary_owner: boolean,
+	name: string,
+	slug: string,
+	personal_account: boolean,
+	billing_enabled: boolean,
+	billing_status: string,
+	created_at: string,
+	updated_at: string,
+	metadata: Record<string, unknown>
+}
+
+export type UUID = string

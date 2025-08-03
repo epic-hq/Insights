@@ -10,14 +10,18 @@ import projectsRoutes from "./features/projects/routes"
 
 const routes = [
 	...marketingRoutes,
-	layout("./routes/_ProtectedLayout.tsx", [
-		...dashboardRoutes,
-		...interviewsRoutes,
-		...insightsRoutes,
-		...opportunitiesRoutes,
-		...peopleRoutes,
-		...personasRoutes,
-		...projectsRoutes,
+	layout("./routes/_protected/accounts.tsx", [
+		route("a/:accountId", "./routes/_protected/accounts.tsx", [
+			route(":projectId", "./routes/_protected/projects.tsx", [
+				...dashboardRoutes,
+				...interviewsRoutes,
+				...insightsRoutes,
+				...opportunitiesRoutes,
+				...peopleRoutes,
+				...personasRoutes,
+				...projectsRoutes,
+			]),
+		]),
 	]),
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
