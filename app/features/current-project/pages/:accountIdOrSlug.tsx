@@ -1,7 +1,6 @@
 import consola from "consola"
 import { Outlet, redirect, useLoaderData } from "react-router"
 import { z } from "zod"
-import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 import type { GetAccount, Project, SupabaseClient } from "~/types"
@@ -142,8 +141,8 @@ export default function CurrentProjectLayout() {
 	consola.log("Current project:", currentProject)
 
 	return (
-		<CurrentProjectProvider>
+		<CurrentAccountProvider>
 			<Outlet />
-		</CurrentProjectProvider>
+		</CurrentAccountProvider>
 	)
 }

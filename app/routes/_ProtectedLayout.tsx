@@ -3,7 +3,8 @@ import { Outlet, redirect, useLoaderData } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { CurrentProjectProvider } from "~/contexts/current-project-context"
+import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
@@ -19,26 +20,23 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				throw redirect("/login")
 			}
 
-			// Get Supabase client from the authenticated user context
-			const { getServerClient } = await import("~/lib/supabase/server")
-			const { client, headers } = getServerClient(request)
+			// Extract JWT from user claims (assumes JWT is available as user?.jwt or similar)
+			const jwt = user?.jwt || user?.access_token || null
 
-			// Extract current projectId from URL params (or fallback to null)
-			// TODO: Move currentProjectId to specific route segment file then delete this from context
-			const currentProjectId = params?.projectId || null
-			// consola.log("mw: ", currentProjectId)
+			// Use RLS client if JWT is present, otherwise fallback to anon client
+			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/server")).getServerClient(request).client
 
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {
 				claims: user,
 				account_id: user.sub,
 				user_metadata: user.user_metadata,
-				supabase: client,
-				headers,
-				current_project_id: currentProjectId,
+				supabase,
+				headers: request.headers,
 			})
+			consola.log("_ProtectedLayout Authentication middleware success\n")
 		} catch (error) {
-			consola.error("Authentication middleware error:", error)
+			consola.error("_ProtectedLayout Authentication middleware error:", error)
 			throw redirect("/login")
 		}
 	},
@@ -67,7 +65,6 @@ export async function loader({ context }: Route.LoaderArgs) {
 			auth: {
 				user: claims,
 				accountId,
-				currentProjectId: user.current_project_id || null,
 			},
 			accounts: accounts || [],
 		}
@@ -81,10 +78,12 @@ export default function ProtectedLayout() {
 	const { auth, accounts } = useLoaderData<typeof loader>()
 
 	return (
-		<AuthProvider user={auth.user} organizations={accounts} currentProjectId={auth.currentProjectId}>
-			<MainNav />
-			<PageHeader title="" />
-			<Outlet />
+		<AuthProvider user={auth.user} organizations={accounts}>
+			<CurrentProjectProvider>
+				<MainNav />
+				<PageHeader title="" />
+				<Outlet />
+			</CurrentProjectProvider>
 		</AuthProvider>
 	)
 }

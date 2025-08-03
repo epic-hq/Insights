@@ -9,7 +9,6 @@ export type UserContext = {
 	user_metadata: UserMetadata
 	supabase: SupabaseClient<Database>
 	headers: Headers
-	current_project_id: string | null
 }
 
 export const userContext = unstable_createContext<UserContext>(undefined)

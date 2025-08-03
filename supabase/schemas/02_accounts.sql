@@ -135,6 +135,13 @@ EXECUTE FUNCTION accounts.slugify_account_slug();
 alter table accounts.accounts
     enable row level security;
 
+-- Allow authenticated users to select from accounts.accounts
+CREATE POLICY "Authenticated users can read accounts"
+  ON accounts.accounts
+  FOR SELECT
+  TO authenticated
+  USING (true);
+
 -- protect the timestamps
 CREATE TRIGGER accounts_set_accounts_timestamp
     BEFORE INSERT OR UPDATE
@@ -153,7 +160,7 @@ EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
   * Account users are the users that are associated with an account.
   * They can be invited to join the account, and can have different roles.
   * The system does not enforce any permissions for roles, other than restricting
-  * billing and account membership to only owners
+  * billing and account membership to only owners`
  */
 create table if not exists accounts.account_user
 (
@@ -298,6 +305,7 @@ grant execute on function accounts.has_role_on_account(uuid, accounts.account_ro
 create or replace function accounts.get_accounts_with_role(passed_in_role accounts.account_role default null)
     returns setof uuid
     language sql
+
     security definer
     set search_path = public
 as
@@ -403,9 +411,11 @@ grant execute on function public.get_account_id(text) to authenticated, service_
 /**
  * Returns the current user's role within a given account_id
 */
-create or replace function public.current_user_account_role(account_id uuid)
+create or replace function public.current_user_account_role(p_account_id uuid)
     returns jsonb
     language plpgsql
+		SECURITY DEFINER
+		SET search_path = public, pg_catalog
 as
 $$
 DECLARE
@@ -421,7 +431,7 @@ BEGIN
     from accounts.account_user wu
              join accounts.accounts a on a.id = wu.account_id
     where wu.user_id = auth.uid()
-      and wu.account_id = current_user_account_role.account_id;
+      and wu.account_id = p_account_id;
 
     -- if the user is not a member of the account, throw an error
     if response ->> 'account_role' IS NULL then

@@ -1,5 +1,6 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
 import dashboardRoutes from "./features/dashboard/routes"
+import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
 import marketingRoutes from "./features/marketing/routes"
@@ -10,7 +11,8 @@ import projectsRoutes from "./features/projects/routes"
 
 const routes = [
 	...marketingRoutes,
-	layout("./routes/_protected/accounts.tsx", [
+	layout("./routes/_ProtectedLayout.tsx", [
+		...homeRoutes,
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
 			route(":projectId", "./routes/_protected/projects.tsx", [
 				...dashboardRoutes,

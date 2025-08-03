@@ -1,19 +1,20 @@
 import { Link, NavLink, useLocation } from "react-router-dom"
-import { PATHS } from "~/paths"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { PATHS, projectPath } from "~/paths"
 import { useAuth } from "../../contexts/AuthContext"
 import { UserProfile } from "../auth/UserProfile"
 
-const navItems = [
-	{ to: PATHS.DASHBOARD, label: "Dashboard", authOnly: true },
-	{ to: PATHS.INTERVIEWS, label: "Interviews", authOnly: true },
-	{ to: PATHS.INSIGHTS, label: "Insights", authOnly: true },
-	{ to: PATHS.PERSONAS, label: "Personas", authOnly: true },
-	// { to: "/opportunities", label: "Opportunities", authOnly: true },
-	{ to: PATHS.PEOPLE, label: "People", authOnly: true },
-	{ to: PATHS.PROJECTS, label: "Projects", authOnly: true },
-	{ to: PATHS.AUTO_INSIGHTS, label: "Auto-Takeaways", authOnly: true },
-	// { to: PATHS.ABOUT, label: "About", authOnly: false },
-	// { to: "/themes", label: "Themes", authOnly: true },
+const navItems: { key: keyof typeof PATHS; label: string; authOnly: boolean }[] = [
+	{ key: "DASHBOARD", label: "Dashboard", authOnly: true },
+	{ key: "INTERVIEWS", label: "Interviews", authOnly: true },
+	{ key: "INSIGHTS", label: "Insights", authOnly: true },
+	{ key: "PERSONAS", label: "Personas", authOnly: true },
+	// { key: "OPPORTUNITIES", label: "Opportunities", authOnly: true },
+	{ key: "PEOPLE", label: "People", authOnly: true },
+	{ key: "PROJECTS", label: "Projects", authOnly: true },
+	{ key: "AUTO_INSIGHTS", label: "Auto-Takeaways", authOnly: true },
+	// { key: "ABOUT", label: "About", authOnly: false },
+	// { key: "THEMES", label: "Themes", authOnly: true },
 ]
 
 function _Breadcrumbs() {
@@ -46,6 +47,7 @@ function _Breadcrumbs() {
 export default function MainNav() {
 	const { user } = useAuth()
 	const { pathname } = useLocation()
+	const { accountId, projectId } = useCurrentProject()
 	const _isMainRoute =
 		pathname !== "/" && /^\/(themes|personas|opportunities|interviews|insights|projects|people|about)/.test(pathname)
 
@@ -55,7 +57,7 @@ export default function MainNav() {
 				<div className="mx-auto max-w-[1440px] px-4">
 					<div className="flex h-16 items-center justify-between">
 						{/* Brand */}
-						<Link to={PATHS.DASHBOARD} className="flex items-center">
+						<Link to={projectPath("DASHBOARD", accountId, projectId)} className="flex items-center">
 							<svg
 								className="lucide lucide-scan-eye-icon h-8 w-8 text-blue-600"
 								viewBox="0 0 24 24"
@@ -82,10 +84,10 @@ export default function MainNav() {
 							<div className="hidden sm:ml-6 sm:flex sm:space-x-8">
 								{navItems
 									.filter((item) => !item.authOnly || user)
-									.map(({ to, label }) => (
+									.map(({ key, label }) => (
 										<NavLink
-											key={to}
-											to={to}
+											key={key}
+											to={projectPath(key, accountId, projectId)}
 											className={({ isActive }) =>
 												`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
 													isActive
