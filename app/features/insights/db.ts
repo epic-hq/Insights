@@ -1,5 +1,4 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
 import type { Database } from "~/types"
 
 // This is our pattern for defining typed queries and returning results.
@@ -13,37 +12,33 @@ export const getInsights = async ({
 	accountId: string
 	projectId?: string
 }) => {
-	const insightsQuery = supabase
+	const query = supabase
 		.from("insights")
-		.select(`
-    *,
-    persona_insights:persona_insights (
-      persona_id,
-      relevance_score,
-      people_personas (
-        id,
-        people (
-          id,
-          name,
-          color_hex
-        )
-      )
-    ),
-    persona_type_count:persona_insights(count)
-  `)
+		.select("*")
+		// .select(`
+		// 	*,
+		// 	persona_insights:persona_insights (
+		// 		persona_id,
+		// 		relevance_score,
+		// 		people_personas (
+		// 			id,
+		// 			people (
+		// 				id,
+		// 				name,
+		// 				color_hex
+		// 			)
+		// 		)
+		// 	)
+		// `)
 		.eq("account_id", accountId)
-		// .eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
-	type Insights = QueryData<typeof insightsQuery>
+	// if (projectId) {
+	// 	query = query.eq("project_id", projectId)
+	// }
 
-	const { data, error } = await insightsQuery
-	consola.log("insights result: ", data)
-	if (error) {
-		throw new Response("Failed to load insights", { status: 500 })
-	}
-	const insightsData: Insights = data
-	return insightsData
+	const { data, error } = await query
+	return { data, error }
 }
 
 export const getInsightById = async ({

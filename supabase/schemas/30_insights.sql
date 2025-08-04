@@ -19,6 +19,7 @@ create table if not exists insights (
   confidence text check (confidence in ('low','medium','high')),
   contradictions text,
 	related_tags text[],
+	project_id uuid references projects (id) on delete cascade,
   embedding vector(1536), -- jtbd embedding to aid searching
   created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now(),

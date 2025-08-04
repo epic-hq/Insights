@@ -3,7 +3,9 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
+import { projectPath } from "~/paths"
 import { userContext } from "~/server/user-context"
 import { TranscriptResults } from "../components/TranscriptResults"
 
@@ -85,6 +87,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export default function InterviewDetail() {
 	const { interview, insights, interviewerData } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
+	const { accountId, projectId } = useCurrentProject()
 
 	const participants = interview.participants || []
 	const _primaryParticipant = participants[0]?.people
@@ -100,7 +103,7 @@ export default function InterviewDetail() {
 						<div className="flex items-center justify-between">
 							<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
 							<Link
-								to={`/interviews/${interview.id}/edit`}
+								to={projectPath("INTERVIEWS", accountId, projectId, `/${interview.id}/edit`)}
 								className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
 							>
 								Edit Interview
@@ -271,7 +274,10 @@ export default function InterviewDetail() {
 								<div className="space-y-3">
 									{insights.map((insight) => (
 										<div key={insight.id} className="border-green-500 border-l-4 pl-3">
-											<Link to={`/insights/${insight.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+											<Link
+												to={projectPath("INSIGHTS", accountId, projectId, `/${insight.id}`)}
+												className="font-medium text-blue-600 hover:text-blue-800"
+											>
 												{insight.name}
 											</Link>
 											{insight.category && (

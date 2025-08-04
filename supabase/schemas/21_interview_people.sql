@@ -8,6 +8,7 @@ set search_path = public;
 create table if not exists interview_people (
   interview_id uuid not null references public.interviews (id) on delete cascade,
   person_id    uuid not null references public.people     (id) on delete cascade,
+	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   role         text, -- participant / moderator / observer etc.
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),

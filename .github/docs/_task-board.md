@@ -1,16 +1,17 @@
 # Project Task Board
 
-> **Source of Truth** – last updated: 2025-07-29
+## 🔜 Doing Now (Sprint 2 - Accounts & Projects controls and routing)
 
-## ✅ Done
+- [ ] Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
+- [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
+- [ ] Update all links to protectedLayout and downstream components to use CurrentProjectPath from CurrentProjectContext
+- [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
+- [ ] Update RLS to require account_id AND project_id.
+- [ ] CRUD functions for people, projects, personas, tags, opportunities
 
-- Draft & save comprehensive product plan (`docs/product-plan.md`).
-- Resolve initial open questions (ASR model, batching, privacy scope, persona clustering, interview scale).
-- Fix README link to product plan.
-- [x] User login, org membership, multi-tenant Auth and RLS
-- [x] **Process Data** – upload recording, batch transcribe via AssemblyAI, store transcript in db
-- [x] **Supabase Project & CI** – initialise local Supabase, add Vitest + Playwright pipelines.
-- [x] **Component PoC** – build Storybook for `<InsightCard>` and `<ThemeMatrix>`.
+## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
+
+- [ ] CopilotKit with Mastra implementation
 
 ## 🎨 UX Track
 
@@ -25,17 +26,10 @@
 Prioritize.
 - [ ] add 'inline edit' in other records like interviews etc.
 
-## 🔜 Up Next (Sprint 1 – Get Valuable Insights)
-
-- [x] **Enable User-Org** - needed for basic record ownership
-- [x] **Embeddings Pipeline** – generate embeddings for insights and themes.
-- [x] **Fix remaining routes** - interview list and detail pages done. See `_NavLayout.insights/index.tsx` and `_NavLayout.interviews/$interviewId/route.tsx`.
-- [ ] Intro Testing framework and coverage [howto test](testing-howto.md)
-- [ ] CRUD functions for people, projects, personas, tags, opportunities
-
 ## 🌓 Backlog / Later
 
 - [ ] fix login-redirect, and sign-in flow
+- [ ] Intro Testing framework and coverage [howto test](testing-howto.md)
 - [ ] Add Research Projects route, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 - [ ] **Auto-Insights** - Distill insights and help make executive decisions, answering key questions like "What are the top opportunities?" and "What are the top pain points?", "What changes would benefit different personas the most?" and "What are the best revenue-generating opportunities?" and "Which personas are likely to pay for what?" and "(Given key competitive pressures) what are the most profitable opportunities?"
 - [ ] Extraction Guidance: User specified constraints for auto-insights. eg. sales, marketing, product, etc. Auto-merge tags, provide as prompts to LLM in BAML extraction process.
@@ -75,3 +69,21 @@ Benefits
 
 Reuses semantically-close tags automatically
 Keeps tag table clean without manual admin
+
+## ✅ Done
+
+- Draft & save comprehensive product plan (`docs/product-plan.md`).
+- Resolve initial open questions (ASR model, batching, privacy scope, persona clustering, interview scale).
+- Fix README link to product plan.
+- [x] User login, org membership, multi-tenant Auth and RLS
+- [x] **Process Data** – upload recording, batch transcribe via AssemblyAI, store transcript in db
+- [x] **Supabase Project & CI** – initialise local Supabase, add Vitest + Playwright pipelines.
+- [x] **Component PoC** – build Storybook for `<InsightCard>` and `<ThemeMatrix>`.
+
+### Sprint 1 - get started with foundation
+
+- [x] **Enable User-Org** - needed for basic record ownership
+- [x] **Embeddings Pipeline** – generate embeddings for insights and themes.
+- [x] **Fix remaining routes** - interview list and detail pages done. See `_NavLayout.insights/index.tsx` and `_NavLayout.interviews/$interviewId/route.tsx`.
+- [x] Propagate project_id everywhere
+- [x] Add project_id column for interview, people, personas, insights, tags, junction tables

@@ -3,7 +3,7 @@
  * Ensures only authenticated users can access project-specific resources and provides project data to child routes.
  */
 import consola from "consola"
-import { Outlet, redirect, useLoaderData } from "react-router-dom"
+import { Outlet, redirect } from "react-router-dom"
 import { z } from "zod"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { currentProjectContext } from "~/server/current-project-context"
@@ -79,8 +79,8 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function Projects() {
-	const currentProject = useLoaderData<typeof loader>()
-	consola.log("Projects currentProjectContext:", currentProject)
+	// const currentProject = useLoaderData<typeof loader>()
+	// consola.log("Projects currentProjectContext:", currentProject)
 
 	return (
 		<CurrentProjectProvider>

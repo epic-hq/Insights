@@ -11,11 +11,12 @@ import {
 	useReactTable,
 } from "@tanstack/react-table"
 import { useMemo, useState } from "react"
+import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Link } from "react-router-dom"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
+import { useProjectPath } from "~/hooks/use-project-path"
 import type { Insight } from "~/types"
 
 interface InsightsDataTableProps {
@@ -23,6 +24,8 @@ interface InsightsDataTableProps {
 }
 
 export function InsightsDataTable({ data }: InsightsDataTableProps) {
+	const projectPath = useProjectPath()
+
 	const [sorting, setSorting] = useState<SortingState>([])
 	const [columnFilters, setColumnFilters] = useState<any[]>([])
 
@@ -49,7 +52,10 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				id: "personas",
 				header: () => "Personas",
 				accessorFn: (row: any) =>
-					(row.persona_insights ?? []).map((pi: any) => pi.personas?.name).filter(Boolean).join(", "),
+					(row.persona_insights ?? [])
+						.map((pi: any) => pi.personas?.name)
+						.filter(Boolean)
+						.join(", "),
 				cell: (cell: CellContext<Insight, unknown>) => {
 					const personasStr = cell.getValue() as string
 					const personas = personasStr ? personasStr.split(/,\s*/) : []
@@ -214,13 +220,15 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 					{table.getRowModel().rows.map((row) => (
 						<TableRow key={row.id}>
 							{row.getVisibleCells().map((cell, i) => (
-								<TableCell key={cell.id}>{
-							i === 0 ? (
-								<Link to={`/insights/${row.original.id}`}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</Link>
-							) : (
-								flexRender(cell.column.columnDef.cell, cell.getContext())
-							)}
-						</TableCell>
+								<TableCell key={cell.id}>
+									{i === 0 ? (
+										<Link to={projectPath("INSIGHTS", `/${row.original.id}`)}>
+											{flexRender(cell.column.columnDef.cell, cell.getContext())}
+										</Link>
+									) : (
+										flexRender(cell.column.columnDef.cell, cell.getContext())
+									)}
+								</TableCell>
 							))}
 						</TableRow>
 					))}

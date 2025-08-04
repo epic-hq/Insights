@@ -6,7 +6,7 @@
  */
 
 import consola from "consola"
-import { Outlet, redirect, useLoaderData } from "react-router-dom"
+import { Outlet, redirect } from "react-router-dom"
 import { z } from "zod"
 import { CurrentAccountProvider } from "~/contexts/current-account-context"
 import { currentAccountContext } from "~/server/current-account-context"
@@ -20,7 +20,7 @@ function isUUID(str: string) {
 	return isValid
 }
 
-async function _parse_account_id_from_params({
+async function parse_account_id_from_params({
 	account_id_or_slug,
 	supabase,
 }: {
@@ -40,10 +40,20 @@ async function _parse_account_id_from_params({
 	// }
 
 	if (isUUID(account_id_or_slug || "")) {
-		consola.log("Get account by id ", account_id_or_slug)
-		const getAccountResponse = await supabase.rpc("get_account", {
-			account_id: account_id_or_slug,
-		})
+		// consola.log("Get account by id ", account_id_or_slug)
+		const test = supabase.schema("accounts").from("accounts").select("*").eq("id", account_id_or_slug)
+		const { data: account, error } = await test.single()
+		if (error) {
+			consola.error("Get account error:", error)
+		}
+		if (account) {
+			consola.log("Get account success:", account)
+			// return account
+		}
+
+		const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
+		consola.log("Get account response:", getAccountResponse)
+
 		if (!getAccountResponse.data) {
 			consola.error("Get account error:", getAccountResponse.error)
 			throw new Response("Account not found", { status: 404 })
@@ -81,19 +91,18 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			const _supabase = ctx.supabase
 			const account_id_or_slug = params?.accountId || ""
 
-			// const parsed_account = await parse_account_id_from_params({
-			// 	account_id_or_slug,
-			// 	supabase: _supabase,
-			// })
+			const parsed_account = await parse_account_id_from_params({
+				account_id_or_slug,
+				supabase: _supabase,
+			})
 
 			// Set user context for all child loaders/actions to access
 			context.set(currentAccountContext, {
-				// 	current_account_id: parsed_account?.account_id,
-				// 	account: parsed_account,
-				// })
-				current_account_id: account_id_or_slug,
-				account: {},
+				current_account_id: parsed_account?.account_id,
+				account: parsed_account,
 			})
+			// current_account_id: account_id_or_slug,
+			// account: {},
 			// consola.log("_protected/accounts currentAccountContext", parsed_account.account_id)
 		} catch (error) {
 			consola.error("_protected/accounts Authentication middleware error:", error)
@@ -116,8 +125,8 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function Accounts() {
-	const currentProject = useLoaderData<typeof loader>()
-	consola.log("Accounts currentAccountContext:", currentProject)
+	// const currentProject = useLoaderData<typeof loader>()
+	// consola.log("Accounts currentAccountContext:", currentProject)
 
 	return (
 		<CurrentAccountProvider>

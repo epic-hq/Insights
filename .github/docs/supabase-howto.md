@@ -49,6 +49,43 @@ like People, PeopleInsert, PeopleUpdate
 VS Code tip
 Add this path to tsconfig.json typeRoots so IntelliSense auto-completes column names.
 
+## Managing Imperative (Manual) Migrations
+
+Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain extension/permission statements) are not handled by Supabase's declarative schema system or `supabase db diff`. To ensure these changes are applied consistently, follow this process:
+
+1. **Keep all imperative/manual SQL in a single file:**
+   Place a file named `supabase/migrations/imperative.sql` in your repo.
+
+2. **What to put in `imperative.sql`:**
+   - Any SQL statements that are not picked up by `db diff` (e.g., GRANT, REVOKE, CREATE/ALTER POLICY, extension DDL, etc.).
+   - Make statements idempotent where possible (so re-running is safe).
+   - Organize by section and add comments for clarity.
+
+3. **How to use:**
+   - After running all migrations (`supabase db push` or `supabase migrations up`), always run:
+     ```
+     psql $DATABASE_URL -f supabase/migrations/imperative.sql
+     ```
+   - This ensures all manual changes are applied to your local or remote DB.
+
+4. **Annotate schema files:**
+   - If you move a statement from a schema file to `imperative.sql`, add a comment in the original schema file:
+     ```
+     -- run manually: see supabase/migrations/imperative.sql
+     ```
+
+5. **Version control:**
+   - Track `imperative.sql` in git for history and review.
+
+6. **Review regularly:**
+   - Periodically review and prune `imperative.sql` to remove obsolete statements.
+
+**Example workflow:**
+- Edit `supabase/schemas/*.sql` as usual.
+- Run `supabase db diff -f <brief_name>` and apply migrations.
+- For any changes not handled by `db diff`, add them to `imperative.sql` and run it manually.
+- Annotate the original schema file with `-- run manually`.
+
 ## Reapairing 7/28
 
 - [x] re-created schema `35_junction_tables.sql` - was missing

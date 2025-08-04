@@ -224,6 +224,7 @@ create table if not exists tags (
 	definition text,
 	set_name text,
 	embedding vector(1536),
+	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
 	updated_at timestamptz not null default now(),
 	created_at timestamptz not null default now(),
   constraint tags_account_tag_unique unique (account_id, tag)

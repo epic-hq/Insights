@@ -3,9 +3,11 @@ import { formatDistance } from "date-fns"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviews } from "~/features/interviews/db"
 import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
+import { projectPath } from "~/paths"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => {
@@ -93,6 +95,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 
 export default function InterviewsIndex() {
 	const { interviews, segmentData } = useLoaderData<typeof loader>()
+	const { accountId, projectId } = useCurrentProject()
 
 	return (
 		<div className="space-y-8 p-6">
@@ -112,7 +115,10 @@ export default function InterviewsIndex() {
 			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">
 				<div className="mb-4 flex items-center justify-between">
 					<h2 className="font-semibold text-xl">All Interviews</h2>
-					<Link to="/insights?sort=latest" className="text-blue-600 hover:text-blue-800">
+					<Link
+						to={projectPath("INSIGHTS", accountId, projectId, "?sort=latest")}
+						className="text-blue-600 hover:text-blue-800"
+					>
 						View all insights
 					</Link>
 				</div>
@@ -147,7 +153,7 @@ export default function InterviewsIndex() {
 							{interviews.map((interview) => (
 								<tr key={interview.id}>
 									<td className="whitespace-nowrap px-4 py-3">
-										<Link to={`/interviews/${interview.id}`}>
+										<Link to={projectPath("INTERVIEWS", accountId, projectId, `/${interview.id}`)}>
 											<div className="flex flex-col">
 												<div className="font-medium text-gray-900">
 													{interview.interview_people?.[0]?.people?.name || interview.title || "Unknown Participant"}
@@ -183,7 +189,10 @@ export default function InterviewsIndex() {
 									</td>
 									<td className="whitespace-nowrap px-4 py-3">{formatDistance(interview.date, new Date())}</td>
 									<td className="whitespace-nowrap px-4 py-3">
-										<Link to={`/interviews/${interview.id}`} className="text-blue-600 hover:text-blue-800">
+										<Link
+											to={projectPath("INTERVIEWS", accountId, projectId, `/${interview.id}`)}
+											className="text-blue-600 hover:text-blue-800"
+										>
 											View
 										</Link>
 									</td>

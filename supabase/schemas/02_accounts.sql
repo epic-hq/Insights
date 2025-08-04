@@ -415,7 +415,7 @@ create or replace function public.current_user_account_role(p_account_id uuid)
     returns jsonb
     language plpgsql
 		SECURITY DEFINER
-		SET search_path = public, pg_catalog
+		SET search_path = accounts,public
 as
 $$
 DECLARE
