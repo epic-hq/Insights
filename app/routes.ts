@@ -12,16 +12,18 @@ import projectsRoutes from "./features/projects/routes"
 const routes = [
 	...marketingRoutes,
 	layout("./routes/_ProtectedLayout.tsx", [
+		...homeRoutes,
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
-			...homeRoutes,
-			route(":projectId", "./routes/_protected/projects.tsx", [
-				...dashboardRoutes,
-				...interviewsRoutes,
-				...insightsRoutes,
-				...opportunitiesRoutes,
-				...peopleRoutes,
-				...personasRoutes,
-				...projectsRoutes,
+			layout("./features/projects/layout.tsx", [
+				route(":projectId", "./routes/_protected/projects.tsx", [
+					...dashboardRoutes,
+					...interviewsRoutes,
+					...insightsRoutes,
+					...opportunitiesRoutes,
+					...peopleRoutes,
+					...personasRoutes,
+					...projectsRoutes,
+				]),
 			]),
 		]),
 	]),
@@ -31,8 +33,10 @@ const routes = [
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("login", "./routes/login.tsx"),
+	route("login_success", "./routes/login_success.tsx"),
+	route("login_failure", "./routes/login_failure.tsx"),
 	route("register", "./routes/register.tsx"),
-	route("signout", "./routes/auth.signout.tsx"),
+	route("/auth/signout", "./routes/auth.signout.tsx"),
 	route("api.generate-personas", "./routes/api.generate-personas.tsx"),
 ] satisfies RouteConfig
 

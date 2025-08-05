@@ -1,8 +1,48 @@
 # Tech Stack and Conventions
 
-## Last updated: 2025-07-09
+## Last updated: 2025-08-05
 
-This document captures the agreed-upon architectural decisions for persistence, auth, media storage, and future analytics.
+This document describes the architecture and conventions (ways of doing things) in the app, including auth, how to structure the code, how to manage data and state in components, middleware, and API routes, media storage, and database schema and conventions. We will explain in plain language first, then provide the technical details with examples so AI or human dev can follow and help enforce consistency and good patterns.
+
+## Users and Accounts
+
+When a user logs into the application, they have a personal ID and that creates a `account_user` record where their personal ID is both in the `user_id` and the `account_id`. We also automatically create a Team Account, which is a new `account_id` and a row that shows the `user_id` with a new `account_id`. This team account allows them to invite others to be members of their team.
+
+We should ALWAYS use the user's "Team" account `accounts.id` or `account_user.account_id` to access the account. The personal account should only be used for login and authentication. `account_user.user_id` should be used to identify the member of the (team) account, think of it as a member_id.
+
+Future feature will allow them to 1. select their team account, add others as members to the team account.
+
+When we activate a team account, we create a new `account_id` and update the `account_user` record to show the `user_id` with the new `account_id`.
+
+Account selection UI:
+If the user has only a personal account, auto-select it.
+If the user has multiple accounts, show a modal or page listing all their teams (and personal account, if you want to allow "My Stuff").
+Store the selected account_id in a React context, cookie, or localStorage for the session.
+Route construction:
+All collaborative routes should be /a/:accountId/... and use the selected team account_id.
+When switching teams, update the context and redirect to the new team's dashboard.
+Default behavior:
+On first login, if the user only has a personal account, offer to create a team or start a project in their personal account.
+When a team is created or the user is invited to a team, switch context to that team.
+Where in your app:
+
+After login in your auth callback or root loader:
+Fetch all accounts for the user and set the active account context.
+In your main layout or dashboard loader:
+Check for an active account context; if missing, redirect to account selection.
+In your project/resource creation forms:
+Use the active account_id for all new resources.
+
+## Context & Information flow
+
+_ProtectedLayout. Loader gets user, accounts & project info and adds into react context CurrentProjectContext.
+/dashboard uses it.
+MainNav uses it for nav links. Non-logged in users should only see public links.
+
+What route to use for project detail page? /projects/:projectId or /projects/:projectId/:tab was old way before we introduced the /a/:accountId/:projectId/ prefix. So now the project detail page should be /a/:accountId/:projectId/. The projectsRoutes.ts file should be updated to use this new route for the detail page. But we need to ensure that a link to another page within the project still shows without showing the projectDetail page. e.g. /a/:accountId/:projectId/interviews should show the interviews page.
+And projectDetail page can use CurrentProjectContext to get the project info.
+
+## Table of Contents
 
 ## 1. Stack Overview
 
@@ -135,8 +175,8 @@ The following tables have additional policies:
   * `insert/delete` owners only.
   * (Hide the full roster from non-admins.)
 
-* **`user_settings`**:
-  * Use `user_id = auth.uid()` in addition to `is_in_org(org_id)` for read/write.
+* **`account_settings`**:
+  * Use `account_id = auth.uid()` in addition to `is_in_org(org_id)` for read/write.
   * (Each user edits only their prefs.)
 
 * **`media_files`**:

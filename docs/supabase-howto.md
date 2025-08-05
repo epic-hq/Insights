@@ -329,9 +329,36 @@ order by created_at desc
 limit 3;
 ```
 
-## Triggers & Functions
+## Useful Troubleshooting comands for schemas, permissions, Triggers & Functions
 
-Useful queries to troubleshoot. Show all triggers:
+### Show all schemas permissions
+
+```sql
+
+-- Check schema-level permissions
+SELECT
+    nspname AS schema_name,
+    pg_catalog.has_schema_privilege(current_user, nspname, 'CREATE') AS can_create,
+    pg_catalog.has_schema_privilege(current_user, nspname, 'USAGE') AS can_usage
+FROM pg_catalog.pg_namespace
+WHERE
+    nspname NOT LIKE 'pg_%'
+    AND nspname <> 'information_schema';
+
+-- Check table-level permissions in the accounts schema
+SELECT
+    schemaname,
+    tablename,
+    pg_catalog.has_table_privilege(current_user, schemaname || '.' || tablename, 'SELECT') AS can_select,
+    pg_catalog.has_table_privilege(current_user, schemaname || '.' || tablename, 'INSERT') AS can_insert,
+    pg_catalog.has_table_privilege(current_user, schemaname || '.' || tablename, 'UPDATE') AS can_update,
+    pg_catalog.has_table_privilege(current_user, schemaname || '.' || tablename, 'DELETE') AS can_delete
+FROM pg_catalog.pg_tables
+WHERE schemaname = 'accounts'
+    AND tablename IN ('billing_subscriptions', 'billing_customers','accounts');
+```
+
+### Show all triggers
 
 ```sql
 SELECT
@@ -345,7 +372,7 @@ WHERE trigger_schema = 'public'
 ORDER BY table_name, trigger_name;
 ```
 
-Show all functions:
+### Show all functions
 
 ```sql
 SELECT
@@ -363,6 +390,61 @@ WHERE n.nspname = 'public'
 ORDER BY function_name;
 ```
 
+### Show function permissions on schemas & tables
+
+```sql
+SELECT
+  p.proname                                    AS function_name,
+  pg_get_function_identity_arguments(p.oid)    AS signature,
+  has_function_privilege(
+    'authenticated',
+    p.oid::regprocedure,                        -- ← cast OID to regprocedure
+    'EXECUTE'
+  )                                             AS can_execute
+FROM pg_proc p
+JOIN pg_namespace n
+  ON n.oid = p.pronamespace
+WHERE n.nspname = 'accounts';
+
+```
+
+**Authenticated users permissions test**
+
+```sql
+
+-- Authenticated User Permissions test
+-- 1a) Schema-level privileges
+SELECT
+  has_schema_privilege('authenticated', 'accounts', 'USAGE')  AS can_usage,
+  has_schema_privilege('authenticated', 'accounts', 'CREATE') AS can_create;
+
+-- 1b) Table-level privileges
+SELECT
+  c.relname AS table_name,
+  has_table_privilege('authenticated', format('accounts.%I', c.relname), 'SELECT') AS can_select,
+  has_table_privilege('authenticated', format('accounts.%I', c.relname), 'INSERT') AS can_insert,
+  has_table_privilege('authenticated', format('accounts.%I', c.relname), 'UPDATE') AS can_update,
+  has_table_privilege('authenticated', format('accounts.%I', c.relname), 'DELETE') AS can_delete
+FROM pg_class c
+JOIN pg_namespace n ON n.oid = c.relnamespace
+WHERE n.nspname = 'accounts'
+  AND c.relkind = 'r';  -- ordinary tables
+
+-- (Optional) Function-level
+SELECT
+  p.proname                                    AS function_name,
+  pg_get_function_identity_arguments(p.oid)    AS signature,
+  has_function_privilege(
+    'authenticated',
+    p.oid::regprocedure,                        -- ← cast OID to regprocedure
+    'EXECUTE'
+  )                                             AS can_execute
+FROM pg_proc p
+JOIN pg_namespace n
+  ON n.oid = p.pronamespace
+WHERE n.nspname = 'accounts';
+```
+
 ### Object Storage
 
 For big objects, use cloudflare R2. TODO: setup.
@@ -372,7 +454,7 @@ How To Setup: [ref](https://developers.cloudflare.com/r2/buckets/public-buckets/
 
 ## Users and Accounts
 
-When a user logs into the application, they have a personal ID and that creates a `account_user` record where their personal ID is both in the `user_id` and the `account_id`. We also automatically create a Team Account, which is a new `account_id` and a row that shows the `user_id` with a new `account_id`. This team account allows them to invite others to be members of their team.
+When a user Registers in the application, they have a personal ID and that creates a `account_user` record where their personal ID is both in the `user_id` and the `account_id`. We also automatically create a Team Account, which is a new `account_id` and a row that shows the `user_id` with a new `account_id`. This team account allows them to invite others to be members of their team.
 
 Currently they are only using the personal `account_id` to access the account.
 
@@ -398,6 +480,18 @@ In your main layout or dashboard loader:
 Check for an active account context; if missing, redirect to account selection.
 In your project/resource creation forms:
 Use the active account_id for all new resources.
+
+Implement a UI (modal, dropdown, or page) that appears when accounts.length > 1 and no account is selected, allowing the user to pick their active team/account.
+Use the account from context for all route construction and resource creation.
+
+**When user logs in**
+redirect to a static url: /login_success
+-- pull current_project_id from account_settings
+then redirect to it
+project detail page. if no data, tell them what to do.
+
+- [ ] create project for team.  accounts.run_new_user_setup()
+Not on auth.users table trigger.
 
 ## Auth with JWT-Signing in Remix/ReactRouter7
 
