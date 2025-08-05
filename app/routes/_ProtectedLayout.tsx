@@ -60,6 +60,18 @@ export async function loader({ context }: Route.LoaderArgs) {
 			throw new Response(accountsError.message, { status: 500 })
 		}
 
+		// Get current account_settings using personal user_id so we know which account and project to use
+		const { data: accountSettings, error: accountSettingsError } = await supabase
+			.from("account_settings")
+			.select("*")
+			.eq("account_id", accountId)
+			.single()
+		if (accountSettingsError) {
+			consola.error("Get account settings error:", accountSettingsError)
+			throw new Response(accountSettingsError.message, { status: 500 })
+		}
+		consola.log("_ProtectedLayout Account settings:", accountSettings)
+
 		return {
 			lang,
 			auth: {
@@ -67,6 +79,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 				accountId,
 			},
 			accounts: accounts || [],
+			account_settings: accountSettings || {},
 		}
 	} catch (error) {
 		consola.error("Protected layout loader error:", error)
@@ -75,10 +88,10 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function ProtectedLayout() {
-	const { auth, accounts } = useLoaderData<typeof loader>()
+	const { auth, accounts, account_settings } = useLoaderData<typeof loader>()
 
 	return (
-		<AuthProvider user={auth.user} organizations={accounts}>
+		<AuthProvider user={auth.user} organizations={accounts} account_settings={account_settings}>
 			<CurrentProjectProvider>
 				<MainNav />
 				<PageHeader title="" />

@@ -310,6 +310,8 @@ export type Database = {
           app_activity: Json
           created_at: string
           created_by: string | null
+          current_account_id: string | null
+          current_project_id: string | null
           id: string
           metadata: Json
           onboarding_completed: boolean
@@ -323,6 +325,8 @@ export type Database = {
           app_activity?: Json
           created_at?: string
           created_by?: string | null
+          current_account_id?: string | null
+          current_project_id?: string | null
           id?: string
           metadata?: Json
           onboarding_completed?: boolean
@@ -336,6 +340,8 @@ export type Database = {
           app_activity?: Json
           created_at?: string
           created_by?: string | null
+          current_account_id?: string | null
+          current_project_id?: string | null
           id?: string
           metadata?: Json
           onboarding_completed?: boolean
@@ -1419,6 +1425,24 @@ export type Database = {
       service_role_upsert_customer_subscription: {
         Args: { account_id: string; customer?: Json; subscription?: Json }
         Returns: undefined
+      }
+      set_current_account_id: {
+        Args: { new_account_id: string }
+        Returns: {
+          account_id: string | null
+          app_activity: Json
+          created_at: string
+          created_by: string | null
+          current_account_id: string | null
+          current_project_id: string | null
+          id: string
+          metadata: Json
+          onboarding_completed: boolean
+          role: string | null
+          title: string | null
+          updated_at: string
+          updated_by: string | null
+        }
       }
       sparsevec_out: {
         Args: { "": unknown }

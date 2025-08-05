@@ -51,6 +51,7 @@ export type InterviewTag = Tables<"interview_tags">
 export type InsightTag = Tables<"insight_tags">
 export type PeoplePersona = Tables<"people_personas">
 export type Comment = Tables<"comments">
+export type AccountSettings = Tables<"account_settings">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
@@ -72,6 +73,8 @@ export type PeoplePersonaInsert = TablesInsert<"people_personas">
 export type PeoplePersonaUpdate = TablesUpdate<"people_personas">
 export type CommentInsert = TablesInsert<"comments">
 export type CommentUpdate = TablesUpdate<"comments">
+export type AccountSettingsInsert = TablesInsert<"account_settings">
+export type AccountSettingsUpdate = TablesUpdate<"account_settings">
 
 // 4. View-model helpers
 // ---------------------
