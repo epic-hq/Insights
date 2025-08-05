@@ -43,4 +43,5 @@ AS $$
 $$;
 
 -- Grant execute permission to authenticated users
+-- run manually: see supabase/migrations/imperative.sql
 GRANT EXECUTE ON FUNCTION public.get_user_accounts() TO authenticated;

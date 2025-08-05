@@ -17,14 +17,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			consola.error("[AUTH CALLBACK] Exchange error:", error)
 		} else {
 			consola.log("[AUTH CALLBACK] Exchange successful, user:", data?.user?.email)
+			// Extract accountId from user.app_metadata.claims.sub
+			const accountId = data?.user?.app_metadata?.claims?.sub || data?.user?.user_metadata?.account_id || data?.user?.id
+			consola.log("[AUTH CALLBACK] Extracted accountId:", accountId)
+			if (accountId) {
+				return redirect(`/a/${accountId}/dashboard`, { headers })
+			}
+			// return redirect("/dashboard", { headers })
 			consola.log("[AUTH CALLBACK] Redirecting to:", next)
 			// Successfully authenticated, redirect to dashboard
 			return redirect(next, { headers })
 		}
 	}
-
 	consola.log("[AUTH CALLBACK] No code or error occurred, redirecting to login")
-	// If no code or error, redirect back to login with error message
 	return redirect("/login?error=auth_failed")
 }
 
@@ -39,39 +44,3 @@ export default function AuthCallback() {
 		</div>
 	)
 }
-
-// import { redirect } from "react-router"
-// import type { Route } from "./+types/auth.callback"
-// import { getServerClient } from "~/lib/supabase/server"
-// import { PATHS } from "~/paths"
-
-// export async function loader({ request }: Route.LoaderArgs) {
-// 	const url = new URL(request.url)
-// 	const code = url.searchParams.get("code")
-
-// 	if (code) {
-// 		const { client: supabase } = getServerClient(request)
-
-// 		// Exchange the code for a session
-// 		const { error } = await supabase.auth.exchangeCodeForSession(code)
-
-// 		if (!error) {
-// 			// Successfully authenticated, redirect to dashboard
-// 			return redirect(PATHS.DASHBOARD)
-// 		}
-// 	}
-
-// 	// If no code or error, redirect to login
-// 	return redirect("/login")
-// }
-
-// export default function AuthCallback() {
-// 	return (
-// 		<div className="flex h-screen items-center justify-center">
-// 			<div className="text-center">
-// 				<h2 className="text-lg font-semibold">Completing sign in...</h2>
-// 				<p className="text-gray-600">Please wait while we redirect you.</p>
-// 			</div>
-// 		</div>
-// 	)
-// }

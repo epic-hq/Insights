@@ -25,7 +25,9 @@ ALTER DEFAULT PRIVILEGES IN SCHEMA PUBLIC REVOKE EXECUTE ON FUNCTIONS FROM anon,
 
 -- Create accounts schema
 CREATE SCHEMA IF NOT EXISTS accounts;
+-- run manually: see supabase/migrations/imperative.sql
 GRANT USAGE ON SCHEMA accounts to authenticated;
+-- run manually: see supabase/migrations/imperative.sql
 GRANT USAGE ON SCHEMA accounts to service_role;
 
 /**
@@ -90,9 +92,11 @@ INSERT INTO accounts.config (enable_team_accounts, enable_personal_account_billi
 VALUES (true, true, true);
 
 -- enable select on the config table
+-- run manually: see supabase/migrations/imperative.sql
 GRANT SELECT ON accounts.config TO authenticated, service_role;
 
 -- enable RLS on config
+-- run manually: see supabase/migrations/imperative.sql
 ALTER TABLE accounts.config
     ENABLE ROW LEVEL SECURITY;
 
@@ -181,21 +185,21 @@ BEGIN
     IF TG_TABLE_SCHEMA = 'auth' AND TG_TABLE_NAME = 'users' THEN
         RETURN NEW;
     END IF;
-    
+
     -- Check if the table has the required columns
     SELECT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_schema = TG_TABLE_SCHEMA 
-        AND table_name = TG_TABLE_NAME 
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = TG_TABLE_SCHEMA
+        AND table_name = TG_TABLE_NAME
         AND column_name = 'created_by'
     ) INTO has_created_by;
-    
+
     SELECT EXISTS (
-        SELECT 1 
-        FROM information_schema.columns 
-        WHERE table_schema = TG_TABLE_SCHEMA 
-        AND table_name = TG_TABLE_NAME 
+        SELECT 1
+        FROM information_schema.columns
+        WHERE table_schema = TG_TABLE_SCHEMA
+        AND table_name = TG_TABLE_NAME
         AND column_name = 'updated_by'
     ) INTO has_updated_by;
 

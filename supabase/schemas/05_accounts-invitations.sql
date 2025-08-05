@@ -32,6 +32,7 @@ create table if not exists accounts.invitations
 );
 
 -- Open up access to invitations
+-- run manually: see supabase/migrations/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.invitations TO authenticated, service_role;
 
 -- manage timestamps

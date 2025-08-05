@@ -1,9 +1,7 @@
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
 import { getPeople } from "~/features/people/db"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -32,14 +30,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 export default function PeopleIndexPage() {
 	const { people } = useLoaderData<typeof loader>()
 
-	const getInitials = (name: string) => {
-		return name
-			.split(" ")
-			.map((n) => n[0])
-			.join("")
-			.toUpperCase()
-			.slice(0, 2)
-	}
 
 	return (
 		<div className="space-y-6 px-6">
@@ -54,73 +44,35 @@ export default function PeopleIndexPage() {
 			</div>
 
 			{people.length === 0 ? (
-				<Card>
-					<CardContent className="flex flex-col items-center justify-center py-12">
-						<h3 className="mb-2 font-semibold text-lg">No people yet</h3>
-						<p className="mb-4 text-muted-foreground">
-							Add your first person to start tracking research participants and contacts.
-						</p>
-						<Button asChild>
-							<Link to="/people/new">Add Person</Link>
-						</Button>
-					</CardContent>
-				</Card>
-			) : (
-				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-					{people.map((person) => (
-						<Card key={person.id} className="transition-shadow hover:shadow-md">
-							<CardHeader>
-								<div className="flex items-center gap-3">
-									<Avatar className="h-12 w-12">
-										{person.image_url && <AvatarImage src={person.image_url} alt={person.name || 'Person'} />}
-										<AvatarFallback className="bg-primary text-primary-foreground">
-											{getInitials(person.name || 'Unknown')}
-										</AvatarFallback>
-									</Avatar>
-									<div className="flex-1">
-										<CardTitle className="text-lg">
-											<Link to={`/people/${person.id}`} className="hover:underline">
-												{person.name}
-											</Link>
-										</CardTitle>
-										{person.segment && <CardDescription>{person.segment}</CardDescription>}
-									</div>
-								</div>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-2">
-									{person.people_personas && person.people_personas.length > 0 && (
-										<div className="text-sm">
-											<span className="font-medium">Persona:</span>{" "}
-											<Badge variant="outline" className="ml-1">
-												{person.people_personas[0].personas?.name || "Unknown"}
-											</Badge>
-										</div>
-									)}
-									{person.segment && (
-										<div className="text-sm">
-											<span className="font-medium">Segment:</span> {person.segment}
-										</div>
-									)}
-									{person.description && (
-										<div className="text-sm">
-											<span className="font-medium">Description:</span> {person.description}
-										</div>
-									)}
-									{person.age && (
-										<div className="text-sm">
-											<span className="font-medium">Age:</span> {person.age}
-										</div>
-									)}
-									<div className="text-muted-foreground text-sm">
-										Added {new Date(person.created_at).toLocaleDateString()}
-									</div>
-								</div>
-							</CardContent>
-						</Card>
-					))}
-				</div>
-			)}
+  <div className="flex flex-col items-center justify-center py-12">
+    <h3 className="mb-2 font-semibold text-lg">No people yet</h3>
+    <p className="mb-4 text-muted-foreground">
+      Add your first person to start tracking research participants and contacts.
+    </p>
+    <Button asChild>
+      <Link to="/people/new">Add Person</Link>
+    </Button>
+  </div>
+) : (
+  <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+    {people.map((person) => (
+      <EnhancedPersonCard
+        key={person.id}
+        person={{
+          ...person,
+          people_personas: (person.people_personas || []).map(pp => ({
+            personas: pp.personas
+              ? {
+                  name: pp.personas.name,
+                  color_hex: pp.personas.color_hex || undefined,
+                }
+              : undefined,
+          })),
+        }}
+      />
+    ))}
+  </div>
+)}
 		</div>
 	)
 }

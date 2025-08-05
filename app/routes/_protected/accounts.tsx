@@ -12,7 +12,7 @@ import { CurrentAccountProvider } from "~/contexts/current-account-context"
 import { currentAccountContext } from "~/server/current-account-context"
 import { userContext } from "~/server/user-context"
 import type { GetAccount, SupabaseClient } from "~/types"
-import type { Route } from "../+types/root"
+import type { Route } from "../../types/root"
 
 function isUUID(str: string) {
 	const uuidSchema = z.string().uuid()
@@ -41,29 +41,44 @@ async function parse_account_id_from_params({
 
 	if (isUUID(account_id_or_slug || "")) {
 		// consola.log("Get account by id ", account_id_or_slug)
-		const test = supabase.schema("accounts").from("accounts").select("*").eq("id", account_id_or_slug)
-		const { data: account, error } = await test.single()
+		const accountQuery = supabase.schema("accounts").from("accounts").select("*").eq("id", account_id_or_slug)
+		const { data: account, error } = await accountQuery.single()
 		if (error) {
 			consola.error("Get account error:", error)
 		}
+		const account_usersQuery = supabase
+			.schema("accounts")
+			.from("account_user")
+			.select("*")
+			.eq("account_id", account_id_or_slug)
+		const { data: account_users, error: account_users_error } = await account_usersQuery
+		consola.log("/accounts: Account users:", account_users)
+
+		const current_user_role = await supabase.rpc("current_user_account_role", { p_account_id: account_id_or_slug })
+		consola.log("/accounts: Current user role:", current_user_role)
+
+		const { data: accountsList } = await supabase.rpc("get_accounts")
+		consola.log("/accounts: Accounts list:", accountsList)
+
 		if (account) {
-			consola.log("Get account success:", account)
-			// return account
+			consola.log("/accounts: Account:", account)
+			return account
 		}
 
 		const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
-		consola.log("Get account response:", getAccountResponse)
+		consola.log("/accounts: Get account response:", getAccountResponse)
 
-		if (!getAccountResponse.data) {
-			consola.error("Get account error:", getAccountResponse.error)
-			throw new Response("Account not found", { status: 404 })
-		}
-		if (getAccountResponse.error) {
-			consola.error("Get account error:", getAccountResponse.error)
-			throw new Response(getAccountResponse.error.message, { status: 500 })
-		}
-		const data = getAccountResponse.data as GetAccount
-		return data
+		// HIDE FOR TESTING
+		// if (!getAccountResponse.data) {
+		// 	consola.error("Get account error:", getAccountResponse.error)
+		// 	throw new Response("Account not found", { status: 404 })
+		// }
+		// if (getAccountResponse.error) {
+		// 	consola.error("Get account error:", getAccountResponse.error)
+		// 	throw new Response(getAccountResponse.error.message, { status: 500 })
+		// }
+		// const data = getAccountResponse.data as GetAccount
+		// return data
 	}
 	// slug
 	const getAccountBySlugResponse = await supabase.rpc("get_account_by_slug", {

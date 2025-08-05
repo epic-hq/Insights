@@ -49,6 +49,7 @@ export function CurrentProjectProvider({ children }: CurrentProjectProviderProps
 	const value = {
 		accountId,
 		projectId,
+		projectPath: `/a/${accountId}/${projectId}`,
 	}
 
 	return <CurrentProjectContext.Provider value={value}>{children}</CurrentProjectContext.Provider>

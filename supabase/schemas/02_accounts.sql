@@ -72,6 +72,7 @@ ALTER TABLE accounts.accounts
         );
 
 -- Open up access to accounts
+-- run manually: see supabase/migrations/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.accounts TO authenticated, service_role;
 
 /**
@@ -173,6 +174,7 @@ create table if not exists accounts.account_user
     constraint account_user_pkey primary key (user_id, account_id)
 );
 
+-- run manually: see supabase/migrations/imperative.sql
 GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE accounts.account_user TO authenticated, service_role;
 
 
@@ -528,50 +530,109 @@ grant execute on function public.get_accounts() to authenticated;
 /**
   Returns a specific account that the current user has access to
  */
-create or replace function public.get_account(account_id uuid)
+ create or replace function public.get_account(account_id uuid)
     returns json
     language plpgsql
+    security definer
+    set search_path = public, accounts
 as
 $$
-BEGIN
-    -- check if the user is a member of the account or a service_role user
-    if current_user IN ('anon', 'authenticated') and
-       (select current_user_account_role(get_account.account_id) ->> 'account_role' IS NULL) then
+declare
+    user_id uuid;
+    user_role text;
+begin
+    -- Get the current user's id from the JWT/session
+    user_id := auth.uid();
+
+    -- Check if the user is a member of the account
+    select account_role into user_role
+    from accounts.account_user
+    where account_id = get_account.account_id and user_id = user_id
+    limit 1;
+
+    if user_role is null then
         raise exception 'You must be a member of an account to access it';
     end if;
 
-
-    return (select json_build_object(
-                           'account_id', a.id,
-                           'account_role', wu.account_role,
-                           'is_primary_owner', a.primary_owner_user_id = auth.uid(),
-                           'name', a.name,
-                           'slug', a.slug,
-                           'personal_account', a.personal_account,
-                           'billing_enabled', case
-                                                  when a.personal_account = true then
-                                                      config.enable_personal_account_billing
-                                                  else
-                                                      config.enable_team_account_billing
-                               end,
-                           'billing_status', bs.status,
-                           'created_at', a.created_at,
-                           'updated_at', a.updated_at,
-                           'metadata', a.public_metadata
-                       )
-            from accounts.accounts a
-                     left join accounts.account_user wu on a.id = wu.account_id and wu.user_id = auth.uid()
-                     join accounts.config config on true
-                     left join (select bs.account_id, status
-                                from accounts.billing_subscriptions bs
-                                where bs.account_id = get_account.account_id
-                                order by created desc
-                                limit 1) bs on bs.account_id = a.id
-            where a.id = get_account.account_id);
-END;
+    -- Return the account data
+    return (
+        select json_build_object(
+            'account_id', a.id,
+            'account_role', user_role,
+            'is_primary_owner', a.primary_owner_user_id = user_id,
+            'name', a.name,
+            'slug', a.slug,
+            'personal_account', a.personal_account,
+            'billing_enabled', case
+                when a.personal_account = true then config.enable_personal_account_billing
+                else config.enable_team_account_billing
+            end,
+            'billing_status', bs.status,
+            'created_at', a.created_at,
+            'updated_at', a.updated_at,
+            'metadata', a.public_metadata
+        )
+        from accounts.accounts a
+        join accounts.config config on true
+        left join (
+            select bs.account_id, status
+            from accounts.billing_subscriptions bs
+            where bs.account_id = get_account.account_id
+            order by created desc
+            limit 1
+        ) bs on bs.account_id = a.id
+        where a.id = get_account.account_id
+    );
+end;
 $$;
 
 grant execute on function public.get_account(uuid) to authenticated, service_role;
+
+
+-- create or replace function public.get_account(account_id uuid)
+--     returns json
+--     language plpgsql
+-- as
+-- $$
+-- BEGIN
+--     -- check if the user is a member of the account or a service_role user
+--     if current_user IN ('anon', 'authenticated') and
+--        (select current_user_account_role(get_account.account_id) ->> 'account_role' IS NULL) then
+--         raise exception 'You must be a member of an account to access it';
+--     end if;
+
+
+--     return (select json_build_object(
+--                            'account_id', a.id,
+--                            'account_role', wu.account_role,
+--                            'is_primary_owner', a.primary_owner_user_id = auth.uid(),
+--                            'name', a.name,
+--                            'slug', a.slug,
+--                            'personal_account', a.personal_account,
+--                            'billing_enabled', case
+--                                                   when a.personal_account = true then
+--                                                       config.enable_personal_account_billing
+--                                                   else
+--                                                       config.enable_team_account_billing
+--                                end,
+--                            'billing_status', bs.status,
+--                            'created_at', a.created_at,
+--                            'updated_at', a.updated_at,
+--                            'metadata', a.public_metadata
+--                        )
+--             from accounts.accounts a
+--                      left join accounts.account_user wu on a.id = wu.account_id and wu.user_id = auth.uid()
+--                      join accounts.config config on true
+--                      left join (select bs.account_id, status
+--                                 from accounts.billing_subscriptions bs
+--                                 where bs.account_id = get_account.account_id
+--                                 order by created desc
+--                                 limit 1) bs on bs.account_id = a.id
+--             where a.id = get_account.account_id);
+-- END;
+-- $$;
+
+-- grant execute on function public.get_account(uuid) to authenticated, service_role;
 
 /**
   Returns a specific account that the current user has access to

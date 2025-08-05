@@ -4,52 +4,10 @@
 
 All data definitions start in this manner, defining a schema in `supabase/schemas`, then letting supabase generate migration files. [docs](https://supabase.com/docs/guides/local-development/declarative-database-schemas)
 
-The minimal declarative loop:
+**Manual**:
+Certain statements (GRANT) are not handled by `db diff` and [must be run manually](https://supabase.com/docs/guides/local-development/declarative-database-schemas#known-caveats).`ALTER TABLE public.interviews ENABLE ROW LEVEL SECURITY;` seem to be handled since its altering TABLE. ALTER POLICY probably not per docs. We want to LEAVE manually run statements in the original schema file for clarity as the source of truth.
 
-1. Edit `supabase/schemas/*.sql` (or add a new one).
-2. `supabase db diff -f <brief_name>`
-→ auto-generates a new file in `supabase/migrations/`
-3. `supabase migrations up`
-→ applies that migration to your local database and marks it as executed.
-4. `supabase db push --linked` (or `supabase db push` if you’ve already linked)
-→ runs every unapplied migration on the remote project.
-5. `supabase gen types --project-id rbginqvgkonnoktrttqv typescript  > supabase/types.ts`
-→ regenerates typescript types for the database.
-
-**NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
-
-6. Wire the types in code
-
-```ts
-import { Database } from "~/supabase/types"   // barrel-export in /app/types.ts
-type DB = Database["public"]
-const supabase = createClient<Database>(...credentials)
-```
-
-7. Use the helper pattern per feature
-app/features/<entity>/db.ts should use imported types and functions from supabase/types.ts
-like People, PeopleInsert, PeopleUpdate
-
-- wrap common queries (selectById, upsertMany, etc.) so components import functions, not SQL.
-- Surface only the columns you need; leverage column pick lists for safer updates.
-
-8. Query checklist before committing code
-
-- 🔍 Scan migration or table for required columns / defaults.
-- 🧩 Import the correct Row | Insert | Update type.
-- 🏷️ Match payload shape to that type (TS will scream if a field is missing/extra).
-- 🔒 Remember RLS—add account_id only if the table actually has that column.
-- 🧪 Run pnpm typecheck (or tsc --noEmit) to catch mistakes early.
-
-9. Reference docs quickly
-`.github/docs/supabase-howto.md`
- – declarative schema & CLI loop.
-`docs/db-query-examples.md` (TODO) – copy-paste snippets per pattern (simple CRUD, junction-table upsert, filtered joins).
-
-VS Code tip
-Add this path to tsconfig.json typeRoots so IntelliSense auto-completes column names.
-
-## Managing Imperative (Manual) Migrations
+**Imperative (Manual) Migration Workflow**
 
 Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain extension/permission statements) are not handled by Supabase's declarative schema system or `supabase db diff`. To ensure these changes are applied consistently, follow this process:
 
@@ -58,18 +16,22 @@ Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain ex
 
 2. **What to put in `imperative.sql`:**
    - Any SQL statements that are not picked up by `db diff` (e.g., GRANT, REVOKE, CREATE/ALTER POLICY, extension DDL, etc.).
+   - **Do NOT include `ALTER TABLE ... ENABLE ROW LEVEL SECURITY;`** — these are now handled by Supabase migrations and do not require manual migration.
    - Make statements idempotent where possible (so re-running is safe).
    - Organize by section and add comments for clarity.
 
 3. **How to use:**
    - After running all migrations (`supabase db push` or `supabase migrations up`), always run:
+
      ```
      psql $DATABASE_URL -f supabase/migrations/imperative.sql
      ```
+
    - This ensures all manual changes are applied to your local or remote DB.
 
 4. **Annotate schema files:**
    - If you move a statement from a schema file to `imperative.sql`, add a comment in the original schema file:
+
      ```
      -- run manually: see supabase/migrations/imperative.sql
      ```
@@ -81,10 +43,55 @@ Some database changes (such as GRANT, REVOKE, CREATE/ALTER POLICY, or certain ex
    - Periodically review and prune `imperative.sql` to remove obsolete statements.
 
 **Example workflow:**
+
 - Edit `supabase/schemas/*.sql` as usual.
 - Run `supabase db diff -f <brief_name>` and apply migrations.
 - For any changes not handled by `db diff`, add them to `imperative.sql` and run it manually.
 - Annotate the original schema file with `-- run manually`.
+
+The complete, required declarative loop:
+
+1. Edit `supabase/schemas/*.sql` (or add a new one).
+2. Add/update any non-declarative statements to `supabase/migrations/imperative.sql`
+3. `supabase db diff -f <brief_name>`
+→ auto-generates a new file in `supabase/migrations/`
+4. `supabase migrations up`
+→ applies that migration to your local database and marks it as executed.
+5. `supabase db push --linked` (or `supabase db push` if you’ve already linked)
+→ runs every unapplied migration on the remote project.
+6. `supabase gen types --project-id rbginqvgkonnoktrttqv typescript  > supabase/types.ts`
+→ regenerates typescript types for the database.
+
+**NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.
+
+7. Wire the types in code
+
+```ts
+import { Database } from "~/supabase/types"   // barrel-export in /app/types.ts
+type DB = Database["public"]
+const supabase = createClient<Database>(...credentials)
+```
+
+8. Use the helper pattern per feature
+app/features/<entity>/db.ts should use imported types and functions from supabase/types.ts
+like People, PeopleInsert, PeopleUpdate
+
+- wrap common queries (selectById, upsertMany, etc.) so components import functions, not SQL.
+- Surface only the columns you need; leverage column pick lists for safer updates.
+
+9. Query checklist before committing code
+
+- 🔍 Scan migration or table for required columns / defaults.
+- 🧩 Import the correct Row | Insert | Update type.
+- 🏷️ Match payload shape to that type (TS will scream if a field is missing/extra).
+- 🔒 Remember RLS—add account_id only if the table actually has that column.
+- 🧪 Run pnpm typecheck (or tsc --noEmit) to catch mistakes early.
+
+10. Reference docs quickly
+`docs/db-query-examples.md` (TODO) – copy-paste snippets per pattern (simple CRUD, junction-table upsert, filtered joins).
+
+VS Code tip
+Add this path to tsconfig.json typeRoots so IntelliSense auto-completes column names.
 
 ## Reapairing 7/28
 
@@ -362,6 +369,35 @@ For big objects, use cloudflare R2. TODO: setup.
 Temp sample data in public bucket here: <https://pub-42266a6f0dc2457390b9226bc379c90d.r2.dev/sample_interviews/1007%20Participant%207.m4a>
 
 How To Setup: [ref](https://developers.cloudflare.com/r2/buckets/public-buckets/)
+
+## Users and Accounts
+
+When a user logs into the application, they have a personal ID and that creates a `account_user` record where their personal ID is both in the `user_id` and the `account_id`. We also automatically create a Team Account, which is a new `account_id` and a row that shows the `user_id` with a new `account_id`. This team account allows them to invite others to be members of their team.
+
+Currently they are only using the personal `account_id` to access the account.
+
+Future feature will allow them to 1. select their team account, add others as members to the team account.
+
+When we activate a team account, we create a new `account_id` and update the `account_user` record to show the `user_id` with the new `account_id`.
+
+Account selection UI:
+If the user has only a personal account, auto-select it.
+If the user has multiple accounts, show a modal or page listing all their teams (and personal account, if you want to allow "My Stuff").
+Store the selected account_id in a React context, cookie, or localStorage for the session.
+Route construction:
+All collaborative routes should be /a/:accountId/... and use the selected team account_id.
+When switching teams, update the context and redirect to the new team's dashboard.
+Default behavior:
+On first login, if the user only has a personal account, offer to create a team or start a project in their personal account.
+When a team is created or the user is invited to a team, switch context to that team.
+Where in your app:
+
+After login in your auth callback or root loader:
+Fetch all accounts for the user and set the active account context.
+In your main layout or dashboard loader:
+Check for an active account context; if missing, redirect to account selection.
+In your project/resource creation forms:
+Use the active account_id for all new resources.
 
 ## Auth with JWT-Signing in Remix/ReactRouter7
 

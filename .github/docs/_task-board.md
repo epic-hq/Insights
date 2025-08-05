@@ -2,7 +2,9 @@
 
 ## 🔜 Doing Now (Sprint 2 - Accounts & Projects controls and routing)
 
-- [ ] Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
+- [ ] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
+- [ ] fix login-redirect, and sign-in flow. <rickmoy@gmail.com> is broken but <rick@deeplight.digital> works hmmm
+- [ ] remove the db creation of response table
 - [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
 - [ ] Update all links to protectedLayout and downstream components to use CurrentProjectPath from CurrentProjectContext
 - [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
@@ -28,7 +30,6 @@ Prioritize.
 
 ## 🌓 Backlog / Later
 
-- [ ] fix login-redirect, and sign-in flow
 - [ ] Intro Testing framework and coverage [howto test](testing-howto.md)
 - [ ] Add Research Projects route, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 - [ ] **Auto-Insights** - Distill insights and help make executive decisions, answering key questions like "What are the top opportunities?" and "What are the top pain points?", "What changes would benefit different personas the most?" and "What are the best revenue-generating opportunities?" and "Which personas are likely to pay for what?" and "(Given key competitive pressures) what are the most profitable opportunities?"

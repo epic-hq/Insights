@@ -10,6 +10,8 @@ create table
   onboarding_completed boolean not null default false,
   app_activity jsonb not null default '{}'::jsonb,
   metadata jsonb not null default '{}'::jsonb,
+	current_account_id uuid,
+	current_project_id uuid,
     -- timestamps are useful for auditing
     -- accounts has some convenience functions defined below for automatically handling these
     updated_at timestamptz not null default now(),
@@ -85,3 +87,23 @@ create policy "Account owners can delete" on public.account_settings
     using (
     account_id IN ( SELECT accounts.get_accounts_with_role('owner'))
     );
+
+drop function public.set_current_account_id(uuid);
+
+CREATE OR REPLACE FUNCTION public.set_current_account_id(new_account_id uuid)
+ RETURNS public.account_settings
+ LANGUAGE plpgsql
+AS $function$
+declare
+  updated_row public.account_settings;
+begin
+  update public.account_settings
+  set current_account_id = new_account_id
+  where user_id = auth.uid()
+  returning * into updated_row;
+  return updated_row;
+end;
+$function$
+;
+
+grant execute on function public.set_current_account_id(uuid) to authenticated, service_role;

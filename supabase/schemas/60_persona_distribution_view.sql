@@ -94,7 +94,8 @@ JOIN legacy_fallback_counts lfc ON pic.persona_id = lfc.persona_id
 ORDER BY pic.account_id, (pic.interview_count + lfc.legacy_interview_count) DESC;
 
 -- Grant access to the view
-GRANT SELECT ON persona_distribution TO authenticated;
+-- run manually: see supabase/migrations/imperative.sql
+GRANT SELECT ON persona_distribution TO authenticated, service_role;
 
 
 -- NOTE: Primary persona functionality removed as people table doesn't have primary_persona_id column

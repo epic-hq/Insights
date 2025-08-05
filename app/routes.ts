@@ -12,8 +12,8 @@ import projectsRoutes from "./features/projects/routes"
 const routes = [
 	...marketingRoutes,
 	layout("./routes/_ProtectedLayout.tsx", [
-		...homeRoutes,
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
+			...homeRoutes,
 			route(":projectId", "./routes/_protected/projects.tsx", [
 				...dashboardRoutes,
 				...interviewsRoutes,
