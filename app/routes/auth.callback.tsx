@@ -5,7 +5,7 @@ import { getServerClient } from "~/lib/supabase/server"
 export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
 	const code = requestUrl.searchParams.get("code")
-	const next = requestUrl.searchParams.get("next") || "/dashboard"
+	const _next = requestUrl.searchParams.get("next") || "/home"
 	// const headers = new Headers()
 
 	if (code) {
@@ -15,22 +15,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 		if (error) {
 			consola.error("[AUTH CALLBACK] Exchange error:", error)
-		} else {
-			consola.log("[AUTH CALLBACK] Exchange successful, user:", data?.user?.email)
-			// Extract accountId from user.app_metadata.claims.sub
-			const accountId = data?.user?.app_metadata?.claims?.sub || data?.user?.user_metadata?.account_id || data?.user?.id
-			consola.log("[AUTH CALLBACK] Extracted accountId:", accountId)
-			if (accountId) {
-				return redirect(`/a/${accountId}/dashboard`, { headers })
-			}
-			// return redirect("/dashboard", { headers })
-			consola.log("[AUTH CALLBACK] Redirecting to:", next)
-			// Successfully authenticated, redirect to dashboard
-			return redirect(next, { headers })
+			return redirect("/login_failure")
 		}
+		const accountId = data?.user?.app_metadata?.claims?.sub || data?.user?.user_metadata?.account_id || data?.user?.id
+		consola.log("[AUTH CALLBACK] Exchange successful, user:", data?.user?.email, "accountId:", accountId)
+		const loginSuccessUrl = _next ? `/login_success?next=${encodeURIComponent(_next)}` : "/login_success"
+		return redirect(loginSuccessUrl, { headers })
 	}
-	consola.log("[AUTH CALLBACK] No code or error occurred, redirecting to login")
-	return redirect("/login?error=auth_failed")
+	consola.log("[AUTH CALLBACK] No code or error occurred, redirecting to login_failure")
+	return redirect("/login_failure")
 }
 
 // Default component for cases where loader doesn't redirect immediately
