@@ -1,27 +1,16 @@
 import { ArrowRight, BarChart2, Lightbulb, MessageSquare, Target, Users, Zap } from "lucide-react"
-import { Link, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
+import { Link, type MetaFunction } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import { Button } from "~/components/ui/button"
 import { Card } from "~/components/ui/card"
+
 import { PATHS } from "~/paths"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Insights Platform" }, { name: "description", content: "Insights for conversations" }]
 }
 
-// Handle OAuth codes that are incorrectly sent to root URL instead of /auth/callback
-export async function loader({ request }: LoaderFunctionArgs) {
-	const url = new URL(request.url)
-	const code = url.searchParams.get("code")
 
-	// If there's an OAuth code, redirect to the proper callback handler
-	if (code) {
-		return redirect(`/auth/callback?code=${code}`)
-	}
-
-	// No OAuth code, continue with normal marketing page
-	return null
-}
 
 export default function LandingPage() {
 	return (

@@ -1,6 +1,8 @@
 import { Link, NavLink, useLocation } from "react-router-dom"
+import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import type { PATHS } from "~/paths"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { PATHS } from "~/paths"
 import { useAuth } from "../../contexts/AuthContext"
 import { UserProfile } from "../auth/UserProfile"
 
@@ -62,25 +64,26 @@ export default function MainNav({ links }: { links?: { key: string; label: strin
 	const { user } = useAuth()
 	const { pathname } = useLocation()
 	const { accountId, projectId, projectPath } = useCurrentProject()
-	const _isMainRoute =
-		pathname !== "/" && /^\/(themes|personas|opportunities|interviews|insights|projects|people|about)/.test(pathname)
+	const routes = useProjectRoutes(projectPath || "")
+	const isHomePage = pathname === "/"
+	const isAboutPage = pathname === "/about"
 
-	// Public links for non-authenticated users
-	const publicLinks: { key: string; label: string; authOnly: boolean; link: string }[] = [
-		{ key: "HOME", label: "Home", authOnly: false, link: "/" },
-		{ key: "ABOUT", label: "About", authOnly: false, link: "/about" },
+	// Use provided links or default to projectNavLinks
+	const navigationLinks = links || projectNavLinks
+
+	// Public marketing links for non-authenticated users
+	const marketingLinks = [
+		{ key: "features", label: "Features", link: "#features" },
+		{ key: "about", label: "About", link: "/about" },
 	]
 
 	return (
 		<>
-			<nav className="bg-white shadow-sm dark:bg-gray-800">
+			<nav className={`${isHomePage || isAboutPage ? "border-b bg-white" : "bg-white shadow-sm"} dark:bg-gray-800`}>
 				<div className="mx-auto max-w-[1440px] px-4">
 					<div className="flex h-16 items-center justify-between">
 						{/* Brand - Link to dashboard for authenticated users, home for others */}
-						<Link
-							to={user ? (projectPath ? `${projectPath}/dashboard` : "/dashboard") : "/"}
-							className="flex items-center"
-						>
+						<Link to={user ? "/home" : "/"} className="flex items-center">
 							<svg
 								className="lucide lucide-scan-eye-icon h-8 w-8 text-blue-600"
 								viewBox="0 0 24 24"
@@ -102,56 +105,78 @@ export default function MainNav({ links }: { links?: { key: string; label: strin
 							<span className="ml-2 font-bold text-gray-900 text-xl dark:text-white">Insights</span>
 						</Link>
 
-						{/* Primary Nav: show appropriate links based on authentication status */}
+						{/* Primary Nav: show appropriate links based on authentication status and page context */}
 						<div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-							{user
-								? // Show project-specific links for authenticated users
-									projectNavLinks
-										.filter((_item) => accountId && projectId) // Only show if we have account and project context
-										.map(({ key, label, link }) => (
-											<NavLink
+							{user && !isHomePage && !isAboutPage
+								? // Show project-specific links for authenticated users in app
+									navigationLinks
+										.filter((item) => item.authOnly && accountId && projectId)
+										.map(({ key, label }) => {
+											// Generate route based on key
+											const routeMap: Record<string, string> = {
+												DASHBOARD: routes.dashboard(),
+												INTERVIEWS: routes.interviews.index(),
+												INSIGHTS: routes.insights.index(),
+												PERSONAS: routes.personas.index(),
+												PEOPLE: routes.people.index(),
+												PROJECTS: routes.projects.index(),
+												OPPORTUNITIES: routes.opportunities.index(),
+												AUTO_INSIGHTS: routes.insights.autoInsights(),
+											}
+											const link = routeMap[key] || "#"
+
+											return (
+												<NavLink
+													key={key}
+													to={link}
+													className={({ isActive }) =>
+														`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
+															isActive
+																? "border-blue-500 text-gray-900 dark:text-white"
+																: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:text-gray-200"
+														}`
+													}
+												>
+													{label}
+												</NavLink>
+											)
+										})
+								: (isHomePage || isAboutPage) && !user
+									? // Show marketing links for non-authenticated users on marketing pages
+										marketingLinks.map(({ key, label, link }) => (
+											<Link
 												key={key}
 												to={link}
-												className={({ isActive }) =>
-													`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
-														isActive
-															? "border-blue-500 text-gray-900 dark:text-white"
-															: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:text-gray-200"
-													}`
-												}
+												className="font-medium text-gray-500 text-sm underline-offset-4 hover:text-gray-700 hover:underline"
 											>
 												{label}
-											</NavLink>
+											</Link>
 										))
-								: // Show public links for non-authenticated users
-									publicLinks.map(({ key, label, link }) => (
-										<NavLink
-											key={key}
-											to={link}
-											className={({ isActive }) =>
-												`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
-													isActive
-														? "border-blue-500 text-gray-900 dark:text-white"
-														: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:text-gray-200"
-												}`
-											}
-										>
-											{label}
-										</NavLink>
-									))}
+									: null}
 						</div>
 
-						{/* Actions: show login button or user profile based on auth state */}
-						<div className="flex items-center space-x-4">
+						{/* Actions: show appropriate buttons based on auth state and page context */}
+						<div className="flex items-center space-x-2">
 							{user ? (
-								<UserProfile />
+								isHomePage || isAboutPage ? (
+									// Show green Dashboard button on marketing pages for authenticated users
+									<Button asChild className="bg-green-600 hover:bg-green-700">
+										<Link to="/home">Dashboard</Link>
+									</Button>
+								) : (
+									// Show user profile in app pages
+									<UserProfile />
+								)
 							) : (
-								<Link
-									to="/login"
-									className="rounded-md bg-blue-600 px-4 py-2 font-medium text-sm text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-								>
-									Sign In/Up
-								</Link>
+								// Show sign in/up buttons for non-authenticated users
+								<>
+									<Button asChild variant="ghost">
+										<Link to={PATHS.AUTH.LOGIN}>Sign In</Link>
+									</Button>
+									<Button asChild>
+										<Link to={PATHS.AUTH.REGISTER}>Sign Up</Link>
+									</Button>
+								</>
 							)}
 						</div>
 					</div>

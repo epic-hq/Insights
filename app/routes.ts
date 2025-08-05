@@ -10,34 +10,47 @@ import personasRoutes from "./features/personas/routes"
 import projectsRoutes from "./features/projects/routes"
 
 const routes = [
+	// Public marketing landing page
 	...marketingRoutes,
+
+	// Protected area
 	layout("./routes/_ProtectedLayout.tsx", [
+		// Home dashboard for logged-in users
 		...homeRoutes,
+
+		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
-			layout("./features/projects/layout.tsx", [
-				route(":projectId", "./routes/_protected/projects.tsx", [
-					...dashboardRoutes,
-					...interviewsRoutes,
-					...insightsRoutes,
-					...opportunitiesRoutes,
-					...peopleRoutes,
-					...personasRoutes,
-					...projectsRoutes,
-				]),
+			// Projects under account - REMOVED duplicate layout
+			...projectsRoutes,
+
+			// Nested project detail children
+			route(":projectId", "./routes/_protected/projects.tsx", [
+				...dashboardRoutes,
+				...interviewsRoutes,
+				...insightsRoutes,
+				...opportunitiesRoutes,
+				...peopleRoutes,
+				...personasRoutes,
 			]),
 		]),
 	]),
-	route("api/upload-file", "./routes/api.upload-file.tsx"),
-	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
-	route("api/interview-status", "./routes/api.interview-status.tsx"),
-	route("/resource/locales", "./routes/resource.locales.ts"),
+
+	// Authentication routes
 	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("login", "./routes/login.tsx"),
 	route("login_success", "./routes/login_success.tsx"),
-	route("login_failure", "./routes/login_failure.tsx"),
 	route("register", "./routes/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
-	route("api.generate-personas", "./routes/api.generate-personas.tsx"),
+
+	// API routes
+	route("api/upload-file", "./routes/api.upload-file.tsx"),
+	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
+	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
+	route("api/interview-status", "./routes/api.interview-status.tsx"),
+	route("api/generate-personas", "./routes/api.generate-personas.tsx"),
+
+	// Resource routes
+	route("/resource/locales", "./routes/resource.locales.ts"),
 ] satisfies RouteConfig
 
 export default routes

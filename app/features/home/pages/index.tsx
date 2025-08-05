@@ -1,8 +1,9 @@
 import consola from "consola"
 import { useRouteLoaderData } from "react-router"
-import { useCurrentProject } from "~/contexts/current-project-context"
+import { useAuth } from "~/contexts/AuthContext"
 import AccountDetailCard from "~/features/accounts/components/AccountDetailCard"
 import ProjectContextCard from "~/features/projects/components/ProjectContextCard"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Project } from "~/types"
 
 // export async function loader(loaderArgs: LoaderFunctionArgs) {
@@ -17,15 +18,19 @@ import type { Project } from "~/types"
 // }
 
 export default function Index() {
-	const currentProjectContext = useCurrentProject()
+	const { account_settings } = useAuth()
 	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout")
-	consola.log("Home acct accounts & currentProjectContext:", accounts, currentProjectContext)
+	consola.log("Home acct accounts & account_settings:", accounts, account_settings)
 
 	const projects: Project[] = accounts?.flatMap((account) =>
 		account.projects.map((project) => ({ ...project, account_id: account.account_id }))
 	)
 
-	consola.log("Home accounts & projects", accounts, projects)
+	const projectPath = `/a/${account_settings?.current_account_id}/${account_settings?.current_project_id}`
+	consola.log("Home accounts & projects & projectPath", accounts, projects, projectPath)
+
+	const _routes = useProjectRoutes(projectPath)
+
 	return (
 		<div className="mx-auto max-w-7xl space-y-10 px-6 py-8">
 			<h1 className="mb-4 font-bold text-3xl">Home</h1>
@@ -49,11 +54,7 @@ export default function Index() {
 					) : (
 						<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 							{projects?.map((project) => (
-								<ProjectContextCard
-									key={project.id}
-									project={project}
-									projectPath={`/a/${project.account_id}/${project.id}/projects/${project.id}`}
-								/>
+								<ProjectContextCard key={project.id} project={project} projectPath={`${projectPath}/dashboard`} />
 							))}
 						</div>
 					)}

@@ -3,6 +3,7 @@ import consola from "consola"
 import { createContext, useContext, useMemo } from "react"
 import { useParams } from "react-router"
 import { PATHS } from "~/paths"
+import type { AccountSettings } from "~/types"
 
 interface AuthContextType {
 	user: JwtPayload | null
@@ -10,6 +11,7 @@ interface AuthContextType {
 	signOut: () => Promise<void>
 	accountId: string
 	projectId: string
+	account_settings: AccountSettings | null
 }
 
 const AuthContext = createContext<AuthContextType>({
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType>({
 	signOut: async () => {},
 	accountId: "",
 	projectId: "",
+	account_settings: null,
 })
 
 export const useAuth = () => {
@@ -32,10 +35,10 @@ interface AuthProviderProps {
 	children: React.ReactNode
 	user?: JwtPayload | null
 	organizations?: any
-	currentProjectId?: string | null
+	account_settings?: AccountSettings
 }
 
-export function AuthProvider({ children, user, organizations }: AuthProviderProps) {
+export function AuthProvider({ children, user, organizations, account_settings }: AuthProviderProps) {
 	const loading = false // No loading needed with SSR data
 
 	const params = useParams()
@@ -87,6 +90,7 @@ export function AuthProvider({ children, user, organizations }: AuthProviderProp
 		accountId,
 		projectId,
 		organizations,
+		account_settings,
 	}
 
 	return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
