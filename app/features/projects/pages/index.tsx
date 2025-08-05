@@ -1,8 +1,10 @@
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
+import consola from "consola"
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -30,6 +32,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 export default function ProjectsIndexPage() {
 	const { projects } = useLoaderData<typeof loader>()
+	// Demo code to access current project context
+	const currentProjectContext = useCurrentProject()
+	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout")
+	consola.log("projects index page: acct accounts & currentProjectContext:", accounts, currentProjectContext)
 
 	const getStatusColor = (status: string) => {
 		switch (status) {

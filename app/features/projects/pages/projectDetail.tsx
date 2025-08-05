@@ -18,6 +18,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	const accountId = ctx.account_id
 	const supabase = ctx.supabase
 	const { projectId } = params
+	consola.log("projectId: ", projectId)
 
 	if (!projectId) {
 		throw new Response("Project ID is required", { status: 400 })

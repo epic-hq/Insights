@@ -1,5 +1,5 @@
-import { index } from "@react-router/dev/routes";
+import { route } from "@react-router/dev/routes";
 
 export default [
-	index("./features/home/pages/index.tsx"),
+	route("home", "./features/home/pages/index.tsx"),
 ]

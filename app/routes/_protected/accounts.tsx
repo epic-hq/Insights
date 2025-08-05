@@ -21,9 +21,11 @@ function isUUID(str: string) {
 }
 
 async function parse_account_id_from_params({
+	user_id,
 	account_id_or_slug,
 	supabase,
 }: {
+	user_id: string
 	account_id_or_slug: string
 	supabase: SupabaseClient
 }) {
@@ -46,11 +48,7 @@ async function parse_account_id_from_params({
 		if (error) {
 			consola.error("Get account error:", error)
 		}
-		const account_usersQuery = supabase
-			.schema("accounts")
-			.from("account_user")
-			.select("*")
-			.eq("account_id", account_id_or_slug)
+		const account_usersQuery = supabase.schema("accounts").from("account_user").select("*").eq("user_id", user_id)
 		const { data: account_users, error: account_users_error } = await account_usersQuery
 		consola.log("/accounts: Account users:", account_users)
 
@@ -60,13 +58,12 @@ async function parse_account_id_from_params({
 		const { data: accountsList } = await supabase.rpc("get_accounts")
 		consola.log("/accounts: Accounts list:", accountsList)
 
+		const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
+		consola.log("/accounts: Get account response:", getAccountResponse)
 		if (account) {
 			consola.log("/accounts: Account:", account)
 			return account
 		}
-
-		const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
-		consola.log("/accounts: Get account response:", getAccountResponse)
 
 		// HIDE FOR TESTING
 		// if (!getAccountResponse.data) {
@@ -107,6 +104,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			const account_id_or_slug = params?.accountId || ""
 
 			const parsed_account = await parse_account_id_from_params({
+				user_id: ctx.account_id,
 				account_id_or_slug,
 				supabase: _supabase,
 			})

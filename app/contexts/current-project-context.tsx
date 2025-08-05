@@ -5,11 +5,15 @@ import { useParams } from "react-router"
 interface CurrentProjectContextType {
 	accountId: string
 	projectId: string
+	accountPath: string
+	projectPath: string
 }
 
 const CurrentProjectContext = createContext<CurrentProjectContextType>({
 	accountId: "",
 	projectId: "",
+	accountPath: "",
+	projectPath: "",
 })
 
 export const useCurrentProject = () => {
@@ -49,6 +53,7 @@ export function CurrentProjectProvider({ children }: CurrentProjectProviderProps
 	const value = {
 		accountId,
 		projectId,
+		accountPath: `/a/${accountId}`,
 		projectPath: `/a/${accountId}/${projectId}`,
 	}
 

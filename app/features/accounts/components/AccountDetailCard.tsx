@@ -1,6 +1,7 @@
 import { formatDistanceToNow } from "date-fns"
 import { motion } from "framer-motion"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { cn } from "~/lib/utils"
 import type { GetAccount } from "~/types"
 
 interface AccountDetailProps {
@@ -37,7 +38,9 @@ export default function AccountDetailCard({ account, className }: AccountDetailP
 					</h3>
 					<div className="mb-1 text-muted-foreground text-xs">slug: {account.slug || "Not Set"}</div>
 					<div className="flex flex-wrap gap-2 text-xs">
-						<div className="rounded bg-purple-300 px-2 py-0.5">{account.personal_account ? "Personal" : "Team"}</div>
+						<div className={cn("rounded px-2 py-0.5", account.personal_account ? "bg-muted" : "bg-purple-300")}>
+							{account.personal_account ? "Personal" : "Team"}
+						</div>
 						{account.is_primary_owner ? (
 							<div className="rounded bg-accent-foreground/40 bg-success px-2 py-0.5">Owner</div>
 						) : (

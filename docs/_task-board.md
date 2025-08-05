@@ -4,18 +4,17 @@
 
 - [x] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
 - [ ] Define Routing
-- [ ] Add Projects route, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
-
+- [ ] Implement projectPath in link building on every protected route segment
+- [ ] CRUD functions for people, projects, personas, tags, opportunities
 - [ ] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
--
-
-- [ ] fix login-redirect, and sign-in flow. <rickmoy@gmail.com> is broken but <rick@deeplight.digital> works hmmm. need to reset db.
+- [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
+- [x] fix login-redirect, and sign-in flow. <rickmoy@gmail.com> is broken but <rick@deeplight.digital> works hmmm.
+- [ ] Reset db.
 - [ ] remove the db creation of response table
 - [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
 - [ ] Update all links to protectedLayout and downstream components to use CurrentProjectPath from CurrentProjectContext
-- [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
 - [ ] Update RLS to require account_id AND project_id.
-- [ ] CRUD functions for people, projects, personas, tags, opportunities
+- [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
@@ -57,6 +56,36 @@ A place to refine details of what's needed, how to do it, to explore how it fits
 
 **Approach:**
 See [app-flow](_stack-database-plan.md#app-flow)
+
+**How we want routing to behave:**
+
+Accounts & Home:
+/ → marketing landing page
+
+/home (features/home/pages/index.tsx) shows what accounts and projects the user has access to, a list of accounts, projects, suggested actions, onboarding
+/auth/callback on success → /login_success redirects to /home (features/home/pages/index.tsx)
+<!-- /auth/callback on failure → /login_failure shows error message for 5 seconds and redirects to /login NOTE: just displays invalid credentials in login page. -->
+
+Projects:
+Question: to prefix with account or just show /projects?
+
+/a/:accountId/projects → /features/projects/index page lists projects but this is like /home now
+/a/:accountId/projects/new → /features/projects/new page
+/a/:accountId/projects/:projectId/edit → /features/projects/edit page
+-- or --
+/a/:accountId/:projectId/edit → /features/projects/edit page
+
+Project resources below /a/:accountId/:projectId/ are protected
+/a/:accountId/:projectId/ → /features/projects/projectDetail page
+/a/:accountId/:projectId/dashboard → /features/projects/projectDetail/dashboard page
+/a/:accountId/:projectId/interviews → /features/projects/projectDetail/interviews page
+
+/a/:accountId/:projectId/insights → /features/insights/insights/index page lists insights
+/a/:accountId/:projectId/insights/:insightId → /features/insights/insightDetail page
+...
+
+**projectPath Links**
+Implement projectPath in link building on every protected route segment. it is in CurrentProjectContext for react _ProtectedLayout, just need to access it when building links.
 
 ### Chat Agent Workflows
 

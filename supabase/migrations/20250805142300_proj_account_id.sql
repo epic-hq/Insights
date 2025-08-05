@@ -1,12 +1,11 @@
--- Simple function in public schema to get user accounts and projects
--- This bypasses all the accounts schema exposure issues
+set check_function_bodies = off;
 
 CREATE OR REPLACE FUNCTION public.get_user_accounts()
-RETURNS json
-LANGUAGE sql
-SECURITY DEFINER
-SET search_path = accounts, public
-AS $$
+ RETURNS json
+ LANGUAGE sql
+ SECURITY DEFINER
+ SET search_path TO 'accounts', 'public'
+AS $function$
   SELECT COALESCE(
     json_agg(
       json_build_object(
@@ -42,8 +41,7 @@ AS $$
   FROM accounts.account_user au
   JOIN accounts.accounts a ON a.id = au.account_id
   WHERE au.user_id = auth.uid();
-$$;
+$function$
+;
 
--- Grant execute permission to authenticated users
--- run manually: see supabase/migrations/imperative.sql
-GRANT EXECUTE ON FUNCTION public.get_user_accounts() TO authenticated;
+

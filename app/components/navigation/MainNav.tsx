@@ -1,20 +1,34 @@
 import { Link, NavLink, useLocation } from "react-router-dom"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { PATHS, projectPath } from "~/paths"
+import type { PATHS } from "~/paths"
 import { useAuth } from "../../contexts/AuthContext"
 import { UserProfile } from "../auth/UserProfile"
 
-const navItems: { key: keyof typeof PATHS; label: string; authOnly: boolean }[] = [
+// export const projectNavLinks: { key: keyof typeof PATHS; label: string; authOnly: boolean }[] = [
+// 	{ key: "DASHBOARD", label: "Dashboard", authOnly: true },
+// 	{ key: "INTERVIEWS", label: "Interviews", authOnly: true },
+// 	{ key: "INSIGHTS", label: "Insights", authOnly: true },
+// 	{ key: "PERSONAS", label: "Personas", authOnly: true },
+// 	// { key: "OPPORTUNITIES", label: "Opportunities", authOnly: true },
+// 	{ key: "PEOPLE", label: "People", authOnly: true },
+// 	{ key: "PROJECTS", label: "Projects", authOnly: true },
+// 	{ key: "AUTO_INSIGHTS", label: "Auto-Takeaways", authOnly: true },
+// 	// { key: "ABOUT", label: "About", authOnly: false },
+// 	// { key: "THEMES", label: "Themes", authOnly: true },
+// ]
+
+// Define navigation links with proper paths for authenticated users
+export const projectNavLinks: { key: keyof typeof PATHS; label: string; authOnly: boolean }[] = [
 	{ key: "DASHBOARD", label: "Dashboard", authOnly: true },
 	{ key: "INTERVIEWS", label: "Interviews", authOnly: true },
 	{ key: "INSIGHTS", label: "Insights", authOnly: true },
 	{ key: "PERSONAS", label: "Personas", authOnly: true },
-	// { key: "OPPORTUNITIES", label: "Opportunities", authOnly: true },
+	// { key: "OPPORTUNITIES", label: "Opportunities", authOnly: true, link: `${PATHS.OPPORTUNITIES}` },
 	{ key: "PEOPLE", label: "People", authOnly: true },
 	{ key: "PROJECTS", label: "Projects", authOnly: true },
 	{ key: "AUTO_INSIGHTS", label: "Auto-Takeaways", authOnly: true },
-	// { key: "ABOUT", label: "About", authOnly: false },
-	// { key: "THEMES", label: "Themes", authOnly: true },
+	// { key: "ABOUT", label: "About", authOnly: false, link: `/about` },
+	// { key: "THEMES", label: "Themes", authOnly: true, link: `${PATHS.THEMES}` },
 ]
 
 function _Breadcrumbs() {
@@ -44,20 +58,29 @@ function _Breadcrumbs() {
 	)
 }
 
-export default function MainNav() {
+export default function MainNav({ links }: { links?: { key: string; label: string; authOnly: boolean }[] }) {
 	const { user } = useAuth()
 	const { pathname } = useLocation()
-	const { accountId, projectId } = useCurrentProject()
+	const { accountId, projectId, projectPath } = useCurrentProject()
 	const _isMainRoute =
 		pathname !== "/" && /^\/(themes|personas|opportunities|interviews|insights|projects|people|about)/.test(pathname)
+
+	// Public links for non-authenticated users
+	const publicLinks: { key: string; label: string; authOnly: boolean; link: string }[] = [
+		{ key: "HOME", label: "Home", authOnly: false, link: "/" },
+		{ key: "ABOUT", label: "About", authOnly: false, link: "/about" },
+	]
 
 	return (
 		<>
 			<nav className="bg-white shadow-sm dark:bg-gray-800">
 				<div className="mx-auto max-w-[1440px] px-4">
 					<div className="flex h-16 items-center justify-between">
-						{/* Brand */}
-						<Link to={projectPath("DASHBOARD", accountId, projectId)} className="flex items-center">
+						{/* Brand - Link to dashboard for authenticated users, home for others */}
+						<Link
+							to={user ? (projectPath ? `${projectPath}/dashboard` : "/dashboard") : "/"}
+							className="flex items-center"
+						>
 							<svg
 								className="lucide lucide-scan-eye-icon h-8 w-8 text-blue-600"
 								viewBox="0 0 24 24"
@@ -79,15 +102,32 @@ export default function MainNav() {
 							<span className="ml-2 font-bold text-gray-900 text-xl dark:text-white">Insights</span>
 						</Link>
 
-						{/* Primary Nav: always visible for authenticated users */}
-						{user && (
-							<div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-								{navItems
-									.filter((item) => !item.authOnly || user)
-									.map(({ key, label }) => (
+						{/* Primary Nav: show appropriate links based on authentication status */}
+						<div className="hidden sm:ml-6 sm:flex sm:space-x-8">
+							{user
+								? // Show project-specific links for authenticated users
+									projectNavLinks
+										.filter((_item) => accountId && projectId) // Only show if we have account and project context
+										.map(({ key, label, link }) => (
+											<NavLink
+												key={key}
+												to={link}
+												className={({ isActive }) =>
+													`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
+														isActive
+															? "border-blue-500 text-gray-900 dark:text-white"
+															: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:text-gray-200"
+													}`
+												}
+											>
+												{label}
+											</NavLink>
+										))
+								: // Show public links for non-authenticated users
+									publicLinks.map(({ key, label, link }) => (
 										<NavLink
 											key={key}
-											to={projectPath(key, accountId, projectId)}
+											to={link}
 											className={({ isActive }) =>
 												`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
 													isActive
@@ -99,8 +139,7 @@ export default function MainNav() {
 											{label}
 										</NavLink>
 									))}
-							</div>
-						)}
+						</div>
 
 						{/* Actions: show login button or user profile based on auth state */}
 						<div className="flex items-center space-x-4">
@@ -108,7 +147,7 @@ export default function MainNav() {
 								<UserProfile />
 							) : (
 								<Link
-									to={PATHS.AUTH.LOGIN}
+									to="/login"
 									className="rounded-md bg-blue-600 px-4 py-2 font-medium text-sm text-white shadow-sm hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
 								>
 									Sign In/Up

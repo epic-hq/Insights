@@ -534,7 +534,7 @@ grant execute on function public.get_accounts() to authenticated;
     returns json
     language plpgsql
     security definer
-    set search_path = public, accounts
+    set search_path = accounts,public
 as
 $$
 declare
@@ -586,7 +586,7 @@ begin
 end;
 $$;
 
-grant execute on function public.get_account(uuid) to authenticated, service_role;
+grant execute on function public.get_account(uuid) to anon, authenticated, service_role;
 
 
 -- create or replace function public.get_account(account_id uuid)
