@@ -3,25 +3,28 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getProjectById } from "~/features/projects/db"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
-		{ title: `${data?.project?.title || "Project"} | Insights` },
+		{ title: `${data?.project?.name || "Project"} | Insights` },
 		{ name: "description", content: "Project details" },
 	]
 }
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// From URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
 	const { projectId } = params
-	consola.log("projectId: ", projectId)
 
-	if (!projectId) {
-		throw new Response("Project ID is required", { status: 400 })
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
 	try {
@@ -44,6 +47,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export default function ProjectDetail() {
 	const { project } = useLoaderData<typeof loader>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -63,7 +68,8 @@ export default function ProjectDetail() {
 	}
 
 	const people = project.project_people || []
-	const personas = project.project_personas || []
+	// Note: project_personas relationship may not be available in current schema
+	const personas: any[] = []
 
 	return (
 		<div className="mx-auto max-w-4xl">
@@ -79,7 +85,7 @@ export default function ProjectDetail() {
 				</div>
 				<div className="flex gap-2">
 					<Button asChild variant="outline">
-						<Link to={`/projects/${project.id}/edit`}>Edit</Link>
+						<Link to={routes.projects.edit(project.id)}>Edit</Link>
 					</Button>
 				</div>
 			</div>
@@ -102,7 +108,7 @@ export default function ProjectDetail() {
 								{people.map((projectPerson) => (
 									<div key={projectPerson.people.id} className="border-blue-500 border-l-4 pl-4">
 										<Link
-											to={`/people/${projectPerson.people.id}`}
+											to={routes.people.detail(projectPerson.people.id)}
 											className="font-medium text-blue-600 hover:text-blue-800"
 										>
 											{projectPerson.people.name}
@@ -125,7 +131,7 @@ export default function ProjectDetail() {
 								{personas.map((projectPersona) => (
 									<div key={projectPersona.personas.id} className="border-green-500 border-l-4 pl-4">
 										<Link
-											to={`/personas/${projectPersona.personas.id}`}
+											to={routes.personas.detail(projectPersona.personas.id)}
 											className="font-medium text-blue-600 hover:text-blue-800"
 										>
 											{projectPersona.personas.name}
@@ -155,20 +161,6 @@ export default function ProjectDetail() {
 									</Badge>
 								</div>
 							</div>
-
-							{project.start_date && (
-								<div>
-									<label className="font-medium text-gray-500 text-sm">Start Date</label>
-									<div className="mt-1 text-gray-900 text-sm">{new Date(project.start_date).toLocaleDateString()}</div>
-								</div>
-							)}
-
-							{project.end_date && (
-								<div>
-									<label className="font-medium text-gray-500 text-sm">End Date</label>
-									<div className="mt-1 text-gray-900 text-sm">{new Date(project.end_date).toLocaleDateString()}</div>
-								</div>
-							)}
 
 							<div>
 								<label className="font-medium text-gray-500 text-sm">Created</label>

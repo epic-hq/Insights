@@ -546,9 +546,9 @@ begin
     user_id := auth.uid();
 
     -- Check if the user is a member of the account
-    select account_role into user_role
-    from accounts.account_user
-    where account_id = get_account.account_id and user_id = user_id
+    select au.account_role into user_role
+    from accounts.account_user au
+    where au.account_id = get_account.account_id and au.user_id = user_id
     limit 1;
 
     if user_role is null then
@@ -576,10 +576,10 @@ begin
         from accounts.accounts a
         join accounts.config config on true
         left join (
-            select bs.account_id, status
+            select bs.account_id, bs.status
             from accounts.billing_subscriptions bs
             where bs.account_id = get_account.account_id
-            order by created desc
+            order by bs.created desc
             limit 1
         ) bs on bs.account_id = a.id
         where a.id = get_account.account_id

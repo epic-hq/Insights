@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS insight_tags (
     insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     account_id UUID NOT NULL,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id),
 
@@ -20,6 +21,7 @@ CREATE TABLE IF NOT EXISTS interview_tags (
     interview_id UUID NOT NULL REFERENCES interviews(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     account_id UUID NOT NULL,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id),
 
@@ -32,6 +34,7 @@ CREATE TABLE IF NOT EXISTS opportunity_insights (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     opportunity_id UUID NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
     insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     weight DECIMAL(3,2) DEFAULT 1.0, -- How strongly this insight supports the opportunity
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id),
@@ -123,6 +126,7 @@ CREATE TABLE IF NOT EXISTS persona_insights (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     persona_id UUID NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
     insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+    project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     relevance_score DECIMAL(3,2) DEFAULT 1.0, -- How relevant this insight is to the persona
     created_at TIMESTAMPTZ DEFAULT NOW(),
     created_by UUID REFERENCES auth.users(id),

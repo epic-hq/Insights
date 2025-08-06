@@ -2,14 +2,19 @@ import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useSearchParams } from "react-router-dom"
 import InsightCardGrid from "~/features/insights/components/InsightCardGrid"
 import { getInsights } from "~/features/insights/db"
+import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const insights = await getInsights({ supabase, accountId })
-	if (!insights) throw new Response("Failed to load insights", { status: 500 })
+
+	const ctx_project = context.get(currentProjectContext)
+	const projectId = ctx_project.projectId || ""
+	const accountId = ctx_project.accountId || ""
+
+	const { data: insights, error } = await getInsights({ supabase, accountId, projectId })
+	if (error) throw new Response("Failed to load insights", { status: 500 })
 	return { insights: insights || [], filters: { sort: null } }
 }
 

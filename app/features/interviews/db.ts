@@ -4,9 +4,11 @@ import type { Database } from "~/types"
 export const getInterviews = async ({
 	supabase,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId: string
 }) => {
 	return await supabase
 		.from("interviews")
@@ -30,16 +32,19 @@ export const getInterviews = async ({
 			)
 		`)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 }
 
 export const getInterviewById = async ({
 	supabase,
 	accountId,
+	projectId,
 	id,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId: string
 	id: string
 }) => {
 	// Fetch interview with related participants and insights (including tags)
@@ -66,6 +71,7 @@ export const getInterviewById = async ({
 		`)
 		.eq("id", id)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.single()
 }
 
@@ -151,11 +157,13 @@ export const updateInterview = async ({
 	supabase,
 	id,
 	accountId,
+	projectId,
 	data,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
+	projectId: string
 	data: Database["public"]["Tables"]["interviews"]["Update"]
 }) => {
 	return await supabase
@@ -163,6 +171,7 @@ export const updateInterview = async ({
 		.update(data)
 		.eq("id", id)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.select()
 		.single()
 }
@@ -171,14 +180,17 @@ export const deleteInterview = async ({
 	supabase,
 	id,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
+	projectId: string
 }) => {
 	return await supabase
 		.from("interviews")
 		.delete()
 		.eq("id", id)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 }

@@ -1,4 +1,5 @@
 import { Dialog, Transition } from "@headlessui/react"
+import consola from "consola"
 import { Fragment, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { Button } from "~/components/ui/button"
@@ -20,6 +21,8 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [mediaUrl, setMediaUrl] = useState<string>("")
 	const { showNotification } = useNotification()
+
+	consola.log("add interview", accountId, projectId)
 
 	const handleFileUpload = async (files: File[]) => {
 		if (!files.length) return

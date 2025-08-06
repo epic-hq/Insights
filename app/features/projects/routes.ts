@@ -5,6 +5,6 @@ export default [
 		index("./features/projects/pages/index.tsx"),
 		route("new", "./features/projects/pages/new.tsx"),
 		route(":projectId", "./features/projects/pages/projectDetail.tsx"),
+		route(":projectId/edit", "./features/projects/pages/edit.tsx"),
 	]),
-	route(":projectId/edit", "./features/projects/pages/edit.tsx"),
 ] satisfies RouteConfig

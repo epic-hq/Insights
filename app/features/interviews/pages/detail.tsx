@@ -5,7 +5,7 @@ import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
-import { projectPath } from "~/paths"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { TranscriptResults } from "../components/TranscriptResults"
 
@@ -16,14 +16,17 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	]
 }
 
-export async function loader({ params, context }: LoaderFunctionArgs) {
+export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { interviewId } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const interviewId = params.interviewId
 
-	if (!interviewId) {
-		throw new Response("Interview ID is required", { status: 400 })
+	if (!accountId || !projectId || !interviewId) {
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
 	}
 
 	try {
@@ -31,6 +34,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		const { data: interviewData, error: interviewError } = await getInterviewById({
 			supabase,
 			accountId,
+			projectId,
 			id: interviewId,
 		})
 
@@ -87,7 +91,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export default function InterviewDetail() {
 	const { interview, insights, interviewerData } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
-	const { accountId, projectId } = useCurrentProject()
+	const { accountId, projectId, projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath)
 
 	const participants = interview.participants || []
 	const _primaryParticipant = participants[0]?.people
@@ -103,7 +108,7 @@ export default function InterviewDetail() {
 						<div className="flex items-center justify-between">
 							<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
 							<Link
-								to={projectPath("INTERVIEWS", accountId, projectId, `/${interview.id}/edit`)}
+								to={routes.interviews.edit(interview.id)}
 								className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
 							>
 								Edit Interview
@@ -141,11 +146,11 @@ export default function InterviewDetail() {
 							{interview.interview_date && (
 								<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
 							)}
-							{interview.project?.title && (
+							{/* {interview?.project?.title && (
 								<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
 									Project: {interview.project.title}
 								</span>
-							)}
+							)} */}
 						</div>
 					</div>
 
@@ -275,7 +280,7 @@ export default function InterviewDetail() {
 									{insights.map((insight) => (
 										<div key={insight.id} className="border-green-500 border-l-4 pl-3">
 											<Link
-												to={projectPath("INSIGHTS", accountId, projectId, `/${insight.id}`)}
+												to={routes.insights.detail(insight.id)}
 												className="font-medium text-blue-600 hover:text-blue-800"
 											>
 												{insight.name}

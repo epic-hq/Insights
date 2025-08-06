@@ -1,5 +1,7 @@
 import React from "react"
 import { Link } from "react-router-dom"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { PATHS } from "~/paths"
 import Breadcrumbs from "./Breadcrumbs"
 
@@ -16,6 +18,9 @@ interface PageHeaderProps {
 }
 
 const PageHeader: React.FC<PageHeaderProps> = ({ title = "", showBreadcrumbs = true, breadcrumbs, className = "" }) => {
+	const { projectPath } = useCurrentProject()
+	const _routes = useProjectRoutes(projectPath || "")
+
 	return (
 		<header className={`mx-auto max-w-[1440px] px-4 py-2 ${className}`}>
 			<div className="">

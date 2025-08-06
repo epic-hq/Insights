@@ -3,18 +3,20 @@
 ## 🔜 Doing Now (Sprint 2 - Accounts & Projects controls and routing)
 
 - [x] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
-- [ ] Define Routing
-- [ ] Implement projectPath in link building on every protected route segment
-- [ ] CRUD functions for people, projects, personas, tags, opportunities
-- [ ] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
-- [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
+- [x] Reset db.
+- [x] remove the db creation of response table
 - [x] fix login-redirect, and sign-in flow. <rickmoy@gmail.com> is broken but <rick@deeplight.digital> works hmmm.
-- [ ] Reset db.
-- [ ] remove the db creation of response table
+- [x] Define Routing
+- [x] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
+- [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
+- [ ] Update all links to protectedLayout in app/routes
+- [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
+
+- [ ] CRUD functions for people, projects, personas, tags, opportunities
+- [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 - [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
-- [ ] Update all links to protectedLayout and downstream components to use CurrentProjectPath from CurrentProjectContext
-- [ ] Update RLS to require account_id AND project_id.
-- [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
+
+Defer:
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
@@ -35,6 +37,9 @@ Prioritize.
 
 ## 🌓 Backlog / Later
 
+- [ ] Update RLS to require account_id AND project_id.
+- [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
+- [ ] Cannot delete users due to fk constraints.
 - [ ] Intro Testing framework and coverage [howto test](testing-howto.md)
 - [ ] **Auto-Insights** - Distill insights and help make executive decisions, answering key questions like "What are the top opportunities?" and "What are the top pain points?", "What changes would benefit different personas the most?" and "What are the best revenue-generating opportunities?" and "Which personas are likely to pay for what?" and "(Given key competitive pressures) what are the most profitable opportunities?"
 - [ ] Extraction Guidance: User specified constraints for auto-insights. eg. sales, marketing, product, etc. Auto-merge tags, provide as prompts to LLM in BAML extraction process.
@@ -61,31 +66,33 @@ See [app-flow](_stack-database-plan.md#app-flow)
 
 Accounts & Home:
 / → marketing landing page
-
+/auth/callback
+- on success → /login_success redirects to /home (features/home/pages/index.tsx)
+- on failure → show error message in login page
 /home (features/home/pages/index.tsx) shows what accounts and projects the user has access to, a list of accounts, projects, suggested actions, onboarding
-/auth/callback on success → /login_success redirects to /home (features/home/pages/index.tsx)
-<!-- /auth/callback on failure → /login_failure shows error message for 5 seconds and redirects to /login NOTE: just displays invalid credentials in login page. -->
+
+Accounts: (Future when we let them create & switch.)
+/a/:accountId/ → /features/accounts/pages/accountDetail
+/a/:accountId/edit → /features/accounts/pages/edit (not implemented) members, invites, description.
+/a/new → /features/accounts/pages/new (not implemented)
 
 Projects:
-Question: to prefix with account or just show /projects?
-
-/a/:accountId/projects → /features/projects/index page lists projects but this is like /home now
+/a/:accountId/projects → /features/projects/index shows list of projects in account
 /a/:accountId/projects/new → /features/projects/new page
-/a/:accountId/projects/:projectId/edit → /features/projects/edit page
--- or --
-/a/:accountId/:projectId/edit → /features/projects/edit page
 
-Project resources below /a/:accountId/:projectId/ are protected
-/a/:accountId/:projectId/ → /features/projects/projectDetail page
-/a/:accountId/:projectId/dashboard → /features/projects/projectDetail/dashboard page
-/a/:accountId/:projectId/interviews → /features/projects/projectDetail/interviews page
+Specific Project resources:
+/a/:accountId/:projectId/ → /features/projects/pages/projectDetail
+/a/:accountId/:projectId/edit → /features/projects/pages/edit
+/a/:accountId/:projectId/dashboard → /features/projects/pages/projectDetail/dashboard
+/a/:accountId/:projectId/interviews → /features/projects/pages/projectDetail/interviews
 
-/a/:accountId/:projectId/insights → /features/insights/insights/index page lists insights
-/a/:accountId/:projectId/insights/:insightId → /features/insights/insightDetail page
+/a/:accountId/:projectId/insights → /features/insights/insights/index
+/a/:accountId/:projectId/insights/:insightId → /features/insights/insightDetail
+/a/:accountId/:projectId/insights/:insightId/edit → /features/insights/insightDetail/edit
 ...
 
-**projectPath Links**
-Implement projectPath in link building on every protected route segment. it is in CurrentProjectContext for react _ProtectedLayout, just need to access it when building links.
+**Route Links**
+Implement `useRoutes` hook for link building.
 
 ### Chat Agent Workflows
 

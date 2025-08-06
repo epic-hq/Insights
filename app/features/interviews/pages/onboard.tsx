@@ -6,6 +6,8 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
@@ -43,6 +45,8 @@ const UserOnboardingWidget = () => {
 	const fileInputRef = useRef<HTMLInputElement>(null)
 	const navigate = useNavigate()
 	const { accountId, projectId } = useAuth()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const onboardingCards: OnboardingCardData[] = [
 		{
@@ -247,7 +251,7 @@ const UserOnboardingWidget = () => {
 										if (status.is_processed) {
 											setProcessingProgress(100)
 											setProcessingMessage("Processing complete!")
-											setTimeout(() => navigate(`/interviews/${interviewId}`), 500)
+											setTimeout(() => navigate(routes.interviews.detail(interviewId)), 500)
 											return
 										}
 										if (pollCount++ < 30) setTimeout(pollStatus, 2000)

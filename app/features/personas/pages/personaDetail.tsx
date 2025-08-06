@@ -6,8 +6,10 @@ import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import InsightCardGrid from "~/features/insights/components/InsightCardGrid"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Database, Insight, Interview } from "~/types"
 
@@ -20,9 +22,11 @@ export const meta: MetaFunction = ({ params }) => {
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
 
+	// Both from URL params - consistent, explicit, RESTful
+	const _accountId = params.accountId
+	const _projectId = params.projectId
 	const personaId = params.personaId
 
 	if (!personaId) {
@@ -42,7 +46,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("personas")
 		.select("*")
 		.eq("id", personaId)
-		.eq("account_id", accountId)
 		.single()
 
 	if (personaError) {
@@ -169,6 +172,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function PersonaDetailRoute() {
 	const { persona, interviews, insights, people } = useLoaderData<typeof loader>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	consola.log("personaDetail: ", persona)
 	if (!persona) {
@@ -281,7 +286,7 @@ export default function PersonaDetailRoute() {
 								transition={{ delay: 0.4, duration: 0.3 }}
 							>
 								<Button asChild variant="outline" size="sm">
-									<Link to={`/personas/${persona.id}/edit`}>Edit</Link>
+									<Link to={`${routes.personas.detail(persona.id)}/edit`}>Edit</Link>
 								</Button>
 								<Button
 									variant="default"
@@ -565,7 +570,7 @@ export default function PersonaDetailRoute() {
 											className="flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-accent hover:shadow-sm"
 											whileHover={{ scale: 1.01 }}
 										>
-											<Link to={`/people/${person.id}`} className="font-medium hover:text-primary">
+											<Link to={routes.people.detail(person.id)} className="font-medium hover:text-primary">
 												{person.name || "Unnamed"}
 											</Link>
 											{person.segment && <Badge variant="outline">{person.segment}</Badge>}
@@ -574,7 +579,7 @@ export default function PersonaDetailRoute() {
 									{people.length > 5 && (
 										<div className="mt-3 text-center">
 											<Button asChild variant="ghost" size="sm">
-												<Link to="/people" className="text-muted-foreground text-sm hover:text-primary">
+												<Link to={routes.people.index()} className="text-muted-foreground text-sm hover:text-primary">
 													View all {people.length} people
 												</Link>
 											</Button>
@@ -622,7 +627,7 @@ export default function PersonaDetailRoute() {
 											whileHover={{ scale: 1.01 }}
 										>
 											<div className="flex-1">
-												<Link to={`/interviews/${interview.id}`} className="font-medium hover:text-primary">
+												<Link to={routes.interviews.detail(interview.id)} className="font-medium hover:text-primary">
 													{interview.title || "Untitled Interview"}
 												</Link>
 												{interview.interview_date && (
@@ -641,7 +646,10 @@ export default function PersonaDetailRoute() {
 									{interviews.length > 5 && (
 										<div className="mt-3 text-center">
 											<Button asChild variant="ghost" size="sm">
-												<Link to="/interviews" className="text-muted-foreground text-sm hover:text-primary">
+												<Link
+													to={routes.interviews.index()}
+													className="text-muted-foreground text-sm hover:text-primary"
+												>
 													View all {interviews.length} interviews
 												</Link>
 											</Button>
@@ -664,7 +672,7 @@ export default function PersonaDetailRoute() {
 				<div className="rounded-lg bg-white p-6 shadow-sm">
 					<div className="mb-4 flex items-center justify-between">
 						<h2 className="font-semibold text-xl">Related Insights</h2>
-						<Link to="/insights" className="text-blue-600 text-sm hover:text-blue-800">
+						<Link to={routes.insights.index()} className="text-blue-600 text-sm hover:text-blue-800">
 							View all insights
 						</Link>
 					</div>

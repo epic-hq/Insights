@@ -45,30 +45,22 @@ export function AuthProvider({ children, user, organizations, account_settings }
 
 	// Get accountId from organizations prop (top account) or fallback to URL params
 	const accountId = useMemo(() => {
-		// First try to get from organizations prop (top account)
-		if (organizations?.[0]?.account_id) {
-			return organizations[0].account_id
-		}
 		// Fallback to URL params
 		if (params.accountId) {
 			return params.accountId
 		}
 		consola.error("No accountId available from organizations prop or URL params")
 		return ""
-	}, [organizations, params.accountId])
+	}, [params.accountId])
 
 	// Get projectId from top account's first project or fallback to URL params
 	const projectId = useMemo(() => {
-		// First try to get from organizations prop (first project of top account)
-		if (organizations?.[0]?.projects?.[0]?.id) {
-			return organizations[0].projects[0].id
-		}
 		// Fallback to URL params
 		if (params.projectId) {
 			return params.projectId
 		}
 		return ""
-	}, [organizations, params.projectId])
+	}, [params.projectId])
 
 	// Sign out function
 	async function signOut() {

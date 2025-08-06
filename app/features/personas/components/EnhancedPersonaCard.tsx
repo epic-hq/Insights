@@ -4,6 +4,8 @@ import { Palette, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
@@ -20,6 +22,8 @@ interface EnhancedPersonaCardProps {
 
 export default function EnhancedPersonaCard({ persona, className }: EnhancedPersonaCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	// Calculate people count from junction table
 	const peopleCount = persona.people_personas?.[0]?.count || 0
@@ -39,7 +43,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 			.slice(0, 2) || "?"
 
 	return (
-		<Link to={`/personas/${persona.id}`}>
+		<Link to={routes.personas.detail(persona.id)}>
 			<motion.div
 				className={cn(
 					"group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-background",

@@ -17,18 +17,22 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
 	const { id } = params
 
-	if (!id) {
-		throw new Response("Insight ID is required", { status: 400 })
+	if (!accountId || !projectId || !id) {
+		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })
 	}
 
 	try {
 		const data = await getInsightById({
 			supabase,
 			accountId,
+			projectId,
 			id,
 		})
 
@@ -50,12 +54,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
 	const { id } = params
 
-	if (!id) {
-		throw new Response("Insight ID is required", { status: 400 })
+	if (!accountId || !projectId || !id) {
+		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })
 	}
 
 	const formData = await request.formData()
@@ -67,6 +74,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				supabase,
 				id,
 				accountId,
+				projectId,
 			})
 
 			return redirect("/insights")
@@ -94,6 +102,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			supabase,
 			id,
 			accountId,
+			projectId,
 			data: {
 				name: name.trim(),
 				details: details.trim(),

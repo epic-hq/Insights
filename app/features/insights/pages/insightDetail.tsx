@@ -1,3 +1,4 @@
+import consola from "consola"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
@@ -13,37 +14,47 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { insightId } = params
 
-	if (!insightId) {
-		throw new Response("Insight ID is required", { status: 400 })
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const { insightId } = params
+	consola.log("insight accountId", accountId, "projectId", projectId, "insightId", insightId)
+
+	if (!accountId || !projectId || !insightId) {
+		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })
 	}
 
 	try {
-		const data = await getInsightById({
+		const insight = await getInsightById({
 			supabase,
 			accountId,
+			projectId,
 			id: insightId,
 		})
 
-		// add flattened tags for convenience
-		return {
-			insight: {
-				...data,
-				tags: data.insight_tags?.map((it: any) => ({ id: it.tags.id, tag: it.tags.tag })) ?? [],
-				interviews: Array.isArray(data.interviews) ? data.interviews : data.interviews ? [data.interviews] : [],
-			},
+		if (!insight) {
+			throw new Response("Insight not found", { status: 404 })
 		}
-	} catch (_error) {
+
+		return {
+			insight: insight,
+		}
+	} catch (error) {
+		consola.error("Error loading insight:", error)
+		if (error instanceof Response) {
+			throw error
+		}
 		throw new Response("Failed to load insight", { status: 500 })
 	}
 }
 
 export default function InsightDetail() {
 	const { insight } = useLoaderData<typeof loader>()
-
+	if (!insight) {
+		return <div>Insight not found</div>
+	}
 	return (
 		<div className="mx-auto max-w-4xl">
 			{/* <div className="mb-6 flex items-center gap-2">

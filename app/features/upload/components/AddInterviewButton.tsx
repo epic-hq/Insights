@@ -1,12 +1,12 @@
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
-import { useAuth } from "~/contexts/AuthContext"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 import AddInterview from "./AddInterview"
 
 export default function AddInterviewButton() {
 	const [open, setOpen] = useState(false)
-	const { accountId, projectId } = useAuth()
+	const { accountId, projectId } = useCurrentProject()
 
 	const handleSuccess = (_result: ProcessingResult) => {
 		// You could navigate to the new interview here once API returns the id

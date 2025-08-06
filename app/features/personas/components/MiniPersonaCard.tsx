@@ -4,6 +4,8 @@ import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
 
@@ -14,6 +16,9 @@ interface MiniPersonaCardProps {
 }
 
 export default function MiniPersonaCard({ persona, className, showLink = true }: MiniPersonaCardProps) {
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
+	
 	// Get persona details with fallbacks
 	const name = persona.name || "Untitled Persona"
 	const description = persona.description || "No description available"
@@ -80,5 +85,5 @@ export default function MiniPersonaCard({ persona, className, showLink = true }:
 		</Card>
 	)
 
-	return showLink ? <Link to={`/personas/${persona.id}`}>{content}</Link> : content
+	return showLink ? <Link to={routes.personas.detail(persona.id)}>{content}</Link> : content
 }

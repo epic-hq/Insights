@@ -50,18 +50,20 @@ async function parse_account_id_from_params({
 		}
 		const account_usersQuery = supabase.schema("accounts").from("account_user").select("*").eq("user_id", user_id)
 		const { data: account_users, error: account_users_error } = await account_usersQuery
-		consola.log("/accounts: Account users:", account_users)
+		// consola.log("/accounts: Account users:", account_users)
 
-		const current_user_role = await supabase.rpc("current_user_account_role", { p_account_id: account_id_or_slug })
-		consola.log("/accounts: Current user role:", current_user_role)
+		const _current_user_role = await supabase.rpc("current_user_account_role", { p_account_id: account_id_or_slug })
+		// consola.log("/accounts: Current user role:", current_user_role)
 
 		const { data: accountsList } = await supabase.rpc("get_accounts")
-		consola.log("/accounts: Accounts list:", accountsList)
+		consola.log(
+			"/accounts: Accounts list:",
+			accountsList?.map((a) => a.account_id)
+		)
 
 		const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
 		consola.log("/accounts: Get account response:", getAccountResponse)
 		if (account) {
-			consola.log("/accounts: Account:", account)
 			return account
 		}
 

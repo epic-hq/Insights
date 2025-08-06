@@ -3,6 +3,8 @@ import { Link, useParams } from "react-router-dom"
 import PageHeader from "~/components/navigation/PageHeader"
 // Import centralized types
 import type { Interview, PersonaView } from "~/types"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 interface PersonaDetailProps {
 	personas: PersonaView[]
@@ -11,6 +13,8 @@ interface PersonaDetailProps {
 
 const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) => {
 	const { personaId } = useParams<{ personaId: string }>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	// Find the persona by ID (slug)
 	const persona = personas.find((p) => {
@@ -151,7 +155,7 @@ const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) =
 									key={interview.id}
 									className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 								>
-									<Link to={`/interviews/${interview.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+									<Link to={routes.interviews.detail(interview.id)} className="font-medium text-blue-600 hover:text-blue-800">
 										{interview.participant_pseudonym || "Anonymous"}
 									</Link>
 									<p className="mt-1 text-gray-500 text-sm">Role: {interview.title || "Not specified"}</p>

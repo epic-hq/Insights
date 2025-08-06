@@ -5,20 +5,25 @@ import type { TreeNode } from "~/components/charts/TreeMap"
 import Dashboard from "~/features/dashboard/components/Dashboard"
 import type { KPI } from "~/features/dashboard/components/KPIBar"
 import { getPersonas } from "~/features/personas/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { userContext } from "~/server/user-context"
+
 import type { InsightView, OpportunityView } from "~/types"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Insights Dashboard" }, { name: "description", content: "Insights for conversations" }]
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
+export async function loader({ context, params }: LoaderFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
 
-	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
 	// Fetch KPIs - count of interviews, insights, and opportunities
@@ -26,31 +31,42 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		.from("interviews")
 		.select("*", { count: "exact", head: true })
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 
 	const { count: insightCount } = await supabase
 		.from("insights")
 		.select("*", { count: "exact", head: true })
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 
 	const { count: opportunityCount } = await supabase
 		.from("opportunities")
 		.select("*", { count: "exact", head: true })
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
+
+	// Create route helpers for server-side use
+	const routes = createProjectRoutes(accountId, projectId)
 
 	// Define KPIs with live counts
 	const kpis: KPI[] = [
-		{ label: "Interviews", value: interviewCount?.toString() || "0", href: "/interviews", icon: "interviews" },
-		{ label: "Insights", value: insightCount?.toString() || "0", href: "/insights", icon: "insights" },
+		{
+			label: "Interviews",
+			value: interviewCount?.toString() || "0",
+			href: routes.interviews.index(),
+			icon: "interviews",
+		},
+		{ label: "Insights", value: insightCount?.toString() || "0", href: routes.insights.index(), icon: "insights" },
 		{
 			label: "Opportunities",
 			value: opportunityCount?.toString() || "0",
-			href: "/opportunities",
+			href: routes.opportunities.index(),
 			icon: "opportunities",
 		},
 	]
 
 	// Fetch personas with counts
-	const { data, error } = await getPersonas({ supabase, accountId })
+	const { data, error } = await getPersonas({ supabase, accountId, projectId })
 
 	// Transform personas into the expected format
 	const personas = (data || []).map((p, index) => {
@@ -77,6 +93,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		.from("interviews")
 		.select("*")
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 		.limit(5)
 

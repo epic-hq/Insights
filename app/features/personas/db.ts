@@ -4,9 +4,11 @@ import type { Database } from "~/types"
 export const getPersonas = async ({
 	supabase,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId: string
 }) => {
 	return await supabase
 		.from("personas")
@@ -15,4 +17,5 @@ export const getPersonas = async ({
 			people_personas(count)
 		`)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 }

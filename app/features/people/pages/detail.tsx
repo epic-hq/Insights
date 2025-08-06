@@ -3,7 +3,9 @@ import { Link, useLoaderData } from "react-router-dom"
 import { motion } from "framer-motion"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { getPersonById } from "~/features/people/db"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -15,18 +17,22 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { personId } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const personId = params.personId
 
-	if (!personId) {
-		throw new Response("Person ID is required", { status: 400 })
+	if (!accountId || !projectId || !personId) {
+		throw new Response("Account ID, Project ID, and Person ID are required", { status: 400 })
 	}
 
 	try {
 		const person = await getPersonById({
 			supabase,
 			accountId,
+			projectId,
 			id: personId,
 		})
 
@@ -42,6 +48,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export default function PersonDetail() {
   const { person } = useLoaderData<typeof loader>()
+  const { projectPath } = useCurrentProject()
+  const routes = useProjectRoutes(projectPath || "")
 
   const interviews = person.interview_people || []
   const people_personas = person.people_personas || []
@@ -88,7 +96,7 @@ export default function PersonDetail() {
             </div>
           </div>
           <Button asChild variant="outline">
-            <Link to={`/people/${person.id}/edit`}>Edit</Link>
+            <Link to={routes.people.edit(person.id)}>Edit</Link>
           </Button>
         </div>
         {person.description && (
@@ -118,7 +126,7 @@ export default function PersonDetail() {
                     whileHover={{ scale: 1.01, backgroundColor: themeColor + '0A' }}
                   >
                     <Link
-                      to={`/interviews/${interviewPerson.interviews.id}`}
+                      to={routes.interviews.detail(interviewPerson.interviews.id)}
                       className="font-medium text-blue-600 hover:text-blue-800"
                     >
                       {interviewPerson.interviews.title}

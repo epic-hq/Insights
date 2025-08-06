@@ -1,8 +1,10 @@
-import { Link, useNavigate } from "react-router-dom"
+import { Link } from "react-router-dom"
 import type { TreeNode } from "~/components/charts/TreeMap"
 import TreeMap from "~/components/charts/TreeMap"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { OpportunityView } from "~/types"
 import type { KPI } from "./KPIBar"
 import KPIBar from "./KPIBar"
@@ -26,11 +28,11 @@ interface DashboardProps {
 	}[]
 	opportunities: OpportunityView[]
 	themeTree: TreeNode[] // hierarchical data for treemap
-	insights: InsightCardProps[] // for filters/search later
 }
 
 export default function Dashboard({ kpis, personas, interviews, opportunities, themeTree }: DashboardProps) {
-	const navigate = useNavigate()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	// Dynamically update the opportunities KPI
 	const dynamicKpis = kpis.map((kpi) => {
@@ -84,7 +86,7 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-8 dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Insight Categories</h2>
-						<Link to="/themes" className="text-blue-600 text-xs hover:text-blue-800">
+						<Link to={routes.insights.map()} className="text-blue-600 text-xs hover:text-blue-800">
 							Explore themes
 						</Link>
 					</div>
@@ -93,7 +95,7 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 						onClick={(node) => {
 							// Only navigate for child nodes (actual themes, not categories)
 							if (node && !node.children) {
-								navigate(`/themes/${node.name.toLowerCase().replace(/\s+/g, "-")}`)
+								// TODO: Implement theme navigation when themes routes are available
 							}
 						}}
 					/>
@@ -103,13 +105,13 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-4 dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Personas</h2>
-						<Link to="/personas" className="text-blue-600 text-xs hover:text-blue-800">
+						<Link to={routes.personas.index()} className="text-blue-600 text-xs hover:text-blue-800">
 							View all
 						</Link>
 					</div>
 					<div className="grid gap-4">
-						{personas.map((persona) => (
-							<EnhancedPersonaCard key={persona.id} persona={persona} />
+						{personas.map((persona, index) => (
+							<EnhancedPersonaCard key={`persona-${index}`} persona={persona} />
 						))}
 					</div>
 				</div>
@@ -117,7 +119,7 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Opportunities</h2>
-						<Link to="/opportunities" className="text-blue-600 text-xs hover:text-blue-800">
+						<Link to={routes.opportunities.index()} className="text-blue-600 text-xs hover:text-blue-800">
 							View all
 						</Link>
 					</div>
@@ -129,10 +131,10 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Recent Interviews</h2>
 						<div className="flex gap-4">
-							<Link to="/interviews" className="text-blue-600 text-xs hover:text-blue-800">
+							<Link to={routes.interviews.index()} className="text-blue-600 text-xs hover:text-blue-800">
 								View all interviews
 							</Link>
-							<Link to="/insights?sort=latest" className="text-blue-600 text-xs hover:text-blue-800">
+							<Link to={routes.insights.withSort("latest")} className="text-blue-600 text-xs hover:text-blue-800">
 								Latest insights
 							</Link>
 						</div>

@@ -18,12 +18,15 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { personId } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const personId = params.personId
 
-	if (!personId) {
-		throw new Response("Person ID is required", { status: 400 })
+	if (!accountId || !projectId || !personId) {
+		throw new Response("Account ID, Project ID, and Person ID are required", { status: 400 })
 	}
 
 	try {
@@ -31,9 +34,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			getPersonById({
 				supabase,
 				accountId,
+				projectId,
 				id: personId,
 			}),
-			getPersonas({ supabase, accountId }),
+			getPersonas({ supabase, accountId, projectId }),
 		])
 
 		if (!person) {
@@ -48,12 +52,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { personId } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const personId = params.personId
 
-	if (!personId) {
-		throw new Response("Person ID is required", { status: 400 })
+	if (!accountId || !projectId || !personId) {
+		throw new Response("Account ID, Project ID, and Person ID are required", { status: 400 })
 	}
 
 	const formData = await request.formData()
@@ -65,6 +72,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				supabase,
 				id: personId,
 				accountId,
+				projectId,
 			})
 
 			return redirect("/people")
@@ -89,6 +97,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			supabase,
 			id: personId,
 			accountId,
+			projectId,
 			data: {
 				name: name.trim(),
 				description: description?.trim() || null,

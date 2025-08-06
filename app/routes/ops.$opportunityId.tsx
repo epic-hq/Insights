@@ -3,6 +3,8 @@ import { type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
 import { z } from "zod"
 import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { db } from "~/lib/supabase/server"
 import type { OpportunityView } from "~/types"
 
@@ -94,20 +96,22 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 
 export default function OpportunityDetailPage() {
 	const { opportunity } = useLoaderData<typeof loader>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	return (
 		<div className="mx-auto max-w-[1440px] px-4">
 			<div className="mb-6 flex items-center justify-between">
 				<div>
 					<div className="flex items-center gap-2">
-						<Link to="/opportunities" className="text-blue-600 hover:text-blue-800">
+						<Link to={routes.opportunities.index()} className="text-blue-600 hover:text-blue-800">
 							Opportunities
 						</Link>
 						<span className="text-gray-500">/</span>
 						<h1 className="font-bold text-2xl">{opportunity.name}</h1>
 					</div>
 				</div>
-				<Link to="/opportunities" className="text-blue-600 hover:text-blue-800">
+				<Link to={routes.opportunities.index()} className="text-blue-600 hover:text-blue-800">
 					Back to Opportunities
 				</Link>
 			</div>

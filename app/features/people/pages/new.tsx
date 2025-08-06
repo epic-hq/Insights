@@ -1,4 +1,4 @@
-import type { ActionFunctionArgs, MetaFunction } from "react-router"
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -12,11 +12,18 @@ export const meta: MetaFunction = () => {
 	return [{ title: "New Person | Insights" }, { name: "description", content: "Create a new person" }]
 }
 
-export async function loader({ context }: { context: any }) {
+export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { data: personas } = await getPersonas({ supabase, accountId })
+
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
+	const { data: personas } = await getPersonas({ supabase, accountId, projectId })
 	return { personas: personas || [] }
 }
 

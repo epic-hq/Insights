@@ -83,6 +83,7 @@ export async function processInterviewTranscript({
 	// 2. First, create the interview record
 	const interviewData: InterviewInsert = {
 		account_id: metadata.accountId,
+		project_id: metadata.projectId,
 		title: metadata.interviewTitle || metadata.fileName,
 		interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
 		participant_pseudonym: metadata.participantName || "Anonymous",
@@ -93,7 +94,6 @@ export async function processInterviewTranscript({
 		transcript_formatted: transcriptData,
 		duration_min: transcriptData.audio_duration ? Math.round((transcriptData.audio_duration as number) / 60) : null,
 		status: "processing" as const,
-		...(metadata.projectId ? { project_id: metadata.projectId } : {}),
 	} as InterviewInsert
 
 	const { data: interviewRecord, error: interviewError } = await db
@@ -116,6 +116,7 @@ export async function processInterviewTranscript({
 	// 3. Transform insights into DB rows - map BAML types to database schema
 	const rows = insights.map((i) => ({
 		account_id: metadata.accountId,
+		project_id: metadata.projectId,
 		interview_id: interviewRecord.id,
 		name: i.name,
 		category: i.category,
@@ -169,6 +170,7 @@ export async function processInterviewTranscript({
 	// Prepare person data with proper typing
 	const personInsertData: PeopleInsert = {
 		account_id: metadata.accountId,
+		project_id: metadata.projectId,
 		name: personName,
 		description: interviewee?.participantDescription?.trim() || null,
 		segment: interviewee?.segment?.trim() || metadata.segment || null,
@@ -216,6 +218,7 @@ export async function processInterviewTranscript({
 				.from("personas")
 				.insert({
 					account_id: metadata.accountId,
+					project_id: metadata.projectId,
 					name: personaName,
 					description: `Auto-generated from interview: ${interviewRecord.title}`,
 				})
@@ -236,6 +239,7 @@ export async function processInterviewTranscript({
 		interview_id: interviewRecord.id,
 		person_id: personData.id,
 		role: "participant",
+		project_id: metadata.projectId,
 	}
 
 	const { error: junctionError } = await db.from("interview_people").insert(junctionData)
@@ -252,6 +256,7 @@ export async function processInterviewTranscript({
 				person_id: personData.id,
 				persona_id: personaData.id,
 				interview_id: interviewRecord.id,
+				project_id: metadata.projectId,
 				confidence_score: 1.0,
 				source: 'ai_extraction'
 			}, {
@@ -288,7 +293,7 @@ export async function processInterviewTranscript({
 		const { data: tagData, error: tagError } = await db
 			.from("tags")
 			.upsert(
-				{ account_id: metadata.accountId, tag: tagName },
+				{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
 				{ onConflict: "account_id,tag" }
 			)
 			.select("id")
@@ -314,6 +319,7 @@ export async function processInterviewTranscript({
 					insight_id: storedInsight.id,
 					tag_id: tagData.id,
 					account_id: metadata.accountId,
+					project_id: metadata.projectId,
 				})
 				.select()
 				.single()

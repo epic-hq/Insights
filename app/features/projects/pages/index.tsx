@@ -6,28 +6,38 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+
+import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Projects" }, { name: "description", content: "Manage research and product projects" }]
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
+export async function loader({ context, request, params }: LoaderFunctionArgs) {
+	const user = context.get(userContext)
+	const supabase = user.supabase
 
+	// Use accountId from URL - this is the canonical team account ID
+	// Best practice for multi-tenant SaaS: account context comes from URL
+	const accountId = params.accountId
+
+	consola.log("🚀 PROJECTS LOADER FINAL accountId: ", accountId)
 	if (!accountId) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
 
 	const { data: projects, error } = await getProjects({ supabase, accountId })
 
+	consola.log("🚀 PROJECTS LOADER DB RESPONSE:", { projects, error })
+
 	if (error) {
-		throw new Response("Error loading projects", { status: 500 })
+		consola.error("🚀 PROJECTS LOADER DB ERROR:", error)
+		throw new Response(`Error loading projects: ${error.message}`, { status: 500 })
 	}
 
-	return { projects: projects || [] }
+	consola.log("🚀 PROJECTS LOADER SUCCESS - returning projects:", projects?.length || 0)
+	return { projects }
 }
 
 export default function ProjectsIndexPage() {
@@ -35,7 +45,9 @@ export default function ProjectsIndexPage() {
 	// Demo code to access current project context
 	const currentProjectContext = useCurrentProject()
 	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout")
+	const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
 	consola.log("projects index page: acct accounts & currentProjectContext:", accounts, currentProjectContext)
+	consola.log("projects index page: projects:", projects)
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -58,11 +70,11 @@ export default function ProjectsIndexPage() {
 		<div className="space-y-6 px-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="font-bold text-3xl tracking-tight">Projects</h1>
+					<h1 className="font-bold text-3xl tracking-tight">My Projects</h1>
 					<p className="text-muted-foreground">Manage research and product development projects.</p>
 				</div>
 				<Button asChild>
-					<Link to="/projects/new">Create Project</Link>
+					<Link to={routes.projects.new()}>Create Project</Link>
 				</Button>
 			</div>
 
@@ -74,7 +86,7 @@ export default function ProjectsIndexPage() {
 							Create your first project to start organizing your research and development work.
 						</p>
 						<Button asChild>
-							<Link to="/projects/new">Create Project</Link>
+							<Link to={routes.projects.new()}>Create Project</Link>
 						</Button>
 					</CardContent>
 				</Card>
@@ -85,7 +97,7 @@ export default function ProjectsIndexPage() {
 							<CardHeader>
 								<div className="flex items-start justify-between">
 									<CardTitle className="text-lg">
-										<Link to={`/projects/${project.id}`} className="hover:underline">
+										<Link to={routes.projects.detail(project.id)} className="hover:underline">
 											{project.name}
 										</Link>
 									</CardTitle>

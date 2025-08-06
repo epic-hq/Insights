@@ -397,6 +397,7 @@ export type Database = {
           created_by: string | null
           id: string
           insight_id: string
+          project_id: string | null
           tag_id: string
         }
         Insert: {
@@ -405,6 +406,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           insight_id: string
+          project_id?: string | null
           tag_id: string
         }
         Update: {
@@ -413,6 +415,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           insight_id?: string
+          project_id?: string | null
           tag_id?: string
         }
         Relationships: [
@@ -421,6 +424,13 @@ export type Database = {
             columns: ["insight_id"]
             isOneToOne: false
             referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insight_tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -593,6 +603,7 @@ export type Database = {
           created_by: string | null
           id: string
           interview_id: string
+          project_id: string | null
           tag_id: string
         }
         Insert: {
@@ -601,6 +612,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           interview_id: string
+          project_id?: string | null
           tag_id: string
         }
         Update: {
@@ -609,6 +621,7 @@ export type Database = {
           created_by?: string | null
           id?: string
           interview_id?: string
+          project_id?: string | null
           tag_id?: string
         }
         Relationships: [
@@ -617,6 +630,13 @@ export type Database = {
             columns: ["interview_id"]
             isOneToOne: false
             referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
           {
@@ -750,6 +770,7 @@ export type Database = {
           id: string
           insight_id: string
           opportunity_id: string
+          project_id: string | null
           weight: number | null
         }
         Insert: {
@@ -758,6 +779,7 @@ export type Database = {
           id?: string
           insight_id: string
           opportunity_id: string
+          project_id?: string | null
           weight?: number | null
         }
         Update: {
@@ -766,6 +788,7 @@ export type Database = {
           id?: string
           insight_id?: string
           opportunity_id?: string
+          project_id?: string | null
           weight?: number | null
         }
         Relationships: [
@@ -781,6 +804,13 @@ export type Database = {
             columns: ["opportunity_id"]
             isOneToOne: false
             referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunity_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -938,6 +968,7 @@ export type Database = {
           id: string
           insight_id: string
           persona_id: string
+          project_id: string | null
           relevance_score: number | null
         }
         Insert: {
@@ -946,6 +977,7 @@ export type Database = {
           id?: string
           insight_id: string
           persona_id: string
+          project_id?: string | null
           relevance_score?: number | null
         }
         Update: {
@@ -954,6 +986,7 @@ export type Database = {
           id?: string
           insight_id?: string
           persona_id?: string
+          project_id?: string | null
           relevance_score?: number | null
         }
         Relationships: [
@@ -976,6 +1009,13 @@ export type Database = {
             columns: ["persona_id"]
             isOneToOne: false
             referencedRelation: "personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1186,18 +1226,6 @@ export type Database = {
         }
         Relationships: []
       }
-      response: {
-        Row: {
-          jsonb_build_object: Json | null
-        }
-        Insert: {
-          jsonb_build_object?: Json | null
-        }
-        Update: {
-          jsonb_build_object?: Json | null
-        }
-        Relationships: []
-      }
       tags: {
         Row: {
           account_id: string
@@ -1404,7 +1432,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
+        Returns: unknown
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }

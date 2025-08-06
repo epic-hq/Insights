@@ -1,6 +1,8 @@
 import { createBrowserClient } from "@supabase/ssr"
 import { useState } from "react"
 import { Form, Link, type MetaFunction, redirect, useNavigate } from "react-router"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Route } from "./+types/login"
 
@@ -35,6 +37,8 @@ export default function Login({ loaderData }: Route.ComponentProps) {
 	const [error, setError] = useState<string | null>(null)
 	const { env } = loaderData
 	const navigate = useNavigate()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const doLogin = async (event: React.FormEvent<HTMLFormElement>) => {
 		event.preventDefault()
@@ -54,7 +58,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
 
 		if (data.session) {
 			// Redirect to home page on successful login
-			navigate("/home")
+			navigate(routes.dashboard())
 		}
 	}
 

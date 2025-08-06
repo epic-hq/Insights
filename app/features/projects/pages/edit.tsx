@@ -17,12 +17,14 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
 	const { id } = params
 
-	if (!id) {
-		throw new Response("Project ID is required", { status: 400 })
+	if (!accountId || !id) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
 	try {
@@ -45,12 +47,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
 	const { id } = params
 
-	if (!id) {
-		throw new Response("Project ID is required", { status: 400 })
+	if (!accountId || !id) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
 	const formData = await request.formData()
@@ -80,8 +84,6 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const name = formData.get("name") as string
 	const description = formData.get("description") as string
 	const status = formData.get("status") as string
-	const startDate = formData.get("start_date") as string
-	const endDate = formData.get("end_date") as string
 
 	if (!name?.trim()) {
 		return { error: "Name is required" }
@@ -96,8 +98,6 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				name: name.trim(),
 				description: description?.trim() || null,
 				status: status || "planning",
-				start_date: startDate || null,
-				end_date: endDate || null,
 			},
 		})
 
@@ -166,27 +166,7 @@ export default function EditProject() {
 					</Select>
 				</div>
 
-				<div>
-					<Label htmlFor="start_date">Start Date</Label>
-					<Input
-						id="start_date"
-						name="start_date"
-						type="date"
-						defaultValue={project.start_date || ""}
-						className="mt-1"
-					/>
-				</div>
 
-				<div>
-					<Label htmlFor="end_date">End Date</Label>
-					<Input
-						id="end_date"
-						name="end_date"
-						type="date"
-						defaultValue={project.end_date || ""}
-						className="mt-1"
-					/>
-				</div>
 
 				{actionData?.error && (
 					<div className="rounded-md bg-red-50 p-4">

@@ -59,7 +59,7 @@ The complete, required declarative loop:
 → applies that migration to your local database and marks it as executed.
 5. `supabase db push --linked` (or `supabase db push` if you’ve already linked)
 → runs every unapplied migration on the remote project.
-6. `supabase gen types --project-id rbginqvgkonnoktrttqv typescript  > supabase/types.ts`
+6. `supabase gen types --project-id rbginqvgkonnoktrttqv --schema public,accounts typescript  > supabase/types.ts`
 → regenerates typescript types for the database.
 
 **NOTE** keep in mind the order schemas run dictates the order of migrations. so if you have a function that references a table in another schema, you need to make sure that schema and table is created first.

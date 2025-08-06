@@ -1,25 +1,28 @@
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Badge } from "~/components/ui/badge"
 import { getOpportunities } from "~/features/opportunities/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Opportunities" }, { name: "description", content: "Manage business opportunities" }]
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
-	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
+export async function loader({ context, params }: LoaderFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
 
-	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
-	const { data: opportunities, error } = await getOpportunities({ supabase, accountId })
+	const { data: opportunities, error } = await getOpportunities({ supabase, accountId, projectId })
 
 	if (error) {
 		throw new Response("Error loading opportunities", { status: 500 })
@@ -63,10 +66,8 @@ export default function OpportunitiesIndexPage() {
 		<div className="space-y-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="text-3xl font-bold tracking-tight">Opportunities</h1>
-					<p className="text-muted-foreground">
-						Manage and track business opportunities from your research insights.
-					</p>
+					<h1 className="font-bold text-3xl tracking-tight">Opportunities</h1>
+					<p className="text-muted-foreground">Manage and track business opportunities from your research insights.</p>
 				</div>
 				<Button asChild>
 					<Link to="/opportunities/new">Create Opportunity</Link>
@@ -76,8 +77,8 @@ export default function OpportunitiesIndexPage() {
 			{opportunities.length === 0 ? (
 				<Card>
 					<CardContent className="flex flex-col items-center justify-center py-12">
-						<h3 className="text-lg font-semibold mb-2">No opportunities yet</h3>
-						<p className="text-muted-foreground mb-4">
+						<h3 className="mb-2 font-semibold text-lg">No opportunities yet</h3>
+						<p className="mb-4 text-muted-foreground">
 							Create your first opportunity to start tracking business potential.
 						</p>
 						<Button asChild>
@@ -88,39 +89,30 @@ export default function OpportunitiesIndexPage() {
 			) : (
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{opportunities.map((opportunity) => (
-						<Card key={opportunity.id} className="hover:shadow-md transition-shadow">
+						<Card key={opportunity.id} className="transition-shadow hover:shadow-md">
 							<CardHeader>
 								<div className="flex items-start justify-between">
 									<CardTitle className="text-lg">
-										<Link
-											to={`/opportunities/${opportunity.id}`}
-											className="hover:underline"
-										>
+										<Link to={`/opportunities/${opportunity.id}`} className="hover:underline">
 											{opportunity.title}
 										</Link>
 									</CardTitle>
 									<div className="flex gap-2">
-										<Badge className={getStatusColor(opportunity.status || "")}>
-											{opportunity.status}
-										</Badge>
-										<Badge className={getPriorityColor(opportunity.priority || "")}>
-											{opportunity.priority}
-										</Badge>
+										<Badge className={getStatusColor(opportunity.status || "")}>{opportunity.status}</Badge>
+										<Badge className={getPriorityColor(opportunity.priority || "")}>{opportunity.priority}</Badge>
 									</div>
 								</div>
-								<CardDescription className="line-clamp-2">
-									{opportunity.description}
-								</CardDescription>
+								<CardDescription className="line-clamp-2">{opportunity.description}</CardDescription>
 							</CardHeader>
 							<CardContent>
 								<div className="space-y-2">
 									{opportunity.estimated_value && (
 										<div className="text-sm">
-											<span className="font-medium">Estimated Value:</span>{" "}
-											${opportunity.estimated_value.toLocaleString()}
+											<span className="font-medium">Estimated Value:</span> $
+											{opportunity.estimated_value.toLocaleString()}
 										</div>
 									)}
-									<div className="text-sm text-muted-foreground">
+									<div className="text-muted-foreground text-sm">
 										Created {new Date(opportunity.created_at).toLocaleDateString()}
 									</div>
 								</div>

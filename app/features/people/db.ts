@@ -4,9 +4,11 @@ import type { Database } from "~/types"
 export const getPeople = async ({
 	supabase,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId: string
 }) => {
 	return await supabase
 		.from("people")
@@ -27,16 +29,19 @@ export const getPeople = async ({
 			)
 		`)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 }
 
 export const getPersonById = async ({
 	supabase,
 	accountId,
+	projectId,
 	id,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
+	projectId: string
 	id: string
 }) => {
 	const personByIdQuery = supabase
@@ -63,6 +68,7 @@ export const getPersonById = async ({
 			)
 		`)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.eq("id", id)
 		.single()
 
@@ -94,11 +100,13 @@ export const updatePerson = async ({
 	supabase,
 	id,
 	accountId,
+	projectId,
 	data,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
+	projectId: string
 	data: Database["public"]["Tables"]["people"]["Update"]
 }) => {
 	const updatePersonQuery = supabase
@@ -106,6 +114,7 @@ export const updatePerson = async ({
 		.update(data)
 		.eq("id", id)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.select()
 		.single()
 
@@ -125,14 +134,17 @@ export const deletePerson = async ({
 	supabase,
 	id,
 	accountId,
+	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
 	accountId: string
+	projectId: string
 }) => {
 	return await supabase
 		.from("people")
 		.delete()
 		.eq("id", id)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 }

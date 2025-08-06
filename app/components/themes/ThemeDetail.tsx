@@ -1,6 +1,8 @@
 import { useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import type { TreeNode } from "~/components/charts/TreeMap"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 // Import centralized types
 import type { InsightView, Interview } from "~/types"
 
@@ -13,6 +15,8 @@ interface ThemeDetailProps {
 export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDetailProps) {
 	const { themeId } = useParams<{ themeId: string }>()
 	const [groupBy, setGroupBy] = useState<"none" | "persona" | "user">("none")
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	// Find the theme in the theme tree
 	const theme = useMemo<{ name: string; fill: string } | null>(() => {
@@ -154,7 +158,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 								key={interview.id}
 								className="rounded-lg border border-gray-200 p-3 transition-shadow hover:shadow-md dark:border-gray-700"
 							>
-								<Link to={`/interviews/${interview.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+								<Link to={routes.interviews.detail(interview.id)} className="font-medium text-blue-600 hover:text-blue-800">
 									{interview.participant_pseudonym || "Anonymous"}
 								</Link>
 								<div className="mt-2 flex items-center">

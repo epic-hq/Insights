@@ -14,15 +14,23 @@ export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
 }
 
-export async function loader({ context }: LoaderFunctionArgs) {
+export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
 
-	consola.log("accountId", accountId)
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
 
-	// Use typed database function
-	const { data: rows, error } = await getInterviews({ supabase, accountId })
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
+
+	const { data: rows, error } = await getInterviews({
+		supabase,
+		accountId,
+		projectId,
+	})
 
 	if (error) {
 		consola.error("Interviews query error:", error)
@@ -36,6 +44,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		.from("insights")
 		.select("id, interview_id")
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 
 	if (insightsError) {
 		consola.error("Insights query error:", insightsError)
@@ -96,6 +105,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
 export default function InterviewsIndex() {
 	const { interviews, segmentData } = useLoaderData<typeof loader>()
 	const { accountId, projectId, projectPath } = useCurrentProject()
+	// const { accountId, projectId, projectPath } = useParams()
+	consola.log("interviews projectpath", projectPath)
 	const routes = useProjectRoutes(projectPath)
 
 	return (

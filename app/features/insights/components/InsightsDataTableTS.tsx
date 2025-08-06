@@ -16,7 +16,8 @@ import { Badge } from "~/components/ui/badge"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { useProjectPath } from "~/hooks/use-project-path"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Insight } from "~/types"
 
 interface InsightsDataTableProps {
@@ -24,7 +25,8 @@ interface InsightsDataTableProps {
 }
 
 export function InsightsDataTable({ data }: InsightsDataTableProps) {
-	const projectPath = useProjectPath()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const [sorting, setSorting] = useState<SortingState>([])
 	const [columnFilters, setColumnFilters] = useState<any[]>([])
@@ -222,7 +224,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 							{row.getVisibleCells().map((cell, i) => (
 								<TableCell key={cell.id}>
 									{i === 0 ? (
-										<Link to={projectPath("INSIGHTS", `/${row.original.id}`)}>
+										<Link to={routes.insights.detail(row.original.id)}>
 											{flexRender(cell.column.columnDef.cell, cell.getContext())}
 										</Link>
 									) : (

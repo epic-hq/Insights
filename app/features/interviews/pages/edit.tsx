@@ -17,18 +17,22 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { interviewId } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const interviewId = params.interviewId
 
-	if (!interviewId) {
-		throw new Response("Interview ID is required", { status: 400 })
+	if (!accountId || !projectId || !interviewId) {
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
 	}
 
 	try {
 		const { data: interview, error } = await getInterviewById({
 			supabase,
 			accountId,
+			projectId,
 			id: interviewId,
 		})
 
@@ -44,12 +48,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { interviewId } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const interviewId = params.interviewId
 
-	if (!interviewId) {
-		throw new Response("Interview ID is required", { status: 400 })
+	if (!accountId || !projectId || !interviewId) {
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
 	}
 
 	const formData = await request.formData()
@@ -61,6 +68,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				supabase,
 				id: interviewId,
 				accountId,
+				projectId,
 			})
 
 			if (error) {
@@ -92,6 +100,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			supabase,
 			id: interviewId,
 			accountId,
+			projectId,
 			data: {
 				title: title.trim(),
 				interview_date,

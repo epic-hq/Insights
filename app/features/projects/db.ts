@@ -1,4 +1,5 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
 import type { Database, ProjectInsert, ProjectUpdate } from "~/types"
 
 export const getProjects = async ({
@@ -8,6 +9,7 @@ export const getProjects = async ({
 	supabase: SupabaseClient<Database>
 	accountId: string
 }) => {
+	consola.log("getProjects accountId: ", accountId)
 	return await supabase
 		.from("projects")
 		.select(`
@@ -16,11 +18,7 @@ export const getProjects = async ({
 				people (
 					id,
 					name,
-					segment,
-					personas (
-						name,
-						color_hex
-					)
+					segment
 				)
 			)
 		`)
@@ -37,6 +35,7 @@ export const getProjectById = async ({
 	accountId: string
 	id: string
 }) => {
+	consola.log("getProjectById accountId: ", accountId)
 	return await supabase
 		.from("projects")
 		.select(`
@@ -45,15 +44,18 @@ export const getProjectById = async ({
 				people (
 					id,
 					name,
-					segment,
-					personas (
-						name,
-						color_hex
-					)
+					segment
 				),
 				interview_count,
 				first_seen_at,
 				last_seen_at
+			),
+			project_personas (
+				personas (
+					id,
+					name,
+					color_hex
+				)
 			)
 		`)
 		.eq("account_id", accountId)
@@ -82,13 +84,7 @@ export const updateProject = async ({
 	accountId: string
 	data: ProjectUpdate
 }) => {
-	return await supabase
-		.from("projects")
-		.update(data)
-		.eq("id", id)
-		.eq("account_id", accountId)
-		.select()
-		.single()
+	return await supabase.from("projects").update(data).eq("id", id).eq("account_id", accountId).select().single()
 }
 
 export const deleteProject = async ({
@@ -100,9 +96,5 @@ export const deleteProject = async ({
 	id: string
 	accountId: string
 }) => {
-	return await supabase
-		.from("projects")
-		.delete()
-		.eq("id", id)
-		.eq("account_id", accountId)
+	return await supabase.from("projects").delete().eq("id", id).eq("account_id", accountId)
 }

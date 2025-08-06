@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { useNavigate } from "react-router"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { useNotification } from "~/contexts/NotificationContext"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 import UploadModal from "./UploadModal"
 
@@ -8,6 +10,8 @@ export default function UploadButton() {
 	const [open, setOpen] = useState(false)
 	const navigate = useNavigate()
 	const { showNotification } = useNotification()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const handleSuccess = (result: ProcessingResult) => {
 		// Handle successful upload and processing
@@ -25,7 +29,7 @@ export default function UploadButton() {
 
 		if (result.interview?.id) {
 			// Navigate to the newly created interview
-			navigate(`/interviews/${result.interview.id}`)
+			navigate(routes.interviews.detail(result.interview.id))
 		} else {
 			// Fallback: refresh the current page to show the new interview
 			window.location.reload()

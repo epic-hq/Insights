@@ -1,10 +1,14 @@
 import { LayoutGrid, MapPin, Rows, Sparkles } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 export default function InsightsLayout() {
 	const navigate = useNavigate()
 	const location = useLocation()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 	
 	// Determine the active tab based on the current URL path
 	const getActiveTab = () => {
@@ -20,19 +24,19 @@ export default function InsightsLayout() {
 	const handleTabChange = (value: string) => {
 		switch (value) {
 			case 'table':
-				navigate('/insights/table')
+				navigate(routes.insights.table())
 				break
 			case 'cards':
-				navigate('/insights/cards')
+				navigate(routes.insights.cards())
 				break
 			case 'map':
-				navigate('/insights/map')
+				navigate(routes.insights.map())
 				break
 			case 'auto-takeaways':
-				navigate('/insights/auto-insights')
+				navigate(routes.insights.autoInsights())
 				break
 			default:
-				navigate('/insights/table')
+				navigate(routes.insights.table())
 		}
 	}
 
@@ -53,7 +57,7 @@ export default function InsightsLayout() {
 					onValueChange={handleTabChange} 
 					value={getActiveTab()}
 				>
-					<TabsList className="grid w-full grid-cols-4">
+					<TabsList className="grid grid-cols-4 w-full">
 						<TabsTrigger className="flex items-center gap-2" value="table">
 							<Rows className="h-4 w-4" /> Table
 						</TabsTrigger>

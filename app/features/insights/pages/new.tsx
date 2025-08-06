@@ -12,10 +12,17 @@ export const meta: MetaFunction = () => {
 	return [{ title: "New Insight | Insights" }, { name: "description", content: "Create a new insight" }]
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
 
 	const formData = await request.formData()
 	const title = formData.get("title") as string
@@ -38,8 +45,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				title: title.trim(),
 				content: content.trim(),
 				category: category || "general",
-				impact_score: impactScore ? parseInt(impactScore, 10) : null,
+				impact_score: impactScore ? Number.parseInt(impactScore, 10) : null,
 				account_id: accountId,
+				project_id: projectId,
 			},
 		})
 

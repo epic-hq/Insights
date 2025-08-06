@@ -2,7 +2,9 @@ import { Sparkle } from "lucide-react"
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 
 export const meta: MetaFunction = () => {
@@ -39,6 +41,8 @@ export async function loader({ request }: { request: Request }) {
 export default function Personas() {
 	const { personas } = useLoaderData<typeof loader>()
 	const [, setSearchParams] = useSearchParams()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const _handleMethodChange = (method: "participant" | "segment") => {
 		setSearchParams((prev: URLSearchParams) => {
@@ -59,7 +63,7 @@ export default function Personas() {
 					{/* Generate Personas Button */}
 					<GeneratePersonasButton />
 					<Button asChild>
-						<Link to="/personas/new">Add Persona</Link>
+						<Link to={routes.personas.new()}>Add Persona</Link>
 					</Button>
 				</div>
 			</div>

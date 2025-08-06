@@ -4,7 +4,7 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
+
 import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db"
 import { userContext } from "~/server/user-context"
 
@@ -17,19 +17,23 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { id } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const opportunityId = params.id
 
-	if (!id) {
-		throw new Response("Opportunity ID is required", { status: 400 })
+	if (!accountId || !projectId || !opportunityId) {
+		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
 	}
 
 	try {
 		const { data: opportunity, error } = await getOpportunityById({
 			supabase,
 			accountId,
-			id,
+			projectId,
+			id: opportunityId,
 		})
 
 		if (error || !opportunity) {
@@ -45,12 +49,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
-	const { id } = params
+	
+	// Both from URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const opportunityId = params.id
 
-	if (!id) {
-		throw new Response("Opportunity ID is required", { status: 400 })
+	if (!accountId || !projectId || !opportunityId) {
+		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
 	}
 
 	const formData = await request.formData()
@@ -60,8 +67,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		try {
 			const { error } = await deleteOpportunity({
 				supabase,
-				id,
+				id: opportunityId,
 				accountId,
+				projectId,
 			})
 
 			if (error) {
@@ -78,10 +86,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 	// Handle update
 	const title = formData.get("title") as string
-	const description = formData.get("description") as string
-	const status = formData.get("status") as string
-	const priority = formData.get("priority") as string
-	const estimatedValue = formData.get("estimated_value") as string
+	const kanbanStatus = formData.get("kanban_status") as string
 
 	if (!title?.trim()) {
 		return { error: "Title is required" }
@@ -90,14 +95,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	try {
 		const { data, error } = await updateOpportunity({
 			supabase,
-			id,
+			id: opportunityId,
 			accountId,
+			projectId,
 			data: {
 				title: title.trim(),
-				description: description?.trim() || null,
-				status: status || "identified",
-				priority: priority || "medium",
-				estimated_value: estimatedValue ? parseFloat(estimatedValue) : null,
+				kanban_status: kanbanStatus || "Explore",
 			},
 		})
 
@@ -139,61 +142,17 @@ export default function EditOpportunity() {
 				</div>
 
 				<div>
-					<Label htmlFor="description">Description</Label>
-					<Textarea
-						id="description"
-						name="description"
-						defaultValue={opportunity.description || ""}
-						placeholder="Enter opportunity description"
-						className="mt-1"
-						rows={4}
-					/>
-				</div>
-
-				<div>
-					<Label htmlFor="status">Status</Label>
-					<Select name="status" defaultValue={opportunity.status || "identified"}>
+					<Label htmlFor="kanban_status">Status</Label>
+					<Select name="kanban_status" defaultValue={opportunity.kanban_status || "Explore"}>
 						<SelectTrigger className="mt-1">
 							<SelectValue placeholder="Select status" />
 						</SelectTrigger>
 						<SelectContent>
-							<SelectItem value="identified">Identified</SelectItem>
-							<SelectItem value="researching">Researching</SelectItem>
-							<SelectItem value="planning">Planning</SelectItem>
-							<SelectItem value="in_progress">In Progress</SelectItem>
-							<SelectItem value="completed">Completed</SelectItem>
-							<SelectItem value="on_hold">On Hold</SelectItem>
+							<SelectItem value="Explore">Explore</SelectItem>
+							<SelectItem value="Validate">Validate</SelectItem>
+							<SelectItem value="Build">Build</SelectItem>
 						</SelectContent>
 					</Select>
-				</div>
-
-				<div>
-					<Label htmlFor="priority">Priority</Label>
-					<Select name="priority" defaultValue={opportunity.priority || "medium"}>
-						<SelectTrigger className="mt-1">
-							<SelectValue placeholder="Select priority" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="low">Low</SelectItem>
-							<SelectItem value="medium">Medium</SelectItem>
-							<SelectItem value="high">High</SelectItem>
-							<SelectItem value="critical">Critical</SelectItem>
-						</SelectContent>
-					</Select>
-				</div>
-
-				<div>
-					<Label htmlFor="estimated_value">Estimated Value ($)</Label>
-					<Input
-						id="estimated_value"
-						name="estimated_value"
-						type="number"
-						min="0"
-						step="0.01"
-						defaultValue={opportunity.estimated_value?.toString() || ""}
-						placeholder="Enter estimated value"
-						className="mt-1"
-					/>
 				</div>
 
 				{actionData?.error && (

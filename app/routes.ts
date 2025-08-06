@@ -39,6 +39,7 @@ const routes = [
 	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("login", "./routes/login.tsx"),
 	route("login_success", "./routes/login_success.tsx"),
+	route("login_failure", "./routes/login_failure.tsx"),
 	route("register", "./routes/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
 

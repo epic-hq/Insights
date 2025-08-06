@@ -13,10 +13,16 @@ export const meta: MetaFunction = () => {
 	return [{ title: "New Project | Insights" }, { name: "description", content: "Create a new project" }]
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const accountId = ctx.account_id
 	const supabase = ctx.supabase
+	
+	// From URL params - consistent, explicit, RESTful
+	const accountId = params.accountId
+	
+	if (!accountId) {
+		throw new Response("Account ID is required", { status: 400 })
+	}
 
 	const formData = await request.formData()
 	const name = formData.get("name") as string
@@ -92,15 +98,7 @@ export default function NewProject() {
 					</Select>
 				</div>
 
-				<div>
-					<Label htmlFor="start_date">Start Date</Label>
-					<Input id="start_date" name="start_date" type="date" className="mt-1" />
-				</div>
 
-				<div>
-					<Label htmlFor="end_date">End Date</Label>
-					<Input id="end_date" name="end_date" type="date" className="mt-1" />
-				</div>
 
 				{actionData?.error && (
 					<div className="rounded-md bg-red-50 p-4">

@@ -34,7 +34,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				supabase,
 				headers: request.headers,
 			})
-			consola.log("_ProtectedLayout Authentication middleware success\n")
+			// consola.log("_ProtectedLayout Authentication middleware success\n")
 		} catch (error) {
 			consola.error("_ProtectedLayout Authentication middleware error:", error)
 			throw redirect("/login")
@@ -70,7 +70,12 @@ export async function loader({ context }: Route.LoaderArgs) {
 			consola.error("Get account settings error:", accountSettingsError)
 			throw new Response(accountSettingsError.message, { status: 500 })
 		}
-		consola.log("_ProtectedLayout Account settings:", accountSettings)
+		// consola.log("_ProtectedLayout Account settings:", accountSettings)
+		// save in middleware context
+		context.set(userContext, {
+			...user,
+			accountSettings,
+		})
 
 		return {
 			lang,

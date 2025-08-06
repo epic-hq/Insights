@@ -5,6 +5,8 @@ import PageHeader from "../navigation/PageHeader"
 
 // Supabase generated types
 import type { Database } from "~/../supabase/types"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 type Person = Database["public"]["Tables"]["people"]["Row"] & {
 	interview_role?: string
@@ -21,6 +23,8 @@ interface IntervieweeDetailProps {
 
 const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, interview }) => {
 	const { intervieweeId } = useParams<{ intervieweeId: string }>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	// Find the person by ID
 	const person = participants.find((p) => p.id === intervieweeId)
@@ -62,9 +66,9 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-8">
 			<PageHeader title={`${personData.name} - Interview Analysis`} breadcrumbs={[
-				{ label: "Dashboard", path: "/" },
-				{ label: "Interviews", path: "/interviews" },
-				{ label: personData.name, path: `/interviewees/${intervieweeId}` },
+				{ label: "Dashboard", path: routes.dashboard() },
+				{ label: "Interviews", path: routes.interviews.index() },
+				{ label: personData.name, path: routes.people.detail(intervieweeId) },
 			]} />
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
@@ -81,9 +85,9 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 						</div>
 
 						<div className="mt-4 flex items-center md:mt-0">
-							{personData.persona && (
+							{personData.persona && primaryPersona && (
 								<Link
-									to={`/personas/${personData.persona.toLowerCase().replace(/\s+/g, "-")}`}
+									to={routes.personas.detail(primaryPersona.id)}
 									className="flex items-center"
 								>
 									<span
@@ -186,7 +190,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 						<div className="mb-3 flex items-center justify-between">
 							<h2 className="font-semibold text-lg">Interview Transcript</h2>
 							<Link
-								to={`/interviews/${interview?.id}`}
+								to={routes.interviews.detail(interview?.id || "")}
 								className="inline-flex items-center text-blue-600 text-sm hover:text-blue-800"
 							>
 								View Full Transcript
@@ -254,7 +258,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 									key={opp.id}
 									className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 								>
-									<Link to={`/opportunities/${opp.id}`} className="font-medium text-blue-600 hover:text-blue-800">
+									<Link to={routes.opportunities.detail(opp.id)} className="font-medium text-blue-600 hover:text-blue-800">
 										{opp.name}
 									</Link>
 									<p className="mt-1 text-gray-500 text-sm">Status: {opp.status}</p>
