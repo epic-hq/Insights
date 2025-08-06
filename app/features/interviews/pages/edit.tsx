@@ -18,7 +18,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -49,7 +49,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -94,6 +94,19 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const open_questions_and_next_steps = (formData.get("open_questions_and_next_steps") as string) || null
 	const observations_and_notes = (formData.get("observations_and_notes") as string) || null
 	const media_url = (formData.get("media_url") as string) || null
+	
+	// Handle high_impact_themes - can be JSON string or regular string
+	const high_impact_themes_raw = formData.get("high_impact_themes") as string | null
+	let high_impact_themes = null
+	if (high_impact_themes_raw) {
+		try {
+			// Try to parse as JSON array first
+			high_impact_themes = JSON.parse(high_impact_themes_raw)
+		} catch {
+			// If not JSON, treat as regular string
+			high_impact_themes = high_impact_themes_raw
+		}
+	}
 
 	try {
 		const { data, error } = await updateInterview({
@@ -107,6 +120,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				open_questions_and_next_steps,
 				observations_and_notes,
 				media_url,
+				high_impact_themes,
 			},
 		})
 
@@ -146,7 +160,7 @@ export default function EditInterview() {
 					/>
 				</div>
 
-				<div>
+				{/* <div>
 					<Label htmlFor="description">Description</Label>
 					<Textarea
 						id="description"
@@ -156,7 +170,7 @@ export default function EditInterview() {
 						className="mt-1"
 						rows={4}
 					/>
-				</div>
+				</div> */}
 
 				<div>
 					<Label htmlFor="interview_date">Interview Date</Label>

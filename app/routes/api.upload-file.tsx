@@ -27,44 +27,80 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	try {
-		// 1. Upload raw bytes to AssemblyAI
-		const apiKey = process.env.ASSEMBLYAI_API_KEY
-		if (!apiKey) throw new Error("ASSEMBLYAI_API_KEY env var not set")
+		// Check if file is text/markdown - handle directly without AssemblyAI
+		const isTextFile = file.type.startsWith('text/') || 
+			file.name.endsWith('.txt') || 
+			file.name.endsWith('.md') || 
+			file.name.endsWith('.markdown')
 
-		const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
-			method: "POST",
-			headers: { Authorization: apiKey },
-			body: file.stream(), // pass-through readable stream from the browser upload
-			// @ts-expect-error  Node fetch (undici) needs duplex when body is a stream
-			duplex: "half",
-		} as any)
+		let transcriptData: Record<string, unknown>
+		let mediaUrl: string
 
-		if (!uploadResp.ok) {
-			const t = await uploadResp.text()
-			throw new Error(`AssemblyAI upload failed: ${uploadResp.status} ${t}`)
-		}
+		if (isTextFile) {
+			// Handle text/markdown files - read content directly
+			consola.log("Processing text/markdown file:", file.name)
+			const textContent = await file.text()
+			
+			if (!textContent || textContent.trim().length === 0) {
+				return Response.json({ error: "Text file is empty or could not be read" }, { status: 400 })
+			}
 
-		const { upload_url } = (await uploadResp.json()) as { upload_url: string }
+			// Create transcript data object matching expected format
+			transcriptData = {
+				full_transcript: textContent.trim(),
+				audio_duration: null, // No audio duration for text files
+				file_type: 'text',
+				original_filename: file.name
+			}
+			mediaUrl = '' // No media URL for text files
 
-		// 2. Transcribe the uploaded media
-		consola.log("Starting transcription for uploaded file")
-		const transcriptData = await transcribeAudioFromUrl(upload_url)
-		consola.log(
-			"Transcription result:",
-			transcriptData
-				? `${transcriptData.full_transcript.length} characters\n${transcriptData.full_transcript.slice(0, 500)}`
-				: "null/empty"
-		)
+			consola.log(
+				"Text file processed:",
+				`${textContent.length} characters\n${textContent.slice(0, 500)}${textContent.length > 500 ? '...' : ''}`
+			)
+		} else {
+			// Handle audio/video files - use existing AssemblyAI flow
+			const apiKey = process.env.ASSEMBLYAI_API_KEY
+			if (!apiKey) throw new Error("ASSEMBLYAI_API_KEY env var not set")
 
-		if (!transcriptData || transcriptData.full_transcript.trim().length === 0) {
-			return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
+			const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
+				method: "POST",
+				headers: { Authorization: apiKey },
+				body: file.stream(), // pass-through readable stream from the browser upload
+				// @ts-expect-error  Node fetch (undici) needs duplex when body is a stream
+				duplex: "half",
+			} as any)
+
+			if (!uploadResp.ok) {
+				const t = await uploadResp.text()
+				throw new Error(`AssemblyAI upload failed: ${uploadResp.status} ${t}`)
+			}
+
+			const { upload_url } = (await uploadResp.json()) as { upload_url: string }
+			mediaUrl = upload_url
+
+			// Transcribe the uploaded media
+			consola.log("Starting transcription for uploaded file")
+			transcriptData = await transcribeAudioFromUrl(upload_url)
+			consola.log(
+				"Transcription result:",
+				transcriptData
+					? `${(transcriptData.full_transcript as string).length} characters\n${(transcriptData.full_transcript as string).slice(0, 500)}`
+					: "null/empty"
+			)
+
+			if (!transcriptData || !(transcriptData.full_transcript as string)?.trim().length) {
+				return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
+			}
 		}
 
 		const metadata = {
 			accountId,
 			projectId,
 			fileName: file?.name,
-			interviewTitle: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
+			interviewTitle: isTextFile 
+				? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}`
+				: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
 			participantName: "Anonymous",
 			segment: "Unknown",
 		}
@@ -75,7 +111,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const result = await processInterviewTranscript({
 			metadata,
 			transcriptData,
-			mediaUrl: upload_url,
+			mediaUrl,
 			userCustomInstructions,
 			request,
 		})

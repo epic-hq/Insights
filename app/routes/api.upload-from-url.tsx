@@ -52,7 +52,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const metadata = {
 			accountId,
 			projectId,
-			interviewTitle: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
+			interviewTitle: `Interview - ${format(new Date(), "MM/dd")}`,
 			participantName: "TBD",
 			segment: "TBD",
 		}

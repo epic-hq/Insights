@@ -4,22 +4,24 @@ import { b } from "~/../baml_client"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Interview, Person } from "~/types"
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
 	try {
 		const { client: supabase } = getServerClient(request)
 		const { data: jwt } = await supabase.auth.getClaims()
-		const accountId = jwt?.claims.sub
+		// const accountId = jwt?.claims.sub
+		const projectId = params?.projectId as string
+		const accountId = params?.accountId as string
 
-		if (!accountId) {
+		if (!projectId) {
 			consola.error("[Generate Personas API] User not authenticated")
 			throw new Response("Unauthorized", { status: 401 })
 		}
 
-		// 1. Aggregate all interviews for the account
+		// 1. Aggregate all interviews for the project
 		const { data: interviews, error: interviewsError } = await supabase
 			.from("interviews")
 			.select("*")
-			.eq("account_id", accountId)
+			.eq("project_id", projectId)
 
 		if (interviewsError) {
 			consola.error("[Generate Personas API] Error fetching interviews:", interviewsError)
@@ -45,11 +47,11 @@ export async function action({ request }: ActionFunctionArgs) {
 				.filter(Boolean)
 		}
 
-		// 3. Aggregate all insights for the account
+		// 3. Aggregate all insights for the 	project
 		const { data: insights, error: insightsError } = await supabase
 			.from("insights")
 			.select("*")
-			.eq("account_id", accountId)
+			.eq("project_id", projectId)
 
 		if (insightsError) {
 			consola.error("[Generate Personas API] Error fetching insights:", insightsError)
@@ -69,6 +71,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		for (const persona of bamlResult) {
 			const { error: insertError } = await supabase.from("personas").insert({
 				account_id: accountId,
+				project_id: projectId,
 				name: persona.name,
 				description: persona.description,
 				age: persona.age,

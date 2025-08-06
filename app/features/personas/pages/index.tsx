@@ -14,10 +14,11 @@ export const meta: MetaFunction = () => {
 	]
 }
 
-export async function loader({ request }: { request: Request }) {
+export async function loader({ request, params }: { request: Request; params: { projectId: string } }) {
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()
 	const accountId = jwt?.claims.sub
+	const projectId = params.projectId
 
 	consola.log("Account ID:", accountId)
 	// Fetch personas with people count
@@ -27,7 +28,7 @@ export async function loader({ request }: { request: Request }) {
 			*,
 			people_personas(count)
 		`)
-		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
 	consola.log("Query result:", personas)

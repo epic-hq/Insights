@@ -170,7 +170,6 @@ export const updateInterview = async ({
 		.from("interviews")
 		.update(data)
 		.eq("id", id)
-		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.select()
 		.single()
@@ -191,6 +190,5 @@ export const deleteInterview = async ({
 		.from("interviews")
 		.delete()
 		.eq("id", id)
-		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 }

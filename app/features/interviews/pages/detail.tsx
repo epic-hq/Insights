@@ -1,4 +1,5 @@
 import { Separator } from "@radix-ui/react-separator"
+import consola from "consola"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -19,7 +20,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -162,10 +163,32 @@ export default function InterviewDetail() {
 						</div>
 					)}
 
+					<div>
+						<label className="mb-1 block font-bold text-lg">Observations & Notes</label>
+						<InlineEdit
+							value={
+								Array.isArray(interview.observations_and_notes)
+									? interview.observations_and_notes.join("\n")
+									: (interview.observations_and_notes ?? "")
+							}
+							multiline
+							placeholder="Observations & Notes"
+							onSubmit={(value) => {
+								try {
+									fetcher.submit(
+										{ observations_and_notes: value },
+										{ method: "post", action: routes.interviews.edit(interview.id) }
+									)
+								} catch (error) {
+									consola.error('Failed to update observations_and_notes:', error)
+								}
+							}}
+						/>
+					</div>
 					{/* Interview Summary Fields */}
 					<div className="mb-4 space-y-4">
 						<div>
-							<label className="mb-1 block font-medium text-gray-700">High Impact Themes</label>
+							<label className="mb-1 block font-bold text-lg">High Impact Themes</label>
 							<InlineEdit
 								value={
 									Array.isArray(interview.high_impact_themes)
@@ -175,20 +198,20 @@ export default function InterviewDetail() {
 								multiline
 								placeholder="High Impact Themes"
 								onSubmit={(value) => {
-									fetcher.submit(
-										JSON.stringify({
-											table: "interviews",
-											id: interview.id,
-											field: "high_impact_themes",
-											value: value.split(/\n+/).filter(Boolean),
-										}),
-										{ method: "post", encType: "application/json", action: "/insights/api/update-field" }
-									)
+									try {
+										const themes = value.split(/\n+/).filter(Boolean)
+										fetcher.submit(
+											{ high_impact_themes: JSON.stringify(themes) },
+											{ method: "post", action: routes.interviews.edit(interview.id) }
+										)
+									} catch (error) {
+										consola.error('Failed to update high_impact_themes:', error)
+									}
 								}}
 							/>
 						</div>
 						<div>
-							<label className="mb-1 block font-medium text-gray-700">Open Questions & Next Steps</label>
+							<label className="mb-1 block font-bold text-lg">Open Questions & Next Steps</label>
 							<InlineEdit
 								value={
 									Array.isArray(interview.open_questions_and_next_steps)
@@ -198,38 +221,14 @@ export default function InterviewDetail() {
 								multiline
 								placeholder="Open Questions & Next Steps"
 								onSubmit={(value) => {
-									fetcher.submit(
-										JSON.stringify({
-											table: "interviews",
-											id: interview.id,
-											field: "open_questions_and_next_steps",
-											value,
-										}),
-										{ method: "post", encType: "application/json", action: "/insights/api/update-field" }
-									)
-								}}
-							/>
-						</div>
-						<div>
-							<label className="mb-1 block font-medium text-gray-700">Observations & Notes</label>
-							<InlineEdit
-								value={
-									Array.isArray(interview.observations_and_notes)
-										? interview.observations_and_notes.join("\n")
-										: (interview.observations_and_notes ?? "")
-								}
-								multiline
-								placeholder="Observations & Notes"
-								onSubmit={(value) => {
-									fetcher.submit(
-										JSON.stringify({
-											table: "interviews",
-											id: interview.id,
-											field: "observations_and_notes",
-											value,
-										}),
-										{ method: "post", encType: "application/json", action: "/insights/api/update-field" }
-									)
+									try {
+										fetcher.submit(
+											{ open_questions_and_next_steps: value },
+											{ method: "post", action: routes.interviews.edit(interview.id) }
+										)
+									} catch (error) {
+										consola.error('Failed to update open_questions_and_next_steps:', error)
+									}
 								}}
 							/>
 						</div>
@@ -243,6 +242,7 @@ export default function InterviewDetail() {
 								iab_categories_result: interview.transcript_formatted?.topic_detection,
 								sentiment_analysis_results: interview.transcript_formatted?.sentiment_analysis,
 							}}
+							rawTranscript={interview.transcript || undefined}
 						/>
 					</div>
 				</div>

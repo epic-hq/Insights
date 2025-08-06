@@ -52,9 +52,10 @@ interface TranscriptData {
 
 interface TranscriptResultsProps {
 	data: TranscriptData
+	rawTranscript?: string // Fallback raw transcript when formatted data is not available
 }
 
-export function TranscriptResults({ data }: TranscriptResultsProps) {
+export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProps) {
 	const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({})
 
 	const formatTime = (seconds: number) => {
@@ -141,13 +142,29 @@ export function TranscriptResults({ data }: TranscriptResultsProps) {
 		.sort(([, a], [, b]) => b - a)
 		.slice(0, 10)
 
+	// Check if we have formatted data or need to fall back to raw transcript
+	const hasFormattedData = data?.utterances && data.utterances.length > 0
+	const hasTopicData = data?.iab_categories_result && Object.keys(data.iab_categories_result.summary || {}).length > 0
+	const hasRawTranscript = rawTranscript && rawTranscript.trim().length > 0
+
+	// If no formatted data and no raw transcript, show empty state
+	if (!hasFormattedData && !hasTopicData && !hasRawTranscript) {
+		return (
+			<Card>
+				<CardContent className="py-8 text-center">
+					<p className="text-gray-500">No transcript data available</p>
+				</CardContent>
+			</Card>
+		)
+	}
+
 	return (
 		<div className="space-y-6">
 			{/* Main Content Tabs */}
 			<Tabs defaultValue="speakers" className="w-full">
-				<TabsList className="grid w-full grid-cols-2">
+				<TabsList className={`grid w-full ${hasTopicData ? 'grid-cols-2' : 'grid-cols-1'}`}>
 					<TabsTrigger value="speakers">Transcript</TabsTrigger>
-					<TabsTrigger value="topics">Topics</TabsTrigger>
+					{hasTopicData && <TabsTrigger value="topics">Topics</TabsTrigger>}
 				</TabsList>
 
 				<TabsContent value="speakers" className="space-y-4">
@@ -156,15 +173,15 @@ export function TranscriptResults({ data }: TranscriptResultsProps) {
 							<div className="flex items-center justify-between">
 								<CardTitle className="flex items-center gap-2">
 									<User className="h-5 w-5" />
-									Speaker Breakdown
+									{hasFormattedData ? 'Speaker Breakdown' : 'Transcript'}
 								</CardTitle>
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() => copyToClipboard(formatSpeakerAnalysis(), "speakers")}
+									onClick={() => copyToClipboard(hasFormattedData ? formatSpeakerAnalysis() : rawTranscript || '', "transcript")}
 									className="flex items-center gap-2"
 								>
-									{copiedStates.speakers ? (
+									{copiedStates.transcript ? (
 										<>
 											<Check className="h-4 w-4" />
 											Copied!
@@ -172,36 +189,48 @@ export function TranscriptResults({ data }: TranscriptResultsProps) {
 									) : (
 										<>
 											<Copy className="h-4 w-4" />
-											Copy Analysis
+											Copy Transcript
 										</>
 									)}
 								</Button>
 							</div>
 						</CardHeader>
 						<CardContent>
-							<div className="space-y-4">
-								{(data?.utterances || []).map((utterance, index) => {
-									const colors = getSpeakerColor(utterance.speaker)
-									return (
-										<div key={index} className={`${colors.border} border-l-4 py-3 pl-4`}>
-											<div className="mb-2 flex items-start justify-between">
-												<Badge className={`${colors.badge} mb-2`}>Speaker {utterance.speaker}</Badge>
-												<div className="text-right text-gray-400 text-xs">
-													<div>
-														{formatTime(utterance.start)} - {formatTime(utterance.end)}
+							{hasFormattedData ? (
+								<div className="space-y-4">
+									{(data?.utterances || []).map((utterance, index) => {
+										const colors = getSpeakerColor(utterance.speaker)
+										return (
+											<div key={index} className={`${colors.border} border-l-4 py-3 pl-4`}>
+												<div className="mb-2 flex items-start justify-between">
+													<Badge className={`${colors.badge} mb-2`}>Speaker {utterance.speaker}</Badge>
+													<div className="text-right text-gray-400 text-xs">
+														<div>
+															{formatTime(utterance.start)} - {formatTime(utterance.end)}
+														</div>
 													</div>
 												</div>
+												<p className="text-gray-800 leading-relaxed">{utterance.text}</p>
 											</div>
-											<p className="text-gray-800 leading-relaxed">{utterance.text}</p>
-										</div>
-									)
-								})}
-							</div>
+										)
+									})}
+								</div>
+							) : (
+								<div className="space-y-4">
+									<div className="rounded-lg bg-gray-50 p-4">
+										<p className="whitespace-pre-wrap text-gray-800 leading-relaxed">{rawTranscript}</p>
+									</div>
+									<div className="text-center text-gray-500 text-sm">
+										<p>Raw transcript content - no speaker breakdown available</p>
+									</div>
+								</div>
+							)}
 						</CardContent>
 					</Card>
 				</TabsContent>
 
-				<TabsContent value="topics" className="space-y-4">
+				{hasTopicData && (
+					<TabsContent value="topics" className="space-y-4">
 					<Card>
 						<CardHeader>
 							<div className="flex items-center justify-between">
@@ -263,7 +292,8 @@ export function TranscriptResults({ data }: TranscriptResultsProps) {
 							</div>
 						</CardContent>
 					</Card>
-				</TabsContent>
+					</TabsContent>
+				)}
 			</Tabs>
 		</div>
 	)

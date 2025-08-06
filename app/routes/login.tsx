@@ -1,7 +1,9 @@
+import consola from "consola"
 import { AuthUI } from "~/components/auth/AuthUI"
 import { PATHS } from "~/paths"
 
 export default function AuthPage() {
+	consola.debug(`redirectTo: ${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`)
 	return (
 		<div className="flex min-h-screen justify-center bg-gray-50 pt-[15vh]">
 			<div className="w-full max-w-md p-8">
