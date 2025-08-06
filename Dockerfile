@@ -1,55 +1,44 @@
-# Use Node.js 24 Alpine for smaller image size
-FROM node:24-alpine AS base
-
-# Install dependencies only when needed
-FROM base AS deps
-# Check https://github.com/nodejs/docker-node/tree/b4117f9333da4138b03a546ec926ef50a31506c3#nodealpine to understand why libc6-compat might be needed.
-RUN apk add --no-cache libc6-compat
+# Base with build tools
+FROM node:24-slim AS build
+RUN apt-get update && apt-get install -y python3 make g++ curl \
+    && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable pnpm \
+  && pnpm install --frozen-lockfile
 
-# Install dependencies based on the preferred package manager
-COPY package.json pnpm-lock.yaml* ./
-RUN corepack enable pnpm && pnpm i --frozen-lockfile
-
-# Rebuild the source code only when needed
-FROM base AS builder
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
 COPY . .
+RUN pnpm run baml-generate \
+  && pnpm run build
 
-# Generate BAML client
-RUN corepack enable pnpm && pnpm run baml-generate
+# Production runtime
+FROM node:24-slim AS runtime
 
-# Build the application
-RUN pnpm run build
+# Install curl & dotenvx, then clean up
+RUN apt-get update \
+  && apt-get install -y curl \
+  && curl -sfS https://dotenvx.sh/install.sh | sh \
+  && rm -rf /var/lib/apt/lists/*
 
-# Install dotenvx
-RUN curl -sfS https://dotenvx.sh/install.sh | sh
-
-# Production image, copy all the files and run the app
-FROM base AS runner
 WORKDIR /app
 
-# Don't run production as root
-RUN addgroup --system --gid 1001 nodejs
-RUN adduser --system --uid 1001 reactrouter
+# Copy only prod deps & built assets
+COPY package.json pnpm-lock.yaml ./
+RUN corepack enable pnpm \
+  && pnpm install --prod --frozen-lockfile
 
-# Copy built application
-COPY --from=builder --chown=reactrouter:nodejs /app/build ./build
-COPY --from=builder --chown=reactrouter:nodejs /app/package.json ./package.json
-COPY --from=builder --chown=reactrouter:nodejs /app/pnpm-lock.yaml ./pnpm-lock.yaml
+COPY --from=build /app/build ./build
+COPY --from=build /app/public ./public
+# COPY --from=build /app/.cache ./.cache
+# COPY .env.production /app/.env.production
+COPY --chown=node:node .env.production .
 
-# Install only production dependencies
-RUN corepack enable pnpm && pnpm i --frozen-lockfile --prod
+USER node
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOST=0.0.0.0 \
+    NODE_OPTIONS=--max_old_space_size=1024
 
-USER reactrouter
-
-# Expose the port the app runs on
 EXPOSE 3000
-
-# Set environment to production
-ENV NODE_ENV=production
-
-# Start the application
-CMD ["dotenvx", "run", "--", "pnpm", "start"]
+CMD ["dotenvx", "run", "-f", ".env.production", "--", "pnpm", "start"]

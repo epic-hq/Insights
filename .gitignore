@@ -16,8 +16,11 @@ coverage
 # Cache Directories and files
 .cache
 .yarn*
+
+# Environment files
 .env*
 !.env.example
+!.env.production
 
 # Test screenshots (usually blank error images)
 **/__screenshots__/

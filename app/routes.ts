@@ -52,6 +52,7 @@ const routes = [
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),
+	route("healthcheck", "./routes/healthcheck.ts"),
 ] satisfies RouteConfig
 
 export default routes

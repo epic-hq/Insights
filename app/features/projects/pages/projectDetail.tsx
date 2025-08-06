@@ -67,9 +67,8 @@ export default function ProjectDetail() {
 		}
 	}
 
-	const people = project.project_people || []
-	// Note: project_personas relationship may not be available in current schema
-	const personas: any[] = []
+	const people = project.project_people ?? [];
+	const personas = project.project_personas ?? [];
 
 	return (
 		<div className="mx-auto max-w-4xl">

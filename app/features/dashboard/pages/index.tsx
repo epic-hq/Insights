@@ -26,6 +26,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
+	// Fetch project
+	const { data: project } = await supabase
+		.from("projects")
+		.select("*")
+		.eq("account_id", accountId)
+		.eq("id", projectId)
+		.single()
+
 	// Fetch KPIs - count of interviews, insights, and opportunities
 	const { count: interviewCount } = await supabase
 		.from("interviews")
@@ -79,7 +87,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			percentage: p.percentage || 33, // Use DB value or default
 			count: 10, // This would ideally be calculated based on actual data
 			color: colorValue,
-			href: `/personas/${p.id}`,
+			href: routes.personas.detail(p.id),
 			slices: [
 				{ name: "Feature Usage", value: 60, color: colorValue },
 				{ name: "Feedback", value: 40, color: lightenColor(colorValue, 40) },
@@ -156,6 +164,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			)
 		`)
 		.eq("account_id", accountId)
+		.eq("project_id", projectId)
 
 	// Debug logging
 	consola.log("Dashboard Debug:", {
@@ -217,6 +226,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		opportunities,
 		themeTree,
 		insights,
+		project,
 	}
 }
 

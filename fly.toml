@@ -23,7 +23,10 @@ primary_region = 'sjc'
     interval = "30s"
     method = "GET"
     timeout = "5s"
-    path = "/health"
+    path = "/healthcheck"
+    protocol = "http"
+    tls_skip_verify = false
+    headers = { Host = "upsight.fly.dev" }
 
 [machine]
   memory = '1gb'

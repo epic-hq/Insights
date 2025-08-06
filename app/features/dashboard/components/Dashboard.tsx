@@ -5,7 +5,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { OpportunityView } from "~/types"
+import type { OpportunityView, Project } from "~/types"
 import type { KPI } from "./KPIBar"
 import KPIBar from "./KPIBar"
 import OpportunityKanban from "./OpportunityKanban"
@@ -28,10 +28,11 @@ interface DashboardProps {
 	}[]
 	opportunities: OpportunityView[]
 	themeTree: TreeNode[] // hierarchical data for treemap
+	project: Project
 }
 
-export default function Dashboard({ kpis, personas, interviews, opportunities, themeTree }: DashboardProps) {
-	const { projectPath } = useCurrentProject()
+export default function Dashboard({ project, kpis, personas, interviews, opportunities, themeTree }: DashboardProps) {
+	const { accountId, projectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
 	// Dynamically update the opportunities KPI
@@ -73,7 +74,7 @@ export default function Dashboard({ kpis, personas, interviews, opportunities, t
 			{/* Filter bar - full width above sticky KPI bar */}
 
 			<div className="mr-10 mb-4 ml-4 flex items-center justify-between">
-				<div className="ml-4 font-bold text-xl">Quick Summary</div>
+				<div className="ml-4 font-bold text-xl">{project.name}: Quick Summary</div>
 				<AddInterviewButton />
 				{/* <FilterBar segments={["Students", "Teachers", "Admins"]} /> */}
 			</div>
