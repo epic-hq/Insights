@@ -1,0 +1,44 @@
+# fly.toml app configuration file generated for upsight on 2025-08-06T02:08:12-07:00
+# See https://fly.io/docs/reference/configuration/ for information about how to use this file.
+
+app = 'upsight'
+primary_region = 'sjc'
+
+[build]
+
+[env]
+  NODE_ENV = 'production'
+  PORT = '3000'
+
+[http_service]
+  internal_port = 3000
+  force_https = true
+  auto_stop_machines = 'stop'
+  auto_start_machines = true
+  min_machines_running = 0
+  processes = ['app']
+
+  [[http_service.checks]]
+    grace_period = "10s"
+    interval = "30s"
+    method = "GET"
+    timeout = "5s"
+    path = "/health"
+
+[machine]
+  memory = '1gb'
+  cpu_kind = 'shared'
+  cpus = 1
+
+[[vm]]
+  size = 'shared-cpu-1x'
+  memory = '1gb'
+
+[deploy]
+  release_command = 'echo "Release command placeholder"'
+
+[processes]
+  app = 'dotenvx run -- pnpm start'
+
+# Optional: Add secrets for your encrypted environment variables
+# Run: flyctl secrets set DOTENV_PRIVATE_KEY_PRODUCTION='your-key-here'
