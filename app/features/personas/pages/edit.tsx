@@ -1,6 +1,7 @@
+import consola from "consola"
 import { motion } from "framer-motion"
 import { Trash2 } from "lucide-react"
-import { type ActionFunctionArgs, type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
@@ -8,6 +9,7 @@ import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/types"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 type PersonaUpdate = Database["public"]["Tables"]["personas"]["Update"]
 
@@ -18,56 +20,91 @@ export const meta: MetaFunction = ({ params }) => {
 	]
 }
 
-export async function loader({ request, params }: { request: Request; params: { personaId: string } }) {
+export async function loader({
+	request,
+	params,
+}: {
+	request: Request
+	params: { accountId: string; personaId: string; projectId: string }
+}) {
+	consola.log("Initializing Supabase client")
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
+	// const accountId = jwt?.claims.sub
+	const accountId = params.accountId
+	const personaId = params.personaId
+	const projectId = params.projectId
+	consola.log("Parameters:", { accountId, personaId, projectId })
+	const _routes = createProjectRoutes(accountId, projectId)
+	consola.log("persona loader: ", { params })
 
 	if (!accountId) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
 
-	const personaId = params.personaId
-
 	const { data: persona, error } = await supabase
 		.from("personas")
 		.select("*")
 		.eq("id", personaId)
-		.eq("account_id", accountId)
-		.single()
+		// .eq("account_id", accountId)
+		// .eq("project_id", projectId)
+		.limit(1)
+	consola.log("Query result:", persona)
 
 	if (error) {
+		consola.error("Error fetching persona:", error)
+		if (error.code === "PGRST116") {
+			throw new Response("Persona not found", { status: 404 })
+		}
 		throw new Response(`Error fetching persona: ${error.message}`, { status: 500 })
 	}
 
 	if (!persona) {
+		consola.warn("Persona not found for ID:", personaId)
 		throw new Response("Persona not found", { status: 404 })
 	}
 
-	return { persona }
+	if (persona.length === 0) {
+		throw new Response("Persona not found", { status: 404 })
+	}
+	return { persona: persona[0] }
 }
 
-export async function action({ request, params }: ActionFunctionArgs) {
+export async function action({
+	request,
+	params,
+}: {
+	request: Request
+	params: { accountId: string; personaId: string; projectId: string }
+}) {
 	const formData = await request.formData()
 	const intent = formData.get("intent")
-	const personaId = params.personaId
+	const _personaId = params.personaId
 
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
+	// const accountId = jwt?.claims.sub
+
+	const accountId = params.accountId
+	const personaId = params.personaId
+	const projectId = params.projectId
+	consola.log("persona edit: ", { accountId, personaId, projectId })
+	const routes = createProjectRoutes(accountId, projectId)
 
 	if (!accountId) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
 
 	if (intent === "delete") {
-		const { error } = await supabase.from("personas").delete().eq("id", personaId).eq("account_id", accountId)
+		const { error } = await supabase.from("personas").delete().eq("id", personaId)
+		// .eq("account_id", accountId)
+		// .eq("project_id", projectId)
 
 		if (error) {
 			return { error: `Failed to delete persona: ${error.message}` }
 		}
 
-		return redirect("/personas")
+		return redirect(`${routes.personas.index}`)
 	}
 
 	// Update persona
@@ -162,7 +199,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		.from("personas")
 		.update(personaData)
 		.eq("id", personaId)
-		.eq("account_id", accountId)
+		// .eq("account_id", accountId)
+		// .eq("project_id", projectId)
 		.select()
 		.single()
 
@@ -170,13 +208,13 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return { error: `Failed to update persona: ${error.message}` }
 	}
 
-	return redirect(`/personas/${persona.id}`)
+	return redirect(`${routes.personas.detail(persona.id)}`)
 }
 
 export default function EditPersona() {
+	consola.log("persona actionData: ")
 	const { persona } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-
 	return (
 		<div className="mx-auto max-w-2xl px-4 py-6">
 			<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>

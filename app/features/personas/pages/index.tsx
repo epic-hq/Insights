@@ -19,6 +19,7 @@ export async function loader({ request }: { request: Request }) {
 	const { data: jwt } = await supabase.auth.getClaims()
 	const accountId = jwt?.claims.sub
 
+	consola.log("Account ID:", accountId)
 	// Fetch personas with people count
 	const { data: personas, error: personasError } = await supabase
 		.from("personas")
@@ -29,6 +30,7 @@ export async function loader({ request }: { request: Request }) {
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 
+	consola.log("Query result:", personas)
 	if (personasError) {
 		throw new Response(`Error fetching personas: ${personasError.message}`, { status: 500 })
 	}
@@ -77,6 +79,7 @@ export default function Personas() {
 	)
 }
 
+import consola from "consola"
 import { useEffect } from "react"
 // GeneratePersonasButton component
 import { useFetcher } from "react-router-dom"

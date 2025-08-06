@@ -310,7 +310,7 @@ export default function InsightCardV2({
 					<div className="w-3/4 flex-1">
 						{/* Pain */}
 						<div>
-							<h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4>
+							{/* <h4 className="mb-1 text-gray-500 text-xs uppercase">Pain Point</h4> */}
 							<InlineEdit
 								value={localInsight.pain || ""}
 								onSubmit={async (newValue: string) => {
@@ -326,27 +326,31 @@ export default function InsightCardV2({
 								placeholder="What pain or friction does the user experience?"
 							/>
 						</div>
-						<EditableField field="name" className="font-thin text-gray-500 text-lg" placeholder="Enter insight name" />
-					</div>
-					<div className="flex w-1/4 flex-col gap-2">
-						<div className="flex flex-col gap-1">
-							<div className="font-light text-xs uppercase">Stage</div>
-							<Badge
-								variant="outline"
-								className={getJourneyStageColor(localInsight.journey_stage || "")}
-								onClick={() => onTagClick(localInsight.journey_stage || "")}
-							>
-								{localInsight.journey_stage || ""}
-							</Badge>
-						</div>
-						<div className="flex flex-col gap-1">
-							<div className="font-light text-xs uppercase">Category</div>
+						<div className="mt-2 flex flex-row py-4">
+							{/* <div className="font-light text-xs">Category</div> */}
 							<Badge
 								variant="outline"
 								className={getCategoryColor(localInsight.category || "")}
 								onClick={() => onTagClick(localInsight.category || "")}
 							>
 								{localInsight.category || ""}
+							</Badge>
+							<EditableField
+								field="name"
+								className="ml-2 font-thin text-gray-500 text-md"
+								placeholder="Enter insight name"
+							/>
+						</div>
+					</div>
+					<div className="flex w-1/4 flex-col gap-2">
+						<div className="flex flex-col gap-1">
+							<div className="font-light text-xs">Stage</div>
+							<Badge
+								variant="outline"
+								className={getJourneyStageColor(localInsight.journey_stage || "")}
+								onClick={() => onTagClick(localInsight.journey_stage || "")}
+							>
+								{localInsight.journey_stage || ""}
 							</Badge>
 						</div>
 					</div>

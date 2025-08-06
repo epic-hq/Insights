@@ -21,9 +21,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
+	const interviewId = params.interviewId
 
-	if (!accountId || !projectId) {
-		throw new Response("Account ID and Project ID are required", { status: 400 })
+	if (!accountId || !projectId || !interviewId) {
+		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
 	}
 
 	const { data: rows, error } = await getInterviews({
@@ -43,7 +44,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { data: allInsights, error: insightsError } = await supabase
 		.from("insights")
 		.select("id, interview_id")
-		.eq("account_id", accountId)
+		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 
 	if (insightsError) {
