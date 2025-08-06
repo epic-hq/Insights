@@ -14,26 +14,17 @@ export const getInsights = async ({
 	projectId: string
 }) => {
 	const query = supabase
-		.from("insights")
-		.select("*")
-		// .select(`
-		// 	*,
-		// 	persona_insights:persona_insights (
-		// 		persona_id,
-		// 		relevance_score,
-		// 		people_personas (
-		// 			id,
-		// 			people (
-		// 				id,
-		// 				name,
-		// 				color_hex
-		// 			)
-		// 		)
-		// 	)
-		// `)
-		.eq("account_id", accountId)
-		.eq("project_id", projectId)
-		.order("created_at", { ascending: false })
+  .from("insights")
+  .select(`
+    *,
+    persona_insights:persona_insights (
+      *,
+      personas:personas (*)
+    )
+  `)
+  .eq("account_id", accountId)
+  .eq("project_id", projectId)
+  .order("created_at", { ascending: false })
 
 	const { data, error } = await query
 	return { data, error }

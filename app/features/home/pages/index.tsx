@@ -29,7 +29,7 @@ export default function Index() {
 	const projectPath = `/a/${account_settings?.current_account_id}/${account_settings?.current_project_id}`
 	consola.log("Home accounts & projects & projectPath", accounts, projects, projectPath)
 
-	const _routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutes(projectPath)
 
 	return (
 		<div className="mx-auto max-w-7xl space-y-10 px-6 py-8">
@@ -54,7 +54,11 @@ export default function Index() {
 					) : (
 						<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
 							{projects?.map((project) => (
-								<ProjectContextCard key={project.id} project={project} projectPath={`${projectPath}/dashboard`} />
+								<ProjectContextCard
+									key={project.id}
+									project={project}
+									projectPath={routes.projects.dashboard(project.id)}
+								/>
 							))}
 						</div>
 					)}
