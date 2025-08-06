@@ -11,7 +11,7 @@
 		"clean": "git clean -fdX --exclude=\"!.env\"",
 		"script": "tsx scripts/setup.ts",
 		"build": "react-router build",
-		"dev": "dotenvx run -- react-router dev",
+		"dev": "PORT=4280 dotenvx run -- react-router dev",
 		"start": "dotenvx run -- node ./build/server/index.js",
 		"test": "vitest run --browser.headless",
 		"test:ui": "vitest",

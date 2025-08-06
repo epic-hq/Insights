@@ -1,8 +1,13 @@
+// need to add acheck for if env NODE_ENV=development then set HOST to localhost, else "upsight.fly.de"
+
+const HOST = process.env.NODE_ENV === "development" ? "http://localhost:4280" : "https://upsight.ai"
+
 const AUTH = {
 	LOGIN: "/login",
 	REGISTER: "/register",
 	LOGOUT: "/logout",
 	CALLBACK: "/auth/callback",
+	HOST,
 } as const
 
 export const PATHS = {

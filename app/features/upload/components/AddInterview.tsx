@@ -1,7 +1,6 @@
 import { Dialog, Transition } from "@headlessui/react"
 import { Fragment, useState } from "react"
 import { useDropzone } from "react-dropzone"
-import { Button } from "~/components/ui/button"
 import { useNotification } from "~/contexts/NotificationContext"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 
@@ -18,7 +17,6 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 	const [processingMessage, setProcessingMessage] = useState("")
 	const [error, setError] = useState<string | null>(null)
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
-	const [mediaUrl, setMediaUrl] = useState<string>("")
 	const { showNotification } = useNotification()
 
 	const handleFileUpload = async (files: File[]) => {
@@ -141,41 +139,6 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 								value={mediaUrl}
 								onChange={(e) => setMediaUrl(e.target.value)}
 							/> */}
-							<Button
-								disabled={!mediaUrl || isProcessing}
-								onClick={async () => {
-									try {
-										if (!mediaUrl) return
-										setIsProcessing(true)
-										setProcessingMessage("Transcribing interview...")
-
-										const resp = await fetch("/api/upload-from-url", {
-											method: "POST",
-											headers: { "Content-Type": "application/json" },
-											body: JSON.stringify({ url: mediaUrl }),
-										})
-										if (!resp.ok) {
-											const err = await resp.json().catch(() => ({ error: "Unknown error" }))
-											throw new Error(err.error)
-										}
-										const data: ProcessingResult = await resp.json()
-										setProcessingMessage("Processing complete!")
-										onSuccess?.(data)
-										setTimeout(() => {
-											setIsProcessing(false)
-											setMediaUrl("")
-											onClose()
-										}, 1200)
-									} catch (e) {
-										const message = e instanceof Error ? e.message : "Upload failed"
-										setError(message)
-										setIsProcessing(false)
-										showNotification(message, "error", 6000)
-									}
-								}}
-							>
-								Upload
-							</Button>
 
 							<div
 								{...getRootProps()}
@@ -231,22 +194,14 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 							)}
 
 							{/* Actions */}
-							<div className="mt-6 flex justify-end space-x-3">
+							<div className="mt-6 flex justify-end">
 								<button
 									onClick={handleClose}
 									disabled={isProcessing}
-									className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:text-gray-300 dark:hover:bg-gray-700"
+									className="rounded-md border border-gray-300 bg-white px-4 py-2 text-gray-700 text-sm hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-300 dark:hover:bg-gray-700"
 								>
 									Cancel
 								</button>
-								{selectedFile && !isProcessing && (
-									<button
-										onClick={() => handleFileUpload([selectedFile])}
-										className="rounded-md bg-blue-600 px-4 py-2 text-sm text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2"
-									>
-										Upload & Process
-									</button>
-								)}
 							</div>
 						</div>
 					</Transition.Child>

@@ -93,13 +93,13 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 				is_processed: true, // Mark as successfully processed
 				processed_at: new Date().toISOString(), // Set processing timestamp
 			}
-			consola.log("AssemblyAI transcription completed", transcriptionData)
+			consola.log("Transcription completed", transcriptionData)
 			return transcriptionData
 		}
 		if (data.status === "error") {
-			throw new Error(`AssemblyAI transcription error: ${data.error}`)
+			throw new Error(`Transcription error: ${data.error}`)
 		}
 		attempts++
 	}
-	throw new Error("AssemblyAI transcription timed out")
+	throw new Error("Transcription timed out")
 }
