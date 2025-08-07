@@ -257,7 +257,7 @@ class ExtractedInsight {
 	pain string | null @description("Pain or friction the user experiences in doing a task")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
 	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
-	emotionalResponse Emotions @description("describe the emotion the person feels about this.")
+	emotionalResponse Emotions @description("describe the emotion the person feels about this using the Emotions enum.")
 	underlyingMotivation string | null @description("why do they want to achieve this, or overcome the pain?")
 	values BBValues[] @description("Which values is the person expressing?")
 	category string @description("General category of insight") @@dynamic

@@ -1,4 +1,4 @@
-import { LayoutGrid, MapPin, Rows, Sparkles } from "lucide-react"
+import { LayoutGrid, MapPin, Rows, Sparkles, Zap } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -13,16 +13,20 @@ export default function InsightsLayout() {
 	// Determine the active tab based on the current URL path
 	const getActiveTab = () => {
 		const path = location.pathname
+		if (path.endsWith('/insights/quick')) return 'quick'
 		if (path.endsWith('/insights/table')) return 'table'
 		if (path.endsWith('/insights/cards')) return 'cards'
 		if (path.endsWith('/insights/map')) return 'map'
 		if (path.endsWith('/insights/auto-insights')) return 'auto-takeaways'
-		return 'table' // Default to table view
+		return 'quick' // Default to quick view
 	}
 
 	// Handle tab change by navigating to the appropriate route
 	const handleTabChange = (value: string) => {
 		switch (value) {
+			case 'quick':
+				navigate(routes.insights.quick())
+				break
 			case 'table':
 				navigate(routes.insights.table())
 				break
@@ -36,7 +40,7 @@ export default function InsightsLayout() {
 				navigate(routes.insights.autoInsights())
 				break
 			default:
-				navigate(routes.insights.table())
+				navigate(routes.insights.quick())
 		}
 	}
 
@@ -53,11 +57,14 @@ export default function InsightsLayout() {
 			<div className="px-[5%]">
 				<Tabs 
 					className="w-full" 
-					defaultValue="table" 
+					defaultValue="quick" 
 					onValueChange={handleTabChange} 
 					value={getActiveTab()}
 				>
-					<TabsList className="grid grid-cols-4 w-full">
+					<TabsList className="grid w-full grid-cols-5">
+						<TabsTrigger className="flex items-center gap-2" value="quick">
+							<Zap className="h-4 w-4" /> Quick
+						</TabsTrigger>
 						<TabsTrigger className="flex items-center gap-2" value="table">
 							<Rows className="h-4 w-4" /> Table
 						</TabsTrigger>

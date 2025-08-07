@@ -19,7 +19,7 @@ export default function Insights() {
 		const isExactInsightsPath = location.pathname.endsWith("/insights") && !location.pathname.includes("/insights/")
 
 		if (isExactInsightsPath) {
-			navigate(routes.insights.table(), { replace: true })
+			navigate(routes.insights.quick(), { replace: true })
 		}
 	}, [location.pathname, navigate, routes])
 

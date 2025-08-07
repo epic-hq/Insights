@@ -24,6 +24,7 @@ export interface RouteDefinitions {
 	// Insights
 	insights: {
 		index: () => string
+		quick: () => string
 		table: () => string
 		cards: () => string
 		map: () => string
@@ -111,6 +112,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Insights
 		insights: {
 			index: () => `${base}/insights`,
+			quick: () => `${base}/insights/quick`,
 			table: () => `${base}/insights/table`,
 			cards: () => `${base}/insights/cards`,
 			map: () => `${base}/insights/map`,
