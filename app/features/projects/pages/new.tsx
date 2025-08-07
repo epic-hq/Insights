@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea"
 import { createProject } from "~/features/projects/db"
 import { userContext } from "~/server/user-context"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "New Project | Insights" }, { name: "description", content: "Create a new project" }]
@@ -16,10 +17,9 @@ export const meta: MetaFunction = () => {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
 	// From URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
-	
+
 	if (!accountId) {
 		throw new Response("Account ID is required", { status: 400 })
 	}
@@ -48,7 +48,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { error: "Failed to create project" }
 		}
 
-		return redirect(`/projects/${data.id}`)
+		// get the new projectId and create project routes server side definition
+		const projectRoutes = createProjectRoutes(accountId, data.id)
+
+		return redirect(projectRoutes.projects.dashboard(data.id))
 	} catch (error) {
 		consola.error("Error creating project:", error)
 		return { error: "Failed to create project" }
@@ -97,8 +100,6 @@ export default function NewProject() {
 						</SelectContent>
 					</Select>
 				</div>
-
-
 
 				{actionData?.error && (
 					<div className="rounded-md bg-red-50 p-4">

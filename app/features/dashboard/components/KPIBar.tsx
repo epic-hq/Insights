@@ -10,14 +10,16 @@ export interface KPI {
 
 interface KPIBarProps {
 	kpis: KPI[]
+	/** Whether to use compact mode for stat cards (default: true) */
+	compact?: boolean
 }
 
-export default function KPIBar({ kpis }: KPIBarProps) {
+export default function KPIBar({ kpis, compact = true }: KPIBarProps) {
 	return (
 		<div className="sticky top-0 z-10 mb-6 rounded-lg bg-white p-4 shadow-md dark:bg-gray-900">
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
 				{kpis.map((kpi) => (
-					<StatCard key={kpi.label} {...kpi} />
+					<StatCard key={kpi.label} {...kpi} compact={compact} />
 				))}
 			</div>
 		</div>

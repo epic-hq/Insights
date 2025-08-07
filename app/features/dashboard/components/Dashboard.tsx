@@ -1,6 +1,9 @@
+import { useState } from "react"
 import { Link } from "react-router-dom"
-import type { TreeNode } from "~/components/charts/TreeMap"
-import TreeMap from "~/components/charts/TreeMap"
+// import type { TreeNode } from "~/components/charts/TreeMap"
+// import TreeMap from "~/components/charts/TreeMap"
+import TagCountSelector from "~/components/TagCountSelector"
+import TagDisplay from "~/components/TagDisplay"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
@@ -29,11 +32,23 @@ interface DashboardProps {
 	opportunities: OpportunityView[]
 	themeTree: TreeNode[] // hierarchical data for treemap
 	project: Project
+	tags: { name: string; frequency: number }[] // tags with frequency for TagDisplay
 }
 
-export default function Dashboard({ project, kpis, personas, interviews, opportunities, themeTree }: DashboardProps) {
+export default function Dashboard({
+	project,
+	kpis,
+	personas,
+	interviews,
+	opportunities,
+	themeTree,
+	tags,
+}: DashboardProps) {
 	const { accountId, projectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+
+	// State for controlling tag count
+	const [tagCount, setTagCount] = useState(10)
 
 	// Dynamically update the opportunities KPI
 	const dynamicKpis = kpis.map((kpi) => {
@@ -74,7 +89,12 @@ export default function Dashboard({ project, kpis, personas, interviews, opportu
 			{/* Filter bar - full width above sticky KPI bar */}
 
 			<div className="mr-10 mb-4 ml-4 flex items-center justify-between">
-				<div className="ml-4 font-bold text-xl">{project.name}: Quick Summary</div>
+				<div className="flex flex-col">
+					<div className="ml-2 text-muted-foreground text-xs">
+						<Link to={routes.projects.index()}>Project</Link>
+					</div>
+					<div className="ml-2 font-bold text-xl">{project.name}</div>
+				</div>
 				<AddInterviewButton />
 				{/* <FilterBar segments={["Students", "Teachers", "Admins"]} /> */}
 			</div>
@@ -87,11 +107,15 @@ export default function Dashboard({ project, kpis, personas, interviews, opportu
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-8 dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Insight Categories</h2>
-						<Link to={routes.insights.map()} className="text-blue-600 text-xs hover:text-blue-800">
-							Explore themes
-						</Link>
+						<div className="flex items-center gap-4">
+							<TagCountSelector value={tagCount} onChange={setTagCount} min={5} max={20} />
+							<Link to={routes.insights.map()} className="text-blue-600 text-xs hover:text-blue-800">
+								Explore themes
+							</Link>
+						</div>
 					</div>
-					<TreeMap
+					<TagDisplay tags={tags} maxTags={tagCount} />
+					{/* <TreeMap
 						data={themeTree}
 						onClick={(node) => {
 							// Only navigate for child nodes (actual themes, not categories)
@@ -99,7 +123,7 @@ export default function Dashboard({ project, kpis, personas, interviews, opportu
 								// TODO: Implement theme navigation when themes routes are available
 							}
 						}}
-					/>
+					/> */}
 				</div>
 
 				{/* Personas section - spans 4 columns on large screens, full width on smaller screens */}
@@ -117,6 +141,8 @@ export default function Dashboard({ project, kpis, personas, interviews, opportu
 					</div>
 				</div>
 				{/* Opportunity Kanban - spans full width */}
+				{/* Hidden for now */}
+				{/*
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Opportunities</h2>
@@ -126,6 +152,7 @@ export default function Dashboard({ project, kpis, personas, interviews, opportu
 					</div>
 					<OpportunityKanban columns={kanbanCols} />
 				</div>
+				*/}
 
 				{/* Recent Interviews - spans 6 columns on large screens, full width on smaller screens */}
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-6 dark:bg-gray-900">

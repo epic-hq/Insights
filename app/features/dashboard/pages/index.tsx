@@ -34,6 +34,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("id", projectId)
 		.single()
 
+	if (!project) {
+		throw new Response("Project not found", { status: 404 })
+	}
+
 	// Fetch KPIs - count of interviews, insights, and opportunities
 	const { count: interviewCount } = await supabase
 		.from("interviews")
@@ -152,56 +156,76 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		contradictions: insight.contradictions,
 	}))
 
-	// Fetch insights with their tags from junction table
-	const { data: insightTags } = await supabase
+	// Debug: Check if insight_tags table has any data at all
+	const { data: allInsightTags, error: allTagsError } = await supabase.from("insight_tags").select("*").limit(5)
+
+	consola.debug("All insight_tags sample:", { allInsightTags, allTagsError })
+
+	// Debug: Check insight_tags for this account
+	const { data: accountInsightTags, error: accountTagsError } = await supabase
 		.from("insight_tags")
-		.select(`
-			tag,
-			insights!inner (
-				id,
-				name,
-				title
-			)
-		`)
+		.select("*")
+		.eq("account_id", accountId)
+		.limit(5)
+
+	consola.debug("Account insight_tags:", { accountInsightTags, accountTagsError, accountId })
+
+	// Debug: Check insight_tags for this project
+	const { data: projectInsightTags, error: projectTagsError } = await supabase
+		.from("insight_tags")
+		.select("*")
+		.eq("project_id", projectId)
+		.limit(5)
+
+	consola.debug("Project insight_tags:", { projectInsightTags, projectTagsError, projectId })
+
+	// Fetch tags with frequency counts from insight_tags junction table
+	const { data: tagFrequencyData, error: tagFrequencyError } = await supabase
+		.from("insight_tags")
+		.select("tag_id, tags(tag)")
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
+
+	consola.log("Tag frequency query:", { tagFrequencyData, tagFrequencyError, accountId, projectId })
+
+	// Process tag frequency data into the format expected by TagDisplay
+	type TagFrequency = { name: string; frequency: number }
+	const tagFrequencyMap = new Map<string, number>()
+
+	if (tagFrequencyData) {
+		tagFrequencyData.forEach((record: { tag_id: string; tags: { tag: string } | null }) => {
+			const tagName = record.tags?.tag
+			if (tagName) {
+				tagFrequencyMap.set(tagName, (tagFrequencyMap.get(tagName) || 0) + 1)
+			}
+		})
+	}
+
+	// Convert to array format expected by TagDisplay component
+	const tags: TagFrequency[] = Array.from(tagFrequencyMap.entries())
+		.map(([name, frequency]) => ({ name, frequency }))
+		.sort((a, b) => b.frequency - a.frequency) // Sort by frequency descending
 
 	// Debug logging
 	consola.log("Dashboard Debug:", {
 		insightRowsCount: insightRows?.length || 0,
-		insightTagsCount: insightTags?.length || 0,
+		tagFrequencyDataCount: tagFrequencyData?.length || 0,
+		tagsCount: tags.length,
 		personaRowsCount: data?.length || 0,
 	})
 
-	// Group insights by tags using junction table data
+	// Group insights by tags for tree map (keeping existing logic)
 	const tagMap = new Map<string, TreeNode>()
 
-	// Process insight-tag relationships
-	if (insightTags) {
-		insightTags.forEach((record: { tag: string; insights: { id: string; name?: string; title?: string } }) => {
-			const tag = record.tag
-			const insight = record.insights
-
-			if (!tagMap.has(tag)) {
-				tagMap.set(tag, {
-					name: tag,
-					value: 0,
-					children: [],
-					fill: "",
-				})
-			}
-
-			const tagNode = tagMap.get(tag)
-			if (tagNode) {
-				tagNode.value += 1
-				tagNode.children?.push({
-					name: insight.name || insight.title || `Insight ${insight.id.slice(0, 6)}`,
-					value: 1,
-					fill: "",
-				})
-			}
+	// Process tag data for tree map visualization
+	tags.forEach((tag) => {
+		tagMap.set(tag.name, {
+			name: tag.name,
+			value: tag.frequency,
+			children: [],
+			fill: "",
 		})
-	}
+	})
 
 	// Sort and apply colors to top N tags
 	const baseColors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1"]
@@ -227,6 +251,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		themeTree,
 		insights,
 		project,
+		tags, // Add tags to the return object for TagDisplay
 	}
 }
 

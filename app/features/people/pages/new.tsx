@@ -7,6 +7,7 @@ import { Textarea } from "~/components/ui/textarea"
 import { createPerson } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
 import { userContext } from "~/server/user-context"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "New Person | Insights" }, { name: "description", content: "Create a new person" }]
@@ -27,10 +28,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	return { personas: personas || [] }
 }
 
-export async function action({ request, context }: ActionFunctionArgs) {
+export async function action({ request, context, params }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
-	const _accountId = ctx.account_id
-	const _supabase = ctx.supabase
+	const supabase = ctx.supabase
+	const accountId = params.accountId
+	const projectId = params.projectId
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
+	const routes = createProjectRoutes(accountId, projectId)
 
 	const formData = await request.formData()
 	const name = formData.get("name") as string
@@ -54,12 +60,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 	try {
 		const { data, error } = await createPerson({
-			supabase: _supabase,
+			supabase: supabase,
 			data: {
 				name: name.trim(),
 				segment: _segment?.trim() || null,
 				description: _notes?.trim() || null,
-				account_id: _accountId,
+				account_id: accountId,
+				project_id: projectId,
 				contact_info,
 			},
 		})
@@ -70,7 +77,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		// Associate with persona if selected
 		if (_persona_id && _persona_id !== "none") {
-			const { error: personaError } = await _supabase.from("people_personas").upsert(
+			const { error: personaError } = await supabase.from("people_personas").upsert(
 				{
 					person_id: data.id,
 					persona_id: _persona_id,
@@ -82,7 +89,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			}
 		}
 
-		return redirect(`/people/${data.id}`)
+		return redirect(routes.people.detail(data.id))
 	} catch (_error) {
 		return { error: "Failed to create person" }
 	}

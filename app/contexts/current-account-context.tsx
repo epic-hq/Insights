@@ -25,8 +25,6 @@ interface CurrentAccountProviderProps {
 export function CurrentAccountProvider({ children }: CurrentAccountProviderProps) {
 	const params = useParams()
 
-	// TODO: Change this to get from loader
-	// Get accountId from organizations prop (top account) or fallback to URL params
 	const accountId = useMemo(() => {
 		// Fallback to URL params
 		if (params.accountId) {

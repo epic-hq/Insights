@@ -7,6 +7,7 @@ import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
 import { deleteInterview, getInterviewById, updateInterview } from "~/features/interviews/db"
 import { userContext } from "~/server/user-context"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -75,7 +76,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				return { error: "Failed to delete interview" }
 			}
 
-			return redirect("/interviews")
+			const routes = createProjectRoutes(accountId, projectId)
+			return redirect(routes.interviews.index())
 		} catch (_error) {
 			return { error: "Failed to delete interview" }
 		}
@@ -128,7 +130,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { error: "Failed to update interview" }
 		}
 
-		return redirect(`/interviews/${data.id}`)
+		const routes = createProjectRoutes(accountId, projectId)
+		return redirect(routes.interviews.detail(data.id))
 	} catch (error) {
 		consola.error("Error updating interview:", error)
 		return { error: "Failed to update interview" }

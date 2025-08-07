@@ -20,19 +20,22 @@ interface StatCardProps {
 	description?: string
 	/** Optional highlight color for the card border */
 	highlightColor?: string
+	/** Compact mode - lean display with just text, number, and small icon (default: true) */
+	compact?: boolean
 }
 
 // Helper function to render icon based on name
-const renderIcon = (iconName?: string) => {
+const renderIcon = (iconName?: string, compact = true) => {
 	if (!iconName) return null
 	const titleId = `stat-icon-title-${iconName}`
+	const iconSize = compact ? "h-4 w-4" : "h-5 w-5"
 
 	// Map of icon names to SVG paths
 	const icons: Record<string, React.ReactNode> = {
 		users: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -44,7 +47,7 @@ const renderIcon = (iconName?: string) => {
 		lightbulb: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -56,7 +59,7 @@ const renderIcon = (iconName?: string) => {
 		"chart-bar": (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -68,7 +71,7 @@ const renderIcon = (iconName?: string) => {
 		clipboard: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -81,7 +84,7 @@ const renderIcon = (iconName?: string) => {
 		insights: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -97,7 +100,7 @@ const renderIcon = (iconName?: string) => {
 		opportunities: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -113,7 +116,7 @@ const renderIcon = (iconName?: string) => {
 		interviews: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
-				className="h-5 w-5"
+				className={iconSize}
 				viewBox="0 0 20 20"
 				fill="currentColor"
 				aria-labelledby={titleId}
@@ -143,6 +146,7 @@ export default function StatCard({
 	icon,
 	description,
 	highlightColor = "#3b82f6", // Default to blue
+	compact = true, // Default to compact mode
 }: StatCardProps) {
 	// Use appropriate wrapper based on props
 	const Wrapper: React.ElementType = href
@@ -158,6 +162,43 @@ export default function StatCard({
 	// Determine border style based on highlightColor
 	const borderStyle = highlightColor ? { borderLeft: `4px solid ${highlightColor}` } : {}
 
+	if (compact) {
+		// Compact mode - lean display with just text, number, and small icon
+		return (
+			<Wrapper
+				{...(href ? (href.startsWith("/") ? { to: href } : { href }) : {})}
+				{...(onClick ? { onClick } : {})}
+				className={`rounded-lg border bg-white shadow transition-all duration-200 dark:bg-gray-900 ${href || onClick ? "hover:-translate-y-1 transform cursor-pointer hover:bg-gray-50 hover:shadow-md dark:hover:bg-gray-800" : ""} ${className ?? ""}`}
+				style={borderStyle}
+			>
+				<div className="p-3">
+					<div className="flex items-center justify-between">
+						<div className="flex-1">
+							<div className="font-medium text-gray-500 text-xs">{label}</div>
+							<div className="font-semibold text-lg text-gray-900 dark:text-gray-100">{value}</div>
+							{change && (
+								<div className={`flex items-center text-xs ${isUp ? "text-emerald-600" : "text-rose-600"}`}>
+									{isUp ? (
+										<svg className="mr-1 h-2 w-2" viewBox="0 0 20 20" fill="currentColor">
+											<path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
+										</svg>
+									) : (
+										<svg className="mr-1 h-2 w-2" viewBox="0 0 20 20" fill="currentColor">
+											<path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
+										</svg>
+									)}
+									{change}
+								</div>
+							)}
+						</div>
+						{icon && <div className="text-gray-400 ml-2">{renderIcon(icon, compact)}</div>}
+					</div>
+				</div>
+			</Wrapper>
+		)
+	}
+
+	// Full mode - original display with graphs and more spacing
 	return (
 		<Wrapper
 			{...(href ? (href.startsWith("/") ? { to: href } : { href }) : {})}
@@ -169,7 +210,7 @@ export default function StatCard({
 				{/* Header with label and icon */}
 				<div className="mb-2 flex items-center justify-between">
 					<div className="font-medium text-gray-500 text-sm">{label}</div>
-					{icon && <div className="text-gray-400">{renderIcon(icon)}</div>}
+					{icon && <div className="text-gray-400">{renderIcon(icon, compact)}</div>}
 				</div>
 
 				{/* Main content */}

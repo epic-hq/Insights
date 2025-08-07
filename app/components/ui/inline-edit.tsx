@@ -106,7 +106,7 @@ export default function InlineEdit({
 			return (
 				<>
 					<Textarea
-						ref={inputRef as any}
+						ref={inputRef as React.RefObject<HTMLTextAreaElement>}
 						value={value}
 						onChange={handleChange}
 						onBlur={handleBlur}
@@ -129,7 +129,7 @@ export default function InlineEdit({
 		return (
 			<>
 				<Input
-					ref={inputRef as any}
+					ref={inputRef as React.RefObject<HTMLInputElement>}
 					value={value}
 					onChange={handleChange}
 					onBlur={handleBlur}
@@ -160,13 +160,13 @@ export default function InlineEdit({
 			)}
 		>
 			{markdown ? (
-				<ReactMarkdown>{markdown}</ReactMarkdown>
+				<ReactMarkdown>{value || placeholder}</ReactMarkdown>
 			) : (
 				<TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{multiline ? (
 						value ? (
 							value.split("\n").map((line, i) => (
-								<span key={i}>
+								<span key={`line-${i}-${line.slice(0, 10)}`}>
 									{line}
 									<br />
 								</span>

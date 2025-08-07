@@ -175,12 +175,26 @@ export default function InterviewDetail() {
 							placeholder="Observations & Notes"
 							onSubmit={(value) => {
 								try {
+									consola.info("📝 Submitting observations_and_notes update:", {
+										interviewId: interview.id,
+										accountId,
+										projectId,
+										valueLength: value?.length
+									})
 									fetcher.submit(
-										{ observations_and_notes: value },
-										{ method: "post", action: routes.interviews.edit(interview.id) }
+										{ 
+											entity: "interview",
+											entityId: interview.id,
+											accountId,
+											projectId,
+											fieldName: "observations_and_notes",
+											fieldValue: value
+										},
+										{ method: "post", action: "/api/update-field" }
 									)
 								} catch (error) {
-									consola.error('Failed to update observations_and_notes:', error)
+									consola.error('❌ Failed to update observations_and_notes:', error)
+									// Don't throw - just log the error to prevent crash
 								}
 							}}
 						/>
@@ -199,13 +213,34 @@ export default function InterviewDetail() {
 								placeholder="High Impact Themes"
 								onSubmit={(value) => {
 									try {
-										const themes = value.split(/\n+/).filter(Boolean)
+										consola.info("🎨 Submitting high_impact_themes update:", {
+											interviewId: interview.id,
+											accountId,
+											projectId,
+											valueLength: value?.length,
+											valuePreview: value?.substring(0, 50)
+										})
+										
+										// Convert newline-separated text to JSON array for storage
+										const arrayValue = value ? value.split('\n').filter(item => item.trim()) : []
+										const jsonValue = JSON.stringify(arrayValue)
+										
+										consola.info("🔄 Converted to JSON:", { arrayValue, jsonValue })
+										
 										fetcher.submit(
-											{ high_impact_themes: JSON.stringify(themes) },
-											{ method: "post", action: routes.interviews.edit(interview.id) }
+											{ 
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "high_impact_themes",
+												fieldValue: jsonValue
+											},
+											{ method: "post", action: "/api/update-field" }
 										)
 									} catch (error) {
-										consola.error('Failed to update high_impact_themes:', error)
+										consola.error('❌ Failed to update high_impact_themes:', error)
+										// Don't throw - just log the error to prevent crash
 									}
 								}}
 							/>
@@ -222,12 +257,33 @@ export default function InterviewDetail() {
 								placeholder="Open Questions & Next Steps"
 								onSubmit={(value) => {
 									try {
+										consola.info("📝 Submitting open_questions_and_next_steps update:", {
+											interviewId: interview.id,
+											accountId,
+											projectId,
+											valueLength: value?.length
+										})
+										
+										// Convert newline-separated text to JSON array for storage
+										const arrayValue = value ? value.split('\n').filter(item => item.trim()) : []
+										const jsonValue = JSON.stringify(arrayValue)
+										
+										consola.info("🔄 Converted to JSON:", { arrayValue, jsonValue })
+										
 										fetcher.submit(
-											{ open_questions_and_next_steps: value },
-											{ method: "post", action: routes.interviews.edit(interview.id) }
+											{ 
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "open_questions_and_next_steps",
+												fieldValue: jsonValue
+											},
+											{ method: "post", action: "/api/update-field" }
 										)
 									} catch (error) {
-										consola.error('Failed to update open_questions_and_next_steps:', error)
+										consola.error('❌ Failed to update open_questions_and_next_steps:', error)
+										// Don't throw - just log the error to prevent crash
 									}
 								}}
 							/>

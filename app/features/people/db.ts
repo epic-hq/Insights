@@ -1,4 +1,4 @@
-import type { SupabaseClient, QueryData } from "@supabase/supabase-js"
+import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "~/types"
 
 export const getPeople = async ({
@@ -84,8 +84,6 @@ export const getPersonById = async ({
 	return personData
 }
 
-
-
 export const createPerson = async ({
 	supabase,
 	data,
@@ -141,10 +139,5 @@ export const deletePerson = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase
-		.from("people")
-		.delete()
-		.eq("id", id)
-		.eq("account_id", accountId)
-		.eq("project_id", projectId)
+	return await supabase.from("people").delete().eq("id", id).eq("account_id", accountId).eq("project_id", projectId)
 }

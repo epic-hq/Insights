@@ -71,7 +71,7 @@ export default function ProjectsIndexPage() {
 			<div className="flex items-center justify-between">
 				<div>
 					<h1 className="font-bold text-3xl tracking-tight">My Projects</h1>
-					<p className="text-muted-foreground">Manage research and product development projects.</p>
+					{/* <p className="text-muted-foreground">Group your.</p> */}
 				</div>
 				<Button asChild>
 					<Link to={routes.projects.new()}>Create Project</Link>
@@ -97,7 +97,7 @@ export default function ProjectsIndexPage() {
 							<CardHeader>
 								<div className="flex items-start justify-between">
 									<CardTitle className="text-lg">
-										<Link to={routes.projects.detail(project.id)} className="hover:underline">
+										<Link to={routes.projects.dashboard(project.id)} className="hover:underline">
 											{project.name}
 										</Link>
 									</CardTitle>

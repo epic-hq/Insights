@@ -9,31 +9,52 @@
 - [x] Define Routing
 - [x] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
 - [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
+project detail getproject by id fails
+insights blank due to missing project_id for previous interviews. Test going forward.
+x insightDetail - not found bc linking to project_id. needs error guard
+x personaDetail & edit
+- people
+- peopleDetail
+- persona not added to proj or not queried right after add interview
+- generate persona. path.
+
+- [x] Deployed to fly.io as `upsight.fly.dev`
 - [ ] Update all links to protectedLayout in app/routes
 - [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
 
 - [ ] CRUD functions for people, projects, personas, tags, opportunities
-- [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 - [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
 
 Defer:
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
-- [ ] Chat Agent Workflows
+- [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data
 
-## 🎨 UX Track
+## Sprint 4: Workflow Pipelines
 
-- [x] Define end-to-end user flow (`user-flow.md`)
-- [x] Create low-fi wireframes (`wireframes.md`)
-- [x] Draft UI style & component palette (`ui-style.md`)
-- [x] Implement Jett's inline edit component (`inline-edit.tsx`) resolve Markdown dependency issue.
-- [x] **Insight Card** – inline editable insight fields.
-- [x] **Insight Clustering Visualization** - Cluster insights by category and pain points to visualise themes. [clustering-howto.md](clustering-howto.md)
-- [ ] How to make UX Better to get maximum WOW insights? (revise `user-flow.md`)
+- [X] Research and architect a pipeline queue for transcription: `docs/feature-spec-transcription-pipeline.md`
+- [ ] Implement queues
+- [ ] Convert existing 'Add Interview' process to use the queues
+- [ ] Implement Generation queue (already spec'd)
+- [ ] Handle longer files, use as upgrade trigger. AAI timeout handling
+
+## 🎨 User Experience
+
+- [ ] Deeper planning on ideal workflow. We need to get user's goals for project, and to invite people. What to show them in plain english. Upload / Record > Goal (needed for anlaysis) > alert > TLDR > What's next
+- [ ] Mobile-friendly page. this will happen at events, in the field. Add 'record now' to work on phone.
+
+- [ ] Misc:
+- [ ] A better breadcrumbs, indicate current project.
+- [ ] Show suggestions for next steps.
+- [ ] Reduce clutter
+ 	- [ ] dont makeadd 'inline edit' in other records like interviews etc.
+ 	- [ ] breadcrumbs parent not clickable
+ 	- []
 - [ ] Organize insights. Group similar insights into themes. count frequences. See by personas. expand on pain points and causes.
+- [ ] How to make UX Better to get maximum WOW insights? (revise `user-flow.md`)
 Prioritize.
-- [ ] add 'inline edit' in other records like interviews etc.
+- [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 
 ## 🌓 Backlog / Later
 
@@ -67,6 +88,7 @@ See [app-flow](_stack-database-plan.md#app-flow)
 Accounts & Home:
 / → marketing landing page
 /auth/callback
+
 - on success → /login_success redirects to /home (features/home/pages/index.tsx)
 - on failure → show error message in login page
 /home (features/home/pages/index.tsx) shows what accounts and projects the user has access to, a list of accounts, projects, suggested actions, onboarding
@@ -140,6 +162,15 @@ Keeps tag table clean without manual admin
 - [x] **Process Data** – upload recording, batch transcribe via AssemblyAI, store transcript in db
 - [x] **Supabase Project & CI** – initialise local Supabase, add Vitest + Playwright pipelines.
 - [x] **Component PoC** – build Storybook for `<InsightCard>` and `<ThemeMatrix>`.
+
+UX
+
+- [x] Define end-to-end user flow (`user-flow.md`)
+- [x] Create low-fi wireframes (`wireframes.md`)
+- [x] Draft UI style & component palette (`ui-style.md`)
+- [x] Implement Jett's inline edit component (`inline-edit.tsx`) resolve Markdown dependency issue.
+- [x] **Insight Card** – inline editable insight fields.
+- [x] **Insight Clustering Visualization** - Cluster insights by category and pain points to visualise themes. [clustering-howto.md](clustering-howto.md)
 
 ### Sprint 1 - get started with foundation
 

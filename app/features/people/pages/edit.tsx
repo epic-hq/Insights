@@ -8,6 +8,7 @@ import { Textarea } from "~/components/ui/textarea"
 import { deletePerson, getPersonById, updatePerson } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
 import { userContext } from "~/server/user-context"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -19,7 +20,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -53,15 +54,15 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
 	const personId = params.personId
-
 	if (!accountId || !projectId || !personId) {
 		throw new Response("Account ID, Project ID, and Person ID are required", { status: 400 })
 	}
+	const routes = createProjectRoutes(accountId, projectId)
 
 	const formData = await request.formData()
 	const intent = formData.get("intent") as string
@@ -75,7 +76,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				projectId,
 			})
 
-			return redirect("/people")
+			return redirect(routes.people.index())
 		} catch {
 			return { error: "Failed to delete person" }
 		}
@@ -123,7 +124,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			await supabase.from("people_personas").delete().eq("person_id", personId)
 		}
 
-		return redirect(`/people/${data.id}`)
+		return redirect(routes.people.detail(data.id))
 	} catch (error) {
 		// Log error for debugging without using console
 		if (typeof window !== "undefined") {

@@ -64,8 +64,10 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 	const { id } = (await createResp.json()) as { id: string }
 
 	// 2. Poll until completion
+	// Extended timeout for large files: 30 minutes (360 attempts × 5s = 1800s)
 	let attempts = 0
-	while (attempts < 60) {
+	const maxAttempts = 360 // 30 minutes total
+	while (attempts < maxAttempts) {
 		await new Promise((r) => setTimeout(r, 5000)) // 5s interval
 		const statusResp = await fetch(`${ASSEMBLY_API_URL}/transcript/${id}`, {
 			headers: {
@@ -100,6 +102,11 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 			throw new Error(`Transcription error: ${data.error}`)
 		}
 		attempts++
+		
+		// Log progress every 2 minutes (24 attempts)
+		if (attempts % 24 === 0) {
+			consola.info(`Transcription in progress... ${Math.round((attempts / maxAttempts) * 100)}% of timeout elapsed (${Math.round(attempts * 5 / 60)} minutes)`)
+		}
 	}
-	throw new Error("Transcription timed out")
+	throw new Error(`Transcription timed out after ${Math.round(maxAttempts * 5 / 60)} minutes. Large files may require longer processing time.`)
 }

@@ -37,15 +37,16 @@ const routes = [
 
 	// Authentication routes
 	route("/auth/callback", "./routes/auth.callback.tsx"),
-	route("login", "./routes/login.tsx"),
-	route("login_success", "./routes/login_success.tsx"),
-	route("login_failure", "./routes/login_failure.tsx"),
-	route("register", "./routes/register.tsx"),
+	route("login", "./routes/(auth)+/login.tsx"),
+	route("login_success", "./routes/(auth)+/login_success.tsx"),
+	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
+	route("register", "./routes/(auth)+/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
+	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	route("api/generate-personas", "./routes/api.generate-personas.tsx"),
@@ -53,6 +54,9 @@ const routes = [
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("healthcheck", "./routes/healthcheck.ts"),
+
+	// Test routes
+	route("test_register", "./routes/(auth)+/test_register.tsx"),
 ] satisfies RouteConfig
 
 export default routes
