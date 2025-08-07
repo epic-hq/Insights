@@ -4,6 +4,7 @@ import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
 import marketingRoutes from "./features/marketing/routes"
+import mobileRoutes from "./features/mobile/insights/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
@@ -31,6 +32,7 @@ const routes = [
 				...opportunitiesRoutes,
 				...peopleRoutes,
 				...personasRoutes,
+				...mobileRoutes,
 			]),
 		]),
 	]),
@@ -56,6 +58,7 @@ const routes = [
 	route("healthcheck", "./routes/healthcheck.ts"),
 
 	// Test routes
+	route("team", "./features/accounts/pages/team.tsx"),
 	route("test_register", "./routes/(auth)+/test_register.tsx"),
 ] satisfies RouteConfig
 

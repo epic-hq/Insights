@@ -4,6 +4,7 @@ export default [
 	...prefix("insights", [
 		index("./features/insights/pages/index.tsx"),
 		layout("./features/insights/pages/_layout.tsx", [
+			route("quick", "./features/insights/pages/quick.tsx"),
 			route("table", "./features/insights/pages/table.tsx"),
 			route("cards", "./features/insights/pages/cards.tsx"),
 			route("map", "./features/insights/pages/map.tsx"),
