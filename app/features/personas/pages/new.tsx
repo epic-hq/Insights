@@ -5,23 +5,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/types"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 type PersonaInsert = Database["public"]["Tables"]["personas"]["Insert"]
 
 export const meta: MetaFunction = () => {
-	return [
-		{ title: "New Persona | Insights" },
-		{ name: "description", content: "Create a new user persona" },
-	]
+	return [{ title: "New Persona | Insights" }, { name: "description", content: "Create a new user persona" }]
 }
 
-export async function loader({ request }: { request: Request }) {
+export async function loader({
+	request,
+	params,
+}: {
+	request: Request
+	params: { accountId: string; projectId: string }
+}) {
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
+	const accountId = params?.accountId
+	const projectId = params?.projectId
 
+	const _routes = createProjectRoutes(accountId, projectId)
 	if (!accountId) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
@@ -29,7 +37,7 @@ export async function loader({ request }: { request: Request }) {
 	return {}
 }
 
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, params }: ActionFunctionArgs) {
 	const formData = await request.formData()
 	const name = (formData.get("name") as string)?.trim()
 	if (!name) return { error: "Name is required" }
@@ -40,40 +48,39 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
-	if (!accountId) throw new Response("Unauthorized", { status: 401 })
 
+	const accountId = params?.accountId
+	const projectId = params?.projectId
+	if (!accountId || !projectId) throw new Response("Unauthorized", { status: 401 })
+
+	const routes = createProjectRoutes(accountId, projectId)
 	const personaData: PersonaInsert = {
 		name,
 		description,
 		color_hex,
 		image_url,
 		account_id: accountId,
+		project_id: projectId,
 	}
 
-	const { data: persona, error } = await supabase
-		.from("personas")
-		.insert(personaData)
-		.select()
-		.single()
+	const { data: persona, error } = await supabase.from("personas").insert(personaData).select().single()
 
 	if (error) {
 		return { error: `Failed to create persona: ${error.message}` }
 	}
 
-	return redirect(`/personas/${persona.id}`)
+	return redirect(routes.personas.detail(persona.id))
 }
 
 export default function NewPersona() {
 	const actionData = useActionData<typeof action>()
+	const { personas } = useLoaderData() as { personas: { id: string; name: string }[] }
+	const currentProjectContext = useCurrentProject()
+	const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
 
 	return (
 		<div className="mx-auto max-w-2xl px-4 py-6">
-			<motion.div
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5 }}
-			>
+			<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
 				<Card>
 					<CardHeader>
 						<CardTitle className="text-2xl">Create New Persona</CardTitle>
@@ -82,7 +89,7 @@ export default function NewPersona() {
 						<form method="post" className="space-y-6">
 							{actionData?.error && (
 								<div className="rounded-md bg-red-50 p-4">
-									<div className="text-sm text-red-700">{actionData.error}</div>
+									<div className="text-red-700 text-sm">{actionData.error}</div>
 								</div>
 							)}
 
@@ -118,7 +125,7 @@ export default function NewPersona() {
 									placeholder="https://example.com/image.jpg"
 									className="w-full"
 								/>
-								<span className="text-xs text-muted-foreground">
+								<span className="text-muted-foreground text-xs">
 									Optional: URL to an image that represents this persona
 								</span>
 							</div>
@@ -126,16 +133,8 @@ export default function NewPersona() {
 							<div className="space-y-2">
 								<Label htmlFor="color_hex">Theme Color</Label>
 								<div className="flex items-center gap-3">
-									<Input
-										id="color_hex"
-										name="color_hex"
-										type="color"
-										defaultValue="#6b7280"
-										className="h-10 w-20"
-									/>
-									<span className="text-sm text-muted-foreground">
-										Choose a color to represent this persona
-									</span>
+									<Input id="color_hex" name="color_hex" type="color" defaultValue="#6b7280" className="h-10 w-20" />
+									<span className="text-muted-foreground text-sm">Choose a color to represent this persona</span>
 								</div>
 							</div>
 
@@ -144,7 +143,7 @@ export default function NewPersona() {
 									Create Persona
 								</Button>
 								<Button type="button" variant="outline" asChild>
-									<a href="/personas">Cancel</a>
+									<a href={routes.personas.index()}>Cancel</a>
 								</Button>
 							</div>
 						</form>
