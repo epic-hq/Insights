@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import { EmotionBadge, EmotionsMap } from "~/components/ui/emotion-badge"
 import { Input } from "~/components/ui/input"
 import { getInsights } from "~/features/insights/db"
 import { userContext } from "~/server/user-context"
@@ -50,6 +51,8 @@ export default function InsightsRoute() {
 	const [searchQuery, setSearchQuery] = useState("")
 	const [selected, setSelected] = useState<Insight | null>(null)
 
+	// emotion emoji/category logic now handled by EmotionBadge
+
 	const filtered = insights.filter(
 		(insight: Insight) =>
 			insight.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -57,15 +60,16 @@ export default function InsightsRoute() {
 	)
 
 	return (
-		<div className="min-h-screen bg-gray-50 p-4">
-			<div className="mb-4 flex items-center">
+		<div className="min-h-screen bg-gradient-to-b from-blue-50 via-white to-blue-50 p-4">
+			<div className="mb-4 flex items-center rounded-full bg-white/70 px-3 py-2 shadow-inner">
 				<Search className="mr-2 h-5 w-5 text-gray-500" />
 				<Input placeholder="Search insights…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
 			</div>
 
 			{filtered.length === 0 ? (
-				<div className="py-8 text-center text-gray-500">
-					<p>No insights found</p>
+				<div className="py-12 text-center text-gray-500">
+					<p className="mb-2 text-4xl">🔍</p>
+					<p className="font-medium">No insights found</p>
 					{searchQuery && <p className="mt-1 text-sm">Try adjusting your search</p>}
 				</div>
 			) : (
@@ -73,90 +77,94 @@ export default function InsightsRoute() {
 					{filtered.map((insight) => (
 						<Card
 							key={insight.id}
-							className="cursor-pointer transition-shadow hover:shadow-md"
+							className={`hover:-translate-y-0.5 cursor-pointer rounded-xl bg-white shadow-sm transition-transform hover:shadow-md ${
+								insight.emotional_response
+									? (
+											() => {
+												const mainEmotion = Object.keys(EmotionsMap).find(
+													(key) => key.toLowerCase() === insight.emotional_response?.toLowerCase()
+												) as keyof typeof EmotionsMap | undefined
+												return mainEmotion && EmotionsMap[mainEmotion]?.color?.bg
+													? `${EmotionsMap[mainEmotion].color.bg} border-2`
+													: "border-gray-200"
+											}
+										)()
+									: "border-gray-200"
+							}`}
 							onClick={() => setSelected(insight)}
 						>
-							<CardContent className="p-4">
-								<h3 className="mb-2 font-semibold text-gray-900">{insight.name || "Untitled Insight"}</h3>
-								{insight.details && <p className="mb-3 line-clamp-2 text-gray-600 text-sm">{insight.details}</p>}
-								{insight.desired_outcome && (
-									<p className="mb-3 font-medium text-blue-600 text-sm">{insight.desired_outcome}</p>
-								)}
-								<div className="flex items-center justify-between">
-									<div className="flex items-center space-x-2">
-										{insight.category && (
-											<Badge variant="outline" className="text-xs">
-												{insight.category}
-											</Badge>
-										)}
-										{insight.impact && (
-											<Badge variant="secondary" className="text-xs">
-												Impact: {insight.impact}/10
-											</Badge>
-										)}
-									</div>
-									{insight.emotional_response && (
-										<span className="text-gray-500 text-sm capitalize">{insight.emotional_response}</span>
-									)}
+							<CardContent className="flex flex-col space-y-1 p-4">
+								<div className="mb-2 flex items-center space-x-2">
+									{insight.emotional_response && <EmotionBadge emotion={insight.emotional_response} />}
+									<h3 className="font-semibold text-gray-900">{insight.name || "Untitled Insight"}</h3>
 								</div>
+								{insight.desired_outcome && (
+									<p className="font-medium text-blue-600 text-sm">{insight.desired_outcome}</p>
+								)}
+								{/* emotion term now shown in badge */}
 							</CardContent>
 						</Card>
 					))}
 				</div>
 			)}
 
-			<Button className="fixed right-6 bottom-6 h-16 w-16 rounded-full" onClick={() => {}}>
-				<Plus className="h-6 w-6" />
+			<Button
+				className="fixed right-6 bottom-6 h-16 w-16 rounded-full bg-gradient-to-br from-blue-500 via-purple-500 to-pink-500 text-white shadow-xl hover:shadow-2xl focus:outline-none active:scale-95"
+				onClick={() => {}}
+			>
+				<Plus className="h-6 w-6 text-white" />
 			</Button>
 
 			{selected && (
 				<Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-					<DialogContent className="mx-auto max-w-md">
+					<DialogContent className="mx-auto max-w-md rounded-xl border bg-white p-6 shadow-lg">
 						<DialogHeader>
-							<DialogTitle className="text-left">{selected.name || "Insight Details"}</DialogTitle>
+							<div className="mb-2 flex items-center space-x-3">
+								{selected.emotional_response && <EmotionBadge emotion={selected.emotional_response} />}
+								<DialogTitle className="text-left font-bold text-xl">{selected.name || "Insight Details"}</DialogTitle>
+							</div>
 						</DialogHeader>
-						<div className="space-y-4">
+						<div className="space-y-6">
 							{selected.details && (
-								<div>
-									<h4 className="mb-2 font-medium text-gray-700 text-sm">Details</h4>
-									<p className="text-gray-600 text-sm">{selected.details}</p>
+								<div className="rounded-lg bg-gray-50 p-3">
+									<h4 className="mb-1 font-medium text-gray-700 text-sm">Details</h4>
+									<p className="text-base text-gray-700">{selected.details}</p>
 								</div>
 							)}
 
 							{selected.desired_outcome && (
-								<div>
-									<h4 className="mb-2 font-medium text-gray-700 text-sm">Desired Outcome</h4>
-									<p className="text-gray-600 text-sm">{selected.desired_outcome}</p>
+								<div className="rounded-lg bg-blue-50 p-3">
+									<h4 className="mb-1 font-medium text-blue-700 text-sm">Desired Outcome</h4>
+									<p className="text-base text-blue-700">{selected.desired_outcome}</p>
 								</div>
 							)}
 
 							{selected.evidence && (
-								<div>
-									<h4 className="mb-2 font-medium text-gray-700 text-sm">Evidence</h4>
-									<p className="text-gray-600 text-sm">{selected.evidence}</p>
+								<div className="rounded-lg bg-yellow-50 p-3">
+									<h4 className="mb-1 font-medium text-sm text-yellow-700">Evidence</h4>
+									<p className="text-base text-yellow-800">{selected.evidence}</p>
 								</div>
 							)}
 
 							{selected.jtbd && (
-								<div>
-									<h4 className="mb-2 font-medium text-gray-700 text-sm">Job to be Done</h4>
-									<p className="text-gray-600 text-sm">{selected.jtbd}</p>
+								<div className="rounded-lg bg-green-50 p-3">
+									<h4 className="mb-1 font-medium text-green-700 text-sm">Job to be Done</h4>
+									<p className="text-base text-green-800">{selected.jtbd}</p>
 								</div>
 							)}
 
-							<div className="flex items-center justify-between border-t pt-2">
-								<div className="flex items-center space-x-4 text-gray-500 text-xs">
-									{selected.impact && <span>Impact: {selected.impact}/10</span>}
-									{selected.pain && <span>Pain: {selected.pain}/10</span>}
+							<div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+								<div className="flex flex-wrap items-center gap-3 text-gray-500 text-xs">
+									{selected.impact && (
+										<span className="rounded bg-gray-100 px-2 py-1">Impact: {selected.impact}/10</span>
+									)}
+									{selected.pain && <span className="rounded bg-gray-100 px-2 py-1">Pain: {selected.pain}/10</span>}
 									{selected.category && (
 										<Badge variant="outline" className="text-xs">
 											{selected.category}
 										</Badge>
 									)}
 								</div>
-								{selected.emotional_response && (
-									<span className="text-gray-500 text-sm capitalize">{selected.emotional_response}</span>
-								)}
 							</div>
 						</div>
 					</DialogContent>
