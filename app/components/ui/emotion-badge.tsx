@@ -1,3 +1,6 @@
+import { Badge } from "~/components/ui/badge"
+import { cn } from "~/lib/utils"
+
 export const EmotionsMap = {
 	Angry: {
 		emoji: "😠",
@@ -105,20 +108,57 @@ export const EmotionsMap = {
 	},
 }
 
-export const EmotionBadge = ({ emotion }: { emotion: string }) => {
-	const mainEmotion = Object.keys(EmotionsMap).find((key) => key.toLowerCase() === emotion.toLowerCase()) as
-		| keyof typeof EmotionsMap
-		| undefined
-	const emoji =
-		mainEmotion && EmotionsMap[mainEmotion] && "emoji" in EmotionsMap[mainEmotion]
-			? EmotionsMap[mainEmotion].emoji
-			: "💡"
+type TopKey = keyof typeof EmotionsMap
+
+const eq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+
+/**
+ * Returns the top-level emotion config that contains `emotion`
+ * whether it's a top key, a subcategory key, or a leaf value.
+ */
+function findTopConfig(emotion: string) {
+	for (const [topKey, cfg] of Object.entries(EmotionsMap) as [TopKey, (typeof EmotionsMap)[TopKey]][]) {
+		// direct top-level match
+		if (eq(topKey, emotion)) return { topKey, cfg }
+
+		// scan subcategories & leaves
+		for (const [k, v] of Object.entries(cfg)) {
+			if (k === "emoji" || k === "color") continue
+			if (eq(k, emotion)) return { topKey, cfg } // subcategory match
+			if (Array.isArray(v) && v.some((leaf) => eq(leaf, emotion))) {
+				return { topKey, cfg } // leaf match
+			}
+		}
+	}
+	return null
+}
+
+const _FALLBACK = {
+	emoji: "💡",
+	color: { bg: "bg-gray-200", hoverBg: "hover:bg-gray-300", text: "text-gray-900", darkBg: "bg-gray-500" },
+}
+
+const MUTED = "opacity-70 brightness-95 saturate-[.8]"
+
+export const EmotionBadge = ({ emotion, muted = false }: { emotion: string; muted?: boolean }) => {
+	const found = findTopConfig(emotion)
+	const emoji = found?.cfg.emoji ?? "💡"
+	const color = found?.cfg.color ?? {
+		bg: "bg-gray-200",
+		text: "text-gray-900",
+		hoverBg: "hover:bg-gray-300",
+		darkBg: "bg-gray-500",
+	}
+
 	return (
-		<span className="badge flex items-center gap-1">
-			<span className="text-lg" aria-label={emotion} title={emotion}>
+		<span className="inline-flex items-center gap-1">
+			<span className="text-xs">Emotion:</span>
+			<span className={cn("text-xl", muted && MUTED)} aria-label={emotion} title={emotion}>
 				{emoji}
 			</span>
-			<span>{emotion}</span>
+			<Badge className={cn("p-1 text-xs", color.bg, color.text, color.hoverBg, `dark:${color.darkBg}`, muted && MUTED)}>
+				{emotion}
+			</Badge>
 		</span>
 	)
 }

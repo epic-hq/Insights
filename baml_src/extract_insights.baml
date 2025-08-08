@@ -252,24 +252,24 @@ enum BBValues {
 class ExtractedInsight {
 	// While trying to do **GOAL/Desired_outcome**, people struggle with **pain** because **WHY: Details/context**.
 
+	pain string | null @description("Pain, discomfort, or friction the user experiences in doing a task")
 	name string @description("Short Text description of the insight in up to 5 words")
-	details string | null @description("They why or cause of the pain. Details and background leading to or causing the pain. Multiple sentences or bullet points as needed.")
-	pain string | null @description("Pain or friction the user experiences in doing a task")
-	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
+	details string | null @description("The why or cause of the pain. Details and background leading to or causing the pain. Multiple sentences or bullet points as needed.")
 	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
+	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
 	emotionalResponse Emotions @description("describe the emotion the person feels about this using the Emotions enum.")
 	underlyingMotivation string | null @description("why do they want to achieve this, or overcome the pain?")
 	values BBValues[] @description("Which values is the person expressing?")
-	category string @description("General category of insight") @@dynamic
+	category string @description("The topical theme or category of the insight to help us group similar insights") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
-	impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")
-	novelty int | null @description("How unique or unexpected is the insight? (1 = common expectation, 5 = breakthrough idea)")
-	jtbd string | null @description("Job to be done style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
+	// impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")
+	// novelty int | null @description("How unique or unexpected is the insight? (1 = common expectation, 5 = breakthrough idea)")
+	jtbd string | null @description("The user story or **Job to be done** style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
 	// opportunityIdeas string[] | null @description("Opportunity ideas of insight")
-	confidence int | null @description("Confidence of insight")
+	// confidence int | null @description("Confidence of insight")
 	contradictions string | null @description("Potential contradictions and themes explicitly or implicitly by omission, things that the interviewee doesn’t say, e.g. given an opportunity to discuss A,B,C, they only discussed A. Does the user discuss opposing claims?")
 	relatedTags string[] @description("Related tags or keywords to the insight. Make tags conceptual, not UI feature names (e.g. social_accountability, not leaderboard)")
-	createdAt string | null @description("Created at of insight")
+	// createdAt string | null @description("Created at of insight")
 }
 
 class InterviewMetadata {

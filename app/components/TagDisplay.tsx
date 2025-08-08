@@ -1,3 +1,7 @@
+import consola from "consola"
+import { Badge } from "~/components/ui/badge"
+import { cn } from "~/lib/utils"
+
 interface Tag {
 	name: string
 	frequency: number
@@ -8,27 +12,24 @@ interface TagDisplayProps {
 	maxTags?: number
 }
 
+export const StyledTag = ({ name, style, frequency }: { name: string; style: any; frequency?: number }) => {
+	consola.log("sytledtag style = ", style)
+	return (
+		<div
+			key={`${name}-${frequency}`}
+			className="m-2 cursor-pointer rounded-full transition-all duration-200 hover:scale-105"
+			style={style}
+		>
+			<Badge className={cn("bg-slate-400", style)}>
+				{name}
+				{frequency && <span className="ml-2 text-xs opacity-90">{frequency}</span>}
+			</Badge>
+		</div>
+	)
+}
+
 export default function TagDisplay({ tags = [], maxTags = 5 }: TagDisplayProps) {
-	// Sample data if none provided
 	const defaultTags: Tag[] = []
-	// { name: "React", frequency: 45 },
-	// { name: "JavaScript", frequency: 38 },
-	// { name: "TypeScript", frequency: 32 },
-	// { name: "Next.js", frequency: 28 },
-	// { name: "CSS", frequency: 25 },
-	// { name: "Node.js", frequency: 22 },
-	// { name: "Python", frequency: 18 },
-	// { name: "HTML", frequency: 15 },
-	// { name: "Tailwind", frequency: 12 },
-	// { name: "API", frequency: 10 },
-	// { name: "Database", frequency: 8 },
-	// { name: "Authentication", frequency: 6 },
-	// { name: "Testing", frequency: 5 },
-	// { name: "Docker", frequency: 4 },
-	// { name: "GraphQL", frequency: 3 },
-	// { name: "MongoDB", frequency: 2 },
-	// { name: "Redis", frequency: 1 },
-	// ]
 
 	// Use provided tags or default tags, then limit to maxTags
 	const allTags = tags.length > 0 ? tags : defaultTags
@@ -115,23 +116,19 @@ export default function TagDisplay({ tags = [], maxTags = 5 }: TagDisplayProps) 
 				<p className="text-gray-600">Larger, darker tags appear more frequently</p>
 			</div> */}
 
-			<div className="flex flex-wrap items-center justify-start gap-4">
+			<div className="flex flex-wrap items-center justify-start">
 				{displayTags
 					.sort((a, b) => b.frequency - a.frequency)
-					.map((tag, index) => {
+					.map((tag, _index) => {
 						const style = getTagStyle(tag.frequency)
 
 						return (
-							<div
-								key={`${tag.name}-${index}`}
-								className="cursor-pointer rounded-full px-4 py-2 transition-all duration-200 hover:scale-105"
+							<StyledTag
+								key={`${tag.name}-$index`}
+								name={tag.name}
 								style={style}
-							>
-								<span className="select-none">
-									{tag.name}
-									<span className="ml-2 text-xs opacity-90">{tag.frequency}</span>
-								</span>
-							</div>
+								frequency={tag.frequency > 1 ? tag.frequency : undefined}
+							/>
 						)
 					})}
 			</div>

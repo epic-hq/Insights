@@ -14,20 +14,31 @@ export const getInsights = async ({
 	projectId: string
 }) => {
 	const query = supabase
-  .from("insights")
-  .select(`
+		.from("insights")
+		.select(`
     *,
     persona_insights:persona_insights (
       *,
       personas:personas (*)
-    )
+    ),
+		insight_tags:insight_tags (
+			tags (tag,term, definition)
+		)
   `)
-  .eq("account_id", accountId)
-  .eq("project_id", projectId)
-  .order("created_at", { ascending: false })
+		.eq("account_id", accountId)
+		.eq("project_id", projectId)
+		.order("created_at", { ascending: false })
 
 	const { data, error } = await query
-	return { data, error }
+	const transformedData = data?.map(insight => ({
+		...insight,
+		insight_tags: insight.insight_tags?.map(it => ({
+			tag: it.tags?.tag,
+			term: it.tags?.term,
+			definition: it.tags?.definition
+		})) || []
+	}))
+	return { data: transformedData, error }
 }
 
 export const getInsightById = async ({

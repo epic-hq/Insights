@@ -31,7 +31,7 @@ export default class TypeBuilder {
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
-    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "details" | "pain" | "desiredOutcome" | "evidence" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "impact" | "novelty" | "jtbd" | "confidence" | "contradictions" | "relatedTags" | "createdAt">;
+    ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
@@ -79,7 +79,7 @@ export default class TypeBuilder {
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
-          "name","details","pain","desiredOutcome","evidence","emotionalResponse","underlyingMotivation","values","category","journeyStage","impact","novelty","jtbd","confidence","contradictions","relatedTags","createdAt",
+          "pain","name","details","evidence","desiredOutcome","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [

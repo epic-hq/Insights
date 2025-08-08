@@ -13,6 +13,7 @@ import {
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import { EmotionBadge } from "~/components/ui/emotion-badge"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
@@ -73,10 +74,10 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				},
 			},
 			{
-				accessorKey: "frequency",
-				header: () => "Frequency",
+				accessorKey: "emotional_response",
+				header: () => "Emotion",
 				cell: (cell: CellContext<Insight, unknown>) => (
-					<span className="text-sm">{cell.getValue() as string | null}</span>
+					<EmotionBadge emotion={cell.getValue() as string | null} muted />
 				),
 			},
 			{

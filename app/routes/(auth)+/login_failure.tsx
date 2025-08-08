@@ -4,7 +4,7 @@ import { type LoaderFunctionArgs, redirect } from "react-router"
 export async function loader({ request }: LoaderFunctionArgs) {
 	consola.log("[LOGIN_FAILURE] No code or error occurred, redirecting to login_failure")
 	setTimeout(() => {
-		return redirect("/login_failure?error=auth_failed")
+		return redirect("/(auth)+/login")
 	}, 3000)
 }
 

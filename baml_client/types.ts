@@ -329,23 +329,19 @@ export interface ExecutiveInsight {
 }
 
 export interface ExtractedInsight {
+  pain?: string | null
   name: string
   details?: string | null
-  pain?: string | null
-  desiredOutcome?: string | null
   evidence?: string | null
+  desiredOutcome?: string | null
   emotionalResponse: Emotions
   underlyingMotivation?: string | null
   values: BBValues[]
   category: string
   journeyStage: string
-  impact?: number | null
-  novelty?: number | null
   jtbd?: string | null
-  confidence?: number | null
   contradictions?: string | null
   relatedTags: string[]
-  createdAt?: string | null
   
   [key: string]: any;
 }

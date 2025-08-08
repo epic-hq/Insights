@@ -95,12 +95,15 @@ export default function InsightsRoute() {
 						>
 							<CardContent className="flex flex-col space-y-1 p-4">
 								<div className="mb-2 flex items-center space-x-2">
-									{insight.emotional_response && <EmotionBadge emotion={insight.emotional_response} />}
-									<h3 className="font-semibold text-gray-900">{insight.name || "Untitled Insight"}</h3>
+									{insight.pain && <span className="text-semibold">{insight.pain}</span>}
 								</div>
-								{insight.desired_outcome && (
+								<h3 className="font-semibold text-gray-900">{insight.name || "Untitled Insight"}</h3>
+								<div className="mb-2 flex justify-end space-x-2">
+									{insight.emotional_response && <EmotionBadge emotion={insight.emotional_response} muted={true} />}
+								</div>
+								{/* {insight.desired_outcome && (
 									<p className="font-medium text-blue-600 text-sm">{insight.desired_outcome}</p>
-								)}
+								)} */}
 								{/* emotion term now shown in badge */}
 							</CardContent>
 						</Card>
@@ -117,14 +120,28 @@ export default function InsightsRoute() {
 
 			{selected && (
 				<Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-					<DialogContent className="mx-auto max-w-md rounded-xl border bg-white p-6 shadow-lg">
+					<DialogContent className="mx-auto max-w-md rounded-xl border bg-white p-6 shadow-lg max-[90vh]:max-h-[90vh]">
 						<DialogHeader>
 							<div className="mb-2 flex items-center space-x-3">
 								{selected.emotional_response && <EmotionBadge emotion={selected.emotional_response} />}
 								<DialogTitle className="text-left font-bold text-xl">{selected.name || "Insight Details"}</DialogTitle>
 							</div>
 						</DialogHeader>
-						<div className="space-y-6">
+						<div className="space-y-4">
+							<div className="flex flex-wrap items-center justify-between gap-2 border-t pt-4">
+								<div className="flex flex-wrap items-center gap-3 text-md text-slate-800">
+									{selected.pain && <span className="rounded px-2 py-1 text-semibold">{selected.pain}</span>}
+									{selected.category && (
+										<Badge variant="outline" className="text-sm">
+											{selected.category}
+										</Badge>
+									)}
+									{/* {selected.impact && (
+										<span className="rounded bg-gray-100 px-2 py-1">Impact: {selected.impact}/10</span>
+									)} */}
+								</div>
+							</div>
+
 							{selected.details && (
 								<div className="rounded-lg bg-gray-50 p-3">
 									<h4 className="mb-1 font-medium text-gray-700 text-sm">Details</h4>
@@ -152,20 +169,6 @@ export default function InsightsRoute() {
 									<p className="text-base text-green-800">{selected.jtbd}</p>
 								</div>
 							)}
-
-							<div className="mt-4 flex flex-wrap items-center justify-between gap-2 border-t pt-4">
-								<div className="flex flex-wrap items-center gap-3 text-gray-500 text-xs">
-									{selected.impact && (
-										<span className="rounded bg-gray-100 px-2 py-1">Impact: {selected.impact}/10</span>
-									)}
-									{selected.pain && <span className="rounded bg-gray-100 px-2 py-1">Pain: {selected.pain}/10</span>}
-									{selected.category && (
-										<Badge variant="outline" className="text-xs">
-											{selected.category}
-										</Badge>
-									)}
-								</div>
-							</div>
 						</div>
 					</DialogContent>
 				</Dialog>

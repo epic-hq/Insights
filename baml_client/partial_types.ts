@@ -63,23 +63,19 @@ export namespace partial_types {
       category?: string | null
     }
     export interface ExtractedInsight {
+      pain?: string | null
       name?: string | null
       details?: string | null
-      pain?: string | null
-      desiredOutcome?: string | null
       evidence?: string | null
+      desiredOutcome?: string | null
       emotionalResponse?: types.Emotions | null
       underlyingMotivation?: string | null
       values: types.BBValues[]
       category?: string | null
       journeyStage?: string | null
-      impact?: number | null
-      novelty?: number | null
       jtbd?: string | null
-      confidence?: number | null
       contradictions?: string | null
       relatedTags: string[]
-      createdAt?: string | null
       [key: string]: any;
     }
     export interface InterviewExtraction {
