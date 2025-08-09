@@ -70,14 +70,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 	if (intent === "delete") {
 		try {
-			await deleteInsight({
-				supabase,
-				id,
-				accountId,
-				projectId,
-			})
-
-			return redirect("/insights")
+			await deleteInsight({ supabase, accountId, projectId, id })
+			return redirect(`/a/${accountId}/${projectId}/insights`)
 		} catch {
 			return { error: "Failed to delete insight" }
 		}
@@ -115,7 +109,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { error: "Failed to update insight" }
 		}
 
-		return redirect(`/insights/${data.id}`)
+		return redirect(`/a/${accountId}/${projectId}/insights/${data.id}`)
 	} catch {
 		return { error: "Failed to update insight" }
 	}

@@ -5,19 +5,16 @@
 
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient, getAuthenticatedUser } from "~/lib/supabase/server"
 import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrateArrayData.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	try {
-		// Authenticate user
+		// User already authenticated by middleware, get from context instead of making API call
+		const user = await getAuthenticatedUser(request)
 		const { client: supabase } = getServerClient(request)
-		const {
-			data: { user },
-			error: authError,
-		} = await supabase.auth.getUser()
 
-		if (authError || !user) {
+		if (!user) {
 			consola.warn("Unauthorized migration attempt")
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}

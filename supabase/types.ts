@@ -352,6 +352,88 @@ export type Database = {
         }
         Relationships: []
       }
+      annotations: {
+        Row: {
+          account_id: string
+          ai_model: string | null
+          annotation_type: string
+          content: string | null
+          created_at: string | null
+          created_by_ai: boolean | null
+          created_by_user_id: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          metadata: Json | null
+          parent_annotation_id: string | null
+          project_id: string
+          status: string | null
+          thread_root_id: string | null
+          updated_at: string | null
+          visibility: string | null
+        }
+        Insert: {
+          account_id: string
+          ai_model?: string | null
+          annotation_type: string
+          content?: string | null
+          created_at?: string | null
+          created_by_ai?: boolean | null
+          created_by_user_id?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          metadata?: Json | null
+          parent_annotation_id?: string | null
+          project_id: string
+          status?: string | null
+          thread_root_id?: string | null
+          updated_at?: string | null
+          visibility?: string | null
+        }
+        Update: {
+          account_id?: string
+          ai_model?: string | null
+          annotation_type?: string
+          content?: string | null
+          created_at?: string | null
+          created_by_ai?: boolean | null
+          created_by_user_id?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          metadata?: Json | null
+          parent_annotation_id?: string | null
+          project_id?: string
+          status?: string | null
+          thread_root_id?: string | null
+          updated_at?: string | null
+          visibility?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "annotations_parent_annotation_id_fkey"
+            columns: ["parent_annotation_id"]
+            isOneToOne: false
+            referencedRelation: "annotations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotations_thread_root_id_fkey"
+            columns: ["thread_root_id"]
+            isOneToOne: false
+            referencedRelation: "annotations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       comments: {
         Row: {
           account_id: string
@@ -386,6 +468,56 @@ export type Database = {
             columns: ["insight_id"]
             isOneToOne: false
             referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      entity_flags: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          flag_type: string
+          flag_value: boolean | null
+          id: string
+          metadata: Json | null
+          project_id: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          flag_type: string
+          flag_value?: boolean | null
+          id?: string
+          metadata?: Json | null
+          project_id: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          flag_type?: string
+          flag_value?: boolean | null
+          id?: string
+          metadata?: Json | null
+          project_id?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "entity_flags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1196,30 +1328,42 @@ export type Database = {
       projects: {
         Row: {
           account_id: string
+          background: Json | null
           created_at: string
           description: string | null
+          findings: Json | null
+          goal: Json | null
           id: string
           name: string
+          questions: Json | null
           slug: string | null
           status: string | null
           updated_at: string
         }
         Insert: {
           account_id: string
+          background?: Json | null
           created_at?: string
           description?: string | null
+          findings?: Json | null
+          goal?: Json | null
           id?: string
           name: string
+          questions?: Json | null
           slug?: string | null
           status?: string | null
           updated_at?: string
         }
         Update: {
           account_id?: string
+          background?: Json | null
           created_at?: string
           description?: string | null
+          findings?: Json | null
+          goal?: Json | null
           id?: string
           name?: string
+          questions?: Json | null
           slug?: string | null
           status?: string | null
           updated_at?: string
@@ -1266,6 +1410,50 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      votes: {
+        Row: {
+          account_id: string
+          created_at: string | null
+          entity_id: string
+          entity_type: string
+          id: string
+          project_id: string
+          updated_at: string | null
+          user_id: string
+          vote_value: number
+        }
+        Insert: {
+          account_id: string
+          created_at?: string | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          project_id: string
+          updated_at?: string | null
+          user_id: string
+          vote_value: number
+        }
+        Update: {
+          account_id?: string
+          created_at?: string | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          project_id?: string
+          updated_at?: string | null
+          user_id?: string
+          vote_value?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "votes_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -1370,6 +1558,17 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: Json
       }
+      get_annotation_counts: {
+        Args: {
+          p_entity_type: string
+          p_entity_id: string
+          p_project_id: string
+        }
+        Returns: {
+          annotation_type: string
+          count: number
+        }[]
+      }
       get_personal_account: {
         Args: Record<PropertyKey, never>
         Returns: Json
@@ -1377,6 +1576,38 @@ export type Database = {
       get_user_accounts: {
         Args: Record<PropertyKey, never>
         Returns: Json
+      }
+      get_user_flags: {
+        Args: {
+          p_entity_type: string
+          p_entity_id: string
+          p_project_id: string
+        }
+        Returns: {
+          flag_type: string
+          flag_value: boolean
+          metadata: Json
+        }[]
+      }
+      get_user_vote: {
+        Args: {
+          p_entity_type: string
+          p_entity_id: string
+          p_project_id: string
+        }
+        Returns: number
+      }
+      get_vote_counts: {
+        Args: {
+          p_entity_type: string
+          p_entity_id: string
+          p_project_id: string
+        }
+        Returns: {
+          upvotes: number
+          downvotes: number
+          total_votes: number
+        }[]
       }
       halfvec_avg: {
         Args: { "": number[] }

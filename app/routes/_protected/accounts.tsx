@@ -61,8 +61,8 @@ async function parse_account_id_from_params({
 			accountsList?.map((a) => a.account_id)
 		)
 
-		const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
-		consola.log("/accounts: Get account response:", getAccountResponse)
+		// const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
+		// consola.log("/accounts: Get account response:", getAccountResponse)
 		if (account) {
 			return account
 		}

@@ -4,6 +4,8 @@ import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
 import { getOpportunityById } from "~/features/opportunities/db"
 import { userContext } from "~/server/user-context"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -46,6 +48,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 export default function OpportunityDetail() {
 	const { opportunity } = useLoaderData<typeof loader>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath)
 
 	const getStatusColor = (status: string) => {
 		switch (status) {
@@ -96,7 +100,7 @@ export default function OpportunityDetail() {
 								{opportunity.opportunity_insights.map((opportunityInsight) => (
 									<div key={opportunityInsight.insights.id} className="border-l-4 border-blue-500 pl-4">
 										<Link
-											to={`/insights/${opportunityInsight.insights.id}`}
+											to={routes.insights.detail(opportunityInsight.insights.id)}
 											className="font-medium text-blue-600 hover:text-blue-800"
 										>
 											{opportunityInsight.insights.name}

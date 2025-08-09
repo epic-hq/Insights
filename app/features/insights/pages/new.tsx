@@ -56,7 +56,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { error: "Failed to create insight" }
 		}
 
-		return redirect(`/insights/${data.id}`)
+		return redirect(`/a/${accountId}/${projectId}/insights/${data.id}`)
 	} catch (error) {
 		console.error("Error creating insight:", error)
 		return { error: "Failed to create insight" }

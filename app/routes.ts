@@ -1,4 +1,5 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
+import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
@@ -33,6 +34,9 @@ const routes = [
 				...peopleRoutes,
 				...personasRoutes,
 				...mobileRoutes,
+
+				// Annotations API routes (need project context)
+				...annotationsRoutes,
 			]),
 		]),
 	]),

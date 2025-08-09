@@ -5,23 +5,22 @@
 
 import type { ActionFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/server"
+import { loadContext } from "~/server/load-context"
+import { userContext } from "~/server/user-context"
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	try {
-		// Get authenticated user and account ID
+		// User already authenticated by middleware, get from context instead of making API call
+		const user = await getAuthenticatedUser(request)
 		const supabase = getServerClient(request)
-		const {
-			data: { user },
-		} = await supabase.auth.getUser()
 
 		if (!user) {
 			return Response.json({ error: "User not authenticated" }, { status: 401 })
 		}
 
-		// Extract account ID from JWT claims
-		const jwt = await supabase.auth.getSession()
-		const accountId = jwt.data.session?.user?.app_metadata?.claims?.sub
+		// Extract account ID from user context (no additional API calls needed)
+		const accountId = user.sub || user.id
 
 		if (!accountId) {
 			return Response.json({ error: "Account ID not found in user claims" }, { status: 400 })

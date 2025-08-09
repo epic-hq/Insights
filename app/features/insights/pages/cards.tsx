@@ -1,3 +1,5 @@
+import consola from "consola"
+import { useCallback } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useSearchParams } from "react-router-dom"
 import InsightCardGrid from "~/features/insights/components/InsightCardGrid"
@@ -22,16 +24,15 @@ export default function Cards() {
 	const { insights, filters } = useLoaderData<typeof loader>()
 	const [searchParams, setSearchParams] = useSearchParams()
 
-	const updateSort = (sort: string) => {
+	const updateSort = useCallback((sort: string) => {
 		const newParams = new URLSearchParams(searchParams)
 		newParams.set("sort", sort)
 		setSearchParams(newParams)
-	}
+	}, [searchParams, setSearchParams])
 
-	const clearFilters = () => {
+	const clearFilters = useCallback(() => {
 		setSearchParams({})
-	}
-
+	}, [setSearchParams])
 	return (
 		<>
 			<div className="mb-4 flex items-center justify-between">

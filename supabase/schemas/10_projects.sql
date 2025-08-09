@@ -7,7 +7,11 @@ create table if not exists projects (
   name text not null,
 	slug text,
   description text,
-	status text,
+	status text default 'new',
+	goal JSONB,
+	questions JSONB,
+	background JSONB,
+	findings JSONB,
 	constraint projects_account_id_slug_unique unique (account_id, slug),
   created_at timestamptz not null default now(),
 	updated_at timestamptz not null default now()

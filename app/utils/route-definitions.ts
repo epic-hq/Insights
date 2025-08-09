@@ -86,6 +86,10 @@ export interface RouteDefinitions {
 		interviewStatus: () => string
 		generatePersonas: () => string
 		insightsUpdateField: () => string
+		// Annotations API routes (project-scoped)
+		annotations: () => string
+		votes: () => string
+		entityFlags: () => string
 	}
 }
 
@@ -175,6 +179,9 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			interviewStatus: () => "/api/interview-status",
 			generatePersonas: () => "/api.generate-personas",
 			insightsUpdateField: () => `${base}/insights/api/update-field`,
+			annotations: () => `${base}/api/annotations`,
+			votes: () => `${base}/api/votes`,
+			entityFlags: () => `${base}/api/entity-flags`,
 		},
 	}
 }

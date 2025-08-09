@@ -9,10 +9,9 @@ import {
 	MessageCircle,
 	Pencil,
 	QuoteIcon,
+	Pencil,
 	Send,
 	Sparkles,
-	ThumbsDown,
-	ThumbsUp,
 	TrendingUp,
 } from "lucide-react"
 import React, { useState } from "react"
@@ -25,7 +24,26 @@ import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Input } from "~/components/ui/input"
 import { Separator } from "~/components/ui/separator"
+import { Textarea } from "~/components/ui/textarea"
+import {
+	ThumbsUp,
+	ThumbsDown,
+	MessageCircle,
+	Archive,
+	EyeOff,
+	MoreHorizontal,
+	Edit,
+	Trash2,
+} from "lucide-react"
+import {
+	DropdownMenu,
+	DropdownMenuContent,
+	DropdownMenuItem,
+	DropdownMenuTrigger,
+} from "~/components/ui/dropdown-menu"
+import { cn } from "~/lib/utils"
 import type { Insight, InsightView } from "~/types"
+import { useEntityAnnotations } from "~/features/annotations/hooks"
 
 export interface Comment {
 	id: string
