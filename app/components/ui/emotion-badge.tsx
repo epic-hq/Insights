@@ -106,9 +106,57 @@ export const EmotionsMap = {
 		Rejected: ["Excluded", "Persecuted"],
 		Threatened: ["Nervous", "Exposed"],
 	},
-}
+} as const
 
 type TopKey = keyof typeof EmotionsMap
+
+// top-level (Angry, Disgusted, Sad, Happy, Surprised, Bad, Fearful)
+export type TopEmotion = keyof typeof EmotionsMap
+
+// subcategory keys under each top (e.g., Frustrated, Vulnerable, Proud…)
+type SubKeys<T> = Exclude<keyof T, "emoji" | "color">
+type SubEmotion = { [K in TopEmotion]: SubKeys<(typeof EmotionsMap)[K]> }[TopEmotion]
+
+// leaf terms (e.g., Annoyed, Powerless, Confident…)
+type LeafEmotion = {
+	[K in TopEmotion]: {
+		[S in SubKeys<(typeof EmotionsMap)[K]>]: (typeof EmotionsMap)[K][S] extends readonly string[]
+			? (typeof EmotionsMap)[K][S][number]
+			: never
+	}[SubKeys<(typeof EmotionsMap)[K]>]
+}[TopEmotion]
+
+// final union = top | subcategory | leaf
+export type Emotion = TopEmotion | SubEmotion | LeafEmotion
+
+// Flat, typed list for selects/autocomplete
+export const EMOTIONS_ALL = Object.freeze(
+	Object.entries(EmotionsMap).flatMap(([top, cfg]) => {
+		const out = [top]
+		for (const [k, v] of Object.entries(cfg)) {
+			if (k === "emoji" || k === "color") continue
+			out.push(k)
+			if (Array.isArray(v)) out.push(...v)
+		}
+		return out
+	})
+) as Emotion[]
+
+// Quick validator
+export function isEmotion(x: string): x is Emotion {
+	return !!findTopConfig(x)
+}
+
+export function getEmotionClasses(e: Emotion, opts?: { muted?: boolean }) {
+	const found = findTopConfig(e)
+	const c = found?.cfg.color ?? {
+		bg: "bg-gray-200",
+		hoverBg: "hover:bg-gray-300",
+		text: "text-gray-900",
+		darkBg: "bg-gray-500",
+	}
+	return cn(c.bg, c.text, c.hoverBg, `dark:${c.darkBg}`, opts?.muted && "opacity-70 brightness-95 saturate-[.8]")
+}
 
 const eq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
 
@@ -140,8 +188,8 @@ const _FALLBACK = {
 
 const MUTED = "opacity-70 brightness-95 saturate-[.8]"
 
-export const EmotionBadge = ({ emotion, muted = false }: { emotion: string; muted?: boolean }) => {
-	const found = findTopConfig(emotion)
+export const EmotionBadge = ({ emotion_string, muted = false }: { emotion_string: string; muted?: boolean }) => {
+	const found = findTopConfig(emotion_string)
 	const emoji = found?.cfg.emoji ?? "💡"
 	const color = found?.cfg.color ?? {
 		bg: "bg-gray-200",
@@ -153,11 +201,11 @@ export const EmotionBadge = ({ emotion, muted = false }: { emotion: string; mute
 	return (
 		<span className="inline-flex items-center gap-1">
 			<span className="text-xs">Emotion:</span>
-			<span className={cn("text-xl", muted && MUTED)} aria-label={emotion} title={emotion}>
+			<span className={cn("text-xl", muted && MUTED)} aria-label={emotion_string} title={emotion_string}>
 				{emoji}
 			</span>
 			<Badge className={cn("p-1 text-xs", color.bg, color.text, color.hoverBg, `dark:${color.darkBg}`, muted && MUTED)}>
-				{emotion}
+				{emotion_string}
 			</Badge>
 		</span>
 	)

@@ -1,7 +1,6 @@
 import consola from "consola"
 import { useRouteLoaderData } from "react-router"
 import { useAuth } from "~/contexts/AuthContext"
-import AccountDetailCard from "~/features/accounts/components/AccountDetailCard"
 import ProjectContextCard from "~/features/projects/components/ProjectContextCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Project } from "~/types"
@@ -35,7 +34,7 @@ export default function Index() {
 		<div className="mx-auto max-w-7xl space-y-10 px-6 py-8">
 			<h1 className="mb-4 font-bold text-3xl">Home</h1>
 			<div className="space-y-8">
-				<section>
+				{/* <section>
 					<h2 className="mb-4 font-semibold text-muted-foreground text-xl">Accounts</h2>
 					{accounts?.length === 0 ? (
 						<div className="text-muted-foreground">No accounts found.</div>
@@ -46,7 +45,7 @@ export default function Index() {
 							))}
 						</div>
 					)}
-				</section>
+				</section> */}
 				<section>
 					<h2 className="mb-4 font-semibold text-muted-foreground text-xl">Projects</h2>
 					{projects?.length === 0 ? (

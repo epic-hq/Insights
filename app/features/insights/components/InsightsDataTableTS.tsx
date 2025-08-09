@@ -77,7 +77,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				accessorKey: "emotional_response",
 				header: () => "Emotion",
 				cell: (cell: CellContext<Insight, unknown>) => (
-					<EmotionBadge emotion={cell.getValue() as string | null} muted />
+					<EmotionBadge emotion_string={cell.getValue() as string} muted />
 				),
 			},
 			{
@@ -85,7 +85,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				header: () => "Priority",
 				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => (
-					<span className="font-semibold text-sm">{cell.getValue() as string | null}</span>
+					<span className="font-semibold text-sm">{cell.getValue() as string}</span>
 				),
 			},
 		],

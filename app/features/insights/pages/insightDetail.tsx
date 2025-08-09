@@ -1,4 +1,5 @@
 import consola from "consola"
+import React from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
@@ -50,6 +51,25 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	}
 }
 
+export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: any }> {
+	constructor(props: { children: React.ReactNode }) {
+		super(props)
+		this.state = { error: null }
+	}
+	static getDerivedStateFromError(error: any) {
+		return { error }
+	}
+	componentDidCatch(_error: any) {
+		// Optionally send to server or analytics here
+	}
+	render() {
+		if (this.state.error) {
+			return <div style={{ color: "red" }}>An error occurred: {String(this.state.error)}</div>
+		}
+		return this.props.children
+	}
+}
+
 export default function InsightDetail() {
 	const { insight } = useLoaderData<typeof loader>()
 	if (!insight) {
@@ -64,8 +84,9 @@ export default function InsightDetail() {
 				<span className="text-gray-500">/</span>
 				<span className="text-gray-900">{insight.name}</span>
 			</div> */}
-
-			<InsightCardV2 insight={insight} />
+			<ErrorBoundary>
+				<InsightCardV2 insight={insight} />
+			</ErrorBoundary>
 		</div>
 	)
 }

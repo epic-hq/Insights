@@ -99,7 +99,9 @@ export default function InsightsRoute() {
 								</div>
 								<h3 className="font-semibold text-gray-900">{insight.name || "Untitled Insight"}</h3>
 								<div className="mb-2 flex justify-end space-x-2">
-									{insight.emotional_response && <EmotionBadge emotion={insight.emotional_response} muted={true} />}
+									{insight.emotional_response && (
+										<EmotionBadge emotion_string={insight.emotional_response} muted={true} />
+									)}
 								</div>
 								{/* {insight.desired_outcome && (
 									<p className="font-medium text-blue-600 text-sm">{insight.desired_outcome}</p>
@@ -123,7 +125,7 @@ export default function InsightsRoute() {
 					<DialogContent className="mx-auto max-w-md rounded-xl border bg-white p-6 shadow-lg max-[90vh]:max-h-[90vh]">
 						<DialogHeader>
 							<div className="mb-2 flex items-center space-x-3">
-								{selected.emotional_response && <EmotionBadge emotion={selected.emotional_response} />}
+								{selected.emotional_response && <EmotionBadge emotion_string={selected.emotional_response} />}
 								<DialogTitle className="text-left font-bold text-xl">{selected.name || "Insight Details"}</DialogTitle>
 							</div>
 						</DialogHeader>

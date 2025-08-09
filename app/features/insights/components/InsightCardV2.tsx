@@ -15,7 +15,8 @@ import {
 	ThumbsUp,
 	TrendingUp,
 } from "lucide-react"
-import { useState } from "react"
+import React, { useState } from "react"
+import { useFetcher, useParams } from "react-router"
 
 import EditableTextarea from "~/components/EditableTextarea"
 import { Badge } from "~/components/ui/badge"
@@ -43,38 +44,13 @@ export interface InsightCardV2Props {
 	onDontShowMe?: () => void
 }
 
-// Mock API functions
-const mockAPI = {
-	updateInsight: async (id: string, field: string, value: string) => {
-		consola.log(`Updating insight ${id}: ${field} = ${value}`)
-		// Simulate API delay
-		await new Promise((resolve) => setTimeout(resolve, 500))
-		return { success: true }
-	},
-
-	vote: async (id: string, voteType: "up" | "down") => {
-		consola.log(`Voting ${voteType} on insight ${id}`)
-		await new Promise((resolve) => setTimeout(resolve, 300))
-		return { success: true }
-	},
-
-	addComment: async (id: string, comment: string) => {
-		consola.log(`Adding comment to insight ${id}: ${comment}`)
-		await new Promise((resolve) => setTimeout(resolve, 500))
-		return { success: true, id: Date.now().toString() }
-	},
-
-	hideInsight: async (id: string) => {
-		consola.log(`Hiding insight ${id}`)
-		await new Promise((resolve) => setTimeout(resolve, 300))
-		return { success: true }
-	},
-
-	archiveInsight: async (id: string) => {
-		consola.log(`Archiving insight ${id}`)
-		await new Promise((resolve) => setTimeout(resolve, 300))
-		return { success: true }
-	},
+// Helper function to validate insight ID
+const validateInsightId = (id: string | undefined): string | null => {
+	if (!id || id.trim() === '') {
+		consola.error('Invalid insight ID:', id)
+		return null
+	}
+	return id.trim()
 }
 
 const getCategoryColor = (category: string) => {
@@ -95,6 +71,24 @@ const getJourneyStageColor = (stage: string) => {
 	return colors[stage as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200"
 }
 
+// Error boundary component (currently unused but kept for future use)
+class InsightCardErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: Error | null }> {
+	constructor(props: { children: React.ReactNode }) {
+		super(props)
+		this.state = { error: null }
+	}
+	static getDerivedStateFromError(error: Error) {
+		return { error }
+	}
+	componentDidCatch(_error: Error) {}
+	render() {
+		if (this.state.error) {
+			return <div style={{ color: "red" }}>An error occurred in InsightCardV2: {String(this.state.error)}</div>
+		}
+		return this.props.children
+	}
+}
+
 export default function InsightCardV2({
 	insight,
 	onUpvote = () => {},
@@ -104,8 +98,15 @@ export default function InsightCardV2({
 	onDontShowMe = () => {},
 	onTagClick = () => {},
 }: InsightCardV2Props) {
+	consola.trace("InsightCardV2")
+	const params = useParams()
+	const projectId = params.projectId
+	const voteFetcher = useFetcher()
+	const commentFetcher = useFetcher()
+	const archiveFetcher = useFetcher()
+	
+	const [editingValue, setEditingValue] = useState<string>("")  
 	const [editingField, setEditingField] = useState<string | null>(null)
-	const [editingValue, setEditingValue] = useState<string>("")
 
 	// Helper to handle save
 	const [savingField, setSavingField] = useState<string | null>(null)
@@ -115,7 +116,7 @@ export default function InsightCardV2({
 		setSavingField(field)
 		try {
 			const newValue = typeof value === "string" ? value : editingValue
-			if (localInsight[field] !== newValue) {
+			if ((localInsight as Record<string, unknown>)[field] !== newValue) {
 				// Optimistically update local state
 				setLocalInsight((prev) => ({ ...prev, [field]: newValue }))
 				// Persist change to DB
@@ -139,7 +140,7 @@ export default function InsightCardV2({
 	// Helper to handle edit start
 	const handleEditStart = (field: string) => {
 		setEditingField(field)
-		setEditingValue(localInsight[field] || "")
+		setEditingValue((localInsight as Record<string, unknown>)[field] as string || "")
 	}
 
 	// Handler for inline text submit
@@ -161,7 +162,7 @@ export default function InsightCardV2({
 	}) => {
 		const isEditing = editingField === field
 		const isSaving = savingField === field
-		const value = localInsight[field] || ""
+		const value = (localInsight as Record<string, unknown>)[field] as string || ""
 
 		return (
 			<div
@@ -234,16 +235,12 @@ export default function InsightCardV2({
 	}
 
 	// TODO get away from defining local views unless necessary
-	const [localInsight, setLocalInsight] = useState<InsightView>({
+	// Extended insight state with UI-only fields
+	const [localInsight, setLocalInsight] = useState<InsightView & { upvotes?: number; downvotes?: number }>({
 		...insight,
 		comments: insight.comments || [],
-		upvotes: insight.upvotes || 0,
-		downvotes: insight.downvotes || 0,
-		// opportunityIdeas: insight.opportunityIdeas || [],
-		// interviews: insight.interviews || [],
-		// personas: insight.personas || [],
-		// emotional_response: insight.emotional_response || "",
-		// confidence: insight.confidence || "",
+		upvotes: 0, // UI-only field for display
+		downvotes: 0, // UI-only field for display
 	})
 	const [_showMore, _setShowMoree] = useState(false)
 
@@ -253,26 +250,57 @@ export default function InsightCardV2({
 	const [newComments, setNewComments] = useState<{ [key: string]: string }>({})
 
 	const handleVote = async (voteType: "up" | "down") => {
-		const currentVote = votedInsights[localInsight.id]
-		const newVote = currentVote === voteType ? null : voteType
+		const insightId = validateInsightId(localInsight?.id)
+		if (!insightId || !projectId) {
+			consola.error('Cannot vote: missing insight ID or project ID', { insightId, projectId })
+			return
+		}
 
+		// Optimistic update
+		const currentVote = votedInsights[insightId]
+		const newVote = currentVote === voteType ? null : voteType
 		setVotedInsights((prev) => ({
 			...prev,
-			[localInsight.id]: newVote,
+			[insightId]: newVote,
 		}))
 
-		await mockAPI.vote(localInsight.id, voteType)
+		// Update vote counts optimistically (UI-only)
+		setLocalInsight((prev) => ({
+			...prev,
+			upvotes: voteType === 'up' ? (prev.upvotes || 0) + 1 : prev.upvotes,
+			downvotes: voteType === 'down' ? (prev.downvotes || 0) + 1 : prev.downvotes,
+		}))
+
+		// Submit to database
+		voteFetcher.submit(
+			{ insightId, voteType, projectId },
+			{ method: 'post', action: '/insights/api/vote', encType: 'application/json' }
+		)
 	}
 
 	const handleAddComment = async () => {
-		const commentText = newComments[localInsight.id]?.trim()
+		const insightId = validateInsightId(localInsight?.id)
+		if (!insightId || !projectId) {
+			consola.error('Cannot add comment: missing insight ID or project ID', { insightId, projectId })
+			return
+		}
+
+		const commentText = newComments[insightId]?.trim()
 		if (!commentText) return
 
-		const newComment: Comment = {
+		// Optimistically add comment to local state (matching CommentView structure)
+		const newComment: CommentView = {
 			id: Date.now().toString(),
+			account_id: '', // Will be filled by server
+			content: commentText,
+			created_at: new Date().toISOString(),
+			insight_id: insightId,
+			updated_at: new Date().toISOString(),
+			user_id: '', // Will be filled by server
+			// UI-friendly fields
 			author: "You",
-			text: commentText,
 			timestamp: new Date().toISOString(),
+			text: commentText,
 		}
 
 		setLocalInsight((prev) => ({
@@ -280,25 +308,56 @@ export default function InsightCardV2({
 			comments: [...(prev.comments || []), newComment],
 		}))
 
-		setNewComments((prev) => ({ ...prev, [localInsight.id]: "" }))
+		setNewComments((prev) => ({ ...prev, [insightId]: "" }))
 
-		await mockAPI.addComment(localInsight.id, commentText)
+		// Submit to database
+		commentFetcher.submit(
+			{ insightId, comment: commentText, projectId },
+			{ method: 'post', action: '/insights/api/add-comment', encType: 'application/json' }
+		)
 	}
 
 	const handleHide = async () => {
+		const insightId = validateInsightId(localInsight?.id)
+		if (!insightId || !projectId) {
+			consola.error('Cannot hide: missing insight ID or project ID', { insightId, projectId })
+			return
+		}
+
 		onDontShowMe()
-		await mockAPI.hideInsight(localInsight.id)
+		
+		// Submit to database
+		archiveFetcher.submit(
+			{ insightId, projectId, action: 'hide' },
+			{ method: 'post', action: '/insights/api/archive', encType: 'application/json' }
+		)
 	}
 
 	const handleArchive = async () => {
+		const insightId = validateInsightId(localInsight?.id)
+		if (!insightId || !projectId) {
+			consola.error('Cannot archive: missing insight ID or project ID', { insightId, projectId })
+			return
+		}
+
 		onArchive()
-		await mockAPI.archiveInsight(localInsight.id)
+		
+		// Submit to database
+		archiveFetcher.submit(
+			{ insightId, projectId, action: 'archive' },
+			{ method: 'post', action: '/insights/api/archive', encType: 'application/json' }
+		)
 	}
 
 	const toggleComments = () => {
+		const insightId = validateInsightId(localInsight?.id)
+		if (!insightId) {
+			consola.error("toggleComments: invalid insight ID", { localInsight })
+			return
+		}
 		setShowComments((prev) => ({
 			...prev,
-			[localInsight.id]: !prev[localInsight.id],
+			[insightId]: !prev[insightId],
 		}))
 	}
 
@@ -640,10 +699,10 @@ export default function InsightCardV2({
 							{localInsight.comments?.map((comment) => (
 								<div key={comment.id} className="rounded-md bg-gray-50 p-2">
 									<div className="mb-1 flex items-start justify-between">
-										<span className="font-medium text-gray-700 text-xs">{comment.author}</span>
-										<span className="text-gray-500 text-xs">{new Date(comment.timestamp).toLocaleDateString()}</span>
+										<span className="font-medium text-gray-700 text-xs">{comment.author || 'Anonymous'}</span>
+										<span className="text-gray-500 text-xs">{new Date(comment.timestamp || comment.created_at || '').toLocaleDateString()}</span>
 									</div>
-									<p className="text-gray-600 text-sm">{comment.text}</p>
+									<p className="text-gray-600 text-sm">{comment.text || comment.content}</p>
 								</div>
 							))}
 						</div>
@@ -679,7 +738,7 @@ export default function InsightCardV2({
 							onClick={() => handleVote("up")}
 						>
 							<ThumbsUp className="mr-1 h-4 w-4" />
-							{localInsight.upvotes}
+							{localInsight.upvotes || 0}
 						</Button>
 						<Button
 							variant="ghost"
@@ -690,7 +749,7 @@ export default function InsightCardV2({
 							onClick={() => handleVote("down")}
 						>
 							<ThumbsDown className="mr-1 h-4 w-4" />
-							{localInsight.downvotes}
+							{localInsight.downvotes || 0}
 						</Button>
 						<Button
 							variant="ghost"

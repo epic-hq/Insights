@@ -1,4 +1,3 @@
-import consola from "consola"
 import { Badge } from "~/components/ui/badge"
 import { cn } from "~/lib/utils"
 
@@ -13,7 +12,6 @@ interface TagDisplayProps {
 }
 
 export const StyledTag = ({ name, style, frequency }: { name: string; style: any; frequency?: number }) => {
-	consola.log("sytledtag style = ", style)
 	return (
 		<div
 			key={`${name}-${frequency}`}

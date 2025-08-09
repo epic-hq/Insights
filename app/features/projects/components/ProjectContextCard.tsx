@@ -40,10 +40,10 @@ export default function ProjectContextCard({ project, className, projectPath }: 
 						<div>status:</div>
 						<div className="rounded bg-muted px-2 py-0.5">{project.status}</div>
 					</div>
-					<div className="flex flex-wrap gap-2 py-2 text-xs">
+					{/* <div className="flex flex-wrap gap-2 py-2 text-xs">
 						<div>slug:</div>
 						<div className="text-muted-foreground text-xs">{project.slug}</div>
-					</div>
+					</div> */}
 				</div>
 			</div>
 		</motion.div>
