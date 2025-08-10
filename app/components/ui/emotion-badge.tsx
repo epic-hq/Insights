@@ -158,7 +158,7 @@ export function getEmotionClasses(e: Emotion, opts?: { muted?: boolean }) {
 	return cn(c.bg, c.text, c.hoverBg, `dark:${c.darkBg}`, opts?.muted && "opacity-70 brightness-95 saturate-[.8]")
 }
 
-const eq = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase()
+const eq = (a: string | null, b: string | null) => a?.trim().toLowerCase() === b?.trim().toLowerCase()
 
 /**
  * Returns the top-level emotion config that contains `emotion`

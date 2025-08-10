@@ -1,4 +1,5 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
+import aiChatRoutes from "./features/aichat/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import homeRoutes from "./features/home/routes"
@@ -27,6 +28,7 @@ const routes = [
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
+				...aiChatRoutes,
 				...dashboardRoutes,
 				...interviewsRoutes,
 				...insightsRoutes,

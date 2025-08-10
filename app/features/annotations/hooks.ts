@@ -169,7 +169,8 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 		})
 		consola.log("useVoting", { entityType, entityId, searchParams, votesUrl })
 		fetcher.load(`${votesUrl}?${searchParams}`)
-	}, [entityType, entityId, projectPath, votesUrl, fetcher.load])
+		consola.log("useVoting fetcher", fetcher)
+	}, [entityType, entityId, projectPath, votesUrl, fetcher.load, fetcher])
 
 	// Handle fetcher state changes
 	useEffect(() => {

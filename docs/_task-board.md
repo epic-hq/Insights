@@ -5,25 +5,30 @@
 - [x] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
 - [x] Reset db.
 - [x] remove the db creation of response table
-- [x] fix login-redirect, and sign-in flow. <rickmoy@gmail.com> is broken but <rick@deeplight.digital> works hmmm.
+- [x] fix login-redirect, and sign-in flow.
 - [x] Define Routing
 - [x] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
 - [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
 project detail getproject by id fails
 insights blank due to missing project_id for previous interviews. Test going forward.
+- [x] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
 - [x] insightDetail - not found bc linking to project_id. needs error guard
 - [x] personaDetail & edit
-- [ ] people
-- [ ] peopleDetail
+- [x] people
+- [x] peopleDetail
 - [ ] persona not added to proj or not queried right after add interview
 - [ ] generate persona. path.
+- [ ] how to handle routes:
+  - /$accountId
+  - /home my accounts(pro), projects, user profile settings etc?
 
 - [x] Deployed to fly.io as `upsight.fly.dev`
-- [ ] Update all links to protectedLayout in app/routes
+- [x] Update all links to protectedLayout in app/routes
+- [ ] interview upload should redir to interview detail page.
+
 - [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
 
-- [ ] CRUD functions for people, projects, personas, tags, opportunities
-- [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
+- [ ] Test & verify CRUD functions for people, projects, personas, tags, opportunities
 
 Defer:
 
@@ -33,6 +38,7 @@ Defer:
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
+- [ ] Simple UI for project dashboard (summary insights, suggestions, chat)
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data
 
 ## Sprint 3.5 - Annotations Component
@@ -44,7 +50,7 @@ Defer:
 
 - [X] Research and architect a pipeline queue for transcription: `docs/feature-spec-transcription-pipeline.md`
 - [ ] Implement queues
-- [ ] Convert existing 'Add Interview' process to use the queues
+- [ ] Convert existing 'Add Interview' process to use the queues and show Onboarding sequence cards
 - [ ] Implement Generation queue (already spec'd)
 - [ ] Handle longer files, use as upgrade trigger. AAI timeout handling
 
