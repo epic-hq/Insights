@@ -1,5 +1,4 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
-import consola from "consola"
 import type { Database, } from "~/types"
 
 // This is our pattern for defining typed queries and returning results.
@@ -21,6 +20,7 @@ export const getInsights = async ({
       *,
       personas:personas (*)
     ),
+		interviews (*),
 		insight_tags:insight_tags (
 			tags (tag,term, definition)
 		)
@@ -54,14 +54,17 @@ export const getInsightById = async ({
 }) => {
 	const insightByIdQuery = supabase
 		.from("insights")
-		.select("*")
-		// .select(`
-		// 	*,
-		// 	interviews (*),
-		// 	insight_tags (
-		// 		tags (*)
-		// 	)
-		// `)
+		.select(`
+			*,
+			persona_insights:persona_insights (
+				*,
+				personas:personas (*)
+			),
+			interviews (*),
+			insight_tags:insight_tags (
+				tags (tag,term, definition)
+			)
+		`)
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)
@@ -70,7 +73,8 @@ export const getInsightById = async ({
 	type InsightById = QueryData<typeof insightByIdQuery>
 
 	const { data, error } = await insightByIdQuery
-	consola.log("getInsightById", data, error)
+
+	// consola.log("getInsightById", data, error)
 
 	if (error) {
 		// PGRST116 means no rows returned from .single()

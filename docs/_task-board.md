@@ -11,12 +11,12 @@
 - [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
 project detail getproject by id fails
 insights blank due to missing project_id for previous interviews. Test going forward.
-x insightDetail - not found bc linking to project_id. needs error guard
-x personaDetail & edit
-- people
-- peopleDetail
-- persona not added to proj or not queried right after add interview
-- generate persona. path.
+- [x] insightDetail - not found bc linking to project_id. needs error guard
+- [x] personaDetail & edit
+- [ ] people
+- [ ] peopleDetail
+- [ ] persona not added to proj or not queried right after add interview
+- [ ] generate persona. path.
 
 - [x] Deployed to fly.io as `upsight.fly.dev`
 - [ ] Update all links to protectedLayout in app/routes
@@ -27,9 +27,18 @@ x personaDetail & edit
 
 Defer:
 
+## Sprint 2.5 - Project Management
+
+- [ ] Project display, editing, sections
+
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data
+
+## Sprint 3.5 - Annotations Component
+
+- [ ] Create proper component for annotations
+- [ ] Add annotations to insights and pick cards, v2, quick, or mobile
 
 ## Sprint 4: Workflow Pipelines
 
@@ -48,9 +57,9 @@ Defer:
 - [ ] A better breadcrumbs, indicate current project.
 - [ ] Show suggestions for next steps.
 - [ ] Reduce clutter
- 	- [ ] dont makeadd 'inline edit' in other records like interviews etc.
- 	- [ ] breadcrumbs parent not clickable
- 	- []
+  - [ ] dont makeadd 'inline edit' in other records like interviews etc.
+  - [ ] breadcrumbs parent not clickable
+  - []
 - [ ] Organize insights. Group similar insights into themes. count frequences. See by personas. expand on pain points and causes.
 - [ ] How to make UX Better to get maximum WOW insights? (revise `user-flow.md`)
 Prioritize.

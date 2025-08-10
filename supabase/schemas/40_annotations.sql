@@ -103,6 +103,19 @@ ALTER TABLE public.annotations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.votes ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.entity_flags ENABLE ROW LEVEL SECURITY;
 
+-- Policy: Allow account members to insert annotations for any account they are a member of
+create policy "Account members can insert annotations"
+    on public.annotations
+    for insert
+    with check (
+        auth.uid() = created_by_user_id
+        or exists (
+            select 1 from accounts.account_user
+            where account_user.user_id = auth.uid()
+              and account_user.account_id = account_id
+        )
+        or auth.role() = 'service_role'
+    );
 -- HELPER FUNCTIONS
 
 -- Function to get annotation counts for an entity

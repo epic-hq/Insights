@@ -149,11 +149,7 @@ export async function createAnnotation({
 			ai_model: aiModel,
 		}
 
-		const { data, error } = await supabase
-			.from("annotations")
-			.insert(insertData)
-			.select()
-			.single()
+		const { data, error } = await supabase.from("annotations").insert(insertData).select().single()
 
 		if (error) {
 			consola.error("Error creating annotation:", error)
@@ -204,10 +200,7 @@ export async function deleteAnnotation({
 	annotationId: string
 }) {
 	try {
-		const { error } = await supabase
-			.from("annotations")
-			.delete()
-			.eq("id", annotationId)
+		const { error } = await supabase.from("annotations").delete().eq("id", annotationId)
 
 		if (error) {
 			consola.error("Error deleting annotation:", error)
@@ -378,12 +371,11 @@ export async function getUserFlagsForEntity({
 	projectId: string
 }) {
 	try {
-		const { data, error } = await supabase
-			.rpc("get_user_flags", {
-				p_entity_type: entityType,
-				p_entity_id: entityId,
-				p_project_id: projectId,
-			})
+		const { data, error } = await supabase.rpc("get_user_flags", {
+			p_entity_type: entityType,
+			p_entity_id: entityId,
+			p_project_id: projectId,
+		})
 
 		if (error) {
 			consola.error("Error fetching user flags:", error)

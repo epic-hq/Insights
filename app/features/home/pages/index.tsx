@@ -1,24 +1,33 @@
 import consola from "consola"
-import { useRouteLoaderData } from "react-router"
+import { type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
 import { useAuth } from "~/contexts/AuthContext"
-import ProjectContextCard from "~/features/projects/components/ProjectContextCard"
+import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { getServerClient } from "~/lib/supabase/server"
 import type { Project } from "~/types"
 
-// export async function loader(loaderArgs: LoaderFunctionArgs) {
-// 	const account_id = loaderArgs.context.get(currentAccountContext)
-// 	const { client: supabase } = getServerClient(loaderArgs.request)
+export async function loader(loaderArgs: LoaderFunctionArgs) {
+	// const account_id = loaderArgs.context.get(currentAccountContext)
+	const { client: supabase } = getServerClient(loaderArgs.request)
+	const _project_id = loaderArgs.params.projectId
 
-// 	const { data: accounts } = await supabase.rpc("get_accounts")
-// 	// consola.log("/accounts: Accounts list:", accountsList)
+	const { data: latest_sections } = await supabase
+		// .from("project_sections_latest")
+		.from("project_sections")
+		.select("*")
+		// .eq("project_id", project_id)
+		.order("position", { ascending: true, nullsFirst: false })
+		.order("created_at", { ascending: false })
+	consola.log("/project sections: Latest sections:", latest_sections)
 
-// 	const { data: projects } = await supabase.from("projects").select("*").eq("account_id", account_id)
-// 	return { accounts, projects: accounts.projects }
-// }
+	// const { data: projects } = await supabase.from("projects").select("*").eq("account_id", account_id)
+	return { latest_sections }
+}
 
 export default function Index() {
 	const { account_settings } = useAuth()
-	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout")
+	const { accounts, project_sections } = useRouteLoaderData("routes/_ProtectedLayout")
+	const { latest_sections } = useLoaderData<typeof loader>()
 	consola.log("Home acct accounts & account_settings:", accounts, account_settings)
 
 	const projects: Project[] = accounts?.flatMap((account) =>
@@ -51,12 +60,13 @@ export default function Index() {
 					{projects?.length === 0 ? (
 						<div className="text-muted-foreground">No projects found.</div>
 					) : (
-						<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+						<div className="grid gap-6 sm:grid-cols-1 2xl:grid-cols-2">
 							{projects?.map((project) => (
-								<ProjectContextCard
+								<ProjectCard
 									key={project.id}
 									project={project}
 									projectPath={routes.projects.dashboard(project.id)}
+									sections={project_sections || []}
 								/>
 							))}
 						</div>

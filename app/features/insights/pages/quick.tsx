@@ -3,6 +3,7 @@ import { Search } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
@@ -168,7 +169,7 @@ export default function QuickInsights() {
 							</div>
 						</div>
 						<DialogFooter className="!flex !flex-row !justify-start !items-start">
-							<div className="text-left">TODO: Comments & stuff</div>
+							<EntityInteractionPanel entityType="insight" entityId={selected.id} />
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

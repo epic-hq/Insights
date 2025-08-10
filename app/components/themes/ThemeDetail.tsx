@@ -158,7 +158,10 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 								key={interview.id}
 								className="rounded-lg border border-gray-200 p-3 transition-shadow hover:shadow-md dark:border-gray-700"
 							>
-								<Link to={routes.interviews.detail(interview.id)} className="font-medium text-blue-600 hover:text-blue-800">
+								<Link
+									to={routes.interviews.detail(interview.id)}
+									className="font-medium text-blue-600 hover:text-blue-800"
+								>
 									{interview.participant_pseudonym || "Anonymous"}
 								</Link>
 								<div className="mt-2 flex items-center">

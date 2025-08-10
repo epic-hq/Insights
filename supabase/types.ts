@@ -1325,45 +1325,96 @@ export type Database = {
           },
         ]
       }
+      project_section_kinds: {
+        Row: {
+          id: string
+        }
+        Insert: {
+          id: string
+        }
+        Update: {
+          id?: string
+        }
+        Relationships: []
+      }
+      project_sections: {
+        Row: {
+          content_md: string
+          content_tsv: unknown | null
+          created_at: string
+          id: string
+          kind: string
+          meta: Json | null
+          position: number | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          content_md: string
+          content_tsv?: unknown | null
+          created_at?: string
+          id?: string
+          kind: string
+          meta?: Json | null
+          position?: number | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          content_md?: string
+          content_tsv?: unknown | null
+          created_at?: string
+          id?: string
+          kind?: string
+          meta?: Json | null
+          position?: number | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_sections_kind_fkey"
+            columns: ["kind"]
+            isOneToOne: false
+            referencedRelation: "project_section_kinds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_sections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       projects: {
         Row: {
           account_id: string
-          background: Json | null
           created_at: string
           description: string | null
-          findings: Json | null
-          goal: Json | null
           id: string
           name: string
-          questions: Json | null
           slug: string | null
           status: string | null
           updated_at: string
         }
         Insert: {
           account_id: string
-          background?: Json | null
           created_at?: string
           description?: string | null
-          findings?: Json | null
-          goal?: Json | null
           id?: string
           name: string
-          questions?: Json | null
           slug?: string | null
           status?: string | null
           updated_at?: string
         }
         Update: {
           account_id?: string
-          background?: Json | null
           created_at?: string
           description?: string | null
-          findings?: Json | null
-          goal?: Json | null
           id?: string
           name?: string
-          questions?: Json | null
           slug?: string | null
           status?: string | null
           updated_at?: string
@@ -1483,6 +1534,35 @@ export type Database = {
           updated_at: string | null
         }
         Relationships: []
+      }
+      project_sections_latest: {
+        Row: {
+          content_md: string | null
+          content_tsv: unknown | null
+          created_at: string | null
+          id: string | null
+          kind: string | null
+          meta: Json | null
+          position: number | null
+          project_id: string | null
+          updated_at: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_sections_kind_fkey"
+            columns: ["kind"]
+            isOneToOne: false
+            referencedRelation: "project_section_kinds"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_sections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
       }
     }
     Functions: {
