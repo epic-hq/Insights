@@ -1,5 +1,5 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
-import type { Database, } from "~/types"
+import type { Database, InsightInsert, } from "~/types"
 
 // This is our pattern for defining typed queries and returning results.
 // in particular, we should create variables that describe the results
@@ -15,12 +15,26 @@ export const getInsights = async ({
 	const query = supabase
 		.from("insights")
 		.select(`
-    *,
+			interview_id,
+			name,
+			pain,
+			details,
+			category,
+			journey_stage,
+			emotional_response,
+			desired_outcome,
+			jtbd,
+			impact,
+			evidence,
+			motivation,
+			contradictions,
+			updated_at,
+			project_id,
     persona_insights:persona_insights (
       *,
-      personas:personas (*)
+      personas:personas (name,id)
     ),
-		interviews (*),
+		interviews (title,id),
 		insight_tags:insight_tags (
 			tags (tag,term, definition)
 		)
@@ -55,16 +69,30 @@ export const getInsightById = async ({
 	const insightByIdQuery = supabase
 		.from("insights")
 		.select(`
-			*,
-			persona_insights:persona_insights (
-				*,
-				personas:personas (*)
-			),
-			interviews (*),
-			insight_tags:insight_tags (
-				tags (tag,term, definition)
-			)
-		`)
+			interview_id,
+			name,
+			pain,
+			details,
+			category,
+			journey_stage,
+			emotional_response,
+			desired_outcome,
+			jtbd,
+			impact,
+			evidence,
+			motivation,
+			contradictions,
+			updated_at,
+			project_id,
+    persona_insights:persona_insights (
+      *,
+      personas:personas (name,id)
+    ),
+		interviews (title,id),
+		insight_tags:insight_tags (
+			tags (tag,term, definition)
+		)
+  `)
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)
@@ -97,7 +125,7 @@ export const createInsight = async ({
 	data,
 }: {
 	supabase: SupabaseClient<Database>
-	data: Database["public"]["Tables"]["insights"]["Insert"] & { project_id: string }
+	data: InsightInsert & { project_id: string }
 }) => {
 	return await supabase.from("insights").insert(data).select().single()
 }

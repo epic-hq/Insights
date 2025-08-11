@@ -60,7 +60,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			if (interviewIds.length > 0) {
 				const { data: interviewsData, error: interviewsError } = await supabase
 					.from("interviews")
-					.select("*")
+					.select("*id")
 					.in("id", interviewIds)
 
 				if (interviewsError) {

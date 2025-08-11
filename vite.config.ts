@@ -11,13 +11,25 @@ import tsconfigPaths from "vite-tsconfig-paths"
 export default defineConfig({
 	base: "/",
 	resolve: { alias: { "@": "/src" } },
-	// Externalize BAML native modules to prevent bundling issues
+	// Externalize BAML native modules and AWS SDK to prevent bundling issues
 	optimizeDeps: {
-		exclude: ["@boundaryml/baml", "@boundaryml/baml-darwin-arm64"],
+		exclude: [
+			"@boundaryml/baml", 
+			"@boundaryml/baml-darwin-arm64",
+			"@aws-sdk/credential-provider-sso",
+			"@aws-sdk/token-providers",
+			"@langchain/aws"
+		],
 	},
 	ssr: {
 		noExternal: [],
-		external: ["@boundaryml/baml", "@boundaryml/baml-darwin-arm64"],
+		external: [
+			"@boundaryml/baml", 
+			"@boundaryml/baml-darwin-arm64",
+			"@aws-sdk/credential-provider-sso",
+			"@aws-sdk/token-providers",
+			"@langchain/aws"
+		],
 	},
 	plugins: [
 		tailwindcss(),

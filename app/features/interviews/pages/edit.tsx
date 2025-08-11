@@ -30,15 +30,26 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	}
 
 	try {
-		const { data: interview, error } = await getInterviewById({
+		const { data: interviewData, error } = await getInterviewById({
 			supabase,
 			accountId,
 			projectId,
 			id: interviewId,
 		})
 
-		if (error || !interview) {
+		if (error || !interviewData) {
 			throw new Response("Interview not found", { status: 404 })
+		}
+
+		// Exclude large transcript data from loader response to prevent memory leaks
+		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData
+		
+		const interview = {
+			...interviewMetadata,
+			// Only include transcript length for display, not full content
+			transcriptLength: transcript?.length || 0,
+			hasTranscript: !!transcript,
+			hasFormattedTranscript: !!transcript_formatted,
 		}
 
 		return { interview }

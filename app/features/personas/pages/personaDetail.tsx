@@ -128,7 +128,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (interviewIds.length > 0) {
 		const { data: interviewsData, error: interviewsError } = await supabase
 			.from("interviews")
-			.select("*")
+			.select("id,created_at,participant_pseudonym,status,updated_at")
 			.in("id", interviewIds)
 
 		if (interviewsError) {
@@ -142,7 +142,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("persona_insights")
 		.select(`
 			insights (
-				*
+				id,
+				name,
+				category,
+				pain,
+				journey_stage,
+				emotional_response,
+				insight_tags (
+					tags (
+						tag
+					)
+				)
 			)
 		`)
 		.eq("persona_id", personaId)

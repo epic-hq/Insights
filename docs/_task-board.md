@@ -16,34 +16,26 @@ insights blank due to missing project_id for previous interviews. Test going for
 - [x] personaDetail & edit
 - [x] people
 - [x] peopleDetail
-- [ ] persona not added to proj or not queried right after add interview
-- [ ] generate persona. path.
-- [ ] how to handle routes:
-  - /$accountId
-  - /home my accounts(pro), projects, user profile settings etc?
-
+- [x] persona not added to proj or not queried right after add interview
 - [x] Deployed to fly.io as `upsight.fly.dev`
 - [x] Update all links to protectedLayout in app/routes
-- [ ] interview upload should redir to interview detail page.
-
-- [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
-
-- [ ] Test & verify CRUD functions for people, projects, personas, tags, opportunities
-
-Defer:
+- [x] interview upload should redir to interview detail page.
 
 ## Sprint 2.5 - Project Management
 
-- [ ] Project display, editing, sections
+- [x] Project display, editing, sections
+- [ ] Test & confirm
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
+- [ ] Memory leak fix. <https://facebook.github.io/memlab/docs/getting-started/>
 - [ ] Simple UI for project dashboard (summary insights, suggestions, chat)
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data
+- [ ] Chat Workflows with Data
 
 ## Sprint 3.5 - Annotations Component
 
-- [ ] Create proper component for annotations
+- [x] Create proper component for annotations
 - [ ] Add annotations to insights and pick cards, v2, quick, or mobile
 
 ## Sprint 4: Workflow Pipelines
@@ -73,6 +65,16 @@ Prioritize.
 
 ## 🌓 Backlog / Later
 
+- [ ] Migrate auth and Organizations to BetterAuth, get Stripe integration working.
+
+Defer:
+
+- [ ] generate persona. path.
+- [ ] how to handle routes:
+  - /$accountId
+  - /home my accounts(pro), projects, user profile settings etc?
+- [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
+- [ ] Test & verify CRUD functions for people, projects, personas, tags, opportunities
 - [ ] Update RLS to require account_id AND project_id.
 - [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
 - [ ] Cannot delete users due to fk constraints.

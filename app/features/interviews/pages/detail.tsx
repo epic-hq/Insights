@@ -8,7 +8,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
-import { TranscriptResults } from "../components/TranscriptResults"
+import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -63,10 +63,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			throw new Response(`Error fetching participants: ${error.message}`, { status: 500 })
 		}
 
+		// Exclude large transcript data from loader response to prevent memory leaks
+		// Only include transcript metadata, not the full content
+		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData
+		
 		const interview = {
-			...interviewData,
+			...interviewMetadata,
 			participants,
 			primaryParticipant,
+			// Only include transcript length for display, not full content
+			transcriptLength: transcript?.length || 0,
+			hasTranscript: !!transcript,
+			hasFormattedTranscript: !!transcript_formatted,
 		}
 
 		// Fetch insights related to this interview with junction table tags
@@ -292,13 +300,10 @@ export default function InterviewDetail() {
 
 					{/* Transcript Section */}
 					<div>
-						<TranscriptResults
-							data={{
-								utterances: interview.transcript_formatted?.speaker_transcripts,
-								iab_categories_result: interview.transcript_formatted?.topic_detection,
-								sentiment_analysis_results: interview.transcript_formatted?.sentiment_analysis,
-							}}
-							rawTranscript={interview.transcript || undefined}
+						<LazyTranscriptResults
+							interviewId={interview.id}
+							hasTranscript={interview.hasTranscript}
+							hasFormattedTranscript={interview.hasFormattedTranscript}
 						/>
 					</div>
 				</div>

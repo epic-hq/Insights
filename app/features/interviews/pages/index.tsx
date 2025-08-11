@@ -2,7 +2,6 @@ import consola from "consola"
 import { formatDistance } from "date-fns"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
-import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviews } from "~/features/interviews/db"
 import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
@@ -37,7 +36,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response(`Error fetching interviews: ${error.message}`, { status: 500 })
 	}
 
-	consola.log(`Found ${rows?.length || 0} interviews`)
+	// consola.log(`Found ${rows?.length || 0} interviews`)
 
 	// Fetch insights count for each interview
 	const { data: allInsights, error: insightsError } = await supabase
@@ -106,7 +105,7 @@ export default function InterviewsIndex() {
 	const { interviews, segmentData } = useLoaderData<typeof loader>()
 	const { accountId, projectId, projectPath } = useCurrentProject()
 	// const { accountId, projectId, projectPath } = useParams()
-	consola.log("interviews projectpath", projectPath)
+	// consola.log("interviews projectpath", projectPath)
 	const routes = useProjectRoutes(projectPath)
 
 	return (
@@ -121,7 +120,7 @@ export default function InterviewsIndex() {
 
 			<div className="mt-6">
 				<h2 className="mb-4 font-semibold text-xl">Interview Segments</h2>
-				<PrettySegmentPie data={segmentData} />
+				{/* <PrettySegmentPie data={segmentData} /> */}
 			</div>
 
 			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">

@@ -24,7 +24,8 @@ export const getPeople = async ({
 			),
 			interview_people (
 				interviews (
-					*
+					id,
+					title,
 				)
 			)
 		`)
@@ -50,7 +51,8 @@ export const getPersonById = async ({
 			*,
 			people_personas (
 				personas (
-					*
+					id,
+					name,
 				),
 				confidence_score,
 				source,
@@ -60,9 +62,15 @@ export const getPersonById = async ({
 			),
 			interview_people (
 				interviews (
-					*,
+					id,
+					title,
 					insights (
-						*
+						id,
+						name,
+						category,
+						pain,
+						journey_stage,
+						emotional_response,
 					)
 				)
 			)

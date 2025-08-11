@@ -166,7 +166,7 @@ export async function seedTestData() {
  */
 export async function getTestDbState() {
 	const [interviews, people, links, insights, tags, junctionTags] = await Promise.all([
-		testDb.from("interviews").select("*").eq("account_id", TEST_ACCOUNT_ID),
+		testDb.from("interviews").select("id,title").eq("account_id", TEST_ACCOUNT_ID),
 		testDb.from("people").select("*").eq("account_id", TEST_ACCOUNT_ID),
 		testDb.from("interview_people").select("*"),
 		testDb.from("insights").select("*").eq("account_id", TEST_ACCOUNT_ID),

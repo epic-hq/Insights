@@ -57,7 +57,9 @@ const routes = [
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
+	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 	route("api/generate-personas", "./routes/api.generate-personas.tsx"),
+	route("api/copilotkit", "./features/aichat/api/copilotkit.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),
