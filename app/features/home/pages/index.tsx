@@ -1,4 +1,4 @@
-import consola from "consola"
+// import consola from "consola"
 import { type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"
@@ -10,7 +10,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const { supabase, account_id: user_id } = ctx
 
-	consola.log("home loader:", user_id)
+	// consola.log("home loader:", user_id)
 	// Get projects for the current account
 	// get account_id from user_id
 	// const { data: accounts } = await supabase.schema("accounts").from("account_user").select("*").eq("user_id", user_id)
@@ -22,7 +22,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		.eq("user_id", user_id)
 		.neq("account_id", user_id)
 	const account_id = accounts?.[0]?.account_id || ""
-	consola.log("account_id:", account_id)
+	// consola.log("account_id:", account_id)
 	if (!account_id) {
 		return {
 			projects: [],
@@ -34,7 +34,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		supabase,
 		accountId: account_id,
 	})
-	consola.log("projects:", projects)
+	// consola.log("projects:", projects)
 	// Get project sections for the current account
 	const { data: latest_sections } = await supabase
 		.from("project_sections")

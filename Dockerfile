@@ -26,10 +26,14 @@ WORKDIR /app
 # Copy only prod deps & built assets
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm \
-  && pnpm install --prod --frozen-lockfile
+  && pnpm install --prod --frozen-lockfile \
+  && pnpm add concurrently
 
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public
+COPY --from=build /app/.mastra ./.mastra
+# Create directory for Mastra database if needed
+RUN mkdir -p /app/data
 # COPY --from=build /app/.cache ./.cache
 # COPY .env.production /app/.env.production
 COPY --chown=node:node .env.production .
@@ -38,7 +42,10 @@ USER node
 ENV NODE_ENV=production \
     PORT=3000 \
     HOST=0.0.0.0 \
-    NODE_OPTIONS=--max_old_space_size=1024
+    NODE_OPTIONS=--max_old_space_size=1024 \
+    MASTRA_DB_PATH=/app/data/mastra.db
 
 EXPOSE 3000
-CMD ["dotenvx", "run", "-f", ".env.production", "--", "pnpm", "start"]
+
+# Run both app and Mastra concurrently by default
+CMD ["dotenvx", "run", "-f", ".env.production", "--", "npx", "concurrently", "-n", "App,Mastra", "--c", "green,cyan", "pnpm start", "npx mastra serve --dir app/mastra"]

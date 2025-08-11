@@ -188,7 +188,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
-	consola.log("Tag frequency query:", { tagFrequencyData, tagFrequencyError, accountId, projectId })
+	// consola.log("Tag frequency query:", { tagFrequencyData, tagFrequencyError, accountId, projectId })
 
 	// Process tag frequency data into the format expected by TagDisplay
 	type TagFrequency = { name: string; frequency: number }

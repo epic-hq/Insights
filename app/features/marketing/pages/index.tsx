@@ -10,8 +10,6 @@ export const meta: MetaFunction = () => {
 	return [{ title: "Insights Platform" }, { name: "description", content: "Insights for conversations" }]
 }
 
-
-
 export default function LandingPage() {
 	return (
 		<div className="flex min-h-screen flex-col bg-gray-50 text-gray-900">
@@ -51,7 +49,9 @@ export default function LandingPage() {
 								<div className="inline-block rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-700 text-sm">
 									Powerful Features
 								</div>
-								<h2 className="font-bold text-3xl tracking-tighter sm:text-5xl">Unlock Deeper Understanding with AI</h2>
+								<h2 className="font-bold text-3xl tracking-tighter sm:text-5xl">
+									Unlock Deeper Understanding with Guided AI
+								</h2>
 								<p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
 									Our platform combines advanced AI with intuitive visualizations to give you unparalleled insight into
 									your customer data.
@@ -64,7 +64,7 @@ export default function LandingPage() {
 									<div className="mb-4">
 										<Zap className="h-10 w-10 text-blue-600" />
 									</div>
-									<h3 className="mb-2 font-semibold">Real-time AI Insights</h3>
+									<h3 className="mb-2 font-semibold">Grounded Truths in Real Time</h3>
 									<p className="text-gray-600 text-sm">
 										Get instant, actionable discoveries pushed directly to you as new data emerges.
 									</p>
@@ -108,7 +108,7 @@ export default function LandingPage() {
 									<div className="mb-4">
 										<MessageSquare className="h-10 w-10 text-red-600" />
 									</div>
-									<h3 className="mb-2 font-semibold">Interactive AI Chat</h3>
+									<h3 className="mb-2 font-semibold">Effortless and Intelligent</h3>
 									<p className="text-gray-600 text-sm">
 										Converse directly with your data and AI assistant for deeper exploration.
 									</p>
