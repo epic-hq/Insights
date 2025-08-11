@@ -15,6 +15,7 @@ export const getInsights = async ({
 	const query = supabase
 		.from("insights")
 		.select(`
+			id,
 			interview_id,
 			name,
 			pain,

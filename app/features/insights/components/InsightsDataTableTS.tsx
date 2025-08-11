@@ -220,21 +220,25 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 					))}
 				</TableHeader>
 				<TableBody>
-					{table.getRowModel().rows.map((row) => (
-						<TableRow key={row.id}>
-							{row.getVisibleCells().map((cell, i) => (
-								<TableCell key={cell.id}>
-									{i === 0 ? (
-										<Link to={routes.insights.detail(row.original.id)}>
-											{flexRender(cell.column.columnDef.cell, cell.getContext())}
-										</Link>
-									) : (
-										flexRender(cell.column.columnDef.cell, cell.getContext())
-									)}
-								</TableCell>
-							))}
-						</TableRow>
-					))}
+					{table.getRowModel().rows.map((row) => {
+						// Extract ID safely with fallback
+						const insightId = row.original?.id
+						return (
+							<TableRow key={row.id}>
+								{row.getVisibleCells().map((cell, i) => (
+									<TableCell key={cell.id}>
+										{i === 0 && insightId ? (
+											<Link to={routes.insights.detail(insightId)}>
+												{flexRender(cell.column.columnDef.cell, cell.getContext())}
+											</Link>
+										) : (
+											flexRender(cell.column.columnDef.cell, cell.getContext())
+										)}
+									</TableCell>
+								))}
+							</TableRow>
+						)
+					})}
 				</TableBody>
 			</Table>
 		</div>
