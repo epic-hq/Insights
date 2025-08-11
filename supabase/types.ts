@@ -1327,12 +1327,15 @@ export type Database = {
       }
       project_section_kinds: {
         Row: {
+          Goal: string | null
           id: string
         }
         Insert: {
+          Goal?: string | null
           id: string
         }
         Update: {
+          Goal?: string | null
           id?: string
         }
         Relationships: []
@@ -1342,34 +1345,40 @@ export type Database = {
           content_md: string
           content_tsv: unknown | null
           created_at: string
+          created_by: string
           id: string
           kind: string
           meta: Json | null
           position: number | null
           project_id: string
           updated_at: string
+          updated_by: string
         }
         Insert: {
           content_md: string
           content_tsv?: unknown | null
           created_at?: string
+          created_by: string
           id?: string
           kind: string
           meta?: Json | null
           position?: number | null
           project_id: string
           updated_at?: string
+          updated_by: string
         }
         Update: {
           content_md?: string
           content_tsv?: unknown | null
           created_at?: string
+          created_by?: string
           id?: string
           kind?: string
           meta?: Json | null
           position?: number | null
           project_id?: string
           updated_at?: string
+          updated_by?: string
         }
         Relationships: [
           {

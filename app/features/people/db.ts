@@ -1,5 +1,6 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import consola from "consola"
+import type { Database, } from "~/types"
 
 export const getPeople = async ({
 	supabase,
@@ -10,7 +11,7 @@ export const getPeople = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase
+	const { data, error } = await supabase
 		.from("people")
 		.select(`
 			*,
@@ -25,13 +26,16 @@ export const getPeople = async ({
 			interview_people (
 				interviews (
 					id,
-					title,
+					title
 				)
 			)
 		`)
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
+
+	consola.log("getPeople data: ", data)
+	return { data, error }
 }
 
 export const getPersonById = async ({
@@ -52,7 +56,7 @@ export const getPersonById = async ({
 			people_personas (
 				personas (
 					id,
-					name,
+					name
 				),
 				confidence_score,
 				source,
@@ -70,7 +74,7 @@ export const getPersonById = async ({
 						category,
 						pain,
 						journey_stage,
-						emotional_response,
+						emotional_response
 					)
 				)
 			)
@@ -85,7 +89,14 @@ export const getPersonById = async ({
 	const { data, error } = await personByIdQuery
 
 	if (error) {
+		consola.error("getPersonById error:", error)
+		consola.error("Query params:", { accountId, projectId, id })
 		throw new Response("Failed to load person", { status: 500 })
+	}
+
+	if (!data) {
+		consola.error("getPersonById: No data returned for person", { accountId, projectId, id })
+		throw new Response("Person not found", { status: 404 })
 	}
 
 	const personData: PersonById = data

@@ -124,7 +124,14 @@ export const getInterviewParticipants = async ({
 				segment,
 				description,
 				contact_info,
-				persona
+				people_personas (
+					persona_id,
+					personas (
+						id,
+						name,
+						color_hex
+					)
+				)
 			)
 		`)
 		.eq("interview_id", interviewId)

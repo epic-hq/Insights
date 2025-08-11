@@ -377,9 +377,7 @@ export default function EditProject() {
 									</div>
 								))}
 								<div className="flex gap-3">
-									<Button type="submit" variant="secondary">
-										Save Sections
-									</Button>
+									<Button type="submit">Save Sections</Button>
 								</div>
 							</form>
 

@@ -56,10 +56,10 @@ async function parse_account_id_from_params({
 		// consola.log("/accounts: Current user role:", current_user_role)
 
 		const { data: accountsList } = await supabase.rpc("get_accounts")
-		consola.log(
-			"/accounts: Accounts list:",
-			accountsList?.map((a) => a.account_id)
-		)
+		// consola.log(
+		// 	"/accounts: Accounts list:",
+		// 	accountsList?.map((a) => a.account_id)
+		// )
 
 		// const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
 		// consola.log("/accounts: Get account response:", getAccountResponse)

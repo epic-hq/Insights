@@ -1,19 +1,25 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
 import { User } from "lucide-react"
-import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
+import type { PersonRow } from "~/types"
 
-// Types
-export type PersonRow = Database["public"]["Tables"]["people"]["Row"] & {
+// Type for person with nested personas from interview participants query
+interface PersonWithPersonas {
+	id: string
+	name: string | null
+	image_url: string | null
 	people_personas?: Array<{
-		personas?: { name?: string; color_hex?: string }
+		persona_id: string
+		personas: {
+			id: string
+			name: string
+			color_hex: string
+		}
 	}>
 }
 
@@ -134,5 +140,46 @@ export default function EnhancedPersonCard({ person, className }: EnhancedPerson
 				/>
 			</motion.div>
 		</Link>
+	)
+}
+
+// Make a MiniPersonCard that shows the person's name, avatar, persona, & segment
+export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
+	const currentProjectContext = useCurrentProject()
+	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+
+	const persona = person.people_personas?.[0]?.personas
+	const themeColor = persona?.color_hex || "#6366f1" // Indigo fallback
+	const name = person.name || "Unnamed Person"
+	const initials =
+		name
+			.split(" ")
+			.map((word) => word[0])
+			.join("")
+			.toUpperCase()
+			.slice(0, 2) || "?"
+	// consola.log("MiniPersonCard person: ", person, persona)
+
+	return (
+		<div className="flex items-center gap-2">
+			<Link to={routes.people.detail(person.id)}>
+				<Avatar className="h-8 w-8">
+					{person.image_url && <AvatarImage src={person.image_url} alt={person.name} />}
+					<AvatarFallback className="font-medium text-sm text-white" style={{ backgroundColor: themeColor }}>
+						{initials}
+					</AvatarFallback>
+				</Avatar>
+			</Link>
+			<div className="flex flex-col">
+				<Link to={routes.people.detail(person.id)}>
+					<h3 className="font-medium text-sm">{person.name}</h3>
+				</Link>
+				{persona?.name && "id" in persona && persona.id && (
+					<Link to={routes.personas.detail(persona.id)}>
+						<div className="rounded-sm border p-1 text-muted-foreground text-xs ">{persona.name}</div>
+					</Link>
+				)}
+			</div>
+		</div>
 	)
 }

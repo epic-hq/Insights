@@ -6,6 +6,7 @@ import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
+import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
@@ -66,7 +67,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Exclude large transcript data from loader response to prevent memory leaks
 		// Only include transcript metadata, not the full content
 		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData
-		
+
 		const interview = {
 			...interviewMetadata,
 			participants,
@@ -104,8 +105,8 @@ export default function InterviewDetail() {
 	const routes = useProjectRoutes(projectPath)
 
 	const participants = interview.participants || []
-	const _primaryParticipant = participants[0]?.people
-
+	const primaryParticipant = participants[0]?.people
+	consola.log("InterviewDetail participants: ", participants)
 	return (
 		<div className="mx-auto max-w-6xl">
 			<div className="grid gap-8 lg:grid-cols-3" />
@@ -126,9 +127,7 @@ export default function InterviewDetail() {
 						<div className="flex flex-wrap items-center gap-2 text-base">
 							{/* Show participant from junction table if available, fallback to legacy field */}
 							{interview.primaryParticipant?.name ? (
-								<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
-									{interview.primaryParticipant.name}
-								</span>
+								<MiniPersonCard person={primaryParticipant} />
 							) : (
 								interview.participant_pseudonym && (
 									<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
@@ -137,7 +136,7 @@ export default function InterviewDetail() {
 								)
 							)}
 							{/* Show persona from junction table if available, fallback to legacy field */}
-							{interview.primaryParticipant?.personas?.name ? (
+							{/* {interview.primaryParticipant?.personas?.name ? (
 								<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
 									{interview.primaryParticipant.personas.name}
 								</span>
@@ -151,7 +150,7 @@ export default function InterviewDetail() {
 										{interview.segment}
 									</span>
 								)
-							)}
+							)} */}
 							{interview.interview_date && (
 								<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
 							)}
@@ -187,21 +186,21 @@ export default function InterviewDetail() {
 										interviewId: interview.id,
 										accountId,
 										projectId,
-										valueLength: value?.length
+										valueLength: value?.length,
 									})
 									fetcher.submit(
-										{ 
+										{
 											entity: "interview",
 											entityId: interview.id,
 											accountId,
 											projectId,
 											fieldName: "observations_and_notes",
-											fieldValue: value
+											fieldValue: value,
 										},
 										{ method: "post", action: "/api/update-field" }
 									)
 								} catch (error) {
-									consola.error('❌ Failed to update observations_and_notes:', error)
+									consola.error("❌ Failed to update observations_and_notes:", error)
 									// Don't throw - just log the error to prevent crash
 								}
 							}}
@@ -226,28 +225,28 @@ export default function InterviewDetail() {
 											accountId,
 											projectId,
 											valueLength: value?.length,
-											valuePreview: value?.substring(0, 50)
+											valuePreview: value?.substring(0, 50),
 										})
-										
+
 										// Convert newline-separated text to JSON array for storage
-										const arrayValue = value ? value.split('\n').filter(item => item.trim()) : []
+										const arrayValue = value ? value.split("\n").filter((item) => item.trim()) : []
 										const jsonValue = JSON.stringify(arrayValue)
-										
+
 										consola.info("🔄 Converted to JSON:", { arrayValue, jsonValue })
-										
+
 										fetcher.submit(
-											{ 
+											{
 												entity: "interview",
 												entityId: interview.id,
 												accountId,
 												projectId,
 												fieldName: "high_impact_themes",
-												fieldValue: jsonValue
+												fieldValue: jsonValue,
 											},
 											{ method: "post", action: "/api/update-field" }
 										)
 									} catch (error) {
-										consola.error('❌ Failed to update high_impact_themes:', error)
+										consola.error("❌ Failed to update high_impact_themes:", error)
 										// Don't throw - just log the error to prevent crash
 									}
 								}}
@@ -269,28 +268,28 @@ export default function InterviewDetail() {
 											interviewId: interview.id,
 											accountId,
 											projectId,
-											valueLength: value?.length
+											valueLength: value?.length,
 										})
-										
+
 										// Convert newline-separated text to JSON array for storage
-										const arrayValue = value ? value.split('\n').filter(item => item.trim()) : []
+										const arrayValue = value ? value.split("\n").filter((item) => item.trim()) : []
 										const jsonValue = JSON.stringify(arrayValue)
-										
+
 										consola.info("🔄 Converted to JSON:", { arrayValue, jsonValue })
-										
+
 										fetcher.submit(
-											{ 
+											{
 												entity: "interview",
 												entityId: interview.id,
 												accountId,
 												projectId,
 												fieldName: "open_questions_and_next_steps",
-												fieldValue: jsonValue
+												fieldValue: jsonValue,
 											},
 											{ method: "post", action: "/api/update-field" }
 										)
 									} catch (error) {
-										consola.error('❌ Failed to update open_questions_and_next_steps:', error)
+										consola.error("❌ Failed to update open_questions_and_next_steps:", error)
 										// Don't throw - just log the error to prevent crash
 									}
 								}}
