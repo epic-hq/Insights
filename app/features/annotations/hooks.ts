@@ -1,13 +1,41 @@
-import consola from "consola"
 import { useEffect, useMemo, useState } from "react"
 import { useFetcher } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Annotation, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db"
 
+// -----------------------------------------------------------------------------
+// How these hooks work & where to optimize DB calls
+// -----------------------------------------------------------------------------
+// Flow
+// - We rely on project-scoped API routes from `useProjectRoutes(projectPath)` to
+//   fetch and mutate annotations, votes, and entity flags.
+// - Each hook (`useAnnotations`, `useVoting`, `useEntityFlags`) builds a
+//   querystring and calls a single API endpoint (via `useFetcher.load/submit`).
+// - Server loaders/actions (see `features/annotations/api/*.tsx`) use the
+//   middleware-provided context (account_id, project_id) to perform
+//   RLS-protected queries in `features/annotations/db.ts`.
+//
+// Reducing DB calls (batching opportunities)
+// - Voting: the votes API supports batched queries by passing multiple
+//   `entityId` values (CSV or repeated params). For list pages, prefer a
+//   batched hook that requests all IDs at once instead of one-by-one per card.
+// - Flags: similar opportunity if we add a batch endpoint (e.g. return flags
+//   for many entities in one call). Today this hook targets one entity.
+// - Annotations: for lists where only counts or latest items are needed, expose
+//   lightweight endpoints (e.g. only counts) to avoid fetching full threads.
+//
+// Implementation notes
+// - Always use `routes.api.*()` helpers for paths to preserve the
+//   `/a/:accountId/p/:projectId` context.
+// - Keep effects keyed by stable inputs (entityType, entityId, projectPath).
+// - Avoid redundant auth calls in loaders/actions; rely on middleware context.
+
 // =============================================================================
 // ANNOTATIONS HOOKS
 // =============================================================================
+// TODO: Write explanation of how this works and where we can make changes to reduce the number of db calls, potentially batching or changing the query.
+
 
 export function useAnnotations({
 	entityType,
@@ -43,7 +71,8 @@ export function useAnnotations({
 		})
 
 		fetcher.load(`${routes.api.annotations()}?${searchParams}`)
-	}, [entityType, entityId, annotationType, includeThreads, projectPath, routes, fetcher.load])
+	// Only depend on stable inputs; avoid fetcher/routes object identity churn
+	}, [entityType, entityId, annotationType, includeThreads, projectPath])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -130,7 +159,7 @@ export function useAnnotations({
 				...(annotationType && { annotationType }),
 				includeThreads: includeThreads.toString(),
 			})
-			fetcher.load(`/api/annotations?${searchParams}`)
+			fetcher.load(`${routes.api.annotations()}?${searchParams}`)
 		},
 	}
 }
@@ -153,9 +182,6 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	// Memoize the votes URL to prevent unnecessary re-renders
-	const votesUrl = useMemo(() => routes.api.votes(), [routes.api])
-
 	// Fetch vote counts on mount and when parameters change
 	useEffect(() => {
 		if (!entityId || !projectPath) return
@@ -167,10 +193,10 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 			entityType,
 			entityId,
 		})
-		consola.log("useVoting", { entityType, entityId, searchParams, votesUrl })
+		const votesUrl = routes.api.votes()
 		fetcher.load(`${votesUrl}?${searchParams}`)
-		consola.log("useVoting fetcher", fetcher)
-	}, [entityType, entityId, projectPath, votesUrl, fetcher.load, fetcher])
+	// Depend only on stable inputs to avoid loops
+	}, [entityType, entityId, projectPath])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -215,11 +241,11 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 						entityId,
 						voteValue: voteValue.toString(),
 					},
-					{ method: "POST", action: votesUrl }
+					{ method: "POST", action: routes.api.votes() }
 				)
 			}, 200) // Increased debounce to 200ms
 		}
-	}, [fetcher, entityType, entityId, votesUrl])
+	}, [fetcher, entityType, entityId, routes])
 
 	const upvote = () => vote(1)
 	const downvote = () => vote(-1)
@@ -236,7 +262,7 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 				entityType,
 				entityId,
 			})
-			fetcher.load(`${votesUrl}?${searchParams}`)
+			fetcher.load(`${routes.api.votes()}?${searchParams}`)
 		},
 	}
 }
@@ -272,7 +298,8 @@ export function useEntityFlags({ entityType, entityId }: { entityType: EntityTyp
 		})
 
 		fetcher.load(`${routes.api.entityFlags()}?${searchParams}`)
-	}, [entityType, entityId, projectPath, routes, fetcher.load])
+	// Only depend on stable inputs; avoid fetcher/routes object identity churn
+	}, [entityType, entityId, projectPath])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -350,7 +377,7 @@ export function useEntityFlags({ entityType, entityId }: { entityType: EntityTyp
 				entityType,
 				entityId,
 			})
-			fetcher.load(`/api/entity-flags?${searchParams}`)
+			fetcher.load(`${routes.api.entityFlags()}?${searchParams}`)
 		},
 	}
 }

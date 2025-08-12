@@ -27,9 +27,9 @@ export const mastra = new Mastra({
 	server: {
 		middleware: [
 			async (c, next) => {
-				const user_id = c.req.header("user_id")
-				const account_id = c.req.header("account_id")
-				const project_id = c.req.header("project_id")
+				const user_id = c.req.header("X-UserId")
+				const account_id = c.req.header("X-AccountId")
+				const project_id = c.req.header("X-ProjectId")
 				// const runtimeContext = c.get<UserContext>("runtimeContext");
 				const runtimeContext = c.get("runtimeContext") as RuntimeContext<UserContext>
 

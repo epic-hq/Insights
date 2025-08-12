@@ -31,6 +31,65 @@ export interface AnnotationCounts {
 	reaction: number
 }
 
+// Batched variant: fetch vote counts for multiple entities in one round-trip
+export async function getVoteCountsForEntities({
+  supabase,
+  projectId,
+  entityType,
+  entityIds,
+  userId,
+}: {
+  supabase: SupabaseClient<Database>
+  projectId: string
+  entityType: EntityType
+  entityIds: string[]
+  userId?: string
+}) {
+  try {
+    if (!entityIds.length) return { data: {}, error: null as any }
+
+    // Fetch all votes for these entities in one query
+    const { data: rows, error } = await supabase
+      .from("votes")
+      .select("entity_id, vote_value, user_id")
+      .eq("project_id", projectId)
+      .eq("entity_type", entityType)
+      .in("entity_id", entityIds)
+
+    if (error) {
+      consola.error("Error fetching batched votes:", error)
+      return { data: null, error }
+    }
+
+    // Reduce into per-entity counts
+    const byId = new Map<string, { up: number; down: number; user: number }>()
+    for (const id of entityIds) byId.set(id, { up: 0, down: 0, user: 0 })
+
+    for (const row of rows || []) {
+      const bucket = byId.get(row.entity_id)
+      if (!bucket) continue
+      if (row.vote_value === 1) bucket.up += 1
+      else if (row.vote_value === -1) bucket.down += 1
+      if (userId && row.user_id === userId) bucket.user = row.vote_value as 1 | -1
+    }
+
+    const result: Record<string, VoteCounts> = {}
+    for (const [id, { up, down, user }] of byId.entries()) {
+      result[id] = {
+        upvotes: up,
+        downvotes: down,
+        total_votes: up + down,
+        user_vote: user,
+      }
+    }
+
+    return { data: result, error: null }
+  } catch (error) {
+    consola.error("Exception in getVoteCountsForEntities:", error)
+    return { data: null, error }
+  }
+}
+
 export interface VoteCounts {
 	upvotes: number
 	downvotes: number

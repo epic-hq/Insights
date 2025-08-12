@@ -9,13 +9,11 @@ import { Button } from "~/components/ui/button"
 import { Separator } from "~/components/ui/separator"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Database, Project } from "~/types"
-
-type ProjectSection = Database["public"]["Tables"]["project_sections"]["Row"]
+import type { Project, Project_Section } from "~/types"
 
 interface ProjectCardProps {
 	project: Project
-	sections: ProjectSection[] // <- new
+	sections: Project_Section[] // <- new
 	className?: string
 	projectPath: string
 }
@@ -27,8 +25,8 @@ function stringToColor(str: string) {
 	return `#${"00000".substring(0, 6 - c.length)}${c}`
 }
 
-function groupLatestByKind(sections: ProjectSection[]) {
-	const byKind = new Map<string, ProjectSection[]>()
+function groupLatestByKind(sections: Project_Section[]) {
+	const byKind = new Map<string, Project_Section[]>()
 	for (const s of sections) {
 		const arr = byKind.get(s.kind) ?? []
 		arr.push(s)

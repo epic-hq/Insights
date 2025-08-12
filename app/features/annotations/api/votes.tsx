@@ -2,34 +2,87 @@ import consola from "consola"
 import type { ActionFunction, LoaderFunction } from "react-router"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
-import { type EntityType, getVoteCountsForEntity, removeVote, upsertVote } from "../db"
+import { getServerClient } from "~/lib/supabase/server"
+import { type EntityType, getVoteCountsForEntity, getVoteCountsForEntities, removeVote, upsertVote } from "../db"
 
 // GET /api/votes - Fetch vote counts for an entity
 export const loader: LoaderFunction = async ({ request, params, context }) => {
-	const ctx = context.get(userContext)
-	const projectCtx = context.get(currentProjectContext)
-	const supabase = ctx.supabase
-	const userId = ctx.claims?.sub
-	const accountId = ctx.account_id
-	const projectId = projectCtx?.projectId || params.projectId
+	// Try to use context if available; otherwise construct our own server client
+	let supabase = context?.get?.(userContext)?.supabase as ReturnType<typeof getServerClient>["client"] | undefined
+	let userId: string | undefined = context?.get?.(userContext)?.claims?.sub
+	const projectCtx = context?.get?.(currentProjectContext)
+	let projectId: string | undefined = projectCtx?.projectId || params.projectId
 
-	if (!userId || !accountId) {
-		return Response.json({ error: { message: "Missing user context" } }, { status: 401 })
+	if (!supabase) {
+		const server = getServerClient(request)
+		supabase = server.client
+	}
+
+	if (!projectId) {
+		const { pathname } = new URL(request.url)
+		// Expect path like /a/:accountId/:projectId/...
+		const parts = pathname.split("/").filter(Boolean)
+		const idx = parts.indexOf("a")
+		if (idx >= 0 && parts.length >= idx + 3) {
+			projectId = parts[idx + 2]
+		}
 	}
 
 	if (!projectId) {
 		return Response.json({ error: { message: "Missing project context" } }, { status: 400 })
 	}
 
+	// Claims are optional for GET; fetch locally if not provided (no network due to SSR settings)
+	if (!userId) {
+		try {
+			const { data: claims } = await supabase!.auth.getClaims()
+			userId = (claims?.claims as any)?.sub
+		} catch {}
+	}
+
 	const url = new URL(request.url)
 	const entityType = url.searchParams.get("entityType") as EntityType
-	const entityId = url.searchParams.get("entityId")
+	const singleEntityId = url.searchParams.get("entityId")
 
-	if (!entityType || !entityId) {
-		return Response.json({ error: { message: "Missing entityType or entityId" } }, { status: 400 })
+	// Collect potential batched IDs from repeated entityId params and/or a CSV entityIds param
+	const repeatedIds = url.searchParams.getAll("entityId").filter(Boolean) as string[]
+	const csvParam = url.searchParams.get("entityIds") || ""
+	const csvIds = csvParam
+		.split(",")
+		.map((s) => s.trim())
+		.filter((s) => s.length > 0)
+
+	const entityIds = Array.from(new Set([...(repeatedIds || []), ...(csvIds || [])]))
+
+	if (!entityType) {
+		return Response.json({ error: { message: "Missing entityType" } }, { status: 400 })
 	}
 
 	try {
+		// Batched path
+		if (entityIds.length > 1 || (entityIds.length === 1 && !singleEntityId)) {
+			const { data, error } = await getVoteCountsForEntities({
+				supabase,
+				projectId,
+				entityType,
+				entityIds,
+				userId,
+			})
+
+			if (error) {
+				consola.error("Failed to fetch batched vote counts:", error)
+				return Response.json({ error: { message: "Failed to fetch vote counts" } }, { status: 500 })
+			}
+
+			return Response.json({ voteCountsById: data })
+		}
+
+		// Single-entity fallback for full backward compatibility
+		const entityId = singleEntityId || entityIds[0]
+		if (!entityId) {
+			return Response.json({ error: { message: "Missing entityId" } }, { status: 400 })
+		}
+
 		const { data: voteCounts, error } = await getVoteCountsForEntity({
 			supabase,
 			projectId,
@@ -52,13 +105,30 @@ export const loader: LoaderFunction = async ({ request, params, context }) => {
 
 // POST /api/votes - Handle voting actions
 export const action: ActionFunction = async ({ context, request, params }) => {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = ctx.account_id
-	const userId = ctx.claims?.sub
+	// Build client regardless of middleware
+	const server = getServerClient(request)
+	const supabase = server.client
+	let userId: string | undefined = context?.get?.(userContext)?.claims?.sub
+	let accountId: string | undefined = context?.get?.(userContext)?.account_id
 
-	const _ctx_project = context.get(currentProjectContext)
-	const projectId = _ctx_project?.projectId || params.projectId
+	let projectId: string | undefined = context?.get?.(currentProjectContext)?.projectId || params.projectId
+	if (!projectId) {
+		const { pathname } = new URL(request.url)
+		const parts = pathname.split("/").filter(Boolean)
+		const idx = parts.indexOf("a")
+		if (idx >= 0 && parts.length >= idx + 3) {
+			projectId = parts[idx + 2]
+		}
+	}
+
+	try {
+		if (!userId || !accountId) {
+			const { data: claims } = await supabase.auth.getClaims()
+			const c = claims?.claims as any
+			userId = userId || c?.sub
+			accountId = accountId || c?.sub
+		}
+	} catch {}
 
 	if (!accountId || !projectId || !userId) {
 		return Response.json({ error: { message: "Missing authentication context" } }, { status: 401 })
