@@ -57,6 +57,7 @@ export default function QuickInsights() {
 	)
 
 	// consola.log("Selected insight:", selected)
+
 	return (
 		<div className="min-h-screen bg-gray-50 p-4">
 			<div className="mb-4 flex items-center">

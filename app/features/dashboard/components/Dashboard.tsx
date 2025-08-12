@@ -1,9 +1,11 @@
+import { Settings2 } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 // import type { TreeNode } from "~/components/charts/TreeMap"
 // import TreeMap from "~/components/charts/TreeMap"
 import TagCountSelector from "~/components/TagCountSelector"
 import TagDisplay from "~/components/TagDisplay"
+import { Tooltip, TooltipContent, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
@@ -11,7 +13,6 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { OpportunityView, Project } from "~/types"
 import type { KPI } from "./KPIBar"
 import KPIBar from "./KPIBar"
-import OpportunityKanban from "./OpportunityKanban"
 import RecentInterviewsTable from "./RecentInterviewsTable"
 
 interface DashboardProps {
@@ -69,7 +70,7 @@ export default function Dashboard({
 		...(o.impact ? { priority: o.impact > 7 ? "high" : o.impact > 4 ? "medium" : "low" } : {}),
 	})
 
-	const kanbanCols = [
+	const _kanbanCols = [
 		{
 			title: "Explore",
 			items: opportunities.filter((o) => o.status === "Explore" && !!o.id).map(transformToKanbanItem),
@@ -89,11 +90,23 @@ export default function Dashboard({
 			{/* Filter bar - full width above sticky KPI bar */}
 
 			<div className="mr-10 mb-4 ml-4 flex items-center justify-between">
-				<div className="flex flex-col">
-					<div className="ml-2 text-muted-foreground text-xs">
-						<Link to={routes.projects.index()}>Project</Link>
+				<div className="flex flex-col justify-start">
+					<div className="ml-2 text-muted-foreground text-xs">Project</div>
+					<div className="flex flex-row">
+						<Link to={routes.projects.index()}>
+							<Tooltip>
+								<TooltipTrigger>
+									<div className="ml-2 font-bold text-xl">{project.name}</div>
+								</TooltipTrigger>
+								<TooltipContent>
+									<p>{project.description}</p>
+								</TooltipContent>
+							</Tooltip>
+						</Link>
+						<Link to={routes.projects.edit(project.id)}>
+							<Settings2 size="icon" className="mt-1 ml-4 h-5 w-5" />
+						</Link>
 					</div>
-					<div className="ml-2 font-bold text-xl">{project.name}</div>
 				</div>
 				<AddInterviewButton />
 				{/* <FilterBar segments={["Students", "Teachers", "Admins"]} /> */}
@@ -104,7 +117,7 @@ export default function Dashboard({
 			{/* Main dashboard grid with 12-column layout */}
 			<div className="mt-4 grid grid-cols-12 gap-4">
 				{/* Insight Categories section - spans 8 columns on large screens, full width on smaller screens */}
-				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-8 dark:bg-gray-900">
+				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-4 dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Insight Categories</h2>
 						<div className="flex items-center gap-4">
@@ -127,14 +140,14 @@ export default function Dashboard({
 				</div>
 
 				{/* Personas section - spans 4 columns on large screens, full width on smaller screens */}
-				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-4 dark:bg-gray-900">
+				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-8 dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Personas</h2>
 						<Link to={routes.personas.index()} className="text-blue-600 text-xs hover:text-blue-800">
 							View all
 						</Link>
 					</div>
-					<div className="grid gap-4">
+					<div className="grid grid-cols-2 gap-4">
 						{personas.map((persona, index) => (
 							<EnhancedPersonaCard key={`persona-${index}`} persona={persona} />
 						))}

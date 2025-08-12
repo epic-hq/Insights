@@ -34,7 +34,7 @@ export const getPeople = async ({
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
-	consola.log("getPeople data: ", data)
+	// consola.log("getPeople data: ", data)
 	return { data, error }
 }
 

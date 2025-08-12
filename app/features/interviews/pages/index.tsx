@@ -2,6 +2,7 @@ import consola from "consola"
 import { formatDistance } from "date-fns"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
+import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviews } from "~/features/interviews/db"
 import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
@@ -112,15 +113,15 @@ export default function InterviewsIndex() {
 		<div className="space-y-8 p-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="font-bold text-3xl">Interviews</h1>
-					<p className="text-gray-600">Research interviews and transcripts</p>
+					<h1 className="font-bold text-3xl">Sources</h1>
+					<p className="text-gray-600">Conversations, interviews, and transcripts</p>
 				</div>
 				<AddInterviewButton />
 			</div>
 
 			<div className="mt-6">
-				<h2 className="mb-4 font-semibold text-xl">Interview Segments</h2>
-				{/* <PrettySegmentPie data={segmentData} /> */}
+				{/* <h2 className="mb-4 font-semibold text-xl">Interview Segments</h2> */}
+				<PrettySegmentPie data={segmentData} />
 			</div>
 
 			<div className="rounded-lg bg-white p-6 shadow-sm dark:bg-gray-900">

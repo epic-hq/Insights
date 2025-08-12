@@ -7,6 +7,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
 import type { Person } from "~/types"
 
 // Type for person with nested personas from interview participants query

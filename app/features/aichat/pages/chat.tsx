@@ -666,7 +666,15 @@ export function MobileInsightsApp() {
 
 export default function Index() {
 	return (
-		<CopilotKit agent="mainAgent" runtimeUrl="/api/copilotkit">
+		<CopilotKit
+			agent="mainAgent"
+			runtimeUrl="/api/copilotkit"
+			headers={{
+				"X-UserId": "1",
+				"X-AccountId": "2",
+				"X-ProjectId": "3",
+			}}
+		>
 			<MobileInsightsApp />
 		</CopilotKit>
 	)

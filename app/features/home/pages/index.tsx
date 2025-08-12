@@ -69,11 +69,11 @@ export default function Index() {
 	const routes = useProjectRoutes(projectPath)
 
 	return (
-		<div className="mx-auto max-w-7xl space-y-10 px-6 py-8">
-			<h1 className="mb-4 font-bold text-3xl">Home</h1>
-			<div className="space-y-8">
+		<div className="mx-auto max-w-7xl ">
+			<h1 className="mb-4 px-6 font-bold text-3xl">Projects</h1>
+			<div className="space-y-10 space-y-8 px-6 py-8">
 				<section>
-					<h2 className="mb-4 font-semibold text-muted-foreground text-xl">Projects</h2>
+					{/* <h2 className="mb-4 font-semibold text-muted-foreground text-xl">Projects</h2> */}
 					{projects.length === 0 ? (
 						<div className="text-muted-foreground">No projects found. Create your first project to get started.</div>
 					) : (
