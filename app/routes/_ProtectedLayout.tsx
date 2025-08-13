@@ -7,6 +7,7 @@ import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
+import AIChatButton from "~/components/chat/AIChatButton"
 import type { Route } from "../+types/root"
 
 // Server-side Authentication Middleware
@@ -101,6 +102,18 @@ export default function ProtectedLayout() {
 				<MainNav />
 				<PageHeader title="" />
 				<Outlet />
+				
+				{/* Persistent AI Chat Button */}
+				<div className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-800 bg-black p-3">
+					<div className="grid grid-cols-3 gap-2">
+						{/* First two slots can be empty or used for other global actions */}
+						<div />
+						<div />
+						
+						{/* AI Chat Button - always in the third position */}
+						<AIChatButton />
+					</div>
+				</div>
 			</CurrentProjectProvider>
 		</AuthProvider>
 	)

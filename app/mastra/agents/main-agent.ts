@@ -11,6 +11,7 @@ export const AgentState = z.object({
 
 export const mainAgent = new Agent({
 	name: "Main Agent",
+	description: "Main agent for handling user queries and looking up user research data",
 	instructions: `
       You are a helpful psychologist who evaluates people and their motives.
       - Keep responses concise but informative

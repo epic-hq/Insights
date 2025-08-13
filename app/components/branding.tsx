@@ -27,3 +27,12 @@ export const Logo = () => {
 		</svg>
 	)
 }
+
+export const LogoBrand = () => {
+	return (
+		<div className="flex items-center gap-2">
+			<Logo />
+			<h1 className="font-bold text-2xl text-blue-600">UpSight</h1>
+		</div>
+	)
+}

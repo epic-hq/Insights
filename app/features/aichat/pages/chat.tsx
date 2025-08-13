@@ -667,12 +667,13 @@ export function MobileInsightsApp() {
 export default function Index() {
 	return (
 		<CopilotKit
-			agent="mainAgent"
+			agent="weatherAgent"
 			runtimeUrl="/api/copilotkit"
+			showDevConsole={true}
 			headers={{
-				"X-UserId": "1",
-				"X-AccountId": "2",
-				"X-ProjectId": "3",
+				"X-UserId": "100",
+				"X-AccountId": "200",
+				"X-ProjectId": "300",
 			}}
 		>
 			<MobileInsightsApp />

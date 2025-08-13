@@ -209,12 +209,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.sort((a, b) => b.frequency - a.frequency) // Sort by frequency descending
 
 	// Debug logging
-	consola.log("Dashboard Debug:", {
-		insightRowsCount: insightRows?.length || 0,
-		tagFrequencyDataCount: tagFrequencyData?.length || 0,
-		tagsCount: tags.length,
-		personaRowsCount: data?.length || 0,
-	})
+	// consola.log("Dashboard Debug:", {
+	// 	insightRowsCount: insightRows?.length || 0,
+	// 	tagFrequencyDataCount: tagFrequencyData?.length || 0,
+	// 	tagsCount: tags.length,
+	// 	personaRowsCount: data?.length || 0,
+	// })
 
 	// Group insights by tags for tree map (keeping existing logic)
 	const tagMap = new Map<string, TreeNode>()

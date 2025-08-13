@@ -16,7 +16,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const runtime = new CopilotRuntime({
 		agents: mastraAgents,
 	})
-
+	// consola.log("cpk action: ", request.headers)
 	const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
 		runtime,
 		serviceAdapter: new ExperimentalEmptyAdapter(),

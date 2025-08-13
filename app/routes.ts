@@ -28,6 +28,8 @@ const routes = [
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
+				// Mobile routes
+				route("metro", "./features/dashboard/pages/metro-index.tsx"),
 				...aiChatRoutes,
 				...dashboardRoutes,
 				...interviewsRoutes,
@@ -39,6 +41,7 @@ const routes = [
 
 				// Annotations API routes (need project context)
 				...annotationsRoutes,
+
 			]),
 		]),
 	]),

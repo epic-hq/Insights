@@ -35,7 +35,7 @@ export const getProjectById = async ({
 	accountId: string
 	id: string
 }) => {
-	consola.log("getProjectById accountId: ", accountId)
+	// consola.log("getProjectById accountId: ", accountId)
 	return await supabase
 		.from("projects")
 		.select(`
@@ -49,13 +49,6 @@ export const getProjectById = async ({
 				interview_count,
 				first_seen_at,
 				last_seen_at
-			),
-			project_personas (
-				personas (
-					id,
-					name,
-					color_hex
-				)
 			)
 		`)
 		.eq("account_id", accountId)

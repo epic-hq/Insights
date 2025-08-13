@@ -1,4 +1,3 @@
-import consola from "consola"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
@@ -143,11 +142,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 
 	// Debug logging
-	consola.log("Dashboard Debug:", {
-		insightRowsCount: insightRows?.length || 0,
-		insightTagsCount: insightTags?.length || 0,
-		personaRowsCount: data?.length || 0,
-	})
+	// consola.log("Dashboard Debug:", {
+	// 	insightRowsCount: insightRows?.length || 0,
+	// 	insightTagsCount: insightTags?.length || 0,
+	// 	personaRowsCount: data?.length || 0,
+	// })
 
 	// Group insights by tags using junction table data
 	const tagMap = new Map<string, TreeNode>()

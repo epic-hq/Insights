@@ -228,6 +228,8 @@ declare
 begin
 
     -- first we setup the user profile
+    insert into public.user_settings (user_id) values (NEW.id);
+
     -- TODO: see if we can get the user's name from the auth.users table once we learn how oauth works
     if new.email IS NOT NULL then
         generated_user_name := split_part(new.email, '@', 1);

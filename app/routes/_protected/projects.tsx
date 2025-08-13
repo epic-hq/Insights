@@ -6,6 +6,7 @@ import consola from "consola"
 import { Outlet, redirect } from "react-router-dom"
 import { z } from "zod"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
+import { getProjectById } from "~/features/projects/db"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 import type { GetAccount, Project } from "~/types"
@@ -65,12 +66,18 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 	},
 ]
 
-export async function loader({ context }: Route.LoaderArgs) {
+export async function loader({ context, params }: Route.LoaderArgs) {
 	try {
-		const currentProject = context.get(currentProjectContext)
-		// consola.log("_protected/projects loader currentProjectContext", currentProject)
+		// const currentProject = context.get(currentProjectContext)
+		const ctx = context.get(userContext)
+		const { supabase } = ctx
+		const accountId = params?.accountId
+		const projectId = params?.projectId
+		const project = await getProjectById({ supabase, accountId, id: projectId })
+		consola.log("_protected/projects loader projectId", projectId, project)
 		return {
-			...currentProject,
+			projectId,
+			project: project.data,
 		}
 	} catch (error) {
 		consola.error("_protected/projects loader error:", error)

@@ -1,5 +1,5 @@
 // import consola from "consola"
-import { type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
+import { type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -23,6 +23,13 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		.neq("account_id", user_id)
 	const account_id = accounts?.[0]?.account_id || ""
 	// consola.log("account_id:", account_id)
+
+	// if !onboarding_complete redirect to /signup_chat
+	const { data } = await supabase.from("user_settings").select("*").eq("user_id", user_id).single()
+	if (!data?.onboarding_completed) {
+		return redirect("/signup_chat")
+	}
+
 	if (!account_id) {
 		return {
 			projects: [],

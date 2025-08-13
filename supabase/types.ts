@@ -1477,6 +1477,51 @@ export type Database = {
           },
         ]
       }
+      user_settings: {
+        Row: {
+          created_at: string
+          id: string
+          language: string | null
+          last_used_account_id: string | null
+          last_used_project_id: string | null
+          notification_preferences: Json
+          onboarding_completed: boolean
+          onboarding_steps: Json
+          theme: string | null
+          ui_preferences: Json
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          last_used_account_id?: string | null
+          last_used_project_id?: string | null
+          notification_preferences?: Json
+          onboarding_completed?: boolean
+          onboarding_steps?: Json
+          theme?: string | null
+          ui_preferences?: Json
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          language?: string | null
+          last_used_account_id?: string | null
+          last_used_project_id?: string | null
+          notification_preferences?: Json
+          onboarding_completed?: boolean
+          onboarding_steps?: Json
+          theme?: string | null
+          ui_preferences?: Json
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       votes: {
         Row: {
           account_id: string

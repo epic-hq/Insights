@@ -272,3 +272,92 @@ Share a single server Supabase client per request (pass through Remix context) s
 - [ ] Documentation: update API examples to reflect no optimistic UI and new /api/votes behaviour.
 
 Once these tasks are complete, the doc and code will be fully aligned.
+
+## Enhancement:AnnotationViews
+
+**FUTURE!!**
+
+Goal: Performance and reduce client work
+
+Create SQL views that join insights with:
+
+votes aggregate (upvotes, downvotes, total, current user’s vote)
+annotation counts (comments, threads)
+These views inherit RLS from base tables, work in list and detail queries, and eliminate N-per-card requests.
+
+Declarative schema (Supabase SQL)
+Place in something like: supabase/schemas/35_insight_meta_views.sql
+
+```sql
+-- Votes aggregate for all entities. Uses auth.uid() for user-specific vote.
+create or replace view public.vote_aggregates as
+select
+  v.entity_type,
+  v.entity_id,
+  v.project_id,
+  sum(case when v.vote_value = 1 then 1 else 0 end)        as upvotes,
+  sum(case when v.vote_value = -1 then 1 else 0 end)       as downvotes,
+  count(*)                                                 as total_votes,
+  coalesce(max(case when v.user_id = auth.uid() then v.vote_value end), 0) as user_vote
+from public.votes v
+group by v.entity_type, v.entity_id, v.project_id;
+
+comment on view public.vote_aggregates is
+  'Aggregate vote counts per entity with user-specific vote via auth.uid().';
+
+-- Annotation counts for all entities.
+-- Assumes annotations(entity_type, entity_id, project_id, annotation_type, parent_id)
+create or replace view public.annotation_counts as
+select
+  a.entity_type,
+  a.entity_id,
+  a.project_id,
+  count(*) filter (where a.annotation_type = 'comment')     as comments_count,
+  count(*) filter (where a.parent_id is null)               as threads_count
+from public.annotations a
+group by a.entity_type, a.entity_id, a.project_id;
+
+comment on view public.annotation_counts is
+  'Counts of comments and top-level threads per entity.';
+
+-- Insights with meta: join insights + votes + annotation counts.
+create or replace view public.insights_with_meta as
+select
+  i.*,
+  coalesce(va.upvotes, 0)        as upvotes,
+  coalesce(va.downvotes, 0)      as downvotes,
+  coalesce(va.total_votes, 0)    as total_votes,
+  coalesce(va.user_vote, 0)      as user_vote,
+  coalesce(ac.comments_count, 0) as comments_count,
+  coalesce(ac.threads_count, 0)  as threads_count
+from public.insights i
+left join public.vote_aggregates va
+  on va.entity_type = 'insight'
+ and va.entity_id   = i.id
+ and va.project_id  = i.project_id
+left join public.annotation_counts ac
+  on ac.entity_type = 'insight'
+ and ac.entity_id   = i.id
+ and ac.project_id  = i.project_id;
+
+comment on view public.insights_with_meta is
+  'Insights enriched with vote aggregates and annotation counts.';
+
+-- Optional: expose only selected columns if needed
+-- and/or add explicit GRANTs (RLS on base tables still applies).
+```
+
+**How to use**
+List page loader:
+
+- select from public.insights_with_meta filtered by project_id, with pagination.
+- Detail loader:
+select one row from public.insights_with_meta where id = $1 and project_id = $2.
+- Why this helps
+One query returns all needed list/detail UI fields, including user_vote via auth.uid().
+Leverages RLS on base tables (no service role required).
+Eliminates per-card client fetches and 429 storms.
+Still composes cleanly with useLoaderData().
+- Notes
+If annotations schema differs (e.g., different thread key), adjust parent_id logic.
+If you later need performance beyond live views, introduce a materialized view + cron/trigger refresh. Start with standard views.
