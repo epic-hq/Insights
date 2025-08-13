@@ -1884,6 +1884,10 @@ export type Database = {
         Args: { p_project_id: string; p_person_id: string }
         Returns: undefined
       }
+      upsert_signup_data: {
+        Args: { p_user_id: string; p_signup_data: Json }
+        Returns: undefined
+      }
       vector_avg: {
         Args: { "": number[] }
         Returns: string

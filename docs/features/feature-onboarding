@@ -123,24 +123,26 @@ Insights easily retrievable for segmentation before launch.
 ### Technical Implementation
 
 ```sql
-create or replace function upsert_signup_chat_metadata(
-    p_account_id uuid,
-    p_signup_chat jsonb
+create or replace function upsert_signup_data(
+    p_user_id uuid,
+    p_signup_data jsonb
 ) returns void as $$
 begin
-    update account_settings
-    set metadata = jsonb_set(
-        coalesce(metadata, '{}'::jsonb),      -- ensure metadata exists
-        '{signup_chat}',                      -- path to key
-        p_signup_chat,                        -- new value
+    update user_settings
+    set signup_data = jsonb_set(
+        coalesce(signup_data, '{}'::jsonb),      -- ensure metadata exists
+        '{signup_data}',                      -- path to key
+        p_signup_data,                        -- new value
         true                                  -- create if missing
     )
-    where account_id = p_account_id;
+    where user_id = p_user_id;
 end;
 $$ language plpgsql;
 
+grant execute on function upsert_signup_data(uuid, jsonb) to authenticated;
+
 -- example call
-select upsert_signup_chat_metadata(
+select upsert_signup_data(
     user_id,
     '{
       "problem": "Hard to track client feedback",

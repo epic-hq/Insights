@@ -1,6 +1,19 @@
 create table public.user_settings (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null unique references auth.users(id) on delete cascade,
+	first_name text,
+	last_name text,
+	company_name text,
+	title text,
+	role text,
+	industry text,
+	email text,
+	mobile_phone text,
+	image_url text,
+	signup_data jsonb, -- signup data from chat
+	trial_goals jsonb, -- success metrics
+	referral_source text, -- marketing attribution
+	metadata jsonb, -- misc
   onboarding_completed boolean not null default false,
   onboarding_steps jsonb not null default '{}',
   theme text default 'system',

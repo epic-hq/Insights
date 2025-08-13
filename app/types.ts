@@ -53,6 +53,7 @@ export type InsightTag = Tables<"insight_tags">
 export type PeoplePersona = Tables<"people_personas">
 export type Comment = Tables<"comments">
 export type AccountSettings = Tables<"account_settings">
+export type UserSettings = Tables<"user_settings">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
@@ -78,6 +79,8 @@ export type CommentInsert = TablesInsert<"comments">
 export type CommentUpdate = TablesUpdate<"comments">
 export type AccountSettingsInsert = TablesInsert<"account_settings">
 export type AccountSettingsUpdate = TablesUpdate<"account_settings">
+export type UserSettingsInsert = TablesInsert<"user_settings">
+export type UserSettingsUpdate = TablesUpdate<"user_settings">
 
 // 4. View-model helpers
 // ---------------------
@@ -113,7 +116,7 @@ export interface OpportunityView extends Opportunity {
 	name?: string | null
 	confidence?: number | null
 	priority?: string | null
-	updated_at?: string | null
+	updated_at?: Date | null | undefined
 	tags?: string[] | null
 	insights?: string[] | null
 	assignee?: string | null

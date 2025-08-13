@@ -3,6 +3,7 @@ import { type RouteConfig, route } from "@react-router/dev/routes"
 export default [
 	// index("./features/projects/pages/projectDetail.tsx"),
 	route("dashboard", "./features/dashboard/pages/index.tsx"),
+	route("metro", "./features/dashboard/pages/metro-index.tsx")
 
 	// layout("./layout.tsx", [
 	//   route("new", "./new.tsx"),

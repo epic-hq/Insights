@@ -1,7 +1,8 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
+import { Button } from "~/components/ui/button"
 import Dashboard from "~/features/dashboard/components/Dashboard"
 import type { KPI } from "~/features/dashboard/components/KPIBar"
 import { getPersonas } from "~/features/personas/db"
@@ -287,6 +288,11 @@ export default function Index() {
 	return (
 		<div>
 			<div className="relative">
+				<div className="mx-auto flex justify-center">
+					<Button className="items-center justify-center bg-gradient-to-br from-blue-500 to-green-600 p-6 text-xl opacity-80">
+						Try the <Link to="../metro">new Metro dashboard</Link>
+					</Button>
+				</div>
 				<Dashboard {...data} />
 			</div>
 		</div>
