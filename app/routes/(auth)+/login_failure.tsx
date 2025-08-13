@@ -1,5 +1,5 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, redirect } from "react-router"
+import { Link, type LoaderFunctionArgs, redirect } from "react-router"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	consola.log("[LOGIN_FAILURE] No code or error occurred, redirecting to login_failure")
@@ -15,6 +15,7 @@ export default function LoginFailure() {
 			<div className="text-center">
 				<h2 className="font-semibold text-lg">Login failed...</h2>
 				<p className="text-gray-600">Please try again.</p>
+				<Link to={"/(auth)+/login"}>Login</Link>
 			</div>
 		</div>
 	)

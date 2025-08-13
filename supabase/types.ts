@@ -302,6 +302,31 @@ export type Database = {
       [_ in never]: never
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          operationName?: string
+          query?: string
+          variables?: Json
+          extensions?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -1479,43 +1504,82 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          company_name: string | null
           created_at: string
+          email: string | null
+          first_name: string | null
           id: string
+          image_url: string | null
+          industry: string | null
           language: string | null
+          last_name: string | null
           last_used_account_id: string | null
           last_used_project_id: string | null
+          metadata: Json | null
+          mobile_phone: string | null
           notification_preferences: Json
           onboarding_completed: boolean
           onboarding_steps: Json
+          referral_source: string | null
+          role: string | null
+          signup_data: Json | null
           theme: string | null
+          title: string | null
+          trial_goals: Json | null
           ui_preferences: Json
           updated_at: string
           user_id: string
         }
         Insert: {
+          company_name?: string | null
           created_at?: string
+          email?: string | null
+          first_name?: string | null
           id?: string
+          image_url?: string | null
+          industry?: string | null
           language?: string | null
+          last_name?: string | null
           last_used_account_id?: string | null
           last_used_project_id?: string | null
+          metadata?: Json | null
+          mobile_phone?: string | null
           notification_preferences?: Json
           onboarding_completed?: boolean
           onboarding_steps?: Json
+          referral_source?: string | null
+          role?: string | null
+          signup_data?: Json | null
           theme?: string | null
+          title?: string | null
+          trial_goals?: Json | null
           ui_preferences?: Json
           updated_at?: string
           user_id: string
         }
         Update: {
+          company_name?: string | null
           created_at?: string
+          email?: string | null
+          first_name?: string | null
           id?: string
+          image_url?: string | null
+          industry?: string | null
           language?: string | null
+          last_name?: string | null
           last_used_account_id?: string | null
           last_used_project_id?: string | null
+          metadata?: Json | null
+          mobile_phone?: string | null
           notification_preferences?: Json
           onboarding_completed?: boolean
           onboarding_steps?: Json
+          referral_source?: string | null
+          role?: string | null
+          signup_data?: Json | null
           theme?: string | null
+          title?: string | null
+          trial_goals?: Json | null
           ui_preferences?: Json
           updated_at?: string
           user_id?: string
@@ -2062,6 +2126,9 @@ export const Constants = {
         "unpaid",
       ],
     },
+  },
+  graphql_public: {
+    Enums: {},
   },
   public: {
     Enums: {

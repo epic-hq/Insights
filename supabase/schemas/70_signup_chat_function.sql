@@ -1,18 +1,16 @@
--- Function to upsert signup chat metadata into account_settings
+-- Function to upsert signup chat data into user_settings
 create or replace function upsert_signup_data(
     p_user_id uuid,
     p_signup_data jsonb
 ) returns void as $$
 begin
-    update user_settings
-    set signup_data = coalesce(signup_data, '{}'::jsonb) || p_signup_data
-    where user_id = p_user_id;
-
-    -- If no row was updated, the account_id doesn't exist in account_settings
-    -- This shouldn't happen in normal flow, but we can handle it gracefully
-    if not found then
-        raise exception 'User settings not found for user_id: %', p_user_id;
-    end if;
+    -- Insert or update user_settings with signup_data
+    insert into user_settings (user_id, signup_data)
+    values (p_user_id, p_signup_data)
+    on conflict (user_id) 
+    do update set 
+        signup_data = coalesce(user_settings.signup_data, '{}'::jsonb) || excluded.signup_data,
+        updated_at = now();
 end;
 $$ language plpgsql security definer;
 
