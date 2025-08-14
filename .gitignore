@@ -90,3 +90,4 @@ blob-report
 
 # Local Netlify folder
 .netlify
+.mastra
