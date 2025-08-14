@@ -20,7 +20,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		// 1. Aggregate all interviews for the project
 		const { data: interviews, error: interviewsError } = await supabase
 			.from("interviews")
-			.select("*")
+			.select("id")
 			.eq("project_id", projectId)
 
 		if (interviewsError) {

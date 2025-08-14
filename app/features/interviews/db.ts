@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
-import type { Database } from "~/types"
+import consola from "consola"
+import type { Database, } from "~/types"
 
 export const getInterviews = async ({
 	supabase,
@@ -13,7 +14,19 @@ export const getInterviews = async ({
 	return await supabase
 		.from("interviews")
 		.select(`
-			*,
+			title,
+			id,
+			interview_date,
+			participant_pseudonym,
+			segment,
+			duration_min,
+			high_impact_themes,
+			observations_and_notes,
+			open_questions_and_next_steps,
+			status,
+			media_url,
+			created_at,
+			updated_at,
 			interview_people (
 				role,
 				people (
@@ -48,10 +61,23 @@ export const getInterviewById = async ({
 	id: string
 }) => {
 	// Fetch interview with related participants and insights (including tags)
+	consola.log("getInterviewById", projectId, id)
 	return await supabase
 		.from("interviews")
 		.select(`
-			*,
+		title,
+			id,
+			interview_date,
+			participant_pseudonym,
+			segment,
+			duration_min,
+			high_impact_themes,
+			observations_and_notes,
+			open_questions_and_next_steps,
+			status,
+			media_url,
+			created_at,
+			updated_at,
 			interview_people (
 				role,
 				people (
@@ -61,7 +87,12 @@ export const getInterviewById = async ({
 				)
 			),
 			insights (
-				*,
+				id,
+				name,
+				category,
+				pain,
+				journey_stage,
+				emotional_response,
 				insight_tags (
 					tags (
 						tag
@@ -93,7 +124,14 @@ export const getInterviewParticipants = async ({
 				segment,
 				description,
 				contact_info,
-				persona
+				people_personas (
+					persona_id,
+					personas (
+						id,
+						name,
+						color_hex
+					)
+				)
 			)
 		`)
 		.eq("interview_id", interviewId)
@@ -110,7 +148,22 @@ export const getInterviewInsights = async ({
 	return await supabase
 		.from("insights")
 		.select(`
-			*,
+			id,
+			interview_id,
+			name,
+			pain,
+			details,
+			category,
+			journey_stage,
+			emotional_response,
+			desired_outcome,
+			jtbd,
+			impact,
+			evidence,
+			motivation,
+			contradictions,
+			updated_at,
+			project_id,
 			insight_tags (
 				tags (
 					tag
@@ -136,7 +189,37 @@ export const getRelatedInterviews = async ({
 	// Get related interviews from the same project
 	return await supabase
 		.from("interviews")
-		.select("*")
+		.select(`
+			title,
+			id,
+			interview_date,
+			participant_pseudonym,
+			segment,
+			duration_min,
+			high_impact_themes,
+			observations_and_notes,
+			open_questions_and_next_steps,
+			status,
+			media_url,
+			created_at,
+			updated_at,
+			interview_people (
+				role,
+				people (
+					id,
+					name,
+					segment,
+					people_personas (
+						persona_id,
+						personas (
+							id,
+							name,
+							color_hex
+						)
+					)
+				)
+			)
+		`)
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.neq("id", excludeId)
@@ -166,13 +249,7 @@ export const updateInterview = async ({
 	projectId: string
 	data: Database["public"]["Tables"]["interviews"]["Update"]
 }) => {
-	return await supabase
-		.from("interviews")
-		.update(data)
-		.eq("id", id)
-		.eq("project_id", projectId)
-		.select()
-		.single()
+	return await supabase.from("interviews").update(data).eq("id", id).eq("project_id", projectId).select().single()
 }
 
 export const deleteInterview = async ({
@@ -186,9 +263,5 @@ export const deleteInterview = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase
-		.from("interviews")
-		.delete()
-		.eq("id", id)
-		.eq("project_id", projectId)
+	return await supabase.from("interviews").delete().eq("id", id).eq("project_id", projectId)
 }

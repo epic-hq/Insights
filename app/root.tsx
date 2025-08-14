@@ -1,6 +1,15 @@
 import { useTranslation } from "react-i18next"
-import type { LinksFunction } from "react-router"
-import { isRouteErrorResponse, Links, Meta, Outlet, Scripts, ScrollRestoration, useRouteError } from "react-router"
+import {
+	isRouteErrorResponse,
+	Links,
+	type LinksFunction,
+	Meta,
+	type MetaFunction,
+	Outlet,
+	Scripts,
+	ScrollRestoration,
+	useRouteError,
+} from "react-router"
 import { useChangeLanguage } from "remix-i18next/react"
 import { ClientOnly } from "~/components/ClientOnly"
 import { NotificationProvider } from "~/contexts/NotificationContext"
@@ -19,7 +28,33 @@ export async function loader({ context, request }: Route.LoaderArgs) {
 	}
 }
 
-export const links: LinksFunction = () => [{ rel: "stylesheet", href: tailwindcss }]
+// Define the links for the application
+export const links: LinksFunction = () => [
+	// Stylesheet
+	{ rel: "stylesheet", href: tailwindcss },
+	// Favicon
+	{ rel: "icon", type: "image/x-icon", href: "/favicon.ico" },
+	// Apple touch icon
+	{ rel: "apple-touch-icon", sizes: "180x180", href: "/icons/apple-touch-icon.png" },
+	// Web app manifest
+	{ rel: "manifest", href: "/manifest.json" },
+	// Additional icon sizes for various platforms
+	{ rel: "icon", type: "image/png", sizes: "32x32", href: "/icons/icon-32x32.png" },
+	{ rel: "icon", type: "image/png", sizes: "16x16", href: "/icons/icon-16x16.png" },
+	{ rel: "icon", type: "image/png", sizes: "192x192", href: "/icons/icon-192x192.png" },
+	{ rel: "icon", type: "image/png", sizes: "512x512", href: "/icons/icon-512x512.png" },
+]
+
+// Define meta tags for the application
+export const meta: MetaFunction = () => {
+	return [
+		{ name: "viewport", content: "width=device-width,initial-scale=1" },
+		{ name: "theme-color", content: "#2563eb" },
+		{ name: "msapplication-config", content: "/browserconfig.xml" },
+		{ name: "msapplication-TileColor", content: "#2563eb" },
+		{ name: "msapplication-TileImage", content: "/icons/icon-144x144.png" },
+	]
+}
 
 export const handle = {
 	i18n: "common",

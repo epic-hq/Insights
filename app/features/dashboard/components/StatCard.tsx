@@ -163,37 +163,35 @@ export default function StatCard({
 	const borderStyle = highlightColor ? { borderLeft: `4px solid ${highlightColor}` } : {}
 
 	if (compact) {
-		// Compact mode - lean display with just text, number, and small icon
+		const next = href ? (href.startsWith("/") ? { to: href } : { href }) : {}
+		const clickable = href || onClick
+
 		return (
 			<Wrapper
-				{...(href ? (href.startsWith("/") ? { to: href } : { href }) : {})}
+				{...next}
 				{...(onClick ? { onClick } : {})}
-				className={`rounded-lg border bg-white shadow transition-all duration-200 dark:bg-gray-900 ${href || onClick ? "hover:-translate-y-1 transform cursor-pointer hover:bg-gray-50 hover:shadow-md dark:hover:bg-gray-800" : ""} ${className ?? ""}`}
-				style={borderStyle}
+				// inline, no extra chrome, minimal padding
+				className={`inline-flex items-center gap-0.5 rounded-md border border-gray-200/70 bg-white px-0.5 py-0.5 text-[11px] leading-none dark:border-gray-800 dark:bg-gray-900 ${clickable ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" : ""} ${className ?? ""}`}
+				// slimmer left accent if you still want highlight
+				style={highlightColor ? { borderLeft: `2px solid ${highlightColor}` } : undefined}
 			>
-				<div className="p-3">
-					<div className="flex items-center justify-between">
-						<div className="flex-1">
-							<div className="font-medium text-gray-500 text-xs">{label}</div>
-							<div className="font-semibold text-lg text-gray-900 dark:text-gray-100">{value}</div>
-							{change && (
-								<div className={`flex items-center text-xs ${isUp ? "text-emerald-600" : "text-rose-600"}`}>
-									{isUp ? (
-										<svg className="mr-1 h-2 w-2" viewBox="0 0 20 20" fill="currentColor">
-											<path fillRule="evenodd" d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z" clipRule="evenodd" />
-										</svg>
-									) : (
-										<svg className="mr-1 h-2 w-2" viewBox="0 0 20 20" fill="currentColor">
-											<path fillRule="evenodd" d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z" clipRule="evenodd" />
-										</svg>
-									)}
-									{change}
-								</div>
-							)}
-						</div>
-						{icon && <div className="text-gray-400 ml-2">{renderIcon(icon, compact)}</div>}
-					</div>
-				</div>
+				{icon && (
+					<span className="flex-shrink-0 text-gray-400">{renderIcon(icon, /* compact */ true /* -> h-4 w-4 */)}</span>
+				)}
+
+				{/* label width = max-w-[9rem]*/}
+				<span className="max-w-[6rem] truncate text-gray-500">{label}</span>
+
+				{/* value */}
+				<span className="font-semibold text-gray-900 dark:text-gray-100">{value}</span>
+
+				{/* change (tiny, color-coded) */}
+				{change && (
+					<span className={`ml-0.5 flex items-center gap-0.5 ${isUp ? "text-emerald-600" : "text-rose-600"}`}>
+						<span aria-hidden>{isUp ? "▲" : "▼"}</span>
+						<span>{change}</span>
+					</span>
+				)}
 			</Wrapper>
 		)
 	}

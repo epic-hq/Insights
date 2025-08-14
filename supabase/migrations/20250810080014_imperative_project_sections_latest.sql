@@ -1,0 +1,1 @@
+GRANT SELECT ON public.project_sections_latest TO authenticated;

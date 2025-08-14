@@ -1,6 +1,7 @@
 import { Dialog, Transition } from "@headlessui/react"
 import { Fragment, useState } from "react"
 import { useDropzone } from "react-dropzone"
+import { useNavigate } from "react-router-dom"
 import { useNotification } from "~/contexts/NotificationContext"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 
@@ -18,6 +19,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 	const [error, setError] = useState<string | null>(null)
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const { showNotification } = useNotification()
+	const _navigate = useNavigate()
 
 	const handleFileUpload = async (files: File[]) => {
 		if (!files.length) return

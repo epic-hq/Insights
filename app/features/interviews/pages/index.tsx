@@ -37,7 +37,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response(`Error fetching interviews: ${error.message}`, { status: 500 })
 	}
 
-	consola.log(`Found ${rows?.length || 0} interviews`)
+	// consola.log(`Found ${rows?.length || 0} interviews`)
 
 	// Fetch insights count for each interview
 	const { data: allInsights, error: insightsError } = await supabase
@@ -106,21 +106,21 @@ export default function InterviewsIndex() {
 	const { interviews, segmentData } = useLoaderData<typeof loader>()
 	const { accountId, projectId, projectPath } = useCurrentProject()
 	// const { accountId, projectId, projectPath } = useParams()
-	consola.log("interviews projectpath", projectPath)
+	// consola.log("interviews projectpath", projectPath)
 	const routes = useProjectRoutes(projectPath)
 
 	return (
 		<div className="space-y-8 p-6">
 			<div className="flex items-center justify-between">
 				<div>
-					<h1 className="font-bold text-3xl">Interviews</h1>
-					<p className="text-gray-600">Research interviews and transcripts</p>
+					<h1 className="font-bold text-3xl">Sources</h1>
+					<p className="text-gray-600">Conversations, interviews, and transcripts</p>
 				</div>
 				<AddInterviewButton />
 			</div>
 
 			<div className="mt-6">
-				<h2 className="mb-4 font-semibold text-xl">Interview Segments</h2>
+				{/* <h2 className="mb-4 font-semibold text-xl">Interview Segments</h2> */}
 				<PrettySegmentPie data={segmentData} />
 			</div>
 

@@ -1,7 +1,8 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
+import { Button } from "~/components/ui/button"
 import Dashboard from "~/features/dashboard/components/Dashboard"
 import type { KPI } from "~/features/dashboard/components/KPIBar"
 import { getPersonas } from "~/features/personas/db"
@@ -41,19 +42,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Fetch KPIs - count of interviews, insights, and opportunities
 	const { count: interviewCount } = await supabase
 		.from("interviews")
-		.select("*", { count: "exact", head: true })
+		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
 	const { count: insightCount } = await supabase
 		.from("insights")
-		.select("*", { count: "exact", head: true })
+		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
 	const { count: opportunityCount } = await supabase
 		.from("opportunities")
-		.select("*", { count: "exact", head: true })
+		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
@@ -103,19 +104,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
 	const { data: interviewRows } = await supabase
 		.from("interviews")
-		.select("*")
+		.select("id,created_at,participant_pseudonym,status,updated_at")
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 		.limit(5)
 
 	// Transform interviews into the expected format
-	const interviews = (interviewRows || []).map((interview: InterviewRow) => ({
-		id: interview.id,
-		date: new Date(interview.created_at).toISOString().split("T")[0],
-		participant: interview.participant_pseudonym || "Unknown",
-		status: interview.status as "transcribed" | "processing" | "ready",
-	}))
+	const interviews = (interviewRows || []).map(
+		(interview: Pick<InterviewRow, "id" | "created_at" | "participant_pseudonym" | "status" | "updated_at">) => ({
+			id: interview.id,
+			date: new Date(interview.created_at).toISOString().split("T")[0],
+			participant: interview.participant_pseudonym || "Unknown",
+			status: interview.status as "transcribed" | "processing" | "ready",
+		})
+	)
 
 	// Fetch opportunities
 	type OpportunityRow = Database["public"]["Tables"]["opportunities"]["Row"]
@@ -186,7 +189,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
-	consola.log("Tag frequency query:", { tagFrequencyData, tagFrequencyError, accountId, projectId })
+	// consola.log("Tag frequency query:", { tagFrequencyData, tagFrequencyError, accountId, projectId })
 
 	// Process tag frequency data into the format expected by TagDisplay
 	type TagFrequency = { name: string; frequency: number }
@@ -207,12 +210,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.sort((a, b) => b.frequency - a.frequency) // Sort by frequency descending
 
 	// Debug logging
-	consola.log("Dashboard Debug:", {
-		insightRowsCount: insightRows?.length || 0,
-		tagFrequencyDataCount: tagFrequencyData?.length || 0,
-		tagsCount: tags.length,
-		personaRowsCount: data?.length || 0,
-	})
+	// consola.log("Dashboard Debug:", {
+	// 	insightRowsCount: insightRows?.length || 0,
+	// 	tagFrequencyDataCount: tagFrequencyData?.length || 0,
+	// 	tagsCount: tags.length,
+	// 	personaRowsCount: data?.length || 0,
+	// })
 
 	// Group insights by tags for tree map (keeping existing logic)
 	const tagMap = new Map<string, TreeNode>()
@@ -285,6 +288,11 @@ export default function Index() {
 	return (
 		<div>
 			<div className="relative">
+				<div className="mx-auto flex justify-center">
+					<Button className="items-center justify-center bg-gradient-to-br from-blue-500 to-green-600 p-6 text-xl opacity-80">
+						Try the <Link to="../metro">new Metro dashboard</Link>
+					</Button>
+				</div>
 				<Dashboard {...data} />
 			</div>
 		</div>

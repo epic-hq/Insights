@@ -47,11 +47,13 @@ export type Opportunity = Tables<"opportunities"> // ensure table exists in DB
 export type Tag = Tables<"tags">
 export type Person = Tables<"people">
 export type Project = Tables<"projects">
+export type Project_Section = Tables<"project_sections">
 export type InterviewTag = Tables<"interview_tags">
 export type InsightTag = Tables<"insight_tags">
 export type PeoplePersona = Tables<"people_personas">
 export type Comment = Tables<"comments">
 export type AccountSettings = Tables<"account_settings">
+export type UserSettings = Tables<"user_settings">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
@@ -65,6 +67,8 @@ export type PersonInsert = TablesInsert<"people">
 export type PersonUpdate = TablesUpdate<"people">
 export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
+export type Project_SectionInsert = TablesInsert<"project_sections">
+export type Project_SectionUpdate = TablesUpdate<"project_sections">
 export type InterviewTagInsert = TablesInsert<"interview_tags">
 export type InterviewTagUpdate = TablesUpdate<"interview_tags">
 export type InsightTagInsert = TablesInsert<"insight_tags">
@@ -75,6 +79,8 @@ export type CommentInsert = TablesInsert<"comments">
 export type CommentUpdate = TablesUpdate<"comments">
 export type AccountSettingsInsert = TablesInsert<"account_settings">
 export type AccountSettingsUpdate = TablesUpdate<"account_settings">
+export type UserSettingsInsert = TablesInsert<"user_settings">
+export type UserSettingsUpdate = TablesUpdate<"user_settings">
 
 // 4. View-model helpers
 // ---------------------
@@ -110,7 +116,7 @@ export interface OpportunityView extends Opportunity {
 	name?: string | null
 	confidence?: number | null
 	priority?: string | null
-	updated_at?: string | null
+	updated_at?: Date | null | undefined
 	tags?: string[] | null
 	insights?: string[] | null
 	assignee?: string | null

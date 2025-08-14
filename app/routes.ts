@@ -1,4 +1,6 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
+import aiChatRoutes from "./features/aichat/routes"
+import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
@@ -26,6 +28,8 @@ const routes = [
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
+				// Mobile routes
+				...aiChatRoutes,
 				...dashboardRoutes,
 				...interviewsRoutes,
 				...insightsRoutes,
@@ -33,6 +37,10 @@ const routes = [
 				...peopleRoutes,
 				...personasRoutes,
 				...mobileRoutes,
+
+				// Annotations API routes (need project context)
+				...annotationsRoutes,
+
 			]),
 		]),
 	]),
@@ -51,7 +59,9 @@ const routes = [
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/generate-persona-insights", "./routes/api.generate-persona-insights.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
+	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 	route("api/generate-personas", "./routes/api.generate-personas.tsx"),
+	route("api/copilotkit", "./features/aichat/api/copilotkit.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

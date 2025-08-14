@@ -1,6 +1,195 @@
 # Onboarding
 
-## User Story
+## UC:EarlySignUp
+
+### User Story
+
+As an entrepreneur, I want to:
+
+Direct visitors from my landing page to an early access signup.
+
+Offer an incentive (e.g., first month free).
+
+Immediately engage them in a short, targeted chat to learn:
+
+Their core problem & use case.
+
+Current challenges & what’s not working.
+
+How important solving this is.
+
+What their ideal solution looks like.
+
+What kind of content they want to analyze.
+
+(Optional) Additional feedback or wish list items.
+
+Store their responses in my database for later segmentation and product design.
+
+### Flow
+
+Landing Page
+
+Headline + value prop.
+
+CTA: “Get Early Access – 1st Month Free.”
+
+Email signup form → creates user in DB.
+
+Redirect to /signup-chat.
+
+Signup Chat Page
+
+Built with CopilotKit chat UI.
+
+Uses a dedicated onboardingAgent with a fixed script:
+
+Intro & thanks for signing up.
+
+Ask Q1 → Problem & use case.
+
+Ask Q2 → Challenges with current solutions.
+
+Ask Q3 → Importance rating (1–5).
+
+Ask Q4 → Ideal solution vision.
+
+Ask Q5 → Types of content they want to analyze.
+
+Optional wrap-up question: “Anything else you wish existed?”
+
+End with: “Thanks! We’ll be in touch when you’re activated.”
+
+Data Storage
+
+Save chat transcript in account_settings.metadata (JSONB) under key signup_chat.
+
+Example:
+
+json
+Copy
+Edit
+{
+  "signup_chat": {
+    "problem": "...",
+    "challenges": "...",
+    "importance": 5,
+    "ideal_solution": "...",
+    "content_types": "...",
+    "other_feedback": "..."
+  }
+}
+
+### Technical Implementation
+
+Frontend
+
+Framework: Remix (React Router 7).
+
+CopilotKit integration for chat UI.
+
+Agent config: minimal instructions, no off-topic conversation.
+
+Redirect from landing page signup → /signup-chat.
+
+Backend
+
+Supabase for auth & DB.
+
+Table: account_settings (with metadata JSONB field).
+
+API endpoint to save chat data:
+
+Authenticated request (user session).
+
+Merge signup_chat key into metadata.
+
+Agent Configuration
+
+Reference: CopilotKit Human-in-the-Loop docs
+
+Instruction prompt:
+
+“You are the onboarding assistant for early access users. Ask exactly these questions in sequence. Be concise, friendly, and conversational. Save responses for analysis. Do not answer unrelated questions.”
+
+### Success Criteria
+
+≥50% of landing page signups complete the chat.
+
+All chat responses saved correctly to DB.
+
+Insights easily retrievable for segmentation before launch.
+
+### Technical Implementation
+
+```sql
+create or replace function upsert_signup_data(
+    p_user_id uuid,
+    p_signup_data jsonb
+) returns void as $$
+begin
+    update user_settings
+    set signup_data = jsonb_set(
+        coalesce(signup_data, '{}'::jsonb),      -- ensure metadata exists
+        '{signup_data}',                      -- path to key
+        p_signup_data,                        -- new value
+        true                                  -- create if missing
+    )
+    where user_id = p_user_id;
+end;
+$$ language plpgsql;
+
+grant execute on function upsert_signup_data(uuid, jsonb) to authenticated;
+
+-- example call
+select upsert_signup_data(
+    user_id,
+    '{
+      "problem": "Hard to track client feedback",
+      "challenges": "Manual spreadsheets take too long",
+      "importance": 5,
+      "ideal_solution": "Automated feedback dashboard",
+      "content_types": "Audio transcripts",
+      "other_feedback": "Integration with Notion"
+    }'::jsonb
+);
+```
+
+**CopilotKit Agent**
+
+```typescript
+export const onboardingAgent = new Agent({
+    name: "Onboarding Assistant",
+    description: "Helps new users understand the product and get started.",
+    instructions: "You are the onboarding assistant for early access users. Ask exactly these questions in sequence. Be concise, friendly, and conversational. Save responses for analysis. Do not answer unrelated questions.",
+    tools: [new ConsoleTool()],
+    model: "gpt-4o",
+    systemPrompt: "You are the onboarding assistant for early access users. Ask exactly these questions in sequence. Be concise, friendly, and conversational. Save responses for analysis. Do not answer unrelated questions.",
+
+});
+```
+
+### User_settings
+
+I needed to create a user_settings table to store onboarding data for each user, created on accounts.run_new_user_setup().
+
+we should:
+
+* Keep account_settings for now but repurpose it back to team-level over time.
+Signup flow:
+* copy the same default selection you currently store:
+* last_used_account_id = team_account_id
+* last_used_project_id = new_project_id
+
+App changes:
+
+* ProtectedLayout.tsx: use URL account/project as source of truth; only fall back to user_settings.last_used* for initial redirects (e.g., “/home”).
+
+* app/features/home/pages/index.tsx: switch from account_settings.current_*to user_settings.last_used_* when computing default redirect.
+
+* Gradually remove onboarding_completed and current_* from account_settings; use it purely for org-level config (e.g., default_project_id for new members, workspace name, billing plan, enforcement toggles).
+
+## User Story First Upload
 
 Title: Quick & Engaging Onboarding While First Interview Processes
 
@@ -21,12 +210,12 @@ Acceptance Criteria:
 
 Edge Cases & Considerations:
 
-- Upload errors (unsupported file, network issues): User receives clear feedback and retry option.
-- Very fast processing: Card series may be skipped or shown briefly before redirecting to results.
-- Very slow processing: Card series loops or extends with additional tips, and user can opt to be notified by email.
-- User navigates away: Processing continues in background, and user is notified when complete.
-- Accessibility: All cards are keyboard-navigable and screen-reader friendly.
-- Security: Uploaded files are stored securely and deleted if onboarding is abandoned.
+* Upload errors (unsupported file, network issues): User receives clear feedback and retry option.
+* Very fast processing: Card series may be skipped or shown briefly before redirecting to results.
+* Very slow processing: Card series loops or extends with additional tips, and user can opt to be notified by email.
+* User navigates away: Processing continues in background, and user is notified when complete.
+* Accessibility: All cards are keyboard-navigable and screen-reader friendly.
+* Security: Uploaded files are stored securely and deleted if onboarding is abandoned.
 
 ## Flow
 
@@ -40,26 +229,26 @@ Type of media: interview, conversation, focus group, etc.
 
 Goal (optional) user selectable:
 
-- understand user needs, motivations, preferences, etc. (default)
-- evaluate willingness to pay for a feature
-- OTHER fill in `custom_instructions`
+* understand user needs, motivations, preferences, etc. (default)
+* evaluate willingness to pay for a feature
+* OTHER fill in `custom_instructions`
 
 Processing can take a while, so show a few screens to show progress and educate user on the way.
 
 ### Onboarding Card Series (Auto-Advancing Steps)
 
 1. **Processing Interview**
-   - Visual progress indicator, reassuring message (“We’re analyzing your interview…”)
+   * Visual progress indicator, reassuring message (“We’re analyzing your interview…”)
 2. **What Happens Next**
-   - Brief overview of how insights are generated and what to expect.
+   * Brief overview of how insights are generated and what to expect.
 3. **Tips for Best Results**
-   - Suggestions for future uploads (audio quality, interview length, etc.)
+   * Suggestions for future uploads (audio quality, interview length, etc.)
 4. **Explore Features**
-   - Quick highlights of key product features (e.g., insights dashboard, sharing, team collaboration).
+   * Quick highlights of key product features (e.g., insights dashboard, sharing, team collaboration).
 5. **Your Privacy Matters**
-   - Short note on data security and privacy practices.
+   * Short note on data security and privacy practices.
 6. **Get the Most Out of Insights**
-   - Link to resources, guides, or community.
+   * Link to resources, guides, or community.
 7. **Processing Complete!** (auto-redirects to results when ready)
 
 Each card auto-advances after a few seconds, but users can click to move forward/back or pause if desired.

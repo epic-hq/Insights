@@ -24,6 +24,7 @@ export interface ClusterPoint {
 }
 
 export async function loader({ request }: LoaderFunctionArgs) {
+	// TODO: delegate this to db function
 	/* 1️⃣  get Supabase rows -------------------------------------------------- */
 	const { client: supabase } = getServerClient(request)
 	const { data: jwt } = await supabase.auth.getClaims()

@@ -1,5 +1,6 @@
 import consola from "consola"
 import { Outlet, redirect, useLoaderData } from "react-router"
+import AIChatButton from "~/components/chat/AIChatButton"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
@@ -26,6 +27,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			// Use RLS client if JWT is present, otherwise fallback to anon client
 			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/server")).getServerClient(request).client
 
+			const { data: user_settings } = await supabase.from("user_settings").select("*").eq("user_id", user.sub).single()
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {
 				claims: user,
@@ -33,6 +35,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				user_metadata: user.user_metadata,
 				supabase,
 				headers: request.headers,
+				user_settings: user_settings || {},
 			})
 			// consola.log("_ProtectedLayout Authentication middleware success\n")
 		} catch (error) {
@@ -47,6 +50,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 		const loadContextInstance = context.get(loadContext)
 		const { lang } = loadContextInstance
 		const user = context.get(userContext)
+		const user_settings = user.user_settings
 		const accountId = user.account_id
 		const supabase = user.supabase
 		const claims = user.claims
@@ -75,6 +79,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 		context.set(userContext, {
 			...user,
 			accountSettings,
+			user_settings,
 		})
 
 		return {
@@ -85,6 +90,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 			},
 			accounts: accounts || [],
 			account_settings: accountSettings || {},
+			user_settings: user_settings || {},
 		}
 	} catch (error) {
 		consola.error("Protected layout loader error:", error)
@@ -93,14 +99,31 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function ProtectedLayout() {
-	const { auth, accounts, account_settings } = useLoaderData<typeof loader>()
+	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
 
 	return (
-		<AuthProvider user={auth.user} organizations={accounts} account_settings={account_settings}>
+		<AuthProvider
+			user={auth.user}
+			organizations={accounts}
+			account_settings={account_settings}
+			user_settings={user_settings}
+		>
 			<CurrentProjectProvider>
 				<MainNav />
 				<PageHeader title="" />
 				<Outlet />
+
+				{/* Persistent AI Chat Button */}
+				<div className="fixed right-0 bottom-0 left-0 z-40 border-gray-800 border-t bg-black p-3">
+					<div className="grid grid-cols-3 gap-2">
+						{/* First two slots can be empty or used for other global actions */}
+						<div />
+						<div />
+
+						{/* AI Chat Button - always in the third position */}
+						<AIChatButton />
+					</div>
+				</div>
 			</CurrentProjectProvider>
 		</AuthProvider>
 	)

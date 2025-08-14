@@ -84,7 +84,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		demographics,
 		summarized_insights,
 	}
-	consola.log("personaDetail: ", persona)
+
 	// Fetch people linked via junction table
 	const { data: peopleData, error: peopleError } = await supabase
 		.from("people_personas")
@@ -101,7 +101,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// Fetch interviews where people with this persona participated
 	const peopleIds = people.map((p) => p.id)
-	consola.log("people: ", peopleIds)
 	if (peopleIds.length === 0) {
 		return {
 			persona,
@@ -128,7 +127,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (interviewIds.length > 0) {
 		const { data: interviewsData, error: interviewsError } = await supabase
 			.from("interviews")
-			.select("*")
+			.select("id,created_at,participant_pseudonym,status,updated_at")
 			.in("id", interviewIds)
 
 		if (interviewsError) {
@@ -142,7 +141,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("persona_insights")
 		.select(`
 			insights (
-				*
+				id,
+				name,
+				category,
+				pain,
+				journey_stage,
+				emotional_response,
+				insight_tags (
+					tags (
+						tag
+					)
+				)
 			)
 		`)
 		.eq("persona_id", personaId)
@@ -175,7 +184,6 @@ export default function PersonaDetailRoute() {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	consola.log("personaDetail: ", persona)
 	if (!persona) {
 		return (
 			<div className="flex h-64 items-center justify-center">

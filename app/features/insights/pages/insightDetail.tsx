@@ -21,7 +21,8 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	const accountId = params.accountId
 	const projectId = params.projectId
 	const { insightId } = params
-	consola.log("insight accountId", accountId, "projectId", projectId, "insightId", insightId)
+
+	// consola.log("insight accountId", accountId, "projectId", projectId, "insightId", insightId)
 
 	if (!accountId || !projectId || !insightId) {
 		throw new Response("Account ID, Project ID, and Insight ID are required", { status: 400 })

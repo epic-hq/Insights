@@ -42,6 +42,8 @@ primary_region = 'sjc'
 
 [processes]
   app = 'dotenvx run -- pnpm start'
+  mastra = 'dotenvx run -- npx mastra dev --dir app/mastra'
+  both = 'dotenvx run -- npx concurrently -n "App,Mastra" --c green,cyan "pnpm start" "npx mastra dev --dir app/mastra"'
 
 # Optional: Add secrets for your encrypted environment variables
 # Run: flyctl secrets set DOTENV_PRIVATE_KEY_PRODUCTION='your-key-here'

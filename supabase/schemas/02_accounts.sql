@@ -228,6 +228,8 @@ declare
 begin
 
     -- first we setup the user profile
+    insert into public.user_settings (user_id) values (NEW.id);
+
     -- TODO: see if we can get the user's name from the auth.users table once we learn how oauth works
     if new.email IS NOT NULL then
         generated_user_name := split_part(new.email, '@', 1);
@@ -548,7 +550,7 @@ begin
     -- Check if the user is a member of the account
     select au.account_role into user_role
     from accounts.account_user au
-    where au.account_id = get_account.account_id and au.user_id = user_id
+    where au.account_id = get_account.account_id and au.user_id = auth.uid()
     limit 1;
 
     if user_role is null then
@@ -560,7 +562,7 @@ begin
         select json_build_object(
             'account_id', a.id,
             'account_role', user_role,
-            'is_primary_owner', a.primary_owner_user_id = user_id,
+            'is_primary_owner', a.primary_owner_user_id = auth.uid(),
             'name', a.name,
             'slug', a.slug,
             'personal_account', a.personal_account,

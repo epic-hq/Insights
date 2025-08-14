@@ -5,37 +5,54 @@
 - [x] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
 - [x] Reset db.
 - [x] remove the db creation of response table
-- [x] fix login-redirect, and sign-in flow. <rickmoy@gmail.com> is broken but <rick@deeplight.digital> works hmmm.
+- [x] fix login-redirect, and sign-in flow.
 - [x] Define Routing
 - [x] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
 - [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
 project detail getproject by id fails
 insights blank due to missing project_id for previous interviews. Test going forward.
-x insightDetail - not found bc linking to project_id. needs error guard
-x personaDetail & edit
-- people
-- peopleDetail
-- persona not added to proj or not queried right after add interview
-- generate persona. path.
-
+- [x] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
+- [x] insightDetail - not found bc linking to project_id. needs error guard
+- [x] personaDetail & edit
+- [x] people
+- [x] peopleDetail
+- [x] persona not added to proj or not queried right after add interview
 - [x] Deployed to fly.io as `upsight.fly.dev`
-- [ ] Update all links to protectedLayout in app/routes
-- [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
+- [x] Update all links to protectedLayout in app/routes
+- [x] interview upload should redir to interview detail page.
 
-- [ ] CRUD functions for people, projects, personas, tags, opportunities
-- [ ] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
+## Sprint 2.5 - Project Management
 
-Defer:
+- [x] Project display, editing, sections
+- [x] Test & confirm
+- [x] Memory leak fix. Rewrote db queries to be more focused, eliminating mebeddings, big transcripts etc.
+- [x] Stubbed out hooks for votes and annotations
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
-- [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data
+- [x] prototype desktop version of Simple UI for project dashboard (summary insights, suggestions, chat) [v0](https://preview-mobile-insights-app-design-kzmlp51a1bx0c0w9lgfb.vusercontent.net/) at [inapp](/aichat)
+- [x] Signup chat to get user needs saved to user_settings.saved_data
+- [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data; eg explain the personas.
+- [ ] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
+- [ ] Chat Workflows with Data. Build tools to read and write more data types.
+
+- [ ] emotional_intensity (1-10)
+
+## UX Sprint - Mobile
+
+- [ ] convert mobile design from [v0](https://v0.app/chat/fork-of-mobile-insights-app-design-aV5ayoVifB4) to [remix w help of gpt5]()
+
+## Sprint 3.5 - Annotations Component
+
+- [ ] Create proper component for annotations. Stubbed out.
+- [ ] Add annotations to insights and pick cards, v2, quick, or mobile
+- [ ] Revise DB calls and build Annotations View in DB [spec](annotations-schema-proposal.md##Enhancement:AnnotationViews)
 
 ## Sprint 4: Workflow Pipelines
 
 - [X] Research and architect a pipeline queue for transcription: `docs/feature-spec-transcription-pipeline.md`
 - [ ] Implement queues
-- [ ] Convert existing 'Add Interview' process to use the queues
+- [ ] Convert existing 'Add Interview' process to use the queues and show Onboarding sequence cards
 - [ ] Implement Generation queue (already spec'd)
 - [ ] Handle longer files, use as upgrade trigger. AAI timeout handling
 
@@ -48,9 +65,9 @@ Defer:
 - [ ] A better breadcrumbs, indicate current project.
 - [ ] Show suggestions for next steps.
 - [ ] Reduce clutter
- 	- [ ] dont makeadd 'inline edit' in other records like interviews etc.
- 	- [ ] breadcrumbs parent not clickable
- 	- []
+  - [ ] dont makeadd 'inline edit' in other records like interviews etc.
+  - [ ] breadcrumbs parent not clickable
+  - []
 - [ ] Organize insights. Group similar insights into themes. count frequences. See by personas. expand on pain points and causes.
 - [ ] How to make UX Better to get maximum WOW insights? (revise `user-flow.md`)
 Prioritize.
@@ -58,6 +75,16 @@ Prioritize.
 
 ## 🌓 Backlog / Later
 
+- [ ] Migrate auth and Organizations to BetterAuth, get Stripe integration working.
+
+Defer:
+
+- [ ] generate persona. path.
+- [ ] how to handle routes:
+  - /$accountId
+  - /home my accounts(pro), projects, user profile settings etc?
+- [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
+- [ ] Test & verify CRUD functions for people, projects, personas, tags, opportunities
 - [ ] Update RLS to require account_id AND project_id.
 - [ ] Create compound indexes (account_id, project_id, created_at) on all project-scoped tables.
 - [ ] Cannot delete users due to fk constraints.

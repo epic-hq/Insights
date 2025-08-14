@@ -1,4 +1,3 @@
-import consola from "consola"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
@@ -24,17 +23,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	// Fetch KPIs - count of interviews, insights, and opportunities
 	const { count: interviewCount } = await supabase
 		.from("interviews")
-		.select("*", { count: "exact", head: true })
+		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 
 	const { count: insightCount } = await supabase
 		.from("insights")
-		.select("*", { count: "exact", head: true })
+		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 
 	const { count: opportunityCount } = await supabase
 		.from("opportunities")
-		.select("*", { count: "exact", head: true })
+		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 
 	// Define KPIs with live counts
@@ -75,18 +74,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
 	const { data: interviewRows } = await supabase
 		.from("interviews")
-		.select("*")
+		.select("id,created_at,participant_pseudonym,status,updated_at")
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 		.limit(5)
 
 	// Transform interviews into the expected format
-	const interviews = (interviewRows || []).map((interview: InterviewRow) => ({
-		id: interview.id,
-		date: new Date(interview.created_at).toISOString().split("T")[0],
-		participant: interview.participant_pseudonym || "Unknown",
-		status: interview.status as "transcribed" | "processing" | "ready",
-	}))
+	const interviews = (interviewRows || []).map(
+		(interview: Pick<InterviewRow, "id" | "created_at" | "participant_pseudonym" | "status" | "updated_at">) => ({
+			id: interview.id,
+			date: new Date(interview.created_at).toISOString().split("T")[0],
+			participant: interview.participant_pseudonym || "Unknown",
+			status: interview.status as "transcribed" | "processing" | "ready",
+		})
+	)
 
 	// Fetch opportunities
 	type OpportunityRow = Database["public"]["Tables"]["opportunities"]["Row"]
@@ -141,11 +142,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 
 	// Debug logging
-	consola.log("Dashboard Debug:", {
-		insightRowsCount: insightRows?.length || 0,
-		insightTagsCount: insightTags?.length || 0,
-		personaRowsCount: data?.length || 0,
-	})
+	// consola.log("Dashboard Debug:", {
+	// 	insightRowsCount: insightRows?.length || 0,
+	// 	insightTagsCount: insightTags?.length || 0,
+	// 	personaRowsCount: data?.length || 0,
+	// })
 
 	// Group insights by tags using junction table data
 	const tagMap = new Map<string, TreeNode>()

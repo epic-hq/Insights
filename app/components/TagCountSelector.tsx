@@ -6,26 +6,18 @@ interface TagCountSelectorProps {
 	step?: number
 }
 
-export default function TagCountSelector({ 
-	value, 
-	onChange, 
-	min = 5, 
-	max = 25, 
-	step = 1 
-}: TagCountSelectorProps) {
+export default function TagCountSelector({ value, onChange, min = 5, max = 25, step = 1 }: TagCountSelectorProps) {
 	const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
 		onChange(Number(event.target.value))
 	}
 
 	return (
 		<div className="flex items-center gap-3">
-			<label htmlFor="tag-count-slider" className="text-sm font-medium text-gray-700 dark:text-gray-300">
+			<label htmlFor="tag-count-slider" className="font-medium text-gray-700 text-sm dark:text-gray-300">
 				Show tags:
 			</label>
 			<div className="flex items-center gap-3">
-				<span className="w-6 text-right font-mono text-sm text-gray-500 dark:text-gray-400">
-					{min}
-				</span>
+				<span className="w-6 text-right font-mono text-gray-500 text-sm dark:text-gray-400">{min}</span>
 				<input
 					id="tag-count-slider"
 					type="range"
@@ -34,14 +26,10 @@ export default function TagCountSelector({
 					step={step}
 					value={value}
 					onChange={handleSliderChange}
-					className="h-2 w-24 cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700 [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:shadow-lg [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-blue-600 [&::-moz-range-thumb]:shadow-lg"
+					className="h-2 w-24 cursor-pointer appearance-none rounded-lg bg-gray-200 dark:bg-gray-700 [&::-moz-range-thumb]:h-4 [&::-moz-range-thumb]:w-4 [&::-moz-range-thumb]:cursor-pointer [&::-moz-range-thumb]:appearance-none [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:bg-blue-600 [&::-moz-range-thumb]:shadow-lg [&::-webkit-slider-thumb]:h-4 [&::-webkit-slider-thumb]:w-4 [&::-webkit-slider-thumb]:cursor-pointer [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-blue-600 [&::-webkit-slider-thumb]:shadow-lg"
 				/>
-				<span className="w-6 font-mono text-sm text-gray-500 dark:text-gray-400">
-					{max}
-				</span>
-				<span className="w-6 text-center text-sm font-semibold text-blue-600 dark:text-blue-400">
-					{value}
-				</span>
+				<span className="w-6 font-mono text-gray-500 text-sm dark:text-gray-400">{max}</span>
+				<span className="w-6 text-center font-semibold text-blue-600 text-sm dark:text-blue-400">{value}</span>
 			</div>
 		</div>
 	)

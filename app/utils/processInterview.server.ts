@@ -150,18 +150,18 @@ export async function processInterviewTranscript({
 				.trim()
 
 			if (nameFromFile.length > 0) {
-				return `Participant (${nameFromFile})`
+				return `${nameFromFile}`
 			}
 		}
 
 		// Fallback to interview title or generic name
 		if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) {
-			return `Participant (${metadata.interviewTitle})`
+			return `${metadata.interviewTitle}`
 		}
 
 		// Final fallback with timestamp
 		const timestamp = new Date().toISOString().split("T")[0]
-		return `Participant (${timestamp})`
+		return `${timestamp}`
 	}
 
 	// Determine the person name: AI-extracted name or smart fallback

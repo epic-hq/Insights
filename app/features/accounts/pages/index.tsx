@@ -1,4 +1,4 @@
-import { type LoaderFunctionArgs } from "react-router"
+import type { LoaderFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/server"
 
 export async function loader(loaderArgs: LoaderFunctionArgs) {

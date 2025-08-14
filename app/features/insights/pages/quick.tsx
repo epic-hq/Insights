@@ -3,10 +3,11 @@ import { Search } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle, DialogTitle } from "~/components/ui/dialog"
+import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
 import { Input } from "~/components/ui/input"
 import { getInsights } from "~/features/insights/db"
@@ -56,6 +57,7 @@ export default function QuickInsights() {
 	)
 
 	// consola.log("Selected insight:", selected)
+
 	return (
 		<div className="min-h-screen bg-gray-50 p-4">
 			<div className="mb-4 flex items-center">
@@ -168,7 +170,7 @@ export default function QuickInsights() {
 							</div>
 						</div>
 						<DialogFooter className="!flex !flex-row !justify-start !items-start">
-							<div className="text-left">TODO: Comments & stuff</div>
+							<EntityInteractionPanel entityType="insight" entityId={selected.id} />
 						</DialogFooter>
 					</DialogContent>
 				</Dialog>

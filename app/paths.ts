@@ -21,4 +21,6 @@ export const PATHS = {
 	PROJECTS: "/projects",
 	ABOUT: "/about",
 	AUTH,
+	PROFILE: "/profile",
+	HOME: "/home",
 } as const

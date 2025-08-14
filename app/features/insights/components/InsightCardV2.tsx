@@ -25,7 +25,7 @@ import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Input } from "~/components/ui/input"
 import { Separator } from "~/components/ui/separator"
-import type { Insight, InsightView } from "~/types"
+import type { CommentView, Insight, InsightView } from "~/types"
 
 export interface Comment {
 	id: string
@@ -46,8 +46,8 @@ export interface InsightCardV2Props {
 
 // Helper function to validate insight ID
 const validateInsightId = (id: string | undefined): string | null => {
-	if (!id || id.trim() === '') {
-		consola.error('Invalid insight ID:', id)
+	if (!id || id.trim() === "") {
+		consola.error("Invalid insight ID:", id)
 		return null
 	}
 	return id.trim()
@@ -104,8 +104,8 @@ export default function InsightCardV2({
 	const voteFetcher = useFetcher()
 	const commentFetcher = useFetcher()
 	const archiveFetcher = useFetcher()
-	
-	const [editingValue, setEditingValue] = useState<string>("")  
+
+	const [editingValue, setEditingValue] = useState<string>("")
 	const [editingField, setEditingField] = useState<string | null>(null)
 
 	// Helper to handle save
@@ -140,7 +140,7 @@ export default function InsightCardV2({
 	// Helper to handle edit start
 	const handleEditStart = (field: string) => {
 		setEditingField(field)
-		setEditingValue((localInsight as Record<string, unknown>)[field] as string || "")
+		setEditingValue(((localInsight as Record<string, unknown>)[field] as string) || "")
 	}
 
 	// Handler for inline text submit
@@ -162,7 +162,7 @@ export default function InsightCardV2({
 	}) => {
 		const isEditing = editingField === field
 		const isSaving = savingField === field
-		const value = (localInsight as Record<string, unknown>)[field] as string || ""
+		const value = ((localInsight as Record<string, unknown>)[field] as string) || ""
 
 		return (
 			<div
@@ -252,7 +252,7 @@ export default function InsightCardV2({
 	const handleVote = async (voteType: "up" | "down") => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
-			consola.error('Cannot vote: missing insight ID or project ID', { insightId, projectId })
+			consola.error("Cannot vote: missing insight ID or project ID", { insightId, projectId })
 			return
 		}
 
@@ -267,21 +267,21 @@ export default function InsightCardV2({
 		// Update vote counts optimistically (UI-only)
 		setLocalInsight((prev) => ({
 			...prev,
-			upvotes: voteType === 'up' ? (prev.upvotes || 0) + 1 : prev.upvotes,
-			downvotes: voteType === 'down' ? (prev.downvotes || 0) + 1 : prev.downvotes,
+			upvotes: voteType === "up" ? (prev.upvotes || 0) + 1 : prev.upvotes,
+			downvotes: voteType === "down" ? (prev.downvotes || 0) + 1 : prev.downvotes,
 		}))
 
 		// Submit to database
 		voteFetcher.submit(
 			{ insightId, voteType, projectId },
-			{ method: 'post', action: '/insights/api/vote', encType: 'application/json' }
+			{ method: "post", action: "/insights/api/vote", encType: "application/json" }
 		)
 	}
 
 	const handleAddComment = async () => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
-			consola.error('Cannot add comment: missing insight ID or project ID', { insightId, projectId })
+			consola.error("Cannot add comment: missing insight ID or project ID", { insightId, projectId })
 			return
 		}
 
@@ -291,12 +291,12 @@ export default function InsightCardV2({
 		// Optimistically add comment to local state (matching CommentView structure)
 		const newComment: CommentView = {
 			id: Date.now().toString(),
-			account_id: '', // Will be filled by server
+			account_id: "", // Will be filled by server
 			content: commentText,
 			created_at: new Date().toISOString(),
 			insight_id: insightId,
 			updated_at: new Date().toISOString(),
-			user_id: '', // Will be filled by server
+			user_id: "", // Will be filled by server
 			// UI-friendly fields
 			author: "You",
 			timestamp: new Date().toISOString(),
@@ -313,39 +313,39 @@ export default function InsightCardV2({
 		// Submit to database
 		commentFetcher.submit(
 			{ insightId, comment: commentText, projectId },
-			{ method: 'post', action: '/insights/api/add-comment', encType: 'application/json' }
+			{ method: "post", action: "/insights/api/add-comment", encType: "application/json" }
 		)
 	}
 
 	const handleHide = async () => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
-			consola.error('Cannot hide: missing insight ID or project ID', { insightId, projectId })
+			consola.error("Cannot hide: missing insight ID or project ID", { insightId, projectId })
 			return
 		}
 
 		onDontShowMe()
-		
+
 		// Submit to database
 		archiveFetcher.submit(
-			{ insightId, projectId, action: 'hide' },
-			{ method: 'post', action: '/insights/api/archive', encType: 'application/json' }
+			{ insightId, projectId, action: "hide" },
+			{ method: "post", action: "/insights/api/archive", encType: "application/json" }
 		)
 	}
 
 	const handleArchive = async () => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
-			consola.error('Cannot archive: missing insight ID or project ID', { insightId, projectId })
+			consola.error("Cannot archive: missing insight ID or project ID", { insightId, projectId })
 			return
 		}
 
 		onArchive()
-		
+
 		// Submit to database
 		archiveFetcher.submit(
-			{ insightId, projectId, action: 'archive' },
-			{ method: 'post', action: '/insights/api/archive', encType: 'application/json' }
+			{ insightId, projectId, action: "archive" },
+			{ method: "post", action: "/insights/api/archive", encType: "application/json" }
 		)
 	}
 
@@ -699,8 +699,10 @@ export default function InsightCardV2({
 							{localInsight.comments?.map((comment) => (
 								<div key={comment.id} className="rounded-md bg-gray-50 p-2">
 									<div className="mb-1 flex items-start justify-between">
-										<span className="font-medium text-gray-700 text-xs">{comment.author || 'Anonymous'}</span>
-										<span className="text-gray-500 text-xs">{new Date(comment.timestamp || comment.created_at || '').toLocaleDateString()}</span>
+										<span className="font-medium text-gray-700 text-xs">{comment.author || "Anonymous"}</span>
+										<span className="text-gray-500 text-xs">
+											{new Date(comment.timestamp || comment.created_at || "").toLocaleDateString()}
+										</span>
 									</div>
 									<p className="text-gray-600 text-sm">{comment.text || comment.content}</p>
 								</div>
