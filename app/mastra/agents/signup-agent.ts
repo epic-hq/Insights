@@ -5,7 +5,8 @@ import { Memory } from "@mastra/memory"
 import { z } from "zod"
 
 export const AgentState = z.object({
-	plan: z.array(z.string()).default([]),
+	goal: z.string(),
+	plan: z.array(z.object({ milestone: z.string(), completed: z.boolean() })).default([]),
 	signupChatData: z.object({
 		problem: z.string().optional(),
 		challenges: z.string().optional(),

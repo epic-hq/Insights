@@ -1,14 +1,21 @@
-import { CopilotKit, useCoAgent, useCopilotReadable } from "@copilotkit/react-core"
+import { CopilotKit, useCoAgent, useCopilotAction } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
-import { useEffect, useMemo } from "react"
+import { useEffect } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate } from "react-router"
 import "@copilotkit/react-ui/styles.css"
+import consola from "consola"
 import { ArrowRight, CheckCircle } from "lucide-react"
+import type { z } from "zod"
 // Agent state type from Mastra agents
 import type { Database } from "~/../supabase/types"
+import { JsonDataCard } from "~/features/aichat/components/JsonDataCard"
+import { PlanCard } from "~/features/aichat/components/PlanCard"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import type { SignupAgentState } from "~/mastra/agents"
 import { PATHS } from "~/paths"
+
+type AgentState = z.infer<typeof SignupAgentState>
 
 interface SignupChatData {
 	problem?: string
@@ -25,8 +32,6 @@ interface LoaderData {
 	existingChatData?: SignupChatData
 	copilotRuntimeUrl: string
 }
-
-// Remove unused AgentState type alias
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -142,37 +147,32 @@ export default function SignupChat() {
 
 function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChatData }) {
 	// Use the agent state inside the CopilotKit context (from @copilotkit/react-core)
-	const { state } = useCoAgent({
+	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
 		initialState: {
-			plan: ["Welcome", "Ask questions", "Save data", "Complete"],
-			signupChatData: existingChatData,
+			goal: "Understand user's use case and collect data to help them get started with the app",
+			plan: [
+				{ milestone: "Welcome", completed: true },
+				{ milestone: "Ask questions", completed: false },
+				{ milestone: "Save data", completed: false },
+			],
+			signupChatData: {},
 		},
 	})
 
-	// Create dynamic checklist based on agent state and existing data
-	const todoList = useMemo(() => {
-		const signupData = (state as any).signupChatData || existingChatData || {}
+	consola.log("checklist state:", state)
 
-		return {
-			name: "Signup Questions",
-			items: [
-				{ id: 1, name: "problem", completed: Boolean(signupData.problem) },
-				{ id: 2, name: "challenges", completed: Boolean(signupData.challenges) },
-				{ id: 3, name: "importance", completed: Boolean(signupData.importance) },
-				{ id: 4, name: "ideal_solution", completed: Boolean(signupData.ideal_solution) },
-				{ id: 5, name: "content_types", completed: Boolean(signupData.content_types) },
-				{ id: 6, name: "other_feedback", completed: Boolean(signupData.other_feedback) },
-			],
-			completed: Boolean(signupData.completed),
-		}
-	}, [state, existingChatData])
-
-	// Expose to the agent as shared state (must be inside <CopilotKit>)
-	useCopilotReadable({
-		description:
-			"Signup Questions checklist: problem, challenges, importance, ideal_solution, content_types, other_feedback, plus completed flag.",
-		value: todoList,
+	useCopilotAction({
+		name: "planTool",
+		description: "Show the plan.",
+		available: "frontend",
+		parameters: [
+			{ name: "goal", type: "string", required: true },
+			{ name: "plan", type: "object[]", required: true },
+		],
+		render: ({ args }) => {
+			return <PlanCard goal={args.goal} plan={args.plan} />
+		},
 	})
 
 	return (
@@ -188,35 +188,9 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 					className="h-full"
 				/>
 			</div>
-
-			{/* Checklist Widget (shared agent state visualization) */}
-			<div className="rounded-lg bg-white p-4 shadow-xl dark:bg-gray-800">
-				<h2 className="mb-3 font-semibold text-gray-900 dark:text-gray-100">Signup Checklist</h2>
-				<ul className="space-y-2">
-					{todoList.items.map((item) => (
-						<li
-							key={item.id}
-							className="flex items-center justify-between rounded-md border border-gray-200 p-2 text-sm dark:border-gray-700"
-						>
-							<span className="text-gray-700 dark:text-gray-200">{item.name}</span>
-							{item.completed ? (
-								<CheckCircle className="h-4 w-4 text-green-500" />
-							) : (
-								<div className="h-4 w-4 rounded-full border-2 border-gray-300 dark:border-gray-600" />
-							)}
-						</li>
-					))}
-				</ul>
-				<div className="mt-4 flex items-center gap-2">
-					{todoList.completed ? (
-						<>
-							<CheckCircle className="h-5 w-5 text-green-500" />
-							<span className="text-green-600 text-sm dark:text-green-400">Completed</span>
-						</>
-					) : (
-						<span className="text-gray-500 text-sm dark:text-gray-400">In progress</span>
-					)}
-				</div>
+			<div className="col-span-1">
+				<PlanCard goal={state?.goal} plan={state?.plan} />
+				<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
 			</div>
 		</div>
 	)

@@ -5,7 +5,7 @@ import { ZoomIn } from "lucide-react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 
-export function PlanCard({ goal, plan }: { goal?: string; plan?: string[] }) {
+export function PlanCard({ goal, plan }: { goal?: string; plan?: Record<string, any>[] }) {
 	// {/* Next Steps Widget */}
 	return (
 		<div className="flex flex-col justify-start">
@@ -19,12 +19,12 @@ export function PlanCard({ goal, plan }: { goal?: string; plan?: string[] }) {
 								<Badge
 									variant="outline"
 									className={`px-2 py-1 text-xs ${
-										milestone.doing
+										milestone.completed
 											? "border-blue-500 bg-green-300 text-white"
 											: "border-gray-300 bg-white text-gray-600"
 									}`}
 								>
-									{milestone}
+									{milestone.milestone}
 								</Badge>
 								{index < plan.length - 1 && <div className="mx-1 h-0.5 w-2 bg-gray-300" />}
 							</div>
