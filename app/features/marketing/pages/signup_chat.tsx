@@ -4,7 +4,15 @@ import { useEffect } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate } from "react-router"
 import "@copilotkit/react-ui/styles.css"
-import consola from "consola"
+
+// Add custom CSS for progress animation
+const progressStyles = `
+@keyframes progress {
+  from { width: 0%; }
+  to { width: 100%; }
+}
+`
+
 import { ArrowRight, CheckCircle } from "lucide-react"
 import type { z } from "zod"
 // Agent state type from Mastra agents
@@ -13,7 +21,6 @@ import { JsonDataCard } from "~/features/aichat/components/JsonDataCard"
 import { PlanCard } from "~/features/aichat/components/PlanCard"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
-import { PATHS } from "~/paths"
 
 type AgentState = z.infer<typeof SignupAgentState>
 
@@ -107,22 +114,41 @@ export default function SignupChat() {
 	// If chat is already completed, show completion message
 	if (chatCompleted) {
 		return (
-			<div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-				<div className="rounded-lg bg-white p-8 shadow-xl dark:bg-gray-800">
-					<div className="flex flex-col items-center gap-4 text-center">
-						<CheckCircle className="h-16 w-16 text-green-500" />
-						<h1 className="font-bold text-3xl text-gray-900 dark:text-white">Thanks for joining UpSight!</h1>
-						<p className="text-gray-600 text-lg dark:text-gray-300">
-							We've received your responses and will be in touch when you're activated.
-						</p>
-						<p className="text-gray-500 text-sm dark:text-gray-400">First month free - as promised!</p>
-						<Link to={PATHS.HOME} className="mt-8 inline-flex items-center gap-2">
-							<ArrowRight className="h-4 w-4" />
-							Go to Home
-						</Link>
+			<>
+				<style dangerouslySetInnerHTML={{ __html: progressStyles }} />
+				<div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+					<div className="rounded-lg bg-white p-8 shadow-xl dark:bg-gray-800">
+						<div className="flex flex-col items-center gap-6 text-center">
+							<CheckCircle className="h-16 w-16 text-green-500" />
+							<h1 className="font-bold text-3xl text-gray-900 dark:text-white">Thanks for joining UpSight!</h1>
+							<p className="text-gray-600 text-lg dark:text-gray-300">
+								We've received your responses and will be in touch when you're activated.
+							</p>
+							<p className="text-gray-500 text-sm dark:text-gray-400">First month free - as promised!</p>
+
+							{/* Auto-redirect indicator */}
+							<div className="flex flex-col items-center gap-3">
+								<p className="text-gray-400 text-sm">Redirecting to home in 3 seconds...</p>
+								<div className="h-1 w-32 overflow-hidden rounded-full bg-gray-200">
+									<div
+										className="h-full animate-pulse rounded-full bg-blue-500"
+										style={{ animation: "progress 3s linear forwards" }}
+									/>
+								</div>
+							</div>
+
+							{/* Manual navigation option */}
+							<Link
+								to="/home"
+								className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-700"
+							>
+								<ArrowRight className="h-4 w-4" />
+								Go to Home Now
+							</Link>
+						</div>
 					</div>
 				</div>
-			</div>
+			</>
 		)
 	}
 
@@ -160,7 +186,7 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 		},
 	})
 
-	consola.log("checklist state:", state)
+	// consola.log("checklist state:", state)
 
 	useCopilotAction({
 		name: "planTool",
@@ -185,7 +211,6 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 						initial:
 							"Thanks for signing up for UpSight! 🎉 <br />Just a few quick questions: what's the core problem or use case you're hoping to solve?",
 					}}
-					className="h-full"
 				/>
 			</div>
 			<div className="col-span-1">

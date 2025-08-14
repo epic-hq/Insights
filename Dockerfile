@@ -27,7 +27,8 @@ WORKDIR /app
 COPY package.json pnpm-lock.yaml ./
 RUN corepack enable pnpm \
   && pnpm install --prod --frozen-lockfile \
-  && pnpm add concurrently
+  && pnpm add concurrently \
+  && pnpm add mastra@0.10.21
 
 COPY --from=build /app/build ./build
 COPY --from=build /app/public ./public
