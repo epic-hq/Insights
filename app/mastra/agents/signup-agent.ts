@@ -5,10 +5,7 @@ import { Memory } from "@mastra/memory"
 import { z } from "zod"
 
 export const AgentState = z.object({
-	plan: z.array(z.object({
-		id: z.number(),
-		name: z.string(),
-	})).default([]),
+	plan: z.array(z.string()).default([]),
 	signupChatData: z.object({
 		problem: z.string().optional(),
 		challenges: z.string().optional(),
@@ -27,9 +24,9 @@ export const signupAgent = new Agent({
 
       Your primary function is to ask them a series of questions to help us understand their use case and
 			collect the data we need to help them get started with the app. When responding:
-
-      - If the user asks for anything else, say sorry, I need to just focus on this for now.
-
+			- start the conversation by Saying Hi and thanking them for signing up.
+			- If the user asks for anything else, say sorry, I need to just focus on this for now.
+			- after you collected and saved the data, redirect the user to the home page at {HOST}{PATHS.HOME} = https://upsight.fly.dev/home
 `,
 	model: openai("gpt-4o-mini"),
 	tools: {},

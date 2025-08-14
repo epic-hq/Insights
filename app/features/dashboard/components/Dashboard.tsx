@@ -104,31 +104,32 @@ export default function Dashboard({
 							</Tooltip>
 						</Link>
 						<Link to={routes.projects.edit(project.id)}>
-							<Settings2 size="icon" className="mt-1 ml-4 h-5 w-5" />
+							<Settings2 className="mt-1 ml-4 h-5 w-5" />
 						</Link>
 					</div>
 				</div>
 				<AddInterviewButton />
 				{/* <FilterBar segments={["Students", "Teachers", "Admins"]} /> */}
 			</div>
-
-			{/* Sticky KPI Bar */}
-			<KPIBar kpis={dynamicKpis} />
-			{/* Main dashboard grid with 12-column layout */}
-			<div className="mt-4 grid grid-cols-12 gap-4">
-				{/* Insight Categories section - spans 8 columns on large screens, full width on smaller screens */}
-				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-4 dark:bg-gray-900">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-semibold text-lg">Insight Categories</h2>
-						<div className="flex items-center gap-4">
-							<TagCountSelector value={tagCount} onChange={setTagCount} min={5} max={20} />
-							<Link to={routes.insights.map()} className="text-blue-600 text-xs hover:text-blue-800">
-								Explore themes
-							</Link>
-						</div>
-					</div>
-					<TagDisplay tags={tags} maxTags={tagCount} />
-					{/* <TreeMap
+			{interviews.length > 0 && (
+				<div>
+					{/* Sticky KPI Bar */}
+					<KPIBar kpis={dynamicKpis} />
+					{/* Main dashboard grid with 12-column layout */}
+					<div className="mt-4 grid grid-cols-12 gap-4">
+						{/* Insight Categories section - spans 8 columns on large screens, full width on smaller screens */}
+						<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-4 dark:bg-gray-900">
+							<div className="mb-3 flex items-center justify-between">
+								<h2 className="font-semibold text-lg">Insight Categories</h2>
+								<div className="flex items-center gap-4">
+									<TagCountSelector value={tagCount} onChange={setTagCount} min={5} max={20} />
+									<Link to={routes.insights.map()} className="text-blue-600 text-xs hover:text-blue-800">
+										Explore themes
+									</Link>
+								</div>
+							</div>
+							<TagDisplay tags={tags} maxTags={tagCount} />
+							{/* <TreeMap
 						data={themeTree}
 						onClick={(node) => {
 							// Only navigate for child nodes (actual themes, not categories)
@@ -137,25 +138,25 @@ export default function Dashboard({
 							}
 						}}
 					/> */}
-				</div>
+						</div>
 
-				{/* Personas section - spans 4 columns on large screens, full width on smaller screens */}
-				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-8 dark:bg-gray-900">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-semibold text-lg">Personas</h2>
-						<Link to={routes.personas.index()} className="text-blue-600 text-xs hover:text-blue-800">
-							View all
-						</Link>
-					</div>
-					<div className="grid grid-cols-2 gap-4">
-						{personas.map((persona, index) => (
-							<EnhancedPersonaCard key={`persona-${index}`} persona={persona} />
-						))}
-					</div>
-				</div>
-				{/* Opportunity Kanban - spans full width */}
-				{/* Hidden for now */}
-				{/*
+						{/* Personas section - spans 4 columns on large screens, full width on smaller screens */}
+						<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-8 dark:bg-gray-900">
+							<div className="mb-3 flex items-center justify-between">
+								<h2 className="font-semibold text-lg">Personas</h2>
+								<Link to={routes.personas.index()} className="text-blue-600 text-xs hover:text-blue-800">
+									View all
+								</Link>
+							</div>
+							<div className="grid grid-cols-2 gap-4">
+								{personas.map((persona, index) => (
+									<EnhancedPersonaCard key={`persona-${index}`} persona={persona} />
+								))}
+							</div>
+						</div>
+						{/* Opportunity Kanban - spans full width */}
+						{/* Hidden for now */}
+						{/*
 				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
 					<div className="mb-3 flex items-center justify-between">
 						<h2 className="font-semibold text-lg">Opportunities</h2>
@@ -167,22 +168,24 @@ export default function Dashboard({
 				</div>
 				*/}
 
-				{/* Recent Interviews - spans 6 columns on large screens, full width on smaller screens */}
-				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-6 dark:bg-gray-900">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-semibold text-lg">Recent Interviews</h2>
-						<div className="flex gap-4">
-							<Link to={routes.interviews.index()} className="text-blue-600 text-xs hover:text-blue-800">
-								View all interviews
-							</Link>
-							<Link to={routes.insights.withSort("latest")} className="text-blue-600 text-xs hover:text-blue-800">
-								Latest insights
-							</Link>
+						{/* Recent Interviews - spans 6 columns on large screens, full width on smaller screens */}
+						<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-6 dark:bg-gray-900">
+							<div className="mb-3 flex items-center justify-between">
+								<h2 className="font-semibold text-lg">Recent Interviews</h2>
+								<div className="flex gap-4">
+									<Link to={routes.interviews.index()} className="text-blue-600 text-xs hover:text-blue-800">
+										View all interviews
+									</Link>
+									<Link to={routes.insights.withSort("latest")} className="text-blue-600 text-xs hover:text-blue-800">
+										Latest insights
+									</Link>
+								</div>
+							</div>
+							<RecentInterviewsTable rows={interviews} />
 						</div>
 					</div>
-					<RecentInterviewsTable rows={interviews} />
 				</div>
-			</div>
+			)}
 		</div>
 	)
 }

@@ -26,6 +26,7 @@ export const mastra = new Mastra({
 		level: "info",
 	}),
 	server: {
+		port: 4111,
 		middleware: [
 			async (c, next) => {
 				const user_id = c.req.header("x-userid")

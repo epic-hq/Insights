@@ -1,5 +1,6 @@
 import consola from "consola"
 import { LogOut, User } from "lucide-react"
+import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import {
 	DropdownMenu,
@@ -10,6 +11,7 @@ import {
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { useAuth } from "~/contexts/AuthContext"
+import { PATHS } from "~/paths"
 
 export function UserProfile() {
 	const { user, signOut } = useAuth()
@@ -68,6 +70,12 @@ export function UserProfile() {
 						<p className="text-muted-foreground text-xs leading-none">{user.email}</p>
 					</div>
 				</DropdownMenuLabel>
+				<DropdownMenuItem
+					asChild
+					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"
+				>
+					<Link to={PATHS.PROFILE}>Profile</Link>
+				</DropdownMenuItem>
 				<DropdownMenuSeparator className="bg-border/50" />
 				<DropdownMenuItem
 					onClick={handleSignOut}

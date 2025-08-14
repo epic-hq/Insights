@@ -1,7 +1,7 @@
 import { MastraAgent } from "@ag-ui/mastra"
 import { CopilotRuntime, copilotRuntimeNextJSAppRouterEndpoint, OpenAIAdapter } from "@copilotkit/runtime"
 import consola from "consola"
-import type { ActionFunctionArgs } from "react-router"
+import { type ActionFunctionArgs, redirect } from "react-router"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { mastra } from "~/mastra"
 
@@ -96,11 +96,8 @@ export async function action({ request }: ActionFunctionArgs) {
 						if (error) {
 							throw new Error(`Database error: ${error.message}`)
 						}
-
-						return {
-							success: true,
-							message: "Thank you! Your responses have been saved. We'll be in touch when you're activated!",
-						}
+						// TODO: redirect to home. not working.
+						return redirect("/home")
 					} catch (error) {
 						consola.error("Error in saveChatData handler:", error)
 						return {

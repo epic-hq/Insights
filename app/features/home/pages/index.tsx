@@ -1,5 +1,5 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import { type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -26,7 +26,8 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	// consola.log("account_id:", account_id)
 
 	// if !onboarding_complete redirect to /signup_chat
-	if (!user_settings?.onboarding_completed) {
+	const completed = user_settings?.signup_data?.completed ?? false
+	if (!completed) {
 		consola.log("SignUp Chat not completed. Redirecting.")
 		return redirect("/signup_chat")
 	}
@@ -68,30 +69,6 @@ export default function Index() {
 	const { account_settings } = useRouteLoaderData("routes/_ProtectedLayout") as {
 		account_settings: { current_account_id: string; current_project_id: string }
 	}
-	const _navigate = useNavigate()
-
-	// Client-side onboarding check
-	// useEffect(() => {
-	// 	const checkOnboarding = async () => {
-	// 		const {
-	// 			data: { user },
-	// 		} = await supabase.auth.getUser()
-
-	// 		if (user) {
-	// 			const { data: userSettings } = await supabase
-	// 				.from("user_settings")
-	// 				.select("onboarding_completed")
-	// 				.eq("user_id", user.id)
-	// 				.single()
-
-	// 			if (!userSettings?.onboarding_completed) {
-	// 				navigate("/signup_chat")
-	// 			}
-	// 		}
-	// 	}
-
-	// 	checkOnboarding()
-	// }, [navigate, supabase])
 
 	const projectPath =
 		account_settings?.current_account_id && account_settings?.current_project_id

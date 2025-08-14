@@ -31,9 +31,16 @@ insights blank due to missing project_id for previous interviews. Test going for
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
 - [x] prototype desktop version of Simple UI for project dashboard (summary insights, suggestions, chat) [v0](https://preview-mobile-insights-app-design-kzmlp51a1bx0c0w9lgfb.vusercontent.net/) at [inapp](/aichat)
+- [x] Signup chat to get user needs saved to user_settings.saved_data
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data; eg explain the personas.
 - [ ] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
 - [ ] Chat Workflows with Data. Build tools to read and write more data types.
+
+- [ ] emotional_intensity (1-10)
+
+## UX Sprint - Mobile
+
+- [ ] convert mobile design from [v0](https://v0.app/chat/fork-of-mobile-insights-app-design-aV5ayoVifB4) to [remix w help of gpt5]()
 
 ## Sprint 3.5 - Annotations Component
 

@@ -1,14 +1,14 @@
 import { CopilotKit, useCoAgent, useCopilotReadable } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
-import { useMemo } from "react"
+import { useEffect, useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, useLoaderData } from "react-router"
+import { data, Link, useLoaderData, useNavigate } from "react-router"
 import "@copilotkit/react-ui/styles.css"
-import { CheckCircle } from "lucide-react"
-import type { z } from "zod"
-import type { AgentState as AgentStateSchema } from "@/mastra/agents"
+import { ArrowRight, CheckCircle } from "lucide-react"
+// Agent state type from Mastra agents
 import type { Database } from "~/../supabase/types"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { PATHS } from "~/paths"
 
 interface SignupChatData {
 	problem?: string
@@ -26,7 +26,7 @@ interface LoaderData {
 	copilotRuntimeUrl: string
 }
 
-type AgentState = z.infer<typeof AgentStateSchema>
+// Remove unused AgentState type alias
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -85,20 +85,19 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function SignupChat() {
 	const { existingChatData, copilotRuntimeUrl } = useLoaderData<LoaderData>()
+	const navigate = useNavigate()
 	const chatCompleted = Boolean(existingChatData?.completed || false)
 
-	const { state, setState } = useCoAgent<AgentState>({
-		name: "signupAgent",
-		initialState: {
-			plan: [
-				{ id: 1, name: "Welcome" },
-				{ id: 2, name: "Ask questions" },
-				{ id: 3, name: "Save data" },
-				{ id: 4, name: "Complete" },
-			],
-			signupChatData: existingChatData,
-		},
-	})
+	// Redirect to /home after 3 seconds when chat is completed
+	useEffect(() => {
+		if (chatCompleted) {
+			const timer = setTimeout(() => {
+				navigate("/home")
+			}, 3000)
+
+			return () => clearTimeout(timer)
+		}
+	}, [chatCompleted, navigate])
 
 	// If chat is already completed, show completion message
 	if (chatCompleted) {
@@ -112,6 +111,10 @@ export default function SignupChat() {
 							We've received your responses and will be in touch when you're activated.
 						</p>
 						<p className="text-gray-500 text-sm dark:text-gray-400">First month free - as promised!</p>
+						<Link to={PATHS.HOME} className="mt-8 inline-flex items-center gap-2">
+							<ArrowRight className="h-4 w-4" />
+							Go to Home
+						</Link>
 					</div>
 				</div>
 			</div>
@@ -119,8 +122,8 @@ export default function SignupChat() {
 	}
 
 	return (
-		<div className="flex min-h-screen flex-col bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-			<div className="container mx-auto flex flex-1 flex-col p-4">
+		<div className="flex h-full flex-col bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
+			<div className="container mx-auto flex flex-1 flex-col overflow-y-auto p-4">
 				<div className="mb-8 text-center">
 					<h1 className="mb-2 font-bold text-4xl text-gray-900 dark:text-white">Welcome to UpSight!</h1>
 					<p className="text-gray-600 text-lg dark:text-gray-300">
@@ -129,7 +132,7 @@ export default function SignupChat() {
 					<p className="text-blue-600 text-sm dark:text-blue-400">Remember: Your first month is free!</p>
 				</div>
 
-				<CopilotKit runtimeUrl={copilotRuntimeUrl}>
+				<CopilotKit runtimeUrl={copilotRuntimeUrl} agent="signupAgent">
 					<ChatWithChecklist existingChatData={existingChatData} />
 				</CopilotKit>
 			</div>
@@ -138,29 +141,37 @@ export default function SignupChat() {
 }
 
 function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChatData }) {
-	// Shared agent state: todo_list visible to the LLM via CopilotKit readable state
-	const todoList = useMemo(
-		() => ({
+	// Use the agent state inside the CopilotKit context (from @copilotkit/react-core)
+	const { state } = useCoAgent({
+		name: "signupAgent",
+		initialState: {
+			plan: ["Welcome", "Ask questions", "Save data", "Complete"],
+			signupChatData: existingChatData,
+		},
+	})
+
+	// Create dynamic checklist based on agent state and existing data
+	const todoList = useMemo(() => {
+		const signupData = (state as any).signupChatData || existingChatData || {}
+
+		return {
 			name: "Signup Questions",
 			items: [
-				{ id: 1, name: "problem" },
-				{ id: 2, name: "challenges" },
-				{ id: 3, name: "importance" },
-				{ id: 4, name: "ideal_solution" },
-				{ id: 5, name: "content_types" },
-				{ id: 6, name: "other_feedback" },
+				{ id: 1, name: "problem", completed: Boolean(signupData.problem) },
+				{ id: 2, name: "challenges", completed: Boolean(signupData.challenges) },
+				{ id: 3, name: "importance", completed: Boolean(signupData.importance) },
+				{ id: 4, name: "ideal_solution", completed: Boolean(signupData.ideal_solution) },
+				{ id: 5, name: "content_types", completed: Boolean(signupData.content_types) },
+				{ id: 6, name: "other_feedback", completed: Boolean(signupData.other_feedback) },
 			],
-			completed: Boolean(existingChatData?.completed ?? false),
-		}),
-		[existingChatData?.completed]
-	)
+			completed: Boolean(signupData.completed),
+		}
+	}, [state, existingChatData])
 
 	// Expose to the agent as shared state (must be inside <CopilotKit>)
 	useCopilotReadable({
-		id: "todo_list",
-		name: "Signup Questions",
 		description:
-			"Checklist of onboarding questions to collect: problem, challenges, importance, ideal_solution, content_types, other_feedback, plus completed flag.",
+			"Signup Questions checklist: problem, challenges, importance, ideal_solution, content_types, other_feedback, plus completed flag.",
 		value: todoList,
 	})
 
@@ -169,23 +180,11 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 			{/* Chat Area */}
 			<div className="col-span-2 rounded-lg bg-white shadow-xl dark:bg-gray-800">
 				<CopilotChat
-					instructions={`You are the onboarding assistant for UpSight early access users.
-
-Ask the following exactly-once, in order, one at a time, and store the user's responses as variables named exactly: problem, challenges, importance, ideal_solution, content_types, other_feedback.
-
-You have access to shared agent state named "todo_list" (Signup Questions). It lists the fields to collect and a completed flag. Reference this checklist to know what remains. When all are answered, set completed to true by calling the saveChatData action with the collected values and completed: true.
-
-Questions:
-1. "Thanks for signing up! Let's start - what's the core problem or use case you're hoping UpSight will help you solve?"
-2. "What challenges are you facing with your current solutions? What's not working well?"
-3. "On a scale of 1-5, how important is solving this problem for you or your business?"
-4. "What would your ideal solution look like? Paint me a picture of the perfect tool."
-5. "What types of content do you want to analyze? (interviews, surveys, support tickets, etc.)"
-6. "Finally, is there anything else you wish existed in this space? Any other feedback?"
-
-Tone: Be concise, friendly, conversational. If the user goes off-topic, politely redirect to the onboarding questions.
-
-After all questions are answered, say: "Perfect! Thanks for sharing all of that. We'll be in touch when you're activated. Remember - your first month is completely free!" Then call the saveChatData action with all fields plus completed: true.`}
+					labels={{
+						title: "UpSight Onboarding",
+						initial:
+							"Thanks for signing up for UpSight! 🎉 <br />Just a few quick questions: what's the core problem or use case you're hoping to solve?",
+					}}
 					className="h-full"
 				/>
 			</div>
@@ -200,6 +199,11 @@ After all questions are answered, say: "Perfect! Thanks for sharing all of that.
 							className="flex items-center justify-between rounded-md border border-gray-200 p-2 text-sm dark:border-gray-700"
 						>
 							<span className="text-gray-700 dark:text-gray-200">{item.name}</span>
+							{item.completed ? (
+								<CheckCircle className="h-4 w-4 text-green-500" />
+							) : (
+								<div className="h-4 w-4 rounded-full border-2 border-gray-300 dark:border-gray-600" />
+							)}
 						</li>
 					))}
 				</ul>

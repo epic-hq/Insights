@@ -1,5 +1,6 @@
 import fs from "node:fs/promises"
 import path from "node:path"
+import consola from "consola"
 import sharp from "sharp"
 
 const LOGO_SVG_PATH = path.join(process.cwd(), "public", "images", "logo.svg")
@@ -20,15 +21,36 @@ async function ensureDir(dir: string) {
 
 async function generateIcons() {
 	await ensureDir(OUTPUT_DIR)
+	await ensureDir(path.dirname(LOGO_SVG_PATH))
 
 	// Read SVG logo from file
-	const LOGO_SVG = await fs.readFile(LOGO_SVG_PATH, "utf-8")
+	let LOGO_SVG: string
+	try {
+		LOGO_SVG = await fs.readFile(LOGO_SVG_PATH, "utf-8")
+	} catch (error) {
+		consola.error(`Logo file not found at ${LOGO_SVG_PATH}. Please ensure the logo.svg file exists.`)
+		throw error
+	}
 
 	// Generate favicon.ico (32x32 as a simple PNG)
 	const faviconPath = path.join(process.cwd(), "public", "favicon.ico")
 
-	// Create a simple favicon.ico (modern browsers support PNG in .ico containers)
-	await sharp(Buffer.from(LOGO_SVG)).resize(32, 32).png().toFile(faviconPath)
+	// Create a favicon with solid blue background for better visibility
+	const FAVICON_SVG = `<svg width="32" height="32" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+		<!-- Blue background circle -->
+		<circle cx="12" cy="12" r="12" fill="#2563eb"/>
+		<!-- White scan-eye icon -->
+		<g fill="none" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+			<path d="M3 7V5a2 2 0 0 1 2-2h2" />
+			<path d="M17 3h2a2 2 0 0 1 2 2v2" />
+			<path d="M21 17v2a2 2 0 0 1-2 2h-2" />
+			<path d="M7 21H5a2 2 0 0 1-2-2v-2" />
+			<circle cx="12" cy="12" r="1" fill="white"/>
+			<path d="M18.944 12.33a1 1 0 0 0 0-.66 7.5 7.5 0 0 0-13.888 0 1 1 0 0 0 0 .66 7.5 7.5 0 0 0 13.888 0" />
+		</g>
+	</svg>`
+
+	await sharp(Buffer.from(FAVICON_SVG)).resize(32, 32).png().toFile(faviconPath)
 
 	// Generate PNG icons in different sizes
 	const iconPromises = ICON_SIZES.map(async (size) => {
@@ -44,7 +66,7 @@ async function generateIcons() {
 	// Generate Apple touch icon (180x180)
 	const appleTouchIconPath = path.join(OUTPUT_DIR, "apple-touch-icon.png")
 	await sharp(Buffer.from(LOGO_SVG)).resize(180, 180).png().toFile(appleTouchIconPath)
-	console.log(`Generated ${appleTouchIconPath}`)
+	consola.log(`Generated ${appleTouchIconPath}`)
 	// Generate maskable icon (512x512 with padding)
 	const maskableIconPath = path.join(OUTPUT_DIR, "maskable-icon-512x512.png")
 
@@ -70,7 +92,7 @@ async function generateIcons() {
 		])
 		.png()
 		.toFile(maskableIconPath)
-	console.log(`Generated ${maskableIconPath}`)
+	consola.log(`Generated ${maskableIconPath}`)
 
 	const icons = await Promise.all(iconPromises)
 	const manifest = {
@@ -93,5 +115,11 @@ async function generateIcons() {
 	}
 
 	await fs.writeFile(MANIFEST_PATH, JSON.stringify(manifest, null, 2))
-	console.log(`Generated ${MANIFEST_PATH}`)
+	consola.log(`Generated ${MANIFEST_PATH}`)
 }
+
+// Execute the icon generation
+generateIcons().catch((error) => {
+	consola.error("Failed to generate icons:", error)
+	process.exit(1)
+})

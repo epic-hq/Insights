@@ -132,9 +132,48 @@ This document is intended to serve as a reference for the database schema of the
 ## User Settings
 
 - **account_settings**:
-  `id`, `account_id?`, `current_account_id?`, `current_project_id?`,
-  `onboarding_completed`(bool), `title?`, `role?`, `metadata`(Json), `app_activity`(Json),
-  `created_at`, `created_by?`, `updated_at`, `updated_by?`
+    `id`, `account_id?`, `app_activity`(Json), `created_at`, `created_by?`, `metadata`(Json),
+    `onboarding_completed`(bool), `role?`, `title?`, `updated_at`, `updated_by?`
+## User Settings (schema: `public`)
+
+- **user_settings**:
+    - `id`: uuid (PK, default: gen_random_uuid())
+    - `user_id`: uuid (not null, unique, references `auth.users(id)`)
+    - `first_name`: text
+    - `last_name`: text
+    - `company_name`: text
+    - `title`: text
+    - `role`: text
+    - `industry`: text
+    - `email`: text
+    - `mobile_phone`: text
+    - `image_url`: text
+    - `signup_data`: jsonb (signup data from chat)
+    - `trial_goals`: jsonb (success metrics)
+    - `referral_source`: text (marketing attribution)
+    - `metadata`: jsonb (misc)
+    - `onboarding_completed`: boolean (not null, default: false)
+    - `onboarding_steps`: jsonb (not null, default: '{}')
+    - `theme`: text (default: 'system')
+    - `language`: text (default: 'en')
+    - `notification_preferences`: jsonb (not null, default: '{}')
+    - `ui_preferences`: jsonb (not null, default: '{}')
+    - `last_used_account_id`: uuid
+    - `last_used_project_id`: uuid
+    - `created_at`: timestamptz (not null, default: now())
+    - `updated_at`: timestamptz (not null, default: now())
+
+    - `id`: string (PK)
+    - `account_id`: string | null
+    - `app_activity`: Json
+    - `created_at`: string
+    - `created_by`: string | null
+    - `metadata`: Json
+    - `onboarding_completed`: boolean
+    - `role`: string | null
+    - `title`: string | null
+    - `updated_at`: string
+    - `updated_by`: string | null
 
 ## Annotations (AI & user)
 

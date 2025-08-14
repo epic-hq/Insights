@@ -74,7 +74,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		const accountId = params?.accountId
 		const projectId = params?.projectId
 		const project = await getProjectById({ supabase, accountId, id: projectId })
-		consola.log("_protected/projects loader projectId", projectId, project)
+
 		return {
 			projectId,
 			project: project.data,

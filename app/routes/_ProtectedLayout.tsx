@@ -35,7 +35,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				user_metadata: user.user_metadata,
 				supabase,
 				headers: request.headers,
-				user_settings,
+				user_settings: user_settings || {},
 			})
 			// consola.log("_ProtectedLayout Authentication middleware success\n")
 		} catch (error) {
@@ -50,6 +50,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 		const loadContextInstance = context.get(loadContext)
 		const { lang } = loadContextInstance
 		const user = context.get(userContext)
+		const user_settings = user.user_settings
 		const accountId = user.account_id
 		const supabase = user.supabase
 		const claims = user.claims
@@ -78,6 +79,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 		context.set(userContext, {
 			...user,
 			accountSettings,
+			user_settings,
 		})
 
 		return {
@@ -88,6 +90,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 			},
 			accounts: accounts || [],
 			account_settings: accountSettings || {},
+			user_settings: user_settings || {},
 		}
 	} catch (error) {
 		consola.error("Protected layout loader error:", error)
@@ -96,10 +99,15 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function ProtectedLayout() {
-	const { auth, accounts, account_settings } = useLoaderData<typeof loader>()
+	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
 
 	return (
-		<AuthProvider user={auth.user} organizations={accounts} account_settings={account_settings}>
+		<AuthProvider
+			user={auth.user}
+			organizations={accounts}
+			account_settings={account_settings}
+			user_settings={user_settings}
+		>
 			<CurrentProjectProvider>
 				<MainNav />
 				<PageHeader title="" />
