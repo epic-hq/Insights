@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  BBValues,  Emotions,  ExecutiveInsight,  ExtractedInsight,  InterviewExtraction,  InterviewMetadata,  Interviewee,  OpportunityRecommendation,  Persona,  PersonaAnalysis,  Set,  SetRecord } from "./types"
+import type {  ActionButton,  AutoInsightsResponse,  BBValues,  Emotions,  EvidenceSet,  ExecutiveInsight,  ExtractedInsight,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaSet,  Set,  SetRecord,  Spectrum } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -51,6 +51,15 @@ export namespace partial_types {
       immediate_actions: ActionButton[]
       strategic_recommendations: string[]
     }
+    export interface EvidenceSet {
+      facts: string[]
+      goals: string[]
+      pains: string[]
+      behaviors: string[]
+      triggers: string[]
+      success: string[]
+      quotes: string[]
+    }
     export interface ExecutiveInsight {
       title?: string | null
       insight?: string | null
@@ -78,6 +87,10 @@ export namespace partial_types {
       relatedTags: string[]
       [key: string]: any;
     }
+    export interface InterviewDoc {
+      source?: string | null
+      snippets: NoteSnippet[]
+    }
     export interface InterviewExtraction {
       metadata?: InterviewMetadata | null
       interviewee?: Interviewee | null
@@ -99,6 +112,12 @@ export namespace partial_types {
       segment?: string | null
       contactInfo?: string | null
     }
+    export interface NoteSnippet {
+      tag?: string | null
+      text?: string | null
+      speaker?: string | null
+      timestamp?: string | null
+    }
     export interface OpportunityRecommendation {
       title?: string | null
       description?: string | null
@@ -110,6 +129,21 @@ export namespace partial_types {
       recommended_actions: ActionButton[]
     }
     export interface Persona {
+      name_and_tagline?: string | null
+      role_context?: string | null
+      goals: string[]
+      behaviors_habits: string[]
+      pain_points: string[]
+      triggers_decision_drivers: string[]
+      success_definition?: string | null
+      key_quotes: string[]
+      differentiators: string[]
+      confidence?: string | null
+      evidence_count?: number | null
+      hypothesis_notes?: string | null
+      key_open_questions: string[]
+    }
+    export interface Persona1 {
       name?: string | null
       description?: string | null
       age?: string | null
@@ -148,6 +182,12 @@ export namespace partial_types {
       recommended_solutions: string[]
       competitive_threats: string[]
     }
+    export interface PersonaSet {
+      personas: Persona[]
+      version?: string | null
+      change_log?: string | null
+      contrast_persona?: Persona | null
+    }
     export interface Set {
       name?: string | null
       description?: string | null
@@ -156,5 +196,11 @@ export namespace partial_types {
     export interface SetRecord {
       term?: string | null
       definition?: string | null
+    }
+    export interface Spectrum {
+      axis?: string | null
+      rationale?: string | null
+      supporting_evidence: string[]
+      alternatives: string[]
     }
 }

@@ -32,7 +32,7 @@ export const LogoBrand = () => {
 	return (
 		<div className="flex items-center gap-2">
 			<Logo />
-			<h1 className="font-bold text-2xl text-blue-600">UpSight</h1>
+			<div className="font-semibold font-stretch-75% text-blue-600 text-xl">UpSight</div>
 		</div>
 	)
 }

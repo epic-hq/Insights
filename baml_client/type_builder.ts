@@ -29,9 +29,13 @@ export default class TypeBuilder {
     
     AutoInsightsResponse: ClassViewer<'AutoInsightsResponse', "executive_summary" | "top_opportunities" | "critical_insights" | "persona_analysis" | "competitive_considerations" | "immediate_actions" | "strategic_recommendations">;
     
+    EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
+    
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
+    
+    InterviewDoc: ClassViewer<'InterviewDoc', "source" | "snippets">;
     
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
@@ -39,15 +43,23 @@ export default class TypeBuilder {
     
     Interviewee: ClassViewer<'Interviewee', "name" | "persona" | "participantDescription" | "segment" | "contactInfo">;
     
+    NoteSnippet: ClassViewer<'NoteSnippet', "tag" | "text" | "speaker" | "timestamp">;
+    
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
     
-    Persona: ClassViewer<'Persona', "name" | "description" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "motivations" | "values" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "frequency_of_purchase" | "frequency_of_use" | "key_tasks" | "tools_used" | "primary_goal" | "secondary_goals" | "sources" | "quotes" | "percentage">;
+    Persona: ClassViewer<'Persona', "name_and_tagline" | "role_context" | "goals" | "behaviors_habits" | "pain_points" | "triggers_decision_drivers" | "success_definition" | "key_quotes" | "differentiators" | "confidence" | "evidence_count" | "hypothesis_notes" | "key_open_questions">;
+    
+    Persona1: ClassViewer<'Persona1', "name" | "description" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "motivations" | "values" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "frequency_of_purchase" | "frequency_of_use" | "key_tasks" | "tools_used" | "primary_goal" | "secondary_goals" | "sources" | "quotes" | "percentage">;
     
     PersonaAnalysis: ClassViewer<'PersonaAnalysis', "persona_name" | "key_pain_points" | "unmet_needs" | "revenue_potential" | "willingness_to_pay" | "recommended_solutions" | "competitive_threats">;
+    
+    PersonaSet: ClassViewer<'PersonaSet', "personas" | "version" | "change_log" | "contrast_persona">;
     
     Set: ClassViewer<'Set', "name" | "description" | "members">;
     
     SetRecord: ClassViewer<'SetRecord', "term" | "definition">;
+    
+    Spectrum: ClassViewer<'Spectrum', "axis" | "rationale" | "supporting_evidence" | "alternatives">;
     
     
     BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
@@ -58,7 +70,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AutoInsightsResponse","ExecutiveInsight","ExtractedInsight","InterviewExtraction","InterviewMetadata","Interviewee","OpportunityRecommendation","Persona","PersonaAnalysis","Set","SetRecord",
+            "ActionButton","AutoInsightsResponse","EvidenceSet","ExecutiveInsight","ExtractedInsight","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaSet","Set","SetRecord","Spectrum",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -74,12 +86,20 @@ export default class TypeBuilder {
           "executive_summary","top_opportunities","critical_insights","persona_analysis","competitive_considerations","immediate_actions","strategic_recommendations",
         ]);
         
+        this.EvidenceSet = this.tb.classViewer("EvidenceSet", [
+          "facts","goals","pains","behaviors","triggers","success","quotes",
+        ]);
+        
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [
           "title","insight","evidence","business_impact","impact_level","confidence_level","personas_affected","recommended_actions","category",
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
           "pain","name","details","evidence","desiredOutcome","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
+        ]);
+        
+        this.InterviewDoc = this.tb.classViewer("InterviewDoc", [
+          "source","snippets",
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [
@@ -94,16 +114,28 @@ export default class TypeBuilder {
           "name","persona","participantDescription","segment","contactInfo",
         ]);
         
+        this.NoteSnippet = this.tb.classViewer("NoteSnippet", [
+          "tag","text","speaker","timestamp",
+        ]);
+        
         this.OpportunityRecommendation = this.tb.classViewer("OpportunityRecommendation", [
           "title","description","revenue_potential","effort_estimate","target_personas","supporting_insights","competitive_advantage","recommended_actions",
         ]);
         
         this.Persona = this.tb.classViewer("Persona", [
+          "name_and_tagline","role_context","goals","behaviors_habits","pain_points","triggers_decision_drivers","success_definition","key_quotes","differentiators","confidence","evidence_count","hypothesis_notes","key_open_questions",
+        ]);
+        
+        this.Persona1 = this.tb.classViewer("Persona1", [
           "name","description","age","gender","location","education","occupation","income","languages","segment","role","color_hex","image_url","motivations","values","frustrations","preferences","learning_style","tech_comfort_level","frequency_of_purchase","frequency_of_use","key_tasks","tools_used","primary_goal","secondary_goals","sources","quotes","percentage",
         ]);
         
         this.PersonaAnalysis = this.tb.classViewer("PersonaAnalysis", [
           "persona_name","key_pain_points","unmet_needs","revenue_potential","willingness_to_pay","recommended_solutions","competitive_threats",
+        ]);
+        
+        this.PersonaSet = this.tb.classViewer("PersonaSet", [
+          "personas","version","change_log","contrast_persona",
         ]);
         
         this.Set = this.tb.classViewer("Set", [
@@ -112,6 +144,10 @@ export default class TypeBuilder {
         
         this.SetRecord = this.tb.classViewer("SetRecord", [
           "term","definition",
+        ]);
+        
+        this.Spectrum = this.tb.classViewer("Spectrum", [
+          "axis","rationale","supporting_evidence","alternatives",
         ]);
         
         

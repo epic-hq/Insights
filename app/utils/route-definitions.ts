@@ -3,12 +3,19 @@
  * Used by both client-side hooks and server-side utilities
  */
 
+import { PATHS } from "~/paths"
+
 function extractAccountId(projectPath: string): string {
 	const match = projectPath.match(/^\/a\/([^/]+)/)
 	return match ? match[1] : ""
 }
 
 export interface RouteDefinitions {
+
+	home: () => string
+	login: () => string
+	register: () => string
+
 	// Dashboard
 	dashboard: () => string
 
@@ -101,6 +108,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 	const base = projectPath
 
 	return {
+		// Marketing
+		home: () => PATHS.HOME,
+		login: () => PATHS.AUTH.LOGIN,
+		register: () => PATHS.AUTH.REGISTER,
+
 		// Dashboard
 		dashboard: () => `${base}/dashboard`,
 

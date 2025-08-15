@@ -23,7 +23,7 @@ import { toBamlError } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, Persona, PersonaAnalysis, Set, SetRecord} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExtractedInsight, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, Set, SetRecord, Spectrum} from "./types"
 import type TypeBuilder from "./type_builder"
 
 export class LlmResponseParser {
@@ -48,6 +48,75 @@ export class LlmResponseParser {
         __baml_options__?.clientRegistry,
         env,
       ) as types.Set
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftContrastPersona(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.Persona {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "DraftContrastPersona",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftProvisionalPersona(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.Persona {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "DraftProvisionalPersona",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidence(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.EvidenceSet {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "ExtractEvidence",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.EvidenceSet
     } catch (error) {
       throw toBamlError(error);
     }
@@ -99,6 +168,29 @@ export class LlmResponseParser {
     }
   }
   
+  FindSpectrum(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.Spectrum {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "FindSpectrum",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.Spectrum
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   GenerateAutoInsights(
       llmResponse: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
@@ -145,6 +237,52 @@ export class LlmResponseParser {
     }
   }
   
+  NormalizeNotes(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.InterviewDoc {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "NormalizeNotes",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.InterviewDoc
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  RefinePersonas(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.PersonaSet {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "RefinePersonas",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.PersonaSet
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
 }
 
 export class LlmStreamParser {
@@ -169,6 +307,75 @@ export class LlmStreamParser {
         __baml_options__?.clientRegistry,
         env,
       ) as partial_types.Set
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftContrastPersona(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.Persona {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "DraftContrastPersona",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftProvisionalPersona(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.Persona {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "DraftProvisionalPersona",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidence(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.EvidenceSet {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "ExtractEvidence",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.EvidenceSet
     } catch (error) {
       throw toBamlError(error);
     }
@@ -220,6 +427,29 @@ export class LlmStreamParser {
     }
   }
   
+  FindSpectrum(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.Spectrum {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "FindSpectrum",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.Spectrum
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   GenerateAutoInsights(
       llmResponse: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
@@ -261,6 +491,52 @@ export class LlmStreamParser {
         __baml_options__?.clientRegistry,
         env,
       ) as partial_types.Persona[]
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  NormalizeNotes(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.InterviewDoc {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "NormalizeNotes",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.InterviewDoc
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  RefinePersonas(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.PersonaSet {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "RefinePersonas",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.PersonaSet
     } catch (error) {
       throw toBamlError(error);
     }

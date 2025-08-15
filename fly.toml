@@ -16,7 +16,7 @@ primary_region = 'sjc'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ['app']
+  processes = ['both']
 
   [[http_service.checks]]
     grace_period = "10s"
@@ -41,8 +41,8 @@ primary_region = 'sjc'
   release_command = 'echo "Release command placeholder"'
 
 [processes]
-  app = '/usr/local/bin/dotenvx run -- pnpm start'
-  mastra = '/usr/local/bin/dotenvx run -- npx mastra dev --dir app/mastra'
+#  app = '/usr/local/bin/dotenvx run -- pnpm start'
+#  mastra = '/usr/local/bin/dotenvx run -- npx mastra dev --dir app/mastra'
   both = '/usr/local/bin/dotenvx run -- npx concurrently -n "App,Mastra" --c green,cyan "pnpm start" "npx mastra dev --dir app/mastra"'
 
 # Optional: Add secrets for your encrypted environment variables

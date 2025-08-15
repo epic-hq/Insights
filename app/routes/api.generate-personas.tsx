@@ -59,8 +59,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		}
 
 		// 4. Call BAML GeneratePersonas
+		const people_len = people.reduce((len, p) => len + JSON.stringify(p).length, 0)
+		const insights_len = insights.reduce((len, i) => len + JSON.stringify(i).length, 0)
+		const interviews_len = interviews.reduce((len, i) => len + JSON.stringify(i).length, 0)
+		consola.log(
+			`[Generate Personas API] Input lengths: people=${people_len}, insights=${insights_len}, interviews=${interviews_len}`
+		)
+
 		const bamlResult = await b.GeneratePersonas(
-			JSON.stringify(interviews ?? []),
+			// JSON.stringify(interviews ?? []),
 			JSON.stringify(people ?? []),
 			JSON.stringify(insights ?? [])
 		)

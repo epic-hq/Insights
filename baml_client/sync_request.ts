@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, ClientRegistry, Image, Audio, Pdf, Vi
 import { toBamlError, HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, Persona, PersonaAnalysis, Set, SetRecord} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExtractedInsight, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, Set, SetRecord, Spectrum} from "./types"
 import type TypeBuilder from "./type_builder"
 
 type BamlCallOptions = {
@@ -48,6 +48,81 @@ export class HttpRequest {
         "CreateSet",
         {
           "instructions": instructions
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftContrastPersona(
+      provisional: types.Persona,spectrum: types.Spectrum,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "DraftContrastPersona",
+        {
+          "provisional": provisional,"spectrum": spectrum
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftProvisionalPersona(
+      evidence: types.EvidenceSet,spectrum: types.Spectrum,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "DraftProvisionalPersona",
+        {
+          "evidence": evidence,"spectrum": spectrum
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidence(
+      doc: types.InterviewDoc,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "ExtractEvidence",
+        {
+          "doc": doc
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -110,6 +185,31 @@ export class HttpRequest {
     }
   }
   
+  FindSpectrum(
+      evidence: types.EvidenceSet,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "FindSpectrum",
+        {
+          "evidence": evidence
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   GenerateAutoInsights(
       research_data: string,competitive_context: string,business_goals: string,
       __baml_options__?: BamlCallOptions
@@ -148,6 +248,56 @@ export class HttpRequest {
         "GeneratePersonas",
         {
           "interviews": interviews,"people": people,"insights": insights
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  NormalizeNotes(
+      raw_notes: string,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "NormalizeNotes",
+        {
+          "raw_notes": raw_notes
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  RefinePersonas(
+      existing_persona_set: types.PersonaSet,new_interview_notes: string,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "RefinePersonas",
+        {
+          "existing_persona_set": existing_persona_set,"new_interview_notes": new_interview_notes
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -191,6 +341,81 @@ export class HttpStreamRequest {
     }
   }
   
+  DraftContrastPersona(
+      provisional: types.Persona,spectrum: types.Spectrum,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "DraftContrastPersona",
+        {
+          "provisional": provisional,"spectrum": spectrum
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftProvisionalPersona(
+      evidence: types.EvidenceSet,spectrum: types.Spectrum,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "DraftProvisionalPersona",
+        {
+          "evidence": evidence,"spectrum": spectrum
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidence(
+      doc: types.InterviewDoc,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "ExtractEvidence",
+        {
+          "doc": doc
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   ExtractInsights(
       transcript: string,userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
@@ -241,6 +466,31 @@ export class HttpStreamRequest {
     }
   }
   
+  FindSpectrum(
+      evidence: types.EvidenceSet,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "FindSpectrum",
+        {
+          "evidence": evidence
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   GenerateAutoInsights(
       research_data: string,competitive_context: string,business_goals: string,
       __baml_options__?: BamlCallOptions
@@ -279,6 +529,56 @@ export class HttpStreamRequest {
         "GeneratePersonas",
         {
           "interviews": interviews,"people": people,"insights": insights
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  NormalizeNotes(
+      raw_notes: string,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "NormalizeNotes",
+        {
+          "raw_notes": raw_notes
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  RefinePersonas(
+      existing_persona_set: types.PersonaSet,new_interview_notes: string,
+      __baml_options__?: BamlCallOptions
+  ): HTTPRequest {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.buildRequestSync(
+        "RefinePersonas",
+        {
+          "existing_persona_set": existing_persona_set,"new_interview_notes": new_interview_notes
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

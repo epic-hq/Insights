@@ -315,6 +315,17 @@ export interface AutoInsightsResponse {
   
 }
 
+export interface EvidenceSet {
+  facts: string[]
+  goals: string[]
+  pains: string[]
+  behaviors: string[]
+  triggers: string[]
+  success: string[]
+  quotes: string[]
+  
+}
+
 export interface ExecutiveInsight {
   title: string
   insight: string
@@ -346,6 +357,12 @@ export interface ExtractedInsight {
   [key: string]: any;
 }
 
+export interface InterviewDoc {
+  source: string
+  snippets: NoteSnippet[]
+  
+}
+
 export interface InterviewExtraction {
   metadata: InterviewMetadata
   interviewee: Interviewee
@@ -373,6 +390,14 @@ export interface Interviewee {
   
 }
 
+export interface NoteSnippet {
+  tag: string
+  text: string
+  speaker?: string | null
+  timestamp?: string | null
+  
+}
+
 export interface OpportunityRecommendation {
   title: string
   description: string
@@ -386,6 +411,23 @@ export interface OpportunityRecommendation {
 }
 
 export interface Persona {
+  name_and_tagline: string
+  role_context: string
+  goals: string[]
+  behaviors_habits: string[]
+  pain_points: string[]
+  triggers_decision_drivers: string[]
+  success_definition: string
+  key_quotes: string[]
+  differentiators: string[]
+  confidence: string
+  evidence_count: number
+  hypothesis_notes: string
+  key_open_questions: string[]
+  
+}
+
+export interface Persona1 {
   name: string
   description?: string | null
   age?: string | null
@@ -428,6 +470,14 @@ export interface PersonaAnalysis {
   
 }
 
+export interface PersonaSet {
+  personas: Persona[]
+  version: string
+  change_log: string
+  contrast_persona?: Persona | null
+  
+}
+
 export interface Set {
   name: string
   description: string
@@ -438,5 +488,13 @@ export interface Set {
 export interface SetRecord {
   term: string
   definition: string
+  
+}
+
+export interface Spectrum {
+  axis: string
+  rationale: string
+  supporting_evidence: string[]
+  alternatives: string[]
   
 }

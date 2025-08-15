@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, ExecutiveInsight, ExtractedInsight, InterviewExtraction, InterviewMetadata, Interviewee, OpportunityRecommendation, Persona, PersonaAnalysis, Set, SetRecord} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExtractedInsight, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, Set, SetRecord, Spectrum} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -115,6 +115,90 @@ export class BamlAsyncClient {
     }
   }
   
+  async DraftContrastPersona(
+      provisional: types.Persona,spectrum: types.Spectrum,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.Persona> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "DraftContrastPersona",
+        {
+          "provisional": provisional,"spectrum": spectrum
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async DraftProvisionalPersona(
+      evidence: types.EvidenceSet,spectrum: types.Spectrum,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.Persona> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "DraftProvisionalPersona",
+        {
+          "evidence": evidence,"spectrum": spectrum
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async ExtractEvidence(
+      doc: types.InterviewDoc,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.EvidenceSet> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "ExtractEvidence",
+        {
+          "doc": doc
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.EvidenceSet
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   async ExtractInsights(
       transcript: string,userCustomInstructions: string,
       __baml_options__?: BamlCallOptions
@@ -166,6 +250,34 @@ export class BamlAsyncClient {
         env,
       )
       return raw.parsed(false) as types.Persona
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async FindSpectrum(
+      evidence: types.EvidenceSet,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.Spectrum> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "FindSpectrum",
+        {
+          "evidence": evidence
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.Spectrum
     } catch (error) {
       throw toBamlError(error);
     }
@@ -227,6 +339,62 @@ export class BamlAsyncClient {
     }
   }
   
+  async NormalizeNotes(
+      raw_notes: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.InterviewDoc> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "NormalizeNotes",
+        {
+          "raw_notes": raw_notes
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.InterviewDoc
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async RefinePersonas(
+      existing_persona_set: types.PersonaSet,new_interview_notes: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.PersonaSet> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "RefinePersonas",
+        {
+          "existing_persona_set": existing_persona_set,"new_interview_notes": new_interview_notes
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.PersonaSet
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
 }
 
 class BamlStreamClient {
@@ -268,6 +436,108 @@ class BamlStreamClient {
         raw,
         (a): partial_types.Set => a,
         (a): types.Set => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftContrastPersona(
+      provisional: types.Persona,spectrum: types.Spectrum,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.Persona, types.Persona> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "DraftContrastPersona",
+        {
+          "provisional": provisional,"spectrum": spectrum
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.Persona, types.Persona>(
+        raw,
+        (a): partial_types.Persona => a,
+        (a): types.Persona => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  DraftProvisionalPersona(
+      evidence: types.EvidenceSet,spectrum: types.Spectrum,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.Persona, types.Persona> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "DraftProvisionalPersona",
+        {
+          "evidence": evidence,"spectrum": spectrum
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.Persona, types.Persona>(
+        raw,
+        (a): partial_types.Persona => a,
+        (a): types.Persona => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidence(
+      doc: types.InterviewDoc,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.EvidenceSet, types.EvidenceSet> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "ExtractEvidence",
+        {
+          "doc": doc
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.EvidenceSet, types.EvidenceSet>(
+        raw,
+        (a): partial_types.EvidenceSet => a,
+        (a): types.EvidenceSet => a,
         this.ctxManager.cloneContext(),
       )
     } catch (error) {
@@ -343,6 +613,40 @@ class BamlStreamClient {
     }
   }
   
+  FindSpectrum(
+      evidence: types.EvidenceSet,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.Spectrum, types.Spectrum> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "FindSpectrum",
+        {
+          "evidence": evidence
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.Spectrum, types.Spectrum>(
+        raw,
+        (a): partial_types.Spectrum => a,
+        (a): types.Spectrum => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   GenerateAutoInsights(
       research_data: string,competitive_context: string,business_goals: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
@@ -404,6 +708,74 @@ class BamlStreamClient {
         raw,
         (a): partial_types.Persona[] => a,
         (a): types.Persona[] => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  NormalizeNotes(
+      raw_notes: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.InterviewDoc, types.InterviewDoc> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "NormalizeNotes",
+        {
+          "raw_notes": raw_notes
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.InterviewDoc, types.InterviewDoc>(
+        raw,
+        (a): partial_types.InterviewDoc => a,
+        (a): types.InterviewDoc => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  RefinePersonas(
+      existing_persona_set: types.PersonaSet,new_interview_notes: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.PersonaSet, types.PersonaSet> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "RefinePersonas",
+        {
+          "existing_persona_set": existing_persona_set,"new_interview_notes": new_interview_notes
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.PersonaSet, types.PersonaSet>(
+        raw,
+        (a): partial_types.PersonaSet => a,
+        (a): types.PersonaSet => a,
         this.ctxManager.cloneContext(),
       )
     } catch (error) {

@@ -32,6 +32,7 @@ insights blank due to missing project_id for previous interviews. Test going for
 
 - [x] prototype desktop version of Simple UI for project dashboard (summary insights, suggestions, chat) [v0](https://preview-mobile-insights-app-design-kzmlp51a1bx0c0w9lgfb.vusercontent.net/) at [inapp](/aichat)
 - [x] Signup chat to get user needs saved to user_settings.saved_data
+- [ ] HELP: Realtime update progress of plan in chat, and tell user when done and redirect them.
 - [x] Dockerfile changes for mastra version support.
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data; eg explain the personas.
 Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [chat](https://chatgpt.com/c/689cba6c-9e1c-8325-8d12-8df125c7f73a)
