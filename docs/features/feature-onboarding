@@ -189,69 +189,71 @@ App changes:
 
 * Gradually remove onboarding_completed and current_* from account_settings; use it purely for org-level config (e.g., default_project_id for new members, workspace name, billing plan, enforcement toggles).
 
-## User Story First Upload
+## User Story: Lean First Project Setup
 
-Title: Quick & Engaging Onboarding While First Interview Processes
+Title: Context-Driven Onboarding with Educational Processing Experience
 
 As a new user,
-I want a fast and simple onboarding experience that keeps me engaged while my first interview video is processing,
-So that I can get started quickly, understand the product’s value, and feel confident my data is being handled securely.
+I want to quickly set up my research context and upload my first interview with minimal friction,
+So that I can get relevant insights while learning about the platform's capabilities during processing.
 
-Acceptance Criteria:
+### Core Requirements:
 
-1. User can upload their first interview with minimal steps (drag & drop or file picker).
-2. After upload, user is shown a series of onboarding cards that auto-advance while processing occurs.
-3. Each card provides value (education, tips, product overview, or next steps) and reassures the user about progress.
-4. The card series auto-advances at set intervals, but allows manual navigation if desired.
-5. If processing completes early, the user is taken directly to their results.
-6. If processing fails or is delayed, the user is shown a clear error or status message with next steps.
-7. All onboarding steps are mobile-friendly and accessible.
-8. User data is handled securely throughout the process.
+1. **Context Collection (30 seconds):** Capture ICP, research goals, and key questions upfront
+2. **Simple Upload:** Single-step file upload with clear media type selection
+3. **Educational Processing:** Auto-advancing cards that teach while processing occurs
+4. **Mobile-First:** Optimized for mobile devices with touch-friendly interactions
+5. **Immediate Value:** Show project status with encouragement to add more interviews
 
-Edge Cases & Considerations:
+### Lean Flow Steps:
 
-* Upload errors (unsupported file, network issues): User receives clear feedback and retry option.
-* Very fast processing: Card series may be skipped or shown briefly before redirecting to results.
-* Very slow processing: Card series loops or extends with additional tips, and user can opt to be notified by email.
-* User navigates away: Processing continues in background, and user is notified when complete.
-* Accessibility: All cards are keyboard-navigable and screen-reader friendly.
-* Security: Uploaded files are stored securely and deleted if onboarding is abandoned.
+**Step 1: Research Context (Frame 1-2)**
+- Target market/ICP input
+- Research goal selection (needs, willingness to pay, custom)
+- Key questions (suggested + custom)
 
-## Flow
+**Step 2: Media Upload (Frame 3)**
+- Drag & drop or file picker
+- Media type selection (interview, focus group, etc.)
+- Immediate processing start
 
-When a user first signs up, a 'team account' is created and their first project.
+**Step 3: Educational Processing (Frame 4-6)**
+- Real-time progress updates
+- Auto-advancing educational cards:
+  - How AI analysis works
+  - Best practices for insights
+  - Data security & privacy
+- Swipeable, pauseable, mobile-optimized
 
-After that, they are taken to a onboarding flow where they can upload their first interview by simply dragging and dropping a file, or searching on their computer or phone.
+**Step 4: Project Status & Next Steps (Frame 7)**
+- Success confirmation with project summary
+- Single interview count with upgrade encouragement
+- Clear CTA for adding more interviews
+- View analysis button
 
-Inputs:
+### Key Improvements from Previous Flow:
 
-Type of media: interview, conversation, focus group, etc.
+1. **Context First:** Capture research goals before upload, not after
+2. **Lean Setup:** Reduced to 3 core steps instead of lengthy chat
+3. **Mobile-Optimized:** Touch-first design with appropriate sizing
+4. **Immediate Processing:** Start analysis during upload, not after completion
+5. **Value-Driven Completion:** Show project status that encourages expansion
 
-Goal (optional) user selectable:
+### Educational Card Content Themes:
 
-* understand user needs, motivations, preferences, etc. (default)
-* evaluate willingness to pay for a feature
-* OTHER fill in `custom_instructions`
+1. **AI Analysis Process:** Visual explanation of audio → transcript → insights
+2. **Best Practices:** Interview quality, length, and question types
+3. **Security & Privacy:** Encryption, access controls, data retention
+4. **Feature Highlights:** Dashboard navigation, sharing, collaboration
+5. **Expansion Benefits:** Why 3+ interviews unlock deeper insights
 
-Processing can take a while, so show a few screens to show progress and educate user on the way.
+### Technical Changes Required:
 
-### Onboarding Card Series (Auto-Advancing Steps)
-
-1. **Processing Interview**
-   * Visual progress indicator, reassuring message (“We’re analyzing your interview…”)
-2. **What Happens Next**
-   * Brief overview of how insights are generated and what to expect.
-3. **Tips for Best Results**
-   * Suggestions for future uploads (audio quality, interview length, etc.)
-4. **Explore Features**
-   * Quick highlights of key product features (e.g., insights dashboard, sharing, team collaboration).
-5. **Your Privacy Matters**
-   * Short note on data security and privacy practices.
-6. **Get the Most Out of Insights**
-   * Link to resources, guides, or community.
-7. **Processing Complete!** (auto-redirects to results when ready)
-
-Each card auto-advances after a few seconds, but users can click to move forward/back or pause if desired.
+- Replace chat-based onboarding with structured form flow
+- Implement auto-advancing card system with manual controls
+- Add mobile-responsive upload interface
+- Create project status page design
+- Integrate real-time processing progress
 
 ### References
 

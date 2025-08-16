@@ -7,6 +7,7 @@ import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
 import marketingRoutes from "./features/marketing/routes"
 import mobileRoutes from "./features/mobile/insights/routes"
+import onboardingRoutes from "./features/onboarding/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
@@ -20,6 +21,7 @@ const routes = [
 	layout("./routes/_ProtectedLayout.tsx", [
 		// Home dashboard for logged-in users
 		...homeRoutes,
+		...onboardingRoutes,
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -40,7 +42,6 @@ const routes = [
 
 				// Annotations API routes (need project context)
 				...annotationsRoutes,
-
 			]),
 		]),
 	]),
