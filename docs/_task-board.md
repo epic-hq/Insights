@@ -39,12 +39,11 @@ Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [
 
 ## Sprint 4 - Persona Management
 
-- [ ] Enhanced persona schema and generation per this chat:
-
+- [ ] Enhanced persona schema per this chat:
 - [definitions of personas, user stories etc](https://chatgpt.com/c/689ba8c0-00bc-8326-b331-efc3131aa30f)
-
 - [new persona fields](https://chatgpt.com/c/689c3bc0-dd78-8331-aa94-8ad74916b318)
 
+- [ ] Improve persona generation. 4o has 128k input limit. gpt-5-nano is 400k and .05c in.
 - [ ] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
 - [ ] Analyze Personas feature: make recommendations.
 - [ ] Chat about Personas
@@ -92,12 +91,13 @@ Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [
 Prioritize.
 - [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
 
+## Bugs
+
+- [ ] supabase/functions/embed/index got mangled on the JWT decode.
+
 ## 🌓 Backlog / Later
 
 - [ ] Migrate auth and Organizations to BetterAuth, get Stripe integration working.
-
-Defer:
-
 - [ ] Deep Linking & Next RedirectTo after login
 - [ ] how to handle routes:
   - /$accountId

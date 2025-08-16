@@ -1,4 +1,4 @@
-import { CopilotKit, useCoAgent, useCopilotAction } from "@copilotkit/react-core"
+import { useCoAgent, useCopilotAction } from "@copilotkit/react-core"
 import { CopilotChat, CopilotSidebar } from "@copilotkit/react-ui"
 import type { z } from "zod"
 import type { AgentState as AgentStateSchema } from "@/mastra/agents"
@@ -665,18 +665,5 @@ export function MobileInsightsApp() {
 }
 
 export default function Index() {
-	return (
-		<CopilotKit
-			agent="weatherAgent"
-			runtimeUrl="/api/copilotkit"
-			showDevConsole={true}
-			headers={{
-				"X-UserId": "100",
-				"X-AccountId": "200",
-				"X-ProjectId": "300",
-			}}
-		>
-			<MobileInsightsApp />
-		</CopilotKit>
-	)
+	return <MobileInsightsApp />
 }

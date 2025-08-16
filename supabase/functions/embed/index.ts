@@ -27,52 +27,54 @@ Deno.serve(async (req) => {
 			const jwt = authHeader.split(" ")[1]
 			const payload = jwt.split(".")[1]
 			const decoded = JSON.parse(atob(payload))
-			console.log("Decoded JWT Payload:", decod
-			console.log("Failed to decode JWT:", e)
+		} catch (e) {
+			console.log(
+	}
+
+		try {
+			const { id, name, pain } = await req.json()
+			if (!id || !name || !pain) {
+				return new Response("Missing `id`, `name` or `pain`", { status: 400 })
+			}
+
+			// 1) Fetch embedding from OpenAI
+			const openaiRes = await fetch("https://api.openai.com/v1/embeddings", {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+					Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
+				},
+				body: JSON.stringify({
+					model: "text-embedding-ada-002",
+					input: `${name}: ${pain}`,
+				}),
+			})
+
+			if (!openaiRes.ok) {
+				const err = await openaiRes.text()
+				throw new Error(`OpenAI error: ${err}`)
+			}
+
+			const { data } = await openaiRes.json()
+			const embedding: number[] = data[0].embedding
+
+			// 2) Write back to Supabase
+			const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
+
+			const { error } = await supabase.from("insights").update({ embedding: embedding }).eq("id", id)
+
+			if (error) throw error
+
+			return new Response(JSON.stringify({ success: true }), {
+				headers: { "Content-Type": "application/json" },
+			})
 		}
-		const { id, name, pain } = await req.json()
-		if (!id || !name || !pain) {
-			return new Response("Missing `id`, `name` or `pain`", { status: 400 })
-		}
-
-		// 1) Fetch embedding from OpenAI
-		const openaiRes = await fetch("https://api.openai.com/v1/embeddings", {
-			method: "POST",
-			headers: {
-				"Content-Type": "application/json",
-				Authorization: `Bearer ${Deno.env.get("OPENAI_API_KEY")}`,
-			},
-			body: JSON.stringify({
-				model: "text-embedding-ada-002",
-				input: `${name}: ${pain}`,
-			}),
-		})
-
-		if (!openaiRes.ok) {
-			const err = await openaiRes.text()
-			throw new Error(`OpenAI error: ${err}`)
-		}
-
-		const { data } = await openaiRes.json()
-		const embedding: number[] = data[0].embedding
-
-		// 2) Write back to Supabase
-		const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
-
-		const { error } = await supabase.from("insights").update({ embedding: embedding }).eq("id", id)
-
-		if (error) throw error
-
-		return new Response(JSON.stringify({ success: true }), {
+		catch (err)
+	return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
+			status_err00,
 			headers: { "Content-Type": "application/json" },
 		})
-	}
-	catch (err)
-	return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
-		status: 500,
-		headers: { "Content-Type": "application/json" },
 	})
-})
 
 /* To invoke locally:
 

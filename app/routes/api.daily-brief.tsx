@@ -1,0 +1,51 @@
+import consola from "consola"
+import type { ActionFunctionArgs } from "react-router"
+import { createClient } from "@supabase/supabase-js"
+import { RuntimeContext } from "@mastra/core/di"
+import { getSession } from "~/lib/supabase/server"
+import { mastra } from "~/mastra"
+
+export async function action({ request }: ActionFunctionArgs) {
+	// Use your existing server auth utility
+	const session = await getSession(request)
+	if (!session?.access_token) {
+		return Response.json({ error: "Unauthorized" }, { status: 401 })
+	}
+
+	const { account_id, project_id } = await request.json()
+
+	try {
+		// Create user-scoped SupabaseClient with JWT
+		const userSupabase = createClient(
+			process.env.SUPABASE_URL!,
+			process.env.SUPABASE_ANON_KEY!,
+			{
+				global: {
+					headers: {
+						Authorization: `Bearer ${session.access_token}`,
+					},
+				},
+			}
+		)
+
+		const workflow = mastra.getWorkflow("dailyBriefWorkflow")
+		const run = await workflow.createRunAsync()
+
+		// Create proper RuntimeContext and inject supabase
+		const runtimeContext = new RuntimeContext()
+		runtimeContext.set("supabase", userSupabase)
+
+		const result = await run.start({
+			inputData: {
+				account_id,
+				project_id,
+			},
+			runtimeContext,
+		})
+
+		return Response.json(result)
+	} catch (error) {
+		consola.error("Daily brief workflow error:", error)
+		return Response.json({ error: "Workflow execution failed" }, { status: 500 })
+	}
+}

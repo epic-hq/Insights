@@ -1,6 +1,8 @@
+import { CopilotKit } from "@copilotkit/react-core"
+import "@copilotkit/react-ui/styles.css"
+import "~/styles/copilot-overrides.css"
 import consola from "consola"
-import { Outlet, redirect, useLoaderData } from "react-router"
-import AIChatButton from "~/components/chat/AIChatButton"
+import { Outlet, useLoaderData, useParams } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
@@ -100,6 +102,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function ProtectedLayout() {
 	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
+	const params = useParams()
 
 	return (
 		<AuthProvider
@@ -109,21 +112,32 @@ export default function ProtectedLayout() {
 			user_settings={user_settings}
 		>
 			<CurrentProjectProvider>
-				<MainNav />
-				<PageHeader title="" />
-				<Outlet />
+				<CopilotKit
+					agent="insightsAgent"
+					runtimeUrl="/api/copilotkit"
+					showDevConsole={true}
+					headers={{
+						"X-UserId": String(auth?.user?.sub ?? ""),
+						"X-AccountId": String(params.accountId ?? ""),
+						"X-ProjectId": String(params.projectId ?? ""),
+					}}
+				>
+					<MainNav />
+					<PageHeader title="" />
+					<Outlet />
 
-				{/* Persistent AI Chat Button */}
-				<div className="fixed right-0 bottom-0 left-0 z-40 border-gray-800 border-t bg-black p-3">
-					<div className="grid grid-cols-3 gap-2">
-						{/* First two slots can be empty or used for other global actions */}
-						<div />
-						<div />
+					{/* Persistent AI Chat Button */}
+					<div className="fixed right-0 bottom-0 left-0 z-40 border-gray-800 border-t bg-black p-3">
+						<div className="grid grid-cols-3 gap-2">
+							{/* First two slots can be empty or used for other global actions */}
+							<div />
+							<div />
 
-						{/* AI Chat Button - always in the third position */}
-						<AIChatButton />
+							{/* AI Chat Button - always in the third position */}
+							{/* <AIChatButton /> */}
+						</div>
 					</div>
-				</div>
+				</CopilotKit>
 			</CurrentProjectProvider>
 		</AuthProvider>
 	)
