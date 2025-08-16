@@ -26,10 +26,12 @@ Deno.serve(async (req) => {
 		try {
 			const jwt = authHeader.split(" ")[1]
 			const payload = jwt.split(".")[1]
-			const decoded = JSON.parse(atob(payload))
-			console.log("Decoded JWT Payload:", decod
-			console.log("Failed to decode JWT:", e)
+			const _decoded = JSON.parse(atob(payload))
+		} catch (_e) {
 		}
+	}
+
+	try {
 		const { id, name, pain } = await req.json()
 		if (!id || !name || !pain) {
 			return new Response("Missing `id`, `name` or `pain`", { status: 400 })
@@ -67,12 +69,12 @@ Deno.serve(async (req) => {
 			headers: { "Content-Type": "application/json" },
 		})
 	}
-	catch (err)
-	return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
-		status: 500,
-		headers: { "Content-Type": "application/json" },
+	catch (err) {
+		return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
+			status: 500,
+			headers: { "Content-Type": "application/json" },
+		})
 	})
-})
 
 /* To invoke locally:
 

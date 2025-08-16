@@ -149,3 +149,12 @@ Inter is available via Google Fonts; fallback to `system-ui`.
 1. Apply tokens in Tailwind config.
 2. Build Storybook setup to visual-test components.
 3. Iterate with high-fidelity mock-ups if needed.
+
+
+## Resources
+
+### Generate Icons for mobile and favicon.ico
+
+```sh
+npx tsx scripts/generate-icons.ts
+```
