@@ -1,6 +1,6 @@
 // need to add acheck for if env NODE_ENV=development then set HOST to localhost, else "upsight.fly.dev"
-
-const HOST = process.env.NODE_ENV === "development" ? "http://localhost:4280" : "https://upsight.fly.dev"
+export const PRODUCTION_HOST = "https://upsight.fly.dev"
+const HOST = process.env.NODE_ENV === "development" ? "http://localhost:4280" : PRODUCTION_HOST
 
 const AUTH = {
 	LOGIN: "/login",

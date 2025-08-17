@@ -9,28 +9,32 @@ export type OnboardingStep = "welcome" | "questions" | "upload" | "processing" |
 
 interface OnboardingData {
 	icp: string
+	role: string
 	goal: string
 	customGoal?: string
 	questions: string[]
 	file?: File
 	mediaType?: string
+	interviewId?: string
 }
 
 interface OnboardingFlowProps {
 	onComplete: (data: OnboardingData) => void
 	onAddMoreInterviews: () => void
 	onViewResults: () => void
+	projectId?: string
 }
 
-export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onViewResults }: OnboardingFlowProps) {
+export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onViewResults, projectId }: OnboardingFlowProps) {
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome")
 	const [data, setData] = useState<OnboardingData>({
 		icp: "",
+		role: "",
 		goal: "",
 		questions: [],
 	})
 
-	const handleWelcomeNext = (welcomeData: { icp: string; goal: string; customGoal?: string }) => {
+	const handleWelcomeNext = (welcomeData: { icp: string; role: string; goal: string; customGoal?: string }) => {
 		setData((prev) => ({ ...prev, ...welcomeData }))
 		setCurrentStep("questions")
 	}
@@ -40,13 +44,51 @@ export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onView
 		setCurrentStep("upload")
 	}
 
-	const handleUploadNext = (file: File, mediaType: string) => {
+	const handleUploadNext = async (file: File, mediaType: string, uploadProjectId?: string) => {
 		const updatedData = { ...data, file, mediaType }
 		setData(updatedData)
 		setCurrentStep("processing")
 
-		// Start the actual upload/processing here
-		// In a real app, this would trigger the backend processing
+		try {
+			// Create FormData for the API call
+			const formData = new FormData()
+			formData.append("file", file)
+			formData.append("onboardingData", JSON.stringify({
+				icp: data.icp,
+				role: data.role,
+				goal: data.goal,
+				customGoal: data.customGoal,
+				questions: data.questions,
+				mediaType
+			}))
+			// accountId will be retrieved from authenticated user by API
+			if (uploadProjectId) {
+				formData.append("projectId", uploadProjectId)
+			}
+
+			// Call the new onboarding-start API
+			const response = await fetch("/api/onboarding-start", {
+				method: "POST",
+				body: formData,
+			})
+
+			if (!response.ok) {
+				const errorData = await response.json()
+				throw new Error(errorData.error || "Upload failed")
+			}
+
+			const result = await response.json()
+			
+			// Store interview ID for progress tracking
+			if (result.interview?.id) {
+				setData(prev => ({ ...prev, interviewId: result.interview.id }))
+			}
+
+		} catch (error) {
+			// Handle error - could show error state or retry
+			const errorMessage = error instanceof Error ? error.message : "Upload failed"
+			setData(prev => ({ ...prev, error: errorMessage }))
+		}
 	}
 
 	const handleProcessingComplete = () => {
@@ -67,9 +109,12 @@ export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onView
 		}
 	}
 
-	// Generate project name from ICP
+	// Generate project name from ICP and role
 	const getProjectName = () => {
 		if (!data.icp) return "New Project"
+		if (data.role) {
+			return `${data.role} at ${data.icp} Research`
+		}
 		return `${data.icp} Research`
 	}
 
@@ -78,13 +123,13 @@ export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onView
 			return <WelcomeScreen onNext={handleWelcomeNext} />
 
 		case "questions":
-			return <QuestionsScreen icp={data.icp} goal={data.goal} onNext={handleQuestionsNext} onBack={handleBack} />
+			return <QuestionsScreen icp={data.icp} role={data.role} goal={data.goal} onNext={handleQuestionsNext} onBack={handleBack} />
 
 		case "upload":
-			return <UploadScreen onNext={handleUploadNext} onBack={handleBack} />
+			return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={projectId} />
 
 		case "processing":
-			return <ProcessingScreen fileName={data.file?.name || "Unknown file"} onComplete={handleProcessingComplete} />
+			return <ProcessingScreen fileName={data.file?.name || "Unknown file"} onComplete={handleProcessingComplete} interviewId={data.interviewId} />
 
 		case "complete":
 			return (

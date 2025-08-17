@@ -123,7 +123,7 @@ create table if not exists public.project_section_kinds (
 );
 
 insert into public.project_section_kinds (id) values
-  ('goal'), ('questions'), ('findings'), ('background')
+  ('goal'), ('questions'), ('findings'), ('background'), ('target_market'), ('risks'), ('methodology'), ('assumptions'), ('recommendations')
   on conflict (id) do nothing;
 
 -- 2) Sections table (Markdown content + optional JSONB meta)

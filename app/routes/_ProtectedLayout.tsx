@@ -27,15 +27,55 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			// Use RLS client if JWT is present, otherwise fallback to anon client
 			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/server")).getServerClient(request).client
 
-			const { data: user_settings } = await supabase.from("user_settings").select("*").eq("user_id", user.sub).single()
+			// Get user's settings and accounts in parallel
+			const [userSettingsResult, userAccountsResult] = await Promise.all([
+				supabase.from("user_settings").select("*").eq("user_id", user.sub).single(),
+				supabase.rpc("get_user_accounts")
+			])
+
+			const { data: user_settings } = userSettingsResult
+			const { data: accounts, error: accountsError } = userAccountsResult
+
+			if (accountsError) {
+				consola.error("Get user accounts error in middleware:", accountsError)
+				throw redirect("/login")
+			}
+
+			// Determine current account: use last_used_account_id from user_settings, validate it's available
+			let currentAccount = null
+			if (user_settings?.last_used_account_id) {
+				currentAccount = accounts?.find(acc => acc.account_id === user_settings.last_used_account_id)
+			}
+			
+			// Fallback: first non-personal account, or first account if only personal
+			if (!currentAccount) {
+				currentAccount = accounts?.find(acc => !acc.personal_account) || accounts?.[0]
+			}
+			
+			if (!currentAccount) {
+				consola.error("No accounts found for user")
+				throw redirect("/login")
+			}
+
+			// Get account settings using user's personal account (account_settings is per personal account, not team)
+			// Note: This should eventually be migrated to user_settings for clarity
+			const { data: accountSettings } = await supabase
+				.from("account_settings")
+				.select("*")
+				.eq("account_id", user.sub)
+				.maybeSingle()
+
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {
 				claims: user,
-				account_id: user.sub,
+				account_id: currentAccount.account_id, // Use team account, not user.sub
 				user_metadata: user.user_metadata,
 				supabase,
 				headers: request.headers,
 				user_settings: user_settings || {},
+				accounts: accounts || [],
+				accountSettings: accountSettings || {},
+				currentAccount,
 			})
 			// consola.log("_ProtectedLayout Authentication middleware success\n")
 		} catch (error) {
@@ -50,47 +90,16 @@ export async function loader({ context }: Route.LoaderArgs) {
 		const loadContextInstance = context.get(loadContext)
 		const { lang } = loadContextInstance
 		const user = context.get(userContext)
-		const user_settings = user.user_settings
-		const accountId = user.account_id
-		const supabase = user.supabase
-		const claims = user.claims
-
-		// Get user's accounts using the cloud function
-		// This function has proper schema access and handles multi-tenancy
-		const { data: accounts, error: accountsError } = await supabase.rpc("get_user_accounts")
-
-		if (accountsError) {
-			consola.error("Get user accounts error:", accountsError)
-			throw new Response(accountsError.message, { status: 500 })
-		}
-
-		// Get current account_settings using personal user_id so we know which account and project to use
-		const { data: accountSettings, error: accountSettingsError } = await supabase
-			.from("account_settings")
-			.select("*")
-			.eq("account_id", accountId)
-			.single()
-		if (accountSettingsError) {
-			consola.error("Get account settings error:", accountSettingsError)
-			throw new Response(accountSettingsError.message, { status: 500 })
-		}
-		// consola.log("_ProtectedLayout Account settings:", accountSettings)
-		// save in middleware context
-		context.set(userContext, {
-			...user,
-			accountSettings,
-			user_settings,
-		})
 
 		return {
 			lang,
 			auth: {
-				user: claims,
-				accountId,
+				user: user.claims,
+				accountId: user.account_id,
 			},
-			accounts: accounts || [],
-			account_settings: accountSettings || {},
-			user_settings: user_settings || {},
+			accounts: user.accounts || [],
+			account_settings: user.accountSettings || {},
+			user_settings: user.user_settings || {},
 		}
 	} catch (error) {
 		consola.error("Protected layout loader error:", error)

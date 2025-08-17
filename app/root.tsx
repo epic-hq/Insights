@@ -68,8 +68,6 @@ export default function App({ loaderData }: Route.ComponentProps) {
 			{/* <AuthProvider initialAuth={auth}> */}
 			<NotificationProvider>
 				<Outlet />
-				{/* biome-ignore lint/security/noDangerouslySetInnerHtml: We set the window.env variable to the client env */}
-				<script dangerouslySetInnerHTML={{ __html: `window.env = ${JSON.stringify(clientEnv)}` }} />
 			</NotificationProvider>
 			{/* </AuthProvider> */}
 		</ClientOnly>

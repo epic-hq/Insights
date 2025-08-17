@@ -48,11 +48,15 @@ insights blank due to missing project_id for previous interviews. Test going for
 - [ ] Add annotations to insights and pick cards, v2, quick, or mobile
 - [ ] Revise DB calls and build Annotations View in DB [spec](annotations-schema-proposal.md##Enhancement:AnnotationViews)
 
-## Sprint 4: Workflow Pipelines
+## Sprint 4: Workflow Pipelines ✅ COMPLETED
 
-- [X] Research and architect a pipeline queue for transcription: `docs/feature-spec-transcription-pipeline.md`
-- [ ] Implement queues
-- [ ] Convert existing 'Add Interview' process to use the queues and show Onboarding sequence cards
+- [x] Research and architect a pipeline queue for transcription: `docs/feature-spec-transcription-pipeline.md`
+- [x] **Implement webhook-driven transcription pipeline** - Complete queue system with upload_jobs and analysis_jobs
+- [x] **Convert onboarding to use pipeline** - 4-step onboarding flow with real-time progress tracking
+- [x] **Fix RLS and authentication issues** - Personal interview ownership with team project access
+- [x] **Real-time UI updates** - Supabase Realtime websocket integration working (401 → 101)
+- [x] **AssemblyAI integration** - File upload, transcription, webhook processing
+- [ ] **CRITICAL: Deploy webhook to production** - Required for AssemblyAI callbacks
 - [ ] Implement Generation queue (already spec'd)
 - [ ] Handle longer files, use as upgrade trigger. AAI timeout handling
 
@@ -72,6 +76,18 @@ insights blank due to missing project_id for previous interviews. Test going for
 - [ ] How to make UX Better to get maximum WOW insights? (revise `user-flow.md`)
 Prioritize.
 - [ ] Upgrade Projects page detail, list, cards, CRUD. @web <https://v0.dev/chat/research-project-components-qHfJ0d4vxEP>
+
+## 🚨 Critical Next Steps
+
+- [ ] **DEPLOY TO PRODUCTION** - Pipeline webhook endpoint must be live for AssemblyAI callbacks
+- [ ] **Test end-to-end flow** - Verify upload → transcription → webhook → analysis → completion
+- [ ] **Error handling & retry logic** - Handle failed transcriptions and network issues
+
+## 🔄 Architecture Cleanup
+
+- [ ] **Team collaboration access** - Allow team members to view interviews in shared projects
+- [ ] **Account/User ID consistency** - Resolve remaining confusion between personal and team accounts
+- [ ] **Remove account_settings table and migrate to user_settings** - Current architecture has duplicate user preferences between `account_settings.current_account_id/current_project_id` and `user_settings.last_used_account_id/last_used_project_id`. Consolidate all user preferences in user_settings for clarity and remove confusing duplication.
 
 ## 🌓 Backlog / Later
 

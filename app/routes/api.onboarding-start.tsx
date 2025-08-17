@@ -1,0 +1,356 @@
+import type { UUID } from "node:crypto"
+import consola from "consola"
+import { format } from "date-fns"
+import type { ActionFunctionArgs } from "react-router"
+import { createProject } from "~/features/projects/db"
+import { getServerClient, getAuthenticatedUser } from "~/lib/supabase/server"
+import { PRODUCTION_HOST } from "~/paths"
+import type { InterviewInsert } from "~/types"
+
+interface OnboardingData {
+	icp: string
+	role: string
+	goal: string
+	customGoal?: string
+	questions: string[]
+	mediaType: string
+}
+
+export async function action({ request }: ActionFunctionArgs) {
+	if (request.method !== "POST") {
+		return Response.json({ error: "Method not allowed" }, { status: 405 })
+	}
+
+	try {
+		// Get authenticated user and their team account
+		const user = await getAuthenticatedUser(request)
+		if (!user) {
+			return Response.json({ error: "User not authenticated" }, { status: 401 })
+		}
+
+		const { client: supabase } = getServerClient(request)
+		
+		// Get team account from user context (set by middleware)
+		// For API routes, we should get this from user context or use RPC to get current account
+		const { data: userSettings } = await supabase
+			.from("user_settings")
+			.select("last_used_account_id")
+			.eq("user_id", user.sub)
+			.single()
+
+		let teamAccountId = userSettings?.last_used_account_id
+
+		// Fallback: get first available team account if no preference set
+		if (!teamAccountId) {
+			const { data: accounts } = await supabase.rpc("get_user_accounts")
+			const teamAccount = accounts?.find((acc: any) => !acc.personal_account) || accounts?.[0]
+			teamAccountId = teamAccount?.account_id
+		}
+
+		if (!teamAccountId) {
+			return Response.json({ error: "No team account found" }, { status: 500 })
+		}
+
+		const formData = await request.formData()
+		const file = formData.get("file") as File | null
+		const onboardingDataStr = formData.get("onboardingData") as string
+		const projectId = formData.get("projectId") as UUID
+
+		// Detailed logging for debugging
+		consola.log("=== ONBOARDING START DEBUG ===")
+		consola.log("user.sub:", user.sub)
+		consola.log("teamAccountId:", teamAccountId)
+		consola.log("file:", file ? `${file.name} (${file.size} bytes)` : "null")
+		consola.log("onboardingDataStr:", onboardingDataStr)
+		consola.log("projectId:", projectId)
+		consola.log("formData keys:", Array.from(formData.keys()))
+		
+		if (!file) {
+			consola.error("Missing file")
+			return Response.json({ error: "Missing file" }, { status: 400 })
+		}
+		if (!onboardingDataStr) {
+			consola.error("Missing onboardingData")
+			return Response.json({ error: "Missing onboardingData" }, { status: 400 })
+		}
+
+		const onboardingData: OnboardingData = JSON.parse(onboardingDataStr)
+
+		consola.log("Starting onboarding for account:", teamAccountId, "project:", projectId)
+
+		// 1. Use existing project or create new one if projectId not provided
+		let finalProjectId = projectId
+		
+		if (!projectId) {
+			const baseProjectName = `${onboardingData.role} at ${onboardingData.icp} Research`
+			const projectDescription = `Research project for ${onboardingData.role} at ${onboardingData.icp}. Goal: ${
+				onboardingData.goal === "other" && onboardingData.customGoal 
+					? onboardingData.customGoal 
+					: onboardingData.goal === "needs" 
+						? "Understand user needs & motivations"
+						: "Evaluate willingness to pay for features"
+			}`
+
+			// Find available project name by checking for slug conflicts
+			let projectName = baseProjectName
+			let attempt = 1
+			let project = null
+			let projectError = null
+
+			while (!project && attempt <= 10) {
+				const { data: createData, error: createError } = await createProject({
+					supabase,
+					data: {
+						name: projectName,
+						description: projectDescription,
+						status: "active",
+						account_id: teamAccountId
+					}
+				})
+
+				if (createError?.code === '23505') {
+					// Slug conflict, try with number suffix
+					attempt++
+					projectName = `${baseProjectName} ${attempt}`
+					continue
+				}
+
+				project = createData
+				projectError = createError
+				break
+			}
+
+			if (projectError || !project) {
+				consola.error("Project creation failed:", projectError)
+				return Response.json({ error: "Failed to create project" }, { status: 500 })
+			}
+
+			finalProjectId = project.id as UUID
+			consola.log("Created new project:", project.id)
+
+			// Create project sections for onboarding data
+			const projectSections = [
+				{
+					project_id: finalProjectId,
+					kind: 'target_market',
+					content_md: `**Role:** ${onboardingData.role}\n\n**Company/Organization:** ${onboardingData.icp}`,
+					meta: { 
+						role: onboardingData.role, 
+						icp: onboardingData.icp 
+					}
+				},
+				{
+					project_id: finalProjectId,
+					kind: 'goal',
+					content_md: onboardingData.goal === "other" && onboardingData.customGoal 
+						? onboardingData.customGoal 
+						: onboardingData.goal === "needs" 
+							? "Understand user needs & motivations"
+							: "Evaluate willingness to pay for features",
+					meta: { 
+						goalType: onboardingData.goal,
+						customGoal: onboardingData.customGoal 
+					}
+				},
+				{
+					project_id: finalProjectId,
+					kind: 'questions',
+					content_md: onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n\n'),
+					meta: { 
+						questionCount: onboardingData.questions.length 
+					}
+				}
+			]
+
+			const { error: sectionsError } = await supabase
+				.from("project_sections")
+				.insert(projectSections)
+
+			if (sectionsError) {
+				consola.error("Failed to create project sections:", sectionsError)
+				// Continue anyway - project is created, sections are bonus
+			} else {
+				consola.log("Created project sections for onboarding data")
+			}
+		}
+
+		// 2. Create interview record with initial status
+		const customInstructions = `This interview is part of research about ${onboardingData.role} at ${onboardingData.icp}. 
+		
+Key research questions to focus on:
+${onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+
+Please extract insights that specifically address these research questions and help understand ${onboardingData.role} at ${onboardingData.icp} better.`
+
+		const interviewData: InterviewInsert = {
+			account_id: user.sub, // Personal ownership for RLS compatibility
+			project_id: finalProjectId,
+			title: `${onboardingData.role} at ${onboardingData.icp} - ${file.name}`,
+			interview_date: format(new Date(), "yyyy-MM-dd"),
+			participant_pseudonym: "Participant 1",
+			segment: null,
+			media_url: null, // Will be set by upload worker
+			transcript: null, // Will be set by transcription
+			transcript_formatted: null,
+			duration_min: null,
+			status: "uploaded", // Starting status for pipeline
+		} as InterviewInsert
+
+		const { data: interview, error: interviewError } = await supabase
+			.from("interviews")
+			.insert(interviewData)
+			.select()
+			.single()
+
+		if (interviewError || !interview) {
+			consola.error("Interview creation failed:", interviewError)
+			return Response.json({ error: "Failed to create interview" }, { status: 500 })
+		}
+
+		consola.log("Created interview:", interview.id)
+
+		// 3. Check if file is text or needs AssemblyAI processing
+		const isTextFile = file.type.startsWith('text/') || 
+			file.name.endsWith('.txt') || 
+			file.name.endsWith('.md') || 
+			file.name.endsWith('.markdown')
+
+		if (isTextFile) {
+			// Handle text files immediately - no upload needed
+			const textContent = await file.text()
+			
+			if (!textContent || textContent.trim().length === 0) {
+				return Response.json({ error: "Text file is empty" }, { status: 400 })
+			}
+
+			const transcriptData = {
+				full_transcript: textContent.trim(),
+				confidence: 1.0,
+				audio_duration: null,
+				processing_duration: 0,
+				file_type: 'text',
+				original_filename: file.name
+			}
+
+			// Skip upload queue, go directly to analysis
+			const { error: analysisJobError } = await supabase
+				.from("analysis_jobs")
+				.insert({
+					interview_id: interview.id,
+					transcript_data: transcriptData,
+					custom_instructions: customInstructions,
+					status: 'pending'
+				})
+
+			if (analysisJobError) {
+				consola.error("Failed to create analysis job:", analysisJobError)
+				return Response.json({ error: "Failed to queue analysis" }, { status: 500 })
+			}
+
+			// Update interview status - text files skip transcription and go straight to ready
+			await supabase
+				.from("interviews")
+				.update({ 
+					status: "ready",
+					transcript: textContent.trim(),
+					transcript_formatted: transcriptData
+				})
+				.eq("id", interview.id)
+
+		} else {
+			// Handle audio/video files - upload to AssemblyAI with webhook
+			const apiKey = process.env.ASSEMBLYAI_API_KEY
+			if (!apiKey) {
+				return Response.json({ error: "AssemblyAI API key not configured" }, { status: 500 })
+			}
+
+			// Upload to AssemblyAI
+			const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
+				method: "POST",
+				headers: { Authorization: apiKey },
+				body: file.stream(),
+				duplex: "half",
+			} as RequestInit)
+
+			if (!uploadResp.ok) {
+				const errorText = await uploadResp.text()
+				consola.error("AssemblyAI upload failed:", uploadResp.status, errorText)
+				return Response.json({ error: "File upload failed" }, { status: 500 })
+			}
+
+			const { upload_url } = await uploadResp.json() as { upload_url: string }
+			consola.log("File uploaded to AssemblyAI:", upload_url)
+
+			// Start transcription with webhook - use production host for webhook reception
+			const webhookUrl = `${PRODUCTION_HOST}/api/assemblyai-webhook`
+			
+			const transcriptResp = await fetch("https://api.assemblyai.com/v2/transcript", {
+				method: "POST",
+				headers: {
+					Authorization: apiKey,
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					audio_url: upload_url,
+					webhook_url: webhookUrl,
+					// Add the same parameters as working version
+					speaker_labels: true,
+					iab_categories: true,
+					format_text: true,
+					punctuate: true,
+					auto_chapters: true,
+					sentiment_analysis: false
+				}),
+			})
+
+			if (!transcriptResp.ok) {
+				const errorText = await transcriptResp.text()
+				consola.error("AssemblyAI transcription failed:", transcriptResp.status, errorText)
+				return Response.json({ error: "Transcription request failed" }, { status: 500 })
+			}
+
+			const { id: assemblyai_id } = await transcriptResp.json() as { id: string }
+
+			// Create upload job record for tracking
+			const { error: uploadJobError } = await supabase
+				.from("upload_jobs")
+				.insert({
+					interview_id: interview.id,
+					file_name: file.name,
+					file_type: file.type,
+					external_url: upload_url,
+					assemblyai_id: assemblyai_id,
+					status: 'in_progress',
+					status_detail: 'Transcription in progress',
+					custom_instructions: customInstructions
+				})
+
+			if (uploadJobError) {
+				consola.error("Failed to create upload job:", uploadJobError)
+				// Continue anyway - webhook will handle completion
+			}
+
+			consola.log("Transcription started with ID:", assemblyai_id)
+		}
+
+		return Response.json({
+			success: true,
+			interview: {
+				id: interview.id,
+				project_id: finalProjectId,
+				title: interview.title,
+				status: interview.status
+			},
+			project: {
+				id: finalProjectId
+			}
+		})
+
+	} catch (error) {
+		consola.error("Onboarding start failed:", error)
+		return Response.json(
+			{ error: error instanceof Error ? error.message : "Processing failed" },
+			{ status: 500 }
+		)
+	}
+}

@@ -63,6 +63,8 @@ const routes = [
 	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 	route("api/generate-personas", "./routes/api.generate-personas.tsx"),
 	route("api/copilotkit", "./features/aichat/api/copilotkit.tsx"),
+	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
+	route("api/assemblyai-webhook", "./routes/api.assemblyai-webhook.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

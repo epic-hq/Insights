@@ -7,7 +7,7 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
+  // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
     PostgrestVersion: "12.2.3 (519615d)"
@@ -351,6 +351,56 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: []
+      }
+      analysis_jobs: {
+        Row: {
+          attempts: number | null
+          created_at: string | null
+          custom_instructions: string | null
+          id: string
+          interview_id: string
+          last_error: string | null
+          progress: number | null
+          status: Database["public"]["Enums"]["job_status"]
+          status_detail: string | null
+          transcript_data: Json
+          updated_at: string | null
+        }
+        Insert: {
+          attempts?: number | null
+          created_at?: string | null
+          custom_instructions?: string | null
+          id?: string
+          interview_id: string
+          last_error?: string | null
+          progress?: number | null
+          status?: Database["public"]["Enums"]["job_status"]
+          status_detail?: string | null
+          transcript_data: Json
+          updated_at?: string | null
+        }
+        Update: {
+          attempts?: number | null
+          created_at?: string | null
+          custom_instructions?: string | null
+          id?: string
+          interview_id?: string
+          last_error?: string | null
+          progress?: number | null
+          status?: Database["public"]["Enums"]["job_status"]
+          status_detail?: string | null
+          transcript_data?: Json
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analysis_jobs_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       annotations: {
         Row: {
@@ -1477,6 +1527,59 @@ export type Database = {
           },
         ]
       }
+      upload_jobs: {
+        Row: {
+          assemblyai_id: string | null
+          attempts: number | null
+          created_at: string | null
+          external_url: string | null
+          file_name: string | null
+          file_type: string | null
+          id: string
+          interview_id: string
+          last_error: string | null
+          status: Database["public"]["Enums"]["job_status"]
+          status_detail: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          assemblyai_id?: string | null
+          attempts?: number | null
+          created_at?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          id?: string
+          interview_id: string
+          last_error?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          status_detail?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          assemblyai_id?: string | null
+          attempts?: number | null
+          created_at?: string | null
+          external_url?: string | null
+          file_name?: string | null
+          file_type?: string | null
+          id?: string
+          interview_id?: string
+          last_error?: string | null
+          status?: Database["public"]["Enums"]["job_status"]
+          status_detail?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "upload_jobs_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_settings: {
         Row: {
           company_name: string | null
@@ -1672,11 +1775,11 @@ export type Database = {
         Returns: unknown
       }
       create_account: {
-        Args: { slug?: string; name?: string }
+        Args: { name?: string; slug?: string }
         Returns: Json
       }
       create_account_id: {
-        Args: { primary_owner_user_id?: string; slug?: string; name?: string }
+        Args: { name?: string; primary_owner_user_id?: string; slug?: string }
         Returns: string
       }
       create_invitation: {
@@ -1733,8 +1836,8 @@ export type Database = {
       }
       get_annotation_counts: {
         Args: {
-          p_entity_type: string
           p_entity_id: string
+          p_entity_type: string
           p_project_id: string
         }
         Returns: {
@@ -1752,8 +1855,8 @@ export type Database = {
       }
       get_user_flags: {
         Args: {
-          p_entity_type: string
           p_entity_id: string
+          p_entity_type: string
           p_project_id: string
         }
         Returns: {
@@ -1764,22 +1867,22 @@ export type Database = {
       }
       get_user_vote: {
         Args: {
-          p_entity_type: string
           p_entity_id: string
+          p_entity_type: string
           p_project_id: string
         }
         Returns: number
       }
       get_vote_counts: {
         Args: {
-          p_entity_type: string
           p_entity_id: string
+          p_entity_type: string
           p_project_id: string
         }
         Returns: {
-          upvotes: number
           downvotes: number
           total_votes: number
+          upvotes: number
         }[]
       }
       halfvec_avg: {
@@ -1890,41 +1993,41 @@ export type Database = {
       }
       sync_insight_tags: {
         Args: {
+          p_account_id: string
           p_insight_id: string
           p_tag_names: string[]
-          p_account_id: string
         }
         Returns: undefined
       }
       sync_opportunity_insights: {
-        Args: { p_opportunity_id: string; p_insight_ids: string[] }
+        Args: { p_insight_ids: string[]; p_opportunity_id: string }
         Returns: undefined
       }
       update_account: {
         Args: {
           account_id: string
-          slug?: string
           name?: string
           public_metadata?: Json
           replace_metadata?: boolean
+          slug?: string
         }
         Returns: Json
       }
       update_account_user_role: {
         Args: {
           account_id: string
-          user_id: string
-          new_account_role: Database["accounts"]["Enums"]["account_role"]
           make_primary_owner?: boolean
+          new_account_role: Database["accounts"]["Enums"]["account_role"]
+          user_id: string
         }
         Returns: undefined
       }
       update_project_people_stats: {
-        Args: { p_project_id: string; p_person_id: string }
+        Args: { p_person_id: string; p_project_id: string }
         Returns: undefined
       }
       upsert_signup_data: {
-        Args: { p_user_id: string; p_signup_data: Json }
+        Args: { p_signup_data: Json; p_user_id: string }
         Returns: undefined
       }
       vector_avg: {
@@ -1962,6 +2065,8 @@ export type Database = {
         | "ready"
         | "tagged"
         | "archived"
+        | "error"
+      job_status: "pending" | "in_progress" | "done" | "error" | "retry"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -2113,7 +2218,9 @@ export const Constants = {
         "ready",
         "tagged",
         "archived",
+        "error",
       ],
+      job_status: ["pending", "in_progress", "done", "error", "retry"],
     },
   },
 } as const

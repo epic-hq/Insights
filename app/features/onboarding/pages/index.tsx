@@ -7,7 +7,7 @@ import OnboardingFlow from "../components/OnboardingFlow"
 
 export default function OnboardingPage() {
 	const navigate = useNavigate()
-	const { projectPath } = useCurrentProject()
+	const { projectPath, projectId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
 	const handleOnboardingComplete = async (data: OnboardingData) => {
@@ -53,6 +53,7 @@ export default function OnboardingPage() {
 			onComplete={handleOnboardingComplete}
 			onAddMoreInterviews={handleAddMoreInterviews}
 			onViewResults={handleViewResults}
+			projectId={projectId}
 		/>
 	)
 }

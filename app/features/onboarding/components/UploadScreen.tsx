@@ -4,11 +4,12 @@ import { Button } from "~/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 interface UploadScreenProps {
-	onNext: (file: File, mediaType: string) => void
+	onNext: (file: File, mediaType: string, projectId?: string) => void
 	onBack: () => void
+	projectId?: string
 }
 
-export default function UploadScreen({ onNext, onBack }: UploadScreenProps) {
+export default function UploadScreen({ onNext, onBack, projectId }: UploadScreenProps) {
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [mediaType, setMediaType] = useState("interview")
 	const [isDragOver, setIsDragOver] = useState(false)
@@ -50,7 +51,7 @@ export default function UploadScreen({ onNext, onBack }: UploadScreenProps) {
 
 	const handleNext = () => {
 		if (selectedFile) {
-			onNext(selectedFile, mediaType)
+			onNext(selectedFile, mediaType, projectId)
 		}
 	}
 
@@ -59,7 +60,7 @@ export default function UploadScreen({ onNext, onBack }: UploadScreenProps) {
 		const k = 1024
 		const sizes = ["Bytes", "KB", "MB", "GB"]
 		const i = Math.floor(Math.log(bytes) / Math.log(k))
-		return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + " " + sizes[i]
+		return `${Number.parseFloat((bytes / (k ** i)).toFixed(2))} ${sizes[i]}`
 	}
 
 	const getFileIcon = (file: File) => {
@@ -101,7 +102,7 @@ export default function UploadScreen({ onNext, onBack }: UploadScreenProps) {
 			</div>
 
 			{/* Main Content */}
-			<div className="p-4 pb-24">
+			<div className="p-4">
 				<div className="space-y-6">
 					{/* Instructions */}
 					<div className="space-y-2">
@@ -218,11 +219,11 @@ export default function UploadScreen({ onNext, onBack }: UploadScreenProps) {
 			</div>
 
 			{/* Bottom Action */}
-			<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-4">
+			<div className="mt-8 mb-20 border-gray-800 border-t bg-black p-4">
 				<Button
 					onClick={handleNext}
 					disabled={!selectedFile}
-					className="h-12 w-full bg-blue-600 font-medium text-white hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-400"
+					className="h-12 w-full bg-blue-600 font-medium text-white hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-400"
 				>
 					{selectedFile ? "Start Analysis" : "Select a file to continue"}
 				</Button>

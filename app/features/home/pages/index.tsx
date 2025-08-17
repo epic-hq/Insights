@@ -8,22 +8,11 @@ import type { Project, Project_Section } from "~/types"
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
-	const { supabase, account_id: user_id } = ctx
+	const { supabase, account_id } = ctx // account_id is now team account from middleware
 	const user_settings = ctx.user_settings
 
-	// consola.log("home loader:", user_id)
-	// Get projects for the current account
-	// get account_id from user_id
-	// const { data: accounts } = await supabase.schema("accounts").from("account_user").select("*").eq("user_id", user_id)
-	// consola.log("accounts:", accounts)
-	const { data: accounts } = await supabase
-		.schema("accounts")
-		.from("account_user")
-		.select("*")
-		.eq("user_id", user_id)
-		.neq("account_id", user_id)
-	const account_id = accounts?.[0]?.account_id || ""
-	// consola.log("account_id:", account_id)
+	// Use account_id from middleware (already resolved to team account)
+	consola.log("home loader account_id:", account_id)
 
 	// if !onboarding_complete redirect to /signup_chat
 	const completed = user_settings?.signup_data?.completed ?? false

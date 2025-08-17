@@ -1,7 +1,5 @@
 import { createBrowserClient } from "@supabase/ssr"
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { useRouteLoaderData } from "react-router"
-import type { Env } from "~/../+types"
 import type { Database } from "~/../supabase/types"
 
 let supabaseClient: SupabaseClient<Database> | undefined
@@ -11,22 +9,20 @@ let supabaseClient: SupabaseClient<Database> | undefined
  * This client maintains auth state and syncs with server-side sessions
  */
 export function createClient(): SupabaseClient<Database> {
-	const { clientEnv } = useRouteLoaderData("root") as { clientEnv: Env }
+	// Return existing client if already created
+	if (supabaseClient) {
+		return supabaseClient
+	}
 
 	// Ensure we're in the browser
 	if (typeof window === "undefined") {
 		throw new Error("createClient should only be called on the client side")
 	}
 
-	// Access environment variables from loader
-	const supabaseUrl = clientEnv?.SUPABASE_URL || "SUPABASE_URL=https://rbginqvgkonnoktrttqv.supabase.co"
-	const supabaseAnonKey = clientEnv?.SUPABASE_ANON_KEY || "sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
-	// consola.log("supabaseUrl", supabaseUrl)
-	// consola.log("supabaseAnonKey", supabaseAnonKey)
-	if (!supabaseAnonKey) {
-		throw new Error("Missing SUPABASE_ANON_KEY environment variable")
-	}
-
+	// Use correct environment values
+	const supabaseUrl = "https://rbginqvgkonnoktrttqv.supabase.co"
+	const supabaseAnonKey = "sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
+	
 	// Create the client with proper cookie handling for SSR
 	supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 

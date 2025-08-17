@@ -2,6 +2,7 @@ import { useState, useEffect } from "react"
 import { Play, Pause, ChevronLeft, ChevronRight, Brain, Shield, Lightbulb, Zap, TrendingUp } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { Progress } from "~/components/ui/progress"
+import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 
 interface EducationalCard {
 	id: string
@@ -15,6 +16,7 @@ interface EducationalCard {
 interface ProcessingScreenProps {
 	fileName: string
 	onComplete: () => void
+	interviewId?: string
 }
 
 const educationalCards: EducationalCard[] = [
@@ -65,43 +67,20 @@ const educationalCards: EducationalCard[] = [
 	},
 ]
 
-export default function ProcessingScreen({ fileName, onComplete }: ProcessingScreenProps) {
-	const [progress, setProgress] = useState(0)
+export default function ProcessingScreen({ fileName, onComplete, interviewId }: ProcessingScreenProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 	const [isPlaying, setIsPlaying] = useState(true)
-	const [processingStage, setProcessingStage] = useState("Uploading...")
+	
+	// Use the realtime hook for actual progress tracking
+	const { progressInfo } = useInterviewProgress(interviewId || null)
+	const { progress, label: processingStage, isComplete } = progressInfo
 
-	// Simulate processing progress
+	// Auto-complete when processing is done
 	useEffect(() => {
-		const interval = setInterval(() => {
-			setProgress((prev) => {
-				const newProgress = prev + Math.random() * 3
-				if (newProgress >= 100) {
-					clearInterval(interval)
-					setTimeout(onComplete, 1000) // Small delay before completion
-					return 100
-				}
-				return newProgress
-			})
-		}, 200)
-
-		return () => clearInterval(interval)
-	}, [onComplete])
-
-	// Update processing stage based on progress
-	useEffect(() => {
-		if (progress < 20) {
-			setProcessingStage("Uploading...")
-		} else if (progress < 50) {
-			setProcessingStage("Transcribing audio...")
-		} else if (progress < 80) {
-			setProcessingStage("Analyzing content...")
-		} else if (progress < 95) {
-			setProcessingStage("Generating insights...")
-		} else {
-			setProcessingStage("Finalizing results...")
+		if (isComplete) {
+			setTimeout(onComplete, 1000) // Small delay before completion
 		}
-	}, [progress])
+	}, [isComplete, onComplete])
 
 	// Auto-advance cards
 	useEffect(() => {
@@ -185,9 +164,9 @@ export default function ProcessingScreen({ fileName, onComplete }: ProcessingScr
 					{/* Card Navigation */}
 					<div className="flex items-center justify-between">
 						<div className="flex gap-2">
-							{educationalCards.map((_, index) => (
+							{educationalCards.map((card, index) => (
 								<button
-									key={index}
+									key={card.id}
 									onClick={() => goToCard(index)}
 									className={`h-2 w-8 rounded-full transition-all ${
 										index === currentCardIndex ? "bg-white" : "bg-white/30"

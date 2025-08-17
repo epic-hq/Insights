@@ -7,7 +7,8 @@ create type interview_status as enum (
   'processing',
   'ready',
   'tagged',
-  'archived'
+  'archived',
+  'error'
 );
 
 create table if not exists interviews (
@@ -53,41 +54,33 @@ EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
 ALTER TABLE public.interviews ENABLE ROW LEVEL SECURITY;
 
 -------------
--- Users should be able to read records that are owned by an account they belong to
+-- Users should be able to read their own interviews (personal ownership)
 --------------
-create policy "Account members can select" on public.interviews
+create policy "Users can select their own interviews" on public.interviews
     for select
     to authenticated
-    using (
-    account_id IN ( SELECT accounts.get_accounts_with_role())
-    );
+    using (account_id = auth.uid());
 
 ----------------
--- Users should be able to create records that are owned by an account they belong to
+-- Users should be able to create their own interviews
 ----------------
-create policy "Account members can insert" on public.interviews
+create policy "Users can insert their own interviews" on public.interviews
     for insert
     to authenticated
-    with check (
-    account_id IN ( SELECT accounts.get_accounts_with_role())
-    );
+    with check (account_id = auth.uid());
 
 ---------------
--- Users should be able to update records that are owned by an account they belong to
+-- Users should be able to update their own interviews
 ---------------
-create policy "Account members can update" on public.interviews
+create policy "Users can update their own interviews" on public.interviews
     for update
     to authenticated
-    using (
-    account_id IN ( SELECT accounts.get_accounts_with_role())
-    );
+    using (account_id = auth.uid());
 
 ----------------
--- Only account OWNERS should be able to delete records that are owned by an account they belong to
+-- Users should be able to delete their own interviews
 ----------------
-create policy "Account owners can delete" on public.interviews
+create policy "Users can delete their own interviews" on public.interviews
     for delete
     to authenticated
-    using (
-    account_id IN ( SELECT accounts.get_accounts_with_role('owner'))
-    );
+    using (account_id = auth.uid());

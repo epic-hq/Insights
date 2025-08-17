@@ -11,24 +11,25 @@ interface Question {
 
 interface QuestionsScreenProps {
 	icp: string
+	role: string
 	goal: string
 	onNext: (questions: string[]) => void
 	onBack: () => void
 }
 
-export default function QuestionsScreen({ icp, goal, onNext, onBack }: QuestionsScreenProps) {
+export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: QuestionsScreenProps) {
 	const getDefaultQuestions = (): Question[] => {
 		const baseQuestions = [
-			{ id: "1", text: `What motivates ${icp} to make purchase decisions?`, isCustom: false },
-			{ id: "2", text: `What pain points do ${icp} experience with current solutions?`, isCustom: false },
-			{ id: "3", text: `How do ${icp} discover new products/services?`, isCustom: false },
+			{ id: "1", text: `What motivates ${role} at ${icp} to make purchase decisions?`, isCustom: false },
+			{ id: "2", text: `What pain points do ${role} experience with current solutions?`, isCustom: false },
+			{ id: "3", text: `How do ${role} discover new products/services?`, isCustom: false },
 		]
 
 		if (goal === "willingness") {
 			return [
-				{ id: "1", text: `What features would ${icp} pay the most for?`, isCustom: false },
-				{ id: "2", text: `What's ${icp}'s budget range for this type of solution?`, isCustom: false },
-				{ id: "3", text: `What would convince ${icp} to switch from their current solution?`, isCustom: false },
+				{ id: "1", text: `What features would ${role} at ${icp} pay the most for?`, isCustom: false },
+				{ id: "2", text: `What's ${role}'s budget range for this type of solution?`, isCustom: false },
+				{ id: "3", text: `What would convince ${role} to switch from their current solution?`, isCustom: false },
 			]
 		}
 
@@ -84,7 +85,7 @@ export default function QuestionsScreen({ icp, goal, onNext, onBack }: Questions
 			</div>
 
 			{/* Main Content */}
-			<div className="p-4 pb-24">
+			<div className="p-4">
 				<div className="space-y-6">
 					{/* Instructions */}
 					<div className="space-y-2">
@@ -191,11 +192,11 @@ export default function QuestionsScreen({ icp, goal, onNext, onBack }: Questions
 			</div>
 
 			{/* Bottom Action */}
-			<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-4">
+			<div className="mt-8 mb-20 border-gray-800 border-t bg-black p-4">
 				<Button
 					onClick={handleNext}
 					disabled={!isValid}
-					className="h-12 w-full bg-blue-600 font-medium text-white hover:bg-blue-700 disabled:bg-gray-700 disabled:text-gray-400"
+					className="h-12 w-full bg-blue-600 font-medium text-white hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-400"
 				>
 					Continue
 					<ChevronRight className="ml-2 h-4 w-4" />
