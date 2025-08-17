@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { TranscriptResults } from "./TranscriptResults"
 
@@ -18,10 +18,10 @@ interface TranscriptData {
 	sentiment_analysis_results: any
 }
 
-export function LazyTranscriptResults({ 
-	interviewId, 
-	hasTranscript, 
-	hasFormattedTranscript 
+export function LazyTranscriptResults({
+	interviewId,
+	hasTranscript,
+	hasFormattedTranscript,
 }: LazyTranscriptResultsProps) {
 	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
 	const [loading, setLoading] = useState(false)
@@ -41,7 +41,7 @@ export function LazyTranscriptResults({
 				})
 
 				const response = await fetch(`/api/interview-transcript?${params}`)
-				
+
 				if (!response.ok) {
 					throw new Error(`Failed to load transcript: ${response.statusText}`)
 				}
@@ -49,16 +49,16 @@ export function LazyTranscriptResults({
 				const data = await response.json()
 				const transcriptData = {
 					id: interviewId,
-					text: '',
+					text: "",
 					words: [],
-					language_code: 'en',
+					language_code: "en",
 					utterances: data.transcript,
 					iab_categories_result: data.transcript_formatted?.iab_categories_result,
 					sentiment_analysis_results: data.transcript_formatted?.sentiment_analysis_results,
 				}
 				setTranscriptData(transcriptData)
 			} catch (err) {
-				setError(err instanceof Error ? err.message : 'Failed to load transcript')
+				setError(err instanceof Error ? err.message : "Failed to load transcript")
 			} finally {
 				setLoading(false)
 			}
@@ -79,7 +79,7 @@ export function LazyTranscriptResults({
 		return (
 			<div className="rounded-lg border bg-white p-6">
 				<div className="flex items-center justify-center space-x-2">
-					<div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent"></div>
+					<div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
 					<span className="text-gray-600">Loading transcript...</span>
 				</div>
 			</div>

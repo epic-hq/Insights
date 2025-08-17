@@ -1,5 +1,5 @@
-import { useState, useRef } from "react"
-import { ChevronLeft, Upload, File, Video, Mic, Camera, CheckCircle } from "lucide-react"
+import { Camera, CheckCircle, ChevronLeft, File, Mic, Upload, Video } from "lucide-react"
+import { useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
@@ -60,7 +60,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 		const k = 1024
 		const sizes = ["Bytes", "KB", "MB", "GB"]
 		const i = Math.floor(Math.log(bytes) / Math.log(k))
-		return `${Number.parseFloat((bytes / (k ** i)).toFixed(2))} ${sizes[i]}`
+		return `${Number.parseFloat((bytes / k ** i).toFixed(2))} ${sizes[i]}`
 	}
 
 	const getFileIcon = (file: File) => {
@@ -84,15 +84,10 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			<div className="border-gray-800 border-b bg-black p-4">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={onBack}
-							className="h-8 w-8 text-white hover:bg-gray-800"
-						>
+						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 text-white hover:bg-gray-800">
 							<ChevronLeft className="h-4 w-4" />
 						</Button>
-						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 text-white text-sm font-medium">
+						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-medium text-sm text-white">
 							3
 						</div>
 						<h1 className="font-semibold text-lg text-white">Upload your interview</h1>
@@ -112,8 +107,8 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						</div>
 						<h2 className="font-bold text-2xl text-white">Add your first interview</h2>
 						<p className="text-gray-300 text-sm leading-relaxed">
-							Upload an audio or video file of your interview. We support most common formats including MP3, MP4,
-							WAV, and MOV.
+							Upload an audio or video file of your interview. We support most common formats including MP3, MP4, WAV,
+							and MOV.
 						</p>
 					</div>
 
@@ -154,10 +149,10 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 									{getFileIcon(selectedFile)}
 								</div>
 								<div className="min-w-0 flex-1">
-									<h3 className="font-medium text-white text-sm truncate">{selectedFile.name}</h3>
+									<h3 className="truncate font-medium text-sm text-white">{selectedFile.name}</h3>
 									<p className="text-gray-400 text-xs">{formatFileSize(selectedFile.size)}</p>
 								</div>
-								<CheckCircle className="h-6 w-6 text-green-400 flex-shrink-0" />
+								<CheckCircle className="h-6 w-6 flex-shrink-0 text-green-400" />
 							</div>
 						) : (
 							/* Upload Prompt */

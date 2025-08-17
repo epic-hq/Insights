@@ -36,7 +36,6 @@ import type { Annotation, AnnotationType, EntityType, FlagType, UserFlags, VoteC
 // =============================================================================
 // TODO: Write explanation of how this works and where we can make changes to reduce the number of db calls, potentially batching or changing the query.
 
-
 export function useAnnotations({
 	entityType,
 	entityId,
@@ -71,7 +70,7 @@ export function useAnnotations({
 		})
 
 		fetcher.load(`${routes.api.annotations()}?${searchParams}`)
-	// Only depend on stable inputs; avoid fetcher/routes object identity churn
+		// Only depend on stable inputs; avoid fetcher/routes object identity churn
 	}, [entityType, entityId, annotationType, includeThreads, projectPath])
 
 	// Handle fetcher state changes
@@ -195,7 +194,7 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 		})
 		const votesUrl = routes.api.votes()
 		fetcher.load(`${votesUrl}?${searchParams}`)
-	// Depend only on stable inputs to avoid loops
+		// Depend only on stable inputs to avoid loops
 	}, [entityType, entityId, projectPath])
 
 	// Handle fetcher state changes
@@ -298,7 +297,7 @@ export function useEntityFlags({ entityType, entityId }: { entityType: EntityTyp
 		})
 
 		fetcher.load(`${routes.api.entityFlags()}?${searchParams}`)
-	// Only depend on stable inputs; avoid fetcher/routes object identity churn
+		// Only depend on stable inputs; avoid fetcher/routes object identity churn
 	}, [entityType, entityId, projectPath])
 
 	// Handle fetcher state changes
@@ -418,39 +417,39 @@ export function useEntityAnnotations({
 	return {
 		// Annotations data
 		annotations: includeComments ? annotationsHook.annotations : [],
-		submitAnnotation: includeComments ? annotationsHook.addComment : () => { },
+		submitAnnotation: includeComments ? annotationsHook.addComment : () => {},
 
 		// Voting data
 		voteCounts: includeVoting
 			? {
-				upvotes: votingHook.voteCounts.upvotes,
-				downvotes: votingHook.voteCounts.downvotes,
-			}
+					upvotes: votingHook.voteCounts.upvotes,
+					downvotes: votingHook.voteCounts.downvotes,
+				}
 			: { upvotes: 0, downvotes: 0 },
 		userVote: includeVoting ? { vote_value: votingHook.voteCounts.user_vote } : null,
 		submitVote: includeVoting
 			? ({ vote_value, _action }: { vote_value?: number; _action?: string }) => {
-				if (_action === "remove") {
-					// Remove current vote by voting the same value again
-					if (votingHook.voteCounts.user_vote !== 0) {
-						votingHook.vote(votingHook.voteCounts.user_vote as 1 | -1)
+					if (_action === "remove") {
+						// Remove current vote by voting the same value again
+						if (votingHook.voteCounts.user_vote !== 0) {
+							votingHook.vote(votingHook.voteCounts.user_vote as 1 | -1)
+						}
+					} else if (vote_value) {
+						votingHook.vote(vote_value as 1 | -1)
 					}
-				} else if (vote_value) {
-					votingHook.vote(vote_value as 1 | -1)
 				}
-			}
-			: () => { },
+			: () => {},
 
 		// Flags data
 		userFlags: includeFlags
 			? Object.entries(flagsHook.flags)
-				.filter(([_, value]) => value)
-				.map(([key, value]) => ({ flag_type: key, flag_value: value }))
+					.filter(([_, value]) => value)
+					.map(([key, value]) => ({ flag_type: key, flag_value: value }))
 			: [],
 		submitFlag: includeFlags
 			? ({ flag_type, flag_value }: { flag_type: string; flag_value: boolean }) =>
-				flagsHook.setFlag(flag_type as FlagType, flag_value)
-			: () => { },
+					flagsHook.setFlag(flag_type as FlagType, flag_value)
+			: () => {},
 
 		// Loading states
 		isLoading:

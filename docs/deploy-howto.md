@@ -49,70 +49,88 @@ Configure `.gitignore` to track `.env.production` but ignore other environment f
 ## Dockerfile Setup
 
 Use this optimized Dockerfile for React Router 7 + BAML + dotenvx:
+It runs `concurrently` to run both the app and mastra (pinned version)
 
 ```dockerfile
-# syntax=docker/dockerfile:1.4
+# syntax=docker/dockerfile:1.7-labs
 
-####################
-# 1) Build stage  #
-####################
-FROM node:24-slim AS build
-
-# Install build tools & curl (needed for baml-gen, etc.)
-RUN apt-get update \
-  && apt-get install -y python3 make g++ curl \
-  && rm -rf /var/lib/apt/lists/*
-
+############################
+# Base & shared settings
+############################
+ARG NODE_VERSION=24-slim
+FROM node:${NODE_VERSION} AS base
+ENV NODE_ENV=production \
+    PNPM_HOME=/root/.local/share/pnpm \
+    COREPACK_ENABLE_DOWNLOAD_PROMPT=0
+RUN corepack enable pnpm
 WORKDIR /app
 
-# Install all deps once (cache invalidates only on lockfile change)
+############################
+# Build
+############################
+FROM base AS build
+# OS build deps only here (kept out of final image)
+RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
+  && rm -rf /var/lib/apt/lists/*
 COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm \
-  && pnpm install --frozen-lockfile
-
-# Copy source, generate BAML client, then build
+# Install all deps (including dev deps for build)
+RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
+    pnpm install --frozen-lockfile
+# App source
 COPY . .
-RUN pnpm run baml-generate \
-  && pnpm run build
+# ---- your generation & build steps
+RUN pnpm run baml-generate && pnpm run build
 
-######################
-# 2) Runtime stage   #
-######################
-FROM node:24-slim AS runtime
+############################
+# Prune to prod deps only
+############################
+FROM base AS prod-deps
+COPY package.json pnpm-lock.yaml ./
+# Only production deps + runtime tools
+RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
+    pnpm install --prod --frozen-lockfile \
+    && pnpm add concurrently mastra@0.10.21
 
-# Install curl & dotenvx, then clean up
+############################
+# Runtime (slim)
+############################
+FROM node:${NODE_VERSION} AS runtime
+ENV NODE_ENV=production \
+    PORT=3000 \
+    HOST=0.0.0.0 \
+    NODE_OPTIONS=--max_old_space_size=1024 \
+    MASTRA_DB_PATH=/app/data/mastra.db
+
+# Small tools layer (optional)
 RUN apt-get update \
-  && apt-get install -y curl \
+  && apt-get install -y --no-install-recommends curl \
   && curl -sfS https://dotenvx.sh/install.sh | sh \
   && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
 
-# Install only production deps
-COPY package.json pnpm-lock.yaml ./
-RUN corepack enable pnpm \
-  && pnpm install --prod --frozen-lockfile
+# Copy prod node_modules and lockfiles
+COPY --from=prod-deps /app/package.json /app/pnpm-lock.yaml ./
+COPY --from=prod-deps /app/node_modules ./node_modules
 
-# Bring in built assets
-COPY --from=build /app/build   ./build
-COPY --from=build /app/public  ./public
+# Copy built assets only
+COPY --from=build /app/build ./build
+COPY --from=build /app/public ./public
+COPY --from=build /app/.mastra ./.mastra
 
-# Copy production env file
-COPY .env.production .env.production*
+# Minimal runtime data dir
+RUN mkdir -p /app/data
+# If you need env-in-image:
+# COPY --chown=node:node .env.production ./.env.production
 
-# Drop to non-root
+# Prefer running as non-root
 USER node
-
-# Environment & port
-ENV NODE_ENV=production \
-    PORT=3000 \
-    HOST=0.0.0.0 \
-    NODE_OPTIONS=--max_old_space_size=1024
-
 EXPOSE 3000
 
-# Start via dotenvx
-CMD ["dotenvx", "run", "-f", ".env.production", "--", "pnpm", "start"]
+# If you keep mastra + app in one container, ensure both are listed as prod deps.
+# Recommend: add to package.json "dependencies": { "concurrently": "...", "mastra": "0.10.21" }
+# Then:
+CMD ["dotenvx", "run", "-f", ".env.production", "--", "npx", "concurrently", "-n", "App,Mastra", "--c", "green,cyan", "pnpm start", "npx", "mastra", "serve", "--dir", "app/mastra"]
 
 
 ```
@@ -231,8 +249,12 @@ export default function HealthCheck() {
 
 2. **Deploy Your Application**:
 
+faster remote w/ cache reuse
+
    ```bash
-   flyctl deploy
+   fly deploy --remote-only --build-arg BUILDKIT_INLINE_CACHE=1
+
+  or fly deploy
    ```
 
 3. **Monitor Deployment**:

@@ -119,8 +119,8 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 							<div>
 								<p className="font-medium text-sm text-white">Pro tip</p>
 								<p className="text-gray-300 text-xs leading-relaxed">
-									Be specific about both company type and role. Example: "Series A SaaS companies" + "VP of Sales" 
-									gives better insights than just "SaaS companies".
+									Be specific about both company type and role. Example: "Series A SaaS companies" + "VP of Sales" gives
+									better insights than just "SaaS companies".
 								</p>
 							</div>
 						</div>

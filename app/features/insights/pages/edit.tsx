@@ -18,7 +18,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -43,7 +43,9 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		// Transform to include snake_case fields and process tags
 		const insight = {
 			...data,
-			tags: data.insight_tags?.map((it: { tags: { id: string; tag: string } }) => ({ id: it.tags.id, tag: it.tags.tag })) ?? [],
+			tags:
+				data.insight_tags?.map((it: { tags: { id: string; tag: string } }) => ({ id: it.tags.id, tag: it.tags.tag })) ??
+				[],
 		}
 
 		return { insight }
@@ -55,7 +57,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId

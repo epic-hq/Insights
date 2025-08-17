@@ -8,3 +8,18 @@ coverage
 *.log
 *.local
 *.env
+.gitignore
+Dockerfile
+.fly
+.vscode
+dist
+build-cache
+*.log
+.env
+.env.local
+.env.development
+.env.test
+.env.keys
+.env.example
+# Allow .env.production for deployment
+# Keep public and build artifacts—build stage copies them

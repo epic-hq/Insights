@@ -7,7 +7,7 @@ import z from "zod"
 
 export const AgentState = z.object({
 	plan: z.array(z.string()).default([]),
-});
+})
 
 export const mainAgent = new Agent({
 	name: "Main Agent",

@@ -1,13 +1,13 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { updateInterview } from "~/features/interviews/db"
 import { updateInsight } from "~/features/insights/db"
+import { updateInterview } from "~/features/interviews/db"
 import { getServerClient } from "~/lib/supabase/server"
 
 /**
  * Generalized API endpoint for updating single fields across supported entities
  * POST /api/update-field
- * 
+ *
  * Form data expected:
  * - entity: "interview" | "insight"
  * - entityId: string (ID of the entity to update)
@@ -21,7 +21,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		const formData = await request.formData()
-		
+
 		// Extract required parameters
 		const entity = formData.get("entity") as string
 		const entityId = formData.get("entityId") as string
@@ -37,8 +37,8 @@ export async function action({ request }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			fieldName,
-			fieldValue: fieldValue?.substring(0, 100) + (fieldValue?.length > 100 ? '...' : ''),
-			fieldValueLength: fieldValue?.length
+			fieldValue: fieldValue?.substring(0, 100) + (fieldValue?.length > 100 ? "..." : ""),
+			fieldValueLength: fieldValue?.length,
 		})
 
 		if (!entity || !entityId || !accountId || !fieldName) {
@@ -52,9 +52,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Build update data
 		const updateData: Record<string, unknown> = {}
-		
+
 		// Handle special cases for complex field types
-		if (fieldName === 'high_impact_themes' && fieldValue) {
+		if (fieldName === "high_impact_themes" && fieldValue) {
 			try {
 				updateData[fieldName] = JSON.parse(fieldValue)
 			} catch {
@@ -104,7 +104,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		return { success: true, data: result.data }
 	} catch (error) {
-		consola.error('Error updating entity field:', error)
+		consola.error("Error updating entity field:", error)
 		return { error: "Failed to update field" }
 	}
 }

@@ -18,7 +18,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -50,7 +50,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -123,7 +123,7 @@ export default function EditOpportunity() {
 	return (
 		<div className="mx-auto max-w-2xl">
 			<div className="mb-8">
-				<h1 className="text-3xl font-bold text-gray-900">Edit Opportunity</h1>
+				<h1 className="font-bold text-3xl text-gray-900">Edit Opportunity</h1>
 				<p className="mt-2 text-gray-600">Update opportunity details</p>
 			</div>
 
@@ -157,7 +157,7 @@ export default function EditOpportunity() {
 
 				{actionData?.error && (
 					<div className="rounded-md bg-red-50 p-4">
-						<p className="text-sm text-red-700">{actionData.error}</p>
+						<p className="text-red-700 text-sm">{actionData.error}</p>
 					</div>
 				)}
 
@@ -170,10 +170,8 @@ export default function EditOpportunity() {
 			</Form>
 
 			<div className="mt-12 border-t pt-8">
-				<h2 className="text-lg font-semibold text-red-600">Danger Zone</h2>
-				<p className="mt-2 text-sm text-gray-600">
-					Permanently delete this opportunity. This action cannot be undone.
-				</p>
+				<h2 className="font-semibold text-lg text-red-600">Danger Zone</h2>
+				<p className="mt-2 text-gray-600 text-sm">Permanently delete this opportunity. This action cannot be undone.</p>
 				<Form method="post" className="mt-4">
 					<input type="hidden" name="intent" value="delete" />
 					<Button

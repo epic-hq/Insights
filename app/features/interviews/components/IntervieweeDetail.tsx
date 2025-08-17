@@ -1,12 +1,11 @@
 import type React from "react"
 import { Link, useParams } from "react-router-dom"
 import { Cell, Pie, PieChart, ResponsiveContainer } from "recharts"
-import PageHeader from "../navigation/PageHeader"
-
 // Supabase generated types
 import type { Database } from "~/../supabase/types"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import PageHeader from "../navigation/PageHeader"
 
 type Person = Database["public"]["Tables"]["people"]["Row"] & {
 	interview_role?: string
@@ -65,11 +64,14 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 
 	return (
 		<div className="mx-auto max-w-7xl px-4 py-8">
-			<PageHeader title={`${personData.name} - Interview Analysis`} breadcrumbs={[
-				{ label: "Dashboard", path: routes.dashboard() },
-				{ label: "Interviews", path: routes.interviews.index() },
-				{ label: personData.name, path: routes.people.detail(intervieweeId) },
-			]} />
+			<PageHeader
+				title={`${personData.name} - Interview Analysis`}
+				breadcrumbs={[
+					{ label: "Dashboard", path: routes.dashboard() },
+					{ label: "Interviews", path: routes.interviews.index() },
+					{ label: personData.name, path: routes.people.detail(intervieweeId) },
+				]}
+			/>
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
 				{/* Header with persona color */}
@@ -86,10 +88,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 
 						<div className="mt-4 flex items-center md:mt-0">
 							{personData.persona && primaryPersona && (
-								<Link
-									to={routes.personas.detail(primaryPersona.id)}
-									className="flex items-center"
-								>
+								<Link to={routes.personas.detail(primaryPersona.id)} className="flex items-center">
 									<span
 										className="mr-2 inline-block h-4 w-4 rounded-full"
 										style={{ backgroundColor: personData.personaColor }}
@@ -103,17 +102,17 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 					{/* Interviewee details */}
 					<div className="grid grid-cols-1 gap-6 md:grid-cols-2">
 						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-							<h1 className="mb-2 text-3xl font-bold text-gray-900 dark:text-white">{personData.name}</h1>
+							<h1 className="mb-2 font-bold text-3xl text-gray-900 dark:text-white">{personData.name}</h1>
 							<div className="mb-4 flex flex-wrap gap-2">
-								<span className="rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-800 dark:bg-blue-900 dark:text-blue-200">
+								<span className="rounded-full bg-blue-100 px-3 py-1 font-medium text-blue-800 text-sm dark:bg-blue-900 dark:text-blue-200">
 									{personData.role}
 								</span>
-								<span className="rounded-full bg-gray-100 px-3 py-1 text-sm font-medium text-gray-800 dark:bg-gray-700 dark:text-gray-200">
+								<span className="rounded-full bg-gray-100 px-3 py-1 font-medium text-gray-800 text-sm dark:bg-gray-700 dark:text-gray-200">
 									{personData.company}
 								</span>
 								{personData.persona && (
 									<span
-										className="rounded-full px-3 py-1 text-sm font-medium text-white"
+										className="rounded-full px-3 py-1 font-medium text-sm text-white"
 										style={{ backgroundColor: personData.personaColor }}
 									>
 										{personData.persona}
@@ -121,7 +120,8 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 								)}
 							</div>
 							<p className="text-gray-600 dark:text-gray-300">
-								Interview Date: {interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString() : 'N/A'}
+								Interview Date:{" "}
+								{interview?.interview_date ? new Date(interview.interview_date).toLocaleDateString() : "N/A"}
 							</p>
 						</div>
 
@@ -130,9 +130,7 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 							<div className="space-y-3">
 								<div>
 									<p className="text-gray-600 text-sm dark:text-gray-400">Email</p>
-									<p className="font-medium text-gray-900 dark:text-white">
-										{personData.email || "Not provided"}
-									</p>
+									<p className="font-medium text-gray-900 dark:text-white">{personData.email || "Not provided"}</p>
 								</div>
 								<div>
 									<p className="text-gray-600 text-sm dark:text-gray-400">Company</p>
@@ -258,7 +256,10 @@ const IntervieweeDetail: React.FC<IntervieweeDetailProps> = ({ participants, int
 									key={opp.id}
 									className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 								>
-									<Link to={routes.opportunities.detail(opp.id)} className="font-medium text-blue-600 hover:text-blue-800">
+									<Link
+										to={routes.opportunities.detail(opp.id)}
+										className="font-medium text-blue-600 hover:text-blue-800"
+									>
 										{opp.name}
 									</Link>
 									<p className="mt-1 text-gray-500 text-sm">Status: {opp.status}</p>

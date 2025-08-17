@@ -28,11 +28,7 @@ export function useInterviewProgress(interviewId: string | null) {
 
 		// Initial fetch
 		const fetchInterview = async () => {
-			const { data, error } = await supabase
-				.from("interviews")
-				.select("*")
-				.eq("id", interviewId)
-				.single()
+			const { data, error } = await supabase.from("interviews").select("*").eq("id", interviewId).single()
 
 			if (data && !error) {
 				setInterview(data)

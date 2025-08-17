@@ -1,4 +1,4 @@
-import { index, prefix, type RouteConfig, route, layout } from "@react-router/dev/routes"
+import { index, layout, prefix, type RouteConfig, route } from "@react-router/dev/routes"
 
 export default [
 	...prefix("insights", [

@@ -25,7 +25,12 @@ interface OnboardingFlowProps {
 	projectId?: string
 }
 
-export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onViewResults, projectId }: OnboardingFlowProps) {
+export default function OnboardingFlow({
+	onComplete,
+	onAddMoreInterviews,
+	onViewResults,
+	projectId,
+}: OnboardingFlowProps) {
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome")
 	const [data, setData] = useState<OnboardingData>({
 		icp: "",
@@ -53,14 +58,17 @@ export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onView
 			// Create FormData for the API call
 			const formData = new FormData()
 			formData.append("file", file)
-			formData.append("onboardingData", JSON.stringify({
-				icp: data.icp,
-				role: data.role,
-				goal: data.goal,
-				customGoal: data.customGoal,
-				questions: data.questions,
-				mediaType
-			}))
+			formData.append(
+				"onboardingData",
+				JSON.stringify({
+					icp: data.icp,
+					role: data.role,
+					goal: data.goal,
+					customGoal: data.customGoal,
+					questions: data.questions,
+					mediaType,
+				})
+			)
 			// accountId will be retrieved from authenticated user by API
 			if (uploadProjectId) {
 				formData.append("projectId", uploadProjectId)
@@ -78,16 +86,15 @@ export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onView
 			}
 
 			const result = await response.json()
-			
+
 			// Store interview ID for progress tracking
 			if (result.interview?.id) {
-				setData(prev => ({ ...prev, interviewId: result.interview.id }))
+				setData((prev) => ({ ...prev, interviewId: result.interview.id }))
 			}
-
 		} catch (error) {
 			// Handle error - could show error state or retry
 			const errorMessage = error instanceof Error ? error.message : "Upload failed"
-			setData(prev => ({ ...prev, error: errorMessage }))
+			setData((prev) => ({ ...prev, error: errorMessage }))
 		}
 	}
 
@@ -123,13 +130,27 @@ export default function OnboardingFlow({ onComplete, onAddMoreInterviews, onView
 			return <WelcomeScreen onNext={handleWelcomeNext} />
 
 		case "questions":
-			return <QuestionsScreen icp={data.icp} role={data.role} goal={data.goal} onNext={handleQuestionsNext} onBack={handleBack} />
+			return (
+				<QuestionsScreen
+					icp={data.icp}
+					role={data.role}
+					goal={data.goal}
+					onNext={handleQuestionsNext}
+					onBack={handleBack}
+				/>
+			)
 
 		case "upload":
 			return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={projectId} />
 
 		case "processing":
-			return <ProcessingScreen fileName={data.file?.name || "Unknown file"} onComplete={handleProcessingComplete} interviewId={data.interviewId} />
+			return (
+				<ProcessingScreen
+					fileName={data.file?.name || "Unknown file"}
+					onComplete={handleProcessingComplete}
+					interviewId={data.interviewId}
+				/>
+			)
 
 		case "complete":
 			return (

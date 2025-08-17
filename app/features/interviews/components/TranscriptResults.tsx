@@ -162,7 +162,7 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 		<div className="space-y-6">
 			{/* Main Content Tabs */}
 			<Tabs defaultValue="speakers" className="w-full">
-				<TabsList className={`grid w-full ${hasTopicData ? 'grid-cols-2' : 'grid-cols-1'}`}>
+				<TabsList className={`grid w-full ${hasTopicData ? "grid-cols-2" : "grid-cols-1"}`}>
 					<TabsTrigger value="speakers">Transcript</TabsTrigger>
 					{hasTopicData && <TabsTrigger value="topics">Topics</TabsTrigger>}
 				</TabsList>
@@ -173,12 +173,14 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 							<div className="flex items-center justify-between">
 								<CardTitle className="flex items-center gap-2">
 									<User className="h-5 w-5" />
-									{hasFormattedData ? 'Speaker Breakdown' : 'Transcript'}
+									{hasFormattedData ? "Speaker Breakdown" : "Transcript"}
 								</CardTitle>
 								<Button
 									variant="outline"
 									size="sm"
-									onClick={() => copyToClipboard(hasFormattedData ? formatSpeakerAnalysis() : rawTranscript || '', "transcript")}
+									onClick={() =>
+										copyToClipboard(hasFormattedData ? formatSpeakerAnalysis() : rawTranscript || "", "transcript")
+									}
 									className="flex items-center gap-2"
 								>
 									{copiedStates.transcript ? (
@@ -231,67 +233,67 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 
 				{hasTopicData && (
 					<TabsContent value="topics" className="space-y-4">
-					<Card>
-						<CardHeader>
-							<div className="flex items-center justify-between">
-								<CardTitle className="flex items-center gap-2">
-									<Tag className="h-5 w-5" />
-									Topic Classification
-								</CardTitle>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => copyToClipboard(formatTopicDetection(), "topics")}
-									className="flex items-center gap-2"
-								>
-									{copiedStates.topics ? (
-										<>
-											<Check className="h-4 w-4" />
-											Copied!
-										</>
-									) : (
-										<>
-											<Copy className="h-4 w-4" />
-											Copy Analysis
-										</>
-									)}
-								</Button>
-							</div>
-						</CardHeader>
-						<CardContent>
-							<div className="space-y-6">
-								<div>
-									<h3 className="mb-3 font-semibold">Top Categories</h3>
-									<div className="space-y-2">
-										{topCategories.map(([category, relevance]) => (
-											<div key={category} className="flex items-center justify-between">
-												<span className="text-sm">{category.replace(/>/g, " > ")}</span>
-												<div className="flex items-center gap-2">
-													<div className="h-2 w-24 rounded-full bg-gray-200">
-														<div className="h-2 rounded-full bg-blue-600" style={{ width: `${relevance * 100}%` }} />
-													</div>
-													<span className="text-gray-600 text-sm">{(relevance * 100).toFixed(0)}%</span>
-												</div>
-											</div>
-										))}
-									</div>
+						<Card>
+							<CardHeader>
+								<div className="flex items-center justify-between">
+									<CardTitle className="flex items-center gap-2">
+										<Tag className="h-5 w-5" />
+										Topic Classification
+									</CardTitle>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => copyToClipboard(formatTopicDetection(), "topics")}
+										className="flex items-center gap-2"
+									>
+										{copiedStates.topics ? (
+											<>
+												<Check className="h-4 w-4" />
+												Copied!
+											</>
+										) : (
+											<>
+												<Copy className="h-4 w-4" />
+												Copy Analysis
+											</>
+										)}
+									</Button>
 								</div>
-
-								{(data?.iab_categories_result?.results || []).map((result, index) => (
-									<div key={index} className="rounded-lg border p-4">
-										<p className="mb-3 text-gray-800">{result.text}</p>
-										<div className="flex flex-wrap gap-2">
-											{result.labels.slice(0, 5).map((label, labelIndex) => (
-												<Badge key={labelIndex} variant="secondary">
-													{label.label.split(">").pop()} ({(label.relevance * 100).toFixed(0)}%)
-												</Badge>
+							</CardHeader>
+							<CardContent>
+								<div className="space-y-6">
+									<div>
+										<h3 className="mb-3 font-semibold">Top Categories</h3>
+										<div className="space-y-2">
+											{topCategories.map(([category, relevance]) => (
+												<div key={category} className="flex items-center justify-between">
+													<span className="text-sm">{category.replace(/>/g, " > ")}</span>
+													<div className="flex items-center gap-2">
+														<div className="h-2 w-24 rounded-full bg-gray-200">
+															<div className="h-2 rounded-full bg-blue-600" style={{ width: `${relevance * 100}%` }} />
+														</div>
+														<span className="text-gray-600 text-sm">{(relevance * 100).toFixed(0)}%</span>
+													</div>
+												</div>
 											))}
 										</div>
 									</div>
-								))}
-							</div>
-						</CardContent>
-					</Card>
+
+									{(data?.iab_categories_result?.results || []).map((result, index) => (
+										<div key={index} className="rounded-lg border p-4">
+											<p className="mb-3 text-gray-800">{result.text}</p>
+											<div className="flex flex-wrap gap-2">
+												{result.labels.slice(0, 5).map((label, labelIndex) => (
+													<Badge key={labelIndex} variant="secondary">
+														{label.label.split(">").pop()} ({(label.relevance * 100).toFixed(0)}%)
+													</Badge>
+												))}
+											</div>
+										</div>
+									))}
+								</div>
+							</CardContent>
+						</Card>
 					</TabsContent>
 				)}
 			</Tabs>

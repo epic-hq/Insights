@@ -11,7 +11,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const supabase = createSupabaseAdminClient()
 
 		// Trigger the analysis worker Edge Function
-		const { data, error } = await supabase.functions.invoke('analysis_worker')
+		const { data, error } = await supabase.functions.invoke("analysis_worker")
 
 		if (error) {
 			consola.error("Analysis worker error:", error)
@@ -20,7 +20,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		consola.log("Analysis worker triggered successfully:", data)
 		return Response.json({ success: true, result: data })
-
 	} catch (error) {
 		consola.error("Failed to trigger analysis worker:", error)
 		return Response.json(

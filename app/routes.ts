@@ -66,6 +66,7 @@ const routes = [
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/assemblyai-webhook", "./routes/api.assemblyai-webhook.tsx"),
 	route("api/trigger-analysis", "./routes/api.trigger-analysis.tsx"),
+	route("api/daily-brief", "./routes/api.daily-brief.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

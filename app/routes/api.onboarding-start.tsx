@@ -3,7 +3,7 @@ import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { createProject } from "~/features/projects/db"
-import { getServerClient, getAuthenticatedUser, createSupabaseAdminClient } from "~/lib/supabase/server"
+import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 
@@ -29,7 +29,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		const { client: supabase } = getServerClient(request)
-		
+
 		// Get team account from user context (set by middleware)
 		// For API routes, we should get this from user context or use RPC to get current account
 		const { data: userSettings } = await supabase
@@ -64,7 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.log("onboardingDataStr:", onboardingDataStr)
 		consola.log("projectId:", projectId)
 		consola.log("formData keys:", Array.from(formData.keys()))
-		
+
 		if (!file) {
 			consola.error("Missing file")
 			return Response.json({ error: "Missing file" }, { status: 400 })
@@ -80,13 +80,13 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// 1. Use existing project or create new one if projectId not provided
 		let finalProjectId = projectId
-		
+
 		if (!projectId) {
 			const baseProjectName = `${onboardingData.role} at ${onboardingData.icp} Research`
 			const projectDescription = `Research project for ${onboardingData.role} at ${onboardingData.icp}. Goal: ${
-				onboardingData.goal === "other" && onboardingData.customGoal 
-					? onboardingData.customGoal 
-					: onboardingData.goal === "needs" 
+				onboardingData.goal === "other" && onboardingData.customGoal
+					? onboardingData.customGoal
+					: onboardingData.goal === "needs"
 						? "Understand user needs & motivations"
 						: "Evaluate willingness to pay for features"
 			}`
@@ -104,11 +104,11 @@ export async function action({ request }: ActionFunctionArgs) {
 						name: projectName,
 						description: projectDescription,
 						status: "active",
-						account_id: teamAccountId
-					}
+						account_id: teamAccountId,
+					},
 				})
 
-				if (createError?.code === '23505') {
+				if (createError?.code === "23505") {
 					// Slug conflict, try with number suffix
 					attempt++
 					projectName = `${baseProjectName} ${attempt}`
@@ -132,39 +132,38 @@ export async function action({ request }: ActionFunctionArgs) {
 			const projectSections = [
 				{
 					project_id: finalProjectId,
-					kind: 'target_market',
+					kind: "target_market",
 					content_md: `**Role:** ${onboardingData.role}\n\n**Company/Organization:** ${onboardingData.icp}`,
-					meta: { 
-						role: onboardingData.role, 
-						icp: onboardingData.icp 
-					}
+					meta: {
+						role: onboardingData.role,
+						icp: onboardingData.icp,
+					},
 				},
 				{
 					project_id: finalProjectId,
-					kind: 'goal',
-					content_md: onboardingData.goal === "other" && onboardingData.customGoal 
-						? onboardingData.customGoal 
-						: onboardingData.goal === "needs" 
-							? "Understand user needs & motivations"
-							: "Evaluate willingness to pay for features",
-					meta: { 
+					kind: "goal",
+					content_md:
+						onboardingData.goal === "other" && onboardingData.customGoal
+							? onboardingData.customGoal
+							: onboardingData.goal === "needs"
+								? "Understand user needs & motivations"
+								: "Evaluate willingness to pay for features",
+					meta: {
 						goalType: onboardingData.goal,
-						customGoal: onboardingData.customGoal 
-					}
+						customGoal: onboardingData.customGoal,
+					},
 				},
 				{
 					project_id: finalProjectId,
-					kind: 'questions',
-					content_md: onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n\n'),
-					meta: { 
-						questionCount: onboardingData.questions.length 
-					}
-				}
+					kind: "questions",
+					content_md: onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join("\n\n"),
+					meta: {
+						questionCount: onboardingData.questions.length,
+					},
+				},
 			]
 
-			const { error: sectionsError } = await supabase
-				.from("project_sections")
-				.insert(projectSections)
+			const { error: sectionsError } = await supabase.from("project_sections").insert(projectSections)
 
 			if (sectionsError) {
 				consola.error("Failed to create project sections:", sectionsError)
@@ -178,7 +177,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const customInstructions = `This interview is part of research about ${onboardingData.role} at ${onboardingData.icp}. 
 		
 Key research questions to focus on:
-${onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join('\n')}
+${onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
 Please extract insights that specifically address these research questions and help understand ${onboardingData.role} at ${onboardingData.icp} better.`
 
@@ -210,15 +209,16 @@ Please extract insights that specifically address these research questions and h
 		consola.log("Created interview:", interview.id)
 
 		// 3. Check if file is text or needs AssemblyAI processing
-		const isTextFile = file.type.startsWith('text/') || 
-			file.name.endsWith('.txt') || 
-			file.name.endsWith('.md') || 
-			file.name.endsWith('.markdown')
+		const isTextFile =
+			file.type.startsWith("text/") ||
+			file.name.endsWith(".txt") ||
+			file.name.endsWith(".md") ||
+			file.name.endsWith(".markdown")
 
 		if (isTextFile) {
 			// Handle text files immediately - no upload needed
 			const textContent = await file.text()
-			
+
 			if (!textContent || textContent.trim().length === 0) {
 				return Response.json({ error: "Text file is empty" }, { status: 400 })
 			}
@@ -228,20 +228,18 @@ Please extract insights that specifically address these research questions and h
 				confidence: 1.0,
 				audio_duration: null,
 				processing_duration: 0,
-				file_type: 'text',
-				original_filename: file.name
+				file_type: "text",
+				original_filename: file.name,
 			}
 
 			// Skip upload queue, go directly to analysis - use admin client to bypass RLS
 			const supabaseAdmin = createSupabaseAdminClient()
-			const { error: analysisJobError } = await supabaseAdmin
-				.from("analysis_jobs")
-				.insert({
-					interview_id: interview.id,
-					transcript_data: transcriptData,
-					custom_instructions: customInstructions,
-					status: 'pending'
-				})
+			const { error: analysisJobError } = await supabaseAdmin.from("analysis_jobs").insert({
+				interview_id: interview.id,
+				transcript_data: transcriptData,
+				custom_instructions: customInstructions,
+				status: "pending",
+			})
 
 			if (analysisJobError) {
 				consola.error("Failed to create analysis job:", analysisJobError)
@@ -251,13 +249,12 @@ Please extract insights that specifically address these research questions and h
 			// Update interview status - text files skip transcription and go straight to ready
 			await supabase
 				.from("interviews")
-				.update({ 
+				.update({
 					status: "ready",
 					transcript: textContent.trim(),
-					transcript_formatted: transcriptData
+					transcript_formatted: transcriptData,
 				})
 				.eq("id", interview.id)
-
 		} else {
 			// Handle audio/video files - upload to AssemblyAI with webhook
 			const apiKey = process.env.ASSEMBLYAI_API_KEY
@@ -279,12 +276,12 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "File upload failed" }, { status: 500 })
 			}
 
-			const { upload_url } = await uploadResp.json() as { upload_url: string }
+			const { upload_url } = (await uploadResp.json()) as { upload_url: string }
 			consola.log("File uploaded to AssemblyAI:", upload_url)
 
 			// Start transcription with webhook - use production host for webhook reception
 			const webhookUrl = `${PRODUCTION_HOST}/api/assemblyai-webhook`
-			
+
 			const transcriptResp = await fetch("https://api.assemblyai.com/v2/transcript", {
 				method: "POST",
 				headers: {
@@ -300,7 +297,7 @@ Please extract insights that specifically address these research questions and h
 					format_text: true,
 					punctuate: true,
 					auto_chapters: true,
-					sentiment_analysis: false
+					sentiment_analysis: false,
 				}),
 			})
 
@@ -310,22 +307,20 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "Transcription request failed" }, { status: 500 })
 			}
 
-			const { id: assemblyai_id } = await transcriptResp.json() as { id: string }
+			const { id: assemblyai_id } = (await transcriptResp.json()) as { id: string }
 
 			// Create upload job record for tracking - use admin client to bypass RLS
 			const supabaseAdmin = createSupabaseAdminClient()
-			const { error: uploadJobError } = await supabaseAdmin
-				.from("upload_jobs")
-				.insert({
-					interview_id: interview.id,
-					file_name: file.name,
-					file_type: file.type,
-					external_url: upload_url,
-					assemblyai_id: assemblyai_id,
-					status: 'in_progress',
-					status_detail: 'Transcription in progress',
-					custom_instructions: customInstructions
-				})
+			const { error: uploadJobError } = await supabaseAdmin.from("upload_jobs").insert({
+				interview_id: interview.id,
+				file_name: file.name,
+				file_type: file.type,
+				external_url: upload_url,
+				assemblyai_id: assemblyai_id,
+				status: "in_progress",
+				status_detail: "Transcription in progress",
+				custom_instructions: customInstructions,
+			})
 
 			if (uploadJobError) {
 				consola.error("Failed to create upload job:", uploadJobError)
@@ -337,19 +332,20 @@ Please extract insights that specifically address these research questions and h
 
 		// Mark onboarding completed when first interview is uploaded
 		const supabaseAdmin = createSupabaseAdminClient()
-		await supabaseAdmin
-			.from("user_settings")
-			.upsert({
+		await supabaseAdmin.from("user_settings").upsert(
+			{
 				user_id: user.sub,
 				onboarding_completed: true,
 				onboarding_steps: {
 					first_interview_uploaded: true,
 					first_interview_date: new Date().toISOString(),
-					first_interview_id: interview.id
-				}
-			}, {
-				onConflict: 'user_id'
-			})
+					first_interview_id: interview.id,
+				},
+			},
+			{
+				onConflict: "user_id",
+			}
+		)
 
 		return Response.json({
 			success: true,
@@ -357,18 +353,14 @@ Please extract insights that specifically address these research questions and h
 				id: interview.id,
 				project_id: finalProjectId,
 				title: interview.title,
-				status: interview.status
+				status: interview.status,
 			},
 			project: {
-				id: finalProjectId
-			}
+				id: finalProjectId,
+			},
 		})
-
 	} catch (error) {
 		consola.error("Onboarding start failed:", error)
-		return Response.json(
-			{ error: error instanceof Error ? error.message : "Processing failed" },
-			{ status: 500 }
-		)
+		return Response.json({ error: error instanceof Error ? error.message : "Processing failed" }, { status: 500 })
 	}
 }

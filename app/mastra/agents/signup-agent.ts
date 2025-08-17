@@ -7,15 +7,17 @@ import { z } from "zod"
 export const AgentState = z.object({
 	goal: z.string(),
 	plan: z.array(z.object({ milestone: z.string(), completed: z.boolean() })).default([]),
-	signupChatData: z.object({
-		problem: z.string().optional(),
-		challenges: z.string().optional(),
-		importance: z.number().optional(),
-		ideal_solution: z.string().optional(),
-		content_types: z.string().optional(),
-		other_feedback: z.string().optional(),
-		completed: z.boolean().optional(),
-	}).optional(),
+	signupChatData: z
+		.object({
+			problem: z.string().optional(),
+			challenges: z.string().optional(),
+			importance: z.number().optional(),
+			ideal_solution: z.string().optional(),
+			content_types: z.string().optional(),
+			other_feedback: z.string().optional(),
+			completed: z.boolean().optional(),
+		})
+		.optional(),
 })
 
 export const signupAgent = new Agent({

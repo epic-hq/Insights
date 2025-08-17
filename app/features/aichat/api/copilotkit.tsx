@@ -1,5 +1,6 @@
 import { MastraAgent } from "@ag-ui/mastra"
 import { CopilotRuntime, copilotRuntimeNextJSAppRouterEndpoint, OpenAIAdapter } from "@copilotkit/runtime"
+import { RuntimeContext } from "@mastra/core/di"
 import consola from "consola"
 import { type ActionFunctionArgs, redirect } from "react-router"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
@@ -19,6 +20,12 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 	const { client: supabase } = getServerClient(request)
 
+	// Multi-tenant context from provider headers (wired in ProtectedLayout)
+	const hdr = request.headers
+	const headerUserId = hdr.get("X-UserId") || undefined
+	const headerAccountId = hdr.get("X-AccountId") || undefined
+	const headerProjectId = hdr.get("X-ProjectId") || undefined
+
 	// Get OpenAI API key
 	const openaiApiKey = process.env.OPENAI_API_KEY
 	if (!openaiApiKey) {
@@ -35,6 +42,54 @@ export async function action({ request }: ActionFunctionArgs) {
 	const runtime = new CopilotRuntime({
 		agents: mastraAgents,
 		actions: [
+			{
+				name: "runDailyBrief",
+				description: "Run the daily brief workflow for the current project/account context",
+				parameters: [],
+				handler: async () => {
+					consola.log("🚀 runDailyBrief action started")
+					try {
+						if (!headerAccountId || !headerProjectId) {
+							throw new Error("Missing account or project context")
+						}
+						consola.log("📋 Context:", { headerAccountId, headerProjectId })
+
+						// Start workflow run with inputs and inject supabase via runtimeContext
+						consola.log("🔄 Starting workflow...")
+						const run = await mastra.getWorkflow("dailyBriefWorkflow").createRunAsync()
+						const runtimeContext = new RuntimeContext()
+						runtimeContext.set("supabase", supabase)
+						const result = await run.start({
+							inputData: { account_id: headerAccountId, project_id: headerProjectId },
+							runtimeContext,
+						})
+
+						// Extract the final workflow result value for display in chat
+						consola.log("📊 Full workflow result:", JSON.stringify(result, null, 2))
+
+						if (result.status === "success") {
+							const briefText = result.result.value || "Daily brief completed successfully"
+							consola.log("✅ Returning to CopilotKit:", briefText)
+							consola.log("📝 Text length:", briefText.length)
+							consola.log("📝 Text type:", typeof briefText)
+
+							// Try returning structured response for CopilotKit
+							const response = {
+								result: briefText,
+								message: briefText,
+							}
+							consola.log("📦 Structured response:", response)
+							return response
+						}
+
+						consola.error("❌ Workflow failed:", result)
+						return "Failed to generate daily brief. Please try again."
+					} catch (error) {
+						consola.error("💥 Error running dailyBriefWorkflow:", error)
+						return "Error occurred while generating daily brief."
+					}
+				},
+			},
 			{
 				name: "saveChatData",
 				description: "Save the collected signup chat responses to the database",
@@ -87,7 +142,15 @@ export async function action({ request }: ActionFunctionArgs) {
 							other_feedback,
 							completed: true,
 						}
-						consola.log("mastra agent saving chat data: ", chatData)
+						consola.log("mastra agent saving chat data: ", {
+							chatData,
+							context: {
+								user_id: user.sub,
+								header_user_id: headerUserId,
+								account_id: headerAccountId,
+								project_id: headerProjectId,
+							},
+						})
 						const { error } = await supabase.rpc("upsert_signup_data", {
 							p_user_id: user.sub,
 							p_signup_data: chatData,

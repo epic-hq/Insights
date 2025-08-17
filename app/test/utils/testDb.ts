@@ -8,17 +8,14 @@ import type { Database } from "~/../supabase/types"
 
 // Ensure test environment variables are available
 if (!process.env.TEST_SUPABASE_URL) {
-	throw new Error('TEST_SUPABASE_URL environment variable is required for integration tests')
+	throw new Error("TEST_SUPABASE_URL environment variable is required for integration tests")
 }
 if (!process.env.TEST_SUPABASE_ANON_KEY) {
-	throw new Error('TEST_SUPABASE_ANON_KEY environment variable is required for integration tests')
+	throw new Error("TEST_SUPABASE_ANON_KEY environment variable is required for integration tests")
 }
 
 // Test database connection using basic primitives
-export const testDb = createClient<Database>(
-	process.env.TEST_SUPABASE_URL,
-	process.env.TEST_SUPABASE_ANON_KEY
-)
+export const testDb = createClient<Database>(process.env.TEST_SUPABASE_URL, process.env.TEST_SUPABASE_ANON_KEY)
 
 // Test account for consistent seeding
 export const TEST_ACCOUNT_ID = "test-account-123"

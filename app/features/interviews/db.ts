@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import type { Database, } from "~/types"
+import type { Database } from "~/types"
 
 export const getInterviews = async ({
 	supabase,

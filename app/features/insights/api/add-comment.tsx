@@ -42,7 +42,7 @@ export const action: ActionFunction = async ({ context, request }) => {
 				insight_id: insightId,
 				account_id: accountId,
 				content: comment.trim(), // Use 'content' not 'text'
-				user_id: ctx.claims?.sub || "anonymous" // Use 'user_id' not 'author'
+				user_id: ctx.claims?.sub || "anonymous", // Use 'user_id' not 'author'
 				// created_at and updated_at are auto-generated
 			})
 			.select()
@@ -54,11 +54,10 @@ export const action: ActionFunction = async ({ context, request }) => {
 		}
 
 		consola.log(`Successfully added comment to insight ${insightId}`)
-		return Response.json({ 
-			success: true, 
-			comment: newComment
+		return Response.json({
+			success: true,
+			comment: newComment,
 		})
-
 	} catch (err) {
 		consola.error("Add comment API error:", err)
 		return Response.json({ error: "Internal server error" }, { status: 500 })

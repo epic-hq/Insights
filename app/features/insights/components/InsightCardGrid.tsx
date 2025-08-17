@@ -1,8 +1,8 @@
 import type { ReactNode } from "react"
 import { Link } from "react-router-dom"
-import type { InsightView } from "~/types"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import type { InsightView } from "~/types"
 import InsightCardV2 from "./InsightCardV2Clean"
 
 interface InsightCardGridProps {

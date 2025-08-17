@@ -14,11 +14,11 @@ export const meta: MetaFunction = () => {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
-	
+
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}

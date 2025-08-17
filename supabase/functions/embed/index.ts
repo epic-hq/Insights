@@ -27,8 +27,7 @@ Deno.serve(async (req) => {
 			const jwt = authHeader.split(" ")[1]
 			const payload = jwt.split(".")[1]
 			const _decoded = JSON.parse(atob(payload))
-		} catch (_e) {
-		}
+		} catch (_e) {}
 	}
 
 	try {
@@ -68,8 +67,7 @@ Deno.serve(async (req) => {
 		return new Response(JSON.stringify({ success: true }), {
 			headers: { "Content-Type": "application/json" },
 		})
-	}
-	catch (err) {
+	} catch (err) {
 		return new Response(JSON.stringify({ success: false, message: err.message, stack: err.stack }), {
 			status: 500,
 			headers: { "Content-Type": "application/json" },

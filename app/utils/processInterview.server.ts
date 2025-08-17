@@ -21,7 +21,7 @@ export interface ProcessingResult {
 
 export interface InterviewMetadata {
 	accountId: string
-	userId?: string  // Add user ID for audit fields
+	userId?: string // Add user ID for audit fields
 	projectId?: string
 	interviewTitle?: string
 	interviewDate?: string
@@ -124,7 +124,6 @@ async function processInterviewTranscriptWithClient({
 	userCustomInstructions?: string
 	client: any
 }): Promise<ProcessingResult> {
-
 	// 1. Call the BAML process – this will invoke OpenAI GPT-4o under the hood
 	// Per BAML conventions, call the generated function directly on the `b` client.
 	// The function name must match the declaration in `baml_src/extract_insights.baml`.
@@ -187,8 +186,8 @@ async function processInterviewTranscriptWithClient({
 		contradictions: i.contradictions ?? null,
 		impact: i.impact ?? null,
 		novelty: i.novelty ?? null,
-		created_by: metadata.userId,  // Add user ID for audit
-		updated_by: metadata.userId
+		created_by: metadata.userId, // Add user ID for audit
+		updated_by: metadata.userId,
 	}))
 
 	// 4. Bulk upsert insights into Supabase
@@ -307,18 +306,19 @@ async function processInterviewTranscriptWithClient({
 
 	// Link person to persona via junction table if found
 	if (personaData?.id) {
-		const { error: personaLinkError } = await db
-			.from("people_personas")
-			.upsert({
+		const { error: personaLinkError } = await db.from("people_personas").upsert(
+			{
 				person_id: personData.id,
 				persona_id: personaData.id,
 				interview_id: interviewRecord.id,
 				project_id: metadata.projectId,
 				confidence_score: 1.0,
-				source: 'ai_extraction'
-			}, {
-				onConflict: 'person_id,persona_id'
-			})
+				source: "ai_extraction",
+			},
+			{
+				onConflict: "person_id,persona_id",
+			}
+		)
 
 		if (personaLinkError) {
 			consola.warn(`Failed to link person to persona: ${personaLinkError.message}`)
@@ -340,7 +340,7 @@ async function processInterviewTranscriptWithClient({
 
 	// 5. Create tags from relatedTags array and populate junction tables
 	// Collect all unique tags from all insights' relatedTags arrays
-	const allTags = insights.flatMap(insight => insight.relatedTags || [])
+	const allTags = insights.flatMap((insight) => insight.relatedTags || [])
 	const uniqueTags = [...new Set(allTags.filter(Boolean))]
 
 	consola.log(`Creating ${uniqueTags.length} unique tags:`, uniqueTags)
@@ -381,7 +381,7 @@ async function processInterviewTranscriptWithClient({
 				.select()
 				.single()
 
-			if (junctionError && !junctionError.message.includes('duplicate')) {
+			if (junctionError && !junctionError.message.includes("duplicate")) {
 				consola.warn(`Failed to link insight ${storedInsight.id} to tag ${tagName}: ${junctionError.message}`)
 			}
 		}
@@ -390,8 +390,8 @@ async function processInterviewTranscriptWithClient({
 	// 6. Trigger persona-insight linking for all created insights
 	if (data?.length) {
 		for (const insight of data) {
-			const { error: personaLinkError } = await db.rpc('auto_link_persona_insights', {
-				p_insight_id: insight.id
+			const { error: personaLinkError } = await db.rpc("auto_link_persona_insights", {
+				p_insight_id: insight.id,
 			})
 
 			if (personaLinkError) {

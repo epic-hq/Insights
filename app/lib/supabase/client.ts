@@ -22,7 +22,7 @@ export function createClient(): SupabaseClient<Database> {
 	// Use correct environment values
 	const supabaseUrl = "https://rbginqvgkonnoktrttqv.supabase.co"
 	const supabaseAnonKey = "sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
-	
+
 	// Create the client with proper cookie handling for SSR
 	supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)
 

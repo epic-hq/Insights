@@ -14,21 +14,25 @@
 ### 🛠️ Critical Conventions to Remember
 
 **Webhook Authentication Pattern:**
+
 - Webhooks ALWAYS use `createSupabaseAdminClient()` (no user context)
 - Pass `userId` from interview record for audit fields: `created_by: metadata.userId`
 - Admin client bypasses RLS - use for all system operations
 
 **ID Usage Conventions:**
+
 - `interview.account_id` = `user.sub` (personal ownership, auth.uid())
 - `metadata.userId` = `interview.account_id` for audit fields
 - `metadata.accountId` = `interview.account_id` for data scoping
 
 **Status Progression Pipeline:**
+
 ```
 uploaded (20%) → transcribed (50%) → processing (85%) → ready (100%)
 ```
 
 **Database Schema Notes:**
+
 - Audit fields (`created_by`, `updated_by`) are nullable to support admin operations
 - Upload jobs have idempotency via status check: `if (uploadJob.status === 'done') return`
 - Always update interview status before each major processing step
@@ -37,11 +41,27 @@ uploaded (20%) → transcribed (50%) → processing (85%) → ready (100%)
 
 - [x] prototype desktop version of Simple UI for project dashboard (summary insights, suggestions, chat) [v0](https://preview-mobile-insights-app-design-kzmlp51a1bx0c0w9lgfb.vusercontent.net/) at [inapp](/aichat)
 - [x] Signup chat to get user needs saved to user_settings.saved_data
+- [ ] HELP: Realtime update progress of plan in chat, and tell user when done and redirect them.
+- [x] Dockerfile changes for mastra version support.
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data; eg explain the personas.
-- [ ] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
-- [ ] Chat Workflows with Data. Build tools to read and write more data types.
+Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [chat](https://chatgpt.com/c/689cba6c-9e1c-8325-8d12-8df125c7f73a)
 
-- [ ] emotional_intensity (1-10)
+## Sprint 4 - Persona Management
+
+- [ ] Enhanced persona schema per this chat:
+- [definitions of personas, user stories etc](https://chatgpt.com/c/689ba8c0-00bc-8326-b331-efc3131aa30f)
+- [new persona fields](https://chatgpt.com/c/689c3bc0-dd78-8331-aa94-8ad74916b318)
+
+- [ ] Improve persona generation. 4o has 128k input limit. gpt-5-nano is 400k and .05c in.
+- [ ] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
+- [ ] Analyze Personas feature: make recommendations.
+- [ ] Chat about Personas
+
+## Sprint 5 - Insights Optimization
+
+- [ ] Enhance Insights schema and generation.
+- [ ] e.g. add emotional_intensity (1-10)
+- [ ] Guide use of existing tags dynamically
 
 ## UX Sprint - Mobile Metro Design System
 
@@ -112,10 +132,7 @@ Prioritize.
 ## 🌓 Backlog / Later
 
 - [ ] Migrate auth and Organizations to BetterAuth, get Stripe integration working.
-
-Defer:
-
-- [ ] generate persona. path.
+- [ ] Deep Linking & Next RedirectTo after login
 - [ ] how to handle routes:
   - /$accountId
   - /home my accounts(pro), projects, user profile settings etc?

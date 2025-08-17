@@ -1,9 +1,9 @@
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
-import { cn } from "~/lib/utils"
-import type { Database } from "~/types"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
+import type { Database } from "~/types"
 
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
 

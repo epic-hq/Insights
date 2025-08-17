@@ -84,7 +84,7 @@ export async function loader({ params }: { params: { opportunityId: string } }) 
 					? "medium"
 					: "low"),
 		tags: extendedOpportunity.tags || undefined,
-		insights: opportunityData.opportunity_insights?.map(oi => oi.insight_id) || undefined,
+		insights: opportunityData.opportunity_insights?.map((oi) => oi.insight_id) || undefined,
 		owner: opportunityData.owner_id || undefined,
 		assignee: extendedOpportunity.assignee || undefined,
 		due_date: extendedOpportunity.due_date || undefined,

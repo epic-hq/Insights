@@ -22,7 +22,7 @@ async function testIdempotency() {
 
 	// Create test interview and upload job
 	const testId = `test-${Date.now()}`
-	
+
 	const { data: interview, error: interviewError } = await supabase
 		.from("interviews")
 		.insert({
@@ -89,7 +89,7 @@ async function testStatusProgression() {
 	console.log("\n🧪 Testing status progression...")
 
 	const testId = `status-${Date.now()}`
-	
+
 	// Create interview in uploaded state
 	const { data: interview, error: interviewError } = await supabase
 		.from("interviews")
@@ -111,35 +111,22 @@ async function testStatusProgression() {
 	console.log("📊 Initial status: uploaded (20%)")
 
 	// Progress to transcribed
-	await supabase
-		.from("interviews")
-		.update({ status: "transcribed" })
-		.eq("id", interview.id)
+	await supabase.from("interviews").update({ status: "transcribed" }).eq("id", interview.id)
 
 	console.log("📊 Updated status: transcribed (50%)")
 
 	// Progress to processing
-	await supabase
-		.from("interviews")
-		.update({ status: "processing" })
-		.eq("id", interview.id)
+	await supabase.from("interviews").update({ status: "processing" }).eq("id", interview.id)
 
 	console.log("📊 Updated status: processing (85%)")
 
 	// Progress to ready
-	await supabase
-		.from("interviews")
-		.update({ status: "ready" })
-		.eq("id", interview.id)
+	await supabase.from("interviews").update({ status: "ready" }).eq("id", interview.id)
 
 	console.log("📊 Updated status: ready (100%)")
 
 	// Verify final status
-	const { data: finalInterview } = await supabase
-		.from("interviews")
-		.select("status")
-		.eq("id", interview.id)
-		.single()
+	const { data: finalInterview } = await supabase.from("interviews").select("status").eq("id", interview.id).single()
 
 	if (finalInterview?.status === "ready") {
 		console.log("✅ Status progression test passed")
@@ -159,7 +146,7 @@ async function testAuditFields() {
 	console.log("\n🧪 Testing nullable audit fields...")
 
 	const testId = `audit-${Date.now()}`
-	
+
 	// Create test interview
 	const { data: interview, error: interviewError } = await supabase
 		.from("interviews")
@@ -249,11 +236,7 @@ async function testAuditFields() {
 async function main() {
 	console.log("🚀 Testing webhook fixes on production database...\n")
 
-	const results = [
-		await testIdempotency(),
-		await testStatusProgression(),
-		await testAuditFields(),
-	]
+	const results = [await testIdempotency(), await testStatusProgression(), await testAuditFields()]
 
 	const allPassed = results.every(Boolean)
 

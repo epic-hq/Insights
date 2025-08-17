@@ -43,7 +43,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 
 		// Exclude large transcript data from loader response to prevent memory leaks
 		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData
-		
+
 		const interview = {
 			...interviewMetadata,
 			// Only include transcript length for display, not full content
@@ -107,7 +107,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const open_questions_and_next_steps = (formData.get("open_questions_and_next_steps") as string) || null
 	const observations_and_notes = (formData.get("observations_and_notes") as string) || null
 	const media_url = (formData.get("media_url") as string) || null
-	
+
 	// Handle high_impact_themes - can be JSON string or regular string
 	const high_impact_themes_raw = formData.get("high_impact_themes") as string | null
 	let high_impact_themes = null

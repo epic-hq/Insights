@@ -1,4 +1,3 @@
-
 import { createHonoServer } from "react-router-hono-server/node"
 import { i18next } from "remix-hono/i18next"
 import i18nextOpts from "../localization/i18n.server"

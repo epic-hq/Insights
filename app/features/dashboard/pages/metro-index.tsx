@@ -1,4 +1,5 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: <explanation> */
+
 import consola from "consola"
 import {
 	ArrowLeft,
@@ -9,20 +10,21 @@ import {
 	MessageSquare,
 	Plus,
 	Search,
-	Send,
 	Settings,
 	Sparkles,
 	Users,
 	X,
 } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
 import { useNavigate } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { Logo, LogoBrand } from "~/components/branding"
 import type { TreeNode } from "~/components/charts/TreeMap"
+import { DailyBriefChat } from "~/components/chat/DailyBriefChat"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 // Hooks for current project routing
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -357,8 +359,6 @@ export default function Index() {
 	const [fullScreenContent, _setFullScreenContent] = useState<any>(null)
 	const [showSearch, setShowSearch] = useState(false)
 	const [showChat, setShowChat] = useState(false)
-	const [chatContext, setChatContext] = useState<string>("")
-	const [chatMessage, setChatMessage] = useState("")
 	const [selectedItem, setSelectedItem] = useState<any>(null)
 
 	const getMainTileClasses = (size: "large" | "medium" | "full", color: string) => {
@@ -372,12 +372,8 @@ export default function Index() {
 
 	const toggleSection = (sectionId: string) => setExpandedSection(expandedSection === sectionId ? null : sectionId)
 	const getSectionColor = (sectionId: string) => mainSections.find((s) => s.id === sectionId)?.color || "bg-gray-800"
-	const toggleChat = (context = "") => {
-		setChatContext(context)
+	const toggleChat = () => {
 		setShowChat(!showChat)
-	}
-	const sendMessage = () => {
-		if (chatMessage.trim()) setChatMessage("")
 	}
 
 	return (
@@ -439,41 +435,74 @@ export default function Index() {
 							</Button>
 						</div>
 
-						<div className="grid grid-cols-1 gap-2">
-							{(Array.isArray(sectionData[expandedSection]) ? sectionData[expandedSection] : []).map((item: any) => (
-								<div
-									key={item.id}
-									className="flex cursor-pointer items-start gap-3 border border-gray-700 bg-gray-800 p-4 transition-colors duration-200 hover:bg-gray-700"
-									onClick={() => setSelectedItem({ ...item, section: expandedSection })}
-								>
-									{item.image_url && (
-										<div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gray-900">
-											{/* eslint-disable-next-line jsx-a11y/alt-text */}
-											<img src={item.image_url} className="h-full w-full object-cover" />
-										</div>
-									)}
-									<div className="min-w-0 flex-1">
-										<h3 className="mb-1 line-clamp-2 font-medium text-sm text-white">
-											{item.title || item.name || item.display_name || item.participant_name}
-										</h3>
-										<p className="line-clamp-2 text-gray-300 text-xs">
-											{item.description || item.evidence || item.status}
-										</p>
-										{Array.isArray(item.tags) && item.tags.length > 0 && (
-											<div className="mt-2 flex flex-wrap gap-1">
-												{(item.tags as string[]).slice(0, 3).map((tag, i) => (
-													<span
-														key={`${item.id}-tag-${i}`}
-														className="rounded bg-gray-700 px-2 py-1 text-gray-200 text-xs"
-													>
-														{tag}
-													</span>
-												))}
+						{/* Desktop: Side-by-side layout, Mobile: Stacked */}
+						<div className="flex flex-col gap-4 lg:flex-row">
+							{/* Items List */}
+							<div className="flex-1">
+								<div className="grid grid-cols-1 gap-2">
+									{(Array.isArray(sectionData[expandedSection]) ? sectionData[expandedSection] : []).map(
+										(item: any) => (
+											<div
+												key={item.id}
+												className="flex cursor-pointer items-start gap-3 border border-gray-700 bg-gray-800 p-4 transition-colors duration-200 hover:bg-gray-700"
+												onClick={() => setSelectedItem({ ...item, section: expandedSection })}
+											>
+												{item.image_url && (
+													<div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gray-900">
+														{/* eslint-disable-next-line jsx-a11y/alt-text */}
+														<img src={item.image_url} className="h-full w-full object-cover" />
+													</div>
+												)}
+												<div className="min-w-0 flex-1">
+													<h3 className="mb-1 line-clamp-2 font-medium text-sm text-white">
+														{item.title || item.name || item.display_name || item.participant_name}
+													</h3>
+													<p className="line-clamp-2 text-gray-300 text-xs">
+														{item.description || item.evidence || item.status}
+													</p>
+													{Array.isArray(item.tags) && item.tags.length > 0 && (
+														<div className="mt-2 flex flex-wrap gap-1">
+															{(item.tags as string[]).slice(0, 3).map((tag, i) => (
+																<span
+																	key={`${item.id}-tag-${i}`}
+																	className="rounded bg-gray-700 px-2 py-1 text-gray-200 text-xs"
+																>
+																	{tag}
+																</span>
+															))}
+														</div>
+													)}
+												</div>
 											</div>
-										)}
+										)
+									)}
+								</div>
+							</div>
+
+							{/* AI Chat - Right side on desktop, bottom on mobile */}
+							{showChat && (
+								<div className="w-full lg:w-80">
+									<div className="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+										<div className="mb-3 flex items-center justify-between">
+											<div className="flex items-center gap-2">
+												<Bot className="h-4 w-4 text-white" />
+												<h3 className="font-medium text-white">AI Assistant</h3>
+											</div>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setShowChat(false)}
+												className="h-6 w-6 text-white hover:bg-white hover:bg-opacity-20"
+											>
+												<X className="h-3 w-3" />
+											</Button>
+										</div>
+										<div className="copilotkit-chat-container h-96 rounded-lg bg-white p-2">
+											<DailyBriefChat expandedSection={expandedSection} />
+										</div>
 									</div>
 								</div>
-							))}
+							)}
 						</div>
 					</div>
 				)}
@@ -501,7 +530,9 @@ export default function Index() {
 										<div>
 											<section.icon className="mb-4 h-10 w-10 opacity-90" />
 											<h2 className="mb-2 font-bold text-3xl">{section.title}</h2>
-											<p className="hidden lg:block text-base leading-tight opacity-80" title={section.subtitle}>{section.subtitle}</p>
+											<p className="hidden text-base leading-tight opacity-80 lg:block" title={section.subtitle}>
+												{section.subtitle}
+											</p>
 											<div className="mt-3 rounded-lg bg-black/20 p-2 backdrop-blur-sm">
 												<div className="flex items-start justify-between gap-2">
 													<div className="flex flex-1 items-start gap-2">
@@ -540,7 +571,7 @@ export default function Index() {
 											<div>
 												<section.icon className="mb-4 h-10 w-10 opacity-90" />
 												<h2 className="mb-2 font-bold text-3xl">{section.title}</h2>
-												<p className="hidden lg:block text-base leading-tight opacity-80">{section.subtitle}</p>
+												<p className="hidden text-base leading-tight opacity-80 lg:block">{section.subtitle}</p>
 												<div className="mt-3 rounded-lg bg-black/20 p-2 backdrop-blur-sm">
 													<div className="flex items-start justify-between gap-2">
 														<div className="flex flex-1 items-start gap-2">
@@ -560,6 +591,31 @@ export default function Index() {
 								</div>
 							))}
 						</div>
+
+						{/* AI Chat Section - Bottom of main sections */}
+						{showChat && !expandedSection && !selectedItem && (
+							<div className="mt-6">
+								<div className="mb-4 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+									<div className="mb-3 flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Bot className="h-5 w-5 text-white" />
+											<h3 className="font-semibold text-lg text-white">AI Assistant</h3>
+										</div>
+										<Button
+											variant="ghost"
+											size="icon"
+											onClick={() => setShowChat(false)}
+											className="text-white hover:bg-white hover:bg-opacity-20"
+										>
+											<X className="h-4 w-4" />
+										</Button>
+									</div>
+									<div className="copilotkit-chat-container h-96 rounded-lg bg-white p-2">
+										<DailyBriefChat expandedSection={expandedSection} />
+									</div>
+								</div>
+							</div>
+						)}
 					</div>
 				)}
 			</div>
@@ -587,7 +643,7 @@ export default function Index() {
 						onClick={() => toggleChat(expandedSection || "general")}
 					>
 						<Bot className="mb-1 h-5 w-5" />
-						<span className="font-medium text-xs">AI Chat</span>
+						<span className="font-medium text-xs">AI Chat!</span>
 					</button>
 				</div>
 			</div>
@@ -613,76 +669,47 @@ export default function Index() {
 					</div>
 
 					<div className="h-[calc(100vh-8rem)] overflow-y-auto p-4 pb-20">
-						<div className="space-y-6">
-							{selectedItem.image_url && (
-								<div className="h-48 w-full overflow-hidden rounded-lg bg-gray-800">
-									{/* eslint-disable-next-line jsx-a11y/alt-text */}
-									<img src={selectedItem.image_url} className="h-full w-full object-cover" />
-								</div>
-							)}
-							<div className="space-y-4">
-								<p className="text-gray-300 leading-relaxed">{selectedItem.description || selectedItem.evidence}</p>
-								{Array.isArray(selectedItem.tags) && (
-									<div className="flex flex-wrap gap-2">
-										{selectedItem.tags.map((tag: string, idx: number) => (
-											<Badge key={`tag-${idx}`} variant="secondary" className="bg-gray-800 text-gray-300">
-												{tag}
-											</Badge>
-										))}
+						{/* Desktop: Side-by-side layout, Mobile: Stacked */}
+						<div className="flex flex-col gap-6 lg:flex-row">
+							{/* Item Details */}
+							<div className="flex-1 space-y-6">
+								{selectedItem.image_url && (
+									<div className="h-48 w-full overflow-hidden rounded-lg bg-gray-800">
+										{/* eslint-disable-next-line jsx-a11y/alt-text */}
+										<img src={selectedItem.image_url} className="h-full w-full object-cover" />
 									</div>
 								)}
-							</div>
-						</div>
-					</div>
-				</div>
-			)}
-
-			{/* Chat sheet */}
-			{showChat && (
-				<div className="fixed inset-0 z-50">
-					<div className="absolute inset-0 bg-black/50" onClick={() => setShowChat(false)} />
-					<div
-						className={`absolute right-0 bottom-0 left-0 h-1/2 border-t-2 bg-gray-900 ${expandedSection ? getSectionColor(expandedSection).replace("bg-", "border-") : "border-gray-700"} md:right-0 md:left-auto md:h-full md:w-96 md:border-t-0 md:border-l-2`}
-					>
-						<div
-							className={`flex items-center justify-between border-gray-700 border-b p-4 ${expandedSection ? `${getSectionColor(expandedSection)} bg-opacity-20` : ""}`}
-						>
-							<div>
-								<h3 className="font-semibold text-white">AI Assistant</h3>
-								<p className="text-gray-300 text-xs">
-									Context: {expandedSection ? expandedSection[0].toUpperCase() + expandedSection.slice(1) : "General"}
-								</p>
-							</div>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={() => setShowChat(false)}
-								className="text-gray-400 hover:text-white"
-							>
-								<ArrowLeft className="h-7 w-7 font-semibold" />
-							</Button>
-						</div>
-						<div className="h-full flex-1 overflow-y-auto p-4 pb-20">
-							<div className="space-y-3">
-								<div className="rounded-lg bg-gray-800 p-3">
-									<p className="text-sm">
-										Hi! I'm here to help you analyze your {chatContext} data. What would you like to know?
-									</p>
+								<div className="space-y-4">
+									<p className="text-gray-300 leading-relaxed">{selectedItem.description || selectedItem.evidence}</p>
+									{Array.isArray(selectedItem.tags) && (
+										<div className="flex flex-wrap gap-2">
+											{selectedItem.tags.map((tag: string, idx: number) => (
+												<Badge key={`tag-${idx}`} variant="secondary" className="bg-gray-800 text-gray-300">
+													{tag}
+												</Badge>
+											))}
+										</div>
+									)}
+									<div className="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+										<div className="mb-3 flex items-center justify-between">
+											<div className="flex items-center gap-2">
+												<Bot className="h-4 w-4 text-white" />
+												<h3 className="font-medium text-white">AI Assistant</h3>
+											</div>
+											<Button
+												variant="ghost"
+												size="icon"
+												onClick={() => setShowChat(false)}
+												className="h-6 w-6 text-white hover:bg-white hover:bg-opacity-20"
+											>
+												<X className="h-3 w-3" />
+											</Button>
+										</div>
+										<div className="copilotkit-chat-container h-96 rounded-lg bg-white p-2">
+											<DailyBriefChat expandedSection={expandedSection} />
+										</div>
+									</div>
 								</div>
-							</div>
-						</div>
-						<div className="absolute right-0 bottom-0 left-0 border-gray-700 border-t bg-gray-900 p-4">
-							<div className="flex gap-2">
-								<Input
-									value={chatMessage}
-									onChange={(e) => setChatMessage(e.target.value)}
-									placeholder="Ask about your research..."
-									className="flex-1 border-gray-600 bg-gray-800 text-white"
-									onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-								/>
-								<Button onClick={sendMessage} size="icon" className="bg-indigo-600 hover:bg-indigo-700">
-									<Send className="h-4 w-4" />
-								</Button>
 							</div>
 						</div>
 					</div>

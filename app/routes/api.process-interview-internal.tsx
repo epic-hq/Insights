@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from "react-router"
-import { processInterviewTranscript } from "~/utils/processInterview.server"
 import type { InterviewMetadata } from "~/utils/processInterview.server"
+import { processInterviewTranscript } from "~/utils/processInterview.server"
 
 interface ProcessInterviewInternalRequest {
 	metadata: InterviewMetadata
@@ -42,14 +42,10 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({
 			success: true,
 			stored: result.stored,
-			interview: result.interview
+			interview: result.interview,
 		})
-
 	} catch (error) {
 		console.error("Internal interview processing failed:", error)
-		return Response.json(
-			{ error: error instanceof Error ? error.message : "Processing failed" },
-			{ status: 500 }
-		)
+		return Response.json({ error: error instanceof Error ? error.message : "Processing failed" }, { status: 500 })
 	}
 }

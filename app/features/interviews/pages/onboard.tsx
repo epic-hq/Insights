@@ -6,13 +6,13 @@ import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Separator } from "~/components/ui/separator"
 import { Textarea } from "~/components/ui/textarea"
 import { useAuth } from "~/contexts/AuthContext"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 interface FileWithPreview {
 	id: string

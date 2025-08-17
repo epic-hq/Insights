@@ -44,21 +44,20 @@ export const action: ActionFunction = async ({ context, request }) => {
 		// we'll need to create a separate votes table or use a different approach.
 		// For now, let's just log the vote and return success
 		// TODO: Create a votes table to track user votes properly
-		
+
 		consola.log(`User ${userId} voted ${voteType} on insight ${insightId}`)
-		
+
 		// Return mock vote counts for UI feedback
 		// In a real implementation, this would query the votes table
-		return Response.json({ 
-			success: true, 
+		return Response.json({
+			success: true,
 			message: `Vote ${voteType} recorded`,
 			// Mock data since we don't have a votes table yet
 			newCounts: {
 				upvotes: Math.floor(Math.random() * 10) + 1,
-				downvotes: Math.floor(Math.random() * 3) + 1
-			}
+				downvotes: Math.floor(Math.random() * 3) + 1,
+			},
 		})
-
 	} catch (err) {
 		consola.error("Vote API error:", err)
 		return Response.json({ error: "Internal server error" }, { status: 500 })

@@ -102,11 +102,15 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 			throw new Error(`Transcription error: ${data.error}`)
 		}
 		attempts++
-		
+
 		// Log progress every 2 minutes (24 attempts)
 		if (attempts % 24 === 0) {
-			consola.info(`Transcription in progress... ${Math.round((attempts / maxAttempts) * 100)}% of timeout elapsed (${Math.round(attempts * 5 / 60)} minutes)`)
+			consola.info(
+				`Transcription in progress... ${Math.round((attempts / maxAttempts) * 100)}% of timeout elapsed (${Math.round((attempts * 5) / 60)} minutes)`
+			)
 		}
 	}
-	throw new Error(`Transcription timed out after ${Math.round(maxAttempts * 5 / 60)} minutes. Large files may require longer processing time.`)
+	throw new Error(
+		`Transcription timed out after ${Math.round((maxAttempts * 5) / 60)} minutes. Large files may require longer processing time.`
+	)
 }

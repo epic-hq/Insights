@@ -4,10 +4,9 @@ import { Palette, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { cn } from "~/lib/utils"
 import type { Database } from "~/types"
 

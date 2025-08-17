@@ -4,8 +4,8 @@ import { Link, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getProjectById } from "~/features/projects/db"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -18,7 +18,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// From URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const { projectId } = params
@@ -67,8 +67,8 @@ export default function ProjectDetail() {
 		}
 	}
 
-	const people = project.project_people ?? [];
-	const personas = project.project_personas ?? [];
+	const people = project.project_people ?? []
+	const personas = project.project_personas ?? []
 
 	return (
 		<div className="mx-auto max-w-4xl">

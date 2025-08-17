@@ -1,0 +1,49 @@
+:root {
+	/* Typography & colors */
+	--copilotkit-foreground: #111827; /* gray-900 */
+	--copilotkit-muted-foreground: #4b5563; /* gray-600 */
+	--copilotkit-background: #ffffff; /* white */
+	--copilotkit-secondary-background: #f9fafb; /* gray-50 */
+	--copilotkit-border-color: #e5e7eb; /* gray-200 */
+
+	/* Primary accents to match indigo/violet theme */
+	--copilotkit-primary: #6366f1; /* indigo-500 */
+	--copilotkit-primary-foreground: #ffffff;
+
+	/* Message bubbles */
+	--copilotkit-user-message-background: #eef2ff; /* indigo-50 */
+	--copilotkit-user-message-foreground: #1f2937; /* gray-800 */
+	--copilotkit-assistant-message-background: #f3f4f6; /* gray-100 */
+	--copilotkit-assistant-message-foreground: #111827; /* gray-900 */
+
+	/* Inputs */
+	--copilotkit-input-background: #ffffff;
+	--copilotkit-input-foreground: #111827;
+	--copilotkit-input-placeholder: #9ca3af; /* gray-400 */
+	--copilotkit-input-border: #e5e7eb;
+}
+
+/* Ensure readable text inside chat container even on dark pages */
+.copilotkit-chat-container,
+.copilotkit-chat-container * {
+	color: var(--copilotkit-foreground);
+}
+
+/* Inputs and textareas */
+.copilotkit-input,
+.copilotkit-textarea,
+.copilotkit-prompt-input {
+	background: var(--copilotkit-input-background) !important;
+	color: var(--copilotkit-input-foreground) !important;
+	border-color: var(--copilotkit-input-border) !important;
+}
+
+/* Message bubbles */
+.copilotkit-message-user {
+	background: var(--copilotkit-user-message-background) !important;
+	color: var(--copilotkit-user-message-foreground) !important;
+}
+.copilotkit-message-assistant {
+	background: var(--copilotkit-assistant-message-background) !important;
+	color: var(--copilotkit-assistant-message-foreground) !important;
+}

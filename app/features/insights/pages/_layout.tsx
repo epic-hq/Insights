@@ -9,34 +9,34 @@ export default function InsightsLayout() {
 	const location = useLocation()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
-	
+
 	// Determine the active tab based on the current URL path
 	const getActiveTab = () => {
 		const path = location.pathname
-		if (path.endsWith('/insights/quick')) return 'quick'
-		if (path.endsWith('/insights/table')) return 'table'
-		if (path.endsWith('/insights/cards')) return 'cards'
-		if (path.endsWith('/insights/map')) return 'map'
-		if (path.endsWith('/insights/auto-insights')) return 'auto-takeaways'
-		return 'quick' // Default to quick view
+		if (path.endsWith("/insights/quick")) return "quick"
+		if (path.endsWith("/insights/table")) return "table"
+		if (path.endsWith("/insights/cards")) return "cards"
+		if (path.endsWith("/insights/map")) return "map"
+		if (path.endsWith("/insights/auto-insights")) return "auto-takeaways"
+		return "quick" // Default to quick view
 	}
 
 	// Handle tab change by navigating to the appropriate route
 	const handleTabChange = (value: string) => {
 		switch (value) {
-			case 'quick':
+			case "quick":
 				navigate(routes.insights.quick())
 				break
-			case 'table':
+			case "table":
 				navigate(routes.insights.table())
 				break
-			case 'cards':
+			case "cards":
 				navigate(routes.insights.cards())
 				break
-			case 'map':
+			case "map":
 				navigate(routes.insights.map())
 				break
-			case 'auto-takeaways':
+			case "auto-takeaways":
 				navigate(routes.insights.autoInsights())
 				break
 			default:
@@ -49,18 +49,13 @@ export default function InsightsLayout() {
 			{/* Header with consistent spacing */}
 			<div className="px-[5%]">
 				<div className="mb-6">
-					<h1 className="mb-4 text-2xl font-bold">Insights</h1>
+					<h1 className="mb-4 font-bold text-2xl">Insights</h1>
 				</div>
 			</div>
 
 			{/* Tab navigation spanning full width */}
 			<div className="px-[5%]">
-				<Tabs 
-					className="w-full" 
-					defaultValue="quick" 
-					onValueChange={handleTabChange} 
-					value={getActiveTab()}
-				>
+				<Tabs className="w-full" defaultValue="quick" onValueChange={handleTabChange} value={getActiveTab()}>
 					<TabsList className="grid w-full grid-cols-5">
 						<TabsTrigger className="flex items-center gap-2" value="quick">
 							<Zap className="h-4 w-4" /> Quick

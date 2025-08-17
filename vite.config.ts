@@ -14,21 +14,21 @@ export default defineConfig({
 	// Externalize BAML native modules and AWS SDK to prevent bundling issues
 	optimizeDeps: {
 		exclude: [
-			"@boundaryml/baml", 
+			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",
 			"@aws-sdk/credential-provider-sso",
 			"@aws-sdk/token-providers",
-			"@langchain/aws"
+			"@langchain/aws",
 		],
 	},
 	ssr: {
 		noExternal: [],
 		external: [
-			"@boundaryml/baml", 
+			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",
 			"@aws-sdk/credential-provider-sso",
 			"@aws-sdk/token-providers",
-			"@langchain/aws"
+			"@langchain/aws",
 		],
 	},
 	plugins: [

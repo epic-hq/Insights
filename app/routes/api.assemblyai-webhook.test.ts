@@ -25,7 +25,7 @@ vi.mocked(import("~/utils/processInterview.server")).mockResolvedValue({
 describe("AssemblyAI Webhook API", () => {
 	beforeEach(() => {
 		vi.clearAllMocks()
-		
+
 		// Setup default mock chain for database operations
 		const mockSelect = vi.fn().mockReturnThis()
 		const mockEq = vi.fn().mockReturnThis()
@@ -68,7 +68,7 @@ describe("AssemblyAI Webhook API", () => {
 
 			const response = await action({ request })
 			expect(response.status).toBe(405)
-			
+
 			const result = await response.json()
 			expect(result.error).toBe("Method not allowed")
 		})
@@ -109,7 +109,7 @@ describe("AssemblyAI Webhook API", () => {
 
 			const response = await action({ request })
 			expect(response.status).toBe(200)
-			
+
 			const result = await response.json()
 			expect(result.success).toBe(true)
 			expect(result.message).toBe("Already processed")
@@ -193,11 +193,12 @@ describe("AssemblyAI Webhook API", () => {
 			// Mock successful AssemblyAI API response
 			global.fetch = vi.fn().mockResolvedValue({
 				ok: true,
-				json: () => Promise.resolve({
-					text: "This is a test transcript",
-					confidence: 0.95,
-					audio_duration: 120,
-				}),
+				json: () =>
+					Promise.resolve({
+						text: "This is a test transcript",
+						confidence: 0.95,
+						audio_duration: 120,
+					}),
 			})
 
 			// Mock successful processing
@@ -221,7 +222,7 @@ describe("AssemblyAI Webhook API", () => {
 
 			const response = await action({ request })
 			expect(response.status).toBe(200)
-			
+
 			const result = await response.json()
 			expect(result.success).toBe(true)
 
@@ -233,7 +234,7 @@ describe("AssemblyAI Webhook API", () => {
 	describe("Status Progression", () => {
 		it("should update interview status through correct progression", async () => {
 			const statusUpdates: string[] = []
-			
+
 			// Track all status updates
 			const mockUpdate = vi.fn().mockImplementation((data: any) => {
 				if (data.status) {
@@ -310,11 +311,12 @@ describe("AssemblyAI Webhook API", () => {
 			// Mock AssemblyAI API
 			global.fetch = vi.fn().mockResolvedValue({
 				ok: true,
-				json: () => Promise.resolve({
-					text: "Test transcript",
-					confidence: 0.95,
-					audio_duration: 120,
-				}),
+				json: () =>
+					Promise.resolve({
+						text: "Test transcript",
+						confidence: 0.95,
+						audio_duration: 120,
+					}),
 			})
 
 			// Mock processing
@@ -336,8 +338,8 @@ describe("AssemblyAI Webhook API", () => {
 			// Verify correct status progression
 			expect(statusUpdates).toEqual([
 				"transcribed", // After transcript received
-				"processing", // Before analysis starts  
-				"ready",     // After analysis completes
+				"processing", // Before analysis starts
+				"ready", // After analysis completes
 			])
 		})
 	})
@@ -370,7 +372,7 @@ describe("AssemblyAI Webhook API", () => {
 
 			const response = await action({ request })
 			expect(response.status).toBe(404)
-			
+
 			const result = await response.json()
 			expect(result.error).toBe("Upload job not found")
 		})
@@ -466,7 +468,7 @@ describe("AssemblyAI Webhook API", () => {
 
 			const response = await action({ request })
 			expect(response.status).toBe(200)
-			
+
 			const result = await response.json()
 			expect(result.success).toBe(true)
 

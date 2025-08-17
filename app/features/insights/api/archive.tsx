@@ -29,14 +29,14 @@ export const action: ActionFunction = async ({ context, request }) => {
 		// we'll use a different approach - perhaps a status field or separate table
 		// For now, let's just log the action and return success
 		// TODO: Add proper archiving/hiding mechanism to the database schema
-		
+
 		consola.log(`User requested to ${action} insight ${insightId}`)
-		
+
 		// In a real implementation, you might:
 		// 1. Add a 'status' field to insights table
 		// 2. Create a separate 'insight_actions' table to track user actions
 		// 3. Use soft delete patterns
-		
+
 		// For now, we'll just return success without making database changes
 		const { error: updateError } = null // Placeholder - no actual update needed
 
@@ -47,7 +47,6 @@ export const action: ActionFunction = async ({ context, request }) => {
 
 		consola.log(`Successfully ${action}d insight ${insightId}`)
 		return Response.json({ success: true })
-
 	} catch (err) {
 		consola.error(`${action} API error:`, err)
 		return Response.json({ error: "Internal server error" }, { status: 500 })

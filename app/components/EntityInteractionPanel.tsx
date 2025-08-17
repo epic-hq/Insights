@@ -4,7 +4,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { Textarea } from "~/components/ui/textarea"
-import type { EntityType } from "~/features/annotations/db"
+import type { EntityFlag, EntityType } from "~/features/annotations/db"
 import { useEntityAnnotations } from "~/features/annotations/hooks"
 import { cn } from "~/lib/utils"
 
@@ -47,14 +47,14 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 	const handleArchive = () => {
 		submitFlag({
 			flag_type: "archived",
-			flag_value: !userFlags?.some((f: any) => f.flag_type === "archived" && f.flag_value),
+			flag_value: !userFlags?.some((f: EntityFlag) => f.flag_type === "archived" && f.flag_value),
 		})
 	}
 
 	const handleHide = () => {
 		submitFlag({
 			flag_type: "hidden",
-			flag_value: !userFlags?.some((f: any) => f.flag_type === "hidden" && f.flag_value),
+			flag_value: !userFlags?.some((f: EntityFlag) => f.flag_type === "hidden" && f.flag_value),
 		})
 	}
 

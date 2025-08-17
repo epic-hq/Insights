@@ -1,5 +1,5 @@
-import { useState, useEffect } from "react"
-import { Play, Pause, ChevronLeft, ChevronRight, Brain, Shield, Lightbulb, Zap, TrendingUp } from "lucide-react"
+import { Brain, ChevronLeft, ChevronRight, Lightbulb, Pause, Play, Shield, TrendingUp, Zap } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Progress } from "~/components/ui/progress"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
@@ -70,7 +70,7 @@ const educationalCards: EducationalCard[] = [
 export default function ProcessingScreen({ fileName, onComplete, interviewId }: ProcessingScreenProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 	const [isPlaying, setIsPlaying] = useState(true)
-	
+
 	// Use the realtime hook for actual progress tracking
 	const { progressInfo } = useInterviewProgress(interviewId || null)
 	const { progress, label: processingStage, isComplete } = progressInfo
@@ -128,7 +128,7 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 				<div className="space-y-3">
 					<div className="flex items-center justify-between">
 						<div>
-							<h2 className="font-medium text-white text-sm">{fileName}</h2>
+							<h2 className="font-medium text-sm text-white">{fileName}</h2>
 							<p className="text-gray-400 text-xs">{processingStage}</p>
 						</div>
 					</div>
@@ -176,20 +176,10 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 						</div>
 
 						<div className="flex gap-1">
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={prevCard}
-								className="h-8 w-8 text-white hover:bg-black/20"
-							>
+							<Button variant="ghost" size="icon" onClick={prevCard} className="h-8 w-8 text-white hover:bg-black/20">
 								<ChevronLeft className="h-4 w-4" />
 							</Button>
-							<Button
-								variant="ghost"
-								size="icon"
-								onClick={nextCard}
-								className="h-8 w-8 text-white hover:bg-black/20"
-							>
+							<Button variant="ghost" size="icon" onClick={nextCard} className="h-8 w-8 text-white hover:bg-black/20">
 								<ChevronRight className="h-4 w-4" />
 							</Button>
 						</div>
@@ -203,8 +193,8 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 						<div>
 							<p className="font-medium text-sm text-white">What happens next?</p>
 							<p className="text-gray-300 text-xs leading-relaxed">
-								Once processing is complete, you'll see your project dashboard with insights, personas, and key
-								themes. You can then add more interviews to unlock deeper patterns.
+								Once processing is complete, you'll see your project dashboard with insights, personas, and key themes.
+								You can then add more interviews to unlock deeper patterns.
 							</p>
 						</div>
 					</div>

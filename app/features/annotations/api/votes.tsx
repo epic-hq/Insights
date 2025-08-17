@@ -1,9 +1,9 @@
 import consola from "consola"
 import type { ActionFunction, LoaderFunction } from "react-router"
+import { getServerClient } from "~/lib/supabase/server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
-import { getServerClient } from "~/lib/supabase/server"
-import { type EntityType, getVoteCountsForEntity, getVoteCountsForEntities, removeVote, upsertVote } from "../db"
+import { type EntityType, getVoteCountsForEntities, getVoteCountsForEntity, removeVote, upsertVote } from "../db"
 
 // GET /api/votes - Fetch vote counts for an entity
 export const loader: LoaderFunction = async ({ request, params, context }) => {

@@ -26,14 +26,15 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 	const people = (persona.people_personas || [])
 		.map((pp) => pp?.people)
 		.filter((person): person is NonNullable<typeof person> => person !== null && person !== undefined)
-	
+
 	// Safely generate initials with fallback
-	const personaInitials = (persona.name || "")
-		.split(" ")
-		.map((word) => word?.[0] || "")
-		.join("")
-		.toUpperCase()
-		.slice(0, 2) || "??"
+	const personaInitials =
+		(persona.name || "")
+			.split(" ")
+			.map((word) => word?.[0] || "")
+			.join("")
+			.toUpperCase()
+			.slice(0, 2) || "??"
 
 	return (
 		<Link
@@ -69,7 +70,7 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 				{/* Description */}
 				{persona.description && persona.description.trim() && (
 					<div className="mb-4">
-						<p className="leading-relaxed text-sm text-gray-600">{persona.description}</p>
+						<p className="text-gray-600 text-sm leading-relaxed">{persona.description}</p>
 					</div>
 				)}
 
@@ -110,8 +111,8 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 				)}
 
 				{/* Metadata */}
-				<div className="mt-4 border-t border-gray-100 pt-4">
-					<div className="flex items-center justify-between text-xs text-gray-400">
+				<div className="mt-4 border-gray-100 border-t pt-4">
+					<div className="flex items-center justify-between text-gray-400 text-xs">
 						<span>Created {persona.created_at ? new Date(persona.created_at).toLocaleDateString() : "Unknown"}</span>
 						{persona.updated_at && persona.updated_at !== persona.created_at && (
 							<span>Updated {new Date(persona.updated_at).toLocaleDateString()}</span>

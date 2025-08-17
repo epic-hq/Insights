@@ -28,10 +28,11 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		// Check if file is text/markdown - handle directly without AssemblyAI
-		const isTextFile = file.type.startsWith('text/') || 
-			file.name.endsWith('.txt') || 
-			file.name.endsWith('.md') || 
-			file.name.endsWith('.markdown')
+		const isTextFile =
+			file.type.startsWith("text/") ||
+			file.name.endsWith(".txt") ||
+			file.name.endsWith(".md") ||
+			file.name.endsWith(".markdown")
 
 		let transcriptData: Record<string, unknown>
 		let mediaUrl: string
@@ -40,7 +41,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			// Handle text/markdown files - read content directly
 			consola.log("Processing text/markdown file:", file.name)
 			const textContent = await file.text()
-			
+
 			if (!textContent || textContent.trim().length === 0) {
 				return Response.json({ error: "Text file is empty or could not be read" }, { status: 400 })
 			}
@@ -49,14 +50,14 @@ export async function action({ request }: ActionFunctionArgs) {
 			transcriptData = {
 				full_transcript: textContent.trim(),
 				audio_duration: null, // No audio duration for text files
-				file_type: 'text',
-				original_filename: file.name
+				file_type: "text",
+				original_filename: file.name,
 			}
-			mediaUrl = '' // No media URL for text files
+			mediaUrl = "" // No media URL for text files
 
 			consola.log(
 				"Text file processed:",
-				`${textContent.length} characters\n${textContent.slice(0, 500)}${textContent.length > 500 ? '...' : ''}`
+				`${textContent.length} characters\n${textContent.slice(0, 500)}${textContent.length > 500 ? "..." : ""}`
 			)
 		} else {
 			// Handle audio/video files - use existing AssemblyAI flow
@@ -98,7 +99,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			accountId,
 			projectId,
 			fileName: file?.name,
-			interviewTitle: isTextFile 
+			interviewTitle: isTextFile
 				? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}`
 				: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
 			participantName: "Anonymous",

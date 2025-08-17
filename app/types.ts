@@ -198,16 +198,16 @@ export type InterviewStatus = z.infer<typeof InterviewStatus>
 
 // TODO: Double check the types here
 export type GetAccount = {
-	account_id: string,
-	account_role: string,
-	is_primary_owner: boolean,
-	name: string,
-	slug: string,
-	personal_account: boolean,
-	billing_enabled: boolean,
-	billing_status: string,
-	created_at: string,
-	updated_at: string,
+	account_id: string
+	account_role: string
+	is_primary_owner: boolean
+	name: string
+	slug: string
+	personal_account: boolean
+	billing_enabled: boolean
+	billing_status: string
+	created_at: string
+	updated_at: string
 	metadata: Record<string, unknown>
 }
 

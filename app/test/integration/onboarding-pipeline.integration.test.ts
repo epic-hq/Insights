@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { getTestDbState, mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
-import { action as onboardingAction } from "~/routes/api.onboarding-start"
 import { action as webhookAction } from "~/routes/api.assemblyai-webhook"
+import { action as onboardingAction } from "~/routes/api.onboarding-start"
+import { getTestDbState, mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Mock dependencies that require external services
 vi.mock("~/lib/supabase/server", () => ({
@@ -106,20 +106,12 @@ describe("Onboarding Pipeline Integration", () => {
 			const interviewId = onboardingResult.interviewId
 
 			// Verify database state after onboarding
-			const { data: interview } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interviewId)
-				.single()
+			const { data: interview } = await testDb.from("interviews").select("*").eq("id", interviewId).single()
 
 			expect(interview?.status).toBe("uploaded")
 			expect(interview?.title).toBe("Test Project")
 
-			const { data: uploadJob } = await testDb
-				.from("upload_jobs")
-				.select("*")
-				.eq("interview_id", interviewId)
-				.single()
+			const { data: uploadJob } = await testDb.from("upload_jobs").select("*").eq("interview_id", interviewId).single()
 
 			expect(uploadJob?.assemblyai_id).toBe("transcript-123")
 			expect(uploadJob?.status).toBe("in_progress")
@@ -166,11 +158,7 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResult.success).toBe(true)
 
 			// Verify final database state
-			const { data: finalInterview } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interviewId)
-				.single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interviewId).single()
 
 			expect(finalInterview?.status).toBe("ready")
 			expect(finalInterview?.transcript).toBe("This is a test transcript about user research and insights.")
@@ -194,18 +182,12 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(analysisJob?.progress).toBe(100)
 
 			// Verify insights and people were created
-			const { data: insights } = await testDb
-				.from("insights")
-				.select("*")
-				.eq("interview_id", interviewId)
+			const { data: insights } = await testDb.from("insights").select("*").eq("interview_id", interviewId)
 
 			expect(insights).toHaveLength(1)
 			expect(insights?.[0]?.name).toBe("Test Insight")
 
-			const { data: people } = await testDb
-				.from("interview_people")
-				.select("people(*)")
-				.eq("interview_id", interviewId)
+			const { data: people } = await testDb.from("interview_people").select("people(*)").eq("interview_id", interviewId)
 
 			expect(people).toHaveLength(1)
 		})
@@ -254,20 +236,13 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResult.message).toBe("Already processed")
 
 			// Verify original transcript was not overwritten
-			const { data: finalInterview } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interview!.id)
-				.single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview!.id).single()
 
 			expect(finalInterview?.transcript).toBe("Existing transcript")
 			expect(finalInterview?.status).toBe("ready")
 
 			// Verify no duplicate analysis jobs were created
-			const { data: analysisJobs } = await testDb
-				.from("analysis_jobs")
-				.select("*")
-				.eq("interview_id", interview!.id)
+			const { data: analysisJobs } = await testDb.from("analysis_jobs").select("*").eq("interview_id", interview!.id)
 
 			expect(analysisJobs).toHaveLength(0) // No analysis jobs should be created
 		})
@@ -307,11 +282,7 @@ describe("Onboarding Pipeline Integration", () => {
 
 			// Track status changes by querying before and after
 			const getStatus = async () => {
-				const { data } = await testDb
-					.from("interviews")
-					.select("status")
-					.eq("id", interview!.id)
-					.single()
+				const { data } = await testDb.from("interviews").select("status").eq("id", interview!.id).single()
 				return data?.status
 			}
 
@@ -386,11 +357,7 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResponse.status).toBe(200)
 
 			// Verify error status was set
-			const { data: finalInterview } = await testDb
-				.from("interviews")
-				.select("*")
-				.eq("id", interview!.id)
-				.single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview!.id).single()
 
 			expect(finalInterview?.status).toBe("error")
 

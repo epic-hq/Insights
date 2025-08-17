@@ -1,5 +1,5 @@
 import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
-import type { Database, InsightInsert, } from "~/types"
+import type { Database, InsightInsert } from "~/types"
 
 // This is our pattern for defining typed queries and returning results.
 // in particular, we should create variables that describe the results
@@ -45,13 +45,14 @@ export const getInsights = async ({
 		.order("created_at", { ascending: false })
 
 	const { data, error } = await query
-	const transformedData = data?.map(insight => ({
+	const transformedData = data?.map((insight) => ({
 		...insight,
-		insight_tags: insight.insight_tags?.map(it => ({
-			tag: it.tags?.tag,
-			term: it.tags?.term,
-			definition: it.tags?.definition
-		})) || []
+		insight_tags:
+			insight.insight_tags?.map((it) => ({
+				tag: it.tags?.tag,
+				term: it.tags?.term,
+				definition: it.tags?.definition,
+			})) || [],
 	}))
 	return { data: transformedData, error }
 }
@@ -107,7 +108,7 @@ export const getInsightById = async ({
 
 	if (error) {
 		// PGRST116 means no rows returned from .single()
-		if (error.code === 'PGRST116') {
+		if (error.code === "PGRST116") {
 			return null
 		}
 		throw new Response("Failed to load insight", { status: 500 })

@@ -1,4 +1,3 @@
-
 import consola from "consola"
 import ProcessingScreen from "../components/ProcessingScreen"
 import ProjectStatusScreen from "../components/ProjectStatusScreen"

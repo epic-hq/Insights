@@ -12,8 +12,8 @@ import { createRouteDefinitions, type RouteDefinitions } from "./route-definitio
  * @returns Route definitions object
  */
 export function createProjectRoutes(accountId: string, projectId: string): RouteDefinitions {
-  const projectPath = `/a/${accountId}/${projectId}`
-  return createRouteDefinitions(projectPath)
+	const projectPath = `/a/${accountId}/${projectId}`
+	return createRouteDefinitions(projectPath)
 }
 
 /**
@@ -21,5 +21,5 @@ export function createProjectRoutes(accountId: string, projectId: string): Route
  * @deprecated Use createProjectRoutes(accountId, projectId) instead
  */
 export function createProjectRoutesFromPath(projectPath: string): RouteDefinitions {
-  return createRouteDefinitions(projectPath)
+	return createRouteDefinitions(projectPath)
 }

@@ -95,7 +95,7 @@ export function ExampleInsightTagsComponent({ insightId, accountId }: { insightI
 		tags.map(tag => (
 			<span
             key= { tag }
-            className = "bg-blue-100 text-blue-800 px-2 py-1 rounded cursor-pointer"
+            className = "cursor-pointer rounded bg-blue-100 px-2 py-1 text-blue-800"
             onClick = {() => handleRemoveTag(tag)}
 		> _span
 	_keyg
@@ -106,7 +106,7 @@ export function ExampleInsightTagsComponent({ insightId, accountId }: { insightI
 </div>
 	< butto_span
 onClick = {() => handleAddTag('new-tag')}
-className = "mt-2 bg-green-500 text-white px-3 py-1 rounded" > Add
+className = "mt-2 rounded bg-green-500 px-3 py-1 text-white" > Add
 Tag < />bnottu < / > div
 )
 }
@@ -146,7 +146,7 @@ export function ExampleOpportunityInsightsComponent({ opportunityId }: { opportu
 	className = "space-y-2" >
 	{
 		insights.map(item => (
-			<div key= { item.insight_id } className = "border p-2 rounded" >
+			<div key= { item.insight_id } className = "rounded border p-2" >
 			<h4>{ item.insights.name } </h4>
 			< p > Weight: { item.weight } </p>
 			< p > Impact: { item.insights.impact } </p>

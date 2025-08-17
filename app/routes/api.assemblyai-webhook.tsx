@@ -23,9 +23,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		const payload: AssemblyAIWebhookPayload = await request.json()
-		consola.log("Received AssemblyAI webhook:", { 
-			transcript_id: payload.transcript_id, 
-			status: payload.status 
+		consola.log("Received AssemblyAI webhook:", {
+			transcript_id: payload.transcript_id,
+			status: payload.status,
 		})
 
 		// Use admin client for webhook operations (no user context)
@@ -43,13 +43,13 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.error("Error details:", {
 				error: uploadJobError,
 				hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
-				supabaseUrl: process.env.SUPABASE_URL
+				supabaseUrl: process.env.SUPABASE_URL,
 			})
 			return Response.json({ error: "Upload job not found" }, { status: 404 })
 		}
 
 		// Idempotency check - prevent duplicate processing
-		if (uploadJob.status === 'done') {
+		if (uploadJob.status === "done") {
 			consola.log("Upload job already processed, skipping:", payload.transcript_id)
 			return Response.json({ success: true, message: "Already processed" })
 		}
@@ -64,7 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 
 			const transcriptResp = await fetch(`https://api.assemblyai.com/v2/transcript/${payload.transcript_id}`, {
-				headers: { Authorization: apiKey }
+				headers: { Authorization: apiKey },
 			})
 
 			if (!transcriptResp.ok) {
@@ -80,9 +80,9 @@ export async function action({ request }: ActionFunctionArgs) {
 				confidence: transcriptData.confidence,
 				audio_duration: transcriptData.audio_duration,
 				processing_duration: 0,
-				file_type: 'audio',
+				file_type: "audio",
 				assemblyai_id: payload.transcript_id,
-				original_filename: uploadJob.file_name
+				original_filename: uploadJob.file_name,
 			}
 
 			// Update interview with transcript data - set to transcribed first
@@ -92,9 +92,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					status: "transcribed",
 					transcript: transcriptData.text,
 					transcript_formatted: formattedTranscriptData,
-					duration_min: transcriptData.audio_duration 
-						? Math.round(transcriptData.audio_duration / 60) 
-						: null
+					duration_min: transcriptData.audio_duration ? Math.round(transcriptData.audio_duration / 60) : null,
 				})
 				.eq("id", interviewId)
 
@@ -107,21 +105,21 @@ export async function action({ request }: ActionFunctionArgs) {
 				.from("upload_jobs")
 				.update({
 					status: "done",
-					status_detail: "Transcription completed"
+					status_detail: "Transcription completed",
 				})
 				.eq("id", uploadJob.id)
 
 			// Create analysis job and process immediately
 			const customInstructions = uploadJob.custom_instructions || ""
-			
+
 			const { data: analysisJob, error: analysisJobError } = await supabase
 				.from("analysis_jobs")
 				.insert({
 					interview_id: interviewId,
 					transcript_data: formattedTranscriptData,
 					custom_instructions: customInstructions,
-					status: 'in_progress',
-					status_detail: 'Processing with AI'
+					status: "in_progress",
+					status_detail: "Processing with AI",
 				})
 				.select()
 				.single()
@@ -133,10 +131,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.log("Created analysis job, processing immediately:", analysisJob.id)
 
 			// Update interview status to processing before starting analysis
-			await supabase
-				.from("interviews")
-				.update({ status: "processing" })
-				.eq("id", interviewId)
+			await supabase.from("interviews").update({ status: "processing" }).eq("id", interviewId)
 
 			// Process analysis immediately using complete processInterviewTranscript function
 			try {
@@ -153,7 +148,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 				// Import the webhook-specific processing function that uses admin client
 				const { processInterviewTranscriptWithAdminClient } = await import("~/utils/processInterview.server")
-				
+
 				// Construct metadata from interview record (convert null to undefined for type compatibility)
 				// Note: interview.account_id is actually user.sub (personal ownership)
 				const metadata = {
@@ -164,63 +159,55 @@ export async function action({ request }: ActionFunctionArgs) {
 					interviewDate: interview.interview_date || undefined,
 					participantName: interview.participant_pseudonym || undefined,
 					durationMin: interview.duration_min || undefined,
-					fileName: formattedTranscriptData.original_filename || undefined
+					fileName: formattedTranscriptData.original_filename || undefined,
 				}
-				
+
 				consola.log("Starting complete interview processing for interview:", interviewId)
-				
+
 				// Call the admin client processing function (no mock request needed)
 				await processInterviewTranscriptWithAdminClient({
 					metadata,
 					mediaUrl: interview.media_url || "",
 					transcriptData: formattedTranscriptData,
 					userCustomInstructions: customInstructions,
-					adminClient: supabase
+					adminClient: supabase,
 				})
-				
+
 				consola.log("Complete interview processing completed for interview:", interviewId)
 
 				// Mark analysis job as complete
 				await supabase
 					.from("analysis_jobs")
 					.update({
-						status: 'done',
-						status_detail: 'Analysis completed',
-						progress: 100
+						status: "done",
+						status_detail: "Analysis completed",
+						progress: 100,
 					})
 					.eq("id", analysisJob.id)
 
 				// Update interview status to ready
-				await supabase
-					.from("interviews")
-					.update({ status: 'ready' })
-					.eq("id", interviewId)
+				await supabase.from("interviews").update({ status: "ready" }).eq("id", interviewId)
 
 				consola.log("Successfully processed analysis for interview:", interviewId)
-
 			} catch (analysisError) {
 				consola.error("Analysis processing failed:", analysisError)
-				
+
 				// Mark analysis job as error
 				await supabase
 					.from("analysis_jobs")
 					.update({
-						status: 'error',
-						status_detail: 'Analysis failed',
-						last_error: analysisError instanceof Error ? analysisError.message : 'Unknown error'
+						status: "error",
+						status_detail: "Analysis failed",
+						last_error: analysisError instanceof Error ? analysisError.message : "Unknown error",
 					})
 					.eq("id", analysisJob.id)
 
 				// Update interview status to error
-				await supabase
-					.from("interviews")
-					.update({ status: 'error' })
-					.eq("id", interviewId)
+				await supabase.from("interviews").update({ status: "error" }).eq("id", interviewId)
 
 				// Continue webhook processing - don't fail the webhook for analysis errors
 				consola.log("Webhook completed despite analysis error")
 			}
-
 		} else if (payload.status === "failed" || payload.status === "error") {
 			// Handle transcription failure
 			consola.error("AssemblyAI transcription failed:", payload.transcript_id)
@@ -229,7 +216,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			await supabase
 				.from("interviews")
 				.update({
-					status: "error"
+					status: "error",
 				})
 				.eq("id", interviewId)
 
@@ -239,13 +226,12 @@ export async function action({ request }: ActionFunctionArgs) {
 				.update({
 					status: "error",
 					status_detail: "Transcription failed",
-					last_error: `AssemblyAI transcription failed with status: ${payload.status}`
+					last_error: `AssemblyAI transcription failed with status: ${payload.status}`,
 				})
 				.eq("id", uploadJob.id)
 		}
 
 		return Response.json({ success: true })
-
 	} catch (error) {
 		consola.error("AssemblyAI webhook processing failed:", error)
 		return Response.json(

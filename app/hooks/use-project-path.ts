@@ -15,11 +15,11 @@ export function useProjectPath() {
 	// Pregenerate all base paths for this account/project
 	const basePaths = useMemo(() => {
 		const result: Record<string, string> = {}
-			; (Object.keys(PATHS) as (keyof typeof PATHS)[]).forEach((key) => {
-				if (typeof PATHS[key] === "string") {
-					result[key] = `/a/${accountId}/${projectId}${PATHS[key]}`
-				}
-			})
+		;(Object.keys(PATHS) as (keyof typeof PATHS)[]).forEach((key) => {
+			if (typeof PATHS[key] === "string") {
+				result[key] = `/a/${accountId}/${projectId}${PATHS[key]}`
+			}
+		})
 		return result
 	}, [accountId, projectId])
 

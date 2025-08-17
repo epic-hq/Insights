@@ -4,8 +4,8 @@
  */
 
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 import { createSupabaseAdminClient } from "~/lib/supabase/server"
+import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Only mock external APIs, not our database or core logic
 vi.mock("consola", () => ({ default: { log: vi.fn(), error: vi.fn() } }))
@@ -178,11 +178,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			expect(analysisJob).toBeDefined()
 
 			// Verify final states
-			const { data: finalInterview } = await adminClient
-				.from("interviews")
-				.select("*")
-				.eq("id", interview!.id)
-				.single()
+			const { data: finalInterview } = await adminClient.from("interviews").select("*").eq("id", interview!.id).single()
 
 			expect(finalInterview?.status).toBe("transcribed")
 			expect(finalInterview?.transcript).toBe("New transcript from webhook")
@@ -430,10 +426,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			expect(analysisJob?.interview_id).toBe(interview!.id)
 
 			// Test cascade delete
-			const { error: deleteError } = await adminClient
-				.from("interviews")
-				.delete()
-				.eq("id", interview!.id)
+			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview!.id)
 
 			expect(deleteError).toBeNull()
 

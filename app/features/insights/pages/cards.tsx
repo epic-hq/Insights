@@ -24,11 +24,14 @@ export default function Cards() {
 	const { insights, filters } = useLoaderData<typeof loader>()
 	const [searchParams, setSearchParams] = useSearchParams()
 
-	const updateSort = useCallback((sort: string) => {
-		const newParams = new URLSearchParams(searchParams)
-		newParams.set("sort", sort)
-		setSearchParams(newParams)
-	}, [searchParams, setSearchParams])
+	const updateSort = useCallback(
+		(sort: string) => {
+			const newParams = new URLSearchParams(searchParams)
+			newParams.set("sort", sort)
+			setSearchParams(newParams)
+		},
+		[searchParams, setSearchParams]
+	)
 
 	const clearFilters = useCallback(() => {
 		setSearchParams({})

@@ -1,11 +1,11 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
-import { getOpportunityById } from "~/features/opportunities/db"
-import { userContext } from "~/server/user-context"
+import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { getOpportunityById } from "~/features/opportunities/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -17,7 +17,7 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 export async function loader({ params, context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -66,8 +66,6 @@ export default function OpportunityDetail() {
 		}
 	}
 
-
-
 	return (
 		<div className="mx-auto max-w-4xl">
 			<div className="mb-8 flex items-center justify-between">
@@ -79,7 +77,7 @@ export default function OpportunityDetail() {
 						<span className="text-gray-500">/</span>
 						<span className="text-gray-900">{opportunity.title}</span>
 					</div>
-					<h1 className="text-3xl font-bold text-gray-900">{opportunity.title}</h1>
+					<h1 className="font-bold text-3xl text-gray-900">{opportunity.title}</h1>
 				</div>
 				<div className="flex gap-2">
 					<Button asChild variant="outline">
@@ -95,10 +93,10 @@ export default function OpportunityDetail() {
 				<div className="lg:col-span-2">
 					{opportunity.opportunity_insights && opportunity.opportunity_insights.length > 0 && (
 						<div className="rounded-lg border bg-white p-6">
-							<h2 className="mb-4 text-xl font-semibold">Related Insights</h2>
+							<h2 className="mb-4 font-semibold text-xl">Related Insights</h2>
 							<div className="space-y-3">
 								{opportunity.opportunity_insights.map((opportunityInsight) => (
-									<div key={opportunityInsight.insights.id} className="border-l-4 border-blue-500 pl-4">
+									<div key={opportunityInsight.insights.id} className="border-blue-500 border-l-4 pl-4">
 										<Link
 											to={routes.insights.detail(opportunityInsight.insights.id)}
 											className="font-medium text-blue-600 hover:text-blue-800"
@@ -122,7 +120,7 @@ export default function OpportunityDetail() {
 						<h3 className="mb-4 font-semibold">Details</h3>
 						<div className="space-y-3">
 							<div>
-								<label className="text-sm font-medium text-gray-500">Status</label>
+								<label className="font-medium text-gray-500 text-sm">Status</label>
 								<div className="mt-1">
 									<Badge className={getStatusColor(opportunity.kanban_status || "")}>
 										{opportunity.kanban_status || "Unknown"}
@@ -131,16 +129,16 @@ export default function OpportunityDetail() {
 							</div>
 
 							<div>
-								<label className="text-sm font-medium text-gray-500">Created</label>
-								<div className="mt-1 text-sm text-gray-900">
+								<label className="font-medium text-gray-500 text-sm">Created</label>
+								<div className="mt-1 text-gray-900 text-sm">
 									{new Date(opportunity.created_at).toLocaleDateString()}
 								</div>
 							</div>
 
 							{opportunity.updated_at && (
 								<div>
-									<label className="text-sm font-medium text-gray-500">Last Updated</label>
-									<div className="mt-1 text-sm text-gray-900">
+									<label className="font-medium text-gray-500 text-sm">Last Updated</label>
+									<div className="mt-1 text-gray-900 text-sm">
 										{new Date(opportunity.updated_at).toLocaleDateString()}
 									</div>
 								</div>

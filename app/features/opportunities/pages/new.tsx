@@ -15,11 +15,11 @@ export const meta: MetaFunction = () => {
 export async function action({ request, params, context }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
-	
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
-	
+
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
@@ -61,21 +61,14 @@ export default function NewOpportunity() {
 	return (
 		<div className="mx-auto max-w-2xl">
 			<div className="mb-8">
-				<h1 className="text-3xl font-bold text-gray-900">New Opportunity</h1>
+				<h1 className="font-bold text-3xl text-gray-900">New Opportunity</h1>
 				<p className="mt-2 text-gray-600">Create a new opportunity</p>
 			</div>
 
 			<Form method="post" className="space-y-6">
 				<div>
 					<Label htmlFor="title">Title *</Label>
-					<Input
-						id="title"
-						name="title"
-						type="text"
-						required
-						placeholder="Enter opportunity title"
-						className="mt-1"
-					/>
+					<Input id="title" name="title" type="text" required placeholder="Enter opportunity title" className="mt-1" />
 				</div>
 
 				<div>
@@ -94,7 +87,7 @@ export default function NewOpportunity() {
 
 				{actionData?.error && (
 					<div className="rounded-md bg-red-50 p-4">
-						<p className="text-sm text-red-700">{actionData.error}</p>
+						<p className="text-red-700 text-sm">{actionData.error}</p>
 					</div>
 				)}
 
