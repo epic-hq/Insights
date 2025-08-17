@@ -139,8 +139,8 @@ create table if not exists public.project_sections (
   ) stored,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-	created_by uuid not null references auth.users(id) on delete cascade,
-	updated_by uuid not null references auth.users(id) on delete cascade
+	created_by uuid references auth.users(id) on delete cascade,
+	updated_by uuid references auth.users(id) on delete cascade
 );
 
 -- 3) Updated-at trigger (optional but useful)

@@ -21,6 +21,7 @@ export interface ProcessingResult {
 
 export interface InterviewMetadata {
 	accountId: string
+	userId?: string  // Add user ID for audit fields
 	projectId?: string
 	interviewTitle?: string
 	interviewDate?: string
@@ -69,6 +70,60 @@ export async function processInterviewTranscript({
 }): Promise<ProcessingResult> {
 	// Create authenticated client to respect RLS policies
 	const { client: db } = getServerClient(request)
+
+	return await processInterviewTranscriptWithClient({
+		metadata,
+		mediaUrl,
+		transcriptData,
+		userCustomInstructions,
+		client: db,
+	})
+}
+
+/**
+ * processInterviewTranscriptWithAdminClient
+ * ------------------------------------------
+ * Webhook-specific version that uses admin client for system operations.
+ * Bypasses RLS since webhooks have no user context.
+ */
+export async function processInterviewTranscriptWithAdminClient({
+	metadata,
+	mediaUrl,
+	transcriptData,
+	userCustomInstructions,
+	adminClient,
+}: {
+	metadata: InterviewMetadata
+	transcriptData: Record<string, unknown>
+	mediaUrl: string
+	userCustomInstructions?: string
+	adminClient: any
+}): Promise<ProcessingResult> {
+	return await processInterviewTranscriptWithClient({
+		metadata,
+		mediaUrl,
+		transcriptData,
+		userCustomInstructions,
+		client: adminClient,
+	})
+}
+
+/**
+ * Internal implementation shared by both public functions
+ */
+async function processInterviewTranscriptWithClient({
+	metadata,
+	mediaUrl,
+	transcriptData,
+	userCustomInstructions,
+	client: db,
+}: {
+	metadata: InterviewMetadata
+	transcriptData: Record<string, unknown>
+	mediaUrl: string
+	userCustomInstructions?: string
+	client: any
+}): Promise<ProcessingResult> {
 
 	// 1. Call the BAML process – this will invoke OpenAI GPT-4o under the hood
 	// Per BAML conventions, call the generated function directly on the `b` client.
@@ -132,6 +187,8 @@ export async function processInterviewTranscript({
 		contradictions: i.contradictions ?? null,
 		impact: i.impact ?? null,
 		novelty: i.novelty ?? null,
+		created_by: metadata.userId,  // Add user ID for audit
+		updated_by: metadata.userId
 	}))
 
 	// 4. Bulk upsert insights into Supabase

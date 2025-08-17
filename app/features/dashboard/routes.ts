@@ -1,9 +1,9 @@
 import { type RouteConfig, route } from "@react-router/dev/routes"
 
 export default [
-	// index("./features/projects/pages/projectDetail.tsx"),
-	route("dashboard", "./features/dashboard/pages/index.tsx"),
-	route("metro", "./features/dashboard/pages/metro-index.tsx")
+	// Make metro-index the default dashboard for mobile-first experience
+	route("dashboard", "./features/dashboard/pages/metro-index.tsx"),
+	route("classic", "./features/dashboard/pages/index.tsx") // Keep traditional as fallback
 
 	// layout("./layout.tsx", [
 	//   route("new", "./new.tsx"),

@@ -309,7 +309,51 @@ The new queue tables and enum are added declaratively first, then the diff tool 
 
 ---
 
-## 14 – Future “Generation” Queue
+## 14 – Current Implementation Process Flow
+
+### Simplified Pipeline Process Flow
+
+| **Step** | **Who Does It** | **What Happens** | **Database Changes** | **Credentials Used** |
+|----------|-----------------|------------------|---------------------|---------------------|
+| **1. User Upload** | `api.onboarding-start.tsx` | User uploads file → AssemblyAI transcription starts | • `interview` created (`status = 'uploaded'`)<br/>• `upload_job` created with `assemblyai_id`<br/>• `user_settings.onboarding_completed = true` | **Admin Client** (RLS bypass) |
+| **2. External Processing** | AssemblyAI Cloud | File transcription with speaker detection | *No database changes* | AssemblyAI API Key |
+| **3. Webhook Handler** | `api.assemblyai-webhook.tsx` | **Idempotency Check**: `if (uploadJob.status === 'done') return`<br/>**Webhook**: Receives `{transcript_id, status: "completed"}`<br/>**Fetch**: Gets full transcript data from AssemblyAI API | • **Check**: Skip if already processed<br/>• Update `interview.status = 'transcribed'` (50%)<br/>• Update `upload_job.status = 'done'` | **Admin Client** |
+| **4. Analysis Processing** | Same webhook call | **Status Update**: `interview.status = 'processing'` (85%)<br/>**Create**: `analysis_job` with `status = 'in_progress'`<br/>**Process**: Complete BAML analysis via `processInterviewTranscriptWithAdminClient()` | • Update `interview.status = 'processing'`<br/>• Create `analysis_job` record<br/>• **Complete BAML processing**<br/>• Store all `insights`, `people`, `personas` with nullable audit fields<br/>• Update `analysis_job.status = 'done'`<br/>• Update `interview.status = 'ready'` (100%) | **Admin Client** + `userId` for audit fields |
+
+**Key Simplifications:**
+- **Steps 3-7** all happen in one webhook call - no separate job queue
+- **Direct processing** instead of worker polling
+- **Single admin client** used throughout webhook processing
+- **End-to-end completion** in ~21 seconds
+
+### ✅ Critical Issues RESOLVED
+
+**✅ FIXED: Credential Consistency**
+- Webhook Handler uses **Admin Client** throughout processing chain
+- Interview Processor now has webhook-specific version `processInterviewTranscriptWithAdminClient()`
+- **Solution**: Admin client passed directly, no authentication chain breaks
+
+**✅ FIXED: Mock Request Anti-Pattern Eliminated**
+- No longer creating fake `Request` objects for system operations
+- **Solution**: Created `processInterviewTranscriptWithAdminClient()` that accepts admin client directly
+- **Result**: Clean webhook processing without authentication workarounds
+
+**✅ FIXED: RLS Policy Consistency**
+- Admin client bypasses RLS throughout entire processing chain
+- **Solution**: Webhook operations are system events using service role credentials
+- **Security**: Webhook authentication validates legitimacy, admin client handles data operations
+
+### ✅ Implementation: Clean Admin Client Architecture
+
+**Best Practice Achieved**: Admin credentials used for entire webhook processing chain
+- **Why**: Webhooks are system events, not user actions
+- **Security**: Maintained via AssemblyAI webhook authentication + service role key
+- **Implementation**: `processInterviewTranscriptWithAdminClient()` function for webhooks
+- **Result**: No mock requests, consistent credentials, reliable processing
+
+---
+
+## 15 – Future "Generation" Queue
 
 Add a generic **`generation_jobs`** table (same pattern) for large-scale content creation:
 
@@ -330,4 +374,4 @@ create table generation_jobs (
 ```
 
 Trigger + LISTEN/NOTIFY channel `generation_jobs_channel`.
-UI “Generate report” button inserts a row; worker picks it up to build topic clusters, summaries, or other AI-generated artefacts.
+UI "Generate report" button inserts a row; worker picks it up to build topic clusters, summaries, or other AI-generated artefacts.

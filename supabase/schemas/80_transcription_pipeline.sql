@@ -45,7 +45,7 @@ create policy "Users can view upload jobs for their interviews" on upload_jobs
   for select using (
     interview_id in (
       select id from interviews 
-      where account_id in (select accounts.get_accounts_with_role())
+      where account_id = auth.uid()
     )
   );
 
@@ -53,7 +53,7 @@ create policy "Users can insert upload jobs for their interviews" on upload_jobs
   for insert with check (
     interview_id in (
       select id from interviews 
-      where account_id in (select accounts.get_accounts_with_role())
+      where account_id = auth.uid()
     )
   );
 
@@ -61,7 +61,7 @@ create policy "Users can update upload jobs for their interviews" on upload_jobs
   for update using (
     interview_id in (
       select id from interviews 
-      where account_id in (select accounts.get_accounts_with_role())
+      where account_id = auth.uid()
     )
   );
 
@@ -70,7 +70,7 @@ create policy "Users can view analysis jobs for their interviews" on analysis_jo
   for select using (
     interview_id in (
       select id from interviews 
-      where account_id in (select accounts.get_accounts_with_role())
+      where account_id = auth.uid()
     )
   );
 
@@ -78,7 +78,7 @@ create policy "Users can insert analysis jobs for their interviews" on analysis_
   for insert with check (
     interview_id in (
       select id from interviews 
-      where account_id in (select accounts.get_accounts_with_role())
+      where account_id = auth.uid()
     )
   );
 
@@ -86,7 +86,7 @@ create policy "Users can update analysis jobs for their interviews" on analysis_
   for update using (
     interview_id in (
       select id from interviews 
-      where account_id in (select accounts.get_accounts_with_role())
+      where account_id = auth.uid()
     )
   );
 

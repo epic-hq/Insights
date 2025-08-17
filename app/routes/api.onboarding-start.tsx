@@ -3,7 +3,7 @@ import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { createProject } from "~/features/projects/db"
-import { getServerClient, getAuthenticatedUser } from "~/lib/supabase/server"
+import { getServerClient, getAuthenticatedUser, createSupabaseAdminClient } from "~/lib/supabase/server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 
@@ -232,8 +232,9 @@ Please extract insights that specifically address these research questions and h
 				original_filename: file.name
 			}
 
-			// Skip upload queue, go directly to analysis
-			const { error: analysisJobError } = await supabase
+			// Skip upload queue, go directly to analysis - use admin client to bypass RLS
+			const supabaseAdmin = createSupabaseAdminClient()
+			const { error: analysisJobError } = await supabaseAdmin
 				.from("analysis_jobs")
 				.insert({
 					interview_id: interview.id,
@@ -311,8 +312,9 @@ Please extract insights that specifically address these research questions and h
 
 			const { id: assemblyai_id } = await transcriptResp.json() as { id: string }
 
-			// Create upload job record for tracking
-			const { error: uploadJobError } = await supabase
+			// Create upload job record for tracking - use admin client to bypass RLS
+			const supabaseAdmin = createSupabaseAdminClient()
+			const { error: uploadJobError } = await supabaseAdmin
 				.from("upload_jobs")
 				.insert({
 					interview_id: interview.id,
@@ -332,6 +334,22 @@ Please extract insights that specifically address these research questions and h
 
 			consola.log("Transcription started with ID:", assemblyai_id)
 		}
+
+		// Mark onboarding completed when first interview is uploaded
+		const supabaseAdmin = createSupabaseAdminClient()
+		await supabaseAdmin
+			.from("user_settings")
+			.upsert({
+				user_id: user.sub,
+				onboarding_completed: true,
+				onboarding_steps: {
+					first_interview_uploaded: true,
+					first_interview_date: new Date().toISOString(),
+					first_interview_id: interview.id
+				}
+			}, {
+				onConflict: 'user_id'
+			})
 
 		return Response.json({
 			success: true,

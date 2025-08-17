@@ -1,8 +1,10 @@
 .env.keys
 node_modules
 .git
-.DS_Store
+.pnpm-store
 build
 dist
 coverage
 *.log
+*.local
+*.env

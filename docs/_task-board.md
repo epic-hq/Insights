@@ -1,32 +1,37 @@
 # Project Task Board
 
-## 🔜 Doing Now (Sprint 2 - Accounts & Projects controls and routing)
+## Onboarding Storyboard ✅ COMPLETED
 
-- [x] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
-- [x] Reset db.
-- [x] remove the db creation of response table
-- [x] fix login-redirect, and sign-in flow.
-- [x] Define Routing
-- [x] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
-- [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
-project detail getproject by id fails
-insights blank due to missing project_id for previous interviews. Test going forward.
-- [x] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
-- [x] insightDetail - not found bc linking to project_id. needs error guard
-- [x] personaDetail & edit
-- [x] people
-- [x] peopleDetail
-- [x] persona not added to proj or not queried right after add interview
-- [x] Deployed to fly.io as `upsight.fly.dev`
-- [x] Update all links to protectedLayout in app/routes
-- [x] interview upload should redir to interview detail page.
+- [x] **Webhook-driven transcription pipeline** - Complete event-driven processing deployed to production
+- [x] **Fixed webhook processing loop** - Added idempotency check to prevent duplicate processing
+- [x] **Fixed frontend status progression** - Status now progresses properly: 20% → 50% → 85% → 100%
+- [x] **Admin client authentication** - Webhooks use admin credentials for system operations
+- [x] **Nullable audit fields** - Made `created_by`/`updated_by` nullable for admin operations
+- [ ] Simplify the Processing component to show more of the current step in one place to look. Several places now. And less focus on % since it's unknown.
+- [ ] Tie in the Add Interview Button to use the pipeline.
+- [ ] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
 
-## Sprint 2.5 - Project Management
+### 🛠️ Critical Conventions to Remember
 
-- [x] Project display, editing, sections
-- [x] Test & confirm
-- [x] Memory leak fix. Rewrote db queries to be more focused, eliminating mebeddings, big transcripts etc.
-- [x] Stubbed out hooks for votes and annotations
+**Webhook Authentication Pattern:**
+- Webhooks ALWAYS use `createSupabaseAdminClient()` (no user context)
+- Pass `userId` from interview record for audit fields: `created_by: metadata.userId`
+- Admin client bypasses RLS - use for all system operations
+
+**ID Usage Conventions:**
+- `interview.account_id` = `user.sub` (personal ownership, auth.uid())
+- `metadata.userId` = `interview.account_id` for audit fields
+- `metadata.accountId` = `interview.account_id` for data scoping
+
+**Status Progression Pipeline:**
+```
+uploaded (20%) → transcribed (50%) → processing (85%) → ready (100%)
+```
+
+**Database Schema Notes:**
+- Audit fields (`created_by`, `updated_by`) are nullable to support admin operations
+- Upload jobs have idempotency via status check: `if (uploadJob.status === 'done') return`
+- Always update interview status before each major processing step
 
 ## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
 
@@ -38,9 +43,24 @@ insights blank due to missing project_id for previous interviews. Test going for
 
 - [ ] emotional_intensity (1-10)
 
-## UX Sprint - Mobile
+## UX Sprint - Mobile Metro Design System
 
+- [x] **Fix signup flow** - Changed redirect from `/signup_chat` to `/onboarding`
+- [x] **Make metro-index default dashboard** - Mobile-first tile design now default
+- [ ] **Extract MetroLayout component** - Create reusable metro layout system
+- [ ] **Migrate home page to metro tiles** - Apply metro design to `/home`
+- [ ] **Metro feature page templates** - Apply metro design to insights, people, personas
+- [ ] **Create MetroActionBar component** - Bottom navigation for mobile
+- [ ] **Metro responsive breakpoints** - Ensure desktop compatibility
 - [ ] convert mobile design from [v0](https://v0.app/chat/fork-of-mobile-insights-app-design-aV5ayoVifB4) to [remix w help of gpt5]()
+
+**Metro Design Achievements:**
+
+- 🎯 Mobile-optimized with perfect touch targets
+- ⚡ Fast tile-based navigation
+- 🎨 Black + colorful aesthetic (Windows Metro inspired)
+- 📱 Bottom action bars, slide-up panels
+- 🔗 Real-time data integration
 
 ## Sprint 3.5 - Annotations Component
 
@@ -222,3 +242,31 @@ UX
 - [x] **Fix remaining routes** - interview list and detail pages done. See `_NavLayout.insights/index.tsx` and `_NavLayout.interviews/$interviewId/route.tsx`.
 - [x] Propagate project_id everywhere
 - [x] Add project_id column for interview, people, personas, insights, tags, junction tables
+
+## 🔜 Doing Now (Sprint 2 - Accounts & Projects controls and routing)
+
+- [x] **imperative migrations** Ensure DB definition statements not handled by declarative schemas are handled in separate process and file.
+- [x] Reset db.
+- [x] remove the db creation of response table
+- [x] fix login-redirect, and sign-in flow.
+- [x] Define Routing
+- [x] Get user's current account and project id from DB. Add to CurrentProjectContext. It should be the Team's default project
+- [x] Implement useProjectRoutes in link building on every protected route segment. server and client.
+project detail getproject by id fails
+insights blank due to missing project_id for previous interviews. Test going forward.
+- [x] Thread account_id and project_id in server side loader/actions from CurrentProjectContext to check project_id (eq('account_id', …).eq('project_id', …))
+- [x] insightDetail - not found bc linking to project_id. needs error guard
+- [x] personaDetail & edit
+- [x] people
+- [x] peopleDetail
+- [x] persona not added to proj or not queried right after add interview
+- [x] Deployed to fly.io as `upsight.fly.dev`
+- [x] Update all links to protectedLayout in app/routes
+- [x] interview upload should redir to interview detail page.
+
+## Sprint 2.5 - Project Management
+
+- [x] Project display, editing, sections
+- [x] Test & confirm
+- [x] Memory leak fix. Rewrote db queries to be more focused, eliminating mebeddings, big transcripts etc.
+- [x] Stubbed out hooks for votes and annotations

@@ -302,6 +302,31 @@ export type Database = {
       [_ in never]: never
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -1532,6 +1557,7 @@ export type Database = {
           assemblyai_id: string | null
           attempts: number | null
           created_at: string | null
+          custom_instructions: string | null
           external_url: string | null
           file_name: string | null
           file_type: string | null
@@ -1546,6 +1572,7 @@ export type Database = {
           assemblyai_id?: string | null
           attempts?: number | null
           created_at?: string | null
+          custom_instructions?: string | null
           external_url?: string | null
           file_name?: string | null
           file_type?: string | null
@@ -1560,6 +1587,7 @@ export type Database = {
           assemblyai_id?: string | null
           attempts?: number | null
           created_at?: string | null
+          custom_instructions?: string | null
           external_url?: string | null
           file_name?: string | null
           file_type?: string | null
@@ -2206,6 +2234,9 @@ export const Constants = {
         "unpaid",
       ],
     },
+  },
+  graphql_public: {
+    Enums: {},
   },
   public: {
     Enums: {
