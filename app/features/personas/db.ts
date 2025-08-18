@@ -16,6 +16,5 @@ export const getPersonas = async ({
 			*,
 			people_personas(count)
 		`)
-		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 }

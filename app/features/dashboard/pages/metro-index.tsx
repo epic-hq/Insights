@@ -28,9 +28,11 @@ import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 // Hooks for current project routing
 import { useCurrentProject } from "~/contexts/current-project-context"
+import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen"
 import { getPeople } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
 import { getProjects } from "~/features/projects/db"
+import AddInterview from "~/features/upload/components/AddInterview"
 // Add Interview
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -51,6 +53,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
+	// TODO: use db calls instead unless exception
 	// Fetch project
 	const { data: project } = await supabase
 		.from("projects")
@@ -414,6 +417,16 @@ export default function Index() {
 					</div>
 				)}
 			</div>
+
+			{/* Project Status */}
+			<ProjectStatusScreen
+				projectName={project?.name || ""}
+				icp={project?.icp || ""}
+				onAddMore={() => {
+					// TODO find right funciton for new flow
+				}}
+				onViewResults={() => {}}
+			/>
 
 			<div className="p-3 pb-24">
 				{/* Expanded List */}

@@ -8,6 +8,7 @@ primary_region = 'sjc'
 
 [env]
   NODE_ENV = 'production'
+	HOST = "0.0.0.0"
   PORT = '3000'
 
 [http_service]
@@ -16,7 +17,7 @@ primary_region = 'sjc'
   auto_stop_machines = 'stop'
   auto_start_machines = true
   min_machines_running = 1
-  processes = ['both']
+  processes = ['web']
 
   [[http_service.checks]]
     grace_period = "10s"
@@ -38,12 +39,15 @@ primary_region = 'sjc'
   memory = '1gb'
 
 [deploy]
-  release_command = 'echo "Release command placeholder"'
+ release_command = 'echo "Release command placeholder"'
 
 [processes]
+web   = '/usr/local/bin/dotenvx run -- pnpm start'
+mastra = '/usr/local/bin/dotenvx run -- npx mastra start --dir app/mastra' # not "dev"
+
 #  app = '/usr/local/bin/dotenvx run -- pnpm start'
 #  mastra = '/usr/local/bin/dotenvx run -- npx mastra dev --dir app/mastra'
-  both = '/usr/local/bin/dotenvx run -- npx concurrently -n "App,Mastra" --c green,cyan "pnpm start" "npx mastra dev --dir app/mastra"'
+#  both = '/usr/local/bin/dotenvx run -- npx concurrently -n "App,Mastra" --c green,cyan "pnpm start" "npx mastra start --dir app/mastra"'
 
 # Optional: Add secrets for your encrypted environment variables
 # Run: flyctl secrets set DOTENV_PRIVATE_KEY_PRODUCTION='your-key-here'

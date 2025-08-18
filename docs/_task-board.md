@@ -1,6 +1,6 @@
 # Project Task Board
 
-## Onboarding Storyboard ✅ COMPLETED
+## Onboarding Storyboard ✅ Minor tasks to complete and verify
 
 - [x] **Webhook-driven transcription pipeline** - Complete event-driven processing deployed to production
 - [x] **Fixed webhook processing loop** - Added idempotency check to prevent duplicate processing
@@ -9,7 +9,16 @@
 - [x] **Nullable audit fields** - Made `created_by`/`updated_by` nullable for admin operations
 - [ ] Simplify the Processing component to show more of the current step in one place to look. Several places now. And less focus on % since it's unknown.
 - [ ] Tie in the Add Interview Button to use the pipeline.
-- [ ] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
+- [x] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
+- [ ] Get Fly.io to a clean state where releases complete
+
+## Metro UI
+
+- [ ] New Project Status page acceptance
+- [ ] Figure out how to easily plug metro in as a layout option for mobile screen size.
+- [ ] Verify all entities created from new onboarding step with right accountId if needed.
+- [ ] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
+- [ ] Redesign Entity components for Metro style.
 
 ### 🛠️ Critical Conventions to Remember
 
