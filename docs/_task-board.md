@@ -7,8 +7,9 @@
 - [x] **Fixed frontend status progression** - Status now progresses properly: 20% → 50% → 85% → 100%
 - [x] **Admin client authentication** - Webhooks use admin credentials for system operations
 - [x] **Nullable audit fields** - Made `created_by`/`updated_by` nullable for admin operations
-- [ ] Simplify the Processing component to show more of the current step in one place to look. Several places now. And less focus on % since it's unknown.
-- [ ] Tie in the Add Interview Button to use the pipeline.
+- [ ] Simplify the Processing component to show actual steps over % completion. Let user know they can leave/return.
+- [ ] Transcription record doesn't have diarization
+- [ ] Tie in the Add Interview Button to use the pipeline. What is the new add interview buttonfor the new onboarding process. assume it will be same flow, jsut not the first interview.
 - [x] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
 - [x] Get Fly.io to a clean state where releases complete
 - [x] Fix OOM errors with increased memory allocation (1GB → 2GB)
