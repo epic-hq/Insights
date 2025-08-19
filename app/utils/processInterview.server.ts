@@ -250,27 +250,93 @@ async function processInterviewTranscriptWithClient({
 		throw new Error("Person upsert succeeded but no ID returned")
 	}
 
-	// Find or create persona
+	// Intelligent persona assignment using BAML
 	let personaData: PersonasRow | null = null
-	if (interviewee?.persona?.trim()) {
-		const personaName = interviewee.persona.trim()
-
-		// First try to find existing persona
-		const { data: existingPersona, error: lookupError } = await db
+	
+	try {
+		// Get existing personas for this account
+		const { data: existingPersonas, error: personasError } = await db
 			.from("personas")
 			.select("*")
 			.eq("account_id", metadata.accountId)
-			.ilike("name", personaName)
-			.maybeSingle()
 
-		if (lookupError) {
-			consola.warn(`Failed to lookup persona "${personaName}": ${lookupError.message}`)
-		} else if (existingPersona) {
-			personaData = existingPersona
-			consola.log(`Found existing persona: ${personaName}`)
-		} else {
-			// Create new persona if not found
+		if (personasError) {
+			consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
+		}
+
+		// Prepare data for BAML function
+		const intervieweeInfo = JSON.stringify({
+			name: interviewee?.name || "Unknown",
+			persona: interviewee?.persona || null,
+			segment: interviewee?.segment || null,
+			participantDescription: interviewee?.participantDescription || null,
+			contactInfo: interviewee?.contactInfo || null
+		})
+
+		const existingPersonasData = JSON.stringify(existingPersonas || [])
+		
+		// Use BAML to make intelligent persona assignment decision
+		const decision = await b.AssignPersonaToInterview(
+			interviewRecord.transcript || "",
+			intervieweeInfo,
+			existingPersonasData
+		)
+
+		consola.log(`Persona assignment decision: ${decision.action} (confidence: ${decision.confidence_score})`)
+		consola.log(`Reasoning: ${decision.reasoning}`)
+
+		if (decision.action === "assign_existing" && decision.persona_id) {
+			// Find the existing persona by ID
+			const existingPersona = existingPersonas?.find((p: PersonasRow) => p.id === decision.persona_id)
+			if (existingPersona) {
+				personaData = existingPersona
+				consola.log(`Assigned to existing persona: ${existingPersona.name}`)
+			} else {
+				consola.warn(`Persona ID ${decision.persona_id} not found, falling back to creation`)
+			}
+		}
+
+		if (decision.action === "create_new" && decision.new_persona_data) {
+			// Create new persona using BAML-generated data
+			const newPersonaInsert = {
+				account_id: metadata.accountId,
+				project_id: metadata.projectId,
+				name: decision.new_persona_data.name,
+				description: decision.new_persona_data.description || `Auto-generated from interview: ${interviewRecord.title}`,
+				age: decision.new_persona_data.age,
+				gender: decision.new_persona_data.gender,
+				location: decision.new_persona_data.location,
+				education: decision.new_persona_data.education,
+				occupation: decision.new_persona_data.occupation,
+				income: decision.new_persona_data.income,
+				languages: decision.new_persona_data.languages,
+				segment: decision.new_persona_data.segment,
+				role: decision.new_persona_data.role,
+				color_hex: decision.new_persona_data.color_hex,
+				image_url: decision.new_persona_data.image_url,
+				percentage: decision.new_persona_data.percentage,
+			}
+
 			const { data: newPersona, error: createError } = await db
+				.from("personas")
+				.insert(newPersonaInsert)
+				.select("*")
+				.single()
+
+			if (createError) {
+				consola.warn(`Failed to create new persona: ${createError.message}`)
+			} else {
+				personaData = newPersona
+				consola.log(`Created new persona: ${newPersona.name}`)
+			}
+		}
+
+		// Fallback: if no persona was assigned and we have a persona name from extraction
+		if (!personaData && interviewee?.persona?.trim()) {
+			const personaName = interviewee.persona.trim()
+			consola.log(`Fallback: Creating simple persona for "${personaName}"`)
+			
+			const { data: fallbackPersona, error: fallbackError } = await db
 				.from("personas")
 				.insert({
 					account_id: metadata.accountId,
@@ -281,11 +347,34 @@ async function processInterviewTranscriptWithClient({
 				.select("*")
 				.single()
 
-			if (createError) {
-				consola.warn(`Failed to create persona "${personaName}": ${createError.message}`)
-			} else {
-				personaData = newPersona
-				consola.log(`Created new persona: ${personaName}`)
+			if (!fallbackError) {
+				personaData = fallbackPersona
+				consola.log(`Created fallback persona: ${personaName}`)
+			}
+		}
+
+	} catch (error) {
+		consola.error(`Error in intelligent persona assignment: ${error}`)
+		
+		// Fallback to simple logic if BAML fails
+		if (interviewee?.persona?.trim()) {
+			const personaName = interviewee.persona.trim()
+			consola.log(`BAML failed, using simple fallback for "${personaName}"`)
+			
+			const { data: simplePersona, error: simpleError } = await db
+				.from("personas")
+				.insert({
+					account_id: metadata.accountId,
+					project_id: metadata.projectId,
+					name: personaName,
+					description: `Auto-generated from interview: ${interviewRecord.title}`,
+				})
+				.select("*")
+				.single()
+
+			if (!simpleError) {
+				personaData = simplePersona
+				consola.log(`Created simple fallback persona: ${personaName}`)
 			}
 		}
 	}

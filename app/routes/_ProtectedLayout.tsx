@@ -2,7 +2,7 @@ import { CopilotKit } from "@copilotkit/react-core"
 import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
-import { Outlet, useLoaderData, useParams } from "react-router"
+import { Outlet, useLoaderData, useRouteLoaderData, useParams } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
@@ -111,6 +111,8 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function ProtectedLayout() {
 	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
+	const {  clientEnv } = useRouteLoaderData("root")
+consola.log("protected node-env: ",clientEnv)
 	const params = useParams()
 
 	return (
@@ -125,7 +127,7 @@ export default function ProtectedLayout() {
 					agent="insightsAgent"
 					runtimeUrl="/api/copilotkit"
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-					showDevConsole={true}
+					showDevConsole={clientEnv?.NODE_ENV === 'development'}
 					headers={{
 						"X-UserId": String(auth?.user?.sub ?? ""),
 						"X-AccountId": String(params.accountId ?? ""),

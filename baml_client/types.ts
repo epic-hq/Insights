@@ -524,6 +524,16 @@ export interface PersonaAnalysis {
   
 }
 
+export interface PersonaAssignmentDecision {
+  action: string
+  persona_id?: string | null
+  persona_name?: string | null
+  confidence_score: number
+  reasoning: string
+  new_persona_data?: Persona | null
+  
+}
+
 export interface PersonaSet {
   personas: Persona[]
   version: string

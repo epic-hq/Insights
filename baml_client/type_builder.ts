@@ -59,6 +59,8 @@ export default class TypeBuilder {
     
     PersonaAnalysis: ClassViewer<'PersonaAnalysis', "persona_name" | "key_pain_points" | "unmet_needs" | "revenue_potential" | "willingness_to_pay" | "recommended_solutions" | "competitive_threats">;
     
+    PersonaAssignmentDecision: ClassViewer<'PersonaAssignmentDecision', "action" | "persona_id" | "persona_name" | "confidence_score" | "reasoning" | "new_persona_data">;
+    
     PersonaSet: ClassViewer<'PersonaSet', "personas" | "version" | "change_log" | "contrast_persona">;
     
     ProjectAnalysis: ClassViewer<'ProjectAnalysis', "research_goal" | "question_answers" | "gap_analysis" | "key_discoveries" | "confidence_score" | "next_steps">;
@@ -86,7 +88,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AutoInsightsResponse","EvidenceSet","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
+            "ActionButton","AutoInsightsResponse","EvidenceSet","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -160,6 +162,10 @@ export default class TypeBuilder {
         
         this.PersonaAnalysis = this.tb.classViewer("PersonaAnalysis", [
           "persona_name","key_pain_points","unmet_needs","revenue_potential","willingness_to_pay","recommended_solutions","competitive_threats",
+        ]);
+        
+        this.PersonaAssignmentDecision = this.tb.classViewer("PersonaAssignmentDecision", [
+          "action","persona_id","persona_name","confidence_score","reasoning","new_persona_data",
         ]);
         
         this.PersonaSet = this.tb.classViewer("PersonaSet", [

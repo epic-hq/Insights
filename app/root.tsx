@@ -13,17 +13,18 @@ import {
 import { useChangeLanguage } from "remix-i18next/react"
 import { ClientOnly } from "~/components/ClientOnly"
 import { NotificationProvider } from "~/contexts/NotificationContext"
+import { loadContext } from "~/server/load-context"
 import type { Route } from "./+types/root"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
 
 export async function loader({ context, request }: Route.LoaderArgs) {
-	const { lang, clientEnv } = context
+	const loadCtx = context.get(loadContext)
 	const hints = getHints(request)
 
 	return {
-		lang,
-		clientEnv,
+		lang: loadCtx.lang,
+		clientEnv: loadCtx.clientEnv,
 		hints,
 	}
 }
@@ -63,6 +64,12 @@ export const handle = {
 export default function App({ loaderData }: Route.ComponentProps) {
 	const { lang, clientEnv } = loaderData
 	useChangeLanguage(lang)
+	
+	// Make clientEnv available globally on window.env for polyEnv pattern
+	if (typeof window !== 'undefined') {
+		window.env = clientEnv
+	}
+	
 	return (
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}

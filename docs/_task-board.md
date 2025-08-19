@@ -7,10 +7,10 @@
 - [x] **Fixed frontend status progression** - Status now progresses properly: 20% → 50% → 85% → 100%
 - [x] **Admin client authentication** - Webhooks use admin credentials for system operations
 - [x] **Nullable audit fields** - Made `created_by`/`updated_by` nullable for admin operations
-- [ ] Simplify the Processing component to show actual steps over % completion. Let user know they can leave/return.
+- [x] Simplify the Processing component to show actual steps over % completion. Let user know they can leave/return.
 - [ ] Transcription record doesn't have diarization
-- [ ] Tie in the Add Interview Button to use the pipeline. What is the new add interview buttonfor the new onboarding process. assume it will be same flow, jsut not the first interview.
-- [ ] People not being generated.
+- [x] Tie in the Add Interview Button to use the pipeline. What is the new add interview buttonfor the new onboarding process. assume it will be same flow, jsut not the first interview.
+- [ ] People not being generated. can be under Personas.
 - [x] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
 - [x] Get Fly.io to a clean state where releases complete
 - [x] Fix OOM errors with increased memory allocation (1GB → 2GB)
@@ -18,9 +18,9 @@
 
 ## Metro UI
 
-- [ ] New Project Status page acceptance
+- [x] New Project Status page acceptance
 '/Users/richardmoy/Downloads/page.tsx' contains some suggestions on how to add insights cards into the metro-index display. but we should think holisticlaly about it.
-- [ ] Figure out how to easily plug metro in as a layout option for mobile screen size.
+- [ ] Figure out how to easily plug metro in as a layout option for mobile screen size.Claude has plan.
 - [ ] Verify all entities created from new onboarding step with right accountId if needed.
 - [ ] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
 - [ ] Redesign Entity components for Metro style.
@@ -68,9 +68,14 @@ Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [
 - [new persona fields](https://chatgpt.com/c/689c3bc0-dd78-8331-aa94-8ad74916b318)
 
 - [ ] Improve persona generation. 4o has 128k input limit. gpt-5-nano is 400k and .05c in.
-- [ ] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
+- [x] Build personas from the existing interviews and insights and assign all the people to one, or Other. Flags = auto_assign_personas = true, auto_generate_new_personas = true (if false, eg later when solidified, it puts people in Other if they don't fit an existing persona)
+TEST IT MORE
 - [ ] Analyze Personas feature: make recommendations.
 - [ ] Chat about Personas
+
+## New Interviews
+
+- [ ] ProjectStatus page shold tell user what changed if its added in, as an annotation.
 
 ## Sprint 5 - Insights Optimization
 
@@ -101,7 +106,7 @@ Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [
 
 - [x] Create proper component for annotations. Stubbed out.
 - [x] Add annotations to insights and pick cards, v2, quick, or mobile
-- [ ] Users feature and api needed for team members to see each other, and Annothation comments to display who made them.
+- [ ] Users feature and api needed for team members to see each other, and Annothation comments to display who made them. /api/user-profile stubbed out.
 - [ ] Revise DB calls and build Annotations View in DB [spec](annotations-schema-proposal.md##Enhancement:AnnotationViews)
 
 ## Sprint 4: Workflow Pipelines ✅ COMPLETED

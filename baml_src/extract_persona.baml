@@ -374,3 +374,63 @@ function GeneratePersonas(interviews: string, people: string, insights: string) 
     {{ ctx.output_format }}
   "#
 }
+
+// New intelligent persona assignment decision
+class PersonaAssignmentDecision {
+  action string @description("Either 'assign_existing' or 'create_new'")
+  persona_id string | null @description("ID of existing persona if action is 'assign_existing', null if creating new")
+  persona_name string | null @description("Name of existing persona if assigning, or proposed name for new persona")
+  confidence_score float @description("Confidence in this decision from 0.0 to 1.0")
+  reasoning string @description("Detailed explanation of why this decision was made")
+  new_persona_data Persona | null @description("Complete persona data if action is 'create_new', null otherwise")
+}
+
+function AssignPersonaToInterview(
+  interview_transcript: string,
+  interviewee_info: string,
+  existing_personas: string
+) -> PersonaAssignmentDecision {
+  client "CustomGPT4oMini"
+  prompt #"
+    You are an expert UX researcher tasked with intelligently assigning an interview participant to either an existing persona or creating a new one.
+
+    DECISION CRITERIA:
+    1. ASSIGN TO EXISTING if the interviewee shows >70% alignment with an existing persona in:
+       - Core motivations and goals
+       - Key behaviors and patterns
+       - Primary pain points and frustrations
+       - Decision-making triggers
+       - Tech comfort level and preferences
+
+    2. CREATE NEW if the interviewee represents a distinct archetype that:
+       - Has fundamentally different motivations or goals
+       - Shows unique behavioral patterns not captured by existing personas
+       - Has different pain points or success definitions
+       - Represents a new segment or user type
+
+    ANALYSIS PROCESS:
+    1. Extract key characteristics from the interview transcript and interviewee info
+    2. Compare against each existing persona systematically
+    3. Calculate alignment percentage for each existing persona
+    4. If highest alignment is >70%, assign to that persona
+    5. If all alignments are <70%, create a new persona
+
+    INTERVIEW TRANSCRIPT:
+    {{ interview_transcript }}
+
+    INTERVIEWEE INFO:
+    {{ interviewee_info }}
+
+    EXISTING PERSONAS:
+    {{ existing_personas }}
+
+    Return a PersonaAssignmentDecision with:
+    - Clear action (assign_existing or create_new)
+    - Persona ID/name if assigning to existing
+    - Confidence score (0.0-1.0)
+    - Detailed reasoning for the decision
+    - Complete new persona data if creating new (following the Persona schema)
+
+    {{ ctx.output_format }}
+  "#
+}

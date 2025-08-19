@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { useNavigate } from "react-router"
+import { useNavigate, useRevalidator } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useNotification } from "~/contexts/NotificationContext"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -9,6 +9,7 @@ import UploadModal from "./UploadModal"
 export default function UploadButton() {
 	const [open, setOpen] = useState(false)
 	const navigate = useNavigate()
+	const revalidator = useRevalidator()
 	const { showNotification } = useNotification()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
@@ -17,12 +18,15 @@ export default function UploadButton() {
 		// Handle successful upload and processing
 		// Store result for debugging (accessible via window object in dev tools)
 		if (typeof window !== "undefined") {
-			;(window as any).lastInterviewResult = result
+			;(window as Record<string, unknown>).lastInterviewResult = result
 		}
 
 		// Show success notification
 		const insightCount = result.stored?.length || 0
 		showNotification(`Interview processed successfully! Generated ${insightCount} insights.`, "success", 4000)
+
+		// Revalidate all route data to refresh dashboard/project status
+		revalidator.revalidate()
 
 		// Close modal and navigate to the new interview
 		setOpen(false)
@@ -31,8 +35,8 @@ export default function UploadButton() {
 			// Navigate to the newly created interview
 			navigate(routes.interviews.detail(result.interview.id))
 		} else {
-			// Fallback: refresh the current page to show the new interview
-			window.location.reload()
+			// Fallback: navigate to interviews list to show the new interview
+			navigate(routes.interviews.index())
 		}
 	}
 
