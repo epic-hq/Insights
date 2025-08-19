@@ -1,7 +1,5 @@
-import { Brain, ChevronLeft, ChevronRight, Lightbulb, Pause, Play, Shield, TrendingUp, Zap } from "lucide-react"
+import { Brain, Lightbulb, Shield, TrendingUp, Zap } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Progress } from "~/components/ui/progress"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 
 interface EducationalCard {
@@ -69,7 +67,6 @@ const educationalCards: EducationalCard[] = [
 
 export default function ProcessingScreen({ fileName, onComplete, interviewId }: ProcessingScreenProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
-	const [isPlaying, setIsPlaying] = useState(true)
 
 	// Use the realtime hook for actual progress tracking
 	const { progressInfo } = useInterviewProgress(interviewId || null)
@@ -82,16 +79,14 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 		}
 	}, [isComplete, onComplete])
 
-	// Auto-advance cards
+	// Auto-advance cards every 8 seconds (slower, more relaxed)
 	useEffect(() => {
-		if (!isPlaying) return
-
 		const interval = setInterval(() => {
 			setCurrentCardIndex((prev) => (prev + 1) % educationalCards.length)
-		}, 5000) // 5 seconds per card
+		}, 8000)
 
 		return () => clearInterval(interval)
-	}, [isPlaying])
+	}, [])
 
 	const currentCard = educationalCards[currentCardIndex]
 	const IconComponent = currentCard.icon
@@ -100,111 +95,88 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 		setCurrentCardIndex(index)
 	}
 
-	const nextCard = () => {
-		setCurrentCardIndex((prev) => (prev + 1) % educationalCards.length)
-	}
-
-	const prevCard = () => {
-		setCurrentCardIndex((prev) => (prev - 1 + educationalCards.length) % educationalCards.length)
-	}
-
 	return (
 		<div className="relative min-h-screen bg-black text-white">
-			{/* Header */}
-			<div className="border-gray-800 border-b bg-black p-4">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600">
-							<div className="h-3 w-3 animate-spin rounded-full border-2 border-white border-t-transparent" />
-						</div>
-						<h1 className="font-semibold text-lg text-white">Processing your interview</h1>
+			{/* Clean Header */}
+			<div className="border-gray-800 border-b bg-black p-6">
+				<div className="flex items-center gap-4">
+					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/20">
+						<div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
 					</div>
-					<div className="text-gray-400 text-sm">{Math.round(progress)}%</div>
+					<div>
+						<h1 className="font-medium text-lg text-white">Processing Interview</h1>
+						<p className="text-gray-400 text-sm">{fileName}</p>
+					</div>
 				</div>
 			</div>
 
-			{/* Progress Section */}
-			<div className="border-gray-800 border-b bg-gray-900 p-4">
-				<div className="space-y-3">
-					<div className="flex items-center justify-between">
-						<div>
-							<h2 className="font-medium text-sm text-white">{fileName}</h2>
-							<p className="text-gray-400 text-xs">{processingStage}</p>
-						</div>
-					</div>
-					<Progress value={progress} className="h-2 bg-gray-700" />
-				</div>
-			</div>
-
-			{/* Educational Card */}
-			<div className="p-4">
-				<div className={`rounded-lg ${currentCard.color} p-6 text-white`}>
-					<div className="mb-4 flex items-center justify-between">
-						<div className="flex items-center gap-3">
-							<div className="flex h-10 w-10 items-center justify-center rounded-full bg-black/20">
-								<IconComponent className="h-5 w-5" />
+			{/* Main Content - Centered & Clean */}
+			<div className="flex min-h-[calc(100vh-89px)] items-center justify-center p-8">
+				<div className="w-full max-w-lg text-center">
+					{/* Primary Progress Indicator */}
+					<div className="mb-8">
+						<div className="mx-auto mb-6 h-24 w-24">
+							<div className="relative h-full w-full">
+								{/* Background circle */}
+								<svg className="h-full w-full rotate-[-90deg]" viewBox="0 0 36 36">
+									<path
+										d="m18,2.0845
+											a 15.9155,15.9155 0 0,1 0,31.831
+											a 15.9155,15.9155 0 0,1 0,-31.831"
+										fill="none"
+										stroke="rgba(59, 130, 246, 0.2)"
+										strokeWidth="3"
+									/>
+									{/* Progress circle */}
+									<path
+										d="m18,2.0845
+											a 15.9155,15.9155 0 0,1 0,31.831
+											a 15.9155,15.9155 0 0,1 0,-31.831"
+										fill="none"
+										stroke="rgb(59, 130, 246)"
+										strokeWidth="3"
+										strokeDasharray={`${progress}, 100`}
+										className="transition-all duration-1000 ease-out"
+									/>
+								</svg>
+								{/* Percentage in center */}
+								<div className="absolute inset-0 flex items-center justify-center">
+									<span className="text-2xl font-light text-white">{Math.round(progress)}%</span>
+								</div>
 							</div>
-							<div>
-								<h3 className="font-semibold text-lg">{currentCard.title}</h3>
-								<p className="text-sm opacity-80">{currentCard.subtitle}</p>
-							</div>
 						</div>
-						<Button
-							variant="ghost"
-							size="icon"
-							onClick={() => setIsPlaying(!isPlaying)}
-							className="h-8 w-8 text-white hover:bg-black/20"
-						>
-							{isPlaying ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-						</Button>
+						
+						{/* Processing Stage */}
+						<h2 className="mb-2 text-xl font-light text-white">{processingStage}</h2>
+						<p className="text-gray-400 text-sm">
+							{Math.max(1, Math.ceil((100 - progress) / 20))} {Math.ceil((100 - progress) / 20) === 1 ? 'minute' : 'minutes'} remaining
+						</p>
 					</div>
 
-					<p className="mb-6 text-sm leading-relaxed opacity-90">{currentCard.content}</p>
-
-					{/* Card Navigation */}
-					<div className="flex items-center justify-between">
-						<div className="flex gap-2">
-							{educationalCards.map((card, index) => (
+					{/* Educational Content - Minimal */}
+					<div className="rounded-lg bg-gray-900/50 p-6 backdrop-blur">
+						<div className="mb-4 flex justify-center">
+							<div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/20">
+								<IconComponent className="h-6 w-6 text-blue-400" />
+							</div>
+						</div>
+						
+						<h3 className="mb-3 text-lg font-medium text-white">{currentCard.title}</h3>
+						<p className="text-gray-300 text-sm leading-relaxed">{currentCard.content}</p>
+						
+						{/* Simple dots indicator */}
+						<div className="mt-6 flex justify-center gap-2">
+							{educationalCards.map((_, index) => (
 								<button
-									key={card.id}
+									key={index}
 									onClick={() => goToCard(index)}
-									className={`h-2 w-8 rounded-full transition-all ${
-										index === currentCardIndex ? "bg-white" : "bg-white/30"
+									className={`h-1.5 w-1.5 rounded-full transition-all ${
+										index === currentCardIndex ? "bg-blue-400" : "bg-gray-600"
 									}`}
 								/>
 							))}
 						</div>
-
-						<div className="flex gap-1">
-							<Button variant="ghost" size="icon" onClick={prevCard} className="h-8 w-8 text-white hover:bg-black/20">
-								<ChevronLeft className="h-4 w-4" />
-							</Button>
-							<Button variant="ghost" size="icon" onClick={nextCard} className="h-8 w-8 text-white hover:bg-black/20">
-								<ChevronRight className="h-4 w-4" />
-							</Button>
-						</div>
 					</div>
-				</div>
-
-				{/* Processing Info */}
-				<div className="mt-6 rounded-lg bg-gray-900 p-4">
-					<div className="flex items-start gap-3">
-						<div className="mt-1 h-2 w-2 rounded-full bg-blue-400" />
-						<div>
-							<p className="font-medium text-sm text-white">What happens next?</p>
-							<p className="text-gray-300 text-xs leading-relaxed">
-								Once processing is complete, you'll see your project dashboard with insights, personas, and key themes.
-								You can then add more interviews to unlock deeper patterns.
-							</p>
-						</div>
-					</div>
-				</div>
-
-				{/* Estimated Time */}
-				<div className="mt-4 text-center">
-					<p className="text-gray-400 text-xs">
-						Estimated time remaining: {Math.max(1, Math.ceil((100 - progress) / 20))} minutes
-					</p>
 				</div>
 			</div>
 		</div>

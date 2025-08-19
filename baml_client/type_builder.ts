@@ -33,6 +33,8 @@ export default class TypeBuilder {
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
+    ExecutiveSummary: ClassViewer<'ExecutiveSummary', "key_findings" | "completion_percentage" | "confidence" | "next_action">;
+    
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
     GapAnalysis: ClassViewer<'GapAnalysis', "unanswered_questions" | "partially_answered_questions" | "follow_up_recommendations" | "suggested_interview_topics">;
@@ -61,8 +63,6 @@ export default class TypeBuilder {
     
     ProjectAnalysis: ClassViewer<'ProjectAnalysis', "research_goal" | "question_answers" | "gap_analysis" | "key_discoveries" | "confidence_score" | "next_steps">;
     
-    QuickInsights: ClassViewer<'QuickInsights', "key_findings" | "completion_percentage" | "confidence" | "next_action">;
-    
     ResearchGoal: ClassViewer<'ResearchGoal', "goal" | "icp" | "role" | "questions">;
     
     ResearchQuestion: ClassViewer<'ResearchQuestion', "question" | "priority">;
@@ -86,7 +86,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AutoInsightsResponse","EvidenceSet","ExecutiveInsight","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaSet","ProjectAnalysis","QuickInsights","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
+            "ActionButton","AutoInsightsResponse","EvidenceSet","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -108,6 +108,10 @@ export default class TypeBuilder {
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [
           "title","insight","evidence","business_impact","impact_level","confidence_level","personas_affected","recommended_actions","category",
+        ]);
+        
+        this.ExecutiveSummary = this.tb.classViewer("ExecutiveSummary", [
+          "key_findings","completion_percentage","confidence","next_action",
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
@@ -164,10 +168,6 @@ export default class TypeBuilder {
         
         this.ProjectAnalysis = this.tb.classViewer("ProjectAnalysis", [
           "research_goal","question_answers","gap_analysis","key_discoveries","confidence_score","next_steps",
-        ]);
-        
-        this.QuickInsights = this.tb.classViewer("QuickInsights", [
-          "key_findings","completion_percentage","confidence","next_action",
         ]);
         
         this.ResearchGoal = this.tb.classViewer("ResearchGoal", [

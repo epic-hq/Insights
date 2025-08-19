@@ -40,7 +40,7 @@ export const getInsights = async ({
 			tags (tag,term, definition)
 		)
   `)
-		.eq("account_id", accountId)
+		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 

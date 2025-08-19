@@ -39,6 +39,7 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 // --- DB types ---------------------------------------------------------------
 import type { Insight, InsightView, Interview, OpportunityView, Person, Persona, Project } from "~/types"
+import { getProjectStatusData } from "~/utils/project-status.server"
 import { createProjectRoutes } from "~/utils/routes.server"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -259,6 +260,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { data: people } = await getPeople({ supabase, accountId, projectId })
 	const projects = await getProjects({ supabase, accountId })
 
+	// Fetch project status data
+	const projectStatusData = await getProjectStatusData(projectId, supabase, accountId)
+
 	return {
 		personas,
 		interviews,
@@ -269,6 +273,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		project,
 		people,
 		tags, // Add tags to the return object for TagDisplay
+		projectStatusData,
 	}
 }
 
@@ -340,8 +345,16 @@ const mainSections = [
 ]
 
 export default function Index() {
-	const { project } = useRouteLoaderData<typeof loader>("routes/_protected/projects")
-	const { personas = [], insights = [], interviews = [], projects = [], people = [] } = useLoaderData<typeof loader>()
+	const { projectId, project } = useRouteLoaderData("routes/_protected/projects")
+	const {
+		personas = [],
+		insights = [],
+		interviews = [],
+		projects = [],
+		people = [],
+		projectStatusData,
+	} = useLoaderData<typeof loader>()
+	const [showExpandedSection, _setShowExpandedSection] = useState<boolean>(false)
 
 	const navigate = useNavigate()
 	const { projectPath } = useCurrentProject()
@@ -386,7 +399,7 @@ export default function Index() {
 				<div className="mb-3 flex flex-row items-center justify-between">
 					<div className="flex items-center gap-2 font-light text-2xl text-white">
 						<LogoBrand />
-						<div className="italics font-thin text-lg text-white ">[{project?.name}]</div>
+						{/* <div className="italics font-thin text-lg text-white ">[{project?.name}]</div> */}
 					</div>
 
 					<div className="flex gap-1">
@@ -422,6 +435,8 @@ export default function Index() {
 			<ProjectStatusScreen
 				projectName={project?.name || ""}
 				icp={project?.icp || ""}
+				projectId={projectId}
+				statusData={projectStatusData}
 				onAddMore={() => {
 					// TODO find right funciton for new flow
 				}}
@@ -430,7 +445,7 @@ export default function Index() {
 
 			<div className="p-3 pb-24">
 				{/* Expanded List */}
-				{expandedSection && !fullScreenContent && (
+				{showExpandedSection && expandedSection && !fullScreenContent && (
 					<div className="space-y-3">
 						<div className={`-mx-4 mb-4 flex items-center justify-between p-3 ${getSectionColor(expandedSection)}`}>
 							<div>
@@ -521,7 +536,7 @@ export default function Index() {
 				)}
 
 				{/* Main tiles */}
-				{!expandedSection && !fullScreenContent && (
+				{showExpandedSection && !expandedSection && !fullScreenContent && (
 					<div className="mb-4 grid grid-cols-2 gap-1">
 						{mainSections.slice(0, 4).map((section) => (
 							<div

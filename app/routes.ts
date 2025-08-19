@@ -69,6 +69,7 @@ const routes = [
 	route("api/daily-brief", "./routes/api.daily-brief.tsx"),
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
+	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

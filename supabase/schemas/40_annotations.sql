@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS public.annotations (
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
 
   -- Entity reference (polymorphic)
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person')),
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project')),
   entity_id UUID NOT NULL,
 
   -- Annotation metadata
@@ -43,7 +43,7 @@ CREATE TABLE IF NOT EXISTS public.votes (
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
 
   -- Entity reference (polymorphic)
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person')),
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project')),
   entity_id UUID NOT NULL,
 
   -- Vote data - use auth.uid() for user_id to support multi-user accounts
@@ -66,7 +66,7 @@ CREATE TABLE IF NOT EXISTS public.entity_flags (
   project_id UUID NOT NULL REFERENCES public.projects(id) ON DELETE CASCADE,
 
   -- Entity reference (polymorphic)
-  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person')),
+  entity_type TEXT NOT NULL CHECK (entity_type IN ('insight', 'persona', 'opportunity', 'interview', 'person', 'project')),
   entity_id UUID NOT NULL,
 
   -- Flag data - use auth.uid() for user_id to support multi-user accounts
@@ -112,7 +112,20 @@ create policy "Account members can insert annotations"
         or exists (
             select 1 from accounts.account_user
             where account_user.user_id = auth.uid()
-              and account_user.account_id = account_id
+              and account_user.account_id = annotations.account_id
+        )
+        or auth.role() = 'service_role'
+    );
+
+-- Policy: Allow account members to select annotations in their account
+create policy "Account members can view annotations"
+    on public.annotations
+    for select
+    using (
+        exists (
+            select 1 from accounts.account_user
+            where account_user.user_id = auth.uid()
+              and account_user.account_id = annotations.account_id
         )
         or auth.role() = 'service_role'
     );

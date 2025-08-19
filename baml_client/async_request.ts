@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, ClientRegistry, Image, Audio, Pdf, Vi
 import { toBamlError, HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, ProjectAnalysis, QuickInsights, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
 import type TypeBuilder from "./type_builder"
 
 type BamlCallOptions = {
@@ -36,7 +36,7 @@ export class AsyncHttpRequest {
 
   
   async AnalyzeProjectInsights(
-      research_goal: string,insights_data: string,interview_summary: string,
+      research_goal: string,insights_data: string,interview_summary: string,custom_instructions: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -47,7 +47,7 @@ export class AsyncHttpRequest {
       return await this.runtime.buildRequest(
         "AnalyzeProjectInsights",
         {
-          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary
+          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary,"custom_instructions": custom_instructions
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -260,6 +260,31 @@ export class AsyncHttpRequest {
     }
   }
   
+  async GenerateExecutiveSummary(
+      research_goal: string,insights_content: string,interview_content: string,custom_instructions: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<HTTPRequest> {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return await this.runtime.buildRequest(
+        "GenerateExecutiveSummary",
+        {
+          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content,"custom_instructions": custom_instructions
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        false,
+        env
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   async GeneratePersonas(
       interviews: string,people: string,insights: string,
       __baml_options__?: BamlCallOptions
@@ -273,31 +298,6 @@ export class AsyncHttpRequest {
         "GeneratePersonas",
         {
           "interviews": interviews,"people": people,"insights": insights
-        },
-        this.ctxManager.cloneContext(),
-        __baml_options__?.tb?.__tb(),
-        __baml_options__?.clientRegistry,
-        false,
-        env
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async GenerateQuickInsights(
-      research_goal: string,insights_content: string,interview_content: string,
-      __baml_options__?: BamlCallOptions
-  ): Promise<HTTPRequest> {
-    try {
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      return await this.runtime.buildRequest(
-        "GenerateQuickInsights",
-        {
-          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -392,7 +392,7 @@ export class AsyncHttpStreamRequest {
 
   
   async AnalyzeProjectInsights(
-      research_goal: string,insights_data: string,interview_summary: string,
+      research_goal: string,insights_data: string,interview_summary: string,custom_instructions: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -403,7 +403,7 @@ export class AsyncHttpStreamRequest {
       return await this.runtime.buildRequest(
         "AnalyzeProjectInsights",
         {
-          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary
+          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary,"custom_instructions": custom_instructions
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -616,6 +616,31 @@ export class AsyncHttpStreamRequest {
     }
   }
   
+  async GenerateExecutiveSummary(
+      research_goal: string,insights_content: string,interview_content: string,custom_instructions: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<HTTPRequest> {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return await this.runtime.buildRequest(
+        "GenerateExecutiveSummary",
+        {
+          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content,"custom_instructions": custom_instructions
+        },
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        true,
+        env
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   async GeneratePersonas(
       interviews: string,people: string,insights: string,
       __baml_options__?: BamlCallOptions
@@ -629,31 +654,6 @@ export class AsyncHttpStreamRequest {
         "GeneratePersonas",
         {
           "interviews": interviews,"people": people,"insights": insights
-        },
-        this.ctxManager.cloneContext(),
-        __baml_options__?.tb?.__tb(),
-        __baml_options__?.clientRegistry,
-        true,
-        env
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async GenerateQuickInsights(
-      research_goal: string,insights_content: string,interview_content: string,
-      __baml_options__?: BamlCallOptions
-  ): Promise<HTTPRequest> {
-    try {
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      return await this.runtime.buildRequest(
-        "GenerateQuickInsights",
-        {
-          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

@@ -28,8 +28,8 @@ test GenerateResearchQuestions_Custom_Instructions {
   }
 }
 
-test GenerateQuickInsights_Pizza_Basic {
-  functions [GenerateQuickInsights]
+test GenerateExecutiveSummary_Pizza_Basic {
+  functions [GenerateExecutiveSummary]
   args {
     research_goal "understand operational challenges for pizza shop owners"
     insights_content #"""
@@ -51,6 +51,8 @@ Maria (Mama Mia's, 15 years):
 - Family business struggling with rising costs
 - Paper schedules, constant sick callouts
 - Would pay for time-saving solutions
-"""#
-  }
+""#,
+					custom_instructions ""
+				}
+
 }

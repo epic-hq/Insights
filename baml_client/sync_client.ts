@@ -22,7 +22,7 @@ import type { BamlRuntime, FunctionResult, BamlCtxManager, Image, Audio, Pdf, Vi
 import { toBamlError, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, ProjectAnalysis, QuickInsights, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
 import type TypeBuilder from "./type_builder"
 import { HttpRequest, HttpStreamRequest } from "./sync_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -90,7 +90,7 @@ export class BamlSyncClient {
 
   
   AnalyzeProjectInsights(
-      research_goal: string,insights_data: string,interview_summary: string,
+      research_goal: string,insights_data: string,interview_summary: string,custom_instructions: string,
       __baml_options__?: BamlCallOptions
   ): types.ProjectAnalysis {
     try {
@@ -103,7 +103,7 @@ export class BamlSyncClient {
       const raw = this.runtime.callFunctionSync(
         "AnalyzeProjectInsights",
         {
-          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary
+          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary,"custom_instructions": custom_instructions
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),
@@ -341,6 +341,34 @@ export class BamlSyncClient {
     }
   }
   
+  GenerateExecutiveSummary(
+      research_goal: string,insights_content: string,interview_content: string,custom_instructions: string,
+      __baml_options__?: BamlCallOptions
+  ): types.ExecutiveSummary {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.callFunctionSync(
+        "GenerateExecutiveSummary",
+        {
+          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content,"custom_instructions": custom_instructions
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.ExecutiveSummary
+    } catch (error: any) {
+      throw toBamlError(error);
+    }
+  }
+  
   GeneratePersonas(
       interviews: string,people: string,insights: string,
       __baml_options__?: BamlCallOptions
@@ -364,34 +392,6 @@ export class BamlSyncClient {
         env,
       )
       return raw.parsed(false) as types.Persona[]
-    } catch (error: any) {
-      throw toBamlError(error);
-    }
-  }
-  
-  GenerateQuickInsights(
-      research_goal: string,insights_content: string,interview_content: string,
-      __baml_options__?: BamlCallOptions
-  ): types.QuickInsights {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = this.runtime.callFunctionSync(
-        "GenerateQuickInsights",
-        {
-          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content
-        },
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-      )
-      return raw.parsed(false) as types.QuickInsights
     } catch (error: any) {
       throw toBamlError(error);
     }

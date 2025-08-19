@@ -39,7 +39,8 @@ class ProjectAnalysis {
 function AnalyzeProjectInsights(
   research_goal: string,
   insights_data: string,
-  interview_summary: string
+  interview_summary: string,
+  custom_instructions: string
 ) -> ProjectAnalysis {
   client CustomGPT4o
   prompt #"
@@ -55,6 +56,13 @@ function AnalyzeProjectInsights(
     {{ interview_summary }}
 
     TASK: Analyze how well the insights answer each research question:
+
+    If we have custom_instructions, use them, otherwise follow the guidlines below.
+
+    CUSTOM_INSTRUCTIONS:
+    {{ custom_instructions }}
+
+    GUIDELINES:
 
     1. For each question, identify:
        - Which insights directly or indirectly answer it
@@ -84,21 +92,23 @@ function AnalyzeProjectInsights(
 }
 
 // Quick summary for status screens
-class QuickInsights {
+class ExecutiveSummary {
   key_findings string[]
   completion_percentage int
   confidence int @description("1-3 with 1 being highest ")
   next_action string
 }
 
-function GenerateQuickInsights(
+function GenerateExecutiveSummary(
   research_goal: string,
   insights_content: string,
-  interview_content: string
-) -> QuickInsights {
+  interview_content: string,
+  custom_instructions: string
+) -> ExecutiveSummary {
   client CustomGPT4o
   prompt #"
-    Generate a quick summary for a project status screen.
+    Generate an executive summary of the project that answers their question,
+		or if there's insufficient information, what they should do next.
 
     Research Goal: {{ research_goal }}
 
@@ -108,7 +118,7 @@ function GenerateQuickInsights(
     INTERVIEWS:
     {{ interview_content }}
 
-    Analyze the content and provide:
+	  Analyze the content and provide:
 
     key_findings: Array of 2-3 most important discoveries (strings)
     completion_percentage: Integer 0-100 estimating how much of the research goal has been answered

@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, ProjectAnalysis, QuickInsights, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
+import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -88,7 +88,7 @@ export class BamlAsyncClient {
 
   
   async AnalyzeProjectInsights(
-      research_goal: string,insights_data: string,interview_summary: string,
+      research_goal: string,insights_data: string,interview_summary: string,custom_instructions: string,
       __baml_options__?: BamlCallOptions
   ): Promise<types.ProjectAnalysis> {
     try {
@@ -101,7 +101,7 @@ export class BamlAsyncClient {
       const raw = await this.runtime.callFunction(
         "AnalyzeProjectInsights",
         {
-          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary
+          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary,"custom_instructions": custom_instructions
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),
@@ -339,6 +339,34 @@ export class BamlAsyncClient {
     }
   }
   
+  async GenerateExecutiveSummary(
+      research_goal: string,insights_content: string,interview_content: string,custom_instructions: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.ExecutiveSummary> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "GenerateExecutiveSummary",
+        {
+          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content,"custom_instructions": custom_instructions
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.ExecutiveSummary
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   async GeneratePersonas(
       interviews: string,people: string,insights: string,
       __baml_options__?: BamlCallOptions
@@ -362,34 +390,6 @@ export class BamlAsyncClient {
         env,
       )
       return raw.parsed(false) as types.Persona[]
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  async GenerateQuickInsights(
-      research_goal: string,insights_content: string,interview_content: string,
-      __baml_options__?: BamlCallOptions
-  ): Promise<types.QuickInsights> {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = await this.runtime.callFunction(
-        "GenerateQuickInsights",
-        {
-          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content
-        },
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-      )
-      return raw.parsed(false) as types.QuickInsights
     } catch (error) {
       throw toBamlError(error);
     }
@@ -494,7 +494,7 @@ class BamlStreamClient {
 
   
   AnalyzeProjectInsights(
-      research_goal: string,insights_data: string,interview_summary: string,
+      research_goal: string,insights_data: string,interview_summary: string,custom_instructions: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
   ): BamlStream<partial_types.ProjectAnalysis, types.ProjectAnalysis> {
     try {
@@ -507,7 +507,7 @@ class BamlStreamClient {
       const raw = this.runtime.streamFunction(
         "AnalyzeProjectInsights",
         {
-          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary
+          "research_goal": research_goal,"insights_data": insights_data,"interview_summary": interview_summary,"custom_instructions": custom_instructions
         },
         undefined,
         this.ctxManager.cloneContext(),
@@ -799,6 +799,40 @@ class BamlStreamClient {
     }
   }
   
+  GenerateExecutiveSummary(
+      research_goal: string,insights_content: string,interview_content: string,custom_instructions: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.ExecutiveSummary, types.ExecutiveSummary> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "GenerateExecutiveSummary",
+        {
+          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content,"custom_instructions": custom_instructions
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.ExecutiveSummary, types.ExecutiveSummary>(
+        raw,
+        (a): partial_types.ExecutiveSummary => a,
+        (a): types.ExecutiveSummary => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
   GeneratePersonas(
       interviews: string,people: string,insights: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
@@ -826,40 +860,6 @@ class BamlStreamClient {
         raw,
         (a): partial_types.Persona[] => a,
         (a): types.Persona[] => a,
-        this.ctxManager.cloneContext(),
-      )
-    } catch (error) {
-      throw toBamlError(error);
-    }
-  }
-  
-  GenerateQuickInsights(
-      research_goal: string,insights_content: string,interview_content: string,
-      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
-  ): BamlStream<partial_types.QuickInsights, types.QuickInsights> {
-    try {
-      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
-      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
-      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
-      const env: Record<string, string> = Object.fromEntries(
-        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
-      );
-      const raw = this.runtime.streamFunction(
-        "GenerateQuickInsights",
-        {
-          "research_goal": research_goal,"insights_content": insights_content,"interview_content": interview_content
-        },
-        undefined,
-        this.ctxManager.cloneContext(),
-        options.tb?.__tb(),
-        options.clientRegistry,
-        collector,
-        env,
-      )
-      return new BamlStream<partial_types.QuickInsights, types.QuickInsights>(
-        raw,
-        (a): partial_types.QuickInsights => a,
-        (a): types.QuickInsights => a,
         this.ctxManager.cloneContext(),
       )
     } catch (error) {

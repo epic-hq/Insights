@@ -89,9 +89,9 @@ export async function analyzeProjectInsights(
 }
 
 /**
- * Generate quick insights summary for project status screens
+ * Generate executive summary for project status screens
  */
-export async function generateQuickInsights(
+export async function generateExecutiveSummary(
 	projectSections: ProjectSection[],
 	insights: Insight[],
 	people: Person[],
@@ -107,7 +107,7 @@ export async function generateQuickInsights(
 			role: researchGoal.role,
 			questions: researchGoal.questions.map(q => ({
 				question: q,
-				priority: "high" as const
+				priority: 1
 			}))
 		}
 
@@ -118,9 +118,9 @@ export async function generateQuickInsights(
 			confidence: insight.confidence
 		}))
 
-		consola.log('Generating quick insights summary...')
+		consola.log('Generating executive summary...')
 
-		const quickInsights = await b.GenerateQuickInsights(
+		const quickInsights = await b.GenerateExecutiveSummary(
 			bamlResearchGoal,
 			JSON.stringify(insightsData),
 			people.length,

@@ -1,5 +1,6 @@
-import { supabase } from "~/lib/supabase/client"
-import { b } from "baml_client"
+import { getProjectById } from "~/features/projects/db"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "~/types"
 
 export interface ProjectStatusData {
   projectName: string
@@ -13,114 +14,115 @@ export interface ProjectStatusData {
   keyInsights: string[]
   completionScore: number
   lastUpdated: Date
+  analysisId?: string
+  hasAnalysis: boolean
+  // Enhanced analysis data
+  nextSteps: string[]
+  nextAction?: string
+  keyDiscoveries: string[]
+  confidenceScore?: number
+  confidenceLevel?: number
+  followUpRecommendations: string[]
+  suggestedInterviewTopics: string[]
 }
 
-export async function getProjectStatusData(projectId: string): Promise<ProjectStatusData | null> {
+export async function getProjectStatusData(
+  projectId: string, 
+  supabase: SupabaseClient<Database>, 
+  accountId: string
+): Promise<ProjectStatusData | null> {
   try {
-    // Fetch project data
-    const { data: project, error: projectError } = await supabase
-      .from('projects')
-      .select('*')
-      .eq('id', projectId)
-      .single()
+    // Get project with proper authentication
+    const projectResult = await getProjectById({ 
+      supabase, 
+      accountId,
+      id: projectId 
+    })
 
-    if (projectError || !project) {
+    if (!projectResult.data) {
       return null
     }
 
-    // Fetch interviews for this project
-    const { data: interviews, error: interviewsError } = await supabase
-      .from('interviews')
+    const project = projectResult.data
+
+    // Fetch latest analysis annotation
+    const { data: latestAnalysis } = await supabase
+      .from('annotations')
       .select('*')
       .eq('project_id', projectId)
+      .eq('entity_type', 'project')
+      .eq('annotation_type', 'ai_suggestion')
+      .eq('status', 'active')
+      .like('ai_model', 'AnalyzeProjectStatus%')
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .maybeSingle()
 
-    if (interviewsError) {
-      console.error('Error fetching interviews:', interviewsError)
-    }
+    // Fetch basic counts
+    const [interviewsResult, insightsResult] = await Promise.all([
+      supabase.from('interviews').select('id').eq('project_id', projectId),
+      supabase.from('insights').select('id').eq('project_id', projectId)
+    ])
 
-    const totalInterviews = interviews?.length || 0
+    const totalInterviews = interviewsResult.data?.length || 0
+    const totalInsights = insightsResult.data?.length || 0
+    const totalPersonas = Math.min(Math.ceil(totalInterviews / 2), 5)
+    const totalThemes = Math.min(Math.ceil(totalInsights / 2), 8)
 
-    // Fetch insights for this project
-    const { data: insights, error: insightsError } = await supabase
-      .from('insights')
-      .select('*')
-      .eq('project_id', projectId)
-
-    if (insightsError) {
-      console.error('Error fetching insights:', insightsError)
-    }
-
-    const totalInsights = insights?.length || 0
-
-    // Get research questions for analysis
-    const researchGoal = {
-      primary_question: project.research_goal || "Understand user needs",
-      secondary_questions: project.research_questions || [],
-      success_criteria: []
-    }
-
-    // Combine all interview content
-    const interviewContent = interviews?.map(i => i.content || '').join('\n\n') || ''
-    const insightContent = insights?.map(i => i.content || '').join('\n\n') || ''
-
-    // Use BAML to analyze project insights
-    let answeredQuestions: string[] = []
-    let openQuestions: string[] = []
-    let keyInsights: string[] = []
-    let completionScore = 0
-
-    if (totalInterviews > 0 && totalInsights > 0) {
-      try {
-        // Generate quick insights for status display
-        const quickInsights = await b.GenerateQuickInsights(
-          researchGoal.primary_question,
-          insightContent,
-          interviewContent
-        )
-
-        keyInsights = quickInsights.key_findings
-        completionScore = quickInsights.completion_percentage
-
-        // Analyze what questions have been answered vs still open
-        const projectAnalysis = await b.AnalyzeProjectInsights(
-          researchGoal.primary_question,
-          insightContent,
-          interviewContent
-        )
-
-        answeredQuestions = projectAnalysis.question_answers?.map(qa => qa.question) || []
-        openQuestions = projectAnalysis.gap_analysis?.unanswered_questions || []
-
-      } catch (error) {
-        console.error('BAML analysis failed:', error)
-        // Fallback to basic data
-        keyInsights = insights?.slice(0, 3).map(i => i.title || i.content?.substring(0, 100) + '...') || []
-        completionScore = Math.min(totalInterviews * 25, 100) // Simple heuristic
-      }
-    }
-
-    // Count personas (estimate from insights or manual count)
-    const totalPersonas = Math.min(Math.ceil(totalInterviews / 2), 5) // Rough estimate
-
-    // Count themes (estimate from insights)
-    const totalThemes = Math.min(Math.ceil(totalInsights / 2), 8) // Rough estimate
-
-    return {
+    // Base data structure
+    const baseData = {
       projectName: project.name,
-      icp: project.icp || 'Unknown ICP',
+      icp: (project as any).icp || project.description || 'Unknown ICP',
       totalInterviews,
       totalInsights,
       totalPersonas,
       totalThemes,
-      answeredQuestions,
-      openQuestions,
-      keyInsights,
-      completionScore,
       lastUpdated: new Date(project.updated_at || project.created_at)
     }
 
-  } catch (error) {
-    console.error('Error fetching project status:', error)
+    // If we have analysis results, use them
+    if (latestAnalysis?.metadata) {
+      const metadata = latestAnalysis.metadata as Record<string, unknown>
+      const fullAnalysis = (metadata.full_analysis as Record<string, unknown>) || {}
+      const quickInsights = (fullAnalysis.quick_insights as Record<string, unknown>) || {}
+      const projectAnalysis = (fullAnalysis.project_analysis as Record<string, unknown>) || {}
+      const gapAnalysis = (projectAnalysis.gap_analysis as Record<string, unknown>) || {}
+      
+      return {
+        ...baseData,
+        answeredQuestions: (metadata.answered_questions as string[]) || [],
+        openQuestions: (metadata.open_questions as string[]) || [],
+        keyInsights: (metadata.key_insights as string[]) || [],
+        completionScore: (metadata.completion_score as number) || 0,
+        analysisId: latestAnalysis.id,
+        hasAnalysis: true,
+        // Enhanced data from full BAML analysis
+        nextSteps: (projectAnalysis.next_steps as string[]) || [],
+        nextAction: quickInsights.next_action as string | undefined,
+        keyDiscoveries: (projectAnalysis.key_discoveries as string[]) || [],
+        confidenceScore: projectAnalysis.confidence_score as number | undefined,
+        confidenceLevel: quickInsights.confidence as number | undefined,
+        followUpRecommendations: (gapAnalysis.follow_up_recommendations as string[]) || [],
+        suggestedInterviewTopics: (gapAnalysis.suggested_interview_topics as string[]) || []
+      }
+    }
+
+    // Fallback data when no analysis exists
+    return {
+      ...baseData,
+      answeredQuestions: [],
+      openQuestions: [],
+      keyInsights: [],
+      completionScore: Math.min(totalInterviews * 25, 100),
+      hasAnalysis: false,
+      nextSteps: [],
+      keyDiscoveries: [],
+      followUpRecommendations: [],
+      suggestedInterviewTopics: []
+    }
+
+  } catch {
+    // Error fetching project status - logged for debugging
     return null
   }
 }

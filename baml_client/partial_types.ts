@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  BBValues,  Emotions,  EvidenceSet,  ExecutiveInsight,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaSet,  ProjectAnalysis,  QuickInsights,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion } from "./types"
+import type {  ActionButton,  AutoInsightsResponse,  BBValues,  Emotions,  EvidenceSet,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaSet,  ProjectAnalysis,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -70,6 +70,12 @@ export namespace partial_types {
       personas_affected: string[]
       recommended_actions: ActionButton[]
       category?: string | null
+    }
+    export interface ExecutiveSummary {
+      key_findings: string[]
+      completion_percentage?: number | null
+      confidence?: number | null
+      next_action?: string | null
     }
     export interface ExtractedInsight {
       pain?: string | null
@@ -208,12 +214,6 @@ export namespace partial_types {
       key_discoveries: string[]
       confidence_score?: number | null
       next_steps: string[]
-    }
-    export interface QuickInsights {
-      key_findings: string[]
-      completion_percentage?: number | null
-      confidence?: number | null
-      next_action?: string | null
     }
     export interface ResearchGoal {
       goal?: string | null

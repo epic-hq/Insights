@@ -339,6 +339,14 @@ export interface ExecutiveInsight {
   
 }
 
+export interface ExecutiveSummary {
+  key_findings: string[]
+  completion_percentage: number
+  confidence: number
+  next_action: string
+  
+}
+
 export interface ExtractedInsight {
   pain?: string | null
   name: string
@@ -502,14 +510,6 @@ export interface ProjectAnalysis {
   key_discoveries: string[]
   confidence_score: number
   next_steps: string[]
-  
-}
-
-export interface QuickInsights {
-  key_findings: string[]
-  completion_percentage: number
-  confidence: number
-  next_action: string
   
 }
 
