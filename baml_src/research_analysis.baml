@@ -91,12 +91,14 @@ function AnalyzeProjectInsights(
   "#
 }
 
-// Quick summary for status screens
+// Executive summary optimized for status screens
 class ExecutiveSummary {
-  key_findings string[]
-  completion_percentage int
-  confidence int @description("1-3 with 1 being highest ")
-  next_action string
+  answered_insights string[] @description("Key findings that directly answer user's research questions, formatted as 'Finding, because evidence/reason'")
+  unanticipated_discoveries string[] @description("Surprising findings not related to original questions, formatted as 'Discovery, because evidence/reason'")
+  critical_unknowns string[] @description("Important questions that remain unanswered or areas where evidence is insufficient")
+  completion_percentage int @description("0-100 estimate of how much of the original research goal has been addressed")
+  confidence int @description("1-3 with 1 being highest confidence in findings")
+  next_action string @description("Single most important next step to advance the research")
 }
 
 function GenerateExecutiveSummary(
@@ -107,10 +109,10 @@ function GenerateExecutiveSummary(
 ) -> ExecutiveSummary {
   client CustomGPT4o
   prompt #"
-    Generate an executive summary of the project that answers their question,
-		or if there's insufficient information, what they should do next.
+    You are analyzing research findings to create an executive summary that clearly communicates what was learned and why.
 
-    Research Goal: {{ research_goal }}
+    RESEARCH GOAL:
+    {{ research_goal }}
 
     INSIGHTS:
     {{ insights_content }}
@@ -118,14 +120,47 @@ function GenerateExecutiveSummary(
     INTERVIEWS:
     {{ interview_content }}
 
-	  Analyze the content and provide:
+    CUSTOM INSTRUCTIONS (if provided):
+    {{ custom_instructions }}
 
-    key_findings: Array of 2-3 most important discoveries (strings)
-    completion_percentage: Integer 0-100 estimating how much of the research goal has been answered
-    confidence: Integer 1-3 where 1 is highest confidence, 2 is medium, 3 is low
-    next_action: Single string describing the most important next step
+    ANALYSIS REQUIREMENTS:
 
-    Focus on actionable insights that help the researcher understand progress and next steps.
+    1. ANSWERED INSIGHTS (2-4 items):
+       - Focus on findings that directly address the research goal or implicit questions
+       - Format each as: "[What was learned], because [evidence/reason from data]"
+       - Example: "Users prefer mobile over desktop for quick tasks, because 8/10 interviews mentioned switching to phones when in a hurry"
+       - Prioritize insights with strong evidence from multiple sources
+
+    2. UNANTICIPATED DISCOVERIES (1-3 items):
+       - Unexpected findings that weren't part of the original research questions
+       - Format as: "[Surprising discovery], because [evidence/reason]"
+       - Example: "Price is less important than expected, because users consistently mentioned convenience over cost in decision-making"
+       - Include only discoveries with solid evidence
+
+    3. CRITICAL UNKNOWNS (1-3 items):
+       - Important questions that remain unanswered or areas with insufficient evidence
+       - Format as clear questions or knowledge gaps
+       - Example: "How users behave during peak usage times" or "Whether pricing sensitivity varies by user segment"
+
+    4. COMPLETION PERCENTAGE:
+       - Estimate how much of the research goal has been addressed (0-100)
+       - Consider both breadth (topics covered) and depth (evidence quality)
+
+    5. CONFIDENCE:
+       - 1 = High confidence (strong evidence from multiple sources)
+       - 2 = Medium confidence (some evidence but gaps exist)
+       - 3 = Low confidence (limited or conflicting evidence)
+
+    6. NEXT ACTION:
+       - Single most important step to advance the research
+       - Should address the biggest gap or highest-value opportunity
+       - Be specific and actionable
+
+    QUALITY GUIDELINES:
+    - Use concrete evidence from the data, not assumptions
+    - Avoid jargon - write for business stakeholders
+    - Be honest about limitations and gaps
+    - Prioritize actionable insights over interesting but irrelevant findings
 
 		Output format:
 		{{ ctx.output_format }}

@@ -418,6 +418,7 @@ export function useEntityAnnotations({
 		// Annotations data
 		annotations: includeComments ? annotationsHook.annotations : [],
 		submitAnnotation: includeComments ? annotationsHook.addComment : () => {},
+		refetchAnnotations: includeComments ? annotationsHook.refetch : () => {},
 
 		// Voting data
 		voteCounts: includeVoting

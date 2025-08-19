@@ -102,14 +102,18 @@ export async function action({ request }: ActionFunctionArgs) {
 			b.AnalyzeProjectInsights(enhancedGoal, insightContent, interviewContent, customInstructions || ""),
 		])
 
-		// Prepare analysis results
+		// Prepare analysis results with new structure
 		const analysisResults = {
 			analysis_version: analysisVersion,
 			analysis_type: "project_status",
+			// Map new BAML fields to expected structure
 			answered_questions: projectAnalysis.question_answers?.map((qa) => qa.question) || [],
 			open_questions: projectAnalysis.gap_analysis?.unanswered_questions || [],
 			completion_score: execsum.completion_percentage,
-			key_insights: execsum.key_findings,
+			// Use new structured insights
+			key_insights: execsum.answered_insights || [],
+			unanticipated_discoveries: execsum.unanticipated_discoveries || [],
+			critical_unknowns: execsum.critical_unknowns || [],
 			baml_function: "AnalyzeProjectStatus",
 			custom_instructions: customInstructions,
 			input_data: {

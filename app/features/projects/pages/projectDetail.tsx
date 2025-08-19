@@ -72,37 +72,41 @@ export default function ProjectDetail() {
 
 	return (
 		<div className="mx-auto max-w-4xl">
-			<div className="mb-8 flex items-center justify-between">
-				<div>
-					<h1 className="font-bold text-3xl text-gray-900">{project.name}</h1>
-
-					<div className="mt-2 flex flex-wrap items-center gap-2">
+			<div className="mb-12 flex items-start justify-between">
+				<div className="flex-1">
+					<h1 className="text-4xl font-light text-gray-900 tracking-tight mb-3">{project.name}</h1>
+					<div className="flex items-center gap-3">
 						{project.status && (
 							<Badge className={getStatusColor(project.status)}>{project.status.replace("_", " ")}</Badge>
 						)}
 					</div>
 				</div>
-				<div className="flex gap-2">
-					<Button asChild variant="outline">
-						<Link to={routes.projects.edit(project.id)}>Edit</Link>
+				<div className="flex gap-3">
+					<Button asChild variant="outline" className="border-gray-300 hover:border-gray-400">
+						<Link to={routes.projects.edit(project.id)}>Edit Project</Link>
 					</Button>
 				</div>
 			</div>
 
-			<div className="grid gap-8 lg:grid-cols-3">
-				<div className="lg:col-span-2">
-					<div className="rounded-lg border bg-white p-6">
-						<h2 className="mb-4 font-semibold text-xl">Description</h2>
+			<div className="grid gap-12 lg:grid-cols-3">
+				<div className="lg:col-span-2 space-y-8">
+					<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+						<div className="flex items-center justify-between mb-6">
+							<h2 className="text-2xl font-light text-gray-900">Description</h2>
+							<Button asChild variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
+								<Link to={routes.projects.edit(project.id)}>Edit</Link>
+							</Button>
+						</div>
 						{project.description ? (
-							<p className="whitespace-pre-wrap text-gray-700">{project.description}</p>
+							<p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{project.description}</p>
 						) : (
-							<p className="text-gray-500 italic">No description provided</p>
+							<p className="text-gray-400 italic">No description provided</p>
 						)}
 					</div>
 
 					{people.length > 0 && (
-						<div className="mt-8 rounded-lg border bg-white p-6">
-							<h2 className="mb-4 font-semibold text-xl">Team Members</h2>
+						<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+							<h2 className="text-2xl font-light text-gray-900 mb-6">Team Members</h2>
 							<div className="space-y-3">
 								{people.map((projectPerson) => (
 									<div key={projectPerson.people.id} className="border-blue-500 border-l-4 pl-4">
@@ -124,8 +128,8 @@ export default function ProjectDetail() {
 					)}
 
 					{personas.length > 0 && (
-						<div className="mt-8 rounded-lg border bg-white p-6">
-							<h2 className="mb-4 font-semibold text-xl">Target Personas</h2>
+						<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
+							<h2 className="text-2xl font-light text-gray-900 mb-6">Target Personas</h2>
 							<div className="space-y-3">
 								{personas.map((projectPersona) => (
 									<div key={projectPersona.personas.id} className="border-green-500 border-l-4 pl-4">

@@ -70,6 +70,7 @@ const routes = [
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
 	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
+	route("api/user-profile", "./routes/api/user-profile.ts"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

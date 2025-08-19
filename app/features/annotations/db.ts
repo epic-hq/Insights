@@ -179,6 +179,7 @@ export async function createAnnotation({
 	threadRootId,
 	createdByAi = false,
 	aiModel,
+	createdByUserId,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
@@ -192,6 +193,7 @@ export async function createAnnotation({
 	threadRootId?: string
 	createdByAi?: boolean
 	aiModel?: string
+	createdByUserId?: string
 }) {
 	try {
 		const insertData: AnnotationInsert = {
@@ -206,6 +208,7 @@ export async function createAnnotation({
 			thread_root_id: threadRootId,
 			created_by_ai: createdByAi,
 			ai_model: aiModel,
+			created_by_user_id: typeof createdByUserId !== "undefined" ? createdByUserId : null,
 		}
 
 		const { data, error } = await supabase.from("annotations").insert(insertData).select().single()

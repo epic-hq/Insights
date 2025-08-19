@@ -340,7 +340,9 @@ export interface ExecutiveInsight {
 }
 
 export interface ExecutiveSummary {
-  key_findings: string[]
+  answered_insights: string[]
+  unanticipated_discoveries: string[]
+  critical_unknowns: string[]
   completion_percentage: number
   confidence: number
   next_action: string

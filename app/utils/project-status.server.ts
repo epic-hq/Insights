@@ -24,6 +24,10 @@ export interface ProjectStatusData {
   confidenceLevel?: number
   followUpRecommendations: string[]
   suggestedInterviewTopics: string[]
+  // New BAML structure fields
+  answeredInsights: string[]
+  unanticipatedDiscoveries: string[]
+  criticalUnknowns: string[]
 }
 
 export async function getProjectStatusData(
@@ -103,7 +107,11 @@ export async function getProjectStatusData(
         confidenceScore: projectAnalysis.confidence_score as number | undefined,
         confidenceLevel: quickInsights.confidence as number | undefined,
         followUpRecommendations: (gapAnalysis.follow_up_recommendations as string[]) || [],
-        suggestedInterviewTopics: (gapAnalysis.suggested_interview_topics as string[]) || []
+        suggestedInterviewTopics: (gapAnalysis.suggested_interview_topics as string[]) || [],
+        // New structured insights from updated BAML
+        answeredInsights: (metadata.key_insights as string[]) || (quickInsights.answered_insights as string[]) || [],
+        unanticipatedDiscoveries: (metadata.unanticipated_discoveries as string[]) || (quickInsights.unanticipated_discoveries as string[]) || [],
+        criticalUnknowns: (metadata.critical_unknowns as string[]) || (quickInsights.critical_unknowns as string[]) || []
       }
     }
 
@@ -118,7 +126,10 @@ export async function getProjectStatusData(
       nextSteps: [],
       keyDiscoveries: [],
       followUpRecommendations: [],
-      suggestedInterviewTopics: []
+      suggestedInterviewTopics: [],
+      answeredInsights: [],
+      unanticipatedDiscoveries: [],
+      criticalUnknowns: []
     }
 
   } catch {

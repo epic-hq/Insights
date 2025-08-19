@@ -96,6 +96,7 @@ export const action: ActionFunction = async ({ context, request }) => {
 					content: content.trim(),
 					parentAnnotationId: parentId,
 					threadRootId: parentId, // For now, use parent as thread root
+					createdByUserId: userId,
 				})
 
 				if (error) {
@@ -136,6 +137,7 @@ export const action: ActionFunction = async ({ context, request }) => {
 					metadata,
 					createdByAi: true,
 					aiModel: "gpt-4", // TODO: Make this configurable
+					createdByUserId: userId,
 				})
 
 				if (error) {

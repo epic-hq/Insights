@@ -72,7 +72,9 @@ export namespace partial_types {
       category?: string | null
     }
     export interface ExecutiveSummary {
-      key_findings: string[]
+      answered_insights: string[]
+      unanticipated_discoveries: string[]
+      critical_unknowns: string[]
       completion_percentage?: number | null
       confidence?: number | null
       next_action?: string | null

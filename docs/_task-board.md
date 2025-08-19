@@ -10,6 +10,7 @@
 - [ ] Simplify the Processing component to show actual steps over % completion. Let user know they can leave/return.
 - [ ] Transcription record doesn't have diarization
 - [ ] Tie in the Add Interview Button to use the pipeline. What is the new add interview buttonfor the new onboarding process. assume it will be same flow, jsut not the first interview.
+- [ ] People not being generated.
 - [x] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
 - [x] Get Fly.io to a clean state where releases complete
 - [x] Fix OOM errors with increased memory allocation (1GB → 2GB)
@@ -23,6 +24,7 @@
 - [ ] Verify all entities created from new onboarding step with right accountId if needed.
 - [ ] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
 - [ ] Redesign Entity components for Metro style.
+
 
 ### 🛠️ Critical Conventions to Remember
 
