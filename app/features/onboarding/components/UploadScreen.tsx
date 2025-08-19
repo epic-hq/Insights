@@ -90,9 +90,9 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-medium text-sm text-white">
 							3
 						</div>
-						<h1 className="font-semibold text-lg text-white">Upload your interview</h1>
+						<h1 className="font-semibold text-lg text-white">Add Content</h1>
 					</div>
-					<div className="text-gray-400 text-sm">Step 3 of 3</div>
+					{/* <div className="text-gray-400 text-sm">Step 3 of 3</div> */}
 				</div>
 			</div>
 
@@ -105,28 +105,10 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 							<Upload className="h-5 w-5" />
 							<span className="font-medium text-sm">Media Upload</span>
 						</div>
-						<h2 className="font-bold text-2xl text-white">Add your first interview</h2>
+						{/* <h2 className="font-bold text-2xl text-white">Add your first interview</h2> */}
 						<p className="text-gray-300 text-sm leading-relaxed">
-							Upload an audio or video file of your interview. We support most common formats including MP3, MP4, WAV,
-							and MOV.
+							Upload an audio, video or transcript from a conversation or interview.
 						</p>
-					</div>
-
-					{/* Media Type Selection */}
-					<div className="space-y-3">
-						<label className="font-medium text-sm text-white">Type of content</label>
-						<Select value={mediaType} onValueChange={setMediaType}>
-							<SelectTrigger className="h-12 border-gray-700 bg-gray-900 text-white">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent className="border-gray-700 bg-gray-900 text-white">
-								<SelectItem value="interview">User Interview</SelectItem>
-								<SelectItem value="focus-group">Focus Group</SelectItem>
-								<SelectItem value="customer-call">Customer Call</SelectItem>
-								<SelectItem value="user-testing">User Testing Session</SelectItem>
-								<SelectItem value="other">Other</SelectItem>
-							</SelectContent>
-						</Select>
 					</div>
 
 					{/* Upload Area */}
@@ -194,6 +176,23 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 							<Camera className="mr-2 h-4 w-4" />
 							Record Now
 						</Button>
+					</div>
+
+					{/* Media Type Selection */}
+					<div className="space-y-3">
+						<label className="font-medium text-sm text-white">Type of content</label>
+						<Select value={mediaType} onValueChange={setMediaType}>
+							<SelectTrigger className="h-12 border-gray-700 bg-gray-900 text-white">
+								<SelectValue />
+							</SelectTrigger>
+							<SelectContent className="border-gray-700 bg-gray-900 text-white">
+								<SelectItem value="interview">User Interview</SelectItem>
+								<SelectItem value="focus-group">Focus Group</SelectItem>
+								<SelectItem value="customer-call">Customer Call</SelectItem>
+								<SelectItem value="user-testing">User Testing Session</SelectItem>
+								<SelectItem value="other">Other</SelectItem>
+							</SelectContent>
+						</Select>
 					</div>
 
 					{/* File Requirements */}

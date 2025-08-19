@@ -163,7 +163,11 @@ export default function SignupChat() {
 					<p className="text-blue-600 text-sm dark:text-blue-400">Remember: Your first month is free!</p>
 				</div>
 
-				<CopilotKit runtimeUrl={copilotRuntimeUrl} agent="signupAgent">
+				<CopilotKit
+					runtimeUrl={copilotRuntimeUrl}
+					agent="signupAgent"
+					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
+				>
 					<ChatWithChecklist existingChatData={existingChatData} />
 				</CopilotKit>
 			</div>

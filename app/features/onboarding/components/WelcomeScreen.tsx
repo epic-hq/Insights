@@ -36,9 +36,9 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-medium text-sm text-white">
 							1
 						</div>
-						<h1 className="font-semibold text-lg text-white">Let's set up your first project</h1>
+						<h1 className="font-semibold text-lg text-white">Project Goals</h1>
 					</div>
-					<div className="text-gray-400 text-sm">Step 1 of 3</div>
+					{/* <div className="text-gray-400 text-sm">Step 1 of 3</div> */}
 				</div>
 			</div>
 
@@ -51,16 +51,16 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 							<Users className="h-5 w-5" />
 							<span className="font-medium text-sm">Target Audience</span>
 						</div>
-						<h2 className="font-bold text-2xl text-white">Who are you researching?</h2>
+						{/* <h2 className="font-bold text-2xl text-white">Who are you researching?</h2>
 						<p className="text-gray-300 text-sm leading-relaxed">
 							Help us understand both the companies (ICP) and the specific roles you're targeting.
-						</p>
+						</p> */}
 					</div>
 
 					{/* ICP Input */}
 					<div className="space-y-3">
 						<label htmlFor="icp" className="font-medium text-sm text-white">
-							Target Companies (ICP)
+							Ideal organizations (ICP)
 						</label>
 						<Input
 							id="icp"
@@ -75,7 +75,7 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 					{/* Role Input */}
 					<div className="space-y-3">
 						<label htmlFor="role" className="font-medium text-sm text-white">
-							Target Role/Title
+							Roles/Titles
 						</label>
 						<Input
 							id="role"
@@ -89,7 +89,7 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 					{/* Research Goal */}
 					<div className="space-y-3">
 						<label htmlFor="goal" className="font-medium text-sm text-white">
-							What do you want to learn?
+							Goal
 						</label>
 						<Select value={goal} onValueChange={setGoal}>
 							<SelectTrigger className="h-12 border-gray-700 bg-gray-900 text-white">

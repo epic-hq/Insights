@@ -30,20 +30,20 @@ primary_region = 'sjc'
     headers = { Host = "upsight.fly.dev" }
 
 [machine]
-  memory = '1gb'
+  memory = '2gb'
   cpu_kind = 'shared'
   cpus = 1
 
 [[vm]]
-  size = 'shared-cpu-1x'
-  memory = '1gb'
+  size = 'shared-cpu-2x'
+  memory = '2gb'
 
-[deploy]
- release_command = 'echo "Release command placeholder"'
+# [deploy]
+# release_command = 'echo "Release command placeholder"'
 
 [processes]
 web   = '/usr/local/bin/dotenvx run -- pnpm start'
-mastra = '/usr/local/bin/dotenvx run -- npx mastra start --dir app/mastra' # not "dev"
+mastra = '/usr/local/bin/dotenvx run -- npx mastra dev --dir app/mastra --port 4111'
 
 #  app = '/usr/local/bin/dotenvx run -- pnpm start'
 #  mastra = '/usr/local/bin/dotenvx run -- npx mastra dev --dir app/mastra'

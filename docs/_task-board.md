@@ -10,11 +10,14 @@
 - [ ] Simplify the Processing component to show more of the current step in one place to look. Several places now. And less focus on % since it's unknown.
 - [ ] Tie in the Add Interview Button to use the pipeline.
 - [x] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
-- [ ] Get Fly.io to a clean state where releases complete
+- [x] Get Fly.io to a clean state where releases complete
+- [x] Fix OOM errors with increased memory allocation (1GB → 2GB)
+- [x] Fix Mastra instrumentation.mjs missing file error
 
 ## Metro UI
 
 - [ ] New Project Status page acceptance
+'/Users/richardmoy/Downloads/page.tsx' contains some suggestions on how to add insights cards into the metro-index display. but we should think holisticlaly about it.
 - [ ] Figure out how to easily plug metro in as a layout option for mobile screen size.
 - [ ] Verify all entities created from new onboarding step with right accountId if needed.
 - [ ] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)

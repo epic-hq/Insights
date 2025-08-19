@@ -6,6 +6,7 @@ export default function AIChatLayout() {
 		<CopilotKit
 			agent="weatherAgent"
 			runtimeUrl="/api/copilotkit"
+			publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
 			showDevConsole={true}
 			headers={{
 				"X-UserId": "100",

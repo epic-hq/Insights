@@ -1,15 +1,59 @@
-// TODO use real data
-import { CheckCircle, Eye, Lightbulb, MessageSquare, Plus, TrendingUp, Users } from "lucide-react"
+import { CheckCircle, Eye, Lightbulb, MessageSquare, Plus, TrendingUp, Users, Loader2 } from "lucide-react"
+import { useState, useEffect } from "react"
 import { Button } from "~/components/ui/button"
+import type { ProjectStatusData } from "~/utils/project-status.server"
 
 interface ProjectStatusScreenProps {
 	projectName: string
 	icp: string
+	projectId?: string
 	onAddMore: () => void
 	onViewResults: () => void
 }
 
-export default function ProjectStatusScreen({ projectName, icp, onAddMore, onViewResults }: ProjectStatusScreenProps) {
+export default function ProjectStatusScreen({ projectName, icp, projectId, onAddMore, onViewResults }: ProjectStatusScreenProps) {
+	const [statusData, setStatusData] = useState<ProjectStatusData | null>(null)
+	const [isLoading, setIsLoading] = useState(false)
+	
+	useEffect(() => {
+		if (projectId) {
+			fetchProjectStatus()
+		}
+	}, [projectId]) // fetchProjectStatus is defined inside the component, dependency is okay
+
+	const fetchProjectStatus = async () => {
+		if (!projectId) return
+		
+		setIsLoading(true)
+		try {
+			const response = await fetch(`/api/project-status?projectId=${projectId}`)
+			if (response.ok) {
+				const result = await response.json()
+				if (result.success) {
+					setStatusData(result.data)
+				}
+			}
+		} catch (error) {
+			console.error('Failed to fetch project status:', error)
+		} finally {
+			setIsLoading(false)
+		}
+	}
+
+	// Use real data if available, otherwise fallback to props
+	const displayData = statusData || {
+		projectName,
+		icp,
+		totalInterviews: 1,
+		totalInsights: 5,
+		totalPersonas: 2,
+		totalThemes: 3,
+		answeredQuestions: [],
+		openQuestions: [],
+		keyInsights: [],
+		completionScore: 25,
+		lastUpdated: new Date()
+	}
 	return (
 		<div className="relative min-h-screen bg-black text-white">
 			{/* Header */}
@@ -30,11 +74,11 @@ export default function ProjectStatusScreen({ projectName, icp, onAddMore, onVie
 					{/* Success Message */}
 					<div className="space-y-3 text-center">
 						<div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-green-600">
-							<CheckCircle className="h-8 w-8" />
+							{isLoading ? <Loader2 className="h-8 w-8 animate-spin" /> : <CheckCircle className="h-8 w-8" />}
 						</div>
 						<h2 className="font-bold text-2xl text-white">Analysis Complete!</h2>
 						<p className="text-gray-300 text-sm leading-relaxed">
-							We've analyzed your interview and generated initial insights about {icp}.
+							We've analyzed your {displayData.totalInterviews > 1 ? 'interviews' : 'interview'} and generated insights about {displayData.icp}.
 						</p>
 					</div>
 
@@ -46,15 +90,17 @@ export default function ProjectStatusScreen({ projectName, icp, onAddMore, onVie
 									<Users className="h-6 w-6" />
 								</div>
 								<div className="min-w-0 flex-1">
-									<h3 className="font-semibold text-lg text-white">{projectName}</h3>
-									<p className="text-gray-400 text-sm">Research project for {icp}</p>
+									<h3 className="font-semibold text-lg text-white">{displayData.projectName}</h3>
+									<p className="text-gray-400 text-sm">Research project for {displayData.icp}</p>
 									<div className="mt-2 flex items-center gap-4 text-xs">
 										<div className="flex items-center gap-1 text-green-400">
 											<CheckCircle className="h-3 w-3" />
-											<span>1 interview analyzed</span>
+											<span>{displayData.totalInterviews} {displayData.totalInterviews === 1 ? 'interview' : 'interviews'} analyzed</span>
 										</div>
 										<div className="text-gray-500">•</div>
-										<div className="text-gray-400">Just completed</div>
+										<div className="text-gray-400">
+											{statusData ? new Date(displayData.lastUpdated).toLocaleDateString() : 'Just completed'}
+										</div>
 									</div>
 								</div>
 							</div>
@@ -66,25 +112,105 @@ export default function ProjectStatusScreen({ projectName, icp, onAddMore, onVie
 										<Lightbulb className="h-3 w-3" />
 										<span>Insights</span>
 									</div>
-									<div className="font-bold text-lg text-white">5</div>
+									<div className="font-bold text-lg text-white">{displayData.totalInsights}</div>
 								</div>
 								<div className="text-center">
 									<div className="mb-1 flex items-center justify-center gap-1 text-purple-400 text-xs">
 										<Users className="h-3 w-3" />
 										<span>Personas</span>
 									</div>
-									<div className="font-bold text-lg text-white">2</div>
+									<div className="font-bold text-lg text-white">{displayData.totalPersonas}</div>
 								</div>
 								<div className="text-center">
 									<div className="mb-1 flex items-center justify-center gap-1 text-xs text-yellow-400">
 										<MessageSquare className="h-3 w-3" />
 										<span>Themes</span>
 									</div>
-									<div className="font-bold text-lg text-white">3</div>
+									<div className="font-bold text-lg text-white">{displayData.totalThemes}</div>
 								</div>
 							</div>
 						</div>
 					</div>
+
+					{/* Research Progress: What's Answered vs Open */}
+					{statusData && (displayData.answeredQuestions.length > 0 || displayData.openQuestions.length > 0) && (
+						<div className="space-y-4">
+							<h3 className="flex items-center gap-2 font-semibold text-lg text-white">
+								<Lightbulb className="h-5 w-5 text-yellow-400" />
+								Research Progress
+							</h3>
+							
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								{/* Answered Questions */}
+								{displayData.answeredQuestions.length > 0 && (
+									<div className="rounded-lg border border-green-700 bg-green-900/20 p-4">
+										<div className="flex items-center gap-2 mb-3">
+											<CheckCircle className="h-4 w-4 text-green-400" />
+											<span className="font-medium text-green-400 text-sm">Questions Answered ({displayData.answeredQuestions.length})</span>
+										</div>
+										<div className="space-y-2">
+											{displayData.answeredQuestions.slice(0, 3).map((question, index) => (
+												<div key={index} className="text-xs text-gray-300">
+													• {question}
+												</div>
+											))}
+											{displayData.answeredQuestions.length > 3 && (
+												<div className="text-xs text-gray-400 italic">
+													+{displayData.answeredQuestions.length - 3} more answered
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+
+								{/* Open Questions */}
+								{displayData.openQuestions.length > 0 && (
+									<div className="rounded-lg border border-yellow-700 bg-yellow-900/20 p-4">
+										<div className="flex items-center gap-2 mb-3">
+											<MessageSquare className="h-4 w-4 text-yellow-400" />
+											<span className="font-medium text-yellow-400 text-sm">Still Need Answers ({displayData.openQuestions.length})</span>
+										</div>
+										<div className="space-y-2">
+											{displayData.openQuestions.slice(0, 3).map((question, index) => (
+												<div key={index} className="text-xs text-gray-300">
+													• {question}
+												</div>
+											))}
+											{displayData.openQuestions.length > 3 && (
+												<div className="text-xs text-gray-400 italic">
+													+{displayData.openQuestions.length - 3} more questions
+												</div>
+											)}
+										</div>
+									</div>
+								)}
+							</div>
+
+							{/* Completion Progress */}
+							{statusData && displayData.completionScore > 0 && (
+								<div className="rounded-lg bg-gray-900 p-4">
+									<div className="flex items-center justify-between mb-2">
+										<span className="font-medium text-sm text-white">Research Completion</span>
+										<span className="font-bold text-sm text-white">{displayData.completionScore}%</span>
+									</div>
+									<div className="w-full bg-gray-700 rounded-full h-2">
+										<div 
+											className="bg-gradient-to-r from-blue-500 to-green-500 h-2 rounded-full transition-all"
+											style={{ width: `${displayData.completionScore}%` }}
+										/>
+									</div>
+									<p className="mt-2 text-xs text-gray-400">
+										{displayData.completionScore < 50 
+											? "Add more interviews to uncover deeper insights" 
+											: displayData.completionScore < 80 
+											? "Good progress! A few more interviews will complete the picture"
+											: "Excellent coverage of your research questions!"
+										}
+									</p>
+								</div>
+							)}
+						</div>
+					)}
 
 					{/* Value Proposition for More Interviews */}
 					<div className="rounded-lg bg-gradient-to-r from-blue-600 to-purple-600 p-6 text-white">

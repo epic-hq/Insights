@@ -16,6 +16,7 @@ interface OnboardingData {
 	file?: File
 	mediaType?: string
 	interviewId?: string
+	projectId?: string
 }
 
 interface OnboardingFlowProps {
@@ -87,9 +88,12 @@ export default function OnboardingFlow({
 
 			const result = await response.json()
 
-			// Store interview ID for progress tracking
+			// Store interview ID and project ID for progress tracking
 			if (result.interview?.id) {
 				setData((prev) => ({ ...prev, interviewId: result.interview.id }))
+			}
+			if (result.project?.id) {
+				setData((prev) => ({ ...prev, projectId: result.project.id }))
 			}
 		} catch (error) {
 			// Handle error - could show error state or retry
@@ -157,6 +161,7 @@ export default function OnboardingFlow({
 				<ProjectStatusScreen
 					projectName={getProjectName()}
 					icp={data.icp}
+					projectId={data.projectId}
 					onAddMore={onAddMoreInterviews}
 					onViewResults={onViewResults}
 				/>
