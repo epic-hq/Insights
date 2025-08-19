@@ -99,8 +99,9 @@ Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [
 
 ## Sprint 3.5 - Annotations Component
 
-- [ ] Create proper component for annotations. Stubbed out.
-- [ ] Add annotations to insights and pick cards, v2, quick, or mobile
+- [x] Create proper component for annotations. Stubbed out.
+- [x] Add annotations to insights and pick cards, v2, quick, or mobile
+- [ ] Users feature and api needed for team members to see each other, and Annothation comments to display who made them.
 - [ ] Revise DB calls and build Annotations View in DB [spec](annotations-schema-proposal.md##Enhancement:AnnotationViews)
 
 ## Sprint 4: Workflow Pipelines ✅ COMPLETED

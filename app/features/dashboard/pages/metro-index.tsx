@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
-import { useNavigate } from "react-router-dom"
+import { useNavigate, useParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { Logo, LogoBrand } from "~/components/branding"
 import type { TreeNode } from "~/components/charts/TreeMap"
@@ -274,6 +274,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		people,
 		tags, // Add tags to the return object for TagDisplay
 		projectStatusData,
+		accountId,
+		projectId,
 	}
 }
 
@@ -344,8 +346,9 @@ const mainSections = [
 	{ id: "people", title: "People", subtitle: "Participants", icon: Users, color: "bg-gray-600", size: "full" as const },
 ]
 
-export default function Index() {
-	const { projectId, project } = useRouteLoaderData("routes/_protected/projects")
+export default function MetroIndex() {
+	const params = useParams()
+	const { accountId, projectId } = params
 	const {
 		personas = [],
 		insights = [],
@@ -353,6 +356,7 @@ export default function Index() {
 		projects = [],
 		people = [],
 		projectStatusData,
+		project,
 	} = useLoaderData<typeof loader>()
 	const [showExpandedSection, _setShowExpandedSection] = useState<boolean>(false)
 
@@ -651,16 +655,19 @@ export default function Index() {
 			{/* Bottom action bar */}
 			<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-3">
 				<div className="grid grid-cols-3 gap-2">
-					{/* Add Encounter → AddInterview */}
-					<div className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-emerald-600 text-white transition-all duration-200 hover:scale-[1.02]">
-						<AddInterviewButton />
+					{/* Add Encounter → Modern Onboarding Flow */}
+					<button
+						className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-emerald-600 text-white transition-all duration-200 hover:scale-[1.02]"
+						onClick={() => navigate(`/a/${accountId}/${projectId}/new`)}
+					>
+						<Plus className="mb-1 h-5 w-5" />
 						<span className="mt-1 font-medium text-xs">Add Encounter</span>
-					</div>
+					</button>
 
 					{/* New Project → navigate to routes.projects.new() */}
 					<button
 						className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-purple-600 text-white transition-all duration-200 hover:scale-[1.02]"
-						onClick={() => navigate(routes.projects.new())}
+						onClick={() => navigate(routes.interviews.onboard())}
 					>
 						<Plus className="mb-1 h-5 w-5" />
 						<span className="font-medium text-xs">New Project</span>

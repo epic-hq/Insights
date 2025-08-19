@@ -46,6 +46,21 @@ export async function action({ request }: ActionFunctionArgs) {
 				return Response.json({ error: "Text file is empty or could not be read" }, { status: 400 })
 			}
 
+			// Create interview record with initial status
+			const { data: interview, error: insertError } = await supabase
+				.from("interviews")
+				.insert({
+					account_id: accountId,
+					project_id: projectId,
+					name: file.name,
+					file_url: "",
+					file_type: "text",
+					status: "uploading",
+					original_filename: file.name,
+				})
+				.select()
+				.single()
+
 			// Create transcript data object matching expected format
 			transcriptData = {
 				full_transcript: textContent.trim(),

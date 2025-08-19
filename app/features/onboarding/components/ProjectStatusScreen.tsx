@@ -285,11 +285,11 @@ export default function ProjectStatusScreen({
 								>
 									<div className="mb-4 flex items-center gap-3">
 										<Lightbulb className="h-6 w-6 text-yellow-400" />
-										<h3 className="font-semibold text-lg text-white">All Insights</h3>
+										<h3 className="font-semibold text-lg text-white">All {displayData.totalInsights} Insights</h3>
 									</div>
-									<p className="mb-4 text-gray-200 text-sm">
+									{/* <p className="mb-4 text-gray-200 text-sm">
 										View detailed analysis of all {displayData.totalInsights} insights discovered
-									</p>
+									</p> */}
 									<div className="flex items-center font-medium text-blue-300 text-sm">
 										<span>View Details</span>
 										<TrendingUp className="ml-2 h-4 w-4" />
@@ -303,11 +303,11 @@ export default function ProjectStatusScreen({
 								>
 									<div className="mb-4 flex items-center gap-3">
 										<Users className="h-6 w-6 text-purple-400" />
-										<h3 className="font-semibold text-lg text-white">Personas</h3>
+										<h3 className="font-semibold text-lg text-white">{displayData.totalPersonas} Personas</h3>
 									</div>
-									<p className="mb-4 text-gray-200 text-sm">
+									{/* <p className="mb-4 text-gray-200 text-sm">
 										Explore {displayData.totalPersonas} user personas and their characteristics
-									</p>
+									</p> */}
 									<div className="flex items-center font-medium text-blue-300 text-sm">
 										<span>View Personas</span>
 										<TrendingUp className="ml-2 h-4 w-4" />
@@ -321,11 +321,11 @@ export default function ProjectStatusScreen({
 								>
 									<div className="mb-4 flex items-center gap-3">
 										<MessageSquare className="h-6 w-6 text-green-400" />
-										<h3 className="font-semibold text-lg text-white">Interviews</h3>
+										<h3 className="font-semibold text-lg text-white">{displayData.totalInterviews} Interviews</h3>
 									</div>
-									<p className="mb-4 text-gray-200 text-sm">
+									{/* <p className="mb-4 text-gray-200 text-sm">
 										Review all {displayData.totalInterviews} interviews and transcripts
-									</p>
+									</p> */}
 									<div className="flex items-center font-medium text-blue-300 text-sm">
 										<span>View Interviews</span>
 										<TrendingUp className="ml-2 h-4 w-4" />
@@ -397,19 +397,19 @@ export default function ProjectStatusScreen({
 					{/* Simple Actions */}
 					<div className="mx-auto max-w-4xl px-6 py-8">
 						<div className="flex justify-center gap-4">
-							<Button
+							{/* <Button
 								onClick={onViewResults}
 								variant="outline"
-								className="border-gray-600 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-white"
+								className="border-blue-500 bg-blue-50 px-6 py-3 text-blue-700 hover:bg-blue-100 hover:border-blue-600"
 							>
 								<Eye className="mr-2 h-4 w-4" />
 								View Full Analysis
-							</Button>
+							</Button> */}
 							<Button
 								onClick={() => setShowCustomAnalysis(true)}
 								disabled={isAnalyzing}
 								variant="outline"
-								className="border-gray-600 px-6 py-3 text-gray-300 hover:bg-gray-800 hover:text-white"
+								className="border-gray-300 bg-white px-6 py-3 text-gray-700 hover:bg-blue-500 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
 							>
 								{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
 								Custom Analysis
@@ -429,13 +429,12 @@ export default function ProjectStatusScreen({
 								<label className="mb-3 block font-medium text-gray-300 text-sm">Custom Instructions (Optional)</label>
 								<Input
 									value={customInstructions}
+									rows={2}
 									onChange={(e) => setCustomInstructions(e.target.value)}
 									placeholder="e.g., Focus on pain points, Look for feature gaps..."
 									className="border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
 								/>
-								<p className="mt-2 text-gray-400 text-xs">
-									Provide specific instructions for what to analyze or focus on
-								</p>
+
 							</div>
 							<div className="flex gap-3">
 								<Button

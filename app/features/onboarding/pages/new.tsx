@@ -3,7 +3,7 @@ import { useLoaderData, useNavigate } from "react-router-dom"
 import { userContext } from "~/server/user-context"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import OnboardingFlow, { type OnboardingData } from "../../onboarding/components/OnboardingFlow"
+import OnboardingFlow, { type OnboardingData } from "../components/OnboardingFlow"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -33,14 +33,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 }
 
-export default function InterviewOnboardPage() {
+export default function AddInterviewPage() {
 	const { project, accountId, projectId } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
-	const handleOnboardingComplete = async (_data: OnboardingData) => {
-		// Navigate to interviews index after adding interview
-		navigate(routes.interviews.index())
+	const handleOnboardingComplete = async (data: OnboardingData) => {
+		// Navigate to project dashboard after adding interview
+		if (routes.dashboard) {
+			navigate(routes.dashboard())
+		} else {
+			navigate(`/a/${accountId}/${projectId}`)
+		}
 	}
 
 	const handleAddMoreInterviews = () => {
@@ -49,8 +53,12 @@ export default function InterviewOnboardPage() {
 	}
 
 	const handleViewResults = () => {
-		// Navigate to interviews index
-		navigate(routes.interviews.index())
+		// Navigate to project dashboard
+		if (routes.dashboard) {
+			navigate(routes.dashboard())
+		} else {
+			navigate(`/a/${accountId}/${projectId}`)
+		}
 	}
 
 	return (

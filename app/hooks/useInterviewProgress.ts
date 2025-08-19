@@ -13,9 +13,9 @@ interface ProgressInfo {
 export function useInterviewProgress(interviewId: string | null) {
 	const [interview, setInterview] = useState<Interview | null>(null)
 	const [progressInfo, setProgressInfo] = useState<ProgressInfo>({
-		status: "uploaded",
+		status: "uploading",
 		progress: 0,
-		label: "Starting...",
+		label: "Uploading...",
 		isComplete: false,
 		hasError: false,
 	})
@@ -55,10 +55,14 @@ export function useInterviewProgress(interviewId: string | null) {
 			)
 			.subscribe()
 
+		// Fallback polling every 3 seconds for status updates
+		const pollInterval = setInterval(fetchInterview, 3000)
+
 		return () => {
 			supabase.removeChannel(channel)
+			clearInterval(pollInterval)
 		}
-	}, [interviewId, supabase])
+	}, [interviewId])
 
 	// Update progress info when interview status changes
 	useEffect(() => {
@@ -71,14 +75,16 @@ export function useInterviewProgress(interviewId: string | null) {
 		let hasError = false
 
 		switch (status) {
-			case "uploaded":
+			case "uploading":
 				progress = 20
-				label = "File uploaded"
+				label = "Uploading..."
+				break
+			case "uploaded":
+			case "transcribing":
+				progress = 50
+				label = "Transcribing audio..."
 				break
 			case "transcribed":
-				progress = 50
-				label = "Transcription complete"
-				break
 			case "processing":
 				progress = 85
 				label = "Analyzing insights..."
@@ -94,8 +100,8 @@ export function useInterviewProgress(interviewId: string | null) {
 				hasError = true
 				break
 			default:
-				progress = 0
-				label = "Starting..."
+				progress = 10
+				label = "Uploading..."
 		}
 
 		setProgressInfo({

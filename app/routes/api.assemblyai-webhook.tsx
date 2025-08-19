@@ -83,6 +83,8 @@ export async function action({ request }: ActionFunctionArgs) {
 				file_type: "audio",
 				assemblyai_id: payload.transcript_id,
 				original_filename: uploadJob.file_name,
+				speaker_transcripts: transcriptData.utterances || [],
+				topic_detection: transcriptData.iab_categories_result || {},
 			}
 
 			// Update interview with transcript data - set to transcribed first

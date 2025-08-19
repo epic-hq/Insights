@@ -2,7 +2,9 @@
 create type interview_status as enum (
   'draft',
   'scheduled',
+  'uploading',
   'uploaded',
+  'transcribing',
   'transcribed',
   'processing',
   'ready',

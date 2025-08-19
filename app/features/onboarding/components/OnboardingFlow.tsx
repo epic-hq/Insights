@@ -7,7 +7,7 @@ import WelcomeScreen from "./WelcomeScreen"
 
 export type OnboardingStep = "welcome" | "questions" | "upload" | "processing" | "complete"
 
-interface OnboardingData {
+export interface OnboardingData {
 	icp: string
 	role: string
 	goal: string
@@ -24,6 +24,13 @@ interface OnboardingFlowProps {
 	onAddMoreInterviews: () => void
 	onViewResults: () => void
 	projectId?: string
+	existingProject?: {
+		name: string
+		icp: string
+		role: string
+		goal: string
+		questions: string[]
+	}
 }
 
 export default function OnboardingFlow({
@@ -31,13 +38,16 @@ export default function OnboardingFlow({
 	onAddMoreInterviews,
 	onViewResults,
 	projectId,
+	existingProject,
 }: OnboardingFlowProps) {
-	const [currentStep, setCurrentStep] = useState<OnboardingStep>("welcome")
+	// Start at upload step if we have existing project context
+	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
 	const [data, setData] = useState<OnboardingData>({
-		icp: "",
-		role: "",
-		goal: "",
-		questions: [],
+		icp: existingProject?.icp || "",
+		role: existingProject?.role || "",
+		goal: existingProject?.goal || "",
+		questions: existingProject?.questions || [],
+		projectId,
 	})
 
 	const handleWelcomeNext = (welcomeData: { icp: string; role: string; goal: string; customGoal?: string }) => {
