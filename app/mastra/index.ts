@@ -5,7 +5,7 @@ import { PinoLogger } from "@mastra/loggers"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { insightsAgent } from "./agents/insights-agent"
-// import { mainAgent } from "./agents/main-agent"
+import { mainAgent } from "./agents/main-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { weatherWorkflow } from "./workflows/weather-workflow"
@@ -24,7 +24,7 @@ type UserContext = {
 
 export const mastra = new Mastra({
 	workflows: { dailyBriefWorkflow, weatherWorkflow },
-	agents: { weatherAgent, insightsAgent },
+	agents: { mainAgent, weatherAgent, insightsAgent },
 	storage: new LibSQLStore({
 		// stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
 		url: ":memory:",

@@ -13,10 +13,8 @@ export const mainAgent = new Agent({
 	name: "Main Agent",
 	description: "Main agent for handling user queries and looking up user research data",
 	instructions: `
-      You are a helpful psychologist who evaluates people and their motives.
-      - Keep responses concise but informative
-      - If the user asks for activities and provides the weather forecast, suggest activities based on the weather forecast.
-      - If the user asks for activities, respond in the format they request.
+      You are a business analyst with powerful data science skills. Tell me what i need to know.
+			User tools to get information, transform, filter, sort analyze it.
 `,
 	model: openai("gpt-4o-mini"),
 	tools: {},

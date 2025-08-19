@@ -117,7 +117,7 @@ TEST IT MORE
 - [x] **Fix RLS and authentication issues** - Personal interview ownership with team project access
 - [x] **Real-time UI updates** - Supabase Realtime websocket integration working (401 → 101)
 - [x] **AssemblyAI integration** - File upload, transcription, webhook processing
-- [ ] **CRITICAL: Deploy webhook to production** - Required for AssemblyAI callbacks
+- [x] **CRITICAL: Deploy webhook to production** - Required for AssemblyAI callbacks
 - [ ] Implement Generation queue (already spec'd)
 - [ ] Handle longer files, use as upgrade trigger. AAI timeout handling
 
@@ -126,7 +126,80 @@ TEST IT MORE
 - [ ] Deeper planning on ideal workflow. We need to get user's goals for project, and to invite people. What to show them in plain english. Upload / Record > Goal (needed for anlaysis) > alert > TLDR > What's next
 - [ ] Mobile-friendly page. this will happen at events, in the field. Add 'record now' to work on phone.
 
-- [ ] Misc:
+## Refactor & Ops
+
+- [ ] **Move API routes under their respective feature directories**
+  
+  **Current Structure:** All API routes in `/app/routes/api.*` (21 routes)
+  
+  **Target Structure:** Move to `/app/features/{feature}/api/{route}.tsx`
+  
+  **Route Mapping:**
+  ```
+  INTERVIEWS FEATURE:
+  - api.interview-status.tsx → features/interviews/api/status.tsx
+  - api.interview-transcript.tsx → features/interviews/api/transcript.tsx
+  - api.process-interview-internal.tsx → features/interviews/api/process-internal.tsx
+  - api.upload-file.tsx → features/interviews/api/upload-file.tsx
+  - api.upload-from-url.tsx → features/interviews/api/upload-from-url.tsx
+  
+  INSIGHTS FEATURE:
+  - api.auto-insights.tsx → features/insights/api/auto-insights.tsx
+  - api.update-field.tsx → features/insights/api/update-field.tsx (generalized)
+  
+  PERSONAS FEATURE:
+  - api.generate-personas.tsx → features/personas/api/generate.tsx
+  - api.backfill-people.tsx → features/personas/api/backfill-people.tsx
+  
+  ONBOARDING FEATURE:
+  - api.onboarding-start.tsx → features/onboarding/api/start.tsx
+  - api.generate-questions.tsx → features/onboarding/api/generate-questions.tsx
+  
+  PROJECTS FEATURE:
+  - api.analyze-project-status.tsx → features/projects/api/analyze-status.tsx
+  - api.project-status.tsx → features/projects/api/status.tsx
+  - api.trigger-analysis.tsx → features/projects/api/trigger-analysis.tsx
+  
+  AI CHAT FEATURE:
+  - api.copilot.tsx → features/aichat/api/copilot.tsx (already exists)
+  - api.daily-brief.tsx → features/aichat/api/daily-brief.tsx
+  
+  SHARED/SYSTEM:
+  - api.assemblyai-webhook.tsx → shared/api/assemblyai-webhook.tsx (external webhook)
+  - api.migrate-arrays.tsx → shared/api/migrate-arrays.tsx (one-time migration)
+  ```
+  
+  **Dependencies to Update:**
+  - Update 15+ import references across components
+  - Update fetcher.submit() calls in components
+  - Update route definitions in utils/route-definitions.ts
+  - Update test files (4 test files reference API routes)
+  - Update CopilotKit runtimeUrl references
+  
+  **Critical Files Using API Routes:**
+  - features/interviews/pages/detail.tsx (3 references to /api/update-field)
+  - features/upload/components/AddInterview.tsx (/api/upload-file)
+  - features/onboarding/components/OnboardingFlow.tsx (/api/onboarding-start)
+  - features/onboarding/components/QuestionsScreen.tsx (/api/generate-questions)
+  - features/onboarding/components/ProjectStatusScreen.tsx (/api/analyze-project-status)
+  - routes/_ProtectedLayout.tsx (/api/copilotkit)
+  - components/EditableTextarea.tsx (/api/update-field)
+  
+  **Migration Steps:**
+  1. Create new API route files in feature directories
+  2. Update import paths in all consuming components
+  3. Update route definitions and type exports
+  4. Update test files and mocks
+  5. Remove old API route files from /app/routes/
+  6. Verify all functionality works end-to-end
+  
+  **Shared Utilities to Consider:**
+  - Authentication patterns (getAuthenticatedUser, userContext)
+  - BAML client imports and usage
+  - Supabase client setup
+  - Error handling patterns
+  - Response formatting
+
 - [ ] A better breadcrumbs, indicate current project.
 - [ ] Show suggestions for next steps.
 - [ ] Reduce clutter
