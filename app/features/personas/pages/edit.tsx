@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
@@ -215,6 +217,9 @@ export default function EditPersona() {
 	consola.log("persona actionData: ")
 	const { persona } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
+
 	return (
 		<div className="mx-auto max-w-2xl px-4 py-6">
 			<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
@@ -529,7 +534,7 @@ export default function EditPersona() {
 									Update Persona
 								</Button>
 								<Button type="button" variant="outline" asChild>
-									<a href={`/personas/${persona.id}`}>Cancel</a>
+									<a href={routes.personas.detail(persona.id)}>Cancel</a>
 								</Button>
 							</div>
 						</form>

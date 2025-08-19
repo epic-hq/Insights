@@ -3,7 +3,7 @@ import consola from "consola"
 import { useEffect } from "react"
 // GeneratePersonasButton component
 import { useFetcher } from "react-router-dom"
-import { Sparkle } from "lucide-react"
+import { Sparkle, Users } from "lucide-react"
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
@@ -60,25 +60,52 @@ export default function Personas() {
 	}
 
 	return (
-		<div className="mx-auto max-w-7xl px-4 py-6">
-			{/* Header */}
-			<div className="mb-6 flex items-center justify-between">
-				<div>
-					<h1 className="font-bold text-3xl text-gray-900">Personas</h1>
-				</div>
-				<div className="flex gap-2 flex-wrap">
-					{/* Generate Personas Button */}
-					<GeneratePersonasButton />
-					<Button asChild>
-						<Link to={routes.personas.new()}>Add Persona</Link>
-					</Button>
+		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+			{/* Clean Header - Metro Style */}
+			<div className="border-gray-200 dark:border-gray-800 border-b bg-white dark:bg-gray-950 px-6 py-8">
+				<div className="mx-auto max-w-6xl">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<h1 className="font-light text-3xl text-gray-900 dark:text-white tracking-tight">User Personas</h1>
+							<p className="mt-2 text-gray-600 dark:text-gray-400 text-lg">Research-based user archetypes and behavioral patterns</p>
+						</div>
+						<div className="flex gap-3 flex-wrap">
+							<GeneratePersonasButton />
+							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+								<Link to={routes.personas.new()}>Add Persona</Link>
+							</Button>
+						</div>
+					</div>
 				</div>
 			</div>
 
-			<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-				{personas.map((persona) => (
-					<EnhancedPersonaCard key={persona.id} persona={persona} />
-				))}
+			{/* Main Content */}
+			<div className="mx-auto max-w-6xl px-6 py-12">
+				{personas.length === 0 ? (
+					<div className="text-center py-16">
+						<div className="mx-auto max-w-md">
+							<div className="mb-6 flex justify-center">
+								<div className="rounded-full bg-gray-100 dark:bg-gray-800 p-6">
+									<Users className="h-12 w-12 text-gray-400 dark:text-gray-500" />
+								</div>
+							</div>
+							<h3 className="font-semibold text-gray-900 dark:text-white text-xl mb-3">No personas yet</h3>
+							<p className="text-gray-600 dark:text-gray-400 mb-8">Generate personas from your research data or create them manually to understand your users better.</p>
+							<div className="flex gap-3 justify-center">
+								<GeneratePersonasButton />
+								<Button asChild variant="outline">
+									<Link to={routes.personas.new()}>Create Manually</Link>
+								</Button>
+							</div>
+						</div>
+					</div>
+				) : (
+					<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+						{personas.map((persona) => (
+							<EnhancedPersonaCard key={persona.id} persona={persona} />
+						))}
+					</div>
+				)}
 			</div>
 		</div>
 	)
@@ -86,7 +113,6 @@ export default function Personas() {
 
 function GeneratePersonasButton() {
 	const fetcher = useFetcher()
-	const { projectPath } = useCurrentProject()
 	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
 	
 	useEffect(() => {
@@ -96,9 +122,7 @@ function GeneratePersonasButton() {
 	}, [fetcher.data])
 	
 	return (
-		<fetcher.Form method="post" action="/api/generate-personas">
-			{/* Pass project context as hidden form fields */}
-			<input type="hidden" name="projectPath" value={projectPath || ""} />
+		<fetcher.Form method="post" action="api/generate-personas">
 			<Button type="submit" variant="secondary" disabled={isGenerating}>
 				<Sparkle className="mr-2 h-4 w-4" />
 				{isGenerating ? "Generating..." : "Generate Personas"}

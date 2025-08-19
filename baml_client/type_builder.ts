@@ -53,7 +53,7 @@ export default class TypeBuilder {
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
     
-    Persona: ClassViewer<'Persona', "name_and_tagline" | "role_context" | "goals" | "behaviors_habits" | "pain_points" | "triggers_decision_drivers" | "success_definition" | "key_quotes" | "differentiators" | "confidence" | "evidence_count" | "hypothesis_notes" | "key_open_questions">;
+    Persona: ClassViewer<'Persona', "name" | "name_and_tagline" | "description" | "role_context" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "percentage" | "goals" | "primary_goal" | "secondary_goals" | "motivations" | "values" | "success_definition" | "behaviors_habits" | "key_tasks" | "tools_used" | "frequency_of_purchase" | "frequency_of_use" | "triggers_decision_drivers" | "pain_points" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "key_quotes" | "sources" | "differentiators" | "confidence" | "evidence_count" | "hypothesis_notes" | "key_open_questions">;
     
     Persona1: ClassViewer<'Persona1', "name" | "description" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "motivations" | "values" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "frequency_of_purchase" | "frequency_of_use" | "key_tasks" | "tools_used" | "primary_goal" | "secondary_goals" | "sources" | "quotes" | "percentage">;
     
@@ -151,7 +151,7 @@ export default class TypeBuilder {
         ]);
         
         this.Persona = this.tb.classViewer("Persona", [
-          "name_and_tagline","role_context","goals","behaviors_habits","pain_points","triggers_decision_drivers","success_definition","key_quotes","differentiators","confidence","evidence_count","hypothesis_notes","key_open_questions",
+          "name","name_and_tagline","description","role_context","age","gender","location","education","occupation","income","languages","segment","role","color_hex","image_url","percentage","goals","primary_goal","secondary_goals","motivations","values","success_definition","behaviors_habits","key_tasks","tools_used","frequency_of_purchase","frequency_of_use","triggers_decision_drivers","pain_points","frustrations","preferences","learning_style","tech_comfort_level","key_quotes","sources","differentiators","confidence","evidence_count","hypothesis_notes","key_open_questions",
         ]);
         
         this.Persona1 = this.tb.classViewer("Persona1", [

@@ -45,105 +45,98 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 		<Link to={routes.personas.detail(persona.id)}>
 			<motion.div
 				className={cn(
-					"group relative cursor-pointer overflow-hidden rounded-xl border border-border bg-background",
+					"group relative cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
 					"transition-all duration-300 ease-out",
-					"hover:shadow-black/10 hover:shadow-lg dark:hover:shadow-white/5",
+					"hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-white/5",
 					className
 				)}
 				onMouseEnter={() => setIsHovered(true)}
 				onMouseLeave={() => setIsHovered(false)}
-				whileHover={{ y: -4, scale: 1.02 }}
+				whileHover={{ y: -2, scale: 1.01 }}
 				transition={{ duration: 0.3, ease: "easeOut" }}
 			>
-				{/* Theme color accent bar */}
-				<div className="h-1 w-full" style={{ backgroundColor: themeColor }} />
-
-				{/* Gradient overlay that appears on hover */}
-				<motion.div
-					className="pointer-events-none absolute inset-0 opacity-0"
-					style={{
-						background: `linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}05 100%)`,
-					}}
-					animate={{ opacity: isHovered ? 1 : 0 }}
-					transition={{ duration: 0.3 }}
-				/>
-
-				<Card className="border-0 bg-transparent shadow-none">
-					<CardHeader className="pb-3">
-						{/* Header with avatar and people count */}
-						<div className="flex items-start">
-							<motion.div className="relative" whileHover={{ scale: 1.1 }} transition={{ duration: 0.2 }}>
-								<Avatar className="h-16 w-16 border-2" style={{ borderColor: themeColor }}>
-									<AvatarFallback className="font-medium text-lg text-white" style={{ backgroundColor: themeColor }}>
-										{persona.image_url ? (
-											<img src={persona.image_url} alt={name} className="h-full w-full object-cover" />
-										) : (
-											initials
-										)}
-									</AvatarFallback>
-								</Avatar>
-								<motion.div
-									className="-bottom-1 -right-1 absolute flex h-6 w-6 items-center justify-center rounded-full shadow-sm"
+				{/* Clean Metro-style Layout */}
+				<div className="p-8">
+					{/* Header Section - Avatar and Title Separated */}
+					<div className="mb-6 flex items-center justify-between">
+						{/* Avatar - Larger and More Prominent */}
+						<motion.div 
+							className="relative" 
+							whileHover={{ scale: 1.05 }} 
+							transition={{ duration: 0.2 }}
+						>
+							<Avatar className="h-20 w-20 border-4 border-white shadow-lg dark:border-gray-800" style={{ borderColor: `${themeColor}20` }}>
+								<AvatarFallback 
+									className="text-white font-semibold text-2xl" 
 									style={{ backgroundColor: themeColor }}
-									animate={{ rotate: isHovered ? 180 : 0 }}
-									transition={{ duration: 0.3 }}
 								>
-									<Palette className="h-3 w-3 text-white" />
-								</motion.div>
-							</motion.div>
+									{persona.image_url ? (
+										<img src={persona.image_url} alt={name} className="h-full w-full object-cover" />
+									) : (
+										initials
+									)}
+								</AvatarFallback>
+							</Avatar>
+						</motion.div>
 
-							<div className="flex w-full items-start justify-between">
-								{/* Title */}
-								<div>
-									<motion.h3
-										className="mb-3 ml-4 font-bold text-foreground text-xl leading-tight"
-										style={{ color: isHovered ? themeColor : undefined }}
-										transition={{ duration: 0.3 }}
-									>
-										{name}
-									</motion.h3>
-								</div>
-								{/* People Count */}
-								<div className="flex items-center gap-1">
-									<motion.div
-										className="flex items-center gap-1 rounded-full bg-muted px-2 py-1 font-medium text-muted-foreground text-xs"
-										whileHover={{ scale: 1.05 }}
-									>
-										<Users className="h-3 w-3" />
-										{peopleCount}
-									</motion.div>
-								</div>
-							</div>
+						{/* People Count Badge */}
+						<motion.div
+							className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-2 dark:bg-gray-800"
+							whileHover={{ scale: 1.05 }}
+						>
+							<Users className="h-4 w-4 text-gray-500 dark:text-gray-400" />
+							<span className="font-medium text-gray-700 text-sm dark:text-gray-300">{peopleCount}</span>
+						</motion.div>
+					</div>
+
+					{/* Title Section - Clean Typography */}
+					<div className="mb-6">
+						<motion.h3
+							className="font-light text-2xl text-gray-900 dark:text-white tracking-tight leading-tight mb-2"
+							style={{ color: isHovered ? themeColor : undefined }}
+							transition={{ duration: 0.3 }}
+						>
+							{name}
+						</motion.h3>
+						
+						{/* Theme Color Accent Line */}
+						<motion.div 
+							className="h-1 w-16 rounded-full transition-all duration-300" 
+							style={{ backgroundColor: themeColor }}
+							animate={{ width: isHovered ? "4rem" : "3rem" }}
+						/>
+					</div>
+
+					{/* Description - Clean and Readable */}
+					<div className="mb-8">
+						<p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed line-clamp-4">
+							{description}
+						</p>
+					</div>
+
+					{/* Footer - Minimal Metadata */}
+					<div className="flex items-center justify-between">
+						<div className="text-gray-400 text-xs">
+							Updated {formatDistance(new Date(persona.updated_at), new Date(), { addSuffix: true })}
 						</div>
-					</CardHeader>
+						
+						{/* Subtle Hover Indicator */}
+						<motion.div
+							className="flex h-2 w-2 rounded-full transition-all duration-300"
+							style={{ backgroundColor: themeColor }}
+							animate={{ 
+								scale: isHovered ? 1.5 : 1,
+								opacity: isHovered ? 1 : 0.5
+							}}
+						/>
+					</div>
+				</div>
 
-					<CardContent className="pt-0">
-						{/* Description */}
-						<p className="mb-4 line-clamp-3 text-muted-foreground text-sm leading-relaxed">{description}</p>
-
-						{/* People count display
-						{peopleCount > 0 && (
-							<div className="space-y-3">
-								<div className="flex items-center justify-between">
-									<span className="font-medium text-muted-foreground text-xs uppercase tracking-wide">People</span>
-								</div>
-							</div>
-						)} */}
-
-						<CardFooter>
-							{/* Metadata */}
-							<div className="flex w-full justify-end text-muted-foreground/50 text-xs">
-								<span>Updated {formatDistance(new Date(persona.updated_at), new Date(), { addSuffix: true })}</span>
-							</div>
-						</CardFooter>
-					</CardContent>
-				</Card>
-
-				{/* Bottom gradient border effect */}
+				{/* Subtle Gradient Overlay on Hover */}
 				<motion.div
-					className="absolute right-0 bottom-0 left-0 h-px"
+					className="pointer-events-none absolute inset-0 rounded-2xl opacity-0"
 					style={{
-						background: `linear-gradient(90deg, transparent 0%, ${themeColor} 50%, transparent 100%)`,
+						background: `linear-gradient(135deg, ${themeColor}08 0%, ${themeColor}02 100%)`,
 					}}
 					animate={{ opacity: isHovered ? 1 : 0 }}
 					transition={{ duration: 0.3 }}

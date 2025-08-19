@@ -438,14 +438,41 @@ export interface OpportunityRecommendation {
 }
 
 export interface Persona {
+  name: string
   name_and_tagline: string
+  description?: string | null
   role_context: string
+  age?: string | null
+  gender?: string | null
+  location?: string | null
+  education?: string | null
+  occupation?: string | null
+  income?: string | null
+  languages?: string | null
+  segment?: string | null
+  role?: string | null
+  color_hex?: string | null
+  image_url?: string | null
+  percentage?: number | null
   goals: string[]
-  behaviors_habits: string[]
-  pain_points: string[]
-  triggers_decision_drivers: string[]
+  primary_goal?: string | null
+  secondary_goals?: string[] | null
+  motivations?: string[] | null
+  values?: string[] | null
   success_definition: string
+  behaviors_habits: string[]
+  key_tasks?: string[] | null
+  tools_used?: string[] | null
+  frequency_of_purchase?: string | null
+  frequency_of_use?: string | null
+  triggers_decision_drivers: string[]
+  pain_points: string[]
+  frustrations?: string[] | null
+  preferences?: string | null
+  learning_style?: string | null
+  tech_comfort_level?: string | null
   key_quotes: string[]
+  sources?: string[] | null
   differentiators: string[]
   confidence: string
   evidence_count: number

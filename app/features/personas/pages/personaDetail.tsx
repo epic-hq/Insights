@@ -1,9 +1,8 @@
 import consola from "consola"
 import { motion } from "framer-motion"
-import { FileText, Palette, Percent, Users } from "lucide-react"
+import { Palette, Percent, Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -209,203 +208,169 @@ export default function PersonaDetailRoute() {
 			.slice(0, 2) || "?"
 
 	return (
-		<div className="mx-auto max-w-7xl px-4 py-6">
-			{/* Enhanced Persona Header */}
-			<motion.div
-				className="relative mb-8 overflow-hidden rounded-xl border border-border bg-background shadow-lg"
-				initial={{ opacity: 0, y: 20 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.5 }}
-			>
-				{/* Theme color accent bar */}
-				<div className="h-2 w-full" style={{ backgroundColor: themeColor }} />
-
-				{/* Gradient overlay */}
-				<div
-					className="pointer-events-none absolute inset-0 opacity-20"
-					style={{
-						background: `linear-gradient(135deg, ${themeColor}15 0%, ${themeColor}05 100%)`,
-					}}
-				/>
-
-				<Card className="border-0 bg-transparent shadow-none">
-					<CardHeader className="pb-4">
-						<div className="flex items-start justify-between">
-							<div className="flex items-center gap-6">
-								{/* Bigger Avatar */}
-								<motion.div className="relative" whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
-									<Avatar className="h-36 w-36 border-4" style={{ borderColor: themeColor }}>
-										{persona.image_url ? (
-											<img
-												src={persona.image_url}
-												alt={persona.name}
-												className="h-full w-full object-cover"
-												onError={(e) => {
-													// Fallback to initials if image fails to load
-													e.currentTarget.style.display = "none"
-													const fallback = e.currentTarget.nextElementSibling as HTMLElement | null
-													if (fallback) {
-														fallback.style.display = "flex"
-													}
-												}}
-											/>
-										) : null}
-										<AvatarFallback className="font-bold text-2xl text-white" style={{ backgroundColor: themeColor }}>
-											{initials}
-										</AvatarFallback>
-									</Avatar>
-									{/* <motion.div
-										className="-bottom-2 -right-2 absolute flex h-8 w-8 items-center justify-center rounded-full shadow-lg"
-										style={{ backgroundColor: themeColor }}
-										whileHover={{ rotate: 180 }}
-										transition={{ duration: 0.3 }}
-									>
-										<Palette className="h-4 w-4 text-white" />
-									</motion.div> */}
-								</motion.div>
-
-								{/* Title and Description */}
-								<div className="flex-1">
-									<motion.h1
-										className="mb-2 font-bold text-4xl text-foreground leading-tight"
-										style={{ color: themeColor }}
-										initial={{ opacity: 0, x: -20 }}
-										animate={{ opacity: 1, x: 0 }}
-										transition={{ delay: 0.2, duration: 0.5 }}
-									>
-										{name}
-									</motion.h1>
-									<motion.p
-										className="text-lg text-muted-foreground leading-relaxed"
-										initial={{ opacity: 0, x: -20 }}
-										animate={{ opacity: 1, x: 0 }}
-										transition={{ delay: 0.3, duration: 0.5 }}
-									>
-										{description}
-									</motion.p>
-								</div>
-							</div>
-
-							{/* Action Buttons */}
-							<motion.div
-								className="flex gap-2"
-								initial={{ opacity: 0, scale: 0.9 }}
-								animate={{ opacity: 1, scale: 1 }}
-								transition={{ delay: 0.4, duration: 0.3 }}
+		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+			{/* Clean Metro-Style Header */}
+			<div className="border-gray-200 dark:border-gray-800 border-b bg-white dark:bg-gray-950 px-6 py-12">
+				<div className="mx-auto max-w-6xl">
+					<motion.div
+						className="mb-8 flex flex-col gap-8 md:flex-row md:items-start md:justify-between"
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ duration: 0.5 }}
+					>
+						{/* Avatar Section - Separated */}
+						<div className="flex items-center justify-center md:justify-start">
+							<motion.div 
+								className="relative" 
+								whileHover={{ scale: 1.02 }} 
+								transition={{ duration: 0.2 }}
 							>
-								<Button asChild variant="outline" size="sm">
-									<Link to={`${routes.personas.detail(persona.id)}/edit`}>Edit</Link>
-								</Button>
-								<Button
-									variant="default"
-									size="sm"
-									onClick={async () => {
-										const formData = new FormData()
-										formData.append("personaId", persona.id)
-										try {
-											const res = await fetch("/api/generate-persona-insights", {
-												method: "POST",
-												body: formData,
-											})
-											if (res.ok) {
-												window.location.reload()
-											} else {
-												alert("Failed to generate insights")
-											}
-										} catch (_e) {
-											alert("Error generating insights")
-										}
-									}}
-								>
-									Generate Persona
-								</Button>
+								<Avatar className="h-16 w-16 border-2 border-white shadow-lg dark:border-gray-800" style={{ borderColor: `${themeColor}30` }}>
+									<AvatarFallback 
+										className="font-bold text-white text-xl" 
+										style={{ backgroundColor: themeColor }}
+									>
+										{initials}
+									</AvatarFallback>
+								</Avatar>
 							</motion.div>
 						</div>
 
-						{/* Metadata */}
-						{/* <div className="flex items-center gap-6 text-muted-foreground text-sm">
-							<div className="flex items-center gap-2">
-								<Users className="h-4 w-4" />
-								<span className="font-medium">Created:</span> {new Date(persona.created_at).toLocaleDateString()}
+						{/* Title Section - Clean Typography */}
+						<div className="flex-1 text-center md:text-left">
+							<motion.h1
+								className="font-light text-4xl md:text-5xl text-gray-900 dark:text-white tracking-tight leading-tight mb-4"
+								style={{ color: themeColor }}
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.2, duration: 0.5 }}
+							>
+								{name}
+							</motion.h1>
+							
+							{/* Theme Color Accent Line */}
+							<motion.div 
+								className="h-1 w-24 rounded-full mb-6 mx-auto md:mx-0" 
+								style={{ backgroundColor: themeColor }}
+								initial={{ width: 0 }}
+								animate={{ width: "6rem" }}
+								transition={{ delay: 0.4, duration: 0.6 }}
+							/>
+							
+							<motion.p
+								className="text-gray-600 dark:text-gray-400 text-xl leading-relaxed max-w-2xl"
+								initial={{ opacity: 0, y: 20 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.3, duration: 0.5 }}
+							>
+								{description}
+							</motion.p>
+						</div>
+
+						{/* Action Buttons */}
+						<motion.div
+							className="flex gap-3 justify-center md:justify-start"
+							initial={{ opacity: 0, scale: 0.9 }}
+							animate={{ opacity: 1, scale: 1 }}
+							transition={{ delay: 0.5, duration: 0.3 }}
+						>
+							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+								<Link to={`${routes.personas.detail(persona.id)}/edit`}>Edit Persona</Link>
+							</Button>
+							<Button
+								variant="default"
+								style={{ backgroundColor: themeColor }}
+								className="text-white hover:opacity-90"
+								onClick={async () => {
+									const formData = new FormData()
+									formData.append("personaId", persona.id)
+									try {
+										const res = await fetch("/api/generate-persona-insights", {
+											method: "POST",
+											body: formData,
+										})
+										if (res.ok) {
+											window.location.reload()
+										} else {
+											alert("Failed to generate insights")
+										}
+									} catch (_e) {
+										alert("Error generating insights")
+									}
+								}}
+							>
+								Generate Insights
+							</Button>
+						</motion.div>
+					</motion.div>
+
+					{/* KPI Stats Section */}
+					<motion.div
+						className="grid grid-cols-3 gap-6"
+						initial={{ opacity: 0, y: 20 }}
+						animate={{ opacity: 1, y: 0 }}
+						transition={{ delay: 0.6, duration: 0.5 }}
+					>
+						<div className="rounded-2xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-900">
+							<div
+								className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+								style={{ backgroundColor: `${themeColor}15` }}
+							>
+								<Users className="h-6 w-6" style={{ color: themeColor }} />
 							</div>
-							<div>
-								<span className="font-medium">Updated:</span> {new Date(persona.updated_at).toLocaleDateString()}
+							<p className="text-gray-500 text-sm dark:text-gray-400">Interviews</p>
+							<p className="font-light text-2xl" style={{ color: themeColor }}>
+								{interviews.length}
+							</p>
+						</div>
+						<div className="rounded-2xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-900">
+							<div
+								className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+								style={{ backgroundColor: `${themeColor}15` }}
+							>
+								<Palette className="h-6 w-6" style={{ color: themeColor }} />
 							</div>
-						</div> */}
+							<p className="text-gray-500 text-sm dark:text-gray-400">Insights</p>
+							<p className="font-light text-2xl" style={{ color: themeColor }}>
+								{insights.length}
+							</p>
+						</div>
+						<div className="rounded-2xl border border-gray-200 bg-white p-6 text-center dark:border-gray-700 dark:bg-gray-900">
+							<div
+								className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full"
+								style={{ backgroundColor: `${themeColor}15` }}
+							>
+								<Percent className="h-6 w-6" style={{ color: themeColor }} />
+							</div>
+							<p className="text-gray-500 text-sm dark:text-gray-400">Avg. per Interview</p>
+							<p className="font-light text-2xl" style={{ color: themeColor }}>
+								{interviews.length > 0 ? (insights.length / interviews.length).toFixed(1) : "0"}
+							</p>
+						</div>
+					</motion.div>
+				</div>
+			</div>
+
+			{/* Main Content */}
+			<div className="mx-auto max-w-6xl px-6 py-12">
+				{/* Persona Details Card */}
+				<Card className="mb-8">
+					<CardHeader>
+						<h2 className="font-semibold text-xl">Details</h2>
+						<p className="text-muted-foreground text-xs">Only showing available fields</p>
 					</CardHeader>
 					<CardContent>
-						{/* KPIs */}
-						<motion.div
-							className="mb-6 grid grid-cols-3 gap-4"
-							initial={{ opacity: 0, y: 20 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.6, duration: 0.5 }}
-						>
-							<Badge variant="outline" className="flex items-center gap-2 p-2 transition-all hover:bg-accent">
-								<div
-									className="flex h-8 w-8 items-center justify-center rounded-full"
-									style={{ backgroundColor: `${themeColor}15` }}
-								>
-									<Users className="h-4 w-4" style={{ color: themeColor }} />
-								</div>
-								<div>
-									<p className="text-muted-foreground text-xs">Interviews</p>
-									<p className="font-bold text-lg" style={{ color: themeColor }}>
-										{interviews.length}
-									</p>
-								</div>
-							</Badge>
-							<Badge variant="outline" className="flex items-center gap-2 p-2 transition-all hover:bg-accent">
-								<div
-									className="flex h-8 w-8 items-center justify-center rounded-full"
-									style={{ backgroundColor: `${themeColor}15` }}
-								>
-									<Palette className="h-4 w-4" style={{ color: themeColor }} />
-								</div>
-								<div>
-									<p className="text-muted-foreground text-xs">Insights</p>
-									<p className="font-bold text-lg" style={{ color: themeColor }}>
-										{insights.length}
-									</p>
-								</div>
-							</Badge>
-							<Badge variant="outline" className="flex items-center gap-2 p-2 transition-all hover:bg-accent">
-								<div
-									className="flex h-8 w-8 items-center justify-center rounded-full"
-									style={{ backgroundColor: `${themeColor}15` }}
-								>
-									<Percent className="h-4 w-4" style={{ color: themeColor }} />
-								</div>
-								<div>
-									<p className="text-muted-foreground text-xs">Avg. per Interview</p>
-									<p className="font-bold text-lg" style={{ color: themeColor }}>
-										{interviews.length > 0 ? (insights.length / interviews.length).toFixed(1) : "0"}
-									</p>
-								</div>
-							</Badge>
-						</motion.div>
-					</CardContent>
-				</Card>
-			</motion.div>
-
-			{/* Persona Details Card */}
-			<Card className="mb-8">
-				<CardHeader>
-					<h2 className="font-semibold text-xl">Details</h2>
-					<p className="text-muted-foreground text-xs">Only showing available fields</p>
-				</CardHeader>
-				<CardContent>
-					<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
-						{[
-							{ label: "Age", value: persona.age },
-							{ label: "Gender", value: persona.gender },
-							{ label: "Location", value: persona.location },
-							{ label: "Education", value: persona.education },
-							{ label: "Occupation", value: persona.occupation },
-							{ label: "Income", value: persona.income },
-							{ label: "Languages", value: persona.languages },
-							{ label: "Segment", value: persona.segment },
-							{ label: "Role", value: persona.role },
+						<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
+							{[
+								{ label: "Age", value: persona.age },
+								{ label: "Gender", value: persona.gender },
+								{ label: "Location", value: persona.location },
+								{ label: "Education", value: persona.education },
+								{ label: "Occupation", value: persona.occupation },
+								{ label: "Income", value: persona.income },
+								{ label: "Languages", value: persona.languages },
+								{ label: "Segment", value: persona.segment },
+								{ label: "Role", value: persona.role },
 							{
 								label: "Motivations",
 								value:
@@ -477,220 +442,42 @@ export default function PersonaDetailRoute() {
 									<span className="text-muted-foreground">{item.value}</span>
 								</div>
 							))}
-					</div>
-				</CardContent>
-			</Card>
-
-			{/* Persona Insights Section */}
-			{(persona.demographics || persona.summarized_insights) && (
-				<div className="mb-8 rounded-lg bg-white p-6 shadow-sm">
-					{persona.demographics && (
-						<div className="mb-4">
-							<h2 className="mb-2 font-semibold text-xl">Common Demographics</h2>
-							<ul className="ml-6 list-disc text-muted-foreground">
-								{persona.demographics.age_range && (
-									<li>
-										<span className="font-medium text-foreground">Age Range:</span> {persona.demographics.age_range}
-									</li>
-								)}
-								{persona.demographics.gender_distribution && (
-									<li>
-										<span className="font-medium text-foreground">Gender Distribution:</span>{" "}
-										{Object.entries(persona.demographics.gender_distribution)
-											.map(([k, v]) => `${k}: ${v}%`)
-											.join(", ")}
-									</li>
-								)}
-								{persona.demographics.locations && persona.demographics.locations.length > 0 && (
-									<li>
-										<span className="font-medium text-foreground">Locations:</span>{" "}
-										{persona.demographics.locations.join(", ")}
-									</li>
-								)}
-								{persona.demographics.education_levels && persona.demographics.education_levels.length > 0 && (
-									<li>
-										<span className="font-medium text-foreground">Education Levels:</span>{" "}
-										{persona.demographics.education_levels.join(", ")}
-									</li>
-								)}
-								{persona.demographics.occupations && persona.demographics.occupations.length > 0 && (
-									<li>
-										<span className="font-medium text-foreground">Occupations:</span>{" "}
-										{persona.demographics.occupations.join(", ")}
-									</li>
-								)}
-								{persona.demographics.other_demographics && (
-									<li>
-										<span className="font-medium text-foreground">Other:</span>{" "}
-										{persona.demographics.other_demographics}
-									</li>
-								)}
-							</ul>
 						</div>
-					)}
-					{persona.summarized_insights &&
-						Array.isArray(persona.summarized_insights) &&
-						persona.summarized_insights.length > 0 && (
-							<div>
-								<h2 className="mb-2 font-semibold text-xl">Summarized Insights</h2>
-								<ul className="space-y-2">
-									{persona.summarized_insights.map((insight: any, idx: number) => (
-										<li key={insight.id ?? idx} className="rounded border bg-gray-50 p-3">
-											<div className="font-medium text-foreground">{insight.name}</div>
-											{insight.details && <div className="text-muted-foreground text-sm">{insight.details}</div>}
-										</li>
-									))}
-								</ul>
-							</div>
-						)}
-				</div>
-			)}
+					</CardContent>
+				</Card>
 
-			{/* Two-column layout for People and Interviews */}
-			<div className="mb-8 grid grid-cols-1 gap-6 md:grid-cols-2">
-				{/* People with this Persona Section */}
-				<motion.div
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.7, duration: 0.5 }}
-				>
-					<Card>
+
+				{/* People Section */}
+				{people && people.length > 0 && (
+					<Card className="mb-8">
 						<CardHeader>
-							<div className="flex items-center gap-3">
-								<div
-									className="flex h-10 w-10 items-center justify-center rounded-lg"
-									style={{ backgroundColor: `${themeColor}15` }}
-								>
-									<Users className="h-5 w-5" style={{ color: themeColor }} />
-								</div>
-								<h2 className="font-semibold text-xl">People with this Persona</h2>
-								<Badge variant="secondary" className="ml-auto">
-									{people.length} total
-								</Badge>
-							</div>
+							<h3 className="font-semibold text-lg">People ({people.length})</h3>
 						</CardHeader>
 						<CardContent>
-							{people.length > 0 ? (
-								<div className="space-y-2">
-									{people.slice(0, 5).map((person) => (
-										<motion.div
-											key={person.id}
-											className="flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-accent hover:shadow-sm"
-											whileHover={{ scale: 1.01 }}
-										>
-											<Link to={routes.people.detail(person.id)} className="font-medium hover:text-primary">
-												{person.name || "Unnamed"}
-											</Link>
-											{person.segment && <Badge variant="outline">{person.segment}</Badge>}
-										</motion.div>
-									))}
-									{people.length > 5 && (
-										<div className="mt-3 text-center">
-											<Button asChild variant="ghost" size="sm">
-												<Link to={routes.people.index()} className="text-muted-foreground text-sm hover:text-primary">
-													View all {people.length} people
-												</Link>
-											</Button>
-										</div>
-									)}
-								</div>
-							) : (
-								<div className="py-8 text-center">
-									<Users className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-									<p className="text-muted-foreground">No people associated with this persona</p>
-								</div>
-							)}
-						</CardContent>
-					</Card>
-				</motion.div>
-
-				{/* Interviews Section */}
-				<motion.div
-					initial={{ opacity: 0, y: 20 }}
-					animate={{ opacity: 1, y: 0 }}
-					transition={{ delay: 0.8, duration: 0.5 }}
-				>
-					<Card>
-						<CardHeader>
-							<div className="flex items-center gap-3">
-								<div
-									className="flex h-10 w-10 items-center justify-center rounded-lg"
-									style={{ backgroundColor: `${themeColor}15` }}
-								>
-									<FileText className="h-5 w-5" style={{ color: themeColor }} />
-								</div>
-								<h2 className="font-semibold text-xl">Interviews</h2>
-								<Badge variant="secondary" className="ml-auto">
-									{interviews.length} total
-								</Badge>
+							<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+								{people.map((person) => (
+									<div key={person.id} className="rounded-lg border p-4">
+										<h4 className="font-medium">{person.name}</h4>
+										{person.segment && <p className="text-muted-foreground text-sm">{person.segment}</p>}
+									</div>
+								))}
 							</div>
-						</CardHeader>
-						<CardContent>
-							{interviews.length > 0 ? (
-								<div className="space-y-2">
-									{interviews.slice(0, 5).map((interview: any) => (
-										<motion.div
-											key={interview.id}
-											className="group flex items-center justify-between rounded-lg border p-3 transition-all hover:bg-accent hover:shadow-sm"
-											whileHover={{ scale: 1.01 }}
-										>
-											<div className="flex-1">
-												<Link to={routes.interviews.detail(interview.id)} className="font-medium hover:text-primary">
-													{interview.title || "Untitled Interview"}
-												</Link>
-												{interview.interview_date && (
-													<p className="text-muted-foreground text-xs">
-														{new Date(interview.interview_date).toLocaleDateString()}
-													</p>
-												)}
-											</div>
-											{interview.participant_pseudonym && (
-												<Badge variant="outline" style={{ borderColor: themeColor, color: themeColor }}>
-													{interview.participant_pseudonym}
-												</Badge>
-											)}
-										</motion.div>
-									))}
-									{interviews.length > 5 && (
-										<div className="mt-3 text-center">
-											<Button asChild variant="ghost" size="sm">
-												<Link
-													to={routes.interviews.index()}
-													className="text-muted-foreground text-sm hover:text-primary"
-												>
-													View all {interviews.length} interviews
-												</Link>
-											</Button>
-										</div>
-									)}
-								</div>
-							) : (
-								<div className="py-8 text-center">
-									<FileText className="mx-auto mb-3 h-10 w-10 text-muted-foreground" />
-									<p className="text-muted-foreground">No interviews with this persona</p>
-								</div>
-							)}
 						</CardContent>
 					</Card>
-				</motion.div>
-			</div>
+				)}
 
-			{/* Related Insights Section */}
-			{insights.length > 0 && (
-				<div className="rounded-lg bg-white p-6 shadow-sm">
-					<div className="mb-4 flex items-center justify-between">
-						<h2 className="font-semibold text-xl">Related Insights</h2>
-						<Link to={routes.insights.index()} className="text-blue-600 text-sm hover:text-blue-800">
-							View all insights
-						</Link>
+				{/* Insights Section */}
+				{insights && insights.length > 0 && (
+					<div className="space-y-6">
+						<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
+						<InsightCardGrid>
+							{insights.map((insight) => (
+								<InsightCardV2 key={insight.id} insight={insight} />
+							))}
+						</InsightCardGrid>
 					</div>
-					<InsightCardGrid>
-						{insights.slice(0, 6).map((insight: any) => (
-							<InsightCardV2 key={insight.id} insight={insight} />
-						))}
-					</InsightCardGrid>
-				</div>
-			)}
+				)}
+			</div>
 		</div>
 	)
 }

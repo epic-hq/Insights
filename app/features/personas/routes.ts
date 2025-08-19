@@ -4,7 +4,7 @@ export default [
 	...prefix("personas", [
 		index("./features/personas/pages/index.tsx"),
 		route("new", "./features/personas/pages/new.tsx"),
-		route(":personaId", "./features/personas/pages/detail.tsx"),
+		route(":personaId", "./features/personas/pages/personaDetail.tsx"),
 		route(":personaId/edit", "./features/personas/pages/edit.tsx"),
 		// API routes with project context
 		route("api/generate-personas", "./features/personas/api/generate-personas.tsx"),

@@ -38,19 +38,61 @@ class Persona1 {
 // Rolling persona refinement with single‑interview safeguards
 
 class Persona {
+  // === IDENTITY & CORE ===
+  name string @description("Persona name: up to 4 words. Plain, memorable, captures essence. Example: The Reluctant Power User, Last-minute shopper")
   name_and_tagline string @description("2–4 words + optional quoted tagline. Plain, memorable, captures essence. Example: The Reluctant Power User — 'Wants outcomes, hates setup'.")
+  description string | null @description("Persona Archetype description: 3-7 sentences summarizing behavior, pain, motivations, and preferences")
   role_context string @description("Role/life stage/situation as it relates to the product problem. Example: 'HS junior juggling AP classes' or 'Ops lead at 20‑person startup'.")
+
+  // === DEMOGRAPHICS ===
+  age string | null @description("Most common age or age range, e.g. '25-34'")
+  gender string | null @description("Most common gender for this persona")
+  location string | null @description("Most common location(s) for this persona")
+  education string | null @description("Most common education level(s)")
+  occupation string | null @description("Most common occupation(s)")
+  income string | null @description("Most common income range or level")
+  languages string | null @description("Most common languages spoken")
+  segment string | null @description("Segment or group this persona belongs to")
+  role string | null @description("Role or job title")
+
+  // === VISUAL IDENTITY ===
+  color_hex string | null @description("Hex color for persona visualization")
+  image_url string | null @description("URL to persona avatar/profile image")
+  percentage float | null @description("Estimated percentage of users represented by this persona")
+
+  // === GOALS & MOTIVATIONS ===
   goals string[] @description("3–5 user outcomes (not features). Example: 'Finish assignments faster'; 'Reduce rework'.")
-  behaviors_habits string[] @description("Observable patterns (work/learn/decide/communicate) + tools/channels/frequency. Keep concrete & falsifiable. Example: 'Checks app daily; prefers SMS'.")
-  pain_points string[] @description("Top 3–5 blockers or unmet needs that are actionable for product/design. Example: 'Lack of visibility'; 'Difficulty with setup'.")
-  triggers_decision_drivers string[] @description("What causes action + how choices are made. Example: 'Deadline pressure; peer proof'.")
+  primary_goal string | null @description("Primary goal for this persona")
+  secondary_goals string[] | null @description("Secondary goals for this persona")
+  motivations string[] | null @description("Key motivations for this persona")
+  values string[] | null @description("Core values for this persona")
   success_definition string @description("Crisp success statement in this domain. Example: 'Submits work a day early without anxiety'.")
+
+  // === BEHAVIORS & PATTERNS ===
+  behaviors_habits string[] @description("Observable patterns (work/learn/decide/communicate) + tools/channels/frequency. Keep concrete & falsifiable. Example: 'Checks app daily; prefers SMS'.")
+  key_tasks string[] | null @description("Key tasks this persona performs")
+  tools_used string[] | null @description("Tools or products commonly used by this persona")
+  frequency_of_purchase string | null @description("How often this persona purchases relevant products/services")
+  frequency_of_use string | null @description("How often this persona uses relevant products/services")
+  triggers_decision_drivers string[] @description("What causes action + how choices are made. Example: 'Deadline pressure; peer proof'.")
+
+  // === PAIN POINTS & CHALLENGES ===
+  pain_points string[] @description("Top 3–5 blockers or unmet needs that are actionable for product/design. Example: 'Lack of visibility'; 'Difficulty with setup'.")
+  frustrations string[] | null @description("Top frustrations or pain points")
+
+  // === PREFERENCES & STYLE ===
+  preferences string | null @description("Notable preferences")
+  learning_style string | null @description("Preferred learning style")
+  tech_comfort_level string | null @description("Comfort level with technology")
+
+  // === EVIDENCE & INSIGHTS ===
   key_quotes string[] @description("1–3 verbatim interview quotes (lightly cleaned). Real language only.")
+  sources string[] | null @description("Main sources of information or influence")
   differentiators string[]
     @description("≥3 concrete, behavior/motivation‑based ways this persona differs from others.")
     @assert(min_three_diffs, {{ this|length >= 3 }})
 
-  // Single‑interview mode fields
+  // === RESEARCH METADATA ===
   confidence string @description("Overall confidence: use one of 'Low', 'Medium', 'High'. If evidence_count < 2, MUST be 'Low'.")
   evidence_count int @description("Distinct interviews supporting this persona. Usually 1 in single‑interview mode.")
   hypothesis_notes string @description("Brief, falsifiable assumptions awaiting validation. Do not restate facts.")
