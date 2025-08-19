@@ -23,6 +23,7 @@ interface OnboardingFlowProps {
 	onComplete: (data: OnboardingData) => void
 	onAddMoreInterviews: () => void
 	onViewResults: () => void
+	onRefresh?: () => void
 	projectId?: string
 	existingProject?: {
 		name: string
@@ -37,6 +38,7 @@ export default function OnboardingFlow({
 	onComplete,
 	onAddMoreInterviews,
 	onViewResults,
+	onRefresh,
 	projectId,
 	existingProject,
 }: OnboardingFlowProps) {
@@ -174,6 +176,7 @@ export default function OnboardingFlow({
 					projectId={data.projectId}
 					onAddMore={onAddMoreInterviews}
 					onViewResults={onViewResults}
+					onRefresh={onRefresh}
 				/>
 			)
 

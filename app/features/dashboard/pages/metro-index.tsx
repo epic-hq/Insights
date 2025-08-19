@@ -653,33 +653,35 @@ export default function MetroIndex() {
 			</div>
 
 			{/* Bottom action bar */}
-			<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-3">
-				<div className="grid grid-cols-3 gap-2">
-					{/* Add Encounter → Modern Onboarding Flow */}
-					<button
-						className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-emerald-600 text-white transition-all duration-200 hover:scale-[1.02]"
-						onClick={() => navigate(`/a/${accountId}/${projectId}/new`)}
-					>
-						<Plus className="mb-1 h-5 w-5" />
-						<span className="mt-1 font-medium text-xs">Add Encounter</span>
-					</button>
+			<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-3 pb-safe">
+				<div className="mx-auto max-w-md">
+					<div className="grid grid-cols-3 gap-2">
+						{/* Add Encounter → Modern Onboarding Flow */}
+						<button
+							className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-emerald-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
+							onClick={() => navigate(`/a/${accountId}/${projectId}/new`)}
+						>
+							<Plus className="h-4 w-4" />
+							<span className="mt-1 font-medium text-xs leading-tight">Add Encounter</span>
+						</button>
 
-					{/* New Project → navigate to routes.projects.new() */}
-					<button
-						className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-purple-600 text-white transition-all duration-200 hover:scale-[1.02]"
-						onClick={() => navigate(routes.interviews.onboard())}
-					>
-						<Plus className="mb-1 h-5 w-5" />
-						<span className="font-medium text-xs">New Project</span>
-					</button>
+						{/* New Project → navigate to routes.projects.new() */}
+						<button
+							className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-purple-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
+							onClick={() => navigate(routes.interviews.onboard())}
+						>
+							<Plus className="h-4 w-4" />
+							<span className="mt-1 font-medium text-xs leading-tight">New Project</span>
+						</button>
 
-					<button
-						className="flex h-16 cursor-pointer flex-col items-center justify-center rounded-lg bg-indigo-600 text-white transition-all duration-200 hover:scale-[1.02]"
-						onClick={() => toggleChat(expandedSection || "general")}
-					>
-						<Bot className="mb-1 h-5 w-5" />
-						<span className="font-medium text-xs">AI Chat!</span>
-					</button>
+						<button
+							className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-indigo-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
+							onClick={() => toggleChat(expandedSection || "general")}
+						>
+							<Bot className="h-4 w-4" />
+							<span className="mt-1 font-medium text-xs leading-tight">AI Chat</span>
+						</button>
+					</div>
 				</div>
 			</div>
 

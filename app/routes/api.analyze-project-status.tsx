@@ -46,10 +46,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			.eq("id", projectId)
 			.single()
 
-		consola.log("Project result:", {
-			data: project,
-			error: projectError,
-		})
+		// consola.log("Project result:", {
+		// 	data: project,
+		// 	error: projectError,
+		// })
 
 		if (!project) {
 			return Response.json({ error: "Project not found" }, { status: 404 })
@@ -60,10 +60,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Fetch interviews and insights using proper database functions
 		const { data: interviews, error: interviewsError } = await getInterviews({ supabase, accountId, projectId })
-		consola.log("Interviews query result:", { interviews: interviews?.length, error: interviewsError })
+		consola.log("Interviews:", { interviews: interviews?.length, error: interviewsError })
 
 		const { data: insights, error: insightsError } = await getInsights({ supabase, accountId, projectId })
-		consola.log("Insights query result:", { insights: insights?.length, error: insightsError })
+		consola.log("Insights:", { insights: insights?.length, error: insightsError })
 
 		const totalInterviews = interviews?.length || 0
 		const totalInsights = insights?.length || 0
@@ -95,7 +95,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			? `${researchGoal}. Additional analysis requirements: ${customInstructions}`
 			: researchGoal
 
-		consola.log(`analyze-project params goal: ${enhancedGoal}\ninsightContent: ${insightContent}\ninterviewContent: ${interviewContent}\ncustomInstructions: ${customInstructions}`)
+		// consola.log(`analyze-project params goal: ${enhancedGoal}\ninsightContent: ${insightContent}\ninterviewContent: ${interviewContent}\ncustomInstructions: ${customInstructions}`)
 		// Run BAML analysis
 		const [execsum, projectAnalysis] = await Promise.all([
 			b.GenerateExecutiveSummary(enhancedGoal, insightContent, interviewContent, customInstructions || ""),

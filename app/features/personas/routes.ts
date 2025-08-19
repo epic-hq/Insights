@@ -4,8 +4,11 @@ export default [
 	...prefix("personas", [
 		index("./features/personas/pages/index.tsx"),
 		route("new", "./features/personas/pages/new.tsx"),
-		route(":personaId", "./features/personas/pages/personaDetail.tsx"),
+		route(":personaId", "./features/personas/pages/detail.tsx"),
 		route(":personaId/edit", "./features/personas/pages/edit.tsx"),
+		// API routes with project context
+		route("api/generate-personas", "./features/personas/api/generate-personas.tsx"),
+		route("api/generate-persona-insights", "./features/personas/api/generate-persona-insights.tsx"),
 		route(":personaId/interviews/:interviewId", "./features/personas/pages/interview.tsx"),
 		route("mock1", "./features/personas/components/persona_visualization_mockup1.tsx"),
 		route("wip", "./features/personas/components/persona_visualization_mockup2.tsx"),

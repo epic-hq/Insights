@@ -1,9 +1,9 @@
 import type { LoaderFunctionArgs } from "react-router"
-import { useLoaderData, useNavigate } from "react-router-dom"
+import { useLoaderData, useNavigate, useRevalidator } from "react-router-dom"
 import { userContext } from "~/server/user-context"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import OnboardingFlow, { type OnboardingData } from "../components/OnboardingFlow"
+import OnboardingFlow, { type OnboardingData } from "~/features/onboarding/components/OnboardingFlow"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -36,6 +36,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export default function AddInterviewPage() {
 	const { project, accountId, projectId } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
+	const revalidator = useRevalidator()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
 	const handleOnboardingComplete = async (data: OnboardingData) => {
@@ -48,8 +49,13 @@ export default function AddInterviewPage() {
 	}
 
 	const handleAddMoreInterviews = () => {
-		// Stay on this page to add another interview
-		window.location.reload()
+		// Stay on this page to add another interview - use smooth revalidation
+		revalidator.revalidate()
+	}
+
+	const handleRefresh = () => {
+		// Smooth refresh without full page reload using React Router 7 revalidator
+		revalidator.revalidate()
 	}
 
 	const handleViewResults = () => {
@@ -66,6 +72,7 @@ export default function AddInterviewPage() {
 			onComplete={handleOnboardingComplete}
 			onAddMoreInterviews={handleAddMoreInterviews}
 			onViewResults={handleViewResults}
+			onRefresh={handleRefresh}
 			projectId={projectId}
 			existingProject={{
 				name: project.name,

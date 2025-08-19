@@ -1,3 +1,8 @@
+
+import consola from "consola"
+import { useEffect } from "react"
+// GeneratePersonasButton component
+import { useFetcher } from "react-router-dom"
 import { Sparkle } from "lucide-react"
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 import { Link } from "react-router-dom"
@@ -31,7 +36,6 @@ export async function loader({ request, params }: { request: Request; params: { 
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
-	consola.log("Query result:", personas)
 	if (personasError) {
 		throw new Response(`Error fetching personas: ${personasError.message}`, { status: 500 })
 	}
@@ -62,7 +66,7 @@ export default function Personas() {
 				<div>
 					<h1 className="font-bold text-3xl text-gray-900">Personas</h1>
 				</div>
-				<div className="flex gap-2">
+				<div className="flex gap-2 flex-wrap">
 					{/* Generate Personas Button */}
 					<GeneratePersonasButton />
 					<Button asChild>
@@ -80,21 +84,21 @@ export default function Personas() {
 	)
 }
 
-import consola from "consola"
-import { useEffect } from "react"
-// GeneratePersonasButton component
-import { useFetcher } from "react-router-dom"
-
 function GeneratePersonasButton() {
 	const fetcher = useFetcher()
+	const { projectPath } = useCurrentProject()
 	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
+	
 	useEffect(() => {
 		if (fetcher.data?.success) {
 			window.location.reload()
 		}
 	}, [fetcher.data])
+	
 	return (
-		<fetcher.Form method="post" action="/api.generate-personas">
+		<fetcher.Form method="post" action="/api/generate-personas">
+			{/* Pass project context as hidden form fields */}
+			<input type="hidden" name="projectPath" value={projectPath || ""} />
 			<Button type="submit" variant="secondary" disabled={isGenerating}>
 				<Sparkle className="mr-2 h-4 w-4" />
 				{isGenerating ? "Generating..." : "Generate Personas"}

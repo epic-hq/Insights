@@ -133,7 +133,7 @@ export default function ProtectedLayout() {
 					}}
 				>
 					<MainNav />
-					<PageHeader title="" />
+					<PageHeader title="" showBreadcrumbs={false} />
 					<Outlet />
 
 					{/* Persistent AI Chat Button */}

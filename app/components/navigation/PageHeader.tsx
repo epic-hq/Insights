@@ -25,7 +25,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title = "", showBreadcrumbs = t
 		<header className={`mx-auto max-w-[1440px] px-4 py-2 ${className}`}>
 			<div className="">
 				{/* Only show back link if breadcrumbs are hidden */}
-				{!showBreadcrumbs && (
+				{/* {!showBreadcrumbs && (
 					<Link to={PATHS.DASHBOARD} className="mb-4 flex items-center text-blue-600 hover:text-blue-800">
 						<svg
 							className="mr-1 h-5 w-5"
@@ -38,7 +38,7 @@ const PageHeader: React.FC<PageHeaderProps> = ({ title = "", showBreadcrumbs = t
 						</svg>
 						Back to Dashboard
 					</Link>
-				)}
+				)} */}
 
 				{showBreadcrumbs &&
 					(breadcrumbs ? (

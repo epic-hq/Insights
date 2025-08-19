@@ -9,9 +9,13 @@ import {
 	TrendingUp,
 	Users,
 	Zap,
+	X,
 } from "lucide-react"
 import { useState } from "react"
+import { useRevalidator } from "react-router-dom"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Badge } from "~/components/ui/badge"
 import { Input } from "~/components/ui/input"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -25,6 +29,7 @@ interface ProjectStatusScreenProps {
 	statusData?: ProjectStatusData | null
 	onAddMore: () => void
 	onViewResults: () => void
+	onRefresh?: () => void
 }
 
 export default function ProjectStatusScreen({
@@ -35,11 +40,15 @@ export default function ProjectStatusScreen({
 	statusData: externalStatusData,
 	onAddMore,
 	onViewResults,
+	onRefresh,
 }: ProjectStatusScreenProps) {
 	const [isLoading, setIsLoading] = useState(false)
 	const [isAnalyzing, setIsAnalyzing] = useState(false)
 	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false)
 	const [customInstructions, setCustomInstructions] = useState("")
+	
+	// React Router 7 revalidator for data refresh
+	const revalidator = useRevalidator()
 
 	// Create routes helper if we have the required IDs
 	const currentProjectContext = useCurrentProject()
@@ -67,8 +76,12 @@ export default function ProjectStatusScreen({
 				console.log("✅ Analysis completed:", result)
 				setShowCustomAnalysis(false)
 				setCustomInstructions("")
-				// Refresh the page to show new data
-				window.location.reload()
+				// Trigger smooth data refresh using React Router 7 revalidator
+				revalidator.revalidate()
+				// Also call onRefresh callback if provided for backward compatibility
+				if (onRefresh) {
+					onRefresh()
+				}
 			} else {
 				console.error("❌ Analysis failed:", response.status)
 			}
@@ -429,7 +442,6 @@ export default function ProjectStatusScreen({
 								<label className="mb-3 block font-medium text-gray-300 text-sm">Custom Instructions (Optional)</label>
 								<Input
 									value={customInstructions}
-									rows={2}
 									onChange={(e) => setCustomInstructions(e.target.value)}
 									placeholder="e.g., Focus on pain points, Look for feature gaps..."
 									className="border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
