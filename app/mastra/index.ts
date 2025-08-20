@@ -9,12 +9,11 @@ import { mainAgent } from "./agents/main-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { weatherWorkflow } from "./workflows/weather-workflow"
-// import { weatherTool } from "./tools/upsight-tool"
 
 // Create global SupabaseClient for workflows
 export const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
-type UserContext = {
+export type UserContext = {
 	user_id: string
 	account_id: string
 	project_id: string

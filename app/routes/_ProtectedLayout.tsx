@@ -2,7 +2,7 @@ import { CopilotKit } from "@copilotkit/react-core"
 import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
-import { Outlet, useLoaderData, useRouteLoaderData, useParams } from "react-router"
+import { Outlet, useLoaderData, useRouteLoaderData, useParams, redirect } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
@@ -45,13 +45,13 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 
 			// Determine current account: use last_used_account_id from user_settings, validate it's available
 			let currentAccount = null
-			if (user_settings?.last_used_account_id) {
-				currentAccount = accounts?.find((acc) => acc.account_id === user_settings.last_used_account_id)
+			if (user_settings?.last_used_account_id && Array.isArray(accounts)) {
+				currentAccount = accounts.find((acc: any) => acc.account_id === user_settings.last_used_account_id)
 			}
 
 			// Fallback: first non-personal account, or first account if only personal
-			if (!currentAccount) {
-				currentAccount = accounts?.find((acc) => !acc.personal_account) || accounts?.[0]
+			if (!currentAccount && Array.isArray(accounts)) {
+				currentAccount = accounts.find((acc: any) => !acc.personal_account) || accounts[0]
 			}
 
 			if (!currentAccount) {
@@ -112,7 +112,6 @@ export async function loader({ context }: Route.LoaderArgs) {
 export default function ProtectedLayout() {
 	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
 	const {  clientEnv } = useRouteLoaderData("root")
-consola.log("protected node-env: ",clientEnv)
 	const params = useParams()
 
 	return (
@@ -124,7 +123,7 @@ consola.log("protected node-env: ",clientEnv)
 		>
 			<CurrentProjectProvider>
 				<CopilotKit
-					agent="insightsAgent"
+					agent="mainAgent"
 					runtimeUrl="/api/copilotkit"
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
 					showDevConsole={clientEnv?.NODE_ENV === 'development'}

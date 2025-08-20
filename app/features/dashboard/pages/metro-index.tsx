@@ -21,7 +21,8 @@ import { useNavigate, useParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { Logo, LogoBrand } from "~/components/branding"
 import type { TreeNode } from "~/components/charts/TreeMap"
-import { DailyBriefChat } from "~/components/chat/DailyBriefChat"
+import { BottomActionBar } from "~/features/dashboard/components/BottomActionBar"
+import { CopilotSidebar } from "~/features/dashboard/components/CopilotSidebar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -396,9 +397,15 @@ export default function MetroIndex() {
 		setShowChat(!showChat)
 	}
 
+	const handleToggleChat = () => {
+		setShowChat(!showChat)
+	}
+
 	return (
-		<div className="relative min-h-screen bg-black text-white">
-			{/* Header */}
+		<div className="relative flex min-h-screen bg-black text-white">
+			{/* Main Content */}
+			<div className={`flex-1 transition-all duration-300 ${showChat ? 'mr-80' : ''}`}>
+				{/* Header */}
 			<div className="border-gray-800 border-b bg-black p-3">
 				<div className="mb-3 flex flex-row items-center justify-between">
 					<div className="flex items-center gap-2 font-light text-2xl text-white">
@@ -494,9 +501,9 @@ export default function MetroIndex() {
 													</p>
 													{Array.isArray(item.tags) && item.tags.length > 0 && (
 														<div className="mt-2 flex flex-wrap gap-1">
-															{(item.tags as string[]).slice(0, 3).map((tag, i) => (
+															{(item.tags as string[]).slice(0, 3).map((tag) => (
 																<span
-																	key={`${item.id}-tag-${i}`}
+																	key={`${item.id}-tag-${tag}`}
 																	className="rounded bg-gray-700 px-2 py-1 text-gray-200 text-xs"
 																>
 																	{tag}
@@ -511,30 +518,6 @@ export default function MetroIndex() {
 								</div>
 							</div>
 
-							{/* AI Chat - Right side on desktop, bottom on mobile */}
-							{showChat && (
-								<div className="w-full lg:w-80">
-									<div className="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
-										<div className="mb-3 flex items-center justify-between">
-											<div className="flex items-center gap-2">
-												<Bot className="h-4 w-4 text-white" />
-												<h3 className="font-medium text-white">AI Assistant</h3>
-											</div>
-											<Button
-												variant="ghost"
-												size="icon"
-												onClick={() => setShowChat(false)}
-												className="h-6 w-6 text-white hover:bg-white hover:bg-opacity-20"
-											>
-												<X className="h-3 w-3" />
-											</Button>
-										</div>
-										<div className="copilotkit-chat-container h-96 rounded-lg bg-white p-2">
-											<DailyBriefChat expandedSection={expandedSection} />
-										</div>
-									</div>
-								</div>
-							)}
 						</div>
 					</div>
 				)}
@@ -624,66 +607,33 @@ export default function MetroIndex() {
 							))}
 						</div>
 
-						{/* AI Chat Section - Bottom of main sections */}
-						{showChat && !expandedSection && !selectedItem && (
-							<div className="mt-6">
-								<div className="mb-4 rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
-									<div className="mb-3 flex items-center justify-between">
-										<div className="flex items-center gap-2">
-											<Bot className="h-5 w-5 text-white" />
-											<h3 className="font-semibold text-lg text-white">AI Assistant</h3>
-										</div>
-										<Button
-											variant="ghost"
-											size="icon"
-											onClick={() => setShowChat(false)}
-											className="text-white hover:bg-white hover:bg-opacity-20"
-										>
-											<X className="h-4 w-4" />
-										</Button>
-									</div>
-									<div className="copilotkit-chat-container h-96 rounded-lg bg-white p-2">
-										<DailyBriefChat expandedSection={expandedSection} />
-									</div>
-								</div>
-							</div>
-						)}
 					</div>
 				)}
 			</div>
 
-			{/* Bottom action bar */}
-			<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-3 pb-safe">
-				<div className="mx-auto max-w-md">
-					<div className="grid grid-cols-3 gap-2">
-						{/* Add Encounter → Modern Onboarding Flow */}
-						<button
-							className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-emerald-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
-							onClick={() => navigate(`/a/${accountId}/${projectId}/new`)}
-						>
-							<Plus className="h-4 w-4" />
-							<span className="mt-1 font-medium text-xs leading-tight">Add Encounter</span>
-						</button>
-
-						{/* New Project → navigate to routes.projects.new() */}
-						<button
-							className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-purple-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
-							onClick={() => navigate(routes.interviews.onboard())}
-						>
-							<Plus className="h-4 w-4" />
-							<span className="mt-1 font-medium text-xs leading-tight">New Project</span>
-						</button>
-
-						<button
-							className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-indigo-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
-							onClick={() => toggleChat(expandedSection || "general")}
-						>
-							<Bot className="h-4 w-4" />
-							<span className="mt-1 font-medium text-xs leading-tight">AI Chat</span>
-						</button>
-					</div>
-				</div>
+				{/* Bottom action bar */}
+				<BottomActionBar onToggleChat={handleToggleChat} />
 			</div>
+
+			{/* CopilotSidebar - Right side overlay */}
+			{showChat && (
+				<div className="fixed bottom-0 right-0 top-0 z-30 w-80 bg-white shadow-2xl">
+					<CopilotSidebar 
+						expandedSection={expandedSection}
+						onClose={() => setShowChat(false)}
+						className="h-full"
+						projectData={{
+							projectName: project?.name,
+							personas,
+							insights,
+							interviews,
+							opportunities: [],
+							people,
+							projectStatusData
+						}}
+					/>
+				</div>
+			)}
 
 			{/* Selected item drawer */}
 			{selectedItem && (
@@ -720,8 +670,8 @@ export default function MetroIndex() {
 									<p className="text-gray-300 leading-relaxed">{selectedItem.description || selectedItem.evidence}</p>
 									{Array.isArray(selectedItem.tags) && (
 										<div className="flex flex-wrap gap-2">
-											{selectedItem.tags.map((tag: string, idx: number) => (
-												<Badge key={`tag-${idx}`} variant="secondary" className="bg-gray-800 text-gray-300">
+											{selectedItem.tags.map((tag: string) => (
+												<Badge key={`selected-tag-${tag}`} variant="secondary" className="bg-gray-800 text-gray-300">
 													{tag}
 												</Badge>
 											))}
@@ -742,9 +692,7 @@ export default function MetroIndex() {
 												<X className="h-3 w-3" />
 											</Button>
 										</div>
-										<div className="copilotkit-chat-container h-96 rounded-lg bg-white p-2">
-											<DailyBriefChat expandedSection={expandedSection} />
-										</div>
+
 									</div>
 								</div>
 							</div>

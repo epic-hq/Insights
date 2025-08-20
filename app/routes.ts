@@ -71,6 +71,7 @@ const routes = [
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
 	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
+	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 
 	// Resource routes
@@ -80,6 +81,7 @@ const routes = [
 	// Test routes
 	route("team", "./features/accounts/pages/team.tsx"),
 	route("test_register", "./routes/(auth)+/test_register.tsx"),
+	route("test/upsight", "./routes/test.upsight.tsx"),
 ] satisfies RouteConfig
 
 export default routes
