@@ -129,7 +129,7 @@ export default function ProtectedLayout() {
 					showDevConsole={clientEnv?.NODE_ENV === 'development'}
 					headers={{
 						"X-UserId": String(auth?.user?.sub ?? ""),
-						"X-AccountId": String(params.accountId ?? ""),
+						"X-AccountId": String(params.accountId ?? auth?.accountId ?? ""),
 						"X-ProjectId": String(params.projectId ?? ""),
 					}}
 				>

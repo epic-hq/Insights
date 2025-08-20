@@ -8,7 +8,7 @@ export const getInterviews = async ({
 	projectId,
 }: {
 	supabase: SupabaseClient<Database>
-	accountId: string
+	accountId?: string
 	projectId: string
 }) => {
 	return await supabase
@@ -56,7 +56,7 @@ export const getInterviewById = async ({
 	id,
 }: {
 	supabase: SupabaseClient<Database>
-	accountId: string
+	accountId?: string
 	projectId: string
 	id: string
 }) => {

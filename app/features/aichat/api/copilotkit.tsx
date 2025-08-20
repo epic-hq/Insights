@@ -34,6 +34,12 @@ export async function action({ request }: ActionFunctionArgs) {
 	const mastraAgents = MastraAgent.getLocalAgents({ 
 		mastra,
 	})
+	
+	// Manually inject context into runtime for agents
+	const runtimeContext = new RuntimeContext()
+	runtimeContext.set("user_id", headerUserId || "")
+	runtimeContext.set("account_id", headerAccountId || "")
+	runtimeContext.set("project_id", headerProjectId || "")
 
 	// Log the context for debugging
 	consola.log("CopilotKit received headers:", {

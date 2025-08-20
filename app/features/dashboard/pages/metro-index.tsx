@@ -617,8 +617,8 @@ export default function MetroIndex() {
 
 			{/* CopilotSidebar - Right side overlay */}
 			{showChat && (
-				<div className="fixed bottom-0 right-0 top-0 z-30 w-80 bg-white shadow-2xl">
-					<CopilotSidebar 
+				<div className="fixed bottom-16 right-0 top-0 z-30 w-80 bg-white shadow-2xl">
+					<CopilotSidebar
 						expandedSection={expandedSection}
 						onClose={() => setShowChat(false)}
 						className="h-full"

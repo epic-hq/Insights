@@ -83,30 +83,30 @@ export const upsightTool = createTool({
 		try {
 			consola.log("Upsight tool executing with context:", context)
 			consola.log("Runtime context:", runtimeContext)
-			
+
 			// Get accountId and projectId from runtime context or input
 			const runtimeAccountId = runtimeContext?.get("account_id") || runtimeContext?.get("accountId")
 			const runtimeProjectId = runtimeContext?.get("project_id") || runtimeContext?.get("projectId")
 			const runtimeUserId = runtimeContext?.get("user_id") || runtimeContext?.get("userId")
-			
+
 			// Use runtime context values if available, otherwise fall back to input parameters
 			const finalAccountId = runtimeAccountId || context.accountId
 			const finalProjectId = runtimeProjectId || context.projectId
-			
+
 			consola.log("Using accountId:", finalAccountId, "projectId:", finalProjectId, "userId:", runtimeUserId)
-			
+
 			if (!finalAccountId) {
 				throw new Error("accountId is required - must be provided either in context or runtime headers")
 			}
-			
+
 			// Create service role Supabase client (doesn't need cookies/sessions)
 			const supabaseUrl = process.env.SUPABASE_URL
 			const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
-			
+
 			if (!supabaseUrl || !supabaseServiceKey) {
 				throw new Error("Supabase configuration missing - need SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY")
 			}
-			
+
 			// Create service role client
 			const supabase: SupabaseClient<Database> = createClient(supabaseUrl, supabaseServiceKey, {
 				auth: {
@@ -150,17 +150,17 @@ export const upsightTool = createTool({
 						const { data: insightsData, error: insightsError } = await getInsights({ supabase, accountId: finalAccountId, projectId: currentProjectId })
 						if (insightsData && !insightsError) {
 							let filteredInsights = insightsData
-							
+
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredInsights = insightsData.filter(insight => 
+								filteredInsights = insightsData.filter(insight =>
 									insight.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									insight.details?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									insight.pain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									insight.desired_outcome?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
-							
+
 							insights.push(...filteredInsights.slice(0, limit))
 						}
 					} catch (error) {
@@ -174,14 +174,14 @@ export const upsightTool = createTool({
 						const { data: interviewsData, error: interviewsError } = await getInterviews({ supabase, accountId: finalAccountId, projectId: currentProjectId })
 						if (interviewsData && !interviewsError) {
 							let filteredInterviews = interviewsData
-							
+
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredInterviews = interviewsData.filter(interview => 
+								filteredInterviews = interviewsData.filter(interview =>
 									interview.title?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
-							
+
 							interviews.push(...filteredInterviews.slice(0, limit))
 						}
 					} catch (error) {
@@ -195,15 +195,15 @@ export const upsightTool = createTool({
 						const { data: opportunitiesData, error: opportunitiesError } = await getOpportunities({ supabase, accountId: finalAccountId, projectId: currentProjectId })
 						if (opportunitiesData && !opportunitiesError) {
 							let filteredOpportunities = opportunitiesData
-							
+
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredOpportunities = opportunitiesData.filter(opportunity => 
+								filteredOpportunities = opportunitiesData.filter(opportunity =>
 									opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									opportunity.description?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
-							
+
 							opportunities.push(...filteredOpportunities.slice(0, limit))
 						}
 					} catch (error) {
@@ -217,16 +217,16 @@ export const upsightTool = createTool({
 						const { data: peopleData, error: peopleError } = await getPeople({ supabase, accountId: finalAccountId, projectId: currentProjectId })
 						if (peopleData && !peopleError) {
 							let filteredPeople = peopleData
-							
+
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredPeople = peopleData.filter(person => 
+								filteredPeople = peopleData.filter(person =>
 									person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									person.segment?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									person.role?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
-							
+
 							people.push(...filteredPeople.slice(0, limit))
 						}
 					} catch (error) {
@@ -240,15 +240,15 @@ export const upsightTool = createTool({
 						const { data: personasData, error: personasError } = await getPersonas({ supabase, accountId: finalAccountId })
 						if (personasData && !personasError) {
 							let filteredPersonas = personasData
-							
+
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredPersonas = personasData.filter(persona => 
+								filteredPersonas = personasData.filter(persona =>
 									persona.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
 									persona.description?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
-							
+
 							personas.push(...filteredPersonas.slice(0, limit))
 						}
 					} catch (error) {
@@ -260,7 +260,7 @@ export const upsightTool = createTool({
 			// Generate project status and key findings
 			const keyFindings = generateKeyFindings(insights, interviews, opportunities)
 			const nextSteps = generateNextSteps(insights, opportunities, interviews)
-			
+
 			const projectStatus = {
 				keyFindings,
 				nextSteps,
@@ -327,30 +327,30 @@ export const upsightTool = createTool({
 // Helper function to generate key findings from data
 function generateKeyFindings(insights: any[], interviews: any[], opportunities: any[]): string[] {
 	const findings: string[] = []
-	
+
 	// Analyze insights for patterns
 	if (insights.length > 0) {
 		const highImpactInsights = insights.filter(i => i.impact && i.impact >= 8)
 		if (highImpactInsights.length > 0) {
 			findings.push(`${highImpactInsights.length} high-impact insights identified (impact score ≥ 8)`)
 		}
-		
+
 		const categories = insights.map(i => i.category).filter(Boolean)
 		const categoryCount = categories.reduce((acc, cat) => {
 			acc[cat] = (acc[cat] || 0) + 1
 			return acc
 		}, {} as Record<string, number>)
-		
+
 		const topCategory = Object.entries(categoryCount).sort(([,a], [,b]) => b - a)[0]
 		if (topCategory) {
 			findings.push(`Most common insight category: ${topCategory[0]} (${topCategory[1]} insights)`)
 		}
 	}
-	
+
 	// Analyze interview patterns
 	if (interviews.length > 0) {
 		findings.push(`${interviews.length} interviews conducted`)
-		
+
 		const recentInterviews = interviews.filter(i => {
 			if (!i.interview_date) return false
 			const interviewDate = new Date(i.interview_date)
@@ -358,43 +358,43 @@ function generateKeyFindings(insights: any[], interviews: any[], opportunities: 
 			thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
 			return interviewDate > thirtyDaysAgo
 		})
-		
+
 		if (recentInterviews.length > 0) {
 			findings.push(`${recentInterviews.length} interviews conducted in the last 30 days`)
 		}
 	}
-	
+
 	// Analyze opportunities
 	if (opportunities.length > 0) {
 		findings.push(`${opportunities.length} opportunities identified`)
-		
+
 		const highImpactOpportunities = opportunities.filter(o => o.impact === 'high')
 		if (highImpactOpportunities.length > 0) {
 			findings.push(`${highImpactOpportunities.length} high-impact opportunities available`)
 		}
 	}
-	
+
 	return findings
 }
 
 // Helper function to generate next steps
 function generateNextSteps(insights: any[], opportunities: any[], interviews: any[]): string[] {
 	const steps: string[] = []
-	
+
 	// Suggest actions based on data patterns
 	if (insights.length === 0 && interviews.length > 0) {
 		steps.push("Process existing interviews to extract insights")
 	}
-	
+
 	if (opportunities.length === 0 && insights.length > 0) {
 		steps.push("Review insights to identify potential opportunities")
 	}
-	
+
 	const highImpactInsights = insights.filter(i => i.impact && i.impact >= 8)
 	if (highImpactInsights.length > 0) {
 		steps.push(`Prioritize action on ${highImpactInsights.length} high-impact insights`)
 	}
-	
+
 	const recentInterviews = interviews.filter(i => {
 		if (!i.interview_date) return false
 		const interviewDate = new Date(i.interview_date)
@@ -402,22 +402,22 @@ function generateNextSteps(insights: any[], opportunities: any[], interviews: an
 		sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7)
 		return interviewDate > sevenDaysAgo
 	})
-	
+
 	if (recentInterviews.length === 0 && interviews.length < 5) {
 		steps.push("Schedule additional user interviews to gather more insights")
 	}
-	
+
 	const pendingOpportunities = opportunities.filter(o => o.status === 'pending' || o.status === 'open')
 	if (pendingOpportunities.length > 0) {
 		steps.push(`Review and prioritize ${pendingOpportunities.length} pending opportunities`)
 	}
-	
+
 	// Default steps if no specific patterns found
 	if (steps.length === 0) {
 		steps.push("Continue gathering user feedback through interviews")
 		steps.push("Analyze existing data for actionable insights")
 		steps.push("Identify and prioritize improvement opportunities")
 	}
-	
+
 	return steps
 }
