@@ -1,6 +1,8 @@
 import { useState } from "react"
 import { useNavigate } from "react-router-dom"
 import { Button } from "~/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
+import { ChevronDown, Upload, Mic } from "lucide-react"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { ProcessingResult } from "~/utils/processInterview.server"
@@ -24,9 +26,30 @@ export default function AddInterviewButton() {
 		}
 	}
 
+	const handleLiveTranscription = () => {
+		navigate(routes.liveTranscription.index())
+	}
+
 	return (
 		<>
-			<Button onClick={() => setOpen(true)}>Add Interview</Button>
+			<DropdownMenu>
+				<DropdownMenuTrigger asChild>
+					<Button className="flex items-center gap-2">
+						Add Interview
+						<ChevronDown className="h-4 w-4" />
+					</Button>
+				</DropdownMenuTrigger>
+				<DropdownMenuContent align="end">
+					<DropdownMenuItem onClick={() => setOpen(true)} className="flex items-center gap-2">
+						<Upload className="h-4 w-4" />
+						Upload File
+					</DropdownMenuItem>
+					<DropdownMenuItem onClick={handleLiveTranscription} className="flex items-center gap-2">
+						<Mic className="h-4 w-4" />
+						Record Live
+					</DropdownMenuItem>
+				</DropdownMenuContent>
+			</DropdownMenu>
 			<AddInterview
 				open={open}
 				onClose={() => setOpen(false)}

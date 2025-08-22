@@ -66,6 +66,11 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Live Transcription
+	liveTranscription: {
+		index: () => string
+	}
+
 	// Projects (note: these are at account level, not project level)
 	projects: {
 		index: () => string
@@ -162,6 +167,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `${base}/opportunities/new`,
 			detail: (id: string) => `${base}/opportunities/${id}`,
 			edit: (id: string) => `${base}/opportunities/${id}/edit`,
+		},
+
+		// Live Transcription
+		liveTranscription: {
+			index: () => `${base}/live-transcription`,
 		},
 
 		// Projects (note: these are at account level, not project level)

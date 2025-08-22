@@ -19,6 +19,7 @@ export default defineConfig({
 			"@aws-sdk/credential-provider-sso",
 			"@aws-sdk/token-providers",
 			"@langchain/aws",
+			"ws",
 		],
 	},
 	ssr: {
@@ -29,6 +30,7 @@ export default defineConfig({
 			"@aws-sdk/credential-provider-sso",
 			"@aws-sdk/token-providers",
 			"@langchain/aws",
+			"ws",
 		],
 	},
 	plugins: [

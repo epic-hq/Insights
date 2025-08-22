@@ -5,6 +5,7 @@ import dashboardRoutes from "./features/dashboard/routes"
 import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
+import liveTranscriptionRoutes from "./features/live-transcription/routes"
 import marketingRoutes from "./features/marketing/routes"
 import mobileRoutes from "./features/mobile/insights/routes"
 import onboardingRoutes from "./features/onboarding/routes"
@@ -35,6 +36,7 @@ const routes = [
 				...dashboardRoutes,
 				...interviewsRoutes,
 				...insightsRoutes,
+				...liveTranscriptionRoutes,
 				...opportunitiesRoutes,
 				...peopleRoutes,
 				...personasRoutes,
@@ -66,6 +68,7 @@ const routes = [
 	route("api/copilotkit", "./features/aichat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/assemblyai-webhook", "./routes/api.assemblyai-webhook.tsx"),
+	route("api/live-transcription-clean", "./routes/api.live-transcription-clean.tsx"),
 	route("api/trigger-analysis", "./routes/api.trigger-analysis.tsx"),
 	route("api/daily-brief", "./routes/api.daily-brief.tsx"),
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
