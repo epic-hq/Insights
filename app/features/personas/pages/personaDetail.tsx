@@ -1,14 +1,12 @@
 import consola from "consola"
 import { motion } from "framer-motion"
 import { Palette, Percent, Users } from "lucide-react"
-import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router-dom"
+import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import InsightCardGrid from "~/features/insights/components/InsightCardGrid"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Database, Insight, Interview } from "~/types"
 
@@ -180,8 +178,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function PersonaDetailRoute() {
 	const { persona, interviews, insights, people } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const params = useParams()
+	
+	// Extract accountId and projectId directly from URL params
+	const accountId = params.accountId || ""
+	const projectId = params.projectId || ""
+	
+	// Single source of truth for all route generation
+	const routes = useProjectRoutesFromIds(accountId, projectId)
 
 	if (!persona) {
 		return (
@@ -220,14 +224,14 @@ export default function PersonaDetailRoute() {
 					>
 						{/* Avatar Section - Separated */}
 						<div className="flex items-center justify-center md:justify-start">
-							<motion.div 
-								className="relative" 
-								whileHover={{ scale: 1.02 }} 
+							<motion.div
+								className="relative"
+								whileHover={{ scale: 1.02 }}
 								transition={{ duration: 0.2 }}
 							>
 								<Avatar className="h-16 w-16 border-2 border-white shadow-lg dark:border-gray-800" style={{ borderColor: `${themeColor}30` }}>
-									<AvatarFallback 
-										className="font-bold text-white text-xl" 
+									<AvatarFallback
+										className="font-bold text-white text-xl"
 										style={{ backgroundColor: themeColor }}
 									>
 										{initials}
@@ -247,16 +251,16 @@ export default function PersonaDetailRoute() {
 							>
 								{name}
 							</motion.h1>
-							
+
 							{/* Theme Color Accent Line */}
-							<motion.div 
-								className="h-1 w-24 rounded-full mb-6 mx-auto md:mx-0" 
+							<motion.div
+								className="h-1 w-24 rounded-full mb-6 mx-auto md:mx-0"
 								style={{ backgroundColor: themeColor }}
 								initial={{ width: 0 }}
 								animate={{ width: "6rem" }}
 								transition={{ delay: 0.4, duration: 0.6 }}
 							/>
-							
+
 							<motion.p
 								className="text-gray-600 dark:text-gray-400 text-xl leading-relaxed max-w-2xl"
 								initial={{ opacity: 0, y: 20 }}
@@ -275,7 +279,7 @@ export default function PersonaDetailRoute() {
 							transition={{ delay: 0.5, duration: 0.3 }}
 						>
 							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-								<Link to={`${routes.personas.detail(persona.id)}/edit`}>Edit Persona</Link>
+								<Link to={routes.personas.edit(persona.id)}>Edit Persona</Link>
 							</Button>
 							<Button
 								variant="default"
@@ -424,7 +428,7 @@ export default function PersonaDetailRoute() {
 								label: "Quotes",
 								value:
 									Array.isArray(persona.quotes) && persona.quotes.length > 0
-										? persona.quotes.map((q) => `“${q}”`).join(" ")
+										? persona.quotes.map((q: string) => `"${q}"`).join(" ")
 										: null,
 							},
 							{
@@ -470,11 +474,11 @@ export default function PersonaDetailRoute() {
 				{insights && insights.length > 0 && (
 					<div className="space-y-6">
 						<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
-						<InsightCardGrid>
+						<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
 							{insights.map((insight) => (
 								<InsightCardV2 key={insight.id} insight={insight} />
 							))}
-						</InsightCardGrid>
+						</div>
 					</div>
 				)}
 			</div>

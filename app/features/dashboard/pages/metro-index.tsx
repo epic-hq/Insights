@@ -42,6 +42,7 @@ import { userContext } from "~/server/user-context"
 import type { Insight, InsightView, Interview, OpportunityView, Person, Persona, Project } from "~/types"
 import { getProjectStatusData } from "~/utils/project-status.server"
 import { createProjectRoutes } from "~/utils/routes.server"
+import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -453,6 +454,8 @@ export default function MetroIndex() {
 				}}
 				onViewResults={() => {}}
 			/>
+
+			<AgentStatusDisplay />
 
 			<div className="p-3 pb-24">
 				{/* Expanded List */}

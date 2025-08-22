@@ -61,6 +61,54 @@ uploaded (20%) → transcribed (50%) → processing (85%) → ready (100%)
 - [ ] Research & Architect Chat Agent Workflows - enable front end chat to answer questions from agents and my data; eg explain the personas.
 Refactor tool defs in mastra (copilotkit api actions is bulky. shoudl be tools [chat](https://chatgpt.com/c/689cba6c-9e1c-8325-8d12-8df125c7f73a)
 
+### 🚨 CRITICAL: CopilotKit + Mastra Agent Integration Issues
+
+**Problem:** mainAgent integration with CopilotKit has runtime context issues preventing proper data access.
+
+**Current Status:**
+
+- ✅ CopilotKit receives headers correctly: `accountId: 'cc766803-d98d-4aa7-9821-6c5c7d2b03e1'`
+- ✅ Fixed URL-driven accountId (was using auth fallback, now prioritizes `params.accountId`)
+- ✅ Agent instructions updated to prevent using project names as UUIDs
+- ❌ Runtime context empty: `RuntimeContext { registry: Map(0) {} }`
+- ❌ upsightTool fails: "accountId is required - must be provided either in context or runtime headers"
+
+**Root Cause Analysis:**
+
+1. **Header Flow Issue**: Headers reach CopilotKit API but don't propagate to Mastra agents
+2. **Agent Parameter Confusion**: AI uses project description instead of UUID projectId
+3. **Runtime Context**: MastraAgent.getLocalAgents() doesn't accept headers parameter
+4. **CopilotRuntime**: Doesn't accept runtimeContext parameter in constructor
+
+**What's Been Tried:**
+
+- ✅ Fixed `_ProtectedLayout` to use `params.accountId` (URL-driven) vs `auth.accountId` (user setting)
+- ✅ Added explicit UUID format instructions to agent prompts
+- ❌ Attempted manual RuntimeContext injection (API doesn't support it)
+- ❌ Attempted headers parameter in MastraAgent.getLocalAgents() (not supported)
+
+**Next Steps to Try:**
+
+1. **Investigate MastraAgent header forwarding**: Check if headers need to be passed differently to Mastra server
+2. **Direct tool parameter injection**: Modify upsightTool to accept explicit accountId/projectId parameters from CopilotKit
+3. **Alternative context passing**: Use CopilotKit's action handlers to pass context directly to tools
+4. **Mastra server middleware**: Ensure Mastra server middleware properly receives and processes headers
+5. **Check Mastra documentation**: Review latest docs for proper header/context forwarding patterns
+
+**Error Logs:**
+
+```log
+Runtime context: RuntimeContext { registry: Map(0) {} }
+Using accountId: undefined projectId: Undergraduate... userId: undefined
+ERROR: accountId is required - must be provided either in context or runtime headers
+```
+
+**Success Case (manual parameters):**
+
+```log
+Using accountId: 1048cfdf-9b63-4650-a42d-7a75f10b3ca3 projectId: 849728b0-374d-468a-b529-fef02cee88ad
+```
+
 ## Sprint 4 - Persona Management
 
 - [ ] Enhanced persona schema per this chat:
@@ -129,11 +177,11 @@ TEST IT MORE
 ## Refactor & Ops
 
 - [ ] **Move API routes under their respective feature directories**
-  
+
   **Current Structure:** All API routes in `/app/routes/api.*` (21 routes)
-  
+
   **Target Structure:** Move to `/app/features/{feature}/api/{route}.tsx`
-  
+
   **Route Mapping:**
   ```
   INTERVIEWS FEATURE:
@@ -142,40 +190,40 @@ TEST IT MORE
   - api.process-interview-internal.tsx → features/interviews/api/process-internal.tsx
   - api.upload-file.tsx → features/interviews/api/upload-file.tsx
   - api.upload-from-url.tsx → features/interviews/api/upload-from-url.tsx
-  
+
   INSIGHTS FEATURE:
   - api.auto-insights.tsx → features/insights/api/auto-insights.tsx
   - api.update-field.tsx → features/insights/api/update-field.tsx (generalized)
-  
+
   PERSONAS FEATURE:
   - api.generate-personas.tsx → features/personas/api/generate.tsx
   - api.backfill-people.tsx → features/personas/api/backfill-people.tsx
-  
+
   ONBOARDING FEATURE:
   - api.onboarding-start.tsx → features/onboarding/api/start.tsx
   - api.generate-questions.tsx → features/onboarding/api/generate-questions.tsx
-  
+
   PROJECTS FEATURE:
   - api.analyze-project-status.tsx → features/projects/api/analyze-status.tsx
   - api.project-status.tsx → features/projects/api/status.tsx
   - api.trigger-analysis.tsx → features/projects/api/trigger-analysis.tsx
-  
+
   AI CHAT FEATURE:
   - api.copilot.tsx → features/aichat/api/copilot.tsx (already exists)
   - api.daily-brief.tsx → features/aichat/api/daily-brief.tsx
-  
+
   SHARED/SYSTEM:
   - api.assemblyai-webhook.tsx → shared/api/assemblyai-webhook.tsx (external webhook)
   - api.migrate-arrays.tsx → shared/api/migrate-arrays.tsx (one-time migration)
   ```
-  
+
   **Dependencies to Update:**
   - Update 15+ import references across components
   - Update fetcher.submit() calls in components
   - Update route definitions in utils/route-definitions.ts
   - Update test files (4 test files reference API routes)
   - Update CopilotKit runtimeUrl references
-  
+
   **Critical Files Using API Routes:**
   - features/interviews/pages/detail.tsx (3 references to /api/update-field)
   - features/upload/components/AddInterview.tsx (/api/upload-file)
@@ -184,7 +232,7 @@ TEST IT MORE
   - features/onboarding/components/ProjectStatusScreen.tsx (/api/analyze-project-status)
   - routes/_ProtectedLayout.tsx (/api/copilotkit)
   - components/EditableTextarea.tsx (/api/update-field)
-  
+
   **Migration Steps:**
   1. Create new API route files in feature directories
   2. Update import paths in all consuming components
@@ -192,7 +240,7 @@ TEST IT MORE
   4. Update test files and mocks
   5. Remove old API route files from /app/routes/
   6. Verify all functionality works end-to-end
-  
+
   **Shared Utilities to Consider:**
   - Authentication patterns (getAuthenticatedUser, userContext)
   - BAML client imports and usage
@@ -213,8 +261,8 @@ Prioritize.
 
 ## 🚨 Critical Next Steps
 
-- [ ] **DEPLOY TO PRODUCTION** - Pipeline webhook endpoint must be live for AssemblyAI callbacks
-- [ ] **Test end-to-end flow** - Verify upload → transcription → webhook → analysis → completion
+- [x] **DEPLOY TO PRODUCTION** - Pipeline webhook endpoint must be live for AssemblyAI callbacks
+- [x] **Test end-to-end flow** - Verify upload → transcription → webhook → analysis → completion
 - [ ] **Error handling & retry logic** - Handle failed transcriptions and network issues
 
 ## 🔄 Architecture Cleanup
@@ -230,6 +278,7 @@ Prioritize.
 - [ ] how to handle routes:
   - /$accountId
   - /home my accounts(pro), projects, user profile settings etc?
+- [ ] cleanup current-project-context.tsx:40 error No accountId available from organizaitons context.
 - [ ] Implement `parseIdFromParams` fn in app/lib/utils easy to use in loaders/actions.
 - [ ] Test & verify CRUD functions for people, projects, personas, tags, opportunities
 - [ ] Update RLS to require account_id AND project_id.
