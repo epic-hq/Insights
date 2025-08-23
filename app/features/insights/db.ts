@@ -95,7 +95,7 @@ export const getInsightById = async ({
 			tags (tag,term, definition)
 		)
   `)
-		.eq("account_id", accountId)
+		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)
 		.single()
@@ -149,7 +149,7 @@ export const updateInsight = async ({
 		.from("insights")
 		.update(data)
 		.eq("id", id)
-		.eq("account_id", accountId)
+		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.select()
 		.single()
@@ -166,5 +166,5 @@ export const deleteInsight = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase.from("insights").delete().eq("id", id).eq("account_id", accountId).eq("project_id", projectId)
+	return await supabase.from("insights").delete().eq("id", id).eq("project_id", projectId)
 }

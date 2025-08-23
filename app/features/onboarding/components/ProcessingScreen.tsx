@@ -145,7 +145,7 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 								</div>
 							</div>
 						</div>
-						
+
 						{/* Processing Stage */}
 						<h2 className="mb-2 text-xl font-light text-white">{processingStage}</h2>
 						<p className="text-gray-400 text-sm">
@@ -160,10 +160,10 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 								<IconComponent className="h-6 w-6 text-blue-400" />
 							</div>
 						</div>
-						
+
 						<h3 className="mb-3 text-lg font-medium text-white">{currentCard.title}</h3>
 						<p className="text-gray-300 text-sm leading-relaxed">{currentCard.content}</p>
-						
+
 						{/* Simple dots indicator */}
 						<div className="mt-6 flex justify-center gap-2">
 							{educationalCards.map((_, index) => (
