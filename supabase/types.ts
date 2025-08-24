@@ -572,6 +572,154 @@ export type Database = {
           },
         ]
       }
+      evidence: {
+        Row: {
+          account_id: string
+          anchors: Json
+          citation: string | null
+          confidence: string | null
+          created_at: string
+          created_by: string | null
+          id: string
+          independence_key: string | null
+          interview_id: string | null
+          journey_stage: string | null
+          kind_tags: string[] | null
+          method: string | null
+          modality: string
+          personas: string[] | null
+          project_id: string | null
+          segments: string[] | null
+          source_type: string | null
+          support: string | null
+          updated_at: string
+          updated_by: string | null
+          verbatim: string
+          weight_quality: number | null
+          weight_relevance: number | null
+        }
+        Insert: {
+          account_id: string
+          anchors?: Json
+          citation?: string | null
+          confidence?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          independence_key?: string | null
+          interview_id?: string | null
+          journey_stage?: string | null
+          kind_tags?: string[] | null
+          method?: string | null
+          modality?: string
+          personas?: string[] | null
+          project_id?: string | null
+          segments?: string[] | null
+          source_type?: string | null
+          support?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          verbatim: string
+          weight_quality?: number | null
+          weight_relevance?: number | null
+        }
+        Update: {
+          account_id?: string
+          anchors?: Json
+          citation?: string | null
+          confidence?: string | null
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          independence_key?: string | null
+          interview_id?: string | null
+          journey_stage?: string | null
+          kind_tags?: string[] | null
+          method?: string | null
+          modality?: string
+          personas?: string[] | null
+          project_id?: string | null
+          segments?: string[] | null
+          source_type?: string | null
+          support?: string | null
+          updated_at?: string
+          updated_by?: string | null
+          verbatim?: string
+          weight_quality?: number | null
+          weight_relevance?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_tag: {
+        Row: {
+          account_id: string
+          confidence: number | null
+          created_at: string | null
+          created_by: string | null
+          evidence_id: string
+          id: string
+          project_id: string | null
+          tag_id: string
+        }
+        Insert: {
+          account_id: string
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id: string
+          id?: string
+          project_id?: string | null
+          tag_id: string
+        }
+        Update: {
+          account_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string
+          id?: string
+          project_id?: string | null
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_tag_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_tag_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_tag_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insight_tags: {
         Row: {
           account_id: string
@@ -1520,6 +1668,120 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      theme_evidence: {
+        Row: {
+          account_id: string
+          confidence: number | null
+          created_at: string | null
+          created_by: string | null
+          evidence_id: string
+          id: string
+          project_id: string | null
+          rationale: string | null
+          theme_id: string
+        }
+        Insert: {
+          account_id: string
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id: string
+          id?: string
+          project_id?: string | null
+          rationale?: string | null
+          theme_id: string
+        }
+        Update: {
+          account_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string
+          id?: string
+          project_id?: string | null
+          rationale?: string | null
+          theme_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "theme_evidence_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_evidence_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "theme_evidence_theme_id_fkey"
+            columns: ["theme_id"]
+            isOneToOne: false
+            referencedRelation: "themes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      themes: {
+        Row: {
+          account_id: string
+          anti_examples: string[] | null
+          created_at: string
+          created_by: string | null
+          exclusion_criteria: string | null
+          id: string
+          inclusion_criteria: string | null
+          name: string
+          project_id: string | null
+          statement: string | null
+          synonyms: string[] | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          account_id: string
+          anti_examples?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          exclusion_criteria?: string | null
+          id?: string
+          inclusion_criteria?: string | null
+          name: string
+          project_id?: string | null
+          statement?: string | null
+          synonyms?: string[] | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string
+          anti_examples?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          exclusion_criteria?: string | null
+          id?: string
+          inclusion_criteria?: string | null
+          name?: string
+          project_id?: string | null
+          statement?: string | null
+          synonyms?: string[] | null
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "themes_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

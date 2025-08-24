@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoInsightsResponse,  BBValues,  Chapter,  Emotions,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  Chapter,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -48,6 +48,9 @@ export namespace partial_types {
       start?: string | null
       end?: string | null
     }
+    export interface AutoGroupThemesResponse {
+      themes: ThemeCandidate[]
+    }
     export interface AutoInsightsResponse {
       executive_summary?: string | null
       top_opportunities: OpportunityRecommendation[]
@@ -62,6 +65,11 @@ export namespace partial_types {
       end_ms?: number | null
       summary?: string | null
       title?: string | null
+    }
+    export interface EvidenceLinkProposal {
+      evidence_id?: string | null
+      rationale?: string | null
+      confidence?: number | null
     }
     export interface EvidenceSet {
       facts: string[]
@@ -318,5 +326,14 @@ export namespace partial_types {
       rationale?: string | null
       interview_type?: "user_interview" | "stakeholder_interview" | "expert_interview" | null
       priority?: number | null
+    }
+    export interface ThemeCandidate {
+      name?: string | null
+      statement?: string | null
+      inclusion_criteria?: string | null
+      exclusion_criteria?: string | null
+      synonyms?: string[] | null
+      anti_examples?: string[] | null
+      links: EvidenceLinkProposal[]
     }
 }

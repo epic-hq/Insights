@@ -3,7 +3,6 @@
  * Demonstrates how to use the junction table helpers in various scenarios
  */
 
-import { Tag } from "lucide-react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { useInsightTags, useJunctionTables, useOpportunityInsights } from "../hooks/useJunctionTables"
 import { createServerJunctionManager, junctionRouteHelpers } from "./junction-server"
@@ -63,52 +62,42 @@ export async function exampleInsightAction({ request, params }: ActionFunctionAr
  * Shows how to manage insight tags in the frontend
  */
 export function ExampleInsightTagsComponent({ insightId, accountId }: { insightId: string; accountId: string }) {
-	const { tags, loading, error, syncTags, addTags, removeTags } = useInsightTags(insightId)
+	const { tags, loading, error, addTags, removeTags } = useInsightTags(insightId)
 
-	const _handleAddTag = async (newTag: string) => {
-		const result = await addTags([newTag], accountId)
-		if (result.success) {
-		} else {
-			console
-		}
+	const handleAddTag = async (newTag: string) => {
+		await addTags([newTag], accountId)
+		// handle error via UI pattern if needed
+	}
+	const handleRemoveTag = async (tagToRemove: string) => {
+		await removeTags([tagToRemove])
+		// handle error via UI pattern if needed
+	}
 
-		const handleRemoveTag = async (tagToRemove: string) => {
-			const result = await removeTags([tagToRemove])
-			if (r_handleRemoveTag{
-				console.log("Tag removed successfully")
-			} else {
-				result.error)
-			}
-		}
-		if (loading) return <div>Loading
-		tags
-	...</div>
-	if (error) return <div>Error
-	: error </div>
+	if (loading) return <div>Loading tags…</div>
+	if (error) return <div>Error: {String(error)}</div>
 
 	return (
 		<div>
-		<h3>Tags </h3>
-		< div
-	className = "flex flex-wrap gap-2" >
-	{
-		tags.map(tag => (
-			<span
-            key= { tag }
-            className = "cursor-pointer rounded bg-blue-100 px-2 py-1 text-blue-800"
-            onClick = {() => handleRemoveTag(tag)}
-		> _span
-	_keyg
-} ×
-</_className
-	)) _onClick
-}
-</div>
-	< butto_span
-onClick = {() => handleAddTag('new-tag')}
-className = "mt-2 rounded bg-green-500 px-3 py-1 text-white" > Add
-Tag < />bnottu < / > div
-)
+			<h3 className="font-semibold">Tags</h3>
+			<div className="mt-2 flex flex-wrap gap-2">
+				{(tags || []).map((tag) => (
+					<button
+						key={tag}
+						onClick={() => handleRemoveTag(tag)}
+						className="cursor-pointer rounded bg-emerald-100 px-2 py-1 text-emerald-800 hover:bg-emerald-200"
+					>
+						{tag} ×
+					</button>
+				))}
+			</div>
+			<button
+				onClick={() => handleAddTag("new-tag")}
+				className="mt-3 rounded bg-teal-600 px-3 py-1 text-white hover:bg-teal-700"
+			>
+				Add Tag
+			</button>
+		</div>
+	)
 }
 
 /**
@@ -116,46 +105,40 @@ Tag < />bnottu < / > div
  * Shows how to link insights to opportunities with weights
  */
 export function ExampleOpportunityInsightsComponent({ opportunityId }: { opportunityId: string }) {
-	const { insights, loading, error, syncInsights, addInsights } = useOpportunityInsights(opportunityId)
+	const { insights, loading, error, syncInsights } = useOpportunityInsights(opportunityId)
 
 	const handleLinkInsights = async (insightIds: string[]) => {
-		// Link insights with different weights based on importance
-		const weights = insightIds.reduce(
-			(acc, id, index) => {
-				acc_handleLinkInsights * 0.1 // Decreasing weights
-				return acc
-			},
-			{} as Record<string, number>
-		)
-
-		const result = await syncInsights(insightIds, weights)
-		if (result.success) {
-			console.log("Insights linked successfully")
-		}
+		// Assign decreasing weights (1.0, 0.9, 0.8, ...)
+		const weights = insightIds.reduce((acc, id, index) => {
+			acc[id] = Math.max(0, 1 - index * 0.1)
+			return acc
+		}, {} as Record<string, number>)
+		await syncInsights(insightIds, weights)
 	}
 
-	insights
-	...</div>
-	if (error) return <div>Error
-	: error </div>
+	if (loading) return <div>Loading linked insights…</div>
+	if (error) return <div>Error: {String(error)}</div>
 
 	return (
 		<div>
-		<h3>Linked
-	Insights < /3>h < div
-	className = "space-y-2" >
-	{
-		insights.map(item => (
-			<div key= { item.insight_id } className = "rounded border p-2" >
-			<h4>{ item.insights.name } </h4>
-			< p > Weight: { item.weight } </p>
-			< p > Impact: { item.insights.impact } </p>
+			<h3 className="font-semibold">Linked Insights</h3>
+			<div className="mt-2 space-y-2">
+				{(insights || []).map((item) => (
+					<div key={item.insight_id} className="rounded border p-2">
+						<h4 className="font-medium">{item.insights?.name ?? "Untitled"}</h4>
+						<p>Weight: {item.weight}</p>
+						{item.insights?.impact ? <p>Impact: {item.insights.impact}</p> : null}
+					</div>
+				))}
+			</div>
+			<button
+				onClick={() => handleLinkInsights((insights || []).map((i) => i.insight_id))}
+				className="mt-3 rounded bg-slate-700 px-3 py-1 text-white hover:bg-slate-800"
+			>
+				Re-sync Weights
+			</button>
 		</div>
-		)) _div_key_className
-	}_h4_h4
-		</div>_p
-		</div>
-)
+	)
 }
 
 /**
@@ -232,52 +215,46 @@ export function ExampleRealTimeComponent({ insightId, accountId }: { insightId: 
 	const junctionTables = useJunctionTables()
 
 	const handleOptimisticTagUpdate = async (newTags: string[]) => {
-		// Optimistically update UI
-		const result = await syncTags(newTags, accountId)
-
-		if (!result.success) {
-			// Revert on failure
-			console.error("Failed to update tags, reverting...")
-			// The hook will automatically reload the correct state
-		}
+		await syncTags(newTags, accountId)
 	}
 	const handleMigration = async () => {
-		try {
-			await junctionTables.migrateArrayData(accountId)
-			console.log("Migration completed")
-		} catch (error) {
-			console.error("Migration failed:", error)
-		}
-	}_handleMigration
+		await junctionTables.migrateArrayData(accountId)
+	}
 
 	return (
-		<div>Current
-	:
-	</div>
-		< button
-	onClick = () => handleOptimisticTagUpdate([...tags, 'new-tag']) >
-		Add
-	Tag
-	Optimistically < />bnottu < button
-	onClick = handleMigration > Migrate
-	Array
-	Data < />bnottu < / > div
+		<div>
+			<div className="text-slate-600 text-sm mb-2">Current tags: {(tags || []).join(", ") || "(none)"}</div>
+			<button
+				onClick={() => handleOptimisticTagUpdate([...(tags || []), "new-tag"])}
+				className="mr-2 rounded bg-indigo-600 px-3 py-1 text-white hover:bg-indigo-700"
+			>
+				Add Tag Optimistically
+			</button>
+			<button onClick={handleMigration} className="rounded bg-stone-700 px-3 py-1 text-white hover:bg-stone-800">
+				Migrate Array Data
+			</button>
+		</div>
 	)
 }
 
 /**
- * EXAMPLE 8:_handleMigrationns with junction tables
+ * EXAMPLE 8: Batch operations with junction tables
  * Shows how to perform bulk operations efficiently
  */
+type Operation =
+	| { type: "sync_insight_tags"; insightId: string; tags: string[] }
+	| { type: "sync_opportunity_insights"; opportunityId: string; insightIds: string[]; weights?: Record<string, number> }
+	| { type: "auto_link_personas"; insightId: string }
+
 export async function exampleBatchOperations({ request }: ActionFunctionArgs) {
 	const manager = await createServerJunctionManager(request)
 	const formData = await request.formData()
 
-	const operations = JSON.parse(formData.get("operations")?.toString() || "[]")
+	const operations: Operation[] = JSON.parse(formData.get("operations")?.toString() || "[]")
 
 	// Batch process multiple insights with tags
 	const results = await Promise.all(
-		operations.map(async (op: any) => {
+		operations.map(async (op) => {
 			switch (op.type) {
 				case "sync_insight_tags":
 					return manager.syncInsightTags(op.insightId, op.tags)
@@ -289,12 +266,12 @@ export async function exampleBatchOperations({ request }: ActionFunctionArgs) {
 					return manager.autoLinkInsightToPersonas(op.insightId)
 
 				default:
-					return { success: false, error: `Unknown operation: ${op.type}` }
+					return { success: false, error: "Unknown operation" }
 			}
 		})
 	)
 
-	const successCount = results.filter((r) => r.error === null).length
+	const successCount = results.filter((r: any) => r && (r.error === null || typeof r.error === "undefined") && r.success !== false).length
 	const errorCount = results.length - successCount
 
 	return {
@@ -308,7 +285,7 @@ export async function exampleBatchOperations({ request }: ActionFunctionArgs) {
  * USAGE DOCUMENTATION
  *
  * ## Server-Side Usage
- *
+{{ ... }}
  * 1. Import the server junction manager:
  *    ```ts
  *    import { createServerJunctionManager, junctionRouteHelpers } from '~/lib/database/junction-server'

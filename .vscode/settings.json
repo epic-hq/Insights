@@ -1,10 +1,11 @@
 {
-	"editor.formatOnSave": false,
+	"editor.formatOnSave": true,
 	"editor.formatOnType": false,
 	"editor.renderWhitespace": "all",
 	"editor.rulers": [120, 160],
 	"editor.codeActionsOnSave": {
 		"source.fixAll": "never",
+		"source.fixAll.biome": "on",
 		"source.organizeImports": "never",
 		"source.organizeImports.biome": "on",
 		"quickfix.biome": "never"
@@ -43,5 +44,5 @@
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
-	"deno.enable": true
+	"deno.enable": false
 }

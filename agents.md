@@ -61,10 +61,12 @@ This is the authoritative, efficient playbook for building and operating feature
 
 
 ## Data Access & RLS
-- Every DB operation must be scoped by `account_id`. For project-scoped entities, include `project_id`.
-- Prefer server utilities that receive `accountId` and (if needed) `projectId` explicitly.
+__RLS-first queries__
+- Do not add explicit `account_id` filters in queries. RLS already enforces tenant scoping based on the authenticated context from `userContext`.
+- Keep `project_id` filters where the feature is project-scoped (e.g., `/accounts/:accountId/projects/:projectId/...`).
+- Prefer server utilities that receive `projectId` explicitly when needed. `accountId` should come from context, not query filters.
 - Use the universal single-field update API: `app/routes/api.update-field.tsx`.
-  - Submit form with: `entity`, `entityId`, `accountId`, `projectId?`, `fieldName`, `fieldValue`.
+  - Submit form with: `entity`, `entityId`, `projectId?`, `fieldName`, `fieldValue`.
 
 
 ## Database Design: Junction-First
@@ -167,7 +169,7 @@ This is the authoritative, efficient playbook for building and operating feature
 ## PR Checklist (Merge Gate)
 - Loaders/actions return plain objects; no `json()`.
 - Uses middleware context (no extra `supabase.auth.getUser()` calls).
-- All DB ops include `account_id` (and `project_id` when applicable).
+- Queries rely on RLS for tenant scoping (no explicit `account_id` filters). Include `project_id` filters where applicable.
 - Junction tables used for many-to-many; indexes and RLS present.
 - No hardcoded IDs. Env and URLs correctly configured.
 - Error handling/logging in critical paths; no silent failures.

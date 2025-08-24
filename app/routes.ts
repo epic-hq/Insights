@@ -1,5 +1,6 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
 import aiChatRoutes from "./features/aichat/routes"
+import evidenceRoutes from "./features/evidence/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import homeRoutes from "./features/home/routes"
@@ -12,6 +13,7 @@ import opportunitiesRoutes from "./features/opportunities/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
 import projectsRoutes from "./features/projects/routes"
+import themesRoutes from "./features/themes/routes"
 
 const routes = [
 	// Public marketing landing page
@@ -35,9 +37,11 @@ const routes = [
 				...dashboardRoutes,
 				...interviewsRoutes,
 				...insightsRoutes,
+				...evidenceRoutes,
 				...opportunitiesRoutes,
 				...peopleRoutes,
 				...personasRoutes,
+				...themesRoutes,
 				...mobileRoutes,
 
 				// Project-scoped onboarding route

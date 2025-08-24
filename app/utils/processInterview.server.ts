@@ -5,7 +5,9 @@
 // Import BAML client - this file is server-only so it's safe to import directly
 import consola from "consola"
 import { b } from "~/../baml_client"
-import type { Database } from "~/../supabase/types"
+import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import type { Database, Json } from "~/../supabase/types"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 
@@ -97,7 +99,7 @@ export async function processInterviewTranscriptWithAdminClient({
 	transcriptData: Record<string, unknown>
 	mediaUrl: string
 	userCustomInstructions?: string
-	adminClient: any
+	adminClient: SupabaseClient<Database>
 }): Promise<ProcessingResult> {
 	return await processInterviewTranscriptWithClient({
 		metadata,
@@ -122,19 +124,11 @@ async function processInterviewTranscriptWithClient({
 	transcriptData: Record<string, unknown>
 	mediaUrl: string
 	userCustomInstructions?: string
-	client: any
+	client: SupabaseClient<Database>
 }): Promise<ProcessingResult> {
-	// 1. Call the BAML process – this will invoke OpenAI GPT-4o under the hood
-	// Per BAML conventions, call the generated function directly on the `b` client.
-	// The function name must match the declaration in `baml_src/extract_insights.baml`.
+	// 1. Create the interview record early so downstream steps can reference it
 	const fullTranscript = transcriptData.full_transcript as string
-	const response = await b.ExtractInsights(fullTranscript, userCustomInstructions || "")
-	consola.log("BAML response:", response)
-
-	// Extract insights from the BAML response
-	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
-
-	// 2. First, create the interview record
+	// 1.a Create the interview record
 	const interviewData: InterviewInsert = {
 		account_id: metadata.accountId,
 		project_id: metadata.projectId,
@@ -160,14 +154,163 @@ async function processInterviewTranscriptWithClient({
 		throw new Error(`Failed to create interview record: ${interviewError.message}`)
 	}
 
+	// 2. Extract and persist Evidence units from transcript (BAML)
+	// Prepare optional chapters if present in transcriptData
+	type RawChapter = {
+		start_ms?: number
+		end_ms?: number
+		start?: number
+		end?: number
+		summary?: string
+		gist?: string
+		title?: string
+	}
+	let chapters: Array<{ start_ms: number; end_ms?: number; summary?: string; title?: string }> = []
+	try {
+		const rawChapters = ((transcriptData as Record<string, unknown>).chapters as RawChapter[] | undefined)
+			|| ((transcriptData as Record<string, unknown>).segments as RawChapter[] | undefined)
+			|| []
+		if (Array.isArray(rawChapters)) {
+			chapters = rawChapters
+				.map((c: RawChapter) => ({
+					start_ms: typeof c.start_ms === "number" ? c.start_ms : (typeof c.start === "number" ? c.start : 0),
+					end_ms: typeof c.end_ms === "number" ? c.end_ms : (typeof c.end === "number" ? c.end : undefined),
+					summary: c.summary ?? c.gist ?? undefined,
+					title: c.title ?? undefined,
+				}))
+				.filter((c) => typeof c.start_ms === "number")
+		}
+	} catch (e) {
+		consola.warn("Failed to normalize chapters for evidence extraction", e)
+	}
+
+	const language = (transcriptData as any).language || (transcriptData as any).detected_language || "en"
+
+	// Use the exact return type from BAML to avoid drift
+	type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscript>>
+	let evidenceUnits: EvidenceFromBaml | null = []
+
+	try {
+		consola.log('ExtractEvidence starting')
+		evidenceUnits = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language)
+		consola.log(`Extracted ${evidenceUnits?.length || 0} evidence units`)
+	} catch (e) {
+		consola.warn("Evidence extraction failed; continuing without evidence", e)
+	}
+
+	if (evidenceUnits?.length) {
+		// Map BAML EvidenceUnit -> DB rows
+		const evidenceRows = evidenceUnits.map((ev: EvidenceFromBaml[number]) => ({
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			interview_id: interviewRecord.id,
+			source_type: "primary",
+			method: "interview",
+			modality: "qual",
+			support: ev.support ?? "supports",
+			kind_tags: Array.isArray(ev.kind_tags)
+				? ev.kind_tags
+				: (
+					// ev.kind_tags could be a structured object; flatten its string arrays into a single array
+					Object.values(ev.kind_tags ?? {})
+						.flat()
+						.filter((x): x is string => typeof x === "string")
+				),
+			personas: (ev.personas ?? []) as string[],
+			segments: (ev.segments ?? []) as string[],
+			journey_stage: ev.journey_stage || null,
+			weight_quality: 0.8,
+			weight_relevance: 0.8,
+			confidence: ev.confidence ?? "medium",
+			verbatim: ev.verbatim,
+			anchors: (ev.anchors ?? []) as unknown as Json,
+			created_by: metadata.userId,
+			updated_by: metadata.userId,
+		}))
+
+		const { data: insertedEvidence, error: evidenceError } = await db
+			.from("evidence")
+			.insert(evidenceRows)
+			.select("id, kind_tags")
+
+		if (evidenceError) {
+			consola.warn(`Failed to insert evidence: ${evidenceError.message}`)
+		} else if (insertedEvidence?.length) {
+			// Optionally upsert tags from kind_tags and link via evidence_tag
+			try {
+				// Build unique tag list
+				const tagsSet = new Set<string>()
+				const insertedEvidenceTyped = insertedEvidence as Array<{ id: string; kind_tags: string[] | null }>
+				insertedEvidenceTyped.forEach((ev) => {
+					; (ev.kind_tags || []).forEach((t) => {
+						if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
+					})
+				})
+				const tags = Array.from(tagsSet)
+
+				const tagIdByName = new Map<string, string>()
+				for (const tagName of tags) {
+					const { data: tagRow, error: tagErr } = await db
+						.from("tags")
+						.upsert({ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId }, { onConflict: "account_id,tag" })
+						.select("id")
+						.single()
+					if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
+				}
+
+				// Link evidence -> tags
+				for (const ev of insertedEvidenceTyped) {
+					for (const tagName of ev.kind_tags || []) {
+						const tagId = tagIdByName.get(tagName)
+						if (!tagId) continue
+						const { error: etErr } = await db
+							.from("evidence_tag")
+							.insert({
+								evidence_id: ev.id,
+								tag_id: tagId,
+								account_id: metadata.accountId,
+								project_id: metadata.projectId,
+							})
+							.select()
+							.single()
+						if (etErr && !etErr.message?.includes("duplicate")) {
+							consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+						}
+					}
+				}
+			} catch (linkErr) {
+				consola.warn("Failed to create/link tags for evidence", linkErr)
+			}
+		}
+	}
+
+	// 3. Auto-generate themes from accumulated evidence before insights
+	try {
+		await autoGroupThemesAndApply({
+			supabase: db,
+			account_id: metadata.accountId,
+			project_id: metadata.projectId ?? null,
+			limit: 200,
+		})
+	} catch (themeErr) {
+		consola.warn("Auto theme generation failed; continuing without themes", themeErr)
+	}
+
+	// 4. Now extract Insights from transcript (after evidence and themes)
+	const response = await b.ExtractInsights(fullTranscript, userCustomInstructions || "")
+	consola.log("BAML response:", response)
+
+	// Extract insights from the BAML response
+	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
+
 	if (!insights?.length) {
-		// Update interview status to ready even if no insights
+		// Update interview status to ready even if no insights (themes/evidence may exist)
 		await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
 
 		return { stored: [], interview: interviewRecord }
 	}
 
-	// 3. Transform insights into DB rows - map BAML types to database schema
+	// 5. Transform insights into DB rows - map BAML types to database schema
 	const rows = insights.map((i) => ({
 		account_id: metadata.accountId,
 		project_id: metadata.projectId,
@@ -190,40 +333,27 @@ async function processInterviewTranscriptWithClient({
 		updated_by: metadata.userId,
 	}))
 
-	// 4. Bulk upsert insights into Supabase
+	// 6. Bulk upsert insights into Supabase
 	const { data, error } = await db.from("insights").insert(rows).select()
 	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
 
-	// 4.1 Upsert person and link to interview - ALWAYS create a person record
-	// Smart fallback naming: use AI-extracted name, or generate from filename/metadata
+	// 6.a Upsert person and link to interview - now that we have interviewee
 	const generateFallbackName = (): string => {
-		// Try filename first (remove extension and clean up)
 		if (metadata.fileName) {
 			const nameFromFile = metadata.fileName
-				.replace(/\.[^/.]+$/, "") // Remove extension
-				.replace(/[_-]/g, " ") // Replace underscores/hyphens with spaces
-				.replace(/\b\w/g, (l) => l.toUpperCase()) // Title case
+				.replace(/\.[^/.]+$/, "")
+				.replace(/[_-]/g, " ")
+				.replace(/\b\w/g, (l) => l.toUpperCase())
 				.trim()
 
-			if (nameFromFile.length > 0) {
-				return `${nameFromFile}`
-			}
+			if (nameFromFile.length > 0) return `${nameFromFile}`
 		}
-
-		// Fallback to interview title or generic name
-		if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) {
-			return `${metadata.interviewTitle}`
-		}
-
-		// Final fallback with timestamp
+		if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) return `${metadata.interviewTitle}`
 		const timestamp = new Date().toISOString().split("T")[0]
 		return `${timestamp}`
 	}
 
-	// Determine the person name: AI-extracted name or smart fallback
 	const personName = interviewee?.name?.trim() || generateFallbackName()
-
-	// Prepare person data with proper typing
 	const personInsertData: PeopleInsert = {
 		account_id: metadata.accountId,
 		project_id: metadata.projectId,
@@ -234,59 +364,41 @@ async function processInterviewTranscriptWithClient({
 	}
 
 	consola.log("Creating person with data:", personInsertData)
-
-	// Upsert person by normalized name + account_id
 	const { data: personData, error: personError } = await db
 		.from("people")
 		.upsert(personInsertData, { onConflict: "account_id,name_hash" })
 		.select("id")
 		.single()
-
-	if (personError) {
-		throw new Error(`Failed to upsert person: ${personError.message}`)
-	}
-
-	if (!personData?.id) {
-		throw new Error("Person upsert succeeded but no ID returned")
-	}
+	if (personError) throw new Error(`Failed to upsert person: ${personError.message}`)
+	if (!personData?.id) throw new Error("Person upsert succeeded but no ID returned")
 
 	// Intelligent persona assignment using BAML
 	let personaData: PersonasRow | null = null
-	
 	try {
-		// Get existing personas for this account
 		const { data: existingPersonas, error: personasError } = await db
 			.from("personas")
 			.select("*")
 			.eq("account_id", metadata.accountId)
+		if (personasError) consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
 
-		if (personasError) {
-			consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
-		}
-
-		// Prepare data for BAML function
 		const intervieweeInfo = JSON.stringify({
 			name: interviewee?.name || "Unknown",
 			persona: interviewee?.persona || null,
 			segment: interviewee?.segment || null,
 			participantDescription: interviewee?.participantDescription || null,
-			contactInfo: interviewee?.contactInfo || null
+			contactInfo: interviewee?.contactInfo || null,
 		})
-
 		const existingPersonasData = JSON.stringify(existingPersonas || [])
-		
-		// Use BAML to make intelligent persona assignment decision
+
 		const decision = await b.AssignPersonaToInterview(
 			interviewRecord.transcript || "",
 			intervieweeInfo,
-			existingPersonasData
+			existingPersonasData,
 		)
-
 		consola.log(`Persona assignment decision: ${decision.action} (confidence: ${decision.confidence_score})`)
 		consola.log(`Reasoning: ${decision.reasoning}`)
 
 		if (decision.action === "assign_existing" && decision.persona_id) {
-			// Find the existing persona by ID
 			const existingPersona = existingPersonas?.find((p: PersonasRow) => p.id === decision.persona_id)
 			if (existingPersona) {
 				personaData = existingPersona
@@ -297,7 +409,6 @@ async function processInterviewTranscriptWithClient({
 		}
 
 		if (decision.action === "create_new" && decision.new_persona_data) {
-			// Create new persona using BAML-generated data
 			const newPersonaInsert = {
 				account_id: metadata.accountId,
 				project_id: metadata.projectId,
@@ -316,26 +427,21 @@ async function processInterviewTranscriptWithClient({
 				image_url: decision.new_persona_data.image_url,
 				percentage: decision.new_persona_data.percentage,
 			}
-
 			const { data: newPersona, error: createError } = await db
 				.from("personas")
 				.insert(newPersonaInsert)
 				.select("*")
 				.single()
-
-			if (createError) {
-				consola.warn(`Failed to create new persona: ${createError.message}`)
-			} else {
+			if (createError) consola.warn(`Failed to create new persona: ${createError.message}`)
+			else {
 				personaData = newPersona
 				consola.log(`Created new persona: ${newPersona.name}`)
 			}
 		}
 
-		// Fallback: if no persona was assigned and we have a persona name from extraction
 		if (!personaData && interviewee?.persona?.trim()) {
 			const personaName = interviewee.persona.trim()
 			consola.log(`Fallback: Creating simple persona for "${personaName}"`)
-			
 			const { data: fallbackPersona, error: fallbackError } = await db
 				.from("personas")
 				.insert({
@@ -346,21 +452,16 @@ async function processInterviewTranscriptWithClient({
 				})
 				.select("*")
 				.single()
-
 			if (!fallbackError) {
 				personaData = fallbackPersona
 				consola.log(`Created fallback persona: ${personaName}`)
 			}
 		}
-
 	} catch (error) {
 		consola.error(`Error in intelligent persona assignment: ${error}`)
-		
-		// Fallback to simple logic if BAML fails
 		if (interviewee?.persona?.trim()) {
 			const personaName = interviewee.persona.trim()
 			consola.log(`BAML failed, using simple fallback for "${personaName}"`)
-			
 			const { data: simplePersona, error: simpleError } = await db
 				.from("personas")
 				.insert({
@@ -371,7 +472,6 @@ async function processInterviewTranscriptWithClient({
 				})
 				.select("*")
 				.single()
-
 			if (!simpleError) {
 				personaData = simplePersona
 				consola.log(`Created simple fallback persona: ${personaName}`)
@@ -379,21 +479,15 @@ async function processInterviewTranscriptWithClient({
 		}
 	}
 
-	// Insert into interview_people junction table
 	const junctionData: InterviewPeopleInsert = {
 		interview_id: interviewRecord.id,
 		person_id: personData.id,
 		role: "participant",
 		project_id: metadata.projectId,
 	}
-
 	const { error: junctionError } = await db.from("interview_people").insert(junctionData)
+	if (junctionError) throw new Error(`Failed to link person to interview: ${junctionError.message}`)
 
-	if (junctionError) {
-		throw new Error(`Failed to link person to interview: ${junctionError.message}`)
-	}
-
-	// Link person to persona via junction table if found
 	if (personaData?.id) {
 		const { error: personaLinkError } = await db.from("people_personas").upsert(
 			{
@@ -404,19 +498,12 @@ async function processInterviewTranscriptWithClient({
 				confidence_score: 1.0,
 				source: "ai_extraction",
 			},
-			{
-				onConflict: "person_id,persona_id",
-			}
+			{ onConflict: "person_id,persona_id" },
 		)
-
-		if (personaLinkError) {
-			consola.warn(`Failed to link person to persona: ${personaLinkError.message}`)
-		}
+		if (personaLinkError) consola.warn(`Failed to link person to persona: ${personaLinkError.message}`)
 	}
-
 	consola.log(`Successfully created/linked person "${personName}" to interview ${interviewRecord.id}`)
 
-	// 4.2 Update interview with additional BAML fields
 	await db
 		.from("interviews")
 		.update({

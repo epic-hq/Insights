@@ -15,8 +15,8 @@ importers:
         specifier: 1.3.24
         version: 1.3.24(zod@3.25.74)
       '@boundaryml/baml':
-        specifier: ^0.202.0
-        version: 0.202.0
+        specifier: ^0.205.0
+        version: 0.205.0
       '@copilotkit/react-core':
         specifier: 1.10.2
         version: 1.10.2(@types/react@19.1.8)(graphql@16.11.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -122,6 +122,9 @@ importers:
       '@tanstack/react-table':
         specifier: 8.21.3
         version: 8.21.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
+      baml:latest:
+        specifier: link:@boundaryml/baml:latest
+        version: link:@boundaryml/baml:latest
       class-variance-authority:
         specifier: 0.7.1
         version: 0.7.1
@@ -825,50 +828,50 @@ packages:
       react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@boundaryml/baml-darwin-arm64@0.202.0':
-    resolution: {integrity: sha512-i0Y9tCkaWcERJL4yL1/lWSvAYzKiGMsuO1MMDFO3R3cBvbGpRlGY13hKsDtpQy7YePoGzy68MMAqQFm1Y6ucLw==}
+  '@boundaryml/baml-darwin-arm64@0.205.0':
+    resolution: {integrity: sha512-elLot6FNU22RCvUen2gP9yS9BqpRHfqzVHtdu6sk+jY8pVHoVxCJLDdCPX0Ex6Fhdj2XfeMFub102s6rOjnbsg==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@boundaryml/baml-darwin-x64@0.202.0':
-    resolution: {integrity: sha512-e9q/igONW33ltNUAxW6Jimv/1bucN1LgD0TqaF6gSjhyelZr4bZ68f3n5rwK0UF+4VBkNkvC+UXoWgYky5dBOg==}
+  '@boundaryml/baml-darwin-x64@0.205.0':
+    resolution: {integrity: sha512-624bh7INaT+dTFhBJqYxidjraL+0VhaEC5/vzpXX/XjNTSItbd2+Kp+IoEi5Xc+TeSMbvKD9s6Svg3lNHc6lKw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@boundaryml/baml-linux-arm64-gnu@0.202.0':
-    resolution: {integrity: sha512-3DWTK9gMUHv+BlsZ1BAprMXQsRzPFKhlzmG71y+G3s0ZJIFzrQ9rmdv93lejyslPPTw0M2TD2CjBDrNsnmSX3A==}
+  '@boundaryml/baml-linux-arm64-gnu@0.205.0':
+    resolution: {integrity: sha512-4Qi3yC9UXsRSZ5389kXsBhDgJQYIHanPEhE5a/A7ZmwAIqnHFV04VbYwevz0RSewDryB58q3kxwtIkRm2nKx8A==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@boundaryml/baml-linux-arm64-musl@0.202.0':
-    resolution: {integrity: sha512-fTFK+w7ku61dKzIeIaNsMLpiT793MKmj1La6oznhwpuoOdLm861GXzJUut4Bri8n4UFULfnPiCCp4nU5nwpwcQ==}
+  '@boundaryml/baml-linux-arm64-musl@0.205.0':
+    resolution: {integrity: sha512-cbiPslGe2XhogBKhuV7FtTslfyvOfrg/kmdFoHwQXVwF3wRKw49Mk/ntxhhF5Ow5kKc5gko29ny8WuQzWJNomw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@boundaryml/baml-linux-x64-gnu@0.202.0':
-    resolution: {integrity: sha512-gKainskhyex0c8AmzrfYSbyRXwK4OCSjpO6oKni8+EFcaH/OZD6rDqmS1ggcNoTKw2MqC/H1hfyMCw3BdEDxVA==}
+  '@boundaryml/baml-linux-x64-gnu@0.205.0':
+    resolution: {integrity: sha512-8kz1zjx2y+mY+sPoXQxhJQLQM9wkYPVz5zAYDrtcVtZ6JZNUUnscbusx2dswDa0p6/xqldUVbAPluaZoueqv2w==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@boundaryml/baml-linux-x64-musl@0.202.0':
-    resolution: {integrity: sha512-KHrG8iut5vc58L41eKtNF8W1OgDzYMmXRtcuevHuy22cRb4TbhYP2bTOo+r9iZOc/zBN1Yl1Cv3U+u+pX3ypPw==}
+  '@boundaryml/baml-linux-x64-musl@0.205.0':
+    resolution: {integrity: sha512-opFehyl0zRM2KI7DC8VA81KjPHXsSQSDL3u7fnYvMPXuQrS3GPISI5Ez6fW42eHbcLfkBNITI5XhmQm222ccew==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@boundaryml/baml-win32-x64-msvc@0.202.0':
-    resolution: {integrity: sha512-DcZiQ/eRKf11FgKFnVN8H1Tsnc6M9UgC6tLKIwr0YUYe2buKPXNkS2tPk0n4gHSnPX/bdWqyeUchk+4E6yqiDQ==}
+  '@boundaryml/baml-win32-x64-msvc@0.205.0':
+    resolution: {integrity: sha512-M7LrEadB1U6V32p4q+p8Hjju+TuHRyVo3nzlj49L/v06pDXotK/0OQYI0Ro/o6CswcWeuXU4q4sE64b7312SqA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
 
-  '@boundaryml/baml@0.202.0':
-    resolution: {integrity: sha512-0RNgCBp2egdWJfsNqNaWe/qUg6ea9OLzkcUTE8+wHmlpB2SgK5QRYTaOnt9WX4KHnUvIiMJijIOjy35RGYk45g==}
+  '@boundaryml/baml@0.205.0':
+    resolution: {integrity: sha512-0VUAA3N2ss+LSD5DNREOfagAViml6LyQg/LFY129d1ebv16h8y+ZUBlvx4Zqzg0D+1d4KiRMJ+h/qkJK0iU/cg==}
     engines: {node: '>= 10'}
     hasBin: true
 
@@ -1595,8 +1598,8 @@ packages:
     cpu: [x64]
     os: [win32]
 
-  '@inquirer/confirm@5.1.14':
-    resolution: {integrity: sha512-5yR4IBfe0kXe59r1YCTG8WXkUbl7Z35HK87Sw+WUyGD8wNUx7JvY7laahzeytyE1oLn74bQnL7hstctQxisQ8Q==}
+  '@inquirer/confirm@5.1.16':
+    resolution: {integrity: sha512-j1a5VstaK5KQy8Mu8cHmuQvN1Zc62TbLhjJxwHvKPPKEoowSF6h/0UdOpA9DNdWZ+9Inq73+puRq1df6OJ8Sag==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/node': '>=18'
@@ -1604,8 +1607,8 @@ packages:
       '@types/node':
         optional: true
 
-  '@inquirer/core@10.1.15':
-    resolution: {integrity: sha512-8xrp836RZvKkpNbVvgWUlxjT4CraKk2q+I3Ksy+seI2zkcE+y6wNs1BVhgcv8VyImFecUhdQrYLdW32pAjwBdA==}
+  '@inquirer/core@10.2.0':
+    resolution: {integrity: sha512-NyDSjPqhSvpZEMZrLCYUquWNl+XC/moEcVFqS55IEYIYsY0a1cUCevSqk7ctOlnm/RaSBU5psFryNlxcmGrjaA==}
     engines: {node: '>=18'}
     peerDependencies:
       '@types/node': '>=18'
@@ -9807,8 +9810,8 @@ packages:
     resolution: {integrity: sha512-sqBChb33loEnkoXte1bLg45bEBsOP9N1kzQh5JZNKj/0rik4zAPTNSAVPj3uQAdc6slYJ0Ksc403G2XgxsJQFQ==}
     engines: {node: '>=18.19'}
 
-  yoctocolors-cjs@2.1.2:
-    resolution: {integrity: sha512-cYVsTjKl8b+FrnidjibDWskAv7UKOfcwaVZdp/it9n1s9fU3IkgDbhdIRKCW4JDsAlECJY0ytoVPT3sK6kideA==}
+  yoctocolors-cjs@2.1.3:
+    resolution: {integrity: sha512-U/PBtDf35ff0D8X8D0jfdzHYEPFxAI7jJlxZXwCSez5M3190m+QobIfh+sWDWSHMCWWJN2AWamkegn6vr6YBTw==}
     engines: {node: '>=18'}
 
   yoctocolors@2.1.1:
@@ -10882,38 +10885,38 @@ snapshots:
       react-lifecycles-compat: 3.0.4
       warning: 3.0.0
 
-  '@boundaryml/baml-darwin-arm64@0.202.0':
+  '@boundaryml/baml-darwin-arm64@0.205.0':
     optional: true
 
-  '@boundaryml/baml-darwin-x64@0.202.0':
+  '@boundaryml/baml-darwin-x64@0.205.0':
     optional: true
 
-  '@boundaryml/baml-linux-arm64-gnu@0.202.0':
+  '@boundaryml/baml-linux-arm64-gnu@0.205.0':
     optional: true
 
-  '@boundaryml/baml-linux-arm64-musl@0.202.0':
+  '@boundaryml/baml-linux-arm64-musl@0.205.0':
     optional: true
 
-  '@boundaryml/baml-linux-x64-gnu@0.202.0':
+  '@boundaryml/baml-linux-x64-gnu@0.205.0':
     optional: true
 
-  '@boundaryml/baml-linux-x64-musl@0.202.0':
+  '@boundaryml/baml-linux-x64-musl@0.205.0':
     optional: true
 
-  '@boundaryml/baml-win32-x64-msvc@0.202.0':
+  '@boundaryml/baml-win32-x64-msvc@0.205.0':
     optional: true
 
-  '@boundaryml/baml@0.202.0':
+  '@boundaryml/baml@0.205.0':
     dependencies:
       '@scarf/scarf': 1.4.0
     optionalDependencies:
-      '@boundaryml/baml-darwin-arm64': 0.202.0
-      '@boundaryml/baml-darwin-x64': 0.202.0
-      '@boundaryml/baml-linux-arm64-gnu': 0.202.0
-      '@boundaryml/baml-linux-arm64-musl': 0.202.0
-      '@boundaryml/baml-linux-x64-gnu': 0.202.0
-      '@boundaryml/baml-linux-x64-musl': 0.202.0
-      '@boundaryml/baml-win32-x64-msvc': 0.202.0
+      '@boundaryml/baml-darwin-arm64': 0.205.0
+      '@boundaryml/baml-darwin-x64': 0.205.0
+      '@boundaryml/baml-linux-arm64-gnu': 0.205.0
+      '@boundaryml/baml-linux-arm64-musl': 0.205.0
+      '@boundaryml/baml-linux-x64-gnu': 0.205.0
+      '@boundaryml/baml-linux-x64-musl': 0.205.0
+      '@boundaryml/baml-win32-x64-msvc': 0.205.0
 
   '@browserbasehq/sdk@2.6.0':
     dependencies:
@@ -11802,15 +11805,15 @@ snapshots:
   '@img/sharp-win32-x64@0.34.3':
     optional: true
 
-  '@inquirer/confirm@5.1.14(@types/node@24.0.10)':
+  '@inquirer/confirm@5.1.16(@types/node@24.0.10)':
     dependencies:
-      '@inquirer/core': 10.1.15(@types/node@24.0.10)
+      '@inquirer/core': 10.2.0(@types/node@24.0.10)
       '@inquirer/type': 3.0.8(@types/node@24.0.10)
     optionalDependencies:
       '@types/node': 24.0.10
     optional: true
 
-  '@inquirer/core@10.1.15(@types/node@24.0.10)':
+  '@inquirer/core@10.2.0(@types/node@24.0.10)':
     dependencies:
       '@inquirer/figures': 1.0.13
       '@inquirer/type': 3.0.8(@types/node@24.0.10)
@@ -11819,7 +11822,7 @@ snapshots:
       mute-stream: 2.0.0
       signal-exit: 4.1.0
       wrap-ansi: 6.2.0
-      yoctocolors-cjs: 2.1.2
+      yoctocolors-cjs: 2.1.3
     optionalDependencies:
       '@types/node': 24.0.10
     optional: true
@@ -18668,7 +18671,7 @@ snapshots:
       '@bundled-es-modules/cookie': 2.0.1
       '@bundled-es-modules/statuses': 1.0.1
       '@bundled-es-modules/tough-cookie': 0.1.6
-      '@inquirer/confirm': 5.1.14(@types/node@24.0.10)
+      '@inquirer/confirm': 5.1.16(@types/node@24.0.10)
       '@mswjs/interceptors': 0.37.6
       '@open-draft/deferred-promise': 2.2.0
       '@open-draft/until': 2.1.0
@@ -21222,7 +21225,7 @@ snapshots:
     dependencies:
       yoctocolors: 2.1.1
 
-  yoctocolors-cjs@2.1.2:
+  yoctocolors-cjs@2.1.3:
     optional: true
 
   yoctocolors@2.1.1: {}

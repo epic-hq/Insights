@@ -22,6 +22,8 @@ import { FieldType } from '@boundaryml/baml/native'
 import { TypeBuilder as _TypeBuilder, EnumBuilder, EnumViewer, ClassBuilder, ClassViewer } from '@boundaryml/baml/type_builder'
 import { DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_RUNTIME } from "./globals"
 
+export { FieldType, EnumBuilder, ClassBuilder }
+
 export default class TypeBuilder {
     private tb: _TypeBuilder;
     
@@ -29,9 +31,13 @@ export default class TypeBuilder {
     
     Anchor: ClassViewer<'Anchor', "type" | "target" | "start" | "end">;
     
+    AutoGroupThemesResponse: ClassViewer<'AutoGroupThemesResponse', "themes">;
+    
     AutoInsightsResponse: ClassViewer<'AutoInsightsResponse', "executive_summary" | "top_opportunities" | "critical_insights" | "persona_analysis" | "competitive_considerations" | "immediate_actions" | "strategic_recommendations">;
     
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
+    
+    EvidenceLinkProposal: ClassViewer<'EvidenceLinkProposal', "evidence_id" | "rationale" | "confidence">;
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
@@ -87,6 +93,8 @@ export default class TypeBuilder {
     
     SuggestedQuestion: ClassViewer<'SuggestedQuestion', "question" | "rationale" | "interview_type" | "priority">;
     
+    ThemeCandidate: ClassViewer<'ThemeCandidate', "name" | "statement" | "inclusion_criteria" | "exclusion_criteria" | "synonyms" | "anti_examples" | "links">;
+    
     
     BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
     
@@ -96,7 +104,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoInsightsResponse","Chapter","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","Chapter","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -112,12 +120,20 @@ export default class TypeBuilder {
           "type","target","start","end",
         ]);
         
+        this.AutoGroupThemesResponse = this.tb.classViewer("AutoGroupThemesResponse", [
+          "themes",
+        ]);
+        
         this.AutoInsightsResponse = this.tb.classViewer("AutoInsightsResponse", [
           "executive_summary","top_opportunities","critical_insights","persona_analysis","competitive_considerations","immediate_actions","strategic_recommendations",
         ]);
         
         this.Chapter = this.tb.classViewer("Chapter", [
           "start_ms","end_ms","summary","title",
+        ]);
+        
+        this.EvidenceLinkProposal = this.tb.classViewer("EvidenceLinkProposal", [
+          "evidence_id","rationale","confidence",
         ]);
         
         this.EvidenceSet = this.tb.classViewer("EvidenceSet", [
@@ -228,6 +244,10 @@ export default class TypeBuilder {
           "question","rationale","interview_type","priority",
         ]);
         
+        this.ThemeCandidate = this.tb.classViewer("ThemeCandidate", [
+          "name","statement","inclusion_criteria","exclusion_criteria","synonyms","anti_examples","links",
+        ]);
+        
         
         this.BBValues = this.tb.enumViewer("BBValues", [
           "Accountability","Achievement","Adaptability","Adventure","Altruism","Ambition","Authenticity","Balance","Beauty","Being_the_best","Belonging","Career","Caring","Collaboration","Commitment","Community","Compassion","Competence","Confidence","Connection","Contentment","Contribution","Cooperation","Courage","Creativity","Curiosity","Dignity","Diversity","Environment","Efficiency","Equality","Ethics","Excellence","Fairness","Faith","Family","Financial_stability","Forgiveness","Freedom","Friendship","Fun","Future_generations","Generosity","Giving_back","Grace","Gratitude","Growth","Harmony","Health","Home","Honesty","Hope","Humility","Humor","Inclusion","Independence","Initiative","Integrity","Intuition","Job_security","Joy","Justice","Kindness","Knowledge","Leadership","Learning","Legacy","Leisure","Love","Loyalty","Making_a_difference","Nature","Openness","Optimism","Order","Parenting","Patience","Patriotism","Peace","Perseverance","Personal_fulfillment","Power","Pride","Recognition","Reliability","Resourcefulness","Respect","Responsibility","Risk_taking","Safety","Security","Self_discipline","Self_expression","Self_respect","Serenity","Service","Simplicity","Spirituality","Sportsmanship","Stewardship","Success","Teamwork","Thrift","Time","Tradition","Travel","Trust","Truth","Understanding","Uniqueness","Usefulness","Vision","Vulnerability","Wealth","Well_being","Wholeheartedness","Wisdom",
@@ -237,6 +257,18 @@ export default class TypeBuilder {
           "Abandoned","Accepted","Aggressive","Amazed","Angry","Annoyed","Anxious","Apathetic","Appalled","Aroused","Ashamed","Astonished","Awe","Awful","Bad","Betrayed","Bitter","Bored","Busy","Cheeky","Confident","Confused","Content","Courageous","Creative","Critical","Curious","Depressed","Despair","Detestable","Disappointed","Disapproving","Disgusted","Disillusioned","Dismayed","Dismissive","Disrespected","Distant","Eager","Embarrassed","Empty","Energetic","Excited","Excluded","Exposed","Fearful","Fragile","Free","Frightened","Frustrated","Furious","Grief","Guilty","Happy","Helpless","Hesitant","Hopeful","Horrified","Hostile","Humiliated","Hurt","Inadequate","Indifferent","Indignant","Inferior","Infuriated","Inquisitive","Insecure","Insignificant","Inspired","Interested","Intimate","Isolated","Jealous","Joyful","Judgmental","Let_down","Lonely","Loving","Mad","Nauseated","Nervous","Numb","Optimistic","Out_of_control","Overwhelmed","Peaceful","Perplexed","Persecuted","Playful","Powerful","Powerless","Pressured","Proud","Provoked","Rejected","Remorseful","Repelled","Resentful","Respected","Revolted","Ridiculed","Rushed","Sad","Scared","Sensitive","Shocked","Skeptical","Sleepy","Startled","Stressed","Successful","Surprised","Thankful","Threatened","Tired","Trusting","Unfocussed","Valued","Victimized","Violated","Vulnerable","Weak","Withdrawn","Worried","Worthless",
         ]);
         
+    }
+
+    reset(): void {
+        this.tb.reset();
+        // TODO: This should happen in Rust. Problem is, when we construct the
+        // typebuilder we instantiate class builders once and it seems to make
+        // a JS copy, bypassing the Rust side? In Python however, every time we
+        // access a class builder with @property, we get a new instance that
+        // wraps over the Rust type builder, so we only need to call tb.reset().
+        // In JS it's not possible unless we refactor the way class builders are
+        // accessed.
+         this.ExtractedInsight.reset(); 
     }
 
     __tb() {

@@ -54,6 +54,9 @@ export type PeoplePersona = Tables<"people_personas">
 export type Comment = Tables<"comments">
 export type AccountSettings = Tables<"account_settings">
 export type UserSettings = Tables<"user_settings">
+export type Evidence = Tables<"evidence">
+export type Theme = Tables<"themes">
+export type Theme_Evidence = Tables<"theme_evidence">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
@@ -81,6 +84,12 @@ export type AccountSettingsInsert = TablesInsert<"account_settings">
 export type AccountSettingsUpdate = TablesUpdate<"account_settings">
 export type UserSettingsInsert = TablesInsert<"user_settings">
 export type UserSettingsUpdate = TablesUpdate<"user_settings">
+export type EvidenceInsert = TablesInsert<"evidence">
+export type EvidenceUpdate = TablesUpdate<"evidence">
+export type ThemeInsert = TablesInsert<"themes">
+export type ThemeUpdate = TablesUpdate<"themes">
+export type Theme_EvidenceInsert = TablesInsert<"theme_evidence">
+export type Theme_EvidenceUpdate = TablesUpdate<"theme_evidence">
 
 // 4. View-model helpers
 // ---------------------

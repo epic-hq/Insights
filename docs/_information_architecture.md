@@ -870,7 +870,7 @@ app/
 ## MVP checklist
 - [ ] AssemblyAI ingest → chapters → transcript stored; anchors created for segments
 - [ ] AI evidence suggestions → Inbox approve/edit → saved with anchors & tags
-- [ ] Auto‑group → Themes; manual merge/split; `theme_evidence` join maintained
+- [ ] Auto‑group → Generate and link evidence to Themes; manual merge/split; `theme_evidence` join maintained
 - [ ] Insight composer with AI drafts (≤3 themes) → review queue
 - [ ] Opportunities generator + Kanban statuses
 - [ ] Persona×Theme heatmap + cluster graph

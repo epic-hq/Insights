@@ -174,8 +174,8 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// 2. Create interview record with initial status
-		const customInstructions = `This interview is part of research about ${onboardingData.role} at ${onboardingData.icp}. 
-		
+		const customInstructions = `This interview is part of research about ${onboardingData.role} at ${onboardingData.icp}.
+
 Key research questions to focus on:
 ${onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
@@ -279,8 +279,20 @@ Please extract insights that specifically address these research questions and h
 			const { upload_url } = (await uploadResp.json()) as { upload_url: string }
 			consola.log("File uploaded to AssemblyAI:", upload_url)
 
-			// Start transcription with webhook - use production host for webhook reception
-			const webhookUrl = `${PRODUCTION_HOST}/api/assemblyai-webhook`
+			// Start transcription with webhook
+			// In production: use PRODUCTION_HOST
+			// In development: prefer PUBLIC_TUNNEL_URL (e.g., ngrok) so AssemblyAI can reach your machine
+			const host =
+				process.env.NODE_ENV === "production"
+					? PRODUCTION_HOST
+					: (() => {
+							const tunnel = process.env.PUBLIC_TUNNEL_URL
+							if (!tunnel) return PRODUCTION_HOST
+							return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
+						})()
+			const webhookUrl = `${host}/api/assemblyai-webhook`
+
+			consola.log("AssemblyAI Webhook: Starting transcription with webhook URL:", webhookUrl)
 
 			const transcriptResp = await fetch("https://api.assemblyai.com/v2/transcript", {
 				method: "POST",

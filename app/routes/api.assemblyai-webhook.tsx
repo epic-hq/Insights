@@ -63,6 +63,8 @@ export async function action({ request }: ActionFunctionArgs) {
 				throw new Error("AssemblyAI API key not configured")
 			}
 
+			consola.log("AssemblyAI Webhook: Fetching transcript data for transcript:", payload.transcript_id)
+
 			const transcriptResp = await fetch(`https://api.assemblyai.com/v2/transcript/${payload.transcript_id}`, {
 				headers: { Authorization: apiKey },
 			})
@@ -72,7 +74,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 
 			const transcriptData = await transcriptResp.json()
-			consola.log("Retrieved transcript data, length:", transcriptData.text?.length || 0)
+			consola.log("AssemblyAI Webhook: Retrieved transcript data, length:", transcriptData.text?.length || 0)
 
 			// Create transcript data object matching expected format
 			const formattedTranscriptData = {

@@ -312,6 +312,11 @@ export interface Anchor {
   
 }
 
+export interface AutoGroupThemesResponse {
+  themes: ThemeCandidate[]
+  
+}
+
 export interface AutoInsightsResponse {
   executive_summary: string
   top_opportunities: OpportunityRecommendation[]
@@ -328,6 +333,13 @@ export interface Chapter {
   end_ms?: number | null
   summary?: string | null
   title?: string | null
+  
+}
+
+export interface EvidenceLinkProposal {
+  evidence_id: string
+  rationale: string
+  confidence: number
   
 }
 
@@ -638,5 +650,16 @@ export interface SuggestedQuestion {
   rationale: string
   interview_type: "user_interview" | "stakeholder_interview" | "expert_interview"
   priority: number
+  
+}
+
+export interface ThemeCandidate {
+  name: string
+  statement?: string | null
+  inclusion_criteria?: string | null
+  exclusion_criteria?: string | null
+  synonyms?: string[] | null
+  anti_examples?: string[] | null
+  links: EvidenceLinkProposal[]
   
 }

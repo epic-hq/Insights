@@ -1,5 +1,18 @@
 {
-	"files": {
-		"ignore": ["supabase/**"]
-	}
+  "files": {
+    "ignore": ["supabase/**"]
+  },
+  "linter": {
+    "rules": {
+      "suspicious": {
+        "noUnusedImports": "off"
+      },
+      "style": {
+        "useSortedClasses": "error"
+      }
+    }
+  },
+  "organizeImports": {
+    "enabled": false
+  }
 }
