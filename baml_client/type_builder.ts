@@ -33,7 +33,7 @@ export default class TypeBuilder {
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
-    ExecutiveSummary: ClassViewer<'ExecutiveSummary', "answered_insights" | "unanticipated_discoveries" | "critical_unknowns" | "completion_percentage" | "confidence" | "next_action">;
+    ExecutiveSummary: ClassViewer<'ExecutiveSummary', "answered_insights" | "critical_unknowns" | "completion_percentage" | "confidence" | "next_action">;
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
@@ -113,7 +113,7 @@ export default class TypeBuilder {
         ]);
         
         this.ExecutiveSummary = this.tb.classViewer("ExecutiveSummary", [
-          "answered_insights","unanticipated_discoveries","critical_unknowns","completion_percentage","confidence","next_action",
+          "answered_insights","critical_unknowns","completion_percentage","confidence","next_action",
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [

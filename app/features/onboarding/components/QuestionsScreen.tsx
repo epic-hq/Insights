@@ -273,6 +273,11 @@ export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: Que
 												<Textarea
 													value={newQuestion}
 													onChange={(e) => setNewQuestion(e.target.value)}
+													onBlur={() => {
+														if (newQuestion.trim()) {
+															addCustomQuestion()
+														}
+													}}
 													className="min-h-[60px] resize-none border-none bg-transparent p-0 text-sm text-white focus:ring-0"
 													placeholder="What would you like to learn about your target audience?"
 													autoFocus

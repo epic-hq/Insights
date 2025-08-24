@@ -53,18 +53,18 @@ export function useInterviewProgress(interviewId: string | null) {
 	const startSyntheticProgress = useCallback((currentStatus: string, startProgress: number, targetProgress: number) => {
 		cleanupTimers()
 		setSyntheticProgress(startProgress)
-		
+
 		// Animate progress smoothly over time
 		const duration = getProgressDuration(currentStatus) // Duration in seconds
 		const steps = duration * 4 // Update 4 times per second
 		const increment = (targetProgress - startProgress) / steps
-		
+
 		let currentStep = 0
 		progressTimerRef.current = setInterval(() => {
 			currentStep++
 			const newProgress = Math.min(startProgress + (increment * currentStep), targetProgress)
 			setSyntheticProgress(newProgress)
-			
+
 			if (currentStep >= steps) {
 				cleanupTimers()
 			}
@@ -144,17 +144,17 @@ export function useInterviewProgress(interviewId: string | null) {
 			case "transcribed":
 				baseProgress = 65
 				targetProgress = 75
-				label = "Transcription complete, analyzing insights..."
+				label = "Transcription complete, extracting evidence and insights..."
 				break
 			case "processing":
 				baseProgress = 75
 				targetProgress = 95
-				label = "Extracting insights with AI..."
+				label = "Extracting evidence and insights..."
 				break
 			case "ready":
 				baseProgress = 100
 				targetProgress = 100
-				label = "Analysis complete!"
+				label = "Initial analysis complete!"
 				isComplete = true
 				cleanupTimers() // Stop any running animations
 				break

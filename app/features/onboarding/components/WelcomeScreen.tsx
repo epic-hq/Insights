@@ -60,7 +60,7 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 					{/* ICP Input */}
 					<div className="space-y-3">
 						<label htmlFor="icp" className="font-medium text-sm text-white">
-							Ideal organizations (ICP)
+							Ideal organization profile
 						</label>
 						<Input
 							id="icp"
@@ -75,7 +75,7 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 					{/* Role Input */}
 					<div className="space-y-3">
 						<label htmlFor="role" className="font-medium text-sm text-white">
-							Roles/Titles
+							Persona Roles/Titles
 						</label>
 						<Input
 							id="role"
@@ -89,7 +89,7 @@ export default function WelcomeScreen({ onNext }: WelcomeScreenProps) {
 					{/* Research Goal */}
 					<div className="space-y-3">
 						<label htmlFor="goal" className="font-medium text-sm text-white">
-							Goal
+							Project Goal
 						</label>
 						<Select value={goal} onValueChange={setGoal}>
 							<SelectTrigger className="h-12 border-gray-700 bg-gray-900 text-white">

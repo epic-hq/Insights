@@ -341,7 +341,6 @@ export interface ExecutiveInsight {
 
 export interface ExecutiveSummary {
   answered_insights: string[]
-  unanticipated_discoveries: string[]
   critical_unknowns: string[]
   completion_percentage: number
   confidence: number

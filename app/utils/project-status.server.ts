@@ -2,6 +2,40 @@ import { getProjectById } from "~/features/projects/db"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import type { Database } from "~/types"
 
+// Shapes returned by BAML for richer mapping
+interface BamlInsightMatch {
+  question?: string
+  insights_found?: string[]
+  confidence?: number
+  answer_summary?: string
+  evidence?: string[]
+}
+
+interface BamlGapAnalysis {
+  unanswered_questions?: string[]
+  partially_answered_questions?: string[]
+  follow_up_recommendations?: string[]
+  suggested_interview_topics?: string[]
+}
+
+interface BamlProjectAnalysis {
+  research_goal?: unknown
+  question_answers?: BamlInsightMatch[]
+  gap_analysis?: BamlGapAnalysis
+  key_discoveries?: string[]
+  confidence_score?: number
+  next_steps?: string[]
+}
+
+export interface ProjectQaItem {
+  question: string
+  answer_summary?: string
+  evidence?: string[]
+  confidence?: number
+  insights_found?: string[]
+  related_insight_ids?: string[]
+}
+
 export interface ProjectStatusData {
   projectName: string
   icp: string
@@ -28,6 +62,8 @@ export interface ProjectStatusData {
   answeredInsights: string[]
   unanticipatedDiscoveries: string[]
   criticalUnknowns: string[]
+  // Rich Q&A
+  questionAnswers: ProjectQaItem[]
 }
 
 export async function getProjectStatusData(
@@ -48,6 +84,14 @@ export async function getProjectStatusData(
     }
 
     const project = projectResult.data
+    type ProjectRow = {
+      name: string
+      description?: string | null
+      icp?: string | null
+      updated_at?: string | null
+      created_at?: string | null
+    }
+    const proj = project as unknown as ProjectRow
 
     // Fetch latest analysis annotation
     const { data: latestAnalysis } = await supabase
@@ -65,7 +109,7 @@ export async function getProjectStatusData(
     // Fetch basic counts
     const [interviewsResult, insightsResult] = await Promise.all([
       supabase.from('interviews').select('id').eq('project_id', projectId),
-      supabase.from('insights').select('id').eq('project_id', projectId)
+      supabase.from('insights').select('id,name').eq('project_id', projectId)
     ])
 
     const totalInterviews = interviewsResult.data?.length || 0
@@ -75,13 +119,13 @@ export async function getProjectStatusData(
 
     // Base data structure
     const baseData = {
-      projectName: project.name,
-      icp: (project as any).icp || project.description || 'Unknown ICP',
+      projectName: proj.name,
+      icp: proj.icp || proj.description || 'Unknown ICP',
       totalInterviews,
       totalInsights,
       totalPersonas,
       totalThemes,
-      lastUpdated: new Date(project.updated_at || project.created_at)
+      lastUpdated: new Date(proj.updated_at || proj.created_at || new Date().toISOString())
     }
 
     // If we have analysis results, use them
@@ -89,8 +133,32 @@ export async function getProjectStatusData(
       const metadata = latestAnalysis.metadata as Record<string, unknown>
       const fullAnalysis = (metadata.full_analysis as Record<string, unknown>) || {}
       const quickInsights = (fullAnalysis.quick_insights as Record<string, unknown>) || {}
-      const projectAnalysis = (fullAnalysis.project_analysis as Record<string, unknown>) || {}
-      const gapAnalysis = (projectAnalysis.gap_analysis as Record<string, unknown>) || {}
+      const projectAnalysis = (fullAnalysis.project_analysis as BamlProjectAnalysis) || {}
+      const gapAnalysis = (projectAnalysis.gap_analysis as BamlGapAnalysis) || {}
+      const qaRaw = (projectAnalysis.question_answers as BamlInsightMatch[]) || []
+      const allInsights = (insightsResult.data || []).map((i) => ({ id: i.id as string, name: (i as any).name as string | undefined }))
+
+      const questionAnswers: ProjectQaItem[] = qaRaw.map((qa) => {
+        const insights_found = Array.isArray(qa?.insights_found) ? qa.insights_found : []
+        // Fuzzy match insight names to ids
+        const related_insight_ids: string[] = []
+        const targets = insights_found.map((s) => (s || "").toLowerCase())
+        for (const ins of allInsights) {
+          const nm = (ins.name || "").toLowerCase()
+          if (!nm) continue
+          if (targets.some((t) => t && (nm.includes(t) || t.includes(nm)))) {
+            related_insight_ids.push(ins.id)
+          }
+        }
+        return {
+          question: qa?.question || "",
+          answer_summary: qa?.answer_summary,
+          evidence: Array.isArray(qa?.evidence) ? qa.evidence : [],
+          confidence: typeof qa?.confidence === "number" ? qa.confidence : undefined,
+          insights_found,
+          related_insight_ids,
+        }
+      })
       
       return {
         ...baseData,
@@ -111,7 +179,9 @@ export async function getProjectStatusData(
         // New structured insights from updated BAML
         answeredInsights: (metadata.key_insights as string[]) || (quickInsights.answered_insights as string[]) || [],
         unanticipatedDiscoveries: (metadata.unanticipated_discoveries as string[]) || (quickInsights.unanticipated_discoveries as string[]) || [],
-        criticalUnknowns: (metadata.critical_unknowns as string[]) || (quickInsights.critical_unknowns as string[]) || []
+        criticalUnknowns: (metadata.critical_unknowns as string[]) || (quickInsights.critical_unknowns as string[]) || [],
+        // Rich Q&A
+        questionAnswers,
       }
     }
 
@@ -129,7 +199,8 @@ export async function getProjectStatusData(
       suggestedInterviewTopics: [],
       answeredInsights: [],
       unanticipatedDiscoveries: [],
-      criticalUnknowns: []
+      criticalUnknowns: [],
+      questionAnswers: [],
     }
 
   } catch {

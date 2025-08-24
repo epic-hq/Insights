@@ -8,14 +8,14 @@ import {
 	Target,
 	TrendingUp,
 	Users,
-	Zap,
 	X,
+	CircleHelp,
+	FileText,
+	Zap
 } from "lucide-react"
 import { useState } from "react"
 import { useRevalidator } from "react-router-dom"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { Badge } from "~/components/ui/badge"
 import { Input } from "~/components/ui/input"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -27,9 +27,6 @@ interface ProjectStatusScreenProps {
 	projectId?: string
 	accountId?: string
 	statusData?: ProjectStatusData | null
-	onAddMore: () => void
-	onViewResults: () => void
-	onRefresh?: () => void
 }
 
 export default function ProjectStatusScreen({
@@ -37,22 +34,17 @@ export default function ProjectStatusScreen({
 	icp,
 	projectId,
 	accountId,
-	statusData: externalStatusData,
-	onAddMore,
-	onViewResults,
-	onRefresh,
+	statusData,
 }: ProjectStatusScreenProps) {
-	const [isLoading, setIsLoading] = useState(false)
 	const [isAnalyzing, setIsAnalyzing] = useState(false)
-	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false)
 	const [customInstructions, setCustomInstructions] = useState("")
-	
-	// React Router 7 revalidator for data refresh
+	const [showGapAnalysis, setShowGapAnalysis] = useState(false)
+	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false)
 	const revalidator = useRevalidator()
-
-	// Create routes helper if we have the required IDs
 	const currentProjectContext = useCurrentProject()
-	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+	const projectPath =
+		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
+	const routes = useProjectRoutes(projectPath)
 
 	const runCustomAnalysis = async () => {
 		if (!projectId) return
@@ -63,7 +55,6 @@ export default function ProjectStatusScreen({
 				headers: {
 					"Content-Type": "application/json",
 				},
-				credentials: "include",
 				body: JSON.stringify({
 					projectId,
 					customInstructions: customInstructions || undefined,
@@ -72,28 +63,20 @@ export default function ProjectStatusScreen({
 			})
 
 			if (response.ok) {
-				const result = await response.json()
-				console.log("✅ Analysis completed:", result)
-				setShowCustomAnalysis(false)
 				setCustomInstructions("")
-				// Trigger smooth data refresh using React Router 7 revalidator
 				revalidator.revalidate()
-				// Also call onRefresh callback if provided for backward compatibility
-				if (onRefresh) {
-					onRefresh()
-				}
-			} else {
-				console.error("❌ Analysis failed:", response.status)
+				// Auto-open gap analysis once data is available
+				setShowGapAnalysis(true)
 			}
 		} catch (error) {
-			console.error("❌ Analysis error:", error)
+			// Handle error silently
 		} finally {
 			setIsAnalyzing(false)
 		}
 	}
 
 	// Use external data if available, otherwise fallback to props
-	const displayData = externalStatusData || {
+	const displayData = statusData || {
 		projectName,
 		icp,
 		totalInterviews: 1,
@@ -120,27 +103,26 @@ export default function ProjectStatusScreen({
 		criticalUnknowns: [],
 	}
 	return (
-		<>
-			<div className="relative min-h-screen bg-gray-950 text-white">
-				{isLoading && (
-					<div className="flex h-screen items-center justify-center">
-						<Loader2 className="h-8 w-8 animate-spin text-gray-400" />
-					</div>
-				)}
-
-				{/* Clean Header */}
-				<div className="border-gray-800 border-b bg-gray-950 px-6 py-8">
-					<div className="mx-auto max-w-4xl">
-						<h1 className="mb-3 font-light text-3xl text-white tracking-tight">{displayData.projectName}</h1>
-						<p className="text-gray-400 text-lg">{displayData.icp}</p>
-					</div>
+		<div className="relative min-h-screen bg-gray-950 text-white">
+			{isAnalyzing && (
+				<div className="flex h-screen items-center justify-center">
+					<Loader2 className="h-8 w-8 animate-spin text-gray-400" />
 				</div>
+			)}
 
-				{/* Main Content - Streamlined 3-Section Layout */}
-				<div className="mx-auto max-w-4xl space-y-16 px-6 py-12">
-					{/* Section 1: What We Learned - Answered Insights */}
-					{externalStatusData && displayData.answeredInsights && displayData.answeredInsights.length > 0 && (
-						<div>
+			{/* Clean Header */}
+			<div className="border-gray-800 border-b bg-gray-950 px-6 py-8">
+				<div className="mx-auto max-w-4xl">
+					<h1 className="mb-3 font-light text-3xl text-white tracking-tight">{displayData.projectName}</h1>
+					<p className="text-gray-400 text-lg">{displayData.icp}</p>
+				</div>
+			</div>
+
+			{/* Main Content - Streamlined 3-Section Layout */}
+			<div className="mx-auto max-w-4xl space-y-16 px-6 py-12">
+				{/* Section 1: What We Learned - Answered Insights */}
+				{statusData && displayData.answeredInsights && displayData.answeredInsights.length > 0 && (
+					<div>
 							<div className="mb-8 flex items-center gap-3">
 								<Target className="h-8 w-8 text-green-400" />
 								<h2 className="font-light text-3xl text-white">What We Learned</h2>
@@ -154,6 +136,21 @@ export default function ProjectStatusScreen({
 											<p className="text-gray-200 text-lg leading-relaxed">{insight}</p>
 										</div>
 									))}
+									{/* Unanswered Insights */}
+									{displayData.criticalUnknowns && displayData.criticalUnknowns.length > 0 && (
+										<div className=" space-y-2">
+											{displayData.criticalUnknowns.map((insight: string, index: number) => (
+												<div key={`unanswered-insight-${displayData.analysisId}-${index}`} className="flex items-center gap-2">
+													<div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-yellow-400" />
+													<p className="text-gray-200 text-lg leading-relaxed">
+														{insight}
+														<CircleHelp className="ml-1 inline-block h-4 w-4 text-yellow-600" />
+													</p>
+												</div>
+											))}
+										</div>
+									)}
+
 									{/* Show total count */}
 									{displayData.answeredInsights.length > 4 && (
 										<div className="pl-8 font-medium text-green-300">
@@ -166,7 +163,7 @@ export default function ProjectStatusScreen({
 					)}
 
 					{/* Section 1b: Unanticipated Discoveries */}
-					{externalStatusData &&
+					{/* {statusData &&
 						displayData.unanticipatedDiscoveries &&
 						displayData.unanticipatedDiscoveries.length > 0 && (
 							<div>
@@ -176,14 +173,14 @@ export default function ProjectStatusScreen({
 								</div>
 								<div className="rounded-xl border border-orange-700 bg-orange-900/20 p-8">
 									<div className="space-y-6">
-										{/* Unanticipated Discoveries */}
+
 										{displayData.unanticipatedDiscoveries.slice(0, 3).map((discovery: string, index: number) => (
 											<div key={`discovery-${displayData.analysisId}-${index}`} className="flex items-start gap-4">
 												<div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-orange-400" />
 												<p className="text-gray-200 text-lg leading-relaxed">{discovery}</p>
 											</div>
 										))}
-										{/* Show total count */}
+
 										{displayData.unanticipatedDiscoveries.length > 3 && (
 											<div className="pl-8 font-medium text-orange-300">
 												+{displayData.unanticipatedDiscoveries.length - 3} more surprises found
@@ -192,10 +189,10 @@ export default function ProjectStatusScreen({
 									</div>
 								</div>
 							</div>
-						)}
+						)} */}
 
 					{/* Section 2: Critical Unknowns - What we still need to learn */}
-					{externalStatusData && displayData.criticalUnknowns && displayData.criticalUnknowns.length > 0 && (
+					{/* {statusData && displayData.criticalUnknowns && displayData.criticalUnknowns.length > 0 && (
 						<div>
 							<div className="mb-8 flex items-center gap-3">
 								<AlertCircle className="h-8 w-8 text-yellow-400" />
@@ -220,10 +217,10 @@ export default function ProjectStatusScreen({
 								</div>
 							</div>
 						</div>
-					)}
+					)} */}
 
 					{/* Section 3: What's Next - Clear action categories */}
-					{externalStatusData &&
+					{statusData &&
 						(displayData.nextSteps?.length > 0 ||
 							displayData.followUpRecommendations.length > 0 ||
 							displayData.suggestedInterviewTopics.length > 0) && (
@@ -236,7 +233,7 @@ export default function ProjectStatusScreen({
 									{/* Priority Actions */}
 									{displayData.nextSteps?.length > 0 && (
 										<div className="rounded-xl border border-blue-700 bg-blue-900/20 p-6">
-											<h3 className="mb-4 font-semibold text-blue-300 text-xl">Priority Actions</h3>
+											{/* <h3 className="mb-4 font-semibold text-blue-300 text-xl">Priority Actions</h3> */}
 											<div className="space-y-4">
 												{displayData.nextSteps.slice(0, 3).map((step: string, index: number) => (
 													<div key={`next-${displayData.analysisId}-${index}`} className="flex items-start gap-4">
@@ -251,7 +248,7 @@ export default function ProjectStatusScreen({
 									)}
 
 									{/* Analysis Deep Dives */}
-									{displayData.followUpRecommendations.length > 0 && (
+									{/* {displayData.followUpRecommendations.length > 0 && (
 										<div className="rounded-xl border border-purple-700 bg-purple-900/20 p-6">
 											<h3 className="mb-4 font-semibold text-purple-300 text-xl">Analysis Deep Dives</h3>
 											<div className="space-y-4">
@@ -263,10 +260,10 @@ export default function ProjectStatusScreen({
 												))}
 											</div>
 										</div>
-									)}
+									)} */}
 
 									{/* New Research */}
-									{displayData.suggestedInterviewTopics.length > 0 && (
+									{/* {displayData.suggestedInterviewTopics.length > 0 && (
 										<div className="rounded-xl border border-green-700 bg-green-900/20 p-6">
 											<h3 className="mb-4 font-semibold text-green-300 text-xl">New Research Needed</h3>
 											<div className="space-y-4">
@@ -278,19 +275,33 @@ export default function ProjectStatusScreen({
 												))}
 											</div>
 										</div>
-									)}
+									)} */}
 								</div>
 							</div>
 						)}
 
 					{/* Detailed Views - Quick Access */}
-					{externalStatusData && (
+					{statusData && (
 						<div>
 							<div className="mb-8 flex items-center gap-3">
 								<Eye className="h-8 w-8 text-gray-400" />
-								<h2 className="font-light text-3xl text-white">Dive Deeper</h2>
+								<h2 className="font-light text-3xl text-white">Details</h2>
 							</div>
-							<div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+							<div className="grid grid-cols-2 gap-6 md:grid-cols-4">
+								{/* Gap Analysis */}
+								<div
+									className="cursor-pointer rounded-xl border border-gray-700 bg-gray-900/30 p-6 transition-colors hover:bg-gray-800/40"
+									onClick={() => setShowGapAnalysis(true)}
+								>
+									<div className="mb-4 flex items-center gap-3">
+										<FileText className="h-6 w-6 text-purple-400" />
+										<h3 className="font-semibold text-lg text-white">Gap Analysis</h3>
+									</div>
+									<div className="flex items-center font-medium text-blue-300 text-sm">
+										<TrendingUp className="ml-2 h-4 w-4" />
+									</div>
+								</div>
+
 								{/* Insights */}
 								<div
 									className="cursor-pointer rounded-xl border border-gray-700 bg-gray-900/30 p-6 transition-colors hover:bg-gray-800/40"
@@ -298,13 +309,13 @@ export default function ProjectStatusScreen({
 								>
 									<div className="mb-4 flex items-center gap-3">
 										<Lightbulb className="h-6 w-6 text-yellow-400" />
-										<h3 className="font-semibold text-lg text-white">All {displayData.totalInsights} Insights</h3>
+										<h3 className="font-semibold text-lg text-white">{displayData.totalInsights} Insights</h3>
 									</div>
 									{/* <p className="mb-4 text-gray-200 text-sm">
 										View detailed analysis of all {displayData.totalInsights} insights discovered
 									</p> */}
 									<div className="flex items-center font-medium text-blue-300 text-sm">
-										<span>View Details</span>
+
 										<TrendingUp className="ml-2 h-4 w-4" />
 									</div>
 								</div>
@@ -322,7 +333,7 @@ export default function ProjectStatusScreen({
 										Explore {displayData.totalPersonas} user personas and their characteristics
 									</p> */}
 									<div className="flex items-center font-medium text-blue-300 text-sm">
-										<span>View Personas</span>
+
 										<TrendingUp className="ml-2 h-4 w-4" />
 									</div>
 								</div>
@@ -340,7 +351,6 @@ export default function ProjectStatusScreen({
 										Review all {displayData.totalInterviews} interviews and transcripts
 									</p> */}
 									<div className="flex items-center font-medium text-blue-300 text-sm">
-										<span>View Interviews</span>
 										<TrendingUp className="ml-2 h-4 w-4" />
 									</div>
 								</div>
@@ -349,7 +359,7 @@ export default function ProjectStatusScreen({
 					)}
 
 					{/* Research Progress - Simplified */}
-					{externalStatusData && displayData.completionScore > 0 && (
+					{statusData && displayData.completionScore > 0 && (
 						<div className="rounded-xl border border-gray-700 bg-gray-900/50 p-8">
 							<div className="mb-6 flex items-center justify-between">
 								<h3 className="font-light text-white text-xl">Research Progress</h3>
@@ -391,43 +401,28 @@ export default function ProjectStatusScreen({
 							</p>
 						</div>
 					)}
-					{/* Primary Action - Clean and Prominent */}
-					{displayData.nextAction && (
-						<div className="mx-auto max-w-4xl px-6">
-							<div className="rounded-2xl border border-blue-100 bg-blue-50 p-8 text-center">
-								<h3 className="mb-3 font-light text-gray-900 text-xl">Recommended Action</h3>
-								<p className="mb-6 text-gray-600 leading-relaxed">{displayData.nextAction}</p>
-								<Button
-									onClick={onAddMore}
-									className="rounded-full bg-blue-500 px-8 py-3 font-medium text-white hover:bg-blue-600"
-								>
-									Take Action
-								</Button>
-							</div>
-						</div>
-					)}
 
-					{/* Simple Actions */}
-					<div className="mx-auto max-w-4xl px-6 py-8">
-						<div className="flex justify-center gap-4">
-							{/* <Button
-								onClick={onViewResults}
-								variant="outline"
-								className="border-blue-500 bg-blue-50 px-6 py-3 text-blue-700 hover:bg-blue-100 hover:border-blue-600"
-							>
-								<Eye className="mr-2 h-4 w-4" />
-								View Full Analysis
-							</Button> */}
-							<Button
-								onClick={() => setShowCustomAnalysis(true)}
-								disabled={isAnalyzing}
-								variant="outline"
-								className="border-gray-300 bg-white px-6 py-3 text-gray-700 hover:bg-blue-500 hover:border-gray-400 disabled:opacity-50 disabled:cursor-not-allowed"
-							>
-								{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
-								Custom Analysis
-							</Button>
-						</div>
+				{/* Simple Actions */}
+				<div className="mx-auto max-w-4xl px-6 py-8">
+					<div className="flex justify-center gap-4">
+						<Button
+							onClick={() => setShowGapAnalysis(true)}
+							variant="outline"
+							className="px-6 py-3 border-blue-500 bg-blue-50 text-blue-700 hover:border-blue-600 hover:bg-blue-100"
+							disabled={!statusData}
+						>
+							<Eye className="mr-2 h-4 w-4" />
+							View Full Analysis
+						</Button>
+						<Button
+							onClick={() => setShowCustomAnalysis(true)}
+							disabled={isAnalyzing}
+							variant="outline"
+							className="px-6 py-3 border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+						>
+							{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
+							Custom Analysis
+						</Button>
 					</div>
 				</div>
 			</div>
@@ -470,7 +465,7 @@ export default function ProjectStatusScreen({
 									onClick={() => setShowCustomAnalysis(false)}
 									variant="outline"
 									disabled={isAnalyzing}
-									className="border-gray-600 text-gray-300 hover:bg-gray-800 hover:text-white"
+									className="border-gray-600 text-gray-600 hover:bg-gray-800 hover:text-white"
 								>
 									Cancel
 								</Button>
@@ -479,6 +474,158 @@ export default function ProjectStatusScreen({
 					</div>
 				</div>
 			)}
-		</>
+
+			{/* Gap Analysis Modal */}
+			{showGapAnalysis &&
+				statusData &&
+				statusData.hasAnalysis &&
+				(
+					statusData.answeredQuestions.length > 0 ||
+					statusData.openQuestions.length > 0 ||
+					statusData.followUpRecommendations.length > 0 ||
+					statusData.suggestedInterviewTopics.length > 0
+				) && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80">
+					<div className="max-h-[80vh] w-full max-w-4xl overflow-y-auto rounded-xl border border-gray-700 bg-gray-900 p-8">
+						<div className="mb-6 flex items-center justify-between">
+							<div className="flex items-center gap-3">
+								<FileText className="h-8 w-8 text-purple-400" />
+								<h2 className="font-light text-3xl text-white">Full Gap Analysis</h2>
+							</div>
+							<Button
+								variant="ghost"
+								size="icon"
+								onClick={() => setShowGapAnalysis(false)}
+								className="text-gray-400 hover:text-white"
+							>
+								<X className="h-6 w-6" />
+							</Button>
+						</div>
+
+						<div className="space-y-8">
+							{/* Questions Answered (Rich) */}
+							{statusData.questionAnswers && statusData.questionAnswers.length > 0 && (
+								<div>
+									<h3 className="mb-4 font-semibold text-green-300 text-xl">Questions Answered</h3>
+									<div className="space-y-4">
+										{statusData.questionAnswers.map((qa) => (
+										<div key={`qa-${qa.question}`} className="rounded-lg border border-green-700 bg-green-900/20 p-4">
+											<div className="mb-2 flex items-start gap-2">
+												<CheckCircle className="mt-1 h-5 w-5 flex-shrink-0 text-green-400" />
+												<p className="font-medium text-green-200">{qa.question}</p>
+												{typeof qa.confidence === "number" && (
+													<span
+														className={`ml-auto inline-flex items-center rounded-md px-2 py-0.5 text-xs ${
+															qa.confidence === 1
+																? "border-green-700 bg-green-800/40 text-green-200"
+																: qa.confidence === 2
+																	? "border-yellow-700 bg-yellow-800/40 text-yellow-200"
+																	: "border-red-700 bg-red-800/40 text-red-200"
+														}`}
+													>
+														<AlertCircle className="mr-1 h-3 w-3" />
+														{qa.confidence === 1 ? "High" : qa.confidence === 2 ? "Medium" : "Low"} confidence
+													</span>
+												)}
+
+											</div>
+											{qa.answer_summary && (
+												<p className="text-gray-200">{qa.answer_summary}</p>
+											)}
+
+												{/* Evidence */}
+												{qa.evidence && qa.evidence.length > 0 && (
+													<div className="mt-3">
+														<p className="mb-1 text-gray-400 text-sm">Evidence</p>
+														<ul className="list-disc list-inside space-y-1 text-gray-300 text-sm">
+															{qa.evidence.map((e, i) => (
+																<li key={`ev-${qa.question}-${e.slice(0, 24)}-${i}`}>&ldquo;{e}&rdquo;</li>
+															))}
+														</ul>
+													</div>
+												)}
+
+											{/* Linked Insights */}
+											{qa.insights_found && qa.insights_found.length > 0 && (
+												<div className="mt-3">
+													<p className="mb-1 text-gray-400 text-sm">Related insights</p>
+													<ul className="list-disc list-inside space-y-1 text-gray-300 text-sm">
+														{qa.insights_found.map((ins) => (
+															<li key={`ins-${qa.question}-${ins.slice(0, 24)}`}>{ins}</li>
+														))}
+													</ul>
+												</div>
+											)}
+
+											{/* Insight Links (IDs matched) */}
+											{qa.related_insight_ids && qa.related_insight_ids.length > 0 && routes && (
+												<div className="mt-2 flex flex-wrap gap-2">
+													{qa.related_insight_ids.map((id) => (
+														<a
+															key={`ins-link-${qa.question}-${id}`}
+															href={routes.insights.detail(id)}
+															className="rounded-full border border-blue-700 bg-blue-900/20 px-2 py-0.5 text-blue-200 text-xs hover:bg-blue-900/40"
+															data-testid="qa-related-insight-link"
+														>
+															Open insight
+														</a>
+													))}
+												</div>
+											)}
+										</div>
+									))}
+								</div>
+							</div>
+						)}
+
+							{/* Unanswered Questions */}
+							{statusData.openQuestions.length > 0 && (
+								<div>
+									<h3 className="mb-4 font-semibold text-yellow-300 text-xl">Unanswered Questions</h3>
+									<div className="space-y-3">
+										{statusData.openQuestions.map((question) => (
+											<div key={`unanswered-${question.slice(0, 24)}`} className="flex items-start gap-3 rounded-lg border border-yellow-700 bg-yellow-900/20 p-4">
+												<CircleHelp className="mt-1 h-5 w-5 flex-shrink-0 text-yellow-400" />
+												<p className="text-gray-200">{question}</p>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Follow-up Recommendations */}
+							{statusData.followUpRecommendations.length > 0 && (
+								<div>
+									<h3 className="mb-4 font-semibold text-blue-300 text-xl">Follow-up Recommendations</h3>
+									<div className="space-y-3">
+										{statusData.followUpRecommendations.map((rec) => (
+											<div key={`followup-${rec.slice(0, 24)}`} className="flex items-start gap-3 rounded-lg border border-blue-700 bg-blue-900/20 p-4">
+												<Lightbulb className="mt-1 h-5 w-5 flex-shrink-0 text-blue-400" />
+												<p className="text-gray-200">{rec}</p>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+
+							{/* Suggested Interview Topics */}
+							{statusData.suggestedInterviewTopics.length > 0 && (
+								<div>
+									<h3 className="mb-4 font-semibold text-purple-300 text-xl">Suggested Interview Topics</h3>
+									<div className="space-y-3">
+										{statusData.suggestedInterviewTopics.map((topic) => (
+											<div key={`topic-${topic.slice(0, 24)}`} className="flex items-start gap-3 rounded-lg border border-purple-700 bg-purple-900/20 p-4">
+												<MessageSquare className="mt-1 h-5 w-5 flex-shrink-0 text-purple-400" />
+												<p className="text-gray-200">{topic}</p>
+											</div>
+										))}
+									</div>
+								</div>
+							)}
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
 	)
 }

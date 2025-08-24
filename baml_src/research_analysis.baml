@@ -64,13 +64,13 @@ function AnalyzeProjectInsights(
 
     GUIDELINES:
 
-    1. For each question, identify:
-       - Which insights directly or indirectly answer it
-       - Confidence level in the answer (high/medium/low)
-       - Clear, actionable answer summary
-       - Supporting evidence from the data
+    1. For each question, produce a concise, actionable answer:
+       - insights_found: names/summaries of insights that directly or indirectly answer it (2-4 items if available)
+       - confidence: NUMERIC 1-3 where 1 = high, 2 = medium, 3 = low (no words)
+       - answer_summary: 1-2 sentence synthesis that a PM can act on; no preamble
+       - evidence: 1-3 short quotes or paraphrased snippets from interviews/insights. Prefer direct quotes. Keep each to <140 chars.
 
-    2. Gap Analysis:
+    2. Gap Analysis (be specific and scoped to the research goal):
        - Which questions remain unanswered or only partially answered
        - What follow-up research is needed
        - Suggest specific interview topics to fill gaps
@@ -84,21 +84,26 @@ function AnalyzeProjectInsights(
        - Priority areas for additional interviews
        - Suggested changes to research approach if needed
 
-    Be specific, actionable, and honest about confidence levels and gaps.
+    QUALITY BAR:
+    - Provide concise, evidence-backed answers with explicit numeric confidence (1-3).
+    - Include 1-3 relevant evidence quotes per answer, and reference related insights.
+    - Be specific, honest, and grounded in the provided data.
+    - Avoid generic or boilerplate phrasing, and do not repeat the question.
+    - Prefer concrete, falsifiable statements.
 
-		Output format:
-		{{ ctx.output_format }}
+	    	Output format:
+    	{{ ctx.output_format }}
   "#
 }
 
 // Executive summary optimized for status screens
 class ExecutiveSummary {
-  answered_insights string[] @description("Key findings that directly answer user's research questions, formatted as 'Finding, because evidence/reason'")
-  unanticipated_discoveries string[] @description("Surprising findings not related to original questions, formatted as 'Discovery, because evidence/reason'")
+  answered_insights string[] @description("Key findings that directly answer user's research questions, leading with pithy finding and then cause if known. Include 1-2 surprises if present.'")
+  // unanticipated_discoveries string[] @description("Surprising findings not related to original questions'")
   critical_unknowns string[] @description("Important questions that remain unanswered or areas where evidence is insufficient")
   completion_percentage int @description("0-100 estimate of how much of the original research goal has been addressed")
   confidence int @description("1-3 with 1 being highest confidence in findings")
-  next_action string @description("Single most important next step to advance the research")
+  next_action string @description("Single most important next 1-2 steps to advance the research")
 }
 
 function GenerateExecutiveSummary(
@@ -109,7 +114,8 @@ function GenerateExecutiveSummary(
 ) -> ExecutiveSummary {
   client CustomGPT4o
   prompt #"
-    You are analyzing research findings to create an executive summary that clearly communicates what was learned and why.
+    You are analyzing research findings to create an executive summary of goals and questions answered, with what level of confidence;
+		what's still unkonwn, and recommend next steps. Keep it pithy without preamble or fluff. Can be partial sentences.
 
     RESEARCH GOAL:
     {{ research_goal }}
@@ -126,35 +132,26 @@ function GenerateExecutiveSummary(
     ANALYSIS REQUIREMENTS:
 
     1. ANSWERED INSIGHTS (2-4 items):
-       - Focus on findings that directly address the research goal or implicit questions
-       - Format each as: "[What was learned], because [evidence/reason from data]"
-       - Example: "Users prefer mobile over desktop for quick tasks, because 8/10 interviews mentioned switching to phones when in a hurry"
+       - Major insights learned relative to research goal (group and summarizesimilar insights)
        - Prioritize insights with strong evidence from multiple sources
-
-    2. UNANTICIPATED DISCOVERIES (1-3 items):
-       - Unexpected findings that weren't part of the original research questions
-       - Format as: "[Surprising discovery], because [evidence/reason]"
+			 - Example: "Users prefer mobile over desktop for quick tasks, because 8/10 interviews mentioned switching to phones when in a hurry"
+			 - Call out truly surprising, UNANTICIPATED INSIGHTS if they exist and are relevant to the goal.
        - Example: "Price is less important than expected, because users consistently mentioned convenience over cost in decision-making"
        - Include only discoveries with solid evidence
 
-    3. CRITICAL UNKNOWNS (1-3 items):
+    3. REMAINING UNKNOWNS (1-3 items):
        - Important questions that remain unanswered or areas with insufficient evidence
-       - Format as clear questions or knowledge gaps
+       - Format as clear questions or knowledge gaps without any preample or fluff; partial sentences bullet style ok.
        - Example: "How users behave during peak usage times" or "Whether pricing sensitivity varies by user segment"
 
-    4. COMPLETION PERCENTAGE:
+		4. Recommendations:
+       - 1-2 recommendations that address the biggest gap or highest-value opportunity
+       - Be specific and actionable
+
+    5. COMPLETION PERCENTAGE:
        - Estimate how much of the research goal has been addressed (0-100)
        - Consider both breadth (topics covered) and depth (evidence quality)
 
-    5. CONFIDENCE:
-       - 1 = High confidence (strong evidence from multiple sources)
-       - 2 = Medium confidence (some evidence but gaps exist)
-       - 3 = Low confidence (limited or conflicting evidence)
-
-    6. NEXT ACTION:
-       - Single most important step to advance the research
-       - Should address the biggest gap or highest-value opportunity
-       - Be specific and actionable
 
     QUALITY GUIDELINES:
     - Use concrete evidence from the data, not assumptions
