@@ -304,6 +304,14 @@ export interface ActionButton {
   
 }
 
+export interface Anchor {
+  type: string
+  target: string
+  start: string
+  end?: string | null
+  
+}
+
 export interface AutoInsightsResponse {
   executive_summary: string
   top_opportunities: OpportunityRecommendation[]
@@ -315,6 +323,14 @@ export interface AutoInsightsResponse {
   
 }
 
+export interface Chapter {
+  start_ms: number
+  end_ms?: number | null
+  summary?: string | null
+  title?: string | null
+  
+}
+
 export interface EvidenceSet {
   facts: string[]
   goals: string[]
@@ -323,6 +339,18 @@ export interface EvidenceSet {
   triggers: string[]
   success: string[]
   quotes: string[]
+  
+}
+
+export interface EvidenceUnit {
+  verbatim: string
+  support: string
+  kind_tags: KindTags
+  personas?: string[] | null
+  segments?: string[] | null
+  journey_stage?: string | null
+  anchors: Anchor[]
+  confidence: string
   
 }
 
@@ -413,6 +441,16 @@ export interface Interviewee {
   participantDescription?: string | null
   segment?: string | null
   contactInfo?: string | null
+  
+}
+
+export interface KindTags {
+  problem?: string[] | null
+  goal?: string[] | null
+  behavior?: string[] | null
+  emotion?: Emotions | null
+  context?: string[] | null
+  artifact?: string[] | null
   
 }
 

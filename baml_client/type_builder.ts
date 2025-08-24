@@ -27,9 +27,15 @@ export default class TypeBuilder {
     
     ActionButton: ClassViewer<'ActionButton', "label" | "action_type" | "parameters" | "priority">;
     
+    Anchor: ClassViewer<'Anchor', "type" | "target" | "start" | "end">;
+    
     AutoInsightsResponse: ClassViewer<'AutoInsightsResponse', "executive_summary" | "top_opportunities" | "critical_insights" | "persona_analysis" | "competitive_considerations" | "immediate_actions" | "strategic_recommendations">;
     
+    Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
+    
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
+    
+    EvidenceUnit: ClassViewer<'EvidenceUnit', "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
@@ -48,6 +54,8 @@ export default class TypeBuilder {
     InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
     
     Interviewee: ClassViewer<'Interviewee', "name" | "persona" | "participantDescription" | "segment" | "contactInfo">;
+    
+    KindTags: ClassViewer<'KindTags', "problem" | "goal" | "behavior" | "emotion" | "context" | "artifact">;
     
     NoteSnippet: ClassViewer<'NoteSnippet', "tag" | "text" | "speaker" | "timestamp">;
     
@@ -88,7 +96,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","AutoInsightsResponse","EvidenceSet","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
+            "ActionButton","Anchor","AutoInsightsResponse","Chapter","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -100,12 +108,24 @@ export default class TypeBuilder {
           "label","action_type","parameters","priority",
         ]);
         
+        this.Anchor = this.tb.classViewer("Anchor", [
+          "type","target","start","end",
+        ]);
+        
         this.AutoInsightsResponse = this.tb.classViewer("AutoInsightsResponse", [
           "executive_summary","top_opportunities","critical_insights","persona_analysis","competitive_considerations","immediate_actions","strategic_recommendations",
         ]);
         
+        this.Chapter = this.tb.classViewer("Chapter", [
+          "start_ms","end_ms","summary","title",
+        ]);
+        
         this.EvidenceSet = this.tb.classViewer("EvidenceSet", [
           "facts","goals","pains","behaviors","triggers","success","quotes",
+        ]);
+        
+        this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
+          "verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence",
         ]);
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [
@@ -142,6 +162,10 @@ export default class TypeBuilder {
         
         this.Interviewee = this.tb.classViewer("Interviewee", [
           "name","persona","participantDescription","segment","contactInfo",
+        ]);
+        
+        this.KindTags = this.tb.classViewer("KindTags", [
+          "problem","goal","behavior","emotion","context","artifact",
         ]);
         
         this.NoteSnippet = this.tb.classViewer("NoteSnippet", [

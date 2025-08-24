@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  AutoInsightsResponse,  BBValues,  Emotions,  EvidenceSet,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion } from "./types"
+import type {  ActionButton,  Anchor,  AutoInsightsResponse,  BBValues,  Chapter,  Emotions,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -42,6 +42,12 @@ export namespace partial_types {
       parameters?: string | null
       priority?: string | null
     }
+    export interface Anchor {
+      type?: string | null
+      target?: string | null
+      start?: string | null
+      end?: string | null
+    }
     export interface AutoInsightsResponse {
       executive_summary?: string | null
       top_opportunities: OpportunityRecommendation[]
@@ -51,6 +57,12 @@ export namespace partial_types {
       immediate_actions: ActionButton[]
       strategic_recommendations: string[]
     }
+    export interface Chapter {
+      start_ms?: number | null
+      end_ms?: number | null
+      summary?: string | null
+      title?: string | null
+    }
     export interface EvidenceSet {
       facts: string[]
       goals: string[]
@@ -59,6 +71,16 @@ export namespace partial_types {
       triggers: string[]
       success: string[]
       quotes: string[]
+    }
+    export interface EvidenceUnit {
+      verbatim?: string | null
+      support?: string | null
+      kind_tags?: KindTags | null
+      personas?: string[] | null
+      segments?: string[] | null
+      journey_stage?: string | null
+      anchors: Anchor[]
+      confidence?: string | null
     }
     export interface ExecutiveInsight {
       title?: string | null
@@ -131,6 +153,14 @@ export namespace partial_types {
       participantDescription?: string | null
       segment?: string | null
       contactInfo?: string | null
+    }
+    export interface KindTags {
+      problem?: string[] | null
+      goal?: string[] | null
+      behavior?: string[] | null
+      emotion?: types.Emotions | null
+      context?: string[] | null
+      artifact?: string[] | null
     }
     export interface NoteSnippet {
       tag?: string | null

@@ -1,8 +1,18 @@
-# Purpose (marketing 1‑liner)
-Craft a simple promise anyone in the company can repeat.
+# UpSight App - Information Architecture and Core Entities
 
 **Mad‑Libs pitch**
+A simple promise anyone in the company can repeat.
+
 - *For* **[team / role]** *who need to* **[understand customers / decide what to build]**, **DSTL** *turns* **recordings & reports** *into* **evidence → themes → insights** *so they can* **[prioritize confidently / ship the right thing]**—*without* **research jargon or bottlenecks**.
+
+Focus|UpSight one-liner
+---|---
+Solving business challengs|UpSight gives product and service teams clear, real-time customer and business insights, so they can make better decisions and drive growth.
+Gaining a competitive edge|UpSight moves product and service teams from guesswork to data-driven action, so they can stay ahead of the competition.
+Enabling better products|UpSight provides teams with continuous customer feedback and performance data, so they can build more successful products and services.
+Improving customer focus|UpSight puts real-time customer and business data in the hands of every team, so they can create better experiences and outcomes.
+
+Know your audience: Consider which one of these resonates most with the target customer. The one about "driving growth" might be best for an executive audience, while "building more successful products" might speak directly to product managers.
 
 **Micro‑taglines**
 - *Turn conversations into confidence.*
@@ -174,6 +184,8 @@ Goal: avoid over‑counting near‑duplicates without heavy ML.
 ---
 
 ## Minimal schema (Supabase)
+Note: implemented at `supabase/schemas/32_evidence.sql` (with `verbatim` text and `anchors` JSONB indexed via GIN).
+
 **evidence**(`id`, `experiment_id?`, `source_type`, `method`, `modality`, `support`, `personas[]`, `segments[]`, `journey_stage?`, `tags[]`, `weight_quality`, `weight_relevance`, `independence_key`, `metric_value?`, `n?`, `ci_low?`, `ci_high?`, `verbatim?`, `media_anchor?`, `citation?`, `created_at`)
 
 **themes**(`id`, `name`, `statement`, `scope`, `inclusion_criteria`, `exclusion_criteria`, `synonyms[]`, `anti_examples[]`, `created_at`)
@@ -754,9 +766,9 @@ export function personaThemeMatrix(projectId: string): Promise<Array<{persona: s
 input: { target_org: string, target_roles: string[], goal_title: string, goal_detail?: string, assumptions?: string[], unknowns?: string[] }
 output: [ { text: string, intent: enum(discovery|validation|price|retention|adoption|usability|other) } ]
 
-# extract_evidence.baml (unchanged)
+# extract_evidence.baml (implemented as function ExtractEvidenceFromTranscript)
 input: { transcript: string, chapters: Chapter[], language: string }
-output: [ { verbatim: string, support: enum, kind_tags: {problem?: string[], goal?: string[], behavior?: string[], emotion?: string[], context?: string[], artifact?: string[]}, anchors: Anchor[] } ]
+output: [ { verbatim: string, support: enum(supports|refutes|neutral), kind_tags: {problem?: string[], goal?: string[], behavior?: string[], emotion?: string[], context?: string[], artifact?: string[]}, personas?: string[], segments?: string[], journey_stage?: string, anchors: Anchor[], confidence: enum(low|medium|high) } ]
 
 # tag_evidence.baml (unchanged)
 # propose_themes.baml (unchanged)
@@ -766,7 +778,7 @@ output: [ { verbatim: string, support: enum, kind_tags: {problem?: string[], goa
 yaml
 # extract_evidence.baml
 input: { transcript: string, chapters: Chapter[], language: string }
-output: [ { verbatim: string, support: enum, kind_tags: {problem?: string[], goal?: string[], behavior?: string[], emotion?: string[], context?: string[], artifact?: string[]}, anchors: Anchor[] } ]
+output: [ { verbatim: string, support: enum(supports|refutes|neutral), kind_tags: {problem?: string[], goal?: string[], behavior?: string[], emotion?: string[], context?: string[], artifact?: string[]}, personas?: string[], segments?: string[], journey_stage?: string, anchors: Anchor[], confidence: enum(low|medium|high) } ]
 
 # tag_evidence.baml
 input: { evidence_text: string }

@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, AutoInsightsResponse, BBValues, Emotions, EvidenceSet, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
+import type {ActionButton, Anchor, AutoInsightsResponse, BBValues, Chapter, Emotions, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -250,6 +250,34 @@ export class BamlAsyncClient {
         env,
       )
       return raw.parsed(false) as types.EvidenceSet
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async ExtractEvidenceFromTranscript(
+      transcript: string,chapters: types.Chapter[],language: string,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.EvidenceUnit[]> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "ExtractEvidenceFromTranscript",
+        {
+          "transcript": transcript,"chapters": chapters,"language": language
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return raw.parsed(false) as types.EvidenceUnit[]
     } catch (error) {
       throw toBamlError(error);
     }
@@ -718,6 +746,40 @@ class BamlStreamClient {
         raw,
         (a): partial_types.EvidenceSet => a,
         (a): types.EvidenceSet => a,
+        this.ctxManager.cloneContext(),
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidenceFromTranscript(
+      transcript: string,chapters: types.Chapter[],language: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
+  ): BamlStream<partial_types.EvidenceUnit[], types.EvidenceUnit[]> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "ExtractEvidenceFromTranscript",
+        {
+          "transcript": transcript,"chapters": chapters,"language": language
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+      )
+      return new BamlStream<partial_types.EvidenceUnit[], types.EvidenceUnit[]>(
+        raw,
+        (a): partial_types.EvidenceUnit[] => a,
+        (a): types.EvidenceUnit[] => a,
         this.ctxManager.cloneContext(),
       )
     } catch (error) {
