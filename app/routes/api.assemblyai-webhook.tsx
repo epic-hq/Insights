@@ -175,6 +175,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					transcriptData: formattedTranscriptData,
 					userCustomInstructions: customInstructions,
 					adminClient: supabase,
+					existingInterviewId: interviewId,
 				})
 
 				consola.log("Complete interview processing completed for interview:", interviewId)

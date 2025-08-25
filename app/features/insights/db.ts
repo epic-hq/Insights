@@ -13,7 +13,7 @@ export const getInsights = async ({
 	projectId: string
 }) => {
 	const query = supabase
-		.from("insights")
+		.from("insights_with_priority")
 		.select(`
 			id,
 			interview_id,
@@ -31,15 +31,16 @@ export const getInsights = async ({
 			contradictions,
 			updated_at,
 			project_id,
-    persona_insights:persona_insights (
-      *,
-      personas:personas (name,id)
-    ),
+			priority,
+		  persona_insights:persona_insights (
+		    *,
+		    personas:personas (name,id)
+		  ),
 		interviews (title,id),
 		insight_tags:insight_tags (
 			tags (tag,term, definition)
 		)
-  `)
+		`)
 		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
@@ -69,7 +70,7 @@ export const getInsightById = async ({
 	id: string
 }) => {
 	const insightByIdQuery = supabase
-		.from("insights")
+		.from("insights_with_priority")
 		.select(`
 			interview_id,
 			name,
@@ -86,15 +87,16 @@ export const getInsightById = async ({
 			contradictions,
 			updated_at,
 			project_id,
-    persona_insights:persona_insights (
-      *,
-      personas:personas (name,id)
-    ),
+			priority,
+		  persona_insights:persona_insights (
+		    *,
+		    personas:personas (name,id)
+		  ),
 		interviews (title,id),
 		insight_tags:insight_tags (
 			tags (tag,term, definition)
 		)
-  `)
+		`)
 		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)

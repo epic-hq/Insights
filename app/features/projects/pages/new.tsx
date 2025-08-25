@@ -65,7 +65,7 @@ export default function NewProject() {
 		<div className="mx-auto max-w-2xl">
 			<div className="mb-8">
 				<h1 className="font-bold text-3xl text-gray-900">New Project</h1>
-				<p className="mt-2 text-gray-600">Create a new project</p>
+				{/* <p className="mt-2 text-gray-600">Create a new project</p> */}
 			</div>
 
 			<Form method="post" className="space-y-6">

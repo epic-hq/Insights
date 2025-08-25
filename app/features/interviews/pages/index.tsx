@@ -161,7 +161,7 @@ export default function InterviewsIndex() {
 						<tbody className="divide-y divide-gray-200 dark:divide-gray-700">
 							{interviews.map((interview) => (
 								<tr key={interview.id}>
-									<td className="whitespace-nowrap px-4 py-3">
+									<td className="max-w-120 flex-wrap px-4 py-3">
 										<Link to={routes.interviews.detail(interview.id)}>
 											<div className="flex flex-col">
 												<div className="font-medium text-gray-900">

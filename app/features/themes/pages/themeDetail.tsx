@@ -1,22 +1,49 @@
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { Form, Link, useLoaderData, useNavigation } from "react-router-dom"
+import { Form, useLoaderData, useNavigation } from "react-router-dom"
 import { userContext } from "~/server/user-context"
-import type { Evidence, Theme } from "~/types"
+import type { Evidence } from "~/types"
+import { ThemeCard, type ThemeCardTheme } from "~/features/themes/components/ThemeCard"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const { themeId } = params
 	if (!themeId) throw new Response("Missing themeId", { status: 400 })
+	
+	// Get theme with evidence and insights counts
 	const { data: theme, error: terr } = await supabase.from("themes").select("*").eq("id", themeId).single()
 	if (terr) throw new Error(`Failed to load theme: ${terr.message}`)
-	const { data: links, error: lerr } = await supabase
-		.from("theme_evidence")
-		.select("evidence:evidence_id(id, verbatim, support, confidence), rationale, confidence")
-		.eq("theme_id", themeId)
-		.order("created_at", { ascending: false })
-	if (lerr) throw new Error(`Failed to load theme evidence: ${lerr.message}`)
 
-	// Fetch recent evidence options to quickly link, scoped to the theme's project when available
+	// Get evidence count
+	const { count: evidenceCount } = await supabase
+		.from("theme_evidence")
+		.select("*", { count: "exact", head: true })
+		.eq("theme_id", themeId)
+
+	// Get insights count (proxy via interviews)
+	const { data: interviewIds } = await supabase
+		.from("theme_evidence")
+		.select("evidence:evidence_id(interview_id)")
+		.eq("theme_id", themeId)
+	
+	type LinkRow = { evidence: { interview_id: string } | null }
+	const uniqueInterviewIds = Array.from(
+		new Set(
+			((interviewIds ?? []) as LinkRow[])
+				.map((link) => link.evidence?.interview_id)
+				.filter(Boolean)
+		)
+	) as string[]
+
+	let insightsCount = 0
+	if (uniqueInterviewIds.length > 0) {
+		const { count } = await supabase
+			.from("insights")
+			.select("*", { count: "exact", head: true })
+			.in("interview_id", uniqueInterviewIds)
+		insightsCount = count ?? 0
+	}
+
+	// Get evidence options for linking form
 	let evidenceQuery = supabase
 		.from("evidence")
 		.select("id, verbatim, support, confidence, project_id")
@@ -27,13 +54,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 	const { data: evidenceOptions, error: eerr } = await evidenceQuery
 	if (eerr) throw new Error(`Failed to load evidence options: ${eerr.message}`)
+
 	return {
-		theme: theme as Theme,
-		links: (links ?? []) as Array<{
-			evidence: Pick<Evidence, "id" | "verbatim" | "support" | "confidence">
-			rationale: string | null
-			confidence: number | null
-		}>,
+		theme: {
+			...theme,
+			evidence_count: evidenceCount ?? 0,
+			insights_count: insightsCount,
+		} as ThemeCardTheme,
 		evidenceOptions: (evidenceOptions ?? []) as Pick<
 			Evidence,
 			"id" | "verbatim" | "support" | "confidence" | "project_id"
@@ -74,21 +101,25 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 }
 
 export default function ThemeDetail() {
-	const { theme, links, evidenceOptions } = useLoaderData<typeof loader>()
+	const { theme, evidenceOptions } = useLoaderData<typeof loader>()
 	const nav = useNavigation()
+	
 	return (
-		<div className="space-y-6 p-6">
-			<div>
-				<h1 className="font-semibold text-xl">{theme.name}</h1>
-				{theme.statement && <p className="mt-1 text-gray-600">{theme.statement}</p>}
-			</div>
-			<div className="rounded border bg-white p-4">
-				<h2 className="mb-3 font-medium">Link evidence</h2>
-				<Form method="post" className="grid gap-3 sm:grid-cols-2">
-					<label className="flex flex-col gap-1">
-						<span className="text-gray-600 text-xs">Evidence</span>
-						<select name="evidence_id" className="rounded border p-2 text-sm">
-							<option value="">Select…</option>
+		<div className="mx-auto max-w-4xl space-y-8 p-6">
+			{/* Theme Card in Expanded Mode */}
+			<ThemeCard theme={theme} defaultExpanded={true} />
+			
+			{/* Evidence Linking Form */}
+			<div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
+				<h2 className="mb-4 font-medium text-lg text-gray-900 dark:text-white">Link New Evidence</h2>
+				<Form method="post" className="grid gap-4 sm:grid-cols-2">
+					<label className="flex flex-col gap-2">
+						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Evidence</span>
+						<select 
+							name="evidence_id" 
+							className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+						>
+							<option value="">Select evidence to link…</option>
 							{evidenceOptions.map((e) => (
 								<option key={e.id} value={e.id}>
 									{e.verbatim?.slice(0, 80) || e.id}
@@ -96,47 +127,40 @@ export default function ThemeDetail() {
 							))}
 						</select>
 					</label>
-					<label className="flex flex-col gap-1">
-						<span className="text-gray-600 text-xs">Confidence (0–1)</span>
-						<input name="confidence" type="number" min="0" max="1" step="0.1" className="rounded border p-2 text-sm" />
-					</label>
-					<label className="flex flex-col gap-1 sm:col-span-2">
-						<span className="text-gray-600 text-xs">Rationale</span>
-						<textarea
-							name="rationale"
-							rows={2}
-							className="rounded border p-2 text-sm"
-							placeholder="Why does this evidence support the theme?"
+					
+					<label className="flex flex-col gap-2">
+						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Confidence (0–1)</span>
+						<input 
+							name="confidence" 
+							type="number" 
+							min="0" 
+							max="1" 
+							step="0.1" 
+							placeholder="0.8"
+							className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
 						/>
 					</label>
+					
+					<label className="flex flex-col gap-2 sm:col-span-2">
+						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Rationale</span>
+						<textarea
+							name="rationale"
+							rows={3}
+							placeholder="Explain why this evidence supports the theme..."
+							className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+						/>
+					</label>
+					
 					<div className="sm:col-span-2">
 						<button
 							type="submit"
-							className="rounded bg-primary-600 px-3 py-2 font-medium text-sm text-white disabled:opacity-60"
 							disabled={nav.state === "submitting"}
+							className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
 						>
-							{nav.state === "submitting" ? "Linking…" : "Link evidence"}
+							{nav.state === "submitting" ? "Linking…" : "Link Evidence"}
 						</button>
 					</div>
 				</Form>
-			</div>
-			<div>
-				<h2 className="mb-2 font-medium">Evidence</h2>
-				<ul className="space-y-3">
-					{links.map((l) => (
-						<li key={l.evidence.id} className="rounded border bg-white p-3">
-							<div className="text-sm">“{l.evidence.verbatim}”</div>
-							<div className="mt-1 text-gray-500 text-xs">
-								{l.evidence.support} • {l.evidence.confidence}
-							</div>
-						</li>
-					))}
-				</ul>
-			</div>
-			<div>
-				<Link to=".." relative="path" className="text-primary-600 text-sm hover:underline">
-					Back
-				</Link>
 			</div>
 		</div>
 	)

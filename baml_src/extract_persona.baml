@@ -316,7 +316,7 @@ function RefinePersonas(existing_persona_set: PersonaSet, new_interview_notes: s
 }
 
 
-function ExtractPersona(people: string, insights: string, interviews: string) -> Persona {
+function ExtractPersona(people: string, insights: string, interviews: string, evidence: string) -> Persona {
   client "CustomGPT5Mini"
   prompt #"
     You are an expert UX researcher. Given the following people records and their insights, generate a detailed persona profile.
@@ -335,18 +335,21 @@ function ExtractPersona(people: string, insights: string, interviews: string) ->
 		Interview records:
 		{{ interviews }}
 
+		Evidence records:
+		{{ evidence }}
+
     People records:
     {{ people }}
 
     Insights:
     {{ insights }}
 
-    Output format:
+	  Output format:
     {{ ctx.output_format }}
   "#
 }
 
-function GeneratePersonas(interviews: string, people: string, insights: string) -> Persona[] {
+function GeneratePersonas(interviews: string | null, people: string | null, insights: string | null, evidence: string | null) -> Persona[] {
   client "CustomGPT4oMini"
   prompt #"
     You are an expert UX researcher and strategist. Below are a mixture of transcribed conversations, interviews, notes, and insights.
@@ -363,6 +366,12 @@ function GeneratePersonas(interviews: string, people: string, insights: string) 
 		Do not group people into personas that are too different from each other.
 
 		DO Not generate personas that are too similar to each other.
+
+		Interview records:
+		{{ interviews }}
+
+		Evidence records:
+		{{ evidence }}
 
     People records:
     {{ people }}

@@ -19,7 +19,10 @@ import { Select, SelectContent, SelectGroup, SelectItem, SelectTrigger, SelectVa
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Insight } from "~/types"
+import type { Insight as BaseInsight } from "~/types"
+
+// Extend Insight to include priority from the view
+type Insight = BaseInsight & { priority: number }
 
 interface InsightsDataTableProps {
 	data: Insight[]
@@ -83,9 +86,10 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 			{
 				accessorKey: "priority",
 				header: () => "Priority",
-				filterFn: "includesString",
+				// Numeric sort/filter
+				filterFn: "equalsString",
 				cell: (cell: CellContext<Insight, unknown>) => (
-					<span className="font-semibold text-sm">{cell.getValue() as string}</span>
+					<span className="font-semibold text-sm">{cell.getValue() as number}</span>
 				),
 			},
 		],

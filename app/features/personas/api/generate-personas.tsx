@@ -10,7 +10,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		const { data: jwt } = await supabase.auth.getClaims()
 		const accountId = params.accountId as string
 		const projectId = params.projectId as string
-		
+
 		if (!projectId || !accountId) {
 			consola.error("[Generate Personas API] Missing project context")
 			throw new Response("Missing project context", { status: 400 })
@@ -46,6 +46,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				.filter(Boolean)
 		}
 
+		// 3. Aggregate relevant Evidence
+		const { data: evidence, error: evidenceError } = await supabase
+			.from("evidence")
+			.select("*")
+			.eq("project_id", projectId)
+
+		if (evidenceError) {
+			consola.error("[Generate Personas API] Error fetching evidence:", evidenceError)
+			throw new Response("Failed to fetch evidence", { status: 500 })
+		}
 		// 3. Aggregate all insights for the 	project
 		const { data: insights, error: insightsError } = await supabase
 			.from("insights")
@@ -61,14 +71,16 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		const people_len = people.reduce((len, p) => len + JSON.stringify(p).length, 0)
 		const insights_len = insights.reduce((len, i) => len + JSON.stringify(i).length, 0)
 		const interviews_len = interviews.reduce((len, i) => len + JSON.stringify(i).length, 0)
+		const evidence_len = evidence.reduce((len, e) => len + JSON.stringify(e).length, 0)
 		consola.log(
-			`[Generate Personas API] Input lengths: people=${people_len}, insights=${insights_len}, interviews=${interviews_len}`
+			`[Generate Personas API] Input lengths: people=${people_len}, insights=${insights_len}, interviews=${interviews_len}, evidence=${evidence_len}`
 		)
 
 		const bamlResult = await b.GeneratePersonas(
-			JSON.stringify(interviews ?? []),
+			JSON.stringify([]),
 			JSON.stringify(people ?? []),
-			JSON.stringify(insights ?? [])
+			JSON.stringify(insights ?? []),
+			JSON.stringify(evidence ?? [])
 		)
 
 		consola.log("[Generate Personas API] BAML Result:", bamlResult)

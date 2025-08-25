@@ -1,0 +1,1 @@
+GRANT SELECT ON insights_with_priority TO authenticated;

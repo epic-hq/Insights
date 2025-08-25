@@ -94,12 +94,14 @@ export async function processInterviewTranscriptWithAdminClient({
 	transcriptData,
 	userCustomInstructions,
 	adminClient,
+	existingInterviewId,
 }: {
 	metadata: InterviewMetadata
 	transcriptData: Record<string, unknown>
 	mediaUrl: string
 	userCustomInstructions?: string
 	adminClient: SupabaseClient<Database>
+	existingInterviewId?: string
 }): Promise<ProcessingResult> {
 	return await processInterviewTranscriptWithClient({
 		metadata,
@@ -107,6 +109,7 @@ export async function processInterviewTranscriptWithAdminClient({
 		transcriptData,
 		userCustomInstructions,
 		client: adminClient,
+		existingInterviewId,
 	})
 }
 
@@ -119,39 +122,70 @@ async function processInterviewTranscriptWithClient({
 	transcriptData,
 	userCustomInstructions,
 	client: db,
+	existingInterviewId,
 }: {
 	metadata: InterviewMetadata
 	transcriptData: Record<string, unknown>
 	mediaUrl: string
 	userCustomInstructions?: string
 	client: SupabaseClient<Database>
+	existingInterviewId?: string
 }): Promise<ProcessingResult> {
-	// 1. Create the interview record early so downstream steps can reference it
+	// 1. Ensure we have an interview record to attach artifacts to
 	const fullTranscript = transcriptData.full_transcript as string
-	// 1.a Create the interview record
-	const interviewData: InterviewInsert = {
-		account_id: metadata.accountId,
-		project_id: metadata.projectId,
-		title: metadata.interviewTitle || metadata.fileName,
-		interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
-		participant_pseudonym: metadata.participantName || "Anonymous",
-		segment: metadata.segment || null,
-		// interviewer_name: metadata.interviewerName || null,
-		media_url: mediaUrl || null,
-		transcript: fullTranscript,
-		transcript_formatted: transcriptData,
-		duration_min: transcriptData.audio_duration ? Math.round((transcriptData.audio_duration as number) / 60) : null,
-		status: "processing" as const,
-	} as InterviewInsert
+	let interviewRecord: Interview
+	if (existingInterviewId) {
+		// Update existing interview and reuse it
+		const { data: existing, error: fetchErr } = await db
+			.from("interviews")
+			.select("*")
+			.eq("id", existingInterviewId)
+			.single()
+		if (fetchErr || !existing) {
+			throw new Error(`Existing interview ${existingInterviewId} not found: ${fetchErr?.message}`)
+		}
+		const { data: updated, error: updateErr } = await db
+			.from("interviews")
+			.update({
+				status: "processing",
+				transcript: fullTranscript,
+				transcript_formatted: transcriptData as unknown as Json,
+				duration_min: (transcriptData as any).audio_duration
+					? Math.round(((transcriptData as any).audio_duration as number) / 60)
+					: existing.duration_min ?? null,
+			})
+			.eq("id", existingInterviewId)
+			.select("*")
+			.single()
+		if (updateErr || !updated) {
+			throw new Error(`Failed to update existing interview: ${updateErr?.message}`)
+		}
+		interviewRecord = updated as unknown as Interview
+	} else {
+		// Create the interview record
+		const interviewData: InterviewInsert = {
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			title: metadata.interviewTitle || metadata.fileName,
+			interview_date: metadata.interviewDate || new Date().toISOString().split("T")[0],
+			participant_pseudonym: metadata.participantName || "Anonymous",
+			segment: metadata.segment || null,
+			media_url: mediaUrl || null,
+			transcript: fullTranscript,
+			transcript_formatted: transcriptData as unknown as Json,
+			duration_min: (transcriptData as any).audio_duration ? Math.round(((transcriptData as any).audio_duration as number) / 60) : null,
+			status: "processing" as const,
+		} as InterviewInsert
 
-	const { data: interviewRecord, error: interviewError } = await db
-		.from("interviews")
-		.insert(interviewData)
-		.select()
-		.single()
-
-	if (interviewError) {
-		throw new Error(`Failed to create interview record: ${interviewError.message}`)
+		const { data: created, error: interviewError } = await db
+			.from("interviews")
+			.insert(interviewData)
+			.select()
+			.single()
+		if (interviewError || !created) {
+			throw new Error(`Failed to create interview record: ${interviewError?.message}`)
+		}
+		interviewRecord = created as unknown as Interview
 	}
 
 	// 2. Extract and persist Evidence units from transcript (BAML)
@@ -297,8 +331,34 @@ async function processInterviewTranscriptWithClient({
 	}
 
 	// 4. Now extract Insights from transcript (after evidence and themes)
-	const response = await b.ExtractInsights(fullTranscript, userCustomInstructions || "")
-	consola.log("BAML response:", response)
+	// Add lightweight retry to handle transient LLM/JSON parsing issues
+	async function extractInsightsWithRetry(text: string, instructions: string, attempts = 2) {
+		let lastErr: unknown = null
+		for (let i = 0; i <= attempts; i++) {
+			try {
+				return await b.ExtractInsights(text, instructions)
+			} catch (e) {
+				lastErr = e
+				const delayMs = 500 * (i + 1)
+				consola.warn(`ExtractInsights failed (attempt ${i + 1}/${attempts + 1}), retrying in ${delayMs}ms`, e)
+				// Basic backoff
+				await new Promise((res) => setTimeout(res, delayMs))
+			}
+		}
+		throw lastErr
+	}
+
+	type ExtractInsightsResponse = Awaited<ReturnType<typeof b.ExtractInsights>>
+	let response: ExtractInsightsResponse
+	try {
+		response = await extractInsightsWithRetry(fullTranscript, userCustomInstructions || "")
+		consola.log("BAML response:", response)
+	} catch (err) {
+		// Let the caller (webhook/action) handle marking analysis_jobs/interviews as error
+		const errMsg = err instanceof Error ? err.message : String(err)
+		consola.error("ExtractInsights ultimately failed after retries:", errMsg)
+		throw new Error(`Insights extraction failed: ${errMsg}`)
+	}
 
 	// Extract insights from the BAML response
 	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response

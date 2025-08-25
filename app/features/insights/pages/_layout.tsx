@@ -54,22 +54,22 @@ export default function InsightsLayout() {
 			</div>
 
 			{/* Tab navigation spanning full width */}
-			<div className="px-[5%]">
+			<div className="px-[5%] mx-auto">
 				<Tabs className="w-full" defaultValue="quick" onValueChange={handleTabChange} value={getActiveTab()}>
-					<TabsList className="grid w-full grid-cols-5">
+					<TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto">
 						<TabsTrigger className="flex items-center gap-2" value="quick">
-							<Zap className="h-4 w-4" /> Quick
+							<LayoutGrid className="h-4 w-4" /> Cards
 						</TabsTrigger>
 						<TabsTrigger className="flex items-center gap-2" value="table">
 							<Rows className="h-4 w-4" /> Table
 						</TabsTrigger>
-						<TabsTrigger className="flex items-center gap-2" value="cards">
+						{/* <TabsTrigger className="flex items-center gap-2" value="cards">
 							<LayoutGrid className="h-4 w-4" /> Cards
 						</TabsTrigger>
 						<TabsTrigger className="flex items-center gap-2" value="map">
 							<MapPin className="h-4 w-4" /> Map
-						</TabsTrigger>
-						<TabsTrigger className="flex items-center gap-2" value="auto-takeaways">
+						</TabsTrigger> */}
+						<TabsTrigger disabled={true} className="flex items-center gap-2" value="auto-takeaways">
 							<Sparkles className="h-4 w-4" /> Auto-Takeaways
 						</TabsTrigger>
 					</TabsList>

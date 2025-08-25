@@ -15,6 +15,7 @@ export const PATHS = {
 	INTERVIEWS: "/interviews",
 	PEOPLE: "/people",
 	INSIGHTS: "/insights",
+	THEMES: "/themes",
 	AUTO_INSIGHTS: "/insights/auto",
 	OPPORTUNITIES: "/opportunities",
 	PERSONAS: "/personas",

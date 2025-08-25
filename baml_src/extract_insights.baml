@@ -297,7 +297,7 @@ class InterviewExtraction {
 	interviewee Interviewee
 	insights ExtractedInsight[]
 	observationsAndNotes string @description("Non‑verbal cues, environment, surprising behaviours—anything that adds colour but doesn’t belong in an insight. In markdown format")
-	highImpactThemes string[] @description("List the biggest takeaways from the insights as single lines, each starting with a tag and a quick rating. Example: \"Tag: One-sentence insight (Rating: 1-5)\"")
+	highImpactThemes string[] @description("List the biggest takeaways from the insights as single lines, each starting with a tag and a quick rating of importance. Example: \"Tag: One-sentence insight (Rating: 1-5)\"")
 	openQuestionsAndNextSteps string @description("What don't we know yet? What do we need to learn more about? What are the next steps we should take to validate our hypotheses or address our knowledge gaps? A bullet list of open questions and next steps in markdown format")
 }
 
@@ -314,7 +314,7 @@ class Set {
 }
 
 function ExtractInsights(transcript: string, userCustomInstructions: string) -> InterviewExtraction {
-  client "CustomGPTo3"
+  client "CustomGPT4oMini"
   prompt #"
     Using the following interview transcript, extract key statements and insights about the interview, interviewee, and their key activities, behaviors, objectives, and any pain or friction they encounter along the way.
 		Also identify desired outcomes as specifically as possible. key insights that will help us understand the user's experiences, motivations and needs.

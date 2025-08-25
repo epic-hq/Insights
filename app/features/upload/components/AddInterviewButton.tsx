@@ -26,14 +26,14 @@ export default function AddInterviewButton() {
 
 	return (
 		<>
-			<Button onClick={() => setOpen(true)}>Add Interview</Button>
-			<AddInterview
+			<Button onClick={() => navigate(`/a/${accountId}/${projectId}/new`)}>Add Interview</Button>
+			{/* <AddInterview
 				open={open}
 				onClose={() => setOpen(false)}
 				onSuccess={handleSuccess}
 				accountId={accountId}
 				projectId={projectId}
-			/>
+			/> */}
 		</>
 	)
 }

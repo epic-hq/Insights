@@ -1,5 +1,6 @@
 import { Separator } from "@radix-ui/react-separator"
 import consola from "consola"
+import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -9,6 +10,7 @@ import { getInterviewById, getInterviewInsights, getInterviewParticipants } from
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
+import { getSupabaseClient } from "~/lib/supabase/client"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -61,7 +63,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = participantData || []
 			primaryParticipant = participants[0]?.people
 		} catch (error) {
-			throw new Response(`Error fetching participants: ${error.message}`, { status: 500 })
+			const msg = error instanceof Error ? error.message : String(error)
+			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
 		}
 
 		// Exclude large transcript data from loader response to prevent memory leaks
@@ -85,7 +88,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 
 		if (error) {
-			throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
+			const msg = error instanceof Error ? error.message : String(error)
+			throw new Response(`Error fetching insights: ${msg}`, { status: 500 })
 		}
 
 		return {
@@ -94,7 +98,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			interviewerData: null,
 		}
 	} catch (error) {
-		throw new Response(`Failed to load interview: ${error.message}`, { status: 500 })
+		const msg = error instanceof Error ? error.message : String(error)
+		throw new Response(`Failed to load interview: ${msg}`, { status: 500 })
 	}
 }
 
@@ -107,6 +112,31 @@ export default function InterviewDetail() {
 	const participants = interview.participants || []
 	const primaryParticipant = participants[0]?.people
 	consola.log("InterviewDetail participants: ", participants)
+
+	const [isProcessing, setIsProcessing] = useState(false)
+
+	useEffect(() => {
+		// Subscribe to analysis_jobs updates for this interview to reflect processing state
+		const supabase = getSupabaseClient()
+		const channel = supabase
+			.channel(`analysis-${interview.id}`)
+			.on(
+				"postgres_changes",
+				{ event: "*", schema: "public", table: "analysis_jobs", filter: `interview_id=eq.${interview.id}` },
+				(payload) => {
+					const next = (payload as unknown as { new?: { status?: string } }).new
+					const status = next?.status
+					if (status === "in_progress") setIsProcessing(true)
+					if (status === "completed" || status === "failed" || status === "error") setIsProcessing(false)
+				},
+			)
+			.subscribe()
+
+		return () => {
+			supabase.removeChannel(channel)
+		}
+	}, [interview.id])
+
 	return (
 		<div className="mx-auto max-w-6xl">
 			<div className="grid gap-8 lg:grid-cols-3" />
@@ -115,14 +145,35 @@ export default function InterviewDetail() {
 				<div className="flex-1 space-y-8">
 					{/* Header: Title, participant, persona, date, project */}
 					<div className="mb-4 flex flex-col gap-2 border-b pb-4">
-						<div className="flex items-center justify-between">
+						<div className="flex items-center justify-between gap-3">
 							<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
-							<Link
-								to={routes.interviews.edit(interview.id)}
-								className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
-							>
-								Edit Interview
-							</Link>
+							<div className="flex items-center gap-2">
+								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
+									<button
+										onClick={() => {
+											try {
+												fetcher.submit(
+													{ interview_id: interview.id },
+													{ method: "post", action: "/api.analysis-retry" }
+												)
+											} catch (e) {
+												consola.error("Retry analysis submit failed", e)
+											}
+										}}
+										disabled={fetcher.state !== "idle" || isProcessing}
+										className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60"
+										title="Re-run AI analysis on this interview"
+									>
+										{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Retry analysis"}
+									</button>
+								)}
+								<Link
+									to={routes.interviews.edit(interview.id)}
+									className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
+								>
+									Edit Interview
+								</Link>
+							</div>
 						</div>
 						<div className="flex flex-wrap items-center gap-2 text-base">
 							{/* Show participant from junction table if available, fallback to legacy field */}
@@ -322,7 +373,7 @@ export default function InterviewDetail() {
 												<div className="text-gray-600 text-sm">{participant.people.segment}</div>
 											)}
 											{participant.people?.segment && (
-												<Badge size="sm" variant="secondary" className="mt-1">
+												<Badge variant="secondary" className="mt-1">
 													{participant.people.segment}
 												</Badge>
 											)}

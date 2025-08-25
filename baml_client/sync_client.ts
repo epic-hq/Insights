@@ -342,7 +342,7 @@ export class BamlSyncClient {
   }
   
   ExtractPersona(
-      people: string,insights: string,interviews: string,
+      people: string,insights: string,interviews: string,evidence: string,
       __baml_options__?: BamlCallOptions
   ): types.Persona {
     try {
@@ -355,7 +355,7 @@ export class BamlSyncClient {
       const raw = this.runtime.callFunctionSync(
         "ExtractPersona",
         {
-          "people": people,"insights": insights,"interviews": interviews
+          "people": people,"insights": insights,"interviews": interviews,"evidence": evidence
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),
@@ -454,7 +454,7 @@ export class BamlSyncClient {
   }
   
   GeneratePersonas(
-      interviews: string,people: string,insights: string,
+      interviews?: string | null,people?: string | null,insights?: string | null,evidence?: string | null,
       __baml_options__?: BamlCallOptions
   ): types.Persona[] {
     try {
@@ -467,7 +467,7 @@ export class BamlSyncClient {
       const raw = this.runtime.callFunctionSync(
         "GeneratePersonas",
         {
-          "interviews": interviews,"people": people,"insights": insights
+          "interviews": interviews?? null,"people": people?? null,"insights": insights?? null,"evidence": evidence?? null
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),

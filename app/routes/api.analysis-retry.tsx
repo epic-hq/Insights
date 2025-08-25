@@ -1,0 +1,115 @@
+import type { ActionFunctionArgs } from "react-router"
+import consola from "consola"
+import { getServerClient, createSupabaseAdminClient } from "~/lib/supabase/server"
+import type { Json } from "~/../supabase/types"
+
+export async function action({ request }: ActionFunctionArgs) {
+  if (request.method !== "POST") {
+    return Response.json({ error: "Method not allowed" }, { status: 405 })
+  }
+
+  try {
+    const { client: userDb } = getServerClient(request)
+
+    const body = (await request.json().catch(() => ({}))) as {
+      interview_id?: string
+      custom_instructions?: string
+    }
+
+    const interviewId = body.interview_id
+    const customInstructions = body.custom_instructions || ""
+
+    if (!interviewId) {
+      return Response.json({ error: "interview_id is required" }, { status: 400 })
+    }
+
+    // RLS-guarded fetch: ensure the user can see/control this interview
+    const { data: interview, error: interviewErr } = await userDb
+      .from("interviews")
+      .select("*")
+      .eq("id", interviewId)
+      .single()
+
+    if (interviewErr || !interview) {
+      return Response.json({ error: "Interview not found" }, { status: 404 })
+    }
+
+    if (!interview.transcript_formatted) {
+      return Response.json({ error: "No transcript available to analyze. Please re-upload or re-transcribe." }, { status: 400 })
+    }
+
+    const formattedTranscriptData = interview.transcript_formatted as Record<string, unknown>
+
+    // Create a new analysis job
+    const admin = createSupabaseAdminClient()
+    const { data: analysisJob, error: analysisJobError } = await admin
+      .from("analysis_jobs")
+      .insert({
+        interview_id: interviewId,
+        transcript_data: formattedTranscriptData as unknown as Json,
+        custom_instructions: customInstructions,
+        status: "in_progress",
+        status_detail: "User-triggered retry",
+      })
+      .select()
+      .single()
+
+    if (analysisJobError || !analysisJob) {
+      throw new Error(`Failed to create analysis job: ${analysisJobError?.message}`)
+    }
+
+    // Move interview into processing state
+    await admin.from("interviews").update({ status: "processing" }).eq("id", interviewId)
+
+    // Build metadata expected by the processor
+    const metadata = {
+      accountId: interview.account_id,
+      userId: interview.account_id,
+      projectId: interview.project_id || undefined,
+      interviewTitle: interview.title || undefined,
+      interviewDate: interview.interview_date || undefined,
+      participantName: interview.participant_pseudonym || undefined,
+      durationMin: interview.duration_min || undefined,
+      fileName: (formattedTranscriptData as { original_filename?: string }).original_filename || undefined,
+    }
+
+    // Kick off processing
+    const { processInterviewTranscriptWithAdminClient } = await import("~/utils/processInterview.server")
+
+    try {
+      await processInterviewTranscriptWithAdminClient({
+        metadata,
+        mediaUrl: interview.media_url || "",
+        transcriptData: formattedTranscriptData,
+        userCustomInstructions: customInstructions,
+        adminClient: admin,
+        existingInterviewId: interviewId,
+      })
+
+      // Success: mark job + interview
+      await admin
+        .from("analysis_jobs")
+        .update({ status: "done", status_detail: "Analysis completed", progress: 100 })
+        .eq("id", analysisJob.id)
+
+      await admin.from("interviews").update({ status: "ready" }).eq("id", interviewId)
+
+      return Response.json({ success: true })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : String(e)
+      consola.error("User-triggered analysis retry failed:", msg)
+
+      await admin
+        .from("analysis_jobs")
+        .update({ status: "error", status_detail: "Analysis failed", last_error: msg })
+        .eq("id", analysisJob.id)
+
+      await admin.from("interviews").update({ status: "error" }).eq("id", interviewId)
+
+      return Response.json({ error: msg }, { status: 500 })
+    }
+  } catch (error) {
+    consola.error("Retry API error:", error)
+    return Response.json({ error: error instanceof Error ? error.message : "Internal error" }, { status: 500 })
+  }
+}

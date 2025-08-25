@@ -1,0 +1,110 @@
+<!doctype html>
+<html lang="en" class="h-full">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Persona × Theme Matrix – Insights UI</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/flowbite@2.5.2/dist/flowbite.js"></script>
+    <style>
+      html, body { height: 100% !important; }
+      body { font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, sans-serif !important; }
+      .surface { background: hsl(0 0% 100% / 0.03); border: 1px solid hsl(0 0% 100% / 0.06); }
+      .muted { color: hsl(0 0% 100% / 0.6) !important; }
+      .title { letter-spacing: -0.02em !important; }
+      .chip { background: hsl(0 0% 100% / 0.06); border: 1px solid hsl(0 0% 100% / 0.08); }
+      .btn { background: hsl(226 6% 20%); color: white; }
+      .btn-secondary { background: transparent; border: 1px solid hsl(0 0% 100% / 0.10); color: hsl(0 0% 100% / 0.92); }
+      .heat-0 { background: hsl(0 0% 100% / 0.03); }
+      .heat-1 { background: hsl(240 2% 20% / 0.7); }
+      .heat-2 { background: hsl(240 2% 27% / 0.8); }
+      .heat-3 { background: hsl(240 2% 34% / 0.9); }
+      .heat-4 { background: hsl(240 2% 41%); }
+      .heat-5 { background: hsl(240 2% 48%); }
+    </style>
+  </head>
+  <body class="min-h-full bg-neutral-950 text-neutral-100">
+    <div class="mx-auto max-w-7xl p-4 md:p-8">
+      <nav class="mb-6 flex items-center justify-between rounded-xl border border-white/10 bg-white/5 px-3 py-2">
+        <div class="flex items-center gap-3">
+          <div class="rounded-md bg-white/10 px-2 py-1 text-xs">Insights UI</div>
+          <a class="text-sm text-neutral-300 hover:underline" href="./evidence_1.html">Evidence</a>
+          <a class="text-sm text-neutral-300 hover:underline" href="./themes_1.html">Themes</a>
+          <a class="text-sm text-neutral-300 hover:underline" href="./insights_1.html">Insights</a>
+          <a class="text-sm text-neutral-300 hover:underline" href="./persona_theme_matrix_1.html">Persona × Theme</a>
+        </div>
+        <div class="muted text-xs">Design mock • static data</div>
+      </nav>
+      <header class="mb-6 flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+        <div>
+          <h1 class="title text-2xl font-semibold md:text-3xl">Persona × Theme Matrix</h1>
+          <p class="muted mt-1 text-sm">Heatmap of evidence density and impact across personas and themes.</p>
+        </div>
+        <div class="flex gap-2">
+          <button class="btn rounded-md px-3 py-2 text-sm font-medium">Export</button>
+          <button class="btn-secondary rounded-md px-3 py-2 text-sm font-medium">Configure personas</button>
+        </div>
+      </header>
+
+      <section class="surface rounded-2xl p-4">
+        <div class="overflow-x-auto">
+          <table class="w-full text-left text-sm">
+            <thead>
+              <tr class="muted">
+                <th class="px-3 py-2">Persona</th>
+                <th class="px-3 py-2"><a class="hover:underline" href="./themes_1.html#theme-nav">Navigation friction</a></th>
+                <th class="px-3 py-2"><a class="hover:underline" href="./themes_1.html#theme-pricing">Pricing opacity</a></th>
+                <th class="px-3 py-2"><a class="hover:underline" href="./themes_1.html">Onboarding confusion</a></th>
+                <th class="px-3 py-2 text-right">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr class="border-t border-neutral-800/80">
+                <td class="px-3 py-2 font-medium">Startup Operator</td>
+                <td class="px-3 py-2">
+                  <a href="./insights_1.html#nav-kpi" class="heat-5 flex items-center justify-between rounded-md px-2 py-1"><span>17</span><span class="muted text-[10px]">high</span></a>
+                </td>
+                <td class="px-3 py-2"><a href="./insights_1.html#nav-discounts" class="heat-3 rounded-md px-2 py-1">9</a></td>
+                <td class="px-3 py-2"><a href="./themes_1.html" class="heat-2 rounded-md px-2 py-1">6</a></td>
+                <td class="px-3 py-2 text-right">32</td>
+              </tr>
+              <tr class="border-t border-neutral-800/80">
+                <td class="px-3 py-2 font-medium">Finance Lead</td>
+                <td class="px-3 py-2"><a href="./themes_1.html#theme-nav" class="heat-2 rounded-md px-2 py-1">5</a></td>
+                <td class="px-3 py-2"><a href="./insights_1.html#nav-discounts" class="heat-4 rounded-md px-2 py-1">14</a></td>
+                <td class="px-3 py-2"><a href="./themes_1.html" class="heat-1 rounded-md px-2 py-1">3</a></td>
+                <td class="px-3 py-2 text-right">22</td>
+              </tr>
+              <tr class="border-t border-neutral-800/80">
+                <td class="px-3 py-2 font-medium">Analyst</td>
+                <td class="px-3 py-2"><a href="./themes_1.html#theme-nav" class="heat-4 rounded-md px-2 py-1">12</a></td>
+                <td class="px-3 py-2"><a href="./themes_1.html#theme-pricing" class="heat-2 rounded-md px-2 py-1">7</a></td>
+                <td class="px-3 py-2"><a href="./insights_1.html#nav-kpi" class="heat-3 rounded-md px-2 py-1">10</a></td>
+                <td class="px-3 py-2 text-right">29</td>
+              </tr>
+            </tbody>
+            <tfoot>
+              <tr class="border-t border-neutral-800/80">
+                <td class="px-3 py-2 muted font-medium">Total</td>
+                <td class="px-3 py-2">34</td>
+                <td class="px-3 py-2">30</td>
+                <td class="px-3 py-2">19</td>
+                <td class="px-3 py-2 text-right">83</td>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+
+        <div class="mt-4 flex flex-wrap items-center gap-2">
+          <span class="muted text-xs">Legend</span>
+          <span class="chip rounded-md px-2 py-1 text-xs">0–3 low</span>
+          <span class="chip rounded-md px-2 py-1 text-xs">4–9 medium</span>
+          <span class="chip rounded-md px-2 py-1 text-xs">10+ high</span>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

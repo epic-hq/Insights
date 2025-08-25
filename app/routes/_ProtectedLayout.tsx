@@ -111,7 +111,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 
 export default function ProtectedLayout() {
 	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
-	const {  clientEnv } = useRouteLoaderData("root")
+	const { clientEnv } = useRouteLoaderData("root")
 	const params = useParams()
 
 	return (
@@ -126,7 +126,7 @@ export default function ProtectedLayout() {
 					agent="mainAgent"
 					runtimeUrl="/api/copilotkit"
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-					showDevConsole={clientEnv?.NODE_ENV === 'development'}
+					showDevConsole={clientEnv?.NODE_ENV === "development"}
 					headers={{
 						"X-UserId": String(auth?.user?.sub ?? ""),
 						"X-AccountId": String(params.accountId ?? auth?.accountId ?? ""),

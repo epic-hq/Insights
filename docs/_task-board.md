@@ -166,6 +166,7 @@ TEST IT MORE
 - [x] **Real-time UI updates** - Supabase Realtime websocket integration working (401 → 101)
 - [x] **AssemblyAI integration** - File upload, transcription, webhook processing
 - [x] **CRITICAL: Deploy webhook to production** - Required for AssemblyAI callbacks
+- [ ] generating evidence
 - [ ] Implement Generation queue (already spec'd)
 - [ ] Handle longer files, use as upgrade trigger. AAI timeout handling
 
@@ -288,7 +289,7 @@ Prioritize.
 - [ ] **Auto-Insights** - Distill insights and help make executive decisions, answering key questions like "What are the top opportunities?" and "What are the top pain points?", "What changes would benefit different personas the most?" and "What are the best revenue-generating opportunities?" and "Which personas are likely to pay for what?" and "(Given key competitive pressures) what are the most profitable opportunities?"
 - [ ] Extraction Guidance: User specified constraints for auto-insights. eg. sales, marketing, product, etc. Auto-merge tags, provide as prompts to LLM in BAML extraction process.
 - [ ] Persona clustering tuning: help refine personas.
-- [ ] Show Realtime status on transcriptions and insights (once pipeline is in place)
+- [x] Show Realtime status on transcriptions and insights (once pipeline is in place)
 - [ ] Real-time transcription upgrade path.
 - [ ] **Prompt/Eval Harness** – draft LLM prompt templates, add quality-eval scripts.
 - Encryption & PII-handling module.

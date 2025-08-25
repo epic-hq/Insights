@@ -27,6 +27,14 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Themes
+	themes: {
+		index: () => string
+		new: () => string
+		detail: (id: string) => string
+		edit: (id: string) => string
+	}
+
 	// Insights
 	insights: {
 		index: () => string
@@ -122,6 +130,14 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `${base}/interviews/new`,
 			detail: (id: string) => `${base}/interviews/${id}`,
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
+		},
+
+		// Themes
+		themes: {
+			index: () => `${base}/themes`,
+			new: () => `${base}/themes/new`,
+			detail: (id: string) => `${base}/themes/${id}`,
+			edit: (id: string) => `${base}/themes/${id}/edit`,
 		},
 
 		// Insights

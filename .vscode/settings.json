@@ -44,5 +44,6 @@
 	"[typescriptreact]": {
 		"editor.defaultFormatter": "biomejs.biome"
 	},
-	"deno.enable": false
+	"deno.enable": false,
+	"scm.countBadge": "all"
 }

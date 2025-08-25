@@ -261,7 +261,7 @@ export class AsyncHttpRequest {
   }
   
   async ExtractPersona(
-      people: string,insights: string,interviews: string,
+      people: string,insights: string,interviews: string,evidence: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -272,7 +272,7 @@ export class AsyncHttpRequest {
       return await this.runtime.buildRequest(
         "ExtractPersona",
         {
-          "people": people,"insights": insights,"interviews": interviews
+          "people": people,"insights": insights,"interviews": interviews,"evidence": evidence
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -361,7 +361,7 @@ export class AsyncHttpRequest {
   }
   
   async GeneratePersonas(
-      interviews: string,people: string,insights: string,
+      interviews?: string | null,people?: string | null,insights?: string | null,evidence?: string | null,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -372,7 +372,7 @@ export class AsyncHttpRequest {
       return await this.runtime.buildRequest(
         "GeneratePersonas",
         {
-          "interviews": interviews,"people": people,"insights": insights
+          "interviews": interviews?? null,"people": people?? null,"insights": insights?? null,"evidence": evidence?? null
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -692,7 +692,7 @@ export class AsyncHttpStreamRequest {
   }
   
   async ExtractPersona(
-      people: string,insights: string,interviews: string,
+      people: string,insights: string,interviews: string,evidence: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -703,7 +703,7 @@ export class AsyncHttpStreamRequest {
       return await this.runtime.buildRequest(
         "ExtractPersona",
         {
-          "people": people,"insights": insights,"interviews": interviews
+          "people": people,"insights": insights,"interviews": interviews,"evidence": evidence
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -792,7 +792,7 @@ export class AsyncHttpStreamRequest {
   }
   
   async GeneratePersonas(
-      interviews: string,people: string,insights: string,
+      interviews?: string | null,people?: string | null,insights?: string | null,evidence?: string | null,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -803,7 +803,7 @@ export class AsyncHttpStreamRequest {
       return await this.runtime.buildRequest(
         "GeneratePersonas",
         {
-          "interviews": interviews,"people": people,"insights": insights
+          "interviews": interviews?? null,"people": people?? null,"insights": insights?? null,"evidence": evidence?? null
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

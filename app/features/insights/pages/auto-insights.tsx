@@ -35,17 +35,18 @@ interface LoaderData {
 	message: string
 }
 
-export async function loader({ request }: LoaderFunctionArgs) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
+	const projectId = params.projectId || ""
 	try {
 		consola.log("[AUTO-INSIGHTS LOADER] Starting loader...")
 		const { client: supabase } = getServerClient(request)
 		consola.log("[AUTO-INSIGHTS LOADER] Got supabase client")
 
 		const { data: jwt } = await supabase.auth.getClaims()
-		consola.log("[AUTO-INSIGHTS LOADER] JWT claims:", jwt)
+		// consola.log("[AUTO-INSIGHTS LOADER] JWT claims:", jwt)
 
 		const accountId = jwt?.claims.sub
-		consola.log("[AUTO-INSIGHTS LOADER] Account ID:", accountId)
+		// consola.log("[AUTO-INSIGHTS LOADER] Account ID:", accountId)
 
 		if (!accountId) {
 			consola.error("[AUTO-INSIGHTS LOADER] No account ID found in JWT claims")
@@ -55,8 +56,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		// Check if we have enough data for meaningful insights
 		consola.log("[AUTO-INSIGHTS LOADER] Fetching data counts...")
 		const [insightsCount, interviewsCount] = await Promise.all([
-			supabase.from("insights").select("id", { count: "exact", head: true }).eq("account_id", accountId),
-			supabase.from("interviews").select("id", { count: "exact", head: true }).eq("account_id", accountId),
+			supabase.from("insights").select("id", { count: "exact", head: true }).eq("project_id", projectId),
+			supabase.from("interviews").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 		])
 
 		consola.log("[AUTO-INSIGHTS LOADER] Data counts:", {

@@ -1,5 +1,6 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
+import { Button } from "~/components/ui/button"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -68,8 +69,17 @@ export default function Index() {
 
 	return (
 		<div className="mx-auto max-w-7xl ">
-			<h1 className="mb-4 px-6 font-bold text-3xl">Projects</h1>
+			{/* <h1 className="mb-4 px-6 font-bold text-3xl">Projects</h1> */}
 			<div className="space-y-10 space-y-8 px-6 py-8">
+				<div className="flex items-center justify-between">
+					<div>
+						<h1 className="font-bold text-3xl tracking-tight">My Projects</h1>
+						{/* <p className="text-muted-foreground">Group your.</p> */}
+					</div>
+					<Button asChild>
+						<Link to={routes.projects.new()}>Create Project</Link>
+					</Button>
+				</div>
 				<section>
 					{/* <h2 className="mb-4 font-semibold text-muted-foreground text-xl">Projects</h2> */}
 					{projects.length === 0 ? (
