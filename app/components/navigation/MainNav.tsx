@@ -1,5 +1,6 @@
 import { Link, NavLink, useLocation } from "react-router-dom"
 import { Button } from "~/components/ui/button"
+import { ThemeToggle } from "~/components/ui/theme-toggle"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { PATHS } from "~/paths"
@@ -143,6 +144,7 @@ export default function MainNav({ links }: { links?: { key: string; label: strin
 
 						{/* Actions: show appropriate buttons based on auth state and page context */}
 						<div className="flex items-center space-x-2">
+							<ThemeToggle />
 							{user ? (
 								isHomePage || isAboutPage ? (
 									// Show green Dashboard button on marketing pages for authenticated users

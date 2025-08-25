@@ -403,7 +403,7 @@ export default function MetroIndex() {
 	}
 
 	return (
-		<div className="relative flex min-h-screen bg-black text-white">
+		<div className="relative flex min-h-screen bg-background text-foreground">
 			{/* Main Content */}
 			<div className={`flex-1 transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
 				{/* Project Status */}

@@ -30,6 +30,7 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 	// Safely generate initials with fallback
 	const personaInitials =
 		(persona.name || "")
+			.replace(/^The /, "") // Remove "The " prefix
 			.split(" ")
 			.map((word) => word?.[0] || "")
 			.join("")

@@ -3,12 +3,14 @@ import { Form, useLoaderData, useNavigation } from "react-router-dom"
 import { userContext } from "~/server/user-context"
 import type { Evidence } from "~/types"
 import { ThemeCard, type ThemeCardTheme } from "~/features/themes/components/ThemeCard"
+import { useState } from "react"
+import { Button } from "~/components/ui/button"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const { themeId } = params
 	if (!themeId) throw new Response("Missing themeId", { status: 400 })
-	
+
 	// Get theme with evidence and insights counts
 	const { data: theme, error: terr } = await supabase.from("themes").select("*").eq("id", themeId).single()
 	if (terr) throw new Error(`Failed to load theme: ${terr.message}`)
@@ -24,14 +26,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.from("theme_evidence")
 		.select("evidence:evidence_id(interview_id)")
 		.eq("theme_id", themeId)
-	
+
 	type LinkRow = { evidence: { interview_id: string } | null }
 	const uniqueInterviewIds = Array.from(
-		new Set(
-			((interviewIds ?? []) as LinkRow[])
-				.map((link) => link.evidence?.interview_id)
-				.filter(Boolean)
-		)
+		new Set(((interviewIds ?? []) as LinkRow[]).map((link) => link.evidence?.interview_id).filter(Boolean))
 	) as string[]
 
 	let insightsCount = 0
@@ -103,65 +101,69 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 export default function ThemeDetail() {
 	const { theme, evidenceOptions } = useLoaderData<typeof loader>()
 	const nav = useNavigation()
-	
+	const [showAddEvidence, setShowAddEvidence] = useState(false)
+
 	return (
 		<div className="mx-auto max-w-4xl space-y-8 p-6">
 			{/* Theme Card in Expanded Mode */}
 			<ThemeCard theme={theme} defaultExpanded={true} />
-			
+
 			{/* Evidence Linking Form */}
-			<div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-				<h2 className="mb-4 font-medium text-lg text-gray-900 dark:text-white">Link New Evidence</h2>
-				<Form method="post" className="grid gap-4 sm:grid-cols-2">
-					<label className="flex flex-col gap-2">
-						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Evidence</span>
-						<select 
-							name="evidence_id" 
-							className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-						>
-							<option value="">Select evidence to link…</option>
-							{evidenceOptions.map((e) => (
-								<option key={e.id} value={e.id}>
-									{e.verbatim?.slice(0, 80) || e.id}
-								</option>
-							))}
-						</select>
-					</label>
-					
-					<label className="flex flex-col gap-2">
-						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Confidence (0–1)</span>
-						<input 
-							name="confidence" 
-							type="number" 
-							min="0" 
-							max="1" 
-							step="0.1" 
-							placeholder="0.8"
-							className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-						/>
-					</label>
-					
-					<label className="flex flex-col gap-2 sm:col-span-2">
-						<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Rationale</span>
-						<textarea
-							name="rationale"
-							rows={3}
-							placeholder="Explain why this evidence supports the theme..."
-							className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
-						/>
-					</label>
-					
-					<div className="sm:col-span-2">
-						<button
-							type="submit"
-							disabled={nav.state === "submitting"}
-							className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
-						>
-							{nav.state === "submitting" ? "Linking…" : "Link Evidence"}
-						</button>
-					</div>
-				</Form>
-			</div>
+			<Button onClick={() => setShowAddEvidence(!showAddEvidence)}>Add Evidence</Button>
+			{showAddEvidence ? (
+				<div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
+					<h2 className="mb-4 font-medium text-lg text-gray-900 dark:text-white">Link New Evidence</h2>
+					<Form method="post" className="grid gap-4 sm:grid-cols-2">
+						<label className="flex flex-col gap-2">
+							<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Evidence</span>
+							<select
+								name="evidence_id"
+								className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+							>
+								<option value="">Select evidence to link…</option>
+								{evidenceOptions.map((e) => (
+									<option key={e.id} value={e.id}>
+										{e.verbatim?.slice(0, 80) || e.id}
+									</option>
+								))}
+							</select>
+						</label>
+
+						<label className="flex flex-col gap-2">
+							<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Confidence (0–1)</span>
+							<input
+								name="confidence"
+								type="number"
+								min="0"
+								max="1"
+								step="0.1"
+								placeholder="0.8"
+								className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+							/>
+						</label>
+
+						<label className="flex flex-col gap-2 sm:col-span-2">
+							<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Rationale</span>
+							<textarea
+								name="rationale"
+								rows={3}
+								placeholder="Explain why this evidence supports the theme..."
+								className="rounded-lg border border-gray-300 p-3 text-sm transition-colors focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-500/20 dark:border-gray-600 dark:bg-gray-800 dark:text-white"
+							/>
+						</label>
+
+						<div className="sm:col-span-2">
+							<button
+								type="submit"
+								disabled={nav.state === "submitting"}
+								className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+							>
+								{nav.state === "submitting" ? "Linking…" : "Link Evidence"}
+							</button>
+						</div>
+					</Form>
+				</div>
+			) : null}
 		</div>
 	)
 }

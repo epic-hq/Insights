@@ -13,6 +13,7 @@ import {
 import { useChangeLanguage } from "remix-i18next/react"
 import { ClientOnly } from "~/components/ClientOnly"
 import { NotificationProvider } from "~/contexts/NotificationContext"
+import { ThemeProvider } from "~/contexts/ThemeContext"
 import { loadContext } from "~/server/load-context"
 import type { Route } from "./+types/root"
 import { ClientHintCheck, getHints } from "./services/client-hints"
@@ -73,9 +74,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
 	return (
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}
-			<NotificationProvider>
-				<Outlet />
-			</NotificationProvider>
+			<ThemeProvider defaultTheme="light">
+				<NotificationProvider>
+					<Outlet />
+				</NotificationProvider>
+			</ThemeProvider>
 			{/* </AuthProvider> */}
 		</ClientOnly>
 	)

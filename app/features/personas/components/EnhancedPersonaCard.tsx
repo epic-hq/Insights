@@ -35,6 +35,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 	// Get initials for avatar
 	const initials =
 		name
+			.replace(/^The /, "") // Remove "The " prefix
 			.split(" ")
 			.map((word) => word[0])
 			.join("")
@@ -60,16 +61,12 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 					{/* Header Section - Avatar and Title Separated */}
 					<div className="mb-6 flex items-center justify-between">
 						{/* Avatar - Larger and More Prominent */}
-						<motion.div 
-							className="relative" 
-							whileHover={{ scale: 1.05 }} 
-							transition={{ duration: 0.2 }}
-						>
-							<Avatar className="h-20 w-20 border-4 border-white shadow-lg dark:border-gray-800" style={{ borderColor: `${themeColor}20` }}>
-								<AvatarFallback 
-									className="text-white font-semibold text-2xl" 
-									style={{ backgroundColor: themeColor }}
-								>
+						<motion.div className="relative" whileHover={{ scale: 1.05 }} transition={{ duration: 0.2 }}>
+							<Avatar
+								className="h-20 w-20 border-4 border-white shadow-lg dark:border-gray-800"
+								style={{ borderColor: `${themeColor}20` }}
+							>
+								<AvatarFallback className="text-white font-semibold text-2xl" style={{ backgroundColor: themeColor }}>
 									{persona.image_url ? (
 										<img src={persona.image_url} alt={name} className="h-full w-full object-cover" />
 									) : (
@@ -98,10 +95,10 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 						>
 							{name}
 						</motion.h3>
-						
+
 						{/* Theme Color Accent Line */}
-						<motion.div 
-							className="h-1 w-16 rounded-full transition-all duration-300" 
+						<motion.div
+							className="h-1 w-16 rounded-full transition-all duration-300"
 							style={{ backgroundColor: themeColor }}
 							animate={{ width: isHovered ? "4rem" : "3rem" }}
 						/>
@@ -109,9 +106,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 
 					{/* Description - Clean and Readable */}
 					<div className="mb-8">
-						<p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed line-clamp-4">
-							{description}
-						</p>
+						<p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed line-clamp-4">{description}</p>
 					</div>
 
 					{/* Footer - Minimal Metadata */}
@@ -119,14 +114,14 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 						<div className="text-gray-400 text-xs">
 							Updated {formatDistance(new Date(persona.updated_at), new Date(), { addSuffix: true })}
 						</div>
-						
+
 						{/* Subtle Hover Indicator */}
 						<motion.div
 							className="flex h-2 w-2 rounded-full transition-all duration-300"
 							style={{ backgroundColor: themeColor }}
-							animate={{ 
+							animate={{
 								scale: isHovered ? 1.5 : 1,
-								opacity: isHovered ? 1 : 0.5
+								opacity: isHovered ? 1 : 0.5,
 							}}
 						/>
 					</div>
