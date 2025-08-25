@@ -520,6 +520,13 @@ export type Database = {
             referencedRelation: "insights"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "comments_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
         ]
       }
       entity_flags: {
@@ -665,6 +672,70 @@ export type Database = {
           },
         ]
       }
+      evidence_people: {
+        Row: {
+          account_id: string
+          confidence: number | null
+          created_at: string | null
+          created_by: string | null
+          evidence_id: string
+          id: string
+          person_id: string
+          project_id: string | null
+          role: string | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          account_id: string
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id: string
+          id?: string
+          person_id: string
+          project_id?: string | null
+          role?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string
+          confidence?: number | null
+          created_at?: string | null
+          created_by?: string | null
+          evidence_id?: string
+          id?: string
+          person_id?: string
+          project_id?: string | null
+          role?: string | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_people_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_people_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_people_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       evidence_tag: {
         Row: {
           account_id: string
@@ -754,6 +825,13 @@ export type Database = {
             columns: ["insight_id"]
             isOneToOne: false
             referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insight_tags_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
             referencedColumns: ["id"]
           },
           {
@@ -1130,6 +1208,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "opportunity_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "opportunity_insights_opportunity_id_fkey"
             columns: ["opportunity_id"]
             isOneToOne: false
@@ -1325,6 +1410,13 @@ export type Database = {
             columns: ["insight_id"]
             isOneToOne: false
             referencedRelation: "insights"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "persona_insights_insight_id_fkey"
+            columns: ["insight_id"]
+            isOneToOne: false
+            referencedRelation: "insights_with_priority"
             referencedColumns: ["id"]
           },
           {
@@ -1975,6 +2067,52 @@ export type Database = {
       }
     }
     Views: {
+      insights_with_priority: {
+        Row: {
+          account_id: string | null
+          category: string | null
+          confidence: string | null
+          contradictions: string | null
+          created_at: string | null
+          created_by: string | null
+          desired_outcome: string | null
+          details: string | null
+          embedding: string | null
+          emotional_response: string | null
+          evidence: string | null
+          id: string | null
+          impact: number | null
+          interview_id: string | null
+          journey_stage: string | null
+          jtbd: string | null
+          motivation: string | null
+          name: string | null
+          novelty: number | null
+          opportunity_ideas: string[] | null
+          pain: string | null
+          priority: number | null
+          project_id: string | null
+          related_tags: string[] | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "insights_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       persona_distribution: {
         Row: {
           account_id: string | null

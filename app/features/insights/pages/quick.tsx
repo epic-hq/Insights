@@ -51,14 +51,14 @@ export default function QuickInsights() {
 	)
 
 	return (
-		<div className="min-h-screen bg-gray-50 p-4">
+		<div className="min-h-screen bg-background text-foreground p-4">
 			<div className="mb-4 flex items-center">
-				<Search className="mr-2 h-5 w-5 text-gray-500" />
+				<Search className="mr-2 h-5 w-5 text-muted-foreground" />
 				<Input placeholder="Search insights…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />
 			</div>
 
 			{filtered.length === 0 ? (
-				<div className="py-8 text-center text-gray-500">
+				<div className="py-8 text-center text-muted-foreground">
 					<p>No insights found</p>
 					{searchQuery && <p className="mt-1 text-sm">Try adjusting your search</p>}
 				</div>

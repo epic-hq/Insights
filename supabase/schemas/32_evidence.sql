@@ -132,4 +132,72 @@ create policy "Users can delete evidence_tag for their account" on evidence_tag
             and e.account_id in (select account_id from accounts.account_user where user_id = auth.uid()))
   );
 
+-- Evidence people (junction to people) ----------------------------------
+create table if not exists evidence_people (
+  id uuid primary key default gen_random_uuid(),
+  evidence_id uuid not null references evidence(id) on delete cascade,
+  person_id   uuid not null references people(id) on delete cascade,
+  account_id  uuid not null,
+  project_id  uuid references projects(id) on delete cascade,
+  role        text, -- speaker / observer / mentioned / other
+  confidence  numeric,
+  created_at  timestamptz default now(),
+  updated_at  timestamptz default now(),
+  created_by  uuid references auth.users(id),
+  updated_by  uuid references auth.users(id),
+  unique(evidence_id, person_id, account_id)
+);
+
+create index if not exists idx_evidence_people_evidence_id on evidence_people(evidence_id);
+create index if not exists idx_evidence_people_person_id   on evidence_people(person_id);
+create index if not exists idx_evidence_people_account_id  on evidence_people(account_id);
+
+create trigger set_evidence_people_timestamp
+    before insert or update on public.evidence_people
+    for each row
+execute procedure accounts.trigger_set_timestamps();
+
+create trigger set_evidence_people_user_tracking
+    before insert or update on public.evidence_people
+    for each row
+execute procedure accounts.trigger_set_user_tracking();
+
+alter table evidence_people enable row level security;
+
+create policy "Users can view evidence_people for their account" on evidence_people
+  for select using (
+    exists (
+      select 1 from evidence e
+      where e.id = evidence_people.evidence_id
+        and e.account_id in (select account_id from accounts.account_user where user_id = auth.uid())
+    )
+  );
+
+create policy "Users can insert evidence_people for their account" on evidence_people
+  for insert with check (
+    exists (
+      select 1 from evidence e
+      where e.id = evidence_people.evidence_id
+        and e.account_id in (select account_id from accounts.account_user where user_id = auth.uid())
+    )
+  );
+
+create policy "Users can update evidence_people for their account" on evidence_people
+  for update using (
+    exists (
+      select 1 from evidence e
+      where e.id = evidence_people.evidence_id
+        and e.account_id in (select account_id from accounts.account_user where user_id = auth.uid())
+    )
+  );
+
+create policy "Users can delete evidence_people for their account" on evidence_people
+  for delete using (
+    exists (
+      select 1 from evidence e
+      where e.id = evidence_people.evidence_id
+        and e.account_id in (select account_id from accounts.account_user where user_id = auth.uid())
+    )
+  );
+
 -- Note: `theme_evidence` join will be added when `themes` table lands (kept out to avoid broken refs).

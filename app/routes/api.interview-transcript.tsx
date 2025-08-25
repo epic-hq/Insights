@@ -1,47 +1,71 @@
 import type { LoaderFunctionArgs } from "react-router"
-import { getInterviewById } from "~/features/interviews/db"
-import { currentProjectContext } from "~/server/current-project-context"
-import { userContext } from "~/server/user-context"
+import consola from "consola"
+import { getServerClient } from "~/lib/supabase/server"
 
-export async function loader({ context, request }: LoaderFunctionArgs) {
-	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const projectContext = context.get(currentProjectContext)
-
+export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
 	const interviewId = url.searchParams.get("interviewId")
+	const projectId = url.searchParams.get("projectId")
 
-	// Get account and project from context (set by middleware)
-	const accountId = ctx.account_id
-	const projectId = projectContext?.projectId
-
-	if (!accountId || !projectId || !interviewId) {
-		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
+	if (!interviewId) {
+		throw new Response("Interview ID is required", { status: 400 })
 	}
 
+	const { client: supabase } = getServerClient(request)
+
 	try {
-		// Fetch only transcript data
-		const { data: interviewData, error } = await getInterviewById({
-			supabase,
-			accountId,
-			projectId,
-			id: interviewId,
+		consola.info("Fetching transcript for interview:", { interviewId, projectId })
+
+		// Build query - only filter by projectId if provided
+		let query = supabase
+			.from("interviews")
+			.select("transcript, transcript_formatted")
+			.eq("id", interviewId)
+
+		if (projectId) {
+			query = query.eq("project_id", projectId)
+		}
+
+		const { data: transcriptData, error } = await query.single()
+
+		consola.info("Transcript query result:", { 
+			error: error?.message, 
+			hasData: !!transcriptData,
+			transcriptLength: transcriptData?.transcript?.length || 0,
+			hasFormattedTranscript: !!transcriptData?.transcript_formatted 
 		})
 
 		if (error) {
+			consola.error("Database error fetching transcript:", error)
 			throw new Response(`Error fetching transcript: ${error.message}`, { status: 500 })
 		}
 
-		if (!interviewData) {
+		if (!transcriptData) {
+			consola.warn("No transcript data found for interview:", interviewId)
 			throw new Response("Interview not found", { status: 404 })
 		}
 
 		// Return only transcript data to minimize payload
-		return {
-			transcript: interviewData.transcript,
-			transcript_formatted: interviewData.transcript_formatted,
+		const response = {
+			transcript: transcriptData.transcript,
+			transcript_formatted: transcriptData.transcript_formatted,
 		}
+
+		consola.info("Returning transcript response:", { 
+			transcriptLength: response.transcript?.length || 0,
+			hasFormattedTranscript: !!response.transcript_formatted 
+		})
+
+		return response
 	} catch (error) {
-		throw new Response(`Failed to load transcript: ${error.message}`, { status: 500 })
+		consola.error("Unexpected error in transcript API:", error)
+		
+		// Handle different error types
+		if (error instanceof Response) {
+			throw error // Re-throw Response errors as-is
+		}
+		
+		const errorMessage = error instanceof Error ? error.message : String(error)
+		throw new Response(`Failed to load transcript: ${errorMessage}`, { status: 500 })
 	}
 }

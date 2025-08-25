@@ -223,6 +223,8 @@ async function processInterviewTranscriptWithClient({
 	// Use the exact return type from BAML to avoid drift
 	type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscript>>
 	let evidenceUnits: EvidenceFromBaml | null = []
+	// Track inserted evidence IDs to link to people later
+	let insertedEvidenceIds: string[] = []
 
 	try {
 		consola.log('ExtractEvidence starting')
@@ -270,6 +272,10 @@ async function processInterviewTranscriptWithClient({
 		if (evidenceError) {
 			consola.warn(`Failed to insert evidence: ${evidenceError.message}`)
 		} else if (insertedEvidence?.length) {
+			// Stash IDs for later linking to people
+			try {
+				insertedEvidenceIds = (insertedEvidence as Array<{ id: string }>).map((e) => e.id)
+			} catch {}
 			// Optionally upsert tags from kind_tags and link via evidence_tag
 			try {
 				// Build unique tag list
@@ -432,109 +438,20 @@ async function processInterviewTranscriptWithClient({
 	if (personError) throw new Error(`Failed to upsert person: ${personError.message}`)
 	if (!personData?.id) throw new Error("Person upsert succeeded but no ID returned")
 
-	// Intelligent persona assignment using BAML
-	let personaData: PersonasRow | null = null
-	try {
-		const { data: existingPersonas, error: personasError } = await db
-			.from("personas")
-			.select("*")
-			.eq("account_id", metadata.accountId)
-		if (personasError) consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
-
-		const intervieweeInfo = JSON.stringify({
-			name: interviewee?.name || "Unknown",
-			persona: interviewee?.persona || null,
-			segment: interviewee?.segment || null,
-			participantDescription: interviewee?.participantDescription || null,
-			contactInfo: interviewee?.contactInfo || null,
-		})
-		const existingPersonasData = JSON.stringify(existingPersonas || [])
-
-		const decision = await b.AssignPersonaToInterview(
-			interviewRecord.transcript || "",
-			intervieweeInfo,
-			existingPersonasData,
-		)
-		consola.log(`Persona assignment decision: ${decision.action} (confidence: ${decision.confidence_score})`)
-		consola.log(`Reasoning: ${decision.reasoning}`)
-
-		if (decision.action === "assign_existing" && decision.persona_id) {
-			const existingPersona = existingPersonas?.find((p: PersonasRow) => p.id === decision.persona_id)
-			if (existingPersona) {
-				personaData = existingPersona
-				consola.log(`Assigned to existing persona: ${existingPersona.name}`)
-			} else {
-				consola.warn(`Persona ID ${decision.persona_id} not found, falling back to creation`)
-			}
-		}
-
-		if (decision.action === "create_new" && decision.new_persona_data) {
-			const newPersonaInsert = {
-				account_id: metadata.accountId,
-				project_id: metadata.projectId,
-				name: decision.new_persona_data.name,
-				description: decision.new_persona_data.description || `Auto-generated from interview: ${interviewRecord.title}`,
-				age: decision.new_persona_data.age,
-				gender: decision.new_persona_data.gender,
-				location: decision.new_persona_data.location,
-				education: decision.new_persona_data.education,
-				occupation: decision.new_persona_data.occupation,
-				income: decision.new_persona_data.income,
-				languages: decision.new_persona_data.languages,
-				segment: decision.new_persona_data.segment,
-				role: decision.new_persona_data.role,
-				color_hex: decision.new_persona_data.color_hex,
-				image_url: decision.new_persona_data.image_url,
-				percentage: decision.new_persona_data.percentage,
-			}
-			const { data: newPersona, error: createError } = await db
-				.from("personas")
-				.insert(newPersonaInsert)
-				.select("*")
-				.single()
-			if (createError) consola.warn(`Failed to create new persona: ${createError.message}`)
-			else {
-				personaData = newPersona
-				consola.log(`Created new persona: ${newPersona.name}`)
-			}
-		}
-
-		if (!personaData && interviewee?.persona?.trim()) {
-			const personaName = interviewee.persona.trim()
-			consola.log(`Fallback: Creating simple persona for "${personaName}"`)
-			const { data: fallbackPersona, error: fallbackError } = await db
-				.from("personas")
+	// Link evidence -> person via evidence_people for this interview's participant
+	if (insertedEvidenceIds.length) {
+		for (const evId of insertedEvidenceIds) {
+			const { error: epErr } = await db
+				.from("evidence_people")
 				.insert({
+					evidence_id: evId,
+					person_id: personData.id,
 					account_id: metadata.accountId,
 					project_id: metadata.projectId,
-					name: personaName,
-					description: `Auto-generated from interview: ${interviewRecord.title}`,
+					role: "speaker",
 				})
-				.select("*")
-				.single()
-			if (!fallbackError) {
-				personaData = fallbackPersona
-				consola.log(`Created fallback persona: ${personaName}`)
-			}
-		}
-	} catch (error) {
-		consola.error(`Error in intelligent persona assignment: ${error}`)
-		if (interviewee?.persona?.trim()) {
-			const personaName = interviewee.persona.trim()
-			consola.log(`BAML failed, using simple fallback for "${personaName}"`)
-			const { data: simplePersona, error: simpleError } = await db
-				.from("personas")
-				.insert({
-					account_id: metadata.accountId,
-					project_id: metadata.projectId,
-					name: personaName,
-					description: `Auto-generated from interview: ${interviewRecord.title}`,
-				})
-				.select("*")
-				.single()
-			if (!simpleError) {
-				personaData = simplePersona
-				consola.log(`Created simple fallback persona: ${personaName}`)
+			if (epErr && !epErr.message?.includes("duplicate")) {
+				consola.warn(`Failed linking evidence ${evId} to person ${personData.id}: ${epErr.message}`)
 			}
 		}
 	}
@@ -548,20 +465,100 @@ async function processInterviewTranscriptWithClient({
 	const { error: junctionError } = await db.from("interview_people").insert(junctionData)
 	if (junctionError) throw new Error(`Failed to link person to interview: ${junctionError.message}`)
 
-	if (personaData?.id) {
-		const { error: personaLinkError } = await db.from("people_personas").upsert(
-			{
-				person_id: personData.id,
-				persona_id: personaData.id,
-				interview_id: interviewRecord.id,
-				project_id: metadata.projectId,
-				confidence_score: 1.0,
-				source: "ai_extraction",
-			},
-			{ onConflict: "person_id,persona_id" },
+	    // Assign persona to the person using BAML client
+	try {
+		// Fetch existing personas for this account
+		const { data: existingPersonas, error: personasError } = await db
+			.from("personas")
+			.select("id, name, description")
+			.eq("account_id", metadata.accountId)
+			.order("created_at", { ascending: false })
+
+		if (personasError) {
+			consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
+		}
+
+		// Prepare interviewee info for persona assignment
+		const intervieweeInfo = JSON.stringify({
+			name: personName,
+			segment: interviewee?.segment || metadata.segment || null,
+			description: interviewee?.participantDescription || null,
+		})
+
+		// Convert personas to the format expected by BAML
+		const existingPersonasForBaml = JSON.stringify(
+			(existingPersonas || []).map((p) => ({
+				id: p.id,
+				name: p.name,
+				description: p.description,
+			}))
 		)
-		if (personaLinkError) consola.warn(`Failed to link person to persona: ${personaLinkError.message}`)
+
+		// Call BAML to decide whether to assign to existing persona or create new one
+		const personaDecision = await b.AssignPersonaToInterview(
+			fullTranscript,
+			intervieweeInfo,
+			existingPersonasForBaml
+		)
+
+		consola.log("Persona assignment decision:", personaDecision)
+
+		let personaId: string | null = null
+
+		if (personaDecision.action === "assign_existing" && personaDecision.persona_id) {
+			// Use existing persona
+			personaId = personaDecision.persona_id
+			consola.log(`Assigning to existing persona: ${personaDecision.persona_name} (${personaId})`)
+		} else if (personaDecision.action === "create_new" && personaDecision.new_persona_data) {
+			// Create new persona
+			const newPersona = personaDecision.new_persona_data
+			const { data: createdPersona, error: createError } = await db
+				.from("personas")
+				.insert({
+					account_id: metadata.accountId,
+					project_id: metadata.projectId,
+					name: newPersona.name,
+					description: newPersona.description || null,
+					color_hex: newPersona.color_hex || null,
+					created_by: metadata.userId,
+					updated_by: metadata.userId,
+				})
+				.select("id")
+				.single()
+
+			if (createError) {
+				consola.warn(`Failed to create new persona: ${createError.message}`)
+			} else {
+				personaId = createdPersona.id
+				consola.log(`Created new persona: ${newPersona.name} (${personaId})`)
+			}
+		}
+
+		// Link person to persona if we have a valid persona ID
+		if (personaId && personData.id) {
+			const { error: linkError } = await db
+				.from("people_personas")
+				.insert({
+					person_id: personData.id,
+					persona_id: personaId,
+					interview_id: interviewRecord.id,
+					project_id: metadata.projectId,
+					confidence_score: personaDecision.confidence_score || 0.5,
+					source: "ai_assignment",
+					assigned_at: new Date().toISOString(),
+				})
+
+			if (linkError) {
+				consola.warn(`Failed to link person to persona: ${linkError.message}`)
+			} else {
+				consola.log(`Successfully linked person ${personData.id} to persona ${personaId}`)
+			}
+		}
+	} catch (personaErr) {
+		// Don't fail the whole process if persona assignment fails
+		consola.warn("Persona assignment failed; continuing without persona assignment", personaErr)
 	}
+
 	consola.log(`Successfully created/linked person "${personName}" to interview ${interviewRecord.id}`)
 
 	await db

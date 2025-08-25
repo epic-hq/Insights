@@ -67,18 +67,34 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
 		}
 
-		// Exclude large transcript data from loader response to prevent memory leaks
-		// Only include transcript metadata, not the full content
-		const { transcript, transcript_formatted, ...interviewMetadata } = interviewData
+		// Check transcript availability without loading the actual content
+		const { data: transcriptMeta, error: transcriptError } = await supabase
+			.from("interviews")
+			.select("transcript, transcript_formatted")
+			.eq("id", interviewId)
+			.eq("project_id", projectId)
+			.single()
+
+		if (transcriptError) {
+			consola.warn("Could not check transcript availability:", transcriptError.message)
+		}
+
+		// Debug transcript availability
+		consola.info("Transcript availability check:", {
+			interviewId,
+			hasTranscript: !!transcriptMeta?.transcript,
+			hasFormattedTranscript: !!transcriptMeta?.transcript_formatted,
+			transcriptLength: transcriptMeta?.transcript?.length || 0,
+			transcriptFormattedType: typeof transcriptMeta?.transcript_formatted,
+		})
 
 		const interview = {
-			...interviewMetadata,
+			...interviewData,
 			participants,
 			primaryParticipant,
-			// Only include transcript length for display, not full content
-			transcriptLength: transcript?.length || 0,
-			hasTranscript: !!transcript,
-			hasFormattedTranscript: !!transcript_formatted,
+			// Check transcript availability without loading content
+			hasTranscript: !!transcriptMeta?.transcript,
+			hasFormattedTranscript: !!transcriptMeta?.transcript_formatted,
 		}
 
 		// Fetch insights related to this interview with junction table tags
@@ -128,7 +144,7 @@ export default function InterviewDetail() {
 					const status = next?.status
 					if (status === "in_progress") setIsProcessing(true)
 					if (status === "completed" || status === "failed" || status === "error") setIsProcessing(false)
-				},
+				}
 			)
 			.subscribe()
 
@@ -202,9 +218,7 @@ export default function InterviewDetail() {
 									</span>
 								)
 							)} */}
-							{interview.interview_date && (
-								<span className="ml-2 text-gray-500">{new Date(interview.interview_date).toLocaleDateString()}</span>
-							)}
+
 							{/* {interview?.project?.title && (
 								<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
 									Project: {interview.project.title}
@@ -216,14 +230,15 @@ export default function InterviewDetail() {
 					{/* Interviewer info */}
 					{/* TODO: Interviewer info */}
 					{interviewerData?.name && (
-						<div className="mb-2 text-gray-600 text-sm">
-							Interviewer: <span className="font-medium text-gray-900">{interviewerData.name}</span>
+						<div className="mb-2 text-foreground/50 text-sm">
+							Interviewer: <span className="font-medium text-foreground/50">{interviewerData.name}</span>
 						</div>
 					)}
 
 					<div>
-						<label className="mb-1 block font-bold text-lg">Observations & Notes</label>
+						<label className="mb-1 block font-bold text-lg text-foreground">Observations & Notes</label>
 						<InlineEdit
+							textClassName="text-foreground"
 							value={
 								Array.isArray(interview.observations_and_notes)
 									? interview.observations_and_notes.join("\n")
@@ -259,7 +274,7 @@ export default function InterviewDetail() {
 					</div>
 					{/* Interview Summary Fields */}
 					<div className="mb-4 space-y-4">
-						<div>
+						{/* <div>
 							<label className="mb-1 block font-bold text-lg">High Impact Themes</label>
 							<InlineEdit
 								value={
@@ -302,10 +317,11 @@ export default function InterviewDetail() {
 									}
 								}}
 							/>
-						</div>
+						</div> */}
 						<div>
 							<label className="mb-1 block font-bold text-lg">Open Questions & Next Steps</label>
 							<InlineEdit
+								textClassName="text-foreground"
 								value={
 									Array.isArray(interview.open_questions_and_next_steps)
 										? interview.open_questions_and_next_steps.join("\n")
@@ -361,16 +377,16 @@ export default function InterviewDetail() {
 					<div className="space-y-6">
 						{/* Participants */}
 						{participants.length > 0 && (
-							<div className="rounded-lg border bg-white p-6">
-								<h3 className="mb-4 font-semibold">Participants</h3>
+							<div className="rounded-lg border bg-background p-6">
+								<h3 className="mb-4 font-semibold text-foreground">Participants</h3>
 								<div className="space-y-3">
 									{participants.map((participant, index) => (
 										<div key={index} className="border-blue-500 border-l-4 pl-3">
-											<div className="font-medium text-gray-900">
+											<div className="font-medium text-foreground">
 												{participant.people?.name || "Unknown Participant"}
 											</div>
 											{participant.people?.segment && (
-												<div className="text-gray-600 text-sm">{participant.people.segment}</div>
+												<div className="text-foreground/50 text-sm">{participant.people.segment}</div>
 											)}
 											{participant.people?.segment && (
 												<Badge variant="secondary" className="mt-1">
@@ -385,8 +401,8 @@ export default function InterviewDetail() {
 
 						{/* Insights */}
 						{insights.length > 0 && (
-							<div className="rounded-lg border bg-white p-6">
-								<h3 className="mb-4 font-semibold">Insights</h3>
+							<div className="rounded-lg border bg-background p-6">
+								<h3 className="mb-4 font-semibold text-foreground">Insights</h3>
 								<div className="space-y-3">
 									{insights.map((insight) => (
 										<div key={insight.id} className="border-green-500 border-l-4 pl-3">
@@ -401,7 +417,9 @@ export default function InterviewDetail() {
 													{insight.category}
 												</Badge>
 											)}
-											{insight.impact && <div className="mt-1 text-gray-600 text-sm">Impact: {insight.impact}</div>}
+											{insight.impact && (
+												<div className="mt-1 text-foreground/50 text-sm">Impact: {insight.impact}</div>
+											)}
 										</div>
 									))}
 								</div>
@@ -409,19 +427,27 @@ export default function InterviewDetail() {
 						)}
 
 						{/* Metadata */}
-						<div className="rounded-lg border bg-white p-6">
-							<h3 className="mb-4 font-semibold">Metadata</h3>
+						<div className="rounded-lg border bg-background p-6">
+							<h3 className="mb-4 font-semibold text-foreground">Metadata</h3>
 							<div className="space-y-3">
+								{interview.interview_date && (
+									<div>
+										<label className="font-medium text-gray-500 text-sm">Interview Date</label>
+										<div className="mt-1 text-foreground/50 text-sm">
+											{new Date(interview.interview_date).toLocaleDateString()}
+										</div>
+									</div>
+								)}
 								{interview.duration_min && (
 									<div>
 										<label className="font-medium text-gray-500 text-sm">Duration</label>
-										<div className="mt-1 text-gray-900 text-sm">{interview.duration_min} minutes</div>
+										<div className="mt-1 text-foreground/50 text-sm">{interview.duration_min} minutes</div>
 									</div>
 								)}
 
 								<div>
 									<label className="font-medium text-gray-500 text-sm">Created</label>
-									<div className="mt-1 text-gray-900 text-sm">
+									<div className="mt-1 text-foreground/50 text-sm">
 										{new Date(interview.created_at).toLocaleDateString()}
 									</div>
 								</div>
@@ -429,7 +455,7 @@ export default function InterviewDetail() {
 								{interview.updated_at && (
 									<div>
 										<label className="font-medium text-gray-500 text-sm">Last Updated</label>
-										<div className="mt-1 text-gray-900 text-sm">
+										<div className="mt-1 text-foreground/50 text-sm">
 											{new Date(interview.updated_at).toLocaleDateString()}
 										</div>
 									</div>

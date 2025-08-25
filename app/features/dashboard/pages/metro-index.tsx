@@ -449,20 +449,20 @@ export default function MetroIndex() {
 											(item: any) => (
 												<div
 													key={item.id}
-													className="flex cursor-pointer items-start gap-3 border border-gray-700 bg-gray-800 p-4 transition-colors duration-200 hover:bg-gray-700"
+													className="flex cursor-pointer items-start gap-3 border border-border bg-card p-4 transition-colors duration-200 hover:bg-muted/60"
 													onClick={() => setSelectedItem({ ...item, section: expandedSection })}
 												>
 													{item.image_url && (
-														<div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-gray-900">
+														<div className="h-16 w-16 flex-shrink-0 overflow-hidden rounded bg-muted">
 															{/* eslint-disable-next-line jsx-a11y/alt-text */}
 															<img src={item.image_url} className="h-full w-full object-cover" />
 														</div>
 													)}
 													<div className="min-w-0 flex-1">
-														<h3 className="mb-1 line-clamp-2 font-medium text-sm text-white">
+														<h3 className="mb-1 line-clamp-2 font-medium text-sm text-foreground">
 															{item.title || item.name || item.display_name || item.participant_name}
 														</h3>
-														<p className="line-clamp-2 text-gray-300 text-xs">
+														<p className="line-clamp-2 text-muted-foreground text-xs">
 															{item.description || item.evidence || item.status}
 														</p>
 														{Array.isArray(item.tags) && item.tags.length > 0 && (
@@ -470,7 +470,7 @@ export default function MetroIndex() {
 																{(item.tags as string[]).slice(0, 3).map((tag) => (
 																	<span
 																		key={`${item.id}-tag-${tag}`}
-																		className="rounded bg-gray-700 px-2 py-1 text-gray-200 text-xs"
+																		className="rounded bg-muted px-2 py-1 text-foreground text-xs"
 																	>
 																		{tag}
 																	</span>
@@ -583,7 +583,7 @@ export default function MetroIndex() {
 
 			{/* CopilotSidebar - Right side overlay */}
 			{showChat && (
-				<div className="fixed bottom-16 right-0 top-0 z-30 w-80 bg-white shadow-2xl">
+				<div className="fixed bottom-16 right-0 top-0 z-30 w-80 bg-card text-foreground shadow-2xl border-l border-border">
 					<CopilotSidebar
 						expandedSection={expandedSection}
 						onClose={() => setShowChat(false)}
@@ -603,7 +603,7 @@ export default function MetroIndex() {
 
 			{/* Selected item drawer */}
 			{selectedItem && (
-				<div className="fixed inset-0 z-40 bg-black">
+				<div className="fixed inset-0 z-40 bg-background">
 					<div className={`h-16 ${getSectionColor(selectedItem.section)} flex items-center justify-between px-4`}>
 						<div className="flex items-center gap-3">
 							<h2 className="font-bold text-lg text-white">
@@ -627,17 +627,17 @@ export default function MetroIndex() {
 							{/* Item Details */}
 							<div className="flex-1 space-y-6">
 								{selectedItem.image_url && (
-									<div className="h-48 w-full overflow-hidden rounded-lg bg-gray-800">
+									<div className="h-48 w-full overflow-hidden rounded-lg bg-muted">
 										{/* eslint-disable-next-line jsx-a11y/alt-text */}
 										<img src={selectedItem.image_url} className="h-full w-full object-cover" />
 									</div>
 								)}
 								<div className="space-y-4">
-									<p className="text-gray-300 leading-relaxed">{selectedItem.description || selectedItem.evidence}</p>
+									<p className="text-muted-foreground leading-relaxed">{selectedItem.description || selectedItem.evidence}</p>
 									{Array.isArray(selectedItem.tags) && (
 										<div className="flex flex-wrap gap-2">
 											{selectedItem.tags.map((tag: string) => (
-												<Badge key={`selected-tag-${tag}`} variant="secondary" className="bg-gray-800 text-gray-300">
+												<Badge key={`selected-tag-${tag}`} variant="secondary" className="bg-muted text-foreground">
 													{tag}
 												</Badge>
 											))}

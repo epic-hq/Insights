@@ -206,13 +206,13 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 											<div key={index} className={`${colors.border} border-l-4 py-3 pl-4`}>
 												<div className="mb-2 flex items-start justify-between">
 													<Badge className={`${colors.badge} mb-2`}>Speaker {utterance.speaker}</Badge>
-													<div className="text-right text-gray-400 text-xs">
+													<div className="text-right text-foreground text-xs">
 														<div>
 															{formatTime(utterance.start)} - {formatTime(utterance.end)}
 														</div>
 													</div>
 												</div>
-												<p className="text-gray-800 leading-relaxed">{utterance.text}</p>
+												<p className="text-foreground leading-relaxed">{utterance.text}</p>
 											</div>
 										)
 									})}
@@ -220,9 +220,9 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 							) : (
 								<div className="space-y-4">
 									<div className="rounded-lg bg-gray-50 p-4">
-										<p className="whitespace-pre-wrap text-gray-800 leading-relaxed">{rawTranscript}</p>
+										<p className="whitespace-pre-wrap text-foreground leading-relaxed">{rawTranscript}</p>
 									</div>
-									<div className="text-center text-gray-500 text-sm">
+									<div className="text-center text-foreground text-sm">
 										<p>Raw transcript content - no speaker breakdown available</p>
 									</div>
 								</div>
@@ -269,10 +269,10 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 												<div key={category} className="flex items-center justify-between">
 													<span className="text-sm">{category.replace(/>/g, " > ")}</span>
 													<div className="flex items-center gap-2">
-														<div className="h-2 w-24 rounded-full bg-gray-200">
+														<div className="h-2 w-24 rounded-full bg-background">
 															<div className="h-2 rounded-full bg-blue-600" style={{ width: `${relevance * 100}%` }} />
 														</div>
-														<span className="text-gray-600 text-sm">{(relevance * 100).toFixed(0)}%</span>
+														<span className="text-foreground/50 text-sm">{(relevance * 100).toFixed(0)}%</span>
 													</div>
 												</div>
 											))}
@@ -281,7 +281,7 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 
 									{(data?.iab_categories_result?.results || []).map((result, index) => (
 										<div key={index} className="rounded-lg border p-4">
-											<p className="mb-3 text-gray-800">{result.text}</p>
+											<p className="mb-3 text-foreground">{result.text}</p>
 											<div className="flex flex-wrap gap-2">
 												{result.labels.slice(0, 5).map((label, labelIndex) => (
 													<Badge key={labelIndex} variant="secondary">

@@ -32,9 +32,9 @@ export default function Table() {
 			{insightsData.length > 0 ? (
 				<InsightsDataTable data={insightsData} />
 			) : (
-				<div className="rounded-lg bg-white p-8 text-center shadow-sm dark:bg-gray-900">
-					<p className="text-gray-600 text-lg dark:text-gray-400">No insights match your current filters</p>
-					<button type="button" onClick={clearFilters} className="mt-4 text-blue-600 hover:text-blue-800">
+				<div className="rounded-lg bg-card p-8 text-center shadow-sm">
+					<p className="text-muted-foreground text-lg">No insights match your current filters</p>
+					<button type="button" onClick={clearFilters} className="mt-4 text-primary hover:underline">
 						Clear all filters
 					</button>
 				</div>

@@ -103,18 +103,18 @@ export default function ProjectStatusScreen({
 		criticalUnknowns: [],
 	}
 	return (
-		<div className="relative min-h-screen bg-gray-950 text-white">
+		<div className="relative min-h-screen bg-background text-foreground">
 			{isAnalyzing && (
 				<div className="flex h-screen items-center justify-center">
-					<Loader2 className="h-8 w-8 animate-spin text-gray-400" />
+					<Loader2 className="h-8 w-8 animate-spin text-foreground" />
 				</div>
 			)}
 
 			{/* Clean Header */}
-			<div className="border-gray-800 border-b bg-gray-950 px-6 py-8">
+			<div className="border-gray-800 border-b bg-background text-foreground px-6 py-8">
 				<div className="mx-auto max-w-4xl">
-					<h1 className="mb-3 font-light text-3xl text-white tracking-tight">{displayData.projectName}</h1>
-					<p className="text-gray-400 text-lg">{displayData.icp}</p>
+					<h1 className="mb-3 font-light text-3xl text-foreground tracking-tight">{displayData.projectName}</h1>
+					<p className="text-foreground/60 text-lg">{displayData.icp}</p>
 				</div>
 			</div>
 
@@ -288,7 +288,7 @@ export default function ProjectStatusScreen({
 					<div>
 						<div className="mb-8 flex items-center gap-3">
 							<Eye className="h-8 w-8 text-gray-400" />
-							<h2 className="font-light text-3xl text-white">Details</h2>
+							<h2 className="font-light text-3xl text-foreground">Details</h2>
 						</div>
 						<div className="grid grid-cols-2 gap-6 md:grid-cols-4">
 							{/* Gap Analysis */}
@@ -298,7 +298,7 @@ export default function ProjectStatusScreen({
 							>
 								<div className="mb-4 flex items-center gap-3">
 									<FileText className="h-6 w-6 text-purple-400" />
-									<h3 className="font-semibold text-lg text-white">Gap Analysis</h3>
+									<h3 className="font-semibold text-lg text-primary">Gap Analysis</h3>
 								</div>
 								<div className="flex items-center font-medium text-blue-300 text-sm">
 									<TrendingUp className="ml-2 h-4 w-4" />
@@ -329,7 +329,7 @@ export default function ProjectStatusScreen({
 							>
 								<div className="mb-4 flex items-center gap-3">
 									<Users className="h-6 w-6 text-purple-400" />
-									<h3 className="font-semibold text-lg text-white">{displayData.totalPersonas} Personas</h3>
+									<h3 className="font-semibold text-lg text-foreground">{displayData.totalPersonas} Personas</h3>
 								</div>
 								{/* <p className="mb-4 text-gray-200 text-sm">
 										Explore {displayData.totalPersonas} user personas and their characteristics
@@ -346,7 +346,7 @@ export default function ProjectStatusScreen({
 							>
 								<div className="mb-4 flex items-center gap-3">
 									<MessageSquare className="h-6 w-6 text-green-400" />
-									<h3 className="font-semibold text-lg text-white">{displayData.totalInterviews} Interviews</h3>
+									<h3 className="font-semibold text-lg text-foreground">{displayData.totalInterviews} Interviews</h3>
 								</div>
 								{/* <p className="mb-4 text-gray-200 text-sm">
 										Review all {displayData.totalInterviews} interviews and transcripts
@@ -365,7 +365,7 @@ export default function ProjectStatusScreen({
 						<div className="mb-6 flex items-center justify-between">
 							<h3 className="font-light text-white text-xl">Research Progress</h3>
 							<div className="flex items-center gap-3">
-								<span className="font-bold text-2xl text-white">{displayData.completionScore}%</span>
+								<span className="font-bold text-2xl text-foreground">{displayData.completionScore}%</span>
 								{displayData.confidenceLevel && (
 									<div
 										className={`flex items-center gap-2 rounded-full px-3 py-1 font-medium text-sm ${
@@ -389,7 +389,7 @@ export default function ProjectStatusScreen({
 								style={{ width: `${displayData.completionScore}%` }}
 							/>
 						</div>
-						<p className="mt-4 text-gray-300">
+						<p className="mt-4 text-foreground">
 							{displayData.completionScore < 50
 								? "Add more interviews to uncover deeper insights"
 								: displayData.completionScore < 80
@@ -415,7 +415,7 @@ export default function ProjectStatusScreen({
 							onClick={() => setShowCustomAnalysis(true)}
 							disabled={isAnalyzing}
 							variant="outline"
-							className="px-6 py-3 border-gray-300 bg-white text-gray-700 hover:border-gray-400 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+							className="px-6 py-3 border-gray-300 bg-white text-foreground hover:border-gray-400 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
 							Custom Analysis

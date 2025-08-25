@@ -3,7 +3,7 @@ import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Grid3X3, Users, TrendingUp, Info, Eye, Filter } from "lucide-react"
+import { Grid3X3, Users, TrendingUp, Info, Eye, Filter, ArrowUpDown } from "lucide-react"
 
 interface PersonaThemeMatrixProps {
 	matrixData: Array<{
@@ -20,37 +20,66 @@ interface PersonaThemeMatrixProps {
 
 // Empty state component for when no matrix data is available
 const EmptyMatrixState = () => (
-	<div className="text-center py-16">
+	<div className="py-16 text-center">
 		<div className="mx-auto max-w-md">
 			<div className="mb-6 flex justify-center">
 				<div className="rounded-full bg-gray-100 p-6">
 					<Grid3X3 className="h-12 w-12 text-gray-400" />
 				</div>
 			</div>
-			<h3 className="font-semibold text-gray-900 text-xl mb-3">No persona-theme data available</h3>
-			<p className="text-gray-600 mb-8">
+			<h3 className="mb-3 text-xl font-semibold text-gray-900">No persona-theme data available</h3>
+			<p className="mb-8 text-gray-600">
 				Upload interviews and create personas to see the relationship matrix between personas and themes.
 			</p>
 		</div>
 	</div>
 )
 
-export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
+export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMatrixProps) {
 	const [viewMode, setViewMode] = useState<"coverage" | "strength">("coverage")
 	const [selectedPersona, setSelectedPersona] = useState<string | null>(null)
 	const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
-	
-	// Use provided data or fallback to mock data
-	const data = matrixData.length > 0 ? matrixData : mockMatrixData
-	
-	// Extract unique themes from the data
+	const [swapAxes, setSwapAxes] = useState(false)
+
+	// Use only provided data - no mock fallback
+	const data = rawMatrixData || []
+
+	// Show empty state if no data
+	if (data.length === 0) {
+		return <EmptyMatrixState />
+	}
+
+	// Extract unique themes and personas from the data
 	const themeSet = new Set<string>()
+	const personaSet = new Set<string>()
 	for (const personaData of data) {
+		personaSet.add(personaData.persona)
 		for (const theme of personaData.themes) {
 			themeSet.add(theme.themeName)
 		}
 	}
 	const themes = Array.from(themeSet)
+	const personas = Array.from(personaSet)
+
+	// Create transposed data structure (theme → personas mapping)
+	const transposedData = themes.map((themeName) => ({
+		theme: themeName,
+		personas: personas.map((personaName) => {
+			const personaData = data.find((p) => p.persona === personaName)
+			const themeData = personaData?.themes.find((t) => t.themeName === themeName)
+			return {
+				personaName,
+				themeId: themeData?.themeId || "",
+				nEff: themeData?.nEff || 0,
+				coverage: themeData?.coverage || 0,
+				wedge: themeData?.wedge || false,
+			}
+		}),
+	}))
+
+	// Determine current orientation data
+	const isTransposed = swapAxes
+	const currentMatrixData = isTransposed ? transposedData : data
 
 	const getCellColor = (value: number, isWedge: boolean, mode: "coverage" | "strength") => {
 		if (isWedge) {
@@ -70,23 +99,29 @@ export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
 		}
 	}
 
-	const getCellValue = (themeData: any, mode: "coverage" | "strength") => {
+	const getCellValue = (themeData: { coverage: number; nEff: number }, mode: "coverage" | "strength") => {
 		return mode === "coverage" ? themeData.coverage : themeData.nEff
 	}
 
-	const formatCellValue = (value: number, mode: "coverage" | "strength") => {
+	const formatCellValue = (value: number, mode: "coverage" | "strength"): string | null => {
+		if (value === 0) return "-"
 		return mode === "coverage" ? `${Math.round(value * 100)}%` : value.toFixed(1)
 	}
 
 	const getPersonaData = (persona: string) => {
-		return data.find((p) => p.persona === persona)
+		return data.find((p: { persona: string }) => p.persona === persona)
 	}
 
 	const getThemeData = (themeName: string) => {
-		return data.map((persona) => ({
-			persona: persona.persona,
-			...persona.themes.find((t) => t.themeName === themeName),
-		}))
+		return data.map(
+			(persona: {
+				persona: string
+				themes: Array<{ themeName: string; coverage?: number; nEff?: number; wedge?: boolean }>
+			}) => ({
+				persona: persona.persona,
+				...persona.themes.find((t: { themeName: string }) => t.themeName === themeName),
+			})
+		)
 	}
 
 	return (
@@ -117,6 +152,15 @@ export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
 				</div>
 
 				<div className="flex items-center gap-2">
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => setSwapAxes(!swapAxes)}
+						className="flex items-center gap-2"
+					>
+						<ArrowUpDown className="w-4 h-4" />
+						Swap Axes
+					</Button>
 					<Button variant="outline" size="sm">
 						<Eye className="w-4 h-4 mr-2" />
 						View Details
@@ -134,6 +178,8 @@ export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
 					<CardTitle className="flex items-center gap-2">
 						<Grid3X3 className="w-5 h-5" />
 						{viewMode === "coverage" ? "Coverage Matrix" : "Strength Matrix (N_eff)"}
+						{isTransposed && <span className="text-sm font-normal text-gray-500">(Themes × Personas)</span>}
+						{!isTransposed && <span className="text-sm font-normal text-gray-500">(Personas × Themes)</span>}
 					</CardTitle>
 				</CardHeader>
 				<CardContent>
@@ -141,62 +187,124 @@ export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
 						<table className="w-full">
 							<thead>
 								<tr>
-									<th className="text-left p-3 border-b">Persona</th>
-									{themes.map((theme) => (
+									<th className="text-left p-3 border-b">{isTransposed ? "Theme" : "Persona"}</th>
+									{(isTransposed ? personas : themes).map((header) => (
 										<th
-											key={theme}
+											key={header}
 											className="text-left p-3 border-b cursor-pointer hover:bg-gray-50"
-											onClick={() => setSelectedTheme(selectedTheme === theme ? null : theme)}
+											onClick={() => {
+												if (isTransposed) {
+													setSelectedPersona(selectedPersona === header ? null : header)
+												} else {
+													setSelectedTheme(selectedTheme === header ? null : header)
+												}
+											}}
 										>
-											{theme}
+											{header}
 										</th>
 									))}
 								</tr>
 							</thead>
 							<tbody>
-								{data.map((personaData) => (
-									<tr
-										key={personaData.persona}
-										className={`hover:bg-gray-50 ${selectedPersona === personaData.persona ? "bg-blue-50" : ""}`}
-									>
-										<td
-											className="p-3 border-b font-medium cursor-pointer"
-											onClick={() =>
-												setSelectedPersona(selectedPersona === personaData.persona ? null : personaData.persona)
-											}
-										>
-											{personaData.persona}
-										</td>
-										{themes.map((themeName) => {
-											const themeData = personaData.themes.find((t) => t.themeName === themeName)
-											if (!themeData)
-												return (
-													<td key={themeName} className="p-3 border-b">
-														-
-													</td>
-												)
-
-											const value = getCellValue(themeData, viewMode)
-											const colorClass = getCellColor(value, themeData.wedge, viewMode)
-
-											return (
-												<td key={themeName} className="p-3 border-b">
-													<div className={`inline-flex items-center px-3 py-2 rounded-lg border ${colorClass}`}>
-														<span className="font-medium">{formatCellValue(value, viewMode)}</span>
-														{themeData.wedge && (
-															<Badge
-																variant="outline"
-																className="ml-2 text-xs bg-purple-600 text-white border-purple-600"
-															>
-																Wedge
-															</Badge>
-														)}
-													</div>
+								{isTransposed
+									? // Transposed view: themes as rows, personas as columns
+										transposedData.map((themeRow) => (
+											<tr
+												key={themeRow.theme}
+												className={`hover:bg-gray-50 ${selectedTheme === themeRow.theme ? "bg-blue-50" : ""}`}
+											>
+												<td
+													className="p-3 border-b font-medium cursor-pointer"
+													onClick={() => setSelectedTheme(selectedTheme === themeRow.theme ? null : themeRow.theme)}
+												>
+													{themeRow.theme}
 												</td>
+												{themeRow.personas.map((personaCell) => {
+													if (!personaCell.nEff && !personaCell.coverage)
+														return (
+															<td key={personaCell.personaName} className="p-3 border-b">
+																-
+															</td>
+														)
+
+													const value = getCellValue(personaCell, viewMode)
+													const colorClass = getCellColor(value, personaCell.wedge, viewMode)
+
+													return (
+														<td key={personaCell.personaName} className="p-3 border-b">
+															<div className={`inline-flex items-center px-3 py-2 rounded-lg border ${colorClass}`}>
+																<span className="font-medium">{formatCellValue(value, viewMode)}</span>
+																{personaCell.wedge && (
+																	<Badge
+																		variant="outline"
+																		className="ml-2 text-xs bg-purple-600 text-white border-purple-600"
+																	>
+																		Wedge
+																	</Badge>
+																)}
+															</div>
+														</td>
+													)
+												})}
+											</tr>
+										))
+									: // Default view: personas as rows, themes as columns
+										data.map(
+											(personaData: {
+												persona: string
+												themes: Array<{
+													themeId: string
+													themeName: string
+													nEff: number
+													coverage: number
+													wedge: boolean
+												}>
+											}) => (
+												<tr
+													key={personaData.persona}
+													className={`hover:bg-gray-50 ${selectedPersona === personaData.persona ? "bg-blue-50" : ""}`}
+												>
+													<td
+														className="p-3 border-b font-medium cursor-pointer"
+														onClick={() =>
+															setSelectedPersona(selectedPersona === personaData.persona ? null : personaData.persona)
+														}
+													>
+														{personaData.persona}
+													</td>
+													{themes.map((themeName) => {
+														const themeData = personaData.themes.find(
+															(t: { themeName: string }) => t.themeName === themeName
+														)
+														if (!themeData)
+															return (
+																<td key={themeName} className="p-3 border-b">
+																	-
+																</td>
+															)
+
+														const value = getCellValue(themeData, viewMode)
+														const colorClass = getCellColor(value, themeData.wedge, viewMode)
+
+														return (
+															<td key={themeName} className="p-3 border-b">
+																<div className={`inline-flex items-center px-3 py-2 rounded-lg border ${colorClass}`}>
+																	<span className="font-medium">{formatCellValue(value, viewMode)}</span>
+																	{themeData.wedge && (
+																		<Badge
+																			variant="outline"
+																			className="ml-2 text-xs bg-purple-600 text-white border-purple-600"
+																		>
+																			Wedge
+																		</Badge>
+																	)}
+																</div>
+															</td>
+														)
+													})}
+												</tr>
 											)
-										})}
-									</tr>
-								))}
+										)}
 							</tbody>
 						</table>
 					</div>
@@ -259,17 +367,14 @@ export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
 						<div className="text-sm">
 							<strong>Strongest Wedges:</strong>
 							<ul className="mt-1 ml-4 space-y-1">
-								<li>• Operations Managers → Manual inventory pain</li>
-								<li>• Business Owners → Willingness to pay premium</li>
-								<li>• Data Analysts → Data accuracy concerns</li>
+								<li>• TBD</li>
 							</ul>
 						</div>
 
 						<div className="text-sm">
 							<strong>Cross-Persona Themes:</strong>
 							<ul className="mt-1 ml-4 space-y-1">
-								<li>• Manual inventory pain (broad but varying intensity)</li>
-								<li>• Data accuracy concerns (critical for all technical roles)</li>
+								<li>• TBD</li>
 							</ul>
 						</div>
 					</CardContent>
@@ -288,33 +393,37 @@ export function PersonaThemeMatrix({ matrixData }: PersonaThemeMatrixProps) {
 					<CardContent>
 						{selectedPersona && (
 							<div className="space-y-4">
-								{getPersonaData(selectedPersona)?.themes.map((theme) => (
-									<div key={theme.themeId} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-										<div>
-											<h4 className="font-medium">{theme.themeName}</h4>
-											<p className="text-sm text-gray-600">
-												Coverage: {Math.round(theme.coverage * 100)}% • Strength: {theme.nEff.toFixed(1)}
-											</p>
+								{getPersonaData(selectedPersona)?.themes.map(
+									(theme: { themeId: string; themeName: string; coverage: number; nEff: number; wedge: boolean }) => (
+										<div key={theme.themeId} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+											<div>
+												<h4 className="font-medium">{theme.themeName}</h4>
+												<p className="text-sm text-gray-600">
+													Coverage: {Math.round(theme.coverage * 100)}% • Strength: {theme.nEff.toFixed(1)}
+												</p>
+											</div>
+											{theme.wedge && <Badge className="bg-purple-600 text-white">Wedge</Badge>}
 										</div>
-										{theme.wedge && <Badge className="bg-purple-600 text-white">Wedge</Badge>}
-									</div>
-								))}
+									)
+								)}
 							</div>
 						)}
 
 						{selectedTheme && (
 							<div className="space-y-4">
-								{getThemeData(selectedTheme).map((data) => (
-									<div key={data.persona} className="flex items-center justify-between p-3 bg-gray-50 rounded">
-										<div>
-											<h4 className="font-medium">{data.persona}</h4>
-											<p className="text-sm text-gray-600">
-												Coverage: {Math.round((data.coverage || 0) * 100)}% • Strength: {(data.nEff || 0).toFixed(1)}
-											</p>
+								{getThemeData(selectedTheme).map(
+									(data: { persona: string; coverage?: number; nEff?: number; wedge?: boolean }) => (
+										<div key={data.persona} className="flex items-center justify-between p-3 bg-gray-50 rounded">
+											<div>
+												<h4 className="font-medium">{data.persona}</h4>
+												<p className="text-sm text-gray-600">
+													Coverage: {Math.round((data.coverage || 0) * 100)}% • Strength: {(data.nEff || 0).toFixed(1)}
+												</p>
+											</div>
+											{data.wedge && <Badge className="bg-purple-600 text-white">Wedge</Badge>}
 										</div>
-										{data.wedge && <Badge className="bg-purple-600 text-white">Wedge</Badge>}
-									</div>
-								))}
+									)
+								)}
 							</div>
 						)}
 					</CardContent>

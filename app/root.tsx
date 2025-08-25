@@ -95,7 +95,7 @@ export const Layout = ({ children }: { children: React.ReactNode }) => {
 				<Meta />
 				<Links />
 			</head>
-			<body className="h-full w-full">
+			<body className="h-full w-full bg-background text-foreground">
 				{/* <LanguageSwitcher /> */}
 				{children}
 				<ScrollRestoration />

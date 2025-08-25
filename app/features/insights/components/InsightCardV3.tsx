@@ -19,9 +19,9 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 		<>
 			<Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setSelected(insight)}>
 				<CardContent className="p-4">
-					<div className="pt-0 font-light text-gray-500 text-xs">Category: {insight.category}</div>
-					<h3 className="mb-2 font-semibold text-gray-900">{insight.pain || "Untitled"}</h3>
-					{insight.details && <p className="mb-4 line-clamp-4 text-gray-600 text-sm">{insight.details}</p>}
+					<div className="pt-0 font-light text-muted-foreground text-xs">Category: {insight.category}</div>
+					<h3 className="mb-2 font-semibold text-foreground">{insight.pain || "Untitled"}</h3>
+					{insight.details && <p className="mb-4 line-clamp-4 text-muted-foreground text-sm">{insight.details}</p>}
 					<div className="flex flex-wrap items-center justify-between">
 						<div className="flex items-center space-x-2">
 							{insight.journey_stage && (
@@ -40,7 +40,7 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 					<DialogContent className="mx-4 my-8 max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl overflow-hidden sm:mx-auto sm:w-full">
 						<DialogHeader className="space-y-3 pb-4">
 							<DialogTitle className="space-y-2">
-								<div className="font-light text-gray-500 text-xs">{selected.name}</div>
+								<div className="font-light text-muted-foreground text-xs">{selected.name}</div>
 								<div className="border-b pb-3 font-semibold text-lg">{selected.pain}</div>
 							</DialogTitle>
 						</DialogHeader>
@@ -56,16 +56,16 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 								<div className="grid grid-cols-1 gap-6 ">
 									{selected.details && (
 										<div className="space-y-2">
-											<h4 className="font-medium text-gray-700 text-sm">Details</h4>
-											<p className="text-gray-600 text-sm leading-relaxed">{selected.details}</p>
+											<h4 className="font-medium text-foreground text-sm">Details</h4>
+											<p className="text-muted-foreground text-sm leading-relaxed">{selected.details}</p>
 										</div>
 									)}
 									{selected.evidence && (
 										<div className="space-y-2">
-											<h4 className="font-medium text-gray-700 text-sm">Evidence</h4>
+											<h4 className="font-medium text-foreground text-sm">Evidence</h4>
 											<div className="flex items-center bg-blue-400/20 gap-2 rounded-lg  p-3">
 												<Quote className="h-4 w-4 " />
-												<p className="text-gray-600 text-sm leading-relaxed">{selected.evidence}</p>
+												<p className="text-muted-foreground text-sm leading-relaxed">{selected.evidence}</p>
 											</div>
 										</div>
 									)}
@@ -74,21 +74,21 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 
 							{selected.desired_outcome && (
 								<div className="space-y-2">
-									<h4 className="font-medium text-gray-700 text-sm">Desired Outcome</h4>
-									<p className="text-gray-600 text-sm leading-relaxed">{selected.desired_outcome}</p>
+									<h4 className="font-medium text-foreground text-sm">Desired Outcome</h4>
+									<p className="text-muted-foreground text-sm leading-relaxed">{selected.desired_outcome}</p>
 								</div>
 							)}
 
 							{selected.jtbd && (
 								<div className="space-y-2">
-									<h4 className="font-medium text-gray-700 text-sm">Job to be Done</h4>
-									<p className="text-gray-600 text-sm leading-relaxed">{selected.jtbd}</p>
+									<h4 className="font-medium text-foreground text-sm">Job to be Done</h4>
+									<p className="text-muted-foreground text-sm leading-relaxed">{selected.jtbd}</p>
 								</div>
 							)}
 
 							{selected.insight_tags && (
 								<div className="space-y-3">
-									<h4 className="font-medium text-gray-700 text-sm">Tags</h4>
+									<h4 className="font-medium text-foreground text-sm">Tags</h4>
 									<div className="flex flex-wrap gap-2">
 										{selected.insight_tags?.map((tag: any) => (
 											<StyledTag key={tag.tag} name={tag.tag} style={tag.style} frequency={tag.frequency} />

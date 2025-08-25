@@ -36,12 +36,55 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("project_id", projectId)
 	if (iErr) throw new Error(`Failed to load insights: ${iErr.message}`)
 
-	// 4) Load all evidence with personas to build matrix data
+	// 4) Load all evidence with personas (legacy) and interview for fallback only
 	const { data: allEvidence, error: eErr } = await supabase
 		.from("evidence")
 		.select("id, personas, interview_id")
 		.eq("project_id", projectId)
 	if (eErr) throw new Error(`Failed to load evidence: ${eErr.message}`)
+
+	// 5) Gather evidence_ids referenced by themes for this project
+	const themedEvidenceIds = new Set<string>()
+	for (const row of links ?? []) {
+		const evId = row.evidence?.id
+		if (evId) themedEvidenceIds.add(evId)
+	}
+
+	// 6) Load evidence_people for those evidence_ids to link evidence -> person
+	const { data: evPeople, error: epErr } = await supabase
+		.from("evidence_people")
+		.select("evidence_id, person_id")
+		.eq("project_id", projectId)
+		.in("evidence_id", Array.from(themedEvidenceIds))
+	if (epErr) throw new Error(`Failed to load evidence_people: ${epErr.message}`)
+
+	// Index evidence_id -> set(person_id)
+	const peopleByEvidence = new Map<string, Set<string>>()
+	const personIdSet = new Set<string>()
+	for (const row of evPeople ?? []) {
+		const set = peopleByEvidence.get(row.evidence_id) ?? new Set<string>()
+		set.add(row.person_id)
+		peopleByEvidence.set(row.evidence_id, set)
+		personIdSet.add(row.person_id)
+	}
+
+	// 7) Load people_personas for those person_ids, including persona names
+	let personasByPerson = new Map<string, { id: string; name: string }[]>()
+	if (personIdSet.size) {
+		const { data: pp, error: ppErr } = await supabase
+			.from("people_personas")
+			.select("person_id, persona:persona_id(id, name)")
+			.eq("project_id", projectId)
+			.in("person_id", Array.from(personIdSet))
+		if (ppErr) throw new Error(`Failed to load people_personas: ${ppErr.message}`)
+		personasByPerson = new Map()
+		for (const row of (pp ?? []) as Array<{ person_id: string; persona: { id: string; name: string } | null }>) {
+			if (!row.persona) continue
+			const list = personasByPerson.get(row.person_id) ?? []
+			list.push(row.persona)
+			personasByPerson.set(row.person_id, list)
+		}
+	}
 
 	// Build maps
 	const evidenceByTheme = new Map<string, string[]>() // theme_id -> evidence ids
@@ -87,13 +130,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona-theme matrix data
 	const personaSet = new Set<string>()
 	const evidenceById = new Map<string, { personas: string[]; interview_id?: string }>()
-	
-	// Index all evidence by id and collect all personas
+
+	// Build normalized personas per evidence via evidence_people -> people_personas
 	for (const ev of allEvidence ?? []) {
-		evidenceById.set(ev.id, { personas: ev.personas ?? [], interview_id: ev.interview_id ?? undefined })
-		for (const persona of ev.personas ?? []) {
-			personaSet.add(persona)
+		const linkedPeople = peopleByEvidence.get(ev.id)
+		const normalizedPersonas = new Set<string>()
+		if (linkedPeople && linkedPeople.size) {
+			for (const pid of linkedPeople) {
+				const plist = personasByPerson.get(pid) ?? []
+				for (const p of plist) normalizedPersonas.add(p.name)
+			}
 		}
+		// Fallback to legacy evidence.personas if no normalized mapping
+		const finalPersonas = normalizedPersonas.size ? Array.from(normalizedPersonas) : (ev.personas ?? [])
+		evidenceById.set(ev.id, { personas: finalPersonas, interview_id: ev.interview_id ?? undefined })
+		for (const persona of finalPersonas) personaSet.add(persona)
 	}
 
 	const personas = Array.from(personaSet)
