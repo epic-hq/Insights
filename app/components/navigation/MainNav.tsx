@@ -7,6 +7,7 @@ import { PATHS } from "~/paths"
 import { useAuth } from "../../contexts/AuthContext"
 import { UserProfile } from "../auth/UserProfile"
 import { LogoBrand } from "../branding"
+import { JourneyNav } from "./JourneyNav"
 
 // export const projectNavLinks: { key: keyof typeof PATHS; label: string; authOnly: boolean }[] = [
 // 	{ key: "DASHBOARD", label: "Dashboard", authOnly: true },
@@ -55,7 +56,7 @@ function _Breadcrumbs() {
 	)
 }
 
-export default function MainNav({ links }: { links?: { key: string; label: string; authOnly: boolean }[] }) {
+export default function MainNav() {
 	const { user } = useAuth()
 	const { pathname } = useLocation()
 	const { accountId, projectId, projectPath } = useCurrentProject()
@@ -63,8 +64,7 @@ export default function MainNav({ links }: { links?: { key: string; label: strin
 	const isHomePage = pathname === "/"
 	const isAboutPage = pathname === "/about"
 
-	// Use provided links or default to projectNavLinks
-	const navigationLinks = links || projectNavLinks
+	// Note: navigationLinks removed as JourneyNav now handles primary navigation
 
 	// Public marketing links for non-authenticated users
 	const marketingLinks = [
@@ -83,55 +83,25 @@ export default function MainNav({ links }: { links?: { key: string; label: strin
 							{/* <span className="ml-2 font-bold text-gray-900 text-xl dark:text-white">Insights</span> */}
 						</Link>
 
-						{/* Primary Nav: show appropriate links based on authentication status and page context */}
-						<div className="hidden sm:ml-6 sm:flex sm:space-x-8">
-							{user && !isHomePage && !isAboutPage
-								? // Show project-specific links for authenticated users in app
-									navigationLinks
-										.filter((item) => item.authOnly && accountId && projectId)
-										.map(({ key, label }) => {
-											// Generate route based on key
-											const routeMap: Record<string, string> = {
-												DASHBOARD: routes.dashboard(),
-												INTERVIEWS: routes.interviews.index(),
-												INSIGHTS: routes.insights.index(),
-												THEMES: routes.themes.index(),
-												PERSONAS: routes.personas.index(),
-												PEOPLE: routes.people.index(),
-												PROJECTS: routes.projects.index(),
-												OPPORTUNITIES: routes.opportunities.index(),
-												AUTO_INSIGHTS: routes.insights.autoInsights(),
-											}
-											const link = routeMap[key] || "#"
-
-											return (
-												<NavLink
-													key={key}
-													to={link}
-													className={({ isActive }) =>
-														`inline-flex items-center border-b-2 px-1 pt-1 font-medium text-sm ${
-															isActive
-																? "border-blue-500 text-gray-900 dark:text-white"
-																: "border-transparent text-gray-500 hover:border-gray-300 hover:text-gray-700 dark:text-gray-300 dark:hover:border-gray-700 dark:hover:text-gray-200"
-														}`
-													}
-												>
-													{label}
-												</NavLink>
-											)
-										})
-								: (isHomePage || isAboutPage) && !user
-									? // Show marketing links for non-authenticated users on marketing pages
-										marketingLinks.map(({ key, label, link }) => (
-											<Link
-												key={key}
-												to={link}
-												className="font-medium text-gray-500 text-sm underline-offset-4 hover:text-gray-700 hover:underline"
-											>
-												{label}
-											</Link>
-										))
-									: null}
+						{/* Journey Navigation - show for authenticated users in app */}
+						<div className="flex flex-1 justify-center">
+							{user && !isHomePage && !isAboutPage && accountId && projectId && (
+								<JourneyNav variant="stepper" className="flex items-center" />
+							)}
+							{/* Marketing links for non-authenticated users on marketing pages */}
+							{(isHomePage || isAboutPage) && !user && (
+								<div className="hidden sm:flex sm:space-x-8">
+									{marketingLinks.map(({ key, label, link }) => (
+										<Link
+											key={key}
+											to={link}
+											className="font-medium text-gray-500 text-sm underline-offset-4 hover:text-gray-700 hover:underline"
+										>
+											{label}
+										</Link>
+									))}
+								</div>
+							)}
 						</div>
 
 						{/* Actions: show appropriate buttons based on auth state and page context */}

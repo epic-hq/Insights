@@ -71,21 +71,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// Batch KPI counts for better performance
 	const [interviewCountResult, insightCountResult, opportunityCountResult] = await Promise.all([
-		supabase
-			.from("interviews")
-			.select("id", { count: "exact", head: true })
-			.eq("account_id", accountId)
-			.eq("project_id", projectId),
+		supabase.from("interviews").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 		supabase
 			.from("insights")
 			.select("id", { count: "exact", head: true })
-			.eq("account_id", accountId)
+
 			.eq("project_id", projectId),
-		supabase
-			.from("opportunities")
-			.select("id", { count: "exact", head: true })
-			.eq("account_id", accountId)
-			.eq("project_id", projectId)
+		supabase.from("opportunities").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 	])
 
 	const { count: interviewCount } = interviewCountResult
@@ -185,7 +177,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
-
 	// Process tag frequency data into the format expected by TagDisplay
 	type TagFrequency = { name: string; frequency: number }
 	const tagFrequencyMap = new Map<string, number>()
@@ -203,7 +194,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const tags: TagFrequency[] = Array.from(tagFrequencyMap.entries())
 		.map(([name, frequency]) => ({ name, frequency }))
 		.sort((a, b) => b.frequency - a.frequency) // Sort by frequency descending
-
 
 	// Group insights by tags for tree map (keeping existing logic)
 	const tagMap = new Map<string, TreeNode>()
@@ -560,7 +550,7 @@ export default function MetroIndex() {
 				</div>
 
 				{/* Bottom action bar */}
-				<BottomActionBar onToggleChat={handleToggleChat} isUploading={isUploading} />
+				{/* <BottomActionBar onToggleChat={handleToggleChat} isUploading={isUploading} /> */}
 			</div>
 
 			{/* CopilotSidebar - Right side overlay */}

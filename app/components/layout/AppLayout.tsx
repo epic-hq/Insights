@@ -6,10 +6,9 @@ import { cn } from "~/lib/utils"
 
 interface AppLayoutProps {
 	showJourneyNav?: boolean
-	showStepper?: boolean
 }
 
-export function AppLayout({ showJourneyNav = true, showStepper = true }: AppLayoutProps) {
+export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const { isMobile, isDesktop } = useDeviceDetection()
 
 	return (
@@ -17,26 +16,24 @@ export function AppLayout({ showJourneyNav = true, showStepper = true }: AppLayo
 			{/* Main header navigation */}
 			<MainNav />
 
-			{/* Progress stepper - desktop only, replaces top nav confusion */}
-			{showStepper && isDesktop && <JourneyNav variant="stepper" />}
+			{/* Desktop top navigation - only on md+ screens */}
+			{showJourneyNav && isDesktop && <JourneyNav variant="stepper" />}
 
-			<div className="flex flex-1">
-				{/* Desktop sidebar navigation - only show if not showing stepper to avoid confusion */}
-				{showJourneyNav && isDesktop && !showStepper && <JourneyNav variant="sidebar" />}
+			{/* Main content area */}
+			<main
+				className={cn(
+					"flex-1 overflow-hidden",
+					isMobile && showJourneyNav ? "pb-20" : "" // Add bottom padding for mobile nav
+				)}
+			>
+				<Outlet />
+			</main>
 
-				{/* Main content area */}
-				<main
-					className={cn(
-						"flex-1 overflow-hidden",
-						isMobile && showJourneyNav ? "pb-20" : "" // Add bottom padding for mobile nav
-					)}
-				>
-					<Outlet />
-				</main>
-			</div>
-
-			{/* Mobile bottom navigation */}
+			{/* Mobile bottom navigation - only on < lg screens */}
 			{showJourneyNav && isMobile && <JourneyNav variant="bottom" />}
+
+			{/* Bottom action bar - COMMENTED OUT as requested */}
+			{/* {showBottomActions && <BottomActionBar />} */}
 		</div>
 	)
 }
