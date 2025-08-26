@@ -23,6 +23,7 @@ create table if not exists interviews (
   participant_pseudonym text,
   segment text,
 	media_url text, -- url to the media file
+	media_type text, -- type of content: interview, focus-group, customer-call, user-testing
 	transcript text,
 	transcript_formatted jsonb,
 	high_impact_themes text[],
@@ -56,33 +57,32 @@ EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
 ALTER TABLE public.interviews ENABLE ROW LEVEL SECURITY;
 
 -------------
--- Users should be able to read their own interviews (personal ownership)
---------------
-create policy "Users can select their own interviews" on public.interviews
+-- Account members can read interviews in their accounts
+create policy "Account members can select interviews" on public.interviews
     for select
     to authenticated
-    using (account_id = auth.uid());
+    using (account_id in (select accounts.get_accounts_with_role()));
 
 ----------------
--- Users should be able to create their own interviews
+-- Account members can create interviews for their accounts
 ----------------
-create policy "Users can insert their own interviews" on public.interviews
+create policy "Account members can insert interviews" on public.interviews
     for insert
     to authenticated
-    with check (account_id = auth.uid());
+    with check (account_id in (select accounts.get_accounts_with_role()));
 
 ---------------
--- Users should be able to update their own interviews
+-- Account members can update interviews in their accounts
 ---------------
-create policy "Users can update their own interviews" on public.interviews
+create policy "Account members can update interviews" on public.interviews
     for update
     to authenticated
-    using (account_id = auth.uid());
+    using (account_id in (select accounts.get_accounts_with_role()));
 
 ----------------
--- Users should be able to delete their own interviews
+-- Account owners can delete interviews in their accounts
 ----------------
-create policy "Users can delete their own interviews" on public.interviews
+create policy "Account owners can delete interviews" on public.interviews
     for delete
     to authenticated
-    using (account_id = auth.uid());
+    using (account_id in (select accounts.get_accounts_with_role('owner')));

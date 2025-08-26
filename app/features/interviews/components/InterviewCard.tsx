@@ -4,6 +4,7 @@ import { Calendar, Clock, FileText, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import MediaTypeIcon from "~/components/ui/MediaTypeIcon"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -83,15 +84,10 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 					{/* Header - Interview Label */}
 					<div className="mb-3 flex items-center justify-between">
 						<div className="flex items-center gap-2">
-							<FileText className="h-4 w-4 text-blue-600" />
-							<span className="text-blue-600 text-sm font-medium">Interview</span>
+							<MediaTypeIcon mediaType={interview.media_type} showLabel={true} />
+							{/* <span className="text-foreground/40 text-sm font-medium">Interview</span> */}
 						</div>
-						<Badge
-							className={cn(
-								"font-medium text-xs",
-								getStatusColor(interview.status)
-							)}
-						>
+						<Badge className={cn("font-medium text-xs", getStatusColor(interview.status))}>
 							{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 						</Badge>
 					</div>

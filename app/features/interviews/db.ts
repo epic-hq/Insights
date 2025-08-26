@@ -25,6 +25,7 @@ export const getInterviews = async ({
 			open_questions_and_next_steps,
 			status,
 			media_url,
+			media_type,
 			created_at,
 			updated_at,
 			interview_people (
@@ -76,6 +77,7 @@ export const getInterviewById = async ({
 			open_questions_and_next_steps,
 			status,
 			media_url,
+			media_type,
 			created_at,
 			updated_at,
 			interview_people (
@@ -201,6 +203,7 @@ export const getRelatedInterviews = async ({
 			open_questions_and_next_steps,
 			status,
 			media_url,
+			media_type,
 			created_at,
 			updated_at,
 			interview_people (

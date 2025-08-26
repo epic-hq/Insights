@@ -69,24 +69,28 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Project not found", { status: 404 })
 	}
 
-	// Fetch KPIs - count of interviews, insights, and opportunities
-	const { count: interviewCount } = await supabase
-		.from("interviews")
-		.select("id", { count: "exact", head: true })
-		.eq("account_id", accountId)
-		.eq("project_id", projectId)
+	// Batch KPI counts for better performance
+	const [interviewCountResult, insightCountResult, opportunityCountResult] = await Promise.all([
+		supabase
+			.from("interviews")
+			.select("id", { count: "exact", head: true })
+			.eq("account_id", accountId)
+			.eq("project_id", projectId),
+		supabase
+			.from("insights")
+			.select("id", { count: "exact", head: true })
+			.eq("account_id", accountId)
+			.eq("project_id", projectId),
+		supabase
+			.from("opportunities")
+			.select("id", { count: "exact", head: true })
+			.eq("account_id", accountId)
+			.eq("project_id", projectId)
+	])
 
-	const { count: insightCount } = await supabase
-		.from("insights")
-		.select("id", { count: "exact", head: true })
-		.eq("account_id", accountId)
-		.eq("project_id", projectId)
-
-	const { count: opportunityCount } = await supabase
-		.from("opportunities")
-		.select("id", { count: "exact", head: true })
-		.eq("account_id", accountId)
-		.eq("project_id", projectId)
+	const { count: interviewCount } = interviewCountResult
+	const { count: insightCount } = insightCountResult
+	const { count: opportunityCount } = opportunityCountResult
 
 	// Create route helpers for server-side use
 	const routes = createProjectRoutes(accountId, projectId)
@@ -172,28 +176,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		contradictions: insight.contradictions,
 	}))
 
-	// Debug: Check if insight_tags table has any data at all
-	const { data: allInsightTags, error: allTagsError } = await supabase.from("insight_tags").select("*").limit(5)
-
-	consola.debug("All insight_tags sample:", { allInsightTags, allTagsError })
-
-	// Debug: Check insight_tags for this account
-	const { data: accountInsightTags, error: accountTagsError } = await supabase
-		.from("insight_tags")
-		.select("*")
-		.eq("account_id", accountId)
-		.limit(5)
-
-	consola.debug("Account insight_tags:", { accountInsightTags, accountTagsError, accountId })
-
-	// Debug: Check insight_tags for this project
-	const { data: projectInsightTags, error: projectTagsError } = await supabase
-		.from("insight_tags")
-		.select("*")
-		.eq("project_id", projectId)
-		.limit(5)
-
-	consola.debug("Project insight_tags:", { projectInsightTags, projectTagsError, projectId })
+	// Remove debug queries - they're causing performance issues
 
 	// Fetch tags with frequency counts from insight_tags junction table
 	const { data: tagFrequencyData, error: tagFrequencyError } = await supabase
@@ -202,7 +185,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 
-	// consola.log("Tag frequency query:", { tagFrequencyData, tagFrequencyError, accountId, projectId })
 
 	// Process tag frequency data into the format expected by TagDisplay
 	type TagFrequency = { name: string; frequency: number }
@@ -222,13 +204,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.map(([name, frequency]) => ({ name, frequency }))
 		.sort((a, b) => b.frequency - a.frequency) // Sort by frequency descending
 
-	// Debug logging
-	// consola.log("Dashboard Debug:", {
-	// 	insightRowsCount: insightRows?.length || 0,
-	// 	tagFrequencyDataCount: tagFrequencyData?.length || 0,
-	// 	tagsCount: tags.length,
-	// 	personaRowsCount: data?.length || 0,
-	// })
 
 	// Group insights by tags for tree map (keeping existing logic)
 	const tagMap = new Map<string, TreeNode>()
@@ -403,7 +378,7 @@ export default function MetroIndex() {
 	}
 
 	// Check if any interviews are currently uploading/processing
-	const isUploading = interviews.some(interview => 
+	const isUploading = interviews.some((interview) =>
 		["uploading", "processing", "transcribing"].includes(interview.status)
 	)
 
@@ -417,13 +392,11 @@ export default function MetroIndex() {
 					icp={project?.icp || ""}
 					projectId={projectId}
 					statusData={projectStatusData}
-					onAddMore={() => {
-						// TODO find right funciton for new flow
-					}}
-					onViewResults={() => {}}
+					personas={personas}
+					insights={insights}
 				/>
 
-				<AgentStatusDisplay />
+				{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}
 
 				<div className="p-3 pb-24">
 					{/* Expanded List */}

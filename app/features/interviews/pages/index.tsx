@@ -3,8 +3,10 @@ import { formatDistance } from "date-fns"
 import { Grid, List, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router-dom"
+import { Link, useLoaderData } from "react-router"
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { Button } from "~/components/ui/button"
+import { routes } from "~/utils/routes"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviews } from "~/features/interviews/db"
@@ -123,7 +125,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								Conversations, interviews, and transcripts
 							</p>
 						</div>
-						<div className="flex flex-wrap gap-3">
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 							{/* View Toggle */}
 							<div className="flex rounded-lg border border-gray-300 dark:border-gray-600">
 								<Button
@@ -143,15 +145,17 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									<List className="h-4 w-4" />
 								</Button>
 							</div>
-							<Button asChild variant="default" className="gap-2">
-								<Link to={routes.interviews.onboard()}>
-									<Upload className="h-4 w-4" />
-									Add Interview
-								</Link>
-							</Button>
-							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-								<Link to={routes.insights.withSort("latest")}>View All Insights</Link>
-							</Button>
+							<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+								<Button asChild variant="default" className="gap-2">
+									<Link to={routes.interviews.onboard()}>
+										<Upload className="h-4 w-4" />
+										Add Interview
+									</Link>
+								</Button>
+								<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+									<Link to={routes.themes.index()}>View Themes</Link>
+								</Button>
+							</div>
 						</div>
 					</div>
 				</div>
@@ -232,6 +236,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
 													<div className="font-medium text-gray-900 dark:text-white">
 														{interview.title || `Interview with ${interview.participant}`}
+													</div>
+													<div className="mt-1">
+														<MediaTypeIcon 
+															mediaType={interview.media_type} 
+															iconClassName="h-3 w-3" 
+															labelClassName="text-xs"
+														/>
 													</div>
 												</Link>
 											</td>

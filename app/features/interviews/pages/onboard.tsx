@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate } from "react-router-dom"
-import { getProjectById } from "~/features/projects/db"
+import { getProjectById, getProjectSections } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import OnboardingFlow, { type OnboardingData } from "../../onboarding/components/OnboardingFlow"
@@ -25,15 +25,28 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const project = projectResult.data
 
+	// Get project sections to extract questions
+	const sectionsResult = await getProjectSections({
+		supabase: ctx.supabase,
+		projectId,
+	})
+
+	// Extract questions from project sections
+	const questions = (sectionsResult.data || [])
+		.filter((section) => section.kind === "goal" || section.kind === "question")
+		.map((section) => section.content_md)
+		.filter(Boolean)
+
 	return {
 		project,
 		accountId,
 		projectId,
+		questions,
 	}
 }
 
 export default function InterviewOnboardPage() {
-	const { project, accountId, projectId } = useLoaderData<typeof loader>()
+	const { project, accountId, projectId, questions } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
@@ -63,7 +76,7 @@ export default function InterviewOnboardPage() {
 				icp: project.description || "",
 				role: "",
 				goal: "",
-				questions: [],
+				questions: questions || [],
 			}}
 		/>
 	)

@@ -142,7 +142,7 @@ export async function action({
 		const insert: SectionInsert = { project_id: projectId, kind, content_md, position }
 		const { error } = await supabase.from("project_sections").insert(insert)
 		if (error) return { error: `Failed to add section: ${error.message}` }
-		return redirect(`${routes.projects.edit(projectId)}`)
+		return redirect(`${routes.dashboard()}`)
 	}
 
 	// Update multiple sections
@@ -164,7 +164,7 @@ export async function action({
 			const { error } = await supabase.from("project_sections").update(patch).eq("id", id)
 			if (error) return { error: `Failed to update a section: ${error.message}` }
 		}
-		return redirect(`${routes.projects.edit(projectId)}`)
+		return redirect(`${routes.dashboard()}`)
 	}
 
 	// Delete a section
@@ -173,7 +173,7 @@ export async function action({
 		if (!sectionId) return { error: "Missing section_id" }
 		const { error } = await supabase.from("project_sections").delete().eq("id", sectionId)
 		if (error) return { error: `Failed to delete section: ${error.message}` }
-		return redirect(`${routes.projects.edit(projectId)}`)
+		return redirect(`${routes.dashboard()}`)
 	}
 
 	return { error: "Unknown action" }
@@ -198,7 +198,8 @@ function KindSelector({ name, value, kinds }: { name: string; value?: string; ki
 					key={k}
 					type="button"
 					size="sm"
-					variant={!isCustom && selected === k ? "secondary" : "outline"}
+					variant={!isCustom && selected === k ? "default" : "outline"}
+				className={!isCustom && selected === k ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
 					onClick={() => {
 						setIsCustom(false)
 						setSelected(k)
@@ -210,7 +211,8 @@ function KindSelector({ name, value, kinds }: { name: string; value?: string; ki
 			<Button
 				type="button"
 				size="sm"
-				variant={isCustom ? "secondary" : "outline"}
+				variant={isCustom ? "default" : "outline"}
+			className={isCustom ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
 				onClick={() => setIsCustom((v) => !v)}
 			>
 				Other…
@@ -351,11 +353,6 @@ export default function EditProject() {
 														</AlertDialogFooter>
 													</AlertDialogContent>
 												</AlertDialog>
-												{/* hidden delete form */}
-												<form id={`delete-section-${s.id}`} method="post">
-													<input type="hidden" name="intent" value="delete_section" />
-													<input type="hidden" name="section_id" value={s.id} />
-												</form>
 											</div>
 										</div>
 										<div className="space-y-1">
@@ -373,6 +370,14 @@ export default function EditProject() {
 									<Button type="submit">Save Sections</Button>
 								</div>
 							</form>
+							
+							{/* Hidden delete forms - moved outside the main sections form */}
+							{sections.map((s) => (
+								<form key={`delete-${s.id}`} id={`delete-section-${s.id}`} method="post" style={{ display: 'none' }}>
+									<input type="hidden" name="intent" value="delete_section" />
+									<input type="hidden" name="section_id" value={s.id} />
+								</form>
+							))}
 
 							{/* Add new section */}
 							<form method="post" className="mt-6 space-y-3" onSubmit={validateNew}>

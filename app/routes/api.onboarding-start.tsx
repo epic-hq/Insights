@@ -82,7 +82,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		let finalProjectId = projectId
 
 		if (!projectId) {
-			const baseProjectName = `${onboardingData.role} at ${onboardingData.icp} Research`
+			const baseProjectName = `${onboardingData.icp}_${onboardingData.role} Research`
 			const projectDescription = `Research project for ${onboardingData.role} at ${onboardingData.icp}. Goal: ${
 				onboardingData.goal === "other" && onboardingData.customGoal
 					? onboardingData.customGoal
@@ -184,11 +184,12 @@ Please extract insights that specifically address these research questions and h
 		const interviewData: InterviewInsert = {
 			account_id: user.sub, // Personal ownership for RLS compatibility
 			project_id: finalProjectId,
-			title: `${onboardingData.role} at ${onboardingData.icp} - ${file.name}`,
+			title: file.name,
 			interview_date: format(new Date(), "yyyy-MM-dd"),
 			participant_pseudonym: "Participant 1",
 			segment: null,
 			media_url: null, // Will be set by upload worker
+			media_type: onboardingData.mediaType, // Store the selected media type
 			transcript: null, // Will be set by transcription
 			transcript_formatted: null,
 			duration_min: null,

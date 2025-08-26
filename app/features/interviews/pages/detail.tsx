@@ -8,6 +8,7 @@ import InlineEdit from "~/components/ui/inline-edit"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
+import { EvidenceCard } from "~/features/evidence/components/EvidenceCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
@@ -108,9 +109,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			throw new Response(`Error fetching insights: ${msg}`, { status: 500 })
 		}
 
+		// Fetch evidence related to this interview
+		const { data: evidence, error: evidenceError } = await supabase
+			.from("evidence")
+			.select("*")
+			.eq("interview_id", interviewId)
+			.order("created_at", { ascending: false })
+
+		if (evidenceError) {
+			consola.warn("Could not fetch evidence:", evidenceError.message)
+		}
+
 		return {
 			interview,
 			insights,
+			evidence: evidence || [],
 			interviewerData: null,
 		}
 	} catch (error) {
@@ -120,7 +133,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail() {
-	const { interview, insights, interviewerData } = useLoaderData<typeof loader>()
+	const { interview, insights, evidence, interviewerData } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const { accountId, projectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
@@ -365,6 +378,21 @@ export default function InterviewDetail() {
 						</div>
 					</div>
 
+					{/* Evidence Section */}
+					{evidence.length > 0 && (
+						<div className="space-y-4">
+							<h2 className="font-semibold text-lg text-foreground">Evidence</h2>
+							<div className="space-y-4">
+								{evidence.map((evidenceItem) => (
+									<EvidenceCard
+										key={evidenceItem.id}
+										evidence={evidenceItem}
+									/>
+								))}
+							</div>
+						</div>
+					)}
+
 					{/* Transcript Section */}
 					<div>
 						<LazyTranscriptResults
@@ -399,6 +427,7 @@ export default function InterviewDetail() {
 								</div>
 							</div>
 						)}
+
 
 						{/* Insights */}
 						{insights.length > 0 && (

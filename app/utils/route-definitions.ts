@@ -27,6 +27,14 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Evidence
+	evidence: {
+		index: () => string
+		new: () => string
+		detail: (id: string) => string
+		edit: (id: string) => string
+	}
+
 	// Themes
 	themes: {
 		index: () => string
@@ -133,6 +141,14 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
 		},
 
+		// Evidence
+		evidence: {
+			index: () => `${base}/evidence`,
+			new: () => `${base}/evidence/new`,
+			detail: (id: string) => `${base}/evidence/${id}`,
+			edit: (id: string) => `${base}/evidence/${id}/edit`,
+		},
+
 		// Themes
 		themes: {
 			index: () => `${base}/themes`,
@@ -185,7 +201,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		projects: {
 			index: () => `/a/${extractAccountId(projectPath)}/projects`,
 			new: () => `/a/${extractAccountId(projectPath)}/projects/new`,
-			setup: () => `/onboarding`,
+			setup: () => '/onboarding',
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			edit: (id: string) => `/a/${extractAccountId(projectPath)}/projects/${id}/edit`,
 			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,

@@ -217,7 +217,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function ThemesIndex() {
 	const { themes, matrixData } = useLoaderData<typeof loader>()
-	const [showMatrix, setShowMatrix] = useState(false)
+	const [showMatrix, setShowMatrix] = useState(true)
 
 	// Show generate button when no themes exist
 	if (themes.length === 0) {

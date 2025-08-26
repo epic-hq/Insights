@@ -2,7 +2,7 @@ import { CopilotKit } from "@copilotkit/react-core"
 import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
-import { Outlet, redirect, useLoaderData, useParams, useRouteLoaderData } from "react-router"
+import { Outlet, redirect, useLoaderData, useNavigation, useParams, useRouteLoaderData } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
@@ -113,6 +113,9 @@ export default function ProtectedLayout() {
 	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
 	const { clientEnv } = useRouteLoaderData("root")
 	const params = useParams()
+	const navigation = useNavigation()
+	
+	const isLoading = navigation.state === "loading"
 
 	return (
 		<AuthProvider
@@ -134,10 +137,21 @@ export default function ProtectedLayout() {
 					}}
 				>
 					<div className="min-h-screen bg-background">
+						{/* Global Loading Indicator */}
+						{isLoading && (
+							<div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200">
+								<div className="h-full bg-blue-600 animate-pulse" style={{ width: "30%" }}>
+									<div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 animate-[loading_2s_ease-in-out_infinite]" />
+								</div>
+							</div>
+						)}
+						
 						<MainNav />
 						<PageHeader title="" showBreadcrumbs={false} />
 						<main className="flex-1">
-							<Outlet />
+							<div className={`transition-opacity duration-200 ${isLoading ? 'opacity-50' : 'opacity-100'}`}>
+								<Outlet />
+							</div>
 						</main>
 					</div>
 

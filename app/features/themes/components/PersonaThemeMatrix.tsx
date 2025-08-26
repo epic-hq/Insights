@@ -1,9 +1,10 @@
-import { ArrowUpDown, Eye, Filter, Grid3X3, Info } from "lucide-react"
+import { ArrowUpDown, Eye, Filter, Grid3X3, Info, HelpCircle } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 
 interface PersonaThemeMatrixProps {
 	matrixData: Array<{
@@ -39,7 +40,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 	const [viewMode, setViewMode] = useState<"coverage" | "strength">("coverage")
 	const [selectedPersona, setSelectedPersona] = useState<string | null>(null)
 	const [selectedTheme, setSelectedTheme] = useState<string | null>(null)
-	const [swapAxes, setSwapAxes] = useState(false)
+	const [swapAxes, setSwapAxes] = useState(true)
 
 	// Use only provided data - no mock fallback
 	const data = rawMatrixData || []
@@ -124,13 +125,14 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 	}
 
 	return (
-		<div className="mx-auto max-w-7xl p-8">
-			<div className="mb-8">
-				<h1 className="mb-2 text-3xl">Persona × Theme Matrix</h1>
-				<p className="text-gray-600">
-					Visualize theme coverage and strength across different personas to identify wedge opportunities.
-				</p>
-			</div>
+		<TooltipProvider>
+			<div className="mx-auto max-w-7xl p-8">
+				<div className="mb-8">
+					<h1 className="mb-2 text-3xl">Persona × Theme Matrix</h1>
+					<p className="text-gray-600">
+						See how themes appear across different user groups. Find opportunities where one group cares much more about a theme than others.
+					</p>
+				</div>
 
 			<div className="mb-6 flex items-center justify-between">
 				<div className="flex items-center gap-4">
@@ -144,9 +146,21 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 						</SelectContent>
 					</Select>
 
-					<div className="flex items-center gap-2 text-gray-600 text-sm">
-						<Info className="h-4 w-4" />
-						<span>Purple cells indicate strong wedge opportunities</span>
+					<div className="flex items-center gap-4 text-gray-600 text-sm">
+						<Tooltip>
+							<TooltipTrigger className="flex items-center gap-2 cursor-help">
+								<Info className="h-4 w-4" />
+								<span>Coverage vs Strength</span>
+								<HelpCircle className="h-3 w-3" />
+							</TooltipTrigger>
+							<TooltipContent className="max-w-sm">
+								<div className="space-y-2">
+									<p><strong>Coverage:</strong> What percentage of interviews about this theme include this persona? High coverage means this theme affects most people in this group.</p>
+									<p><strong>Strength:</strong> How many pieces of evidence support this theme for this persona? Higher numbers mean stronger, more reliable patterns.</p>
+									<p><strong>Wedge:</strong> Purple cells show where one persona cares much more about a theme than others - these are your best opportunities!</p>
+								</div>
+							</TooltipContent>
+						</Tooltip>
 					</div>
 				</div>
 
@@ -314,47 +328,65 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 			<div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
 				<Card>
 					<CardHeader>
-						<CardTitle>Legend</CardTitle>
+						<CardTitle>How to Read This Matrix</CardTitle>
 					</CardHeader>
-					<CardContent className="space-y-3">
-						<div className="flex items-center gap-3">
-							<div className="h-4 w-4 rounded border border-purple-300 bg-purple-100" />
-							<span className="text-sm">
-								<strong>Wedge Opportunity:</strong> Strong, concentrated signal within this persona
-							</span>
-						</div>
+					<CardContent className="space-y-4">
+						<div className="space-y-3">
+							<div className="flex items-center gap-3">
+								<div className="h-4 w-4 rounded border border-purple-300 bg-purple-100" />
+								<span className="text-sm">
+									<strong>Purple = Wedge Opportunity:</strong> This persona cares way more about this theme than others. Build for them first!
+								</span>
+							</div>
 
-						{viewMode === "coverage" ? (
-							<>
-								<div className="flex items-center gap-3">
-									<div className="h-4 w-4 rounded border border-blue-300 bg-blue-100" />
-									<span className="text-sm">High Coverage (80%+)</span>
-								</div>
-								<div className="flex items-center gap-3">
-									<div className="h-4 w-4 rounded border border-blue-200 bg-blue-50" />
-									<span className="text-sm">Medium Coverage (60-80%)</span>
-								</div>
-								<div className="flex items-center gap-3">
-									<div className="h-4 w-4 rounded border border-gray-200 bg-gray-100" />
-									<span className="text-sm">Low Coverage (40-60%)</span>
-								</div>
-							</>
-						) : (
-							<>
-								<div className="flex items-center gap-3">
-									<div className="h-4 w-4 rounded border border-green-300 bg-green-100" />
-									<span className="text-sm">Strong Evidence (N_eff ≥ 10)</span>
-								</div>
-								<div className="flex items-center gap-3">
-									<div className="h-4 w-4 rounded border border-green-200 bg-green-50" />
-									<span className="text-sm">Moderate Evidence (N_eff 7-10)</span>
-								</div>
-								<div className="flex items-center gap-3">
-									<div className="h-4 w-4 rounded border border-yellow-200 bg-yellow-50" />
-									<span className="text-sm">Emerging Evidence (N_eff 4-7)</span>
-								</div>
-							</>
-						)}
+							{viewMode === "coverage" ? (
+								<>
+									<div className="text-sm font-medium text-gray-700 mb-2">Coverage View - How widespread is this theme?</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-blue-300 bg-blue-100" />
+										<span className="text-sm">80%+ of interviews mention this theme</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-blue-200 bg-blue-50" />
+										<span className="text-sm">60-80% mention it (common but not universal)</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-gray-200 bg-gray-100" />
+										<span className="text-sm">40-60% mention it (somewhat important)</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-gray-100 bg-gray-50" />
+										<span className="text-sm">Less than 40% (niche concern)</span>
+									</div>
+								</>
+							) : (
+								<>
+									<div className="text-sm font-medium text-gray-700 mb-2">Strength View - How much evidence do we have?</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-green-300 bg-green-100" />
+										<span className="text-sm">10+ pieces of evidence (very reliable pattern)</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-green-200 bg-green-50" />
+										<span className="text-sm">7-10 pieces (solid pattern)</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-yellow-200 bg-yellow-50" />
+										<span className="text-sm">4-7 pieces (emerging pattern)</span>
+									</div>
+									<div className="flex items-center gap-3">
+										<div className="h-4 w-4 rounded border border-gray-100 bg-gray-50" />
+										<span className="text-sm">Less than 4 (weak signal)</span>
+									</div>
+								</>
+							)}
+						</div>
+						
+						<div className="pt-3 border-t border-gray-200">
+							<p className="text-xs text-gray-600">
+								<strong>What to look for:</strong> Purple wedges are your best opportunities. High coverage + high strength = validated themes worth building for.
+							</p>
+						</div>
 					</CardContent>
 				</Card>
 
@@ -384,50 +416,139 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 			{(selectedPersona || selectedTheme) && (
 				<Card className="mt-6">
 					<CardHeader>
-						<CardTitle>
-							{selectedPersona && `${selectedPersona} Details`}
-							{selectedTheme && `${selectedTheme} Across Personas`}
+						<CardTitle className="flex items-center gap-2">
+							{selectedPersona && (
+								<>
+									<span>Deep Dive: {selectedPersona}</span>
+									<Badge variant="outline" className="text-xs">Persona Analysis</Badge>
+								</>
+							)}
+							{selectedTheme && (
+								<>
+									<span>Theme Analysis: {selectedTheme}</span>
+									<Badge variant="outline" className="text-xs">Cross-Persona View</Badge>
+								</>
+							)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
 						{selectedPersona && (
 							<div className="space-y-4">
-								{getPersonaData(selectedPersona)?.themes.map(
-									(theme: { themeId: string; themeName: string; coverage: number; nEff: number; wedge: boolean }) => (
-										<div key={theme.themeId} className="flex items-center justify-between rounded bg-gray-50 p-3">
-											<div>
-												<h4 className="font-medium">{theme.themeName}</h4>
-												<p className="text-gray-600 text-sm">
-													Coverage: {Math.round(theme.coverage * 100)}% • Strength: {theme.nEff.toFixed(1)}
-												</p>
+								<div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
+									<p className="text-sm text-blue-800">
+										<strong>What this tells you:</strong> These are all the themes that matter to {selectedPersona}. 
+										Purple wedges show where they care much more than other personas - your best opportunities to build something they'll love.
+									</p>
+								</div>
+								{getPersonaData(selectedPersona)?.themes
+									.sort((a, b) => {
+										// Sort by wedge first, then by coverage * nEff
+										if (a.wedge && !b.wedge) return -1;
+										if (!a.wedge && b.wedge) return 1;
+										return (b.coverage * b.nEff) - (a.coverage * a.nEff);
+									})
+									.map((theme: { themeId: string; themeName: string; coverage: number; nEff: number; wedge: boolean }) => (
+										<div key={theme.themeId} className={`rounded-lg border p-4 ${theme.wedge ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-200'}`}>
+											<div className="flex items-start justify-between">
+												<div className="flex-1">
+													<div className="flex items-center gap-2 mb-2">
+														<h4 className="font-medium">{theme.themeName}</h4>
+														{theme.wedge && <Badge className="bg-purple-600 text-white text-xs">Wedge Opportunity</Badge>}
+													</div>
+													<div className="grid grid-cols-2 gap-4 text-sm">
+														<div>
+															<span className="text-gray-600">Coverage:</span>
+															<div className="font-medium">{Math.round(theme.coverage * 100)}%</div>
+															<div className="text-xs text-gray-500">
+																{theme.coverage >= 0.8 ? 'Nearly universal' : 
+																 theme.coverage >= 0.6 ? 'Very common' :
+																 theme.coverage >= 0.4 ? 'Moderately common' : 'Niche concern'}
+															</div>
+														</div>
+														<div>
+															<span className="text-gray-600">Evidence Strength:</span>
+															<div className="font-medium">{theme.nEff.toFixed(1)} pieces</div>
+															<div className="text-xs text-gray-500">
+																{theme.nEff >= 10 ? 'Very reliable' : 
+																 theme.nEff >= 7 ? 'Solid pattern' :
+																 theme.nEff >= 4 ? 'Emerging pattern' : 'Weak signal'}
+															</div>
+														</div>
+													</div>
+													{theme.wedge && (
+														<div className="mt-2 p-2 bg-purple-100 rounded text-xs text-purple-800">
+															<strong>💡 Opportunity:</strong> This persona cares significantly more about this theme than others. 
+															Consider building features specifically for them around this need.
+														</div>
+													)}
+												</div>
 											</div>
-											{theme.wedge && <Badge className="bg-purple-600 text-white">Wedge</Badge>}
 										</div>
-									)
-								)}
+									))}
 							</div>
 						)}
 
 						{selectedTheme && (
 							<div className="space-y-4">
-								{getThemeData(selectedTheme).map(
-									(data: { persona: string; coverage?: number; nEff?: number; wedge?: boolean }) => (
-										<div key={data.persona} className="flex items-center justify-between rounded bg-gray-50 p-3">
-											<div>
-												<h4 className="font-medium">{data.persona}</h4>
-												<p className="text-gray-600 text-sm">
-													Coverage: {Math.round((data.coverage || 0) * 100)}% • Strength: {(data.nEff || 0).toFixed(1)}
-												</p>
+								<div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
+									<p className="text-sm text-green-800">
+										<strong>What this tells you:</strong> See how "{selectedTheme}" affects different personas. 
+										Look for big differences - if one group cares way more, that's a wedge opportunity.
+									</p>
+								</div>
+								{getThemeData(selectedTheme)
+									.sort((a, b) => {
+										// Sort by wedge first, then by coverage * nEff
+										const aScore = (a.coverage || 0) * (a.nEff || 0);
+										const bScore = (b.coverage || 0) * (b.nEff || 0);
+										if (a.wedge && !b.wedge) return -1;
+										if (!a.wedge && b.wedge) return 1;
+										return bScore - aScore;
+									})
+									.map((data: { persona: string; coverage?: number; nEff?: number; wedge?: boolean }) => (
+										<div key={data.persona} className={`rounded-lg border p-4 ${data.wedge ? 'bg-purple-50 border-purple-200' : 'bg-gray-50 border-gray-200'}`}>
+											<div className="flex items-start justify-between">
+												<div className="flex-1">
+													<div className="flex items-center gap-2 mb-2">
+														<h4 className="font-medium">{data.persona}</h4>
+														{data.wedge && <Badge className="bg-purple-600 text-white text-xs">Wedge Opportunity</Badge>}
+													</div>
+													<div className="grid grid-cols-2 gap-4 text-sm">
+														<div>
+															<span className="text-gray-600">Coverage:</span>
+															<div className="font-medium">{Math.round((data.coverage || 0) * 100)}%</div>
+															<div className="text-xs text-gray-500">
+																{(data.coverage || 0) >= 0.8 ? 'Nearly universal' : 
+																 (data.coverage || 0) >= 0.6 ? 'Very common' :
+																 (data.coverage || 0) >= 0.4 ? 'Moderately common' : 'Niche concern'}
+															</div>
+														</div>
+														<div>
+															<span className="text-gray-600">Evidence Strength:</span>
+															<div className="font-medium">{(data.nEff || 0).toFixed(1)} pieces</div>
+															<div className="text-xs text-gray-500">
+																{(data.nEff || 0) >= 10 ? 'Very reliable' : 
+																 (data.nEff || 0) >= 7 ? 'Solid pattern' :
+																 (data.nEff || 0) >= 4 ? 'Emerging pattern' : 'Weak signal'}
+															</div>
+														</div>
+													</div>
+													{data.wedge && (
+														<div className="mt-2 p-2 bg-purple-100 rounded text-xs text-purple-800">
+															<strong>💡 Wedge Alert:</strong> {data.persona} cares much more about this theme than other personas. 
+															This is a prime opportunity to build something specifically for them.
+														</div>
+													)}
+												</div>
 											</div>
-											{data.wedge && <Badge className="bg-purple-600 text-white">Wedge</Badge>}
 										</div>
-									)
-								)}
+									))}
 							</div>
 						)}
 					</CardContent>
 				</Card>
 			)}
-		</div>
+			</div>
+		</TooltipProvider>
 	)
 }

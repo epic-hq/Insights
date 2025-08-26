@@ -16,9 +16,8 @@
 - [x] Fix Mastra instrumentation.mjs missing file error
 Remaining Critical:
 - [x] People not added. `app/utils/processInterview.server.ts` it was accountId param query again.
-- [ ] Personas generated. Add role into formulation so it doesnt sound too emotional.
-- [ ] Verify all entities created from new onboarding step with right accountId if needed.
-- [ ] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
+- [ ] Verify personas & people linked into themes, evidence, insights.
+- [x] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
 
 ## Simple UI
 
@@ -26,33 +25,20 @@ Remaining Critical:
 - [ ] Implement for desktop
 - [ ] Detect mobile and implement mobile version.
 
-### 🛠️ Critical Conventions to Remember
+## Wow with Insights - Make Qualitative data more useful
 
-**Webhook Authentication Pattern:**
+- [ ] How clear is it what we've helped you learn?
+- [ ] How informative is it? what could be better?
+Questions to add to FAQ:
+- how do we measure confidence in questions being answered?
+- what is % next to persona in status page?
 
-- Webhooks ALWAYS use `createSupabaseAdminClient()` (no user context)
-- Pass `userId` from interview record for audit fields: `created_by: metadata.userId`
-- Admin client bypasses RLS - use for all system operations
+- [ ] What fields to save for People. eg add role, goals into formulation so it doesnt sound too emotional.
+- [ ] Upload should it redirect to -> Project status page, not interim -especially if we already have some data. Show skeleton for Goals, questions, insights, themes, people, personas.
 
-**ID Usage Conventions:**
 
-- `interview.account_id` = `user.sub` (personal ownership, auth.uid())
-- `metadata.userId` = `interview.account_id` for audit fields
-- `metadata.accountId` = `interview.account_id` for data scoping
 
-**Status Progression Pipeline:**
-
-```
-uploaded (20%) → transcribed (50%) → processing (85%) → ready (100%)
-```
-
-**Database Schema Notes:**
-
-- Audit fields (`created_by`, `updated_by`) are nullable to support admin operations
-- Upload jobs have idempotency via status check: `if (uploadJob.status === 'done') return`
-- Always update interview status before each major processing step
-
-## 🔜 Up Next (Sprint 3 – Chat Agents with Data)
+## 🔜 Chat Agents with Data)
 
 - [x] prototype desktop version of Simple UI for project dashboard (summary insights, suggestions, chat) [v0](https://preview-mobile-insights-app-design-kzmlp51a1bx0c0w9lgfb.vusercontent.net/) at [inapp](/aichat)
 - [x] Signup chat to get user needs saved to user_settings.saved_data
@@ -124,6 +110,7 @@ TEST IT MORE
 ## New Interviews - Show what's changed
 
 - [ ] ProjectStatus page shold tell user what changed if its added in, as an annotation.
+- [ ] User wants to see or hear media of interview. Save media_url in DB after uploading to cloudflare R2.
 
 ## Sprint 5 - Insights Optimization
 

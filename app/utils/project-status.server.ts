@@ -43,6 +43,7 @@ export interface ProjectStatusData {
 	totalInsights: number
 	totalPersonas: number
 	totalThemes: number
+	totalEvidence: number
 	answeredQuestions: string[]
 	openQuestions: string[]
 	keyInsights: string[]
@@ -105,13 +106,15 @@ export async function getProjectStatusData(
 			.maybeSingle()
 
 		// Fetch basic counts
-		const [interviewsResult, insightsResult] = await Promise.all([
+		const [interviewsResult, insightsResult, evidenceResult] = await Promise.all([
 			supabase.from("interviews").select("id").eq("project_id", projectId),
 			supabase.from("insights").select("id,name").eq("project_id", projectId),
+			supabase.from("evidence").select("id").eq("project_id", projectId),
 		])
 
 		const totalInterviews = interviewsResult.data?.length || 0
 		const totalInsights = insightsResult.data?.length || 0
+		const totalEvidence = evidenceResult.data?.length || 0
 		const totalPersonas = Math.min(Math.ceil(totalInterviews / 2), 5)
 		const totalThemes = Math.min(Math.ceil(totalInsights / 2), 8)
 
@@ -123,6 +126,7 @@ export async function getProjectStatusData(
 			totalInsights,
 			totalPersonas,
 			totalThemes,
+			totalEvidence,
 			lastUpdated: new Date(proj.updated_at || proj.created_at || new Date().toISOString()),
 		}
 

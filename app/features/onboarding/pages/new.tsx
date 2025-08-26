@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate, useRevalidator } from "react-router-dom"
 import OnboardingFlow, { type OnboardingData } from "~/features/onboarding/components/OnboardingFlow"
-import { getProjectById } from "~/features/projects/db"
+import { getProjectById, getProjectSections } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { createRouteDefinitions } from "~/utils/route-definitions"
@@ -26,15 +26,28 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const project = projectResult.data
 
+	// Get project sections to extract questions
+	const sectionsResult = await getProjectSections({
+		supabase: ctx.supabase,
+		projectId,
+	})
+
+	// Extract questions from project sections
+	const questions = (sectionsResult.data || [])
+		.filter((section) => section.kind === "goal" || section.kind === "question")
+		.map((section) => section.content_md)
+		.filter(Boolean)
+
 	return {
 		project,
 		accountId,
 		projectId,
+		questions,
 	}
 }
 
 export default function AddInterviewPage() {
-	const { project, accountId, projectId } = useLoaderData<typeof loader>()
+	const { project, accountId, projectId, questions } = useLoaderData<typeof loader>()
 	const navigate = useNavigate()
 	const revalidator = useRevalidator()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
@@ -88,7 +101,7 @@ export default function AddInterviewPage() {
 				icp: project.description || "",
 				role: "",
 				goal: "",
-				questions: [],
+				questions: questions || [],
 			}}
 		/>
 	)
