@@ -74,7 +74,7 @@ export default function MainNav() {
 
 	return (
 		<>
-			<nav className={`${isHomePage || isAboutPage ? "border-b bg-white" : "bg-white shadow-sm"} dark:bg-gray-800`}>
+			<nav className={`${isHomePage || isAboutPage ? "" : ""}`}>
 				<div className="mx-auto max-w-[1440px] px-4">
 					<div className="flex h-16 items-center justify-between">
 						{/* Brand - Link to dashboard for authenticated users, home for others */}
@@ -83,10 +83,12 @@ export default function MainNav() {
 							{/* <span className="ml-2 font-bold text-gray-900 text-xl dark:text-white">Insights</span> */}
 						</Link>
 
-						{/* Journey Navigation - show for authenticated users in app */}
+						{/* Journey Navigation - show for authenticated users in app on desktop only */}
 						<div className="flex flex-1 justify-center">
 							{user && !isHomePage && !isAboutPage && accountId && projectId && (
-								<JourneyNav variant="stepper" className="flex items-center" />
+								<div className="hidden md:block">
+									<JourneyNav variant="stepper" className="flex items-center" />
+								</div>
 							)}
 							{/* Marketing links for non-authenticated users on marketing pages */}
 							{(isHomePage || isAboutPage) && !user && (
@@ -109,8 +111,8 @@ export default function MainNav() {
 							<ThemeToggle />
 							{user ? (
 								isHomePage || isAboutPage ? (
-									// Show green Dashboard button on marketing pages for authenticated users
-									<Button asChild className="bg-green-600 hover:bg-green-700">
+									// Show Dashboard button on marketing pages for authenticated users
+									<Button asChild>
 										<Link to={routes.home()}>Dashboard</Link>
 									</Button>
 								) : (

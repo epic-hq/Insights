@@ -9,15 +9,12 @@ interface AppLayoutProps {
 }
 
 export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
-	const { isMobile, isDesktop } = useDeviceDetection()
+	const { isMobile } = useDeviceDetection()
 
 	return (
 		<div className="min-h-screen bg-background">
-			{/* Main header navigation */}
+			{/* Main header navigation - includes stepper nav for desktop */}
 			<MainNav />
-
-			{/* Desktop top navigation - only on md+ screens */}
-			{showJourneyNav && isDesktop && <JourneyNav variant="stepper" />}
 
 			{/* Main content area */}
 			<main

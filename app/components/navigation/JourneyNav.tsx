@@ -106,7 +106,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 
 	if (variant === "stepper") {
 		return (
-			<div className={cn("bg-background border-b", className)}>
+			<div className={cn("bg-background", className)}>
 				<div className="mx-auto max-w-[1440px] px-4">
 					<div className="flex items-center py-3">
 						{journeySteps.map((step, index) => {
@@ -124,7 +124,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 											isActive
 												? "bg-primary text-primary-foreground"
 												: isCompleted
-													? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+													? "bg-muted text-muted-foreground"
 													: "bg-muted text-muted-foreground hover:text-foreground"
 										)}
 									>
