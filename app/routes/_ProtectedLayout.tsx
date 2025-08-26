@@ -113,7 +113,7 @@ export default function ProtectedLayout() {
 	const { clientEnv } = useRouteLoaderData("root")
 	const params = useParams()
 	const navigation = useNavigation()
-	
+
 	const isLoading = navigation.state === "loading"
 
 	return (
@@ -144,21 +144,11 @@ export default function ProtectedLayout() {
 								</div>
 							</div>
 						)}
-						
+
 						<AppLayout showJourneyNav={true} showStepper={true} />
 					</div>
 
 					{/* Persistent AI Chat Button */}
-					<div className="fixed right-0 bottom-0 left-0 z-40 border-gray-800 border-t bg-black p-3">
-						<div className="grid grid-cols-3 gap-2">
-							{/* First two slots can be empty or used for other global actions */}
-							<div />
-							<div />
-
-							{/* AI Chat Button - always in the third position */}
-							{/* <AIChatButton /> */}
-						</div>
-					</div>
 				</CopilotKit>
 			</CurrentProjectProvider>
 		</AuthProvider>
