@@ -402,6 +402,11 @@ export default function MetroIndex() {
 		setShowChat(!showChat)
 	}
 
+	// Check if any interviews are currently uploading/processing
+	const isUploading = interviews.some(interview => 
+		["uploading", "processing", "transcribing"].includes(interview.status)
+	)
+
 	return (
 		<div className="relative flex min-h-screen bg-background text-foreground">
 			{/* Main Content */}
@@ -582,7 +587,7 @@ export default function MetroIndex() {
 				</div>
 
 				{/* Bottom action bar */}
-				<BottomActionBar onToggleChat={handleToggleChat} />
+				<BottomActionBar onToggleChat={handleToggleChat} isUploading={isUploading} />
 			</div>
 
 			{/* CopilotSidebar - Right side overlay */}

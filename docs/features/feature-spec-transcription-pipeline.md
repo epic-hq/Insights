@@ -20,43 +20,43 @@ flowchart TD
     U1[User: Welcome Screen] --> U2[User: Questions Screen]
     U2 --> U3[User: Upload Screen]
     U3 --> U4[User: Processing Screen]
-    
+
     %% Backend Pipeline
     U3 -->|POST /api/onboarding-start| API[Onboarding API]
     API -->|1. Create| P[Project + Interview]
     API -->|2. Upload to| AAI[AssemblyAI /upload]
     API -->|3. Start transcription| AAI2[AssemblyAI /transcript]
     API -->|4. Insert| UJ[upload_jobs table]
-    
+
     %% Interview Status Updates
     P -->|account_id = user.sub| I1[interview.status = 'uploaded']
-    
+
     %% Webhook-Driven Processing
     AAI2 -.->|webhook callback| WH[/api/assemblyai-webhook]
     WH -->|1. Update interview| I2[interview.status = 'transcribed']
     WH -->|2. Create| AJ[analysis_jobs]
     WH -->|3. Queue analysis| BAML[BAML Processing]
-    
+
     %% Real-time UI Updates
     I1 -.->|Supabase Realtime| U4
     I2 -.->|Supabase Realtime| U4
     BAML -->|Complete| I3[interview.status = 'ready']
     I3 -.->|Supabase Realtime| U5[User: Completion]
-    
+
     %% RLS & Authentication
     P -->|RLS Policy| RLS[account_id = auth.uid()]
     UJ -->|RLS Policy| RLS2[team account access]
-    
+
     %% Critical Production Issue
     WH -.->|⚠️ NOT DEPLOYED| PROD[upsight.fly.dev]
-    
+
     classDef user fill:#e1f5fe
     classDef api fill:#f3e5f5
     classDef database fill:#e8f5e8
     classDef external fill:#fff3e0
     classDef realtime fill:#fce4ec
     classDef issue fill:#ffebee
-    
+
     class U1,U2,U3,U4,U5 user
     class API,WH api
     class P,I1,I2,I3,UJ,AJ,RLS,RLS2 database
@@ -385,3 +385,32 @@ create table generation_jobs (
 
 Trigger + LISTEN/NOTIFY channel `generation_jobs_channel`.
 UI "Generate report" button inserts a row; worker picks it up to build topic clusters, summaries, or other AI-generated artefacts.
+
+
+## Added 8/26/2025
+
+### 🛠️ Critical Conventions to Remember
+
+**Webhook Authentication Pattern:**
+
+- Webhooks ALWAYS use `createSupabaseAdminClient()` (no user context)
+- Pass `userId` from interview record for audit fields: `created_by: metadata.userId`
+- Admin client bypasses RLS - use for all system operations
+
+**ID Usage Conventions:**
+
+- `interview.account_id` = `user.sub` (personal ownership, auth.uid())
+- `metadata.userId` = `interview.account_id` for audit fields
+- `metadata.accountId` = `interview.account_id` for data scoping
+
+**Status Progression Pipeline:**
+
+```
+uploaded (20%) → transcribed (50%) → processing (85%) → ready (100%)
+```
+
+**Database Schema Notes:**
+
+- Audit fields (`created_by`, `updated_by`) are nullable to support admin operations
+- Upload jobs have idempotency via status check: `if (uploadJob.status === 'done') return`
+- Always update interview status before each major processing step

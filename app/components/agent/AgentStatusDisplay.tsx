@@ -60,7 +60,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 
 	useEffect(() => {
 		fetchAgentState()
-	}, [fetchAgentState])
+	}, [agentId])
 
 	const handleRefresh = () => {
 		fetchAgentState()

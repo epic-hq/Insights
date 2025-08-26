@@ -4,6 +4,7 @@ import OnboardingFlow, { type OnboardingData } from "~/features/onboarding/compo
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
+import { createRouteDefinitions } from "~/utils/route-definitions"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -38,12 +39,21 @@ export default function AddInterviewPage() {
 	const revalidator = useRevalidator()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
-	const handleOnboardingComplete = async (_data: OnboardingData) => {
-		// Navigate to project dashboard after adding interview
-		if (routes.dashboard) {
-			navigate(routes.dashboard())
+	const handleOnboardingComplete = async (data: OnboardingData) => {
+		// Use the new project ID if available, otherwise fall back to existing
+		const newProjectId = data.projectId || projectId
+		const interviewId = data.interviewId
+
+		// Create routes for the new project context using server-side pattern
+		const newProjectPath = `/a/${accountId}/${newProjectId}`
+		const newRoutes = createRouteDefinitions(newProjectPath)
+
+		if (interviewId) {
+			// Navigate to the newly created interview detail
+			navigate(newRoutes.interviews.detail(interviewId))
 		} else {
-			navigate(`/a/${accountId}/${projectId}`)
+			// Fallback to project dashboard
+			navigate(newRoutes.projects.detail(newProjectId))
 		}
 	}
 

@@ -5,17 +5,23 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 interface BottomActionBarProps {
 	onToggleChat: () => void
+	isUploading?: boolean
 }
 
-export function BottomActionBar({ onToggleChat }: BottomActionBarProps) {
+export function BottomActionBar({ onToggleChat, isUploading = false }: BottomActionBarProps) {
 	const navigate = useNavigate()
 	const params = useParams()
 	const { accountId, projectId } = params
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
+	// Hide on desktop (lg and up) or when uploading
+	if (isUploading) {
+		return null
+	}
+
 	return (
-		<div className="fixed right-0 bottom-0 left-0 z-50 border-gray-800 border-t bg-black p-3 pb-safe">
+		<div className="fixed right-0 bottom-0 left-0 z-50 border-gray-800 border-t bg-black p-3 pb-safe lg:hidden">
 			<div className="mx-auto max-w-md">
 				<div className="grid grid-cols-3 gap-2">
 					{/* Add Encounter → Modern Onboarding Flow */}

@@ -122,7 +122,7 @@ export default function EnhancedPersonCard({ person, className }: EnhancedPerson
 						<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
 							{person.segment && <span className="rounded bg-muted px-2 py-0.5">{person.segment}</span>}
 							{person.age && <span>Age: {person.age}</span>}
-							<span>Added {formatDistance(new Date(person.created_at), new Date(), { addSuffix: true })}</span>
+							{/* <span>Added {formatDistance(new Date(person.created_at), new Date(), { addSuffix: true })}</span> */}
 						</div>
 					</CardContent>
 					<CardFooter>

@@ -153,7 +153,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (insightId: string) => `${base}/insights/${insightId}`,
 			edit: (insightId: string) => `${base}/insights/${insightId}/edit`,
 			// Query parameter helpers
-			withSort: (sort: string) => `${base}/insights/?sort=${sort}`,
+			withSort: (sort: string) => `${base}/insights?sort=${sort}`,
 		},
 
 		// People
