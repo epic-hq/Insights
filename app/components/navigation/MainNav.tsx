@@ -21,19 +21,11 @@ import { LogoBrand } from "../branding"
 // 	// { key: "THEMES", label: "Themes", authOnly: true },
 // ]
 
-// Define navigation links with proper paths for authenticated users
+// Legacy navigation links - now handled by JourneyNav
+// Keeping for backward compatibility and non-journey pages
 export const projectNavLinks: { key: keyof typeof PATHS; label: string; authOnly: boolean }[] = [
-	{ key: "PROJECTS", label: "Projects", authOnly: true },
-	{ key: "DASHBOARD", label: "Dashboard", authOnly: true },
-	{ key: "INTERVIEWS", label: "Interviews", authOnly: true },
-	{ key: "INSIGHTS", label: "Insights", authOnly: true },
-	{ key: "THEMES", label: "Themes", authOnly: true },
-	{ key: "PERSONAS", label: "Personas", authOnly: true },
-	// { key: "OPPORTUNITIES", label: "Opportunities", authOnly: true, link: `${PATHS.OPPORTUNITIES}` },
-	{ key: "PEOPLE", label: "People", authOnly: true },
-	// { key: "AUTO_INSIGHTS", label: "Auto-Takeaways", authOnly: true },
-	// { key: "ABOUT", label: "About", authOnly: false, link: `/about` },
-	// { key: "THEMES", label: "Themes", authOnly: true, link: `${PATHS.THEMES}` },
+	// Main journey navigation is now handled by JourneyNav component
+	// These are kept for any standalone pages or admin functions
 ]
 
 function _Breadcrumbs() {

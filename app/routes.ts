@@ -78,6 +78,8 @@ const routes = [
 	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
+	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
+	route("api/test-generate-themes", "./routes/api/test-generate-themes.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

@@ -32,10 +32,11 @@ export type AutoGroupThemesResult = {
 async function loadEvidence(
 	supabase: SupabaseClient,
 	_account_id: string,
-	project_id?: string | null,
+	project_id: string | null,
 	evidence_ids?: string[],
 	limit = 200
 ): Promise<EvidenceForTheme[]> {
+	if (!project_id) { return }
 	let query = supabase
 		.from("evidence")
 		.select("id, verbatim, kind_tags, personas, segments, journey_stage, support")
@@ -147,13 +148,29 @@ async function upsertThemeEvidence(
 export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Promise<AutoGroupThemesResult> {
 	const { supabase, account_id, project_id = null, evidence_ids, guidance = "", limit = 200 } = opts
 
+	consola.log("[autoGroupThemesAndApply] Starting with options:", { account_id, project_id, limit })
+
 	// 1) Load evidence
 	const evidence = await loadEvidence(supabase, account_id, project_id, evidence_ids, limit)
-	if (evidence.length === 0) return { created_theme_ids: [], link_count: 0, themes: [] }
+	consola.log("[autoGroupThemesAndApply] Loaded evidence count:", evidence.length)
+	consola.log("[autoGroupThemesAndApply] First evidence sample:", evidence[0])
+
+	if (evidence.length === 0) {
+		consola.error("[autoGroupThemesAndApply] No evidence found for project:", project_id)
+		throw new Error(`No evidence found for project ${project_id}. Cannot generate themes without evidence data.`)
+	}
 
 	// 2) Call BAML
-	const evidence_json = JSON.stringify(evidence)
-	const resp = await b.AutoGroupThemes(evidence_json, guidance)
+	let resp
+	try {
+		const evidence_json = JSON.stringify(evidence)
+		consola.log("[autoGroupThemesAndApply] Calling BAML with evidence length:", evidence_json.length)
+		resp = await b.AutoGroupThemes(evidence_json, guidance)
+		consola.log("[autoGroupThemesAndApply] BAML response received, themes count:", resp.themes?.length || 0)
+	} catch (bamlError) {
+		consola.error("[autoGroupThemesAndApply] BAML call failed:", bamlError)
+		throw new Error(`BAML AutoGroupThemes failed: ${bamlError instanceof Error ? bamlError.message : String(bamlError)}`)
+	}
 
 	// 3) Persist themes and links
 	const created_theme_ids: string[] = []

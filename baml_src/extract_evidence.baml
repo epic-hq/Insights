@@ -336,7 +336,7 @@ function AutoGroupThemes(
   evidence_json: string,
   guidance: string
 ) -> AutoGroupThemesResponse {
-  client "CustomGPT4o"
+  client "CustomGPT4oMini"
   prompt #"
     You are clustering normalized evidence into coherent, decision-useful themes.
 

@@ -12,6 +12,7 @@ import {
 } from "react-router"
 import { useChangeLanguage } from "remix-i18next/react"
 import { ClientOnly } from "~/components/ClientOnly"
+import ErrorBoundaryComponent from "~/components/ErrorBoundary"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import { ThemeProvider } from "~/contexts/ThemeContext"
 import { loadContext } from "~/server/load-context"
@@ -160,29 +161,9 @@ const LostIllustration = () => (
 
 export const ErrorBoundary = () => {
 	const error = useRouteError()
-	const { t } = useTranslation()
 	
-	// Constrain the generic type so we don't provide a non-existent key
-	const statusCode = () => {
-		if (!isRouteErrorResponse(error)) {
-			return "500"
-		}
-		// Supported error code messages
-		switch (error.status) {
-			case 200:
-				return "200"
-			case 403:
-				return "403"
-			case 404:
-				return "404"
-			default:
-				return "500"
-		}
-	}
-	const errorStatusCode = statusCode()
-
-	// For 404 errors, show our custom page
-	if (errorStatusCode === "404") {
+	// For 404 errors, show the splat route style (keeping existing behavior)
+	if (isRouteErrorResponse(error) && error.status === 404) {
 		return (
 			<div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-blue-50 via-indigo-50 to-purple-50 p-4 dark:from-slate-900 dark:via-blue-900 dark:to-indigo-900">
 				<div className="w-full max-w-2xl text-center">
@@ -246,15 +227,6 @@ export const ErrorBoundary = () => {
 		)
 	}
 
-	// For other errors, show the generic error page
-	return (
-		<div className="relative flex h-full min-h-screen w-screen items-center justify-center bg-gradient-to-b from-gray-50 to-gray-100 placeholder-index sm:pt-8 sm:pb-16 dark:bg-white dark:from-blue-950 dark:to-blue-900">
-			<div className="relative mx-auto max-w-[90rem] sm:px-6 lg:px-8">
-				<div className="relative flex min-h-72 flex-col justify-center p-1 sm:overflow-hidden sm:rounded-2xl md:p-4 lg:p-6">
-					<h1 className="w-full pb-2 text-center text-2xl text-red-600">{t(`error.${errorStatusCode}.title`)}</h1>
-					<p className="w-full text-center text-lg dark:text-white">{t(`error.${errorStatusCode}.description`)}</p>
-				</div>
-			</div>
-		</div>
-	)
+	// For all other errors (500, etc.), use our beautiful error boundary
+	return <ErrorBoundaryComponent error={error instanceof Error ? error : undefined} />
 }

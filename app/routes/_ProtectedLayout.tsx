@@ -3,8 +3,7 @@ import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
 import { Outlet, redirect, useLoaderData, useNavigation, useParams, useRouteLoaderData } from "react-router"
-import MainNav from "~/components/navigation/MainNav"
-import PageHeader from "~/components/navigation/PageHeader"
+import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
@@ -139,20 +138,14 @@ export default function ProtectedLayout() {
 					<div className="min-h-screen bg-background">
 						{/* Global Loading Indicator */}
 						{isLoading && (
-							<div className="fixed top-0 left-0 right-0 z-50 h-1 bg-gray-200">
-								<div className="h-full bg-blue-600 animate-pulse" style={{ width: "30%" }}>
-									<div className="h-full bg-gradient-to-r from-blue-600 to-blue-400 animate-[loading_2s_ease-in-out_infinite]" />
+							<div className="fixed left-0 right-0 top-0 z-50 h-1 bg-gray-200">
+								<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
+									<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
 								</div>
 							</div>
 						)}
 						
-						<MainNav />
-						<PageHeader title="" showBreadcrumbs={false} />
-						<main className="flex-1">
-							<div className={`transition-opacity duration-200 ${isLoading ? 'opacity-50' : 'opacity-100'}`}>
-								<Outlet />
-							</div>
-						</main>
+						<AppLayout showJourneyNav={true} showStepper={true} />
 					</div>
 
 					{/* Persistent AI Chat Button */}

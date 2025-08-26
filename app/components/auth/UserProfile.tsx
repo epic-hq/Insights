@@ -1,5 +1,5 @@
 import consola from "consola"
-import { LogOut, User } from "lucide-react"
+import { LogOut, User, FolderOpen } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import {
@@ -11,10 +11,14 @@ import {
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { useAuth } from "~/contexts/AuthContext"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { PATHS } from "~/paths"
 
 export function UserProfile() {
 	const { user, signOut } = useAuth()
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	const handleSignOut = async () => {
 		try {
@@ -50,10 +54,20 @@ export function UserProfile() {
 								if (icon) icon.style.display = "block"
 							}}
 						/>
-					) : null}
+					) : (
+						// Generate avatar from initials if no avatar URL
+						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+							{(user.user_metadata?.full_name || user.email || "U")
+								.split(" ")
+								.map((name: string) => name[0])
+								.join("")
+								.toUpperCase()
+								.slice(0, 2)}
+						</div>
+					)}
 					<User
 						className="absolute h-5 w-5 text-foreground"
-						style={{ display: user.user_metadata?.avatar_url ? "none" : "block" }}
+						style={{ display: user.user_metadata?.avatar_url ? "none" : "none" }}
 					/>
 				</Button>
 			</DropdownMenuTrigger>
@@ -70,13 +84,23 @@ export function UserProfile() {
 						<p className="text-muted-foreground text-xs leading-none">{user.email}</p>
 					</div>
 				</DropdownMenuLabel>
+				<DropdownMenuSeparator className="bg-border/50" />
+				<DropdownMenuItem
+					asChild
+					className="cursor-pointer text-foreground hover:bg-accent"
+				>
+					<Link to={routes.projects.index()} className="flex items-center">
+						<FolderOpen className="mr-2 h-4 w-4" />
+						<span>Switch Project</span>
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuSeparator className="bg-border/50" />
 				<DropdownMenuItem
 					asChild
 					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"
 				>
 					<Link to={PATHS.PROFILE}>Profile</Link>
 				</DropdownMenuItem>
-				<DropdownMenuSeparator className="bg-border/50" />
 				<DropdownMenuItem
 					onClick={handleSignOut}
 					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"

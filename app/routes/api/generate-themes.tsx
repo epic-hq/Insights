@@ -9,12 +9,15 @@ export async function action({ context, request }: ActionFunctionArgs) {
 	const projectId = formData.get("projectId") as string
 	const guidance = (formData.get("guidance") as string) || ""
 
+	consola.log("[Generate Themes API] Received request for project:", projectId, "with guidance:", guidance)
+
 	if (!projectId || !account_id) {
 		return new Response("Missing projectId or account_id", { status: 400 })
 	}
 
 	try {
 		consola.log("[Generate Themes API] Starting theme generation for project:", projectId)
+		consola.log("[Generate Themes API] Account ID:", account_id)
 
 		const result = await autoGroupThemesAndApply({
 			supabase,
@@ -33,7 +36,19 @@ export async function action({ context, request }: ActionFunctionArgs) {
 			link_count: result.link_count,
 		})
 	} catch (error) {
-		consola.error("[Generate Themes API] Error:", error)
-		return new Response(`Failed to generate themes: ${error}`, { status: 500 })
+		consola.error("[Generate Themes API] Error details:", {
+			message: error instanceof Error ? error.message : String(error),
+			stack: error instanceof Error ? error.stack : undefined,
+			projectId,
+			account_id,
+		})
+		return Response.json(
+			{ 
+				success: false, 
+				error: error instanceof Error ? error.message : String(error),
+				details: "Check server logs for full error details"
+			}, 
+			{ status: 500 }
+		)
 	}
 }

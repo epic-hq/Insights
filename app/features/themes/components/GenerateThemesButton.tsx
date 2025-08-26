@@ -3,7 +3,7 @@ import { useState } from "react"
 import { useFetcher } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
-// import { toast } from "sonner"
+import consola from "consola"
 
 export function GenerateThemesButton() {
 	const { projectId } = useCurrentProject()
@@ -11,16 +11,17 @@ export function GenerateThemesButton() {
 	const [isGenerating, setIsGenerating] = useState(false)
 
 	const handleGenerate = async () => {
+		consola.log("Generating themes for project:", projectId)
 		if (!projectId) {
 			return
 		}
-
 		setIsGenerating(true)
 
 		const formData = new FormData()
 		formData.append("projectId", projectId)
 		formData.append("guidance", "Generate themes that capture the main user pain points and needs")
 
+		// Back to original endpoint with better error handling
 		fetcher.submit(formData, {
 			method: "POST",
 			action: "/api/generate-themes",
