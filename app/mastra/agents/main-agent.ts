@@ -2,27 +2,29 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { LibSQLStore } from "@mastra/libsql"
 import { Memory } from "@mastra/memory"
-import { upsightTool } from "../tools/upsight-tool"
 import z from "zod"
+import { upsightTool } from "../tools/upsight-tool"
 
 export const AgentState = z.object({
 	plan: z.array(z.string()).default([]),
-	projectStatus: z.object({
-		keyFindings: z.array(z.string()).default([]),
-		nextSteps: z.array(z.string()).default([]),
-		totalInsights: z.number().default(0),
-		totalInterviews: z.number().default(0),
-		totalOpportunities: z.number().default(0),
-		totalPeople: z.number().default(0),
-		totalPersonas: z.number().default(0),
-		lastUpdated: z.string().optional(),
-		currentProject: z.string().optional(),
-		currentAccount: z.string().optional(),
-		projectName: z.string().optional(),
-		currentPhase: z.string().optional(),
-		progressPercent: z.number().default(0),
-		must_do: z.string().optional(),
-	}).optional(),
+	projectStatus: z
+		.object({
+			keyFindings: z.array(z.string()).default([]),
+			nextSteps: z.array(z.string()).default([]),
+			totalInsights: z.number().default(0),
+			totalInterviews: z.number().default(0),
+			totalOpportunities: z.number().default(0),
+			totalPeople: z.number().default(0),
+			totalPersonas: z.number().default(0),
+			lastUpdated: z.string().optional(),
+			currentProject: z.string().optional(),
+			currentAccount: z.string().optional(),
+			projectName: z.string().optional(),
+			currentPhase: z.string().optional(),
+			progressPercent: z.number().default(0),
+			must_do: z.string().optional(),
+		})
+		.optional(),
 })
 
 export const mainAgent = new Agent({

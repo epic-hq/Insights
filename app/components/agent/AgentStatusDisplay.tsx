@@ -1,9 +1,9 @@
-import { useState, useEffect } from "react"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Lightbulb, MessageSquare, RefreshCw, Target, TrendingUp } from "lucide-react"
+import { useEffect, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Separator } from "~/components/ui/separator"
-import { RefreshCw, TrendingUp, Users, MessageSquare, Target, Lightbulb } from "lucide-react"
 
 interface ProjectStatus {
 	keyFindings: string[]
@@ -32,13 +32,13 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 	const fetchAgentState = async () => {
 		setLoading(true)
 		setError(null)
-		
+
 		try {
 			// Call Mastra agent state API to get current working memory
 			const response = await fetch(`/api/agent-state/${agentId}`, {
-				method: 'GET',
+				method: "GET",
 				headers: {
-					'Content-Type': 'application/json',
+					"Content-Type": "application/json",
 				},
 			})
 
@@ -47,12 +47,12 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 			}
 
 			const agentState = await response.json()
-			
+
 			if (agentState.projectStatus) {
 				setProjectStatus(agentState.projectStatus)
 			}
 		} catch (err) {
-			setError(err instanceof Error ? err.message : 'Failed to fetch agent state')
+			setError(err instanceof Error ? err.message : "Failed to fetch agent state")
 		} finally {
 			setLoading(false)
 		}
@@ -60,7 +60,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 
 	useEffect(() => {
 		fetchAgentState()
-	}, [agentId])
+	}, [fetchAgentState])
 
 	const handleRefresh = () => {
 		fetchAgentState()
@@ -89,7 +89,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				</CardHeader>
 				<CardContent>
 					<Button onClick={handleRefresh} variant="outline" size="sm">
-						<RefreshCw className="h-4 w-4 mr-2" />
+						<RefreshCw className="mr-2 h-4 w-4" />
 						Retry
 					</Button>
 				</CardContent>
@@ -106,7 +106,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				</CardHeader>
 				<CardContent>
 					<Button onClick={handleRefresh} variant="outline" size="sm">
-						<RefreshCw className="h-4 w-4 mr-2" />
+						<RefreshCw className="mr-2 h-4 w-4" />
 						Load Status
 					</Button>
 				</CardContent>
@@ -123,47 +123,40 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 							<TrendingUp className="h-5 w-5" />
 							Project Status
 						</CardTitle>
-						<CardDescription>
-							Last updated: {new Date(projectStatus.lastUpdated).toLocaleString()}
-						</CardDescription>
+						<CardDescription>Last updated: {new Date(projectStatus.lastUpdated).toLocaleString()}</CardDescription>
 					</div>
-					<Button 
-						onClick={handleRefresh} 
-						variant="ghost" 
-						size="sm"
-						disabled={loading}
-					>
-						<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+					<Button onClick={handleRefresh} variant="ghost" size="sm" disabled={loading}>
+						<RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
 					</Button>
 				</div>
 			</CardHeader>
 			<CardContent className="space-y-6">
 				{/* Data Overview */}
 				<div>
-					<h4 className="font-semibold mb-3 flex items-center gap-2">
+					<h4 className="mb-3 flex items-center gap-2 font-semibold">
 						<Target className="h-4 w-4" />
 						Data Overview
 					</h4>
-					<div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+					<div className="grid grid-cols-2 gap-4 md:grid-cols-3">
 						<div className="text-center">
-							<div className="text-2xl font-bold text-blue-600">{projectStatus.totalInsights}</div>
-							<div className="text-sm text-muted-foreground">Insights</div>
+							<div className="font-bold text-2xl text-blue-600">{projectStatus.totalInsights}</div>
+							<div className="text-muted-foreground text-sm">Insights</div>
 						</div>
 						<div className="text-center">
-							<div className="text-2xl font-bold text-green-600">{projectStatus.totalInterviews}</div>
-							<div className="text-sm text-muted-foreground">Interviews</div>
+							<div className="font-bold text-2xl text-green-600">{projectStatus.totalInterviews}</div>
+							<div className="text-muted-foreground text-sm">Interviews</div>
 						</div>
 						<div className="text-center">
-							<div className="text-2xl font-bold text-purple-600">{projectStatus.totalOpportunities}</div>
-							<div className="text-sm text-muted-foreground">Opportunities</div>
+							<div className="font-bold text-2xl text-purple-600">{projectStatus.totalOpportunities}</div>
+							<div className="text-muted-foreground text-sm">Opportunities</div>
 						</div>
 						<div className="text-center">
-							<div className="text-2xl font-bold text-orange-600">{projectStatus.totalPeople}</div>
-							<div className="text-sm text-muted-foreground">People</div>
+							<div className="font-bold text-2xl text-orange-600">{projectStatus.totalPeople}</div>
+							<div className="text-muted-foreground text-sm">People</div>
 						</div>
 						<div className="text-center">
-							<div className="text-2xl font-bold text-pink-600">{projectStatus.totalPersonas}</div>
-							<div className="text-sm text-muted-foreground">Personas</div>
+							<div className="font-bold text-2xl text-pink-600">{projectStatus.totalPersonas}</div>
+							<div className="text-muted-foreground text-sm">Personas</div>
 						</div>
 					</div>
 				</div>
@@ -173,7 +166,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				{/* Key Findings */}
 				{projectStatus.keyFindings.length > 0 && (
 					<div>
-						<h4 className="font-semibold mb-3 flex items-center gap-2">
+						<h4 className="mb-3 flex items-center gap-2 font-semibold">
 							<Lightbulb className="h-4 w-4" />
 							Key Findings
 						</h4>
@@ -195,7 +188,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				{/* Next Steps */}
 				{projectStatus.nextSteps.length > 0 && (
 					<div>
-						<h4 className="font-semibold mb-3 flex items-center gap-2">
+						<h4 className="mb-3 flex items-center gap-2 font-semibold">
 							<MessageSquare className="h-4 w-4" />
 							Recommended Next Steps
 						</h4>
@@ -216,13 +209,9 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 				{(projectStatus.currentProject || projectStatus.currentAccount) && (
 					<>
 						<Separator />
-						<div className="text-xs text-muted-foreground space-y-1">
-							{projectStatus.currentAccount && (
-								<div>Account: {projectStatus.currentAccount}</div>
-							)}
-							{projectStatus.currentProject && (
-								<div>Project: {projectStatus.currentProject}</div>
-							)}
+						<div className="space-y-1 text-muted-foreground text-xs">
+							{projectStatus.currentAccount && <div>Account: {projectStatus.currentAccount}</div>}
+							{projectStatus.currentProject && <div>Project: {projectStatus.currentProject}</div>}
 						</div>
 					</>
 				)}

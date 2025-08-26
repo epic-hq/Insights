@@ -66,8 +66,13 @@ export default defineConfig({
 		open: true,
 		port: Number(process.env.PORT || 4280),
 		allowedHosts: [
-			/\.fly\.dev$/,           // any *.fly.dev
-			/\.ngrok-free\.app$/,    // any *.ngrok-free.app
-			"getupsight.com", "cowbird-still-routinely.ngrok-free.app", "localhost", "127.0.0.1", "0.0.0.0"],
+			/\.fly\.dev$/, // any *.fly.dev
+			/\.ngrok-free\.app$/, // any *.ngrok-free.app
+			"getupsight.com",
+			"cowbird-still-routinely.ngrok-free.app",
+			"localhost",
+			"127.0.0.1",
+			"0.0.0.0",
+		],
 	},
 })

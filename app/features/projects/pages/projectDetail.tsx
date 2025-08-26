@@ -30,7 +30,6 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	try {
 		const { data: project, error } = await getProjectById({
 			supabase,
-			accountId,
 			id: projectId,
 		})
 
@@ -74,7 +73,7 @@ export default function ProjectDetail() {
 		<div className="mx-auto max-w-4xl">
 			<div className="mb-12 flex items-start justify-between">
 				<div className="flex-1">
-					<h1 className="text-4xl font-light text-gray-900 tracking-tight mb-3">{project.name}</h1>
+					<h1 className="mb-3 font-light text-4xl text-gray-900 tracking-tight">{project.name}</h1>
 					<div className="flex items-center gap-3">
 						{project.status && (
 							<Badge className={getStatusColor(project.status)}>{project.status.replace("_", " ")}</Badge>
@@ -89,16 +88,16 @@ export default function ProjectDetail() {
 			</div>
 
 			<div className="grid gap-12 lg:grid-cols-3">
-				<div className="lg:col-span-2 space-y-8">
+				<div className="space-y-8 lg:col-span-2">
 					<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-						<div className="flex items-center justify-between mb-6">
-							<h2 className="text-2xl font-light text-gray-900">Description</h2>
+						<div className="mb-6 flex items-center justify-between">
+							<h2 className="font-light text-2xl text-gray-900">Description</h2>
 							<Button asChild variant="ghost" size="sm" className="text-gray-500 hover:text-gray-700">
 								<Link to={routes.projects.edit(project.id)}>Edit</Link>
 							</Button>
 						</div>
 						{project.description ? (
-							<p className="text-gray-700 leading-relaxed whitespace-pre-wrap">{project.description}</p>
+							<p className="whitespace-pre-wrap text-gray-700 leading-relaxed">{project.description}</p>
 						) : (
 							<p className="text-gray-400 italic">No description provided</p>
 						)}
@@ -106,7 +105,7 @@ export default function ProjectDetail() {
 
 					{people.length > 0 && (
 						<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-							<h2 className="text-2xl font-light text-gray-900 mb-6">Team Members</h2>
+							<h2 className="mb-6 font-light text-2xl text-gray-900">Team Members</h2>
 							<div className="space-y-3">
 								{people.map((projectPerson) => (
 									<div key={projectPerson.people.id} className="border-blue-500 border-l-4 pl-4">
@@ -129,7 +128,7 @@ export default function ProjectDetail() {
 
 					{personas.length > 0 && (
 						<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
-							<h2 className="text-2xl font-light text-gray-900 mb-6">Target Personas</h2>
+							<h2 className="mb-6 font-light text-2xl text-gray-900">Target Personas</h2>
 							<div className="space-y-3">
 								{personas.map((projectPersona) => (
 									<div key={projectPersona.personas.id} className="border-green-500 border-l-4 pl-4">

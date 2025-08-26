@@ -1,10 +1,9 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
-import { Palette, Users } from "lucide-react"
+import { Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
-import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
@@ -48,7 +47,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 				className={cn(
 					"group relative cursor-pointer overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
 					"transition-all duration-300 ease-out",
-					"hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-white/5",
+					"hover:shadow-black/5 hover:shadow-lg dark:hover:shadow-white/5",
 					className
 				)}
 				onMouseEnter={() => setIsHovered(true)}
@@ -66,7 +65,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 								className="h-20 w-20 border-4 border-white shadow-lg dark:border-gray-800"
 								style={{ borderColor: `${themeColor}20` }}
 							>
-								<AvatarFallback className="text-white font-semibold text-2xl" style={{ backgroundColor: themeColor }}>
+								<AvatarFallback className="font-semibold text-2xl text-white" style={{ backgroundColor: themeColor }}>
 									{persona.image_url ? (
 										<img src={persona.image_url} alt={name} className="h-full w-full object-cover" />
 									) : (
@@ -89,7 +88,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 					{/* Title Section - Clean Typography */}
 					<div className="mb-6">
 						<motion.h3
-							className="font-light text-2xl text-gray-900 dark:text-white tracking-tight leading-tight mb-2"
+							className="mb-2 font-light text-2xl text-gray-900 leading-tight tracking-tight dark:text-white"
 							style={{ color: isHovered ? themeColor : undefined }}
 							transition={{ duration: 0.3 }}
 						>
@@ -106,7 +105,7 @@ export default function EnhancedPersonaCard({ persona, className }: EnhancedPers
 
 					{/* Description - Clean and Readable */}
 					<div className="mb-8">
-						<p className="text-gray-600 dark:text-gray-400 text-base leading-relaxed line-clamp-4">{description}</p>
+						<p className="line-clamp-4 text-base text-gray-600 leading-relaxed dark:text-gray-400">{description}</p>
 					</div>
 
 					{/* Footer - Minimal Metadata */}

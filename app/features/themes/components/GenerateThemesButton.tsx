@@ -1,6 +1,6 @@
+import { Loader2, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { useFetcher } from "react-router-dom"
-import { Sparkles, Loader2 } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 // import { toast } from "sonner"
@@ -16,14 +16,14 @@ export function GenerateThemesButton() {
 		}
 
 		setIsGenerating(true)
-		
+
 		const formData = new FormData()
 		formData.append("projectId", projectId)
 		formData.append("guidance", "Generate themes that capture the main user pain points and needs")
 
 		fetcher.submit(formData, {
 			method: "POST",
-			action: "/api/generate-themes"
+			action: "/api/generate-themes",
 		})
 	}
 
@@ -39,8 +39,8 @@ export function GenerateThemesButton() {
 	}
 
 	return (
-		<Button 
-			onClick={handleGenerate} 
+		<Button
+			onClick={handleGenerate}
 			disabled={isGenerating || fetcher.state === "submitting"}
 			className="flex items-center gap-2"
 		>

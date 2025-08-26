@@ -51,7 +51,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		// get the new projectId and create project routes server side definition
 		const projectRoutes = createProjectRoutes(accountId, data.id)
 
-		return redirect(projectRoutes.projects.dashboard(data.id))
+		return redirect(projectRoutes.projects.setup())
 	} catch (error) {
 		consola.error("Error creating project:", error)
 		return { error: "Failed to create project" }

@@ -286,7 +286,7 @@ export default function Index() {
 	const data = useLoaderData<typeof loader>()
 
 	return (
-		<div>
+		<div className="p-6">
 			<div className="relative">
 				<div className="mx-auto flex justify-center">
 					<Button className="items-center justify-center bg-gradient-to-br from-blue-500 to-green-600 p-6 text-xl opacity-80">

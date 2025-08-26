@@ -1,5 +1,5 @@
-import { aggregateAutoInsightsData } from "~/utils/autoInsightsData.server"
 import consola from "consola"
+import { aggregateAutoInsightsData } from "~/utils/autoInsightsData.server"
 
 export const action = async ({ request }: { request: Request }) => {
 	// You may want to extract accountId/projectId from session or formData

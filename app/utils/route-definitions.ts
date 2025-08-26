@@ -78,6 +78,7 @@ export interface RouteDefinitions {
 	projects: {
 		index: () => string
 		new: () => string
+		setup: () => string
 		detail: (id: string) => string
 		edit: (id: string) => string
 		dashboard: (id: string) => string
@@ -126,7 +127,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Interviews
 		interviews: {
 			index: () => `${base}/interviews`,
-			onboard: () => `${base}/interviews/onboard`,
+			onboard: () => `${base}/interviews/onboard`,  // aka upload
 			new: () => `${base}/interviews/new`,
 			detail: (id: string) => `${base}/interviews/${id}`,
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
@@ -149,8 +150,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			map: () => `${base}/insights/map`,
 			autoInsights: () => `${base}/insights/auto-insights`,
 			new: () => `${base}/insights/new`,
-			detail: (id: string) => `${base}/insights/${id}`,
-			edit: (id: string) => `${base}/insights/${id}/edit`,
+			detail: (insightId: string) => `${base}/insights/${insightId}`,
+			edit: (insightId: string) => `${base}/insights/${insightId}/edit`,
 			// Query parameter helpers
 			withSort: (sort: string) => `${base}/insights/?sort=${sort}`,
 		},
@@ -184,6 +185,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		projects: {
 			index: () => `/a/${extractAccountId(projectPath)}/projects`,
 			new: () => `/a/${extractAccountId(projectPath)}/projects/new`,
+			setup: () => `/onboarding`,
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			edit: (id: string) => `/a/${extractAccountId(projectPath)}/projects/${id}/edit`,
 			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,

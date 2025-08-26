@@ -41,7 +41,7 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 
 	useEffect(() => {
 		scrollToBottom()
-	}, [messages])
+	}, [scrollToBottom])
 
 	useEffect(() => {
 		// Focus input when component mounts

@@ -45,7 +45,6 @@ export async function action({ request }: ActionFunctionArgs) {
 			interview: result.interview,
 		})
 	} catch (error) {
-		console.error("Internal interview processing failed:", error)
 		return Response.json({ error: error instanceof Error ? error.message : "Processing failed" }, { status: 500 })
 	}
 }

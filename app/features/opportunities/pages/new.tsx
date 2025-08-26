@@ -44,13 +44,11 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		})
 
 		if (error) {
-			console.error("Error creating opportunity:", error)
 			return { error: "Failed to create opportunity" }
 		}
 
 		return redirect(`/opportunities/${data.id}`)
-	} catch (error) {
-		console.error("Error creating opportunity:", error)
+	} catch (_error) {
 		return { error: "Failed to create opportunity" }
 	}
 }

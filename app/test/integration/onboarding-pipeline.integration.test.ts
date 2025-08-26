@@ -1,7 +1,7 @@
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { action as webhookAction } from "~/routes/api.assemblyai-webhook"
 import { action as onboardingAction } from "~/routes/api.onboarding-start"
-import { getTestDbState, mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
+import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Mock dependencies that require external services
 vi.mock("~/lib/supabase/server", () => ({
@@ -209,7 +209,7 @@ describe("Onboarding Pipeline Integration", () => {
 
 			await testDb.from("upload_jobs").insert({
 				id: "test-upload-job-idempotent",
-				interview_id: interview!.id,
+				interview_id: interview?.id,
 				assemblyai_id: "transcript-456",
 				status: "done", // Already completed
 				custom_instructions: "Test instructions",
@@ -236,13 +236,13 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResult.message).toBe("Already processed")
 
 			// Verify original transcript was not overwritten
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview!.id).single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single()
 
 			expect(finalInterview?.transcript).toBe("Existing transcript")
 			expect(finalInterview?.status).toBe("ready")
 
 			// Verify no duplicate analysis jobs were created
-			const { data: analysisJobs } = await testDb.from("analysis_jobs").select("*").eq("interview_id", interview!.id)
+			const { data: analysisJobs } = await testDb.from("analysis_jobs").select("*").eq("interview_id", interview?.id)
 
 			expect(analysisJobs).toHaveLength(0) // No analysis jobs should be created
 		})
@@ -263,7 +263,7 @@ describe("Onboarding Pipeline Integration", () => {
 
 			await testDb.from("upload_jobs").insert({
 				id: "test-upload-job-status",
-				interview_id: interview!.id,
+				interview_id: interview?.id,
 				assemblyai_id: "transcript-789",
 				status: "pending",
 				custom_instructions: "",
@@ -282,7 +282,7 @@ describe("Onboarding Pipeline Integration", () => {
 
 			// Track status changes by querying before and after
 			const getStatus = async () => {
-				const { data } = await testDb.from("interviews").select("status").eq("id", interview!.id).single()
+				const { data } = await testDb.from("interviews").select("status").eq("id", interview?.id).single()
 				return data?.status
 			}
 
@@ -310,7 +310,7 @@ describe("Onboarding Pipeline Integration", () => {
 			const { data: analysisJob } = await testDb
 				.from("analysis_jobs")
 				.select("*")
-				.eq("interview_id", interview!.id)
+				.eq("interview_id", interview?.id)
 				.single()
 
 			expect(analysisJob?.status).toBe("done")
@@ -335,7 +335,7 @@ describe("Onboarding Pipeline Integration", () => {
 
 			await testDb.from("upload_jobs").insert({
 				id: "test-upload-job-error",
-				interview_id: interview!.id,
+				interview_id: interview?.id,
 				assemblyai_id: "transcript-error",
 				status: "pending",
 				custom_instructions: "",
@@ -357,14 +357,14 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(webhookResponse.status).toBe(200)
 
 			// Verify error status was set
-			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview!.id).single()
+			const { data: finalInterview } = await testDb.from("interviews").select("*").eq("id", interview?.id).single()
 
 			expect(finalInterview?.status).toBe("error")
 
 			const { data: uploadJob } = await testDb
 				.from("upload_jobs")
 				.select("*")
-				.eq("interview_id", interview!.id)
+				.eq("interview_id", interview?.id)
 				.single()
 
 			expect(uploadJob?.status).toBe("error")

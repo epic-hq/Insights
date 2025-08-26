@@ -40,8 +40,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		}
 
 		return { opportunity }
-	} catch (error) {
-		console.error("Error loading opportunity:", error)
+	} catch (_error) {
 		throw new Response("Failed to load opportunity", { status: 500 })
 	}
 }

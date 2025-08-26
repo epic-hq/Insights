@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import type { Database, ProjectInsert, ProjectUpdate } from "~/types"
+import type { Database, Project_SectionInsert, Project_SectionUpdate, ProjectInsert, ProjectUpdate } from "~/types"
 
 export const getProjects = async ({
 	supabase,
@@ -26,15 +26,7 @@ export const getProjects = async ({
 		.order("created_at", { ascending: false })
 }
 
-export const getProjectById = async ({
-	supabase,
-	accountId,
-	id,
-}: {
-	supabase: SupabaseClient<Database>
-	accountId: string
-	id: string
-}) => {
+export const getProjectById = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
 	// consola.log("getProjectById accountId: ", accountId)
 	return await supabase
 		.from("projects")
@@ -51,7 +43,6 @@ export const getProjectById = async ({
 				last_seen_at
 			)
 		`)
-		.eq("account_id", accountId)
 		.eq("id", id)
 		.single()
 }
@@ -69,25 +60,88 @@ export const createProject = async ({
 export const updateProject = async ({
 	supabase,
 	id,
-	accountId,
 	data,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
-	accountId: string
 	data: ProjectUpdate
 }) => {
-	return await supabase.from("projects").update(data).eq("id", id).eq("account_id", accountId).select().single()
+	return await supabase.from("projects").update(data).eq("id", id).select().single()
 }
 
-export const deleteProject = async ({
+export const deleteProject = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
+	return await supabase.from("projects").delete().eq("id", id)
+}
+
+// Project Sections functions
+export const getProjectSections = async ({
+	supabase,
+	projectId,
+}: {
+	supabase: SupabaseClient<Database>
+	projectId: string
+}) => {
+	return await supabase
+		.from("project_sections")
+		.select("*")
+		.eq("project_id", projectId)
+		.order("position", { ascending: true, nullsFirst: false })
+		.order("created_at", { ascending: false })
+}
+
+export const getProjectSectionKinds = async ({ supabase }: { supabase: SupabaseClient<Database> }) => {
+	return await supabase.from("project_section_kinds").select("id").order("id", { ascending: true })
+}
+
+export const createProjectSection = async ({
+	supabase,
+	data,
+}: {
+	supabase: SupabaseClient<Database>
+	data: Project_SectionInsert
+}) => {
+	return await supabase.from("project_sections").insert(data).select().single()
+}
+
+export const updateProjectSection = async ({
 	supabase,
 	id,
-	accountId,
+	data,
 }: {
 	supabase: SupabaseClient<Database>
 	id: string
-	accountId: string
+	data: Project_SectionUpdate
 }) => {
-	return await supabase.from("projects").delete().eq("id", id).eq("account_id", accountId)
+	return await supabase.from("project_sections").update(data).eq("id", id).select().single()
+}
+
+export const upsertProjectSection = async ({
+	supabase,
+	data,
+}: {
+	supabase: SupabaseClient<Database>
+	data: Project_SectionInsert & { id?: string }
+}) => {
+	return await supabase.from("project_sections").upsert(data).select().single()
+}
+
+export const deleteProjectSection = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
+	return await supabase.from("project_sections").delete().eq("id", id)
+}
+
+export const getProjectSectionsByKind = async ({
+	supabase,
+	projectId,
+	kind,
+}: {
+	supabase: SupabaseClient<Database>
+	projectId: string
+	kind: string
+}) => {
+	return await supabase
+		.from("project_sections")
+		.select("*")
+		.eq("project_id", projectId)
+		.eq("kind", kind)
+		.order("created_at", { ascending: false })
 }

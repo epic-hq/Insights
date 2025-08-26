@@ -1,7 +1,7 @@
 import { Bot, Plus } from "lucide-react"
 import { useNavigate, useParams } from "react-router-dom"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 interface BottomActionBarProps {
 	onToggleChat: () => void
@@ -15,7 +15,7 @@ export function BottomActionBar({ onToggleChat }: BottomActionBarProps) {
 	const routes = useProjectRoutes(projectPath || "")
 
 	return (
-		<div className="fixed right-0 bottom-0 left-0 border-gray-800 border-t bg-black p-3 pb-safe z-50">
+		<div className="fixed right-0 bottom-0 left-0 z-50 border-gray-800 border-t bg-black p-3 pb-safe">
 			<div className="mx-auto max-w-md">
 				<div className="grid grid-cols-3 gap-2">
 					{/* Add Encounter → Modern Onboarding Flow */}

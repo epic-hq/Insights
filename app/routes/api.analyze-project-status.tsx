@@ -1,9 +1,8 @@
-import type { ActionFunctionArgs } from "react-router"
 import { b } from "baml_client"
-
-import { getInterviews } from "~/features/interviews/db"
-import { getInsights } from "~/features/insights/db"
 import consola from "consola"
+import type { ActionFunctionArgs } from "react-router"
+import { getInsights } from "~/features/insights/db"
+import { getInterviews } from "~/features/interviews/db"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 
 interface AnalysisRequest {
@@ -82,12 +81,11 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Prepare data for BAML analysis
 		const researchGoal = project.research_goal || "Understand user needs"
-		const interviewContent = interviews?.map((i) =>
-			`${i.title || 'Interview'}: ${i.observations_and_notes || i.high_impact_themes?.join(', ') || ''}`
-		).join("\n\n") || ""
-		const insightContent = insights?.map((i) =>
-			`${i.name}: ${i.pain || ''} ${i.details || ''}`
-		).join("\n\n") || ""
+		const interviewContent =
+			interviews
+				?.map((i) => `${i.title || "Interview"}: ${i.observations_and_notes || i.high_impact_themes?.join(", ") || ""}`)
+				.join("\n\n") || ""
+		const insightContent = insights?.map((i) => `${i.name}: ${i.pain || ""} ${i.details || ""}`).join("\n\n") || ""
 
 		// TODO analyze if this is helpful or separate custom instructions
 		// Enhanced research goal with custom instructions

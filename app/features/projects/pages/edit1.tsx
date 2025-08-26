@@ -31,7 +31,6 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	try {
 		const { data: project, error } = await getProjectById({
 			supabase,
-			accountId,
 			id,
 		})
 

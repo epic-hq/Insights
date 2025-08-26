@@ -1,21 +1,25 @@
 import { createTool } from "@mastra/core/tools"
-import { z } from "zod"
 import { createClient, type SupabaseClient } from "@supabase/supabase-js"
-import type { Database, Project, Insight, Interview, Opportunity, Person, Persona } from "~/types"
-import { getProjects, getProjectById } from "~/features/projects/db"
+import consola from "consola"
+import { z } from "zod"
 import { getInsights } from "~/features/insights/db"
 import { getInterviews } from "~/features/interviews/db"
 import { getOpportunities } from "~/features/opportunities/db"
 import { getPeople } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
-import consola from "consola"
+import { getProjectById, getProjects } from "~/features/projects/db"
+import type { Database, Insight, Interview, Opportunity, Person, Persona } from "~/types"
 
 // Project search and analysis tool for Upsight
 export const upsightTool = createTool({
 	id: "upsight_search",
-	description: "Search and analyze project data including insights, interviews, opportunities, people, and personas. Provides comprehensive project status information including key findings and next steps.",
+	description:
+		"Search and analyze project data including insights, interviews, opportunities, people, and personas. Provides comprehensive project status information including key findings and next steps.",
 	inputSchema: z.object({
-		accountId: z.string().optional().describe("The account ID to search within (will use runtime context if not provided)"),
+		accountId: z
+			.string()
+			.optional()
+			.describe("The account ID to search within (will use runtime context if not provided)"),
 		projectId: z.string().optional().describe("Specific project ID to analyze (optional)"),
 		searchQuery: z.string().optional().describe("Text to search for across project data"),
 		includeInsights: z.boolean().default(true).describe("Include insights in the search"),
@@ -26,48 +30,60 @@ export const upsightTool = createTool({
 		limit: z.number().default(50).describe("Maximum number of results per category"),
 	}),
 	outputSchema: z.object({
-		projects: z.array(z.object({
-			id: z.string(),
-			name: z.string(),
-			description: z.string().nullable(),
-			status: z.string().nullable(),
-			created_at: z.string(),
-			updated_at: z.string(),
-		})),
-		insights: z.array(z.object({
-			id: z.string(),
-			name: z.string().nullable(),
-			details: z.string().nullable(),
-			category: z.string().nullable(),
-			impact: z.number().nullable(),
-			pain: z.string().nullable(),
-			desired_outcome: z.string().nullable(),
-		})),
-		interviews: z.array(z.object({
-			id: z.string(),
-			title: z.string().nullable(),
-			interview_date: z.string().nullable(),
-			status: z.string().nullable(),
-		})),
-		opportunities: z.array(z.object({
-			id: z.string(),
-			title: z.string().nullable(),
-			description: z.string().nullable(),
-			status: z.string().nullable(),
-			impact: z.string().nullable(),
-		})),
-		people: z.array(z.object({
-			id: z.string(),
-			name: z.string().nullable(),
-			segment: z.string().nullable(),
-			role: z.string().nullable(),
-		})),
-		personas: z.array(z.object({
-			id: z.string(),
-			name: z.string().nullable(),
-			description: z.string().nullable(),
-			percentage: z.number().nullable(),
-		})),
+		projects: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string(),
+				description: z.string().nullable(),
+				status: z.string().nullable(),
+				created_at: z.string(),
+				updated_at: z.string(),
+			})
+		),
+		insights: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string().nullable(),
+				details: z.string().nullable(),
+				category: z.string().nullable(),
+				impact: z.number().nullable(),
+				pain: z.string().nullable(),
+				desired_outcome: z.string().nullable(),
+			})
+		),
+		interviews: z.array(
+			z.object({
+				id: z.string(),
+				title: z.string().nullable(),
+				interview_date: z.string().nullable(),
+				status: z.string().nullable(),
+			})
+		),
+		opportunities: z.array(
+			z.object({
+				id: z.string(),
+				title: z.string().nullable(),
+				description: z.string().nullable(),
+				status: z.string().nullable(),
+				impact: z.string().nullable(),
+			})
+		),
+		people: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string().nullable(),
+				segment: z.string().nullable(),
+				role: z.string().nullable(),
+			})
+		),
+		personas: z.array(
+			z.object({
+				id: z.string(),
+				name: z.string().nullable(),
+				description: z.string().nullable(),
+				percentage: z.number().nullable(),
+			})
+		),
 		projectStatus: z.object({
 			keyFindings: z.array(z.string()),
 			nextSteps: z.array(z.string()),
@@ -115,7 +131,15 @@ export const upsightTool = createTool({
 				},
 			})
 
-			const { searchQuery, includeInsights, includeInterviews, includeOpportunities, includePeople, includePersonas, limit } = context
+			const {
+				searchQuery,
+				includeInsights,
+				includeInterviews,
+				includeOpportunities,
+				includePeople,
+				includePersonas,
+				limit,
+			} = context
 
 			// Initialize result arrays
 			let projects: any[] = []
@@ -128,7 +152,7 @@ export const upsightTool = createTool({
 			// Get projects data
 			if (finalProjectId) {
 				// Get specific project
-				const { data: projectData, error: projectError } = await getProjectById({ supabase, accountId: finalAccountId, id: finalProjectId })
+				const { data: projectData, error: projectError } = await getProjectById({ supabase, id: finalProjectId })
 				if (projectData && !projectError) {
 					projects = [projectData]
 				}
@@ -147,17 +171,22 @@ export const upsightTool = createTool({
 				// Get insights
 				if (includeInsights) {
 					try {
-						const { data: insightsData, error: insightsError } = await getInsights({ supabase, accountId: finalAccountId, projectId: currentProjectId })
+						const { data: insightsData, error: insightsError } = await getInsights({
+							supabase,
+							accountId: finalAccountId,
+							projectId: currentProjectId,
+						})
 						if (insightsData && !insightsError) {
 							let filteredInsights = insightsData
 
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredInsights = insightsData.filter(insight =>
-									insight.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									insight.details?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									insight.pain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									insight.desired_outcome?.toLowerCase().includes(searchQuery.toLowerCase())
+								filteredInsights = insightsData.filter(
+									(insight) =>
+										insight.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										insight.details?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										insight.pain?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										insight.desired_outcome?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
 
@@ -171,13 +200,17 @@ export const upsightTool = createTool({
 				// Get interviews
 				if (includeInterviews) {
 					try {
-						const { data: interviewsData, error: interviewsError } = await getInterviews({ supabase, accountId: finalAccountId, projectId: currentProjectId })
+						const { data: interviewsData, error: interviewsError } = await getInterviews({
+							supabase,
+							accountId: finalAccountId,
+							projectId: currentProjectId,
+						})
 						if (interviewsData && !interviewsError) {
 							let filteredInterviews = interviewsData
 
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredInterviews = interviewsData.filter(interview =>
+								filteredInterviews = interviewsData.filter((interview) =>
 									interview.title?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
@@ -192,15 +225,20 @@ export const upsightTool = createTool({
 				// Get opportunities
 				if (includeOpportunities) {
 					try {
-						const { data: opportunitiesData, error: opportunitiesError } = await getOpportunities({ supabase, accountId: finalAccountId, projectId: currentProjectId })
+						const { data: opportunitiesData, error: opportunitiesError } = await getOpportunities({
+							supabase,
+							accountId: finalAccountId,
+							projectId: currentProjectId,
+						})
 						if (opportunitiesData && !opportunitiesError) {
 							let filteredOpportunities = opportunitiesData
 
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredOpportunities = opportunitiesData.filter(opportunity =>
-									opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									opportunity.description?.toLowerCase().includes(searchQuery.toLowerCase())
+								filteredOpportunities = opportunitiesData.filter(
+									(opportunity) =>
+										opportunity.title?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										opportunity.description?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
 
@@ -214,16 +252,21 @@ export const upsightTool = createTool({
 				// Get people
 				if (includePeople) {
 					try {
-						const { data: peopleData, error: peopleError } = await getPeople({ supabase, accountId: finalAccountId, projectId: currentProjectId })
+						const { data: peopleData, error: peopleError } = await getPeople({
+							supabase,
+							accountId: finalAccountId,
+							projectId: currentProjectId,
+						})
 						if (peopleData && !peopleError) {
 							let filteredPeople = peopleData
 
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredPeople = peopleData.filter(person =>
-									person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									person.segment?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									person.role?.toLowerCase().includes(searchQuery.toLowerCase())
+								filteredPeople = peopleData.filter(
+									(person) =>
+										person.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										person.segment?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										person.role?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
 
@@ -237,15 +280,19 @@ export const upsightTool = createTool({
 				// Get personas
 				if (includePersonas) {
 					try {
-						const { data: personasData, error: personasError } = await getPersonas({ supabase, accountId: finalAccountId })
+						const { data: personasData, error: personasError } = await getPersonas({
+							supabase,
+							accountId: finalAccountId,
+						})
 						if (personasData && !personasError) {
 							let filteredPersonas = personasData
 
 							// Apply search filter if provided
 							if (searchQuery) {
-								filteredPersonas = personasData.filter(persona =>
-									persona.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-									persona.description?.toLowerCase().includes(searchQuery.toLowerCase())
+								filteredPersonas = personasData.filter(
+									(persona) =>
+										persona.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+										persona.description?.toLowerCase().includes(searchQuery.toLowerCase())
 								)
 							}
 
@@ -273,15 +320,15 @@ export const upsightTool = createTool({
 			}
 
 			return {
-				projects: projects.map(p => ({
+				projects: projects.map((p) => ({
 					id: p.id,
-					name: p.name || 'Untitled Project',
+					name: p.name || "Untitled Project",
 					description: p.description,
 					status: p.status,
 					created_at: p.created_at,
 					updated_at: p.updated_at,
 				})),
-				insights: insights.map(i => ({
+				insights: insights.map((i) => ({
 					id: i.id,
 					name: i.name,
 					details: i.details,
@@ -290,26 +337,26 @@ export const upsightTool = createTool({
 					pain: i.pain,
 					desired_outcome: i.desired_outcome,
 				})),
-				interviews: interviews.map(i => ({
+				interviews: interviews.map((i) => ({
 					id: i.id,
 					title: i.title,
 					interview_date: i.interview_date,
 					status: i.status,
 				})),
-				opportunities: opportunities.map(o => ({
+				opportunities: opportunities.map((o) => ({
 					id: o.id,
 					title: o.title,
 					description: o.description,
 					status: o.status,
 					impact: o.impact,
 				})),
-				people: people.map(p => ({
+				people: people.map((p) => ({
 					id: p.id,
 					name: p.name,
 					segment: p.segment,
 					role: p.role,
 				})),
-				personas: personas.map(p => ({
+				personas: personas.map((p) => ({
 					id: p.id,
 					name: p.name,
 					description: p.description,
@@ -330,18 +377,21 @@ function generateKeyFindings(insights: any[], interviews: any[], opportunities: 
 
 	// Analyze insights for patterns
 	if (insights.length > 0) {
-		const highImpactInsights = insights.filter(i => i.impact && i.impact >= 8)
+		const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8)
 		if (highImpactInsights.length > 0) {
 			findings.push(`${highImpactInsights.length} high-impact insights identified (impact score ≥ 8)`)
 		}
 
-		const categories = insights.map(i => i.category).filter(Boolean)
-		const categoryCount = categories.reduce((acc, cat) => {
-			acc[cat] = (acc[cat] || 0) + 1
-			return acc
-		}, {} as Record<string, number>)
+		const categories = insights.map((i) => i.category).filter(Boolean)
+		const categoryCount = categories.reduce(
+			(acc, cat) => {
+				acc[cat] = (acc[cat] || 0) + 1
+				return acc
+			},
+			{} as Record<string, number>
+		)
 
-		const topCategory = Object.entries(categoryCount).sort(([,a], [,b]) => b - a)[0]
+		const topCategory = Object.entries(categoryCount).sort(([, a], [, b]) => b - a)[0]
 		if (topCategory) {
 			findings.push(`Most common insight category: ${topCategory[0]} (${topCategory[1]} insights)`)
 		}
@@ -351,7 +401,7 @@ function generateKeyFindings(insights: any[], interviews: any[], opportunities: 
 	if (interviews.length > 0) {
 		findings.push(`${interviews.length} interviews conducted`)
 
-		const recentInterviews = interviews.filter(i => {
+		const recentInterviews = interviews.filter((i) => {
 			if (!i.interview_date) return false
 			const interviewDate = new Date(i.interview_date)
 			const thirtyDaysAgo = new Date()
@@ -368,7 +418,7 @@ function generateKeyFindings(insights: any[], interviews: any[], opportunities: 
 	if (opportunities.length > 0) {
 		findings.push(`${opportunities.length} opportunities identified`)
 
-		const highImpactOpportunities = opportunities.filter(o => o.impact === 'high')
+		const highImpactOpportunities = opportunities.filter((o) => o.impact === "high")
 		if (highImpactOpportunities.length > 0) {
 			findings.push(`${highImpactOpportunities.length} high-impact opportunities available`)
 		}
@@ -390,12 +440,12 @@ function generateNextSteps(insights: any[], opportunities: any[], interviews: an
 		steps.push("Review insights to identify potential opportunities")
 	}
 
-	const highImpactInsights = insights.filter(i => i.impact && i.impact >= 8)
+	const highImpactInsights = insights.filter((i) => i.impact && i.impact >= 8)
 	if (highImpactInsights.length > 0) {
 		steps.push(`Prioritize action on ${highImpactInsights.length} high-impact insights`)
 	}
 
-	const recentInterviews = interviews.filter(i => {
+	const recentInterviews = interviews.filter((i) => {
 		if (!i.interview_date) return false
 		const interviewDate = new Date(i.interview_date)
 		const sevenDaysAgo = new Date()
@@ -407,7 +457,7 @@ function generateNextSteps(insights: any[], opportunities: any[], interviews: an
 		steps.push("Schedule additional user interviews to gather more insights")
 	}
 
-	const pendingOpportunities = opportunities.filter(o => o.status === 'pending' || o.status === 'open')
+	const pendingOpportunities = opportunities.filter((o) => o.status === "pending" || o.status === "open")
 	if (pendingOpportunities.length > 0) {
 		steps.push(`Review and prioritize ${pendingOpportunities.length} pending opportunities`)
 	}

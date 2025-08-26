@@ -19,7 +19,7 @@ const userId = user.id
 
 ### 2. **Enforce Project-Level Data Isolation**
 All project-related entities must be scoped by both `account_id` AND `project_id`:
-
+<!-- TODO - why is this? seems we can only do proect_id and be fine. I'm concerned we might get account_id wrong. is it the team account? or the user account? -->
 ```typescript
 // ✅ CORRECT - Dual scoping
 const { data } = await supabase
@@ -85,7 +85,7 @@ export async function getEntityById({
 export const getEntities = async ({ supabase, accountId, projectId }) => { ... }
 export const getEntityById = async ({ supabase, accountId, projectId, id }) => { ... }
 
-// Write Operations  
+// Write Operations
 export const createEntity = async ({ supabase, data }) => { ... } // data includes account_id, project_id
 export const updateEntity = async ({ supabase, accountId, projectId, id, data }) => { ... }
 export const deleteEntity = async ({ supabase, accountId, projectId, id }) => { ... }
@@ -104,20 +104,20 @@ export const deleteEntity = async ({ supabase, accountId, projectId, id }) => { 
 export async function loader({ context, params }: LoaderFunctionArgs) {
   const ctx = context.get(userContext)
   const supabase = ctx.supabase
-  
+
   // Both from URL params - consistent, explicit, RESTful
   const accountId = params.accountId   // From URL: /accounts/:accountId/...
   const projectId = params.projectId   // From URL: .../projects/:projectId/...
-  
+
   // Session context used only for authentication verification
   // URL params provide explicit resource context
-  
-  const { data, error } = await getEntities({ 
-    supabase, 
-    accountId, 
-    projectId 
+
+  const { data, error } = await getEntities({
+    supabase,
+    accountId,
+    projectId
   })
-  
+
   if (error) throw new Response("Not found", { status: 404 })
   return { entities: data }
 }
@@ -131,10 +131,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export async function action({ request, context }: ActionFunctionArgs) {
   const ctx = context.get(userContext)
   const accountId = ctx.account_id
-  
+
   const formData = await request.formData()
   const projectId = formData.get('projectId') as string
-  
+
   await processInterviewTranscript({
     accountId,    // From authenticated session
     projectId,    // From form/URL context
@@ -276,10 +276,10 @@ describe('buildPersonName', () => {
 // Test with real Supabase instance and seeded data
 describe('getInterviews', () => {
   it('should filter by account and project', async () => {
-    const result = await getInterviews({ 
-      supabase, 
-      accountId: TEST_ACCOUNT_ID, 
-      projectId: TEST_PROJECT_ID 
+    const result = await getInterviews({
+      supabase,
+      accountId: TEST_ACCOUNT_ID,
+      projectId: TEST_PROJECT_ID
     })
     expect(result.data).toHaveLength(2)
   })
@@ -319,5 +319,5 @@ A properly implemented account/project flow should achieve:
 
 ---
 
-**Last Updated:** August 2025  
+**Last Updated:** August 2025
 **Status:** ✅ Implemented and Validated

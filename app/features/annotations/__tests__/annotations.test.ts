@@ -135,7 +135,7 @@ describe("Annotations System", () => {
 				},
 			})
 
-			const annotationId = createResult.data!.id
+			const annotationId = createResult.data?.id
 
 			const updateResult = await updateAnnotation({
 				supabase,
@@ -163,7 +163,7 @@ describe("Annotations System", () => {
 				},
 			})
 
-			const annotationId = createResult.data!.id
+			const annotationId = createResult.data?.id
 
 			const deleteResult = await deleteAnnotation({
 				supabase,

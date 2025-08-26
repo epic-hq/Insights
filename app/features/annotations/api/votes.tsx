@@ -35,7 +35,7 @@ export const loader: LoaderFunction = async ({ request, params, context }) => {
 	// Claims are optional for GET; fetch locally if not provided (no network due to SSR settings)
 	if (!userId) {
 		try {
-			const { data: claims } = await supabase!.auth.getClaims()
+			const { data: claims } = await supabase?.auth.getClaims()
 			userId = (claims?.claims as any)?.sub
 		} catch {}
 	}

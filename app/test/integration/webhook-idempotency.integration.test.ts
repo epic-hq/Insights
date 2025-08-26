@@ -45,7 +45,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 				.from("upload_jobs")
 				.insert({
 					id: "test-upload-job-done",
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					assemblyai_id: "transcript-idempotent-test",
 					status: "done", // Already completed
 					custom_instructions: "Test instructions",
@@ -73,16 +73,13 @@ describe("Webhook Idempotency Integration Tests", () => {
 				const { data: beforeInterview } = await adminClient
 					.from("interviews")
 					.select("*")
-					.eq("id", interview!.id)
+					.eq("id", interview?.id)
 					.single()
-
-				// Simulate skipping processing (webhook would return early)
-				console.log("Webhook would skip processing due to idempotency")
 
 				const { data: afterInterview } = await adminClient
 					.from("interviews")
 					.select("*")
-					.eq("id", interview!.id)
+					.eq("id", interview?.id)
 					.single()
 
 				// Verify nothing changed
@@ -95,7 +92,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: analysisJobs } = await adminClient
 				.from("analysis_jobs")
 				.select("*")
-				.eq("interview_id", interview!.id)
+				.eq("interview_id", interview?.id)
 
 			expect(analysisJobs).toHaveLength(0)
 		})
@@ -120,7 +117,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 				.from("upload_jobs")
 				.insert({
 					id: "test-upload-job-pending",
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					assemblyai_id: "transcript-pending-test",
 					status: "pending", // Ready for processing
 					custom_instructions: "Test instructions",
@@ -143,7 +140,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 						audio_duration: 120,
 					},
 				})
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 
 			expect(updateError).toBeNull()
 
@@ -154,7 +151,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "done",
 					status_detail: "Transcription completed",
 				})
-				.eq("id", uploadJob!.id)
+				.eq("id", uploadJob?.id)
 
 			expect(uploadUpdateError).toBeNull()
 
@@ -162,7 +159,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: analysisJob, error: analysisError } = await adminClient
 				.from("analysis_jobs")
 				.insert({
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					transcript_data: {
 						full_transcript: "New transcript from webhook",
 						confidence: 0.95,
@@ -178,7 +175,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			expect(analysisJob).toBeDefined()
 
 			// Verify final states
-			const { data: finalInterview } = await adminClient.from("interviews").select("*").eq("id", interview!.id).single()
+			const { data: finalInterview } = await adminClient.from("interviews").select("*").eq("id", interview?.id).single()
 
 			expect(finalInterview?.status).toBe("transcribed")
 			expect(finalInterview?.transcript).toBe("New transcript from webhook")
@@ -186,7 +183,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: finalUploadJob } = await adminClient
 				.from("upload_jobs")
 				.select("*")
-				.eq("id", uploadJob!.id)
+				.eq("id", uploadJob?.id)
 				.single()
 
 			expect(finalUploadJob?.status).toBe("done")
@@ -217,7 +214,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 					status: "transcribed",
 					transcript: "Transcription completed",
 				})
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 
 			expect(transcribedError).toBeNull()
 
@@ -225,7 +222,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: transcribedInterview } = await adminClient
 				.from("interviews")
 				.select("status")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			expect(transcribedInterview?.status).toBe("transcribed")
@@ -234,7 +231,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { error: processingError } = await adminClient
 				.from("interviews")
 				.update({ status: "processing" })
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 
 			expect(processingError).toBeNull()
 
@@ -242,7 +239,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: processingInterview } = await adminClient
 				.from("interviews")
 				.select("status")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			expect(processingInterview?.status).toBe("processing")
@@ -251,7 +248,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { error: readyError } = await adminClient
 				.from("interviews")
 				.update({ status: "ready" })
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 
 			expect(readyError).toBeNull()
 
@@ -259,7 +256,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: finalInterview } = await adminClient
 				.from("interviews")
 				.select("status")
-				.eq("id", interview!.id)
+				.eq("id", interview?.id)
 				.single()
 
 			expect(finalInterview?.status).toBe("ready")
@@ -334,7 +331,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: insight, error: insightError } = await adminClient
 				.from("insights")
 				.insert({
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					account_id: TEST_ACCOUNT_ID,
 					project_id: "test-project-123",
 					name: "Test Insight",
@@ -361,7 +358,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: insightWithAudit, error: auditError } = await adminClient
 				.from("insights")
 				.insert({
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					account_id: TEST_ACCOUNT_ID,
 					project_id: "test-project-123",
 					name: "Test Insight With Audit",
@@ -405,7 +402,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: uploadJob } = await adminClient
 				.from("upload_jobs")
 				.insert({
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					assemblyai_id: "test-fk-upload",
 					status: "done",
 				})
@@ -415,18 +412,18 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: analysisJob } = await adminClient
 				.from("analysis_jobs")
 				.insert({
-					interview_id: interview!.id,
+					interview_id: interview?.id,
 					transcript_data: { text: "test" },
 					status: "done",
 				})
 				.select()
 				.single()
 
-			expect(uploadJob?.interview_id).toBe(interview!.id)
-			expect(analysisJob?.interview_id).toBe(interview!.id)
+			expect(uploadJob?.interview_id).toBe(interview?.id)
+			expect(analysisJob?.interview_id).toBe(interview?.id)
 
 			// Test cascade delete
-			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview!.id)
+			const { error: deleteError } = await adminClient.from("interviews").delete().eq("id", interview?.id)
 
 			expect(deleteError).toBeNull()
 
@@ -434,12 +431,12 @@ describe("Webhook Idempotency Integration Tests", () => {
 			const { data: orphanedUpload } = await adminClient
 				.from("upload_jobs")
 				.select("*")
-				.eq("interview_id", interview!.id)
+				.eq("interview_id", interview?.id)
 
 			const { data: orphanedAnalysis } = await adminClient
 				.from("analysis_jobs")
 				.select("*")
-				.eq("interview_id", interview!.id)
+				.eq("interview_id", interview?.id)
 
 			expect(orphanedUpload).toHaveLength(0)
 			expect(orphanedAnalysis).toHaveLength(0)

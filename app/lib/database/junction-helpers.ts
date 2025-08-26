@@ -535,8 +535,6 @@ export class JunctionTableManager {
 	 * Migrate data from array-based fields to junction tables
 	 */
 	async migrateArrayData(accountId: string) {
-		console.log("Starting migration of array-based data to junction tables...")
-
 		// Migrate insight related_tags to insight_tags
 		const { data: insights } = await this.insightTags.db
 			.from("insights")
@@ -569,8 +567,6 @@ export class JunctionTableManager {
 				})
 			}
 		}
-
-		console.log("Migration completed successfully")
 		return { success: true }
 	}
 }

@@ -1,4 +1,4 @@
-import { LayoutGrid, MapPin, Rows, Sparkles, Zap } from "lucide-react"
+import { LayoutGrid, Rows, Sparkles } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
 import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -54,9 +54,9 @@ export default function InsightsLayout() {
 			</div>
 
 			{/* Tab navigation spanning full width */}
-			<div className="px-[5%] mx-auto">
+			<div className="mx-auto px-[5%]">
 				<Tabs className="w-full" defaultValue="quick" onValueChange={handleTabChange} value={getActiveTab()}>
-					<TabsList className="grid w-full grid-cols-3 max-w-xl mx-auto">
+					<TabsList className="mx-auto grid w-full max-w-xl grid-cols-3">
 						<TabsTrigger className="flex items-center gap-2" value="quick">
 							<LayoutGrid className="h-4 w-4" /> Cards
 						</TabsTrigger>

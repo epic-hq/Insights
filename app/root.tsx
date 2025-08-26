@@ -65,12 +65,12 @@ export const handle = {
 export default function App({ loaderData }: Route.ComponentProps) {
 	const { lang, clientEnv } = loaderData
 	useChangeLanguage(lang)
-	
+
 	// Make clientEnv available globally on window.env for polyEnv pattern
-	if (typeof window !== 'undefined') {
+	if (typeof window !== "undefined") {
 		window.env = clientEnv
 	}
-	
+
 	return (
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}

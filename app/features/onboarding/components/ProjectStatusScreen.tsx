@@ -1,7 +1,9 @@
 import {
 	AlertCircle,
 	CheckCircle,
+	CircleHelp,
 	Eye,
+	FileText,
 	Lightbulb,
 	Loader2,
 	MessageSquare,
@@ -9,8 +11,6 @@ import {
 	TrendingUp,
 	Users,
 	X,
-	CircleHelp,
-	FileText,
 	Zap,
 } from "lucide-react"
 import { useState } from "react"
@@ -18,6 +18,7 @@ import { useRevalidator } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { ProjectStatusData } from "~/utils/project-status.server"
 
@@ -68,7 +69,7 @@ export default function ProjectStatusScreen({
 				// Auto-open gap analysis once data is available
 				setShowGapAnalysis(true)
 			}
-		} catch (error) {
+		} catch (_error) {
 			// Handle error silently
 		} finally {
 			setIsAnalyzing(false)
@@ -102,6 +103,10 @@ export default function ProjectStatusScreen({
 		unanticipatedDiscoveries: [],
 		criticalUnknowns: [],
 	}
+	if (!projectId) {
+		return
+	}
+
 	return (
 		<div className="relative min-h-screen bg-background text-foreground">
 			{isAnalyzing && (
@@ -111,10 +116,15 @@ export default function ProjectStatusScreen({
 			)}
 
 			{/* Clean Header */}
-			<div className="border-gray-800 border-b bg-background text-foreground px-6 py-8">
-				<div className="mx-auto max-w-4xl">
-					<h1 className="mb-3 font-light text-3xl text-foreground tracking-tight">{displayData.projectName}</h1>
-					<p className="text-foreground/60 text-lg">{displayData.icp}</p>
+			<div className="border-gray-800 border-b bg-background px-6 py-8 text-foreground">
+				<div className="mx-auto flex max-w-4xl items-center gap-2">
+					<h1 className="mb-3 font-light text-3xl text-foreground tracking-tight">
+						Project Status: {displayData.projectName}
+					</h1>
+					{/* TODO: ensure goal, goal_description is part of this */}
+					{/* <p className="text-foreground/60 text-lg">{displayData.goal}</p> */}
+					{/* TODO pass proper project objet, but for now i think this is all it needs */}
+					<ProjectEditButton project={{ id: projectId }} />
 				</div>
 			</div>
 
@@ -123,9 +133,9 @@ export default function ProjectStatusScreen({
 				{/* Section 1: What We Learned - Answered Insights */}
 				{statusData && displayData.answeredInsights && displayData.answeredInsights.length > 0 && (
 					<div>
-						<div className="mb-8 flex items-center gap-3">
+						<div className="mb-8 flex items-center gap-2">
 							<Target className="h-8 w-8 text-green-400" />
-							<h2 className="font-light text-3xl text-white">What We Learned</h2>
+							<h2 className="font-light text-2xl text-foreground">What We Learned</h2>
 						</div>
 						<div className="rounded-xl border border-green-700 bg-green-900/20 p-8">
 							<div className="space-y-6">
@@ -133,7 +143,7 @@ export default function ProjectStatusScreen({
 								{displayData.answeredInsights.slice(0, 4).map((insight: string, index: number) => (
 									<div key={`answered-insight-${displayData.analysisId}-${index}`} className="flex items-start gap-4">
 										<div className="mt-2 h-2 w-2 flex-shrink-0 rounded-full bg-green-400" />
-										<p className="text-gray-200 text-lg leading-relaxed">{insight}</p>
+										<p className="text-foreground text-lg leading-relaxed">{insight}</p>
 									</div>
 								))}
 								{/* Unanswered Insights */}
@@ -145,7 +155,7 @@ export default function ProjectStatusScreen({
 												className="flex items-center gap-2"
 											>
 												<div className="mt-1 h-2 w-2 flex-shrink-0 rounded-full bg-yellow-400" />
-												<p className="text-gray-200 text-lg leading-relaxed">
+												<p className="text-foreground text-lg leading-relaxed">
 													{insight}
 													<CircleHelp className="ml-1 inline-block h-4 w-4 text-yellow-600" />
 												</p>
@@ -230,7 +240,7 @@ export default function ProjectStatusScreen({
 						<div>
 							<div className="mb-8 flex items-center gap-3">
 								<CheckCircle className="h-8 w-8 text-blue-400" />
-								<h2 className="font-light text-3xl text-white">What's Next</h2>
+								<h2 className="font-light text-3xl text-foreground">What's Next</h2>
 							</div>
 							<div className="space-y-6">
 								{/* Priority Actions */}
@@ -243,7 +253,7 @@ export default function ProjectStatusScreen({
 													<div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-blue-500 font-bold text-sm text-white">
 														{index + 1}
 													</div>
-													<p className="text-gray-200 text-lg leading-relaxed">{step}</p>
+													<p className="text-foreground text-lg leading-relaxed">{step}</p>
 												</div>
 											))}
 										</div>
@@ -312,7 +322,7 @@ export default function ProjectStatusScreen({
 							>
 								<div className="mb-4 flex items-center gap-3">
 									<Lightbulb className="h-6 w-6 text-yellow-400" />
-									<h3 className="font-semibold text-lg text-white">{displayData.totalInsights} Insights</h3>
+									<h3 className="font-semibold text-foreground text-lg">{displayData.totalInsights} Insights</h3>
 								</div>
 								{/* <p className="mb-4 text-gray-200 text-sm">
 										View detailed analysis of all {displayData.totalInsights} insights discovered
@@ -329,7 +339,7 @@ export default function ProjectStatusScreen({
 							>
 								<div className="mb-4 flex items-center gap-3">
 									<Users className="h-6 w-6 text-purple-400" />
-									<h3 className="font-semibold text-lg text-foreground">{displayData.totalPersonas} Personas</h3>
+									<h3 className="font-semibold text-foreground text-lg">{displayData.totalPersonas} Personas</h3>
 								</div>
 								{/* <p className="mb-4 text-gray-200 text-sm">
 										Explore {displayData.totalPersonas} user personas and their characteristics
@@ -346,7 +356,7 @@ export default function ProjectStatusScreen({
 							>
 								<div className="mb-4 flex items-center gap-3">
 									<MessageSquare className="h-6 w-6 text-green-400" />
-									<h3 className="font-semibold text-lg text-foreground">{displayData.totalInterviews} Interviews</h3>
+									<h3 className="font-semibold text-foreground text-lg">{displayData.totalInterviews} Interviews</h3>
 								</div>
 								{/* <p className="mb-4 text-gray-200 text-sm">
 										Review all {displayData.totalInterviews} interviews and transcripts
@@ -363,7 +373,7 @@ export default function ProjectStatusScreen({
 				{statusData && displayData.completionScore > 0 && (
 					<div className="rounded-xl border border-gray-700 bg-gray-900/50 p-8">
 						<div className="mb-6 flex items-center justify-between">
-							<h3 className="font-light text-white text-xl">Research Progress</h3>
+							<h3 className="font-light text-foreground text-xl">Research Progress</h3>
 							<div className="flex items-center gap-3">
 								<span className="font-bold text-2xl text-foreground">{displayData.completionScore}%</span>
 								{displayData.confidenceLevel && (
@@ -405,7 +415,7 @@ export default function ProjectStatusScreen({
 						<Button
 							onClick={() => setShowGapAnalysis(true)}
 							variant="outline"
-							className="px-6 py-3 border-blue-500 bg-blue-50 text-blue-700 hover:border-blue-600 hover:bg-blue-100"
+							className="border-blue-500 bg-blue-50 px-6 py-3 text-blue-700 hover:border-blue-600 hover:bg-blue-100"
 							disabled={!statusData}
 						>
 							<Eye className="mr-2 h-4 w-4" />
@@ -415,7 +425,7 @@ export default function ProjectStatusScreen({
 							onClick={() => setShowCustomAnalysis(true)}
 							disabled={isAnalyzing}
 							variant="outline"
-							className="px-6 py-3 border-gray-300 bg-white text-foreground hover:border-gray-400 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+							className="border-gray-300 bg-white px-6 py-3 text-foreground hover:border-gray-400 hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
 						>
 							{isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Zap className="mr-2 h-4 w-4" />}
 							Custom Analysis
@@ -531,7 +541,7 @@ export default function ProjectStatusScreen({
 													{qa.evidence && qa.evidence.length > 0 && (
 														<div className="mt-3">
 															<p className="mb-1 text-gray-400 text-sm">Evidence</p>
-															<ul className="list-disc list-inside space-y-1 text-gray-300 text-sm">
+															<ul className="list-inside list-disc space-y-1 text-gray-300 text-sm">
 																{qa.evidence.map((e, i) => (
 																	<li key={`ev-${qa.question}-${e.slice(0, 24)}-${i}`}>&ldquo;{e}&rdquo;</li>
 																))}
@@ -543,7 +553,7 @@ export default function ProjectStatusScreen({
 													{qa.insights_found && qa.insights_found.length > 0 && (
 														<div className="mt-3">
 															<p className="mb-1 text-gray-400 text-sm">Related insights</p>
-															<ul className="list-disc list-inside space-y-1 text-gray-300 text-sm">
+															<ul className="list-inside list-disc space-y-1 text-gray-300 text-sm">
 																{qa.insights_found.map((ins) => (
 																	<li key={`ins-${qa.question}-${ins.slice(0, 24)}`}>{ins}</li>
 																))}
@@ -575,7 +585,7 @@ export default function ProjectStatusScreen({
 								{/* Unanswered Questions */}
 								{statusData.openQuestions.length > 0 && (
 									<div>
-										<h3 className="mb-4 font-semibold text-yellow-300 text-xl">Unanswered Questions</h3>
+										<h3 className="mb-4 font-semibold text-xl text-yellow-300">Unanswered Questions</h3>
 										<div className="space-y-3">
 											{statusData.openQuestions.map((question) => (
 												<div

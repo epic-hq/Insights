@@ -1,9 +1,9 @@
 import { useState } from "react"
 import ProcessingScreen from "./ProcessingScreen"
+import ProjectGoalsScreen from "./ProjectGoalsScreen"
 import ProjectStatusScreen from "./ProjectStatusScreen"
 import QuestionsScreen from "./QuestionsScreen"
 import UploadScreen from "./UploadScreen"
-import WelcomeScreen from "./WelcomeScreen"
 
 export type OnboardingStep = "welcome" | "questions" | "upload" | "processing" | "complete"
 
@@ -44,6 +44,7 @@ export default function OnboardingFlow({
 }: OnboardingFlowProps) {
 	// Start at upload step if we have existing project context
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
+	// TODO: use form library to parse form data, and loader to fetch data
 	const [data, setData] = useState<OnboardingData>({
 		icp: existingProject?.icp || "",
 		role: existingProject?.role || "",
@@ -143,7 +144,7 @@ export default function OnboardingFlow({
 
 	switch (currentStep) {
 		case "welcome":
-			return <WelcomeScreen onNext={handleWelcomeNext} />
+			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={projectId} />
 
 		case "questions":
 			return (
@@ -174,13 +175,10 @@ export default function OnboardingFlow({
 					projectName={getProjectName()}
 					icp={data.icp}
 					projectId={data.projectId}
-					onAddMore={onAddMoreInterviews}
-					onViewResults={onViewResults}
-					onRefresh={onRefresh}
 				/>
 			)
 
 		default:
-			return <WelcomeScreen onNext={handleWelcomeNext} />
+			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={projectId} />
 	}
 }

@@ -1,4 +1,3 @@
-import consola from "consola"
 import { useCallback } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useSearchParams } from "react-router-dom"

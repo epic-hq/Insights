@@ -17,6 +17,12 @@ importers:
       '@boundaryml/baml':
         specifier: ^0.205.0
         version: 0.205.0
+      '@conform-to/react':
+        specifier: 1.8.2
+        version: 1.8.2(react@19.1.0)
+      '@conform-to/zod':
+        specifier: 1.8.2
+        version: 1.8.2(zod@3.25.74)
       '@copilotkit/react-core':
         specifier: 1.10.2
         version: 1.10.2(@types/react@19.1.8)(graphql@16.11.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -911,6 +917,19 @@ packages:
   '@colors/colors@1.5.0':
     resolution: {integrity: sha512-ooWCrlZP11i8GImSjTHYHLkvFDP48nS4+204nGb1RiX/WXYHmJA2III9/e2DWVabCESdW7hBAEzHRqUn9OUVvQ==}
     engines: {node: '>=0.1.90'}
+
+  '@conform-to/dom@1.8.2':
+    resolution: {integrity: sha512-5eDqI9366+23Fl/E5zxebuy2FCebJKpSrdE/c6PZQ5Ul59BYQ17pBmkLkvxAKjPXW+Qq77BJyjGjuklwmqN08A==}
+
+  '@conform-to/react@1.8.2':
+    resolution: {integrity: sha512-AJuHH4YY64o+VP3qsXd7bqlqCJYefTcEVj6mOiQr/m9iQV785gPtGE31jdmipvQ3ZHQE0Lp4e4th7kN/xo46qg==}
+    peerDependencies:
+      react: '>=18'
+
+  '@conform-to/zod@1.8.2':
+    resolution: {integrity: sha512-uYipAoNByusRji7j84o40r9IvYmsV84utfCfvqr2b746/8JnBuoO6C90yltan5D9OVAJMIKejXW4T1XfOsaMWg==}
+    peerDependencies:
+      zod: ^3.21.0 || ^4.0.0
 
   '@copilotkit/react-core@1.10.2':
     resolution: {integrity: sha512-D9KenEFK378yV/yH0InrliBsTJigjjBCNqibTf+OmO36EL/CdmNLRZxfqb8xlPrYZThYNRlYW6Eg1tGDRjh+fQ==}
@@ -10978,6 +10997,18 @@ snapshots:
       sisteransi: 1.0.5
 
   '@colors/colors@1.5.0': {}
+
+  '@conform-to/dom@1.8.2': {}
+
+  '@conform-to/react@1.8.2(react@19.1.0)':
+    dependencies:
+      '@conform-to/dom': 1.8.2
+      react: 19.1.0
+
+  '@conform-to/zod@1.8.2(zod@3.25.74)':
+    dependencies:
+      '@conform-to/dom': 1.8.2
+      zod: 3.25.74
 
   '@copilotkit/react-core@1.10.2(@types/react@19.1.8)(graphql@16.11.0)(react-dom@19.1.0(react@19.1.0))(react@19.1.0)':
     dependencies:

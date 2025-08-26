@@ -1,13 +1,13 @@
+import { Grid3X3, List } from "lucide-react"
+import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
-import { useState } from "react"
-import { userContext } from "~/server/user-context"
-import type { Evidence, Theme } from "~/types"
-import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
+import { Button } from "~/components/ui/button"
 import { GenerateThemesButton } from "~/features/themes/components/GenerateThemesButton"
 import { PersonaThemeMatrix } from "~/features/themes/components/PersonaThemeMatrix"
-import { Button } from "~/components/ui/button"
-import { Grid3X3, List } from "lucide-react"
+import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
+import { userContext } from "~/server/user-context"
+import type { Evidence, Theme } from "~/types"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
@@ -89,7 +89,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build maps
 	const evidenceByTheme = new Map<string, string[]>() // theme_id -> evidence ids
 	const interviewsByTheme = new Map<string, Set<string>>() // theme_id -> distinct interview ids
-	for (const row of (links ?? []) as Array<{ theme_id: string; evidence: Pick<Evidence, "id" | "interview_id"> | null }>) {
+	for (const row of (links ?? []) as Array<{
+		theme_id: string
+		evidence: Pick<Evidence, "id" | "interview_id"> | null
+	}>) {
 		const theme_id = row.theme_id
 		const evidence = row.evidence
 		if (!theme_id || !evidence) continue
@@ -107,10 +110,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const insightsByInterview = new Map<string, number>()
 	for (const ins of insights ?? []) {
 		if (ins.interview_id) {
-			insightsByInterview.set(
-				ins.interview_id,
-				(insightsByInterview.get(ins.interview_id) ?? 0) + 1,
-			)
+			insightsByInterview.set(ins.interview_id, (insightsByInterview.get(ins.interview_id) ?? 0) + 1)
 		}
 	}
 
@@ -125,7 +125,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		}
 		return { ...t, evidence_count: evCount, insights_count: insightCount }
-	}) as Array<Pick<Theme, "id" | "name" | "statement" | "created_at"> & { evidence_count: number; insights_count: number }>
+	}) as Array<
+		Pick<Theme, "id" | "name" | "statement" | "created_at"> & { evidence_count: number; insights_count: number }
+	>
 
 	// Build persona-theme matrix data
 	const personaSet = new Set<string>()
@@ -135,7 +137,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	for (const ev of allEvidence ?? []) {
 		const linkedPeople = peopleByEvidence.get(ev.id)
 		const normalizedPersonas = new Set<string>()
-		if (linkedPeople && linkedPeople.size) {
+		if (linkedPeople?.size) {
 			for (const pid of linkedPeople) {
 				const plist = personasByPerson.get(pid) ?? []
 				for (const p of plist) normalizedPersonas.add(p.name)
@@ -162,15 +164,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Calculate metrics for each persona
 	for (const persona of personas) {
 		const personaThemes = []
-		
+
 		for (const theme of enriched) {
 			const themeEvidenceIds = evidenceByTheme.get(theme.id) ?? []
-			
+
 			// Count evidence for this persona in this theme
 			let personaEvidenceCount = 0
 			let totalInterviews = 0
 			const personaInterviews = new Set<string>()
-			
+
 			for (const evidenceId of themeEvidenceIds) {
 				const evidence = evidenceById.get(evidenceId)
 				if (evidence?.personas?.includes(persona)) {
@@ -180,33 +182,33 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					}
 				}
 			}
-			
+
 			// Calculate total unique interviews for this theme
 			const themeInterviews = interviewsByTheme.get(theme.id) ?? new Set()
 			totalInterviews = themeInterviews.size
-			
+
 			// Calculate coverage (% of interviews for this theme that include this persona)
 			const coverage = totalInterviews > 0 ? personaInterviews.size / totalInterviews : 0
-			
+
 			// Calculate n_eff (simple count for now, could use cohort logic later)
 			const nEff = personaEvidenceCount
-			
+
 			// Determine if it's a wedge (strong signal for this persona)
 			// Using simple heuristics: high evidence count AND high coverage
 			const wedge = nEff >= 3 && coverage >= 0.7
-			
+
 			personaThemes.push({
 				themeId: theme.id,
 				themeName: theme.name,
 				nEff,
 				coverage,
-				wedge
+				wedge,
 			})
 		}
-		
+
 		matrixData.push({
 			persona,
-			themes: personaThemes
+			themes: personaThemes,
 		})
 	}
 
@@ -214,58 +216,58 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function ThemesIndex() {
-    const { themes, matrixData } = useLoaderData<typeof loader>()
-    const [showMatrix, setShowMatrix] = useState(false)
-    
-    // Show generate button when no themes exist
-    if (themes.length === 0) {
-        return (
-            <div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
-                <div className="space-y-2 text-center">
-                    <h2 className="text-2xl font-semibold text-gray-900">No themes found</h2>
-                    <p className="max-w-md text-gray-600">
-                        Generate themes automatically from your evidence to identify patterns and insights.
-                    </p>
-                </div>
-                <GenerateThemesButton />
-            </div>
-        )
-    }
-    
-    return (
-        <div>
-            <div className="mb-6 flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                    <Button
-                        variant={showMatrix ? "default" : "outline"}
-                        size="sm"
-                        onClick={() => setShowMatrix(true)}
-                        className="flex items-center gap-2"
-                    >
-                        <Grid3X3 className="h-4 w-4" />
-                        Matrix View
-                    </Button>
-                    <Button
-                        variant={showMatrix ? "outline" : "default"}
-                        size="sm"
-                        onClick={() => setShowMatrix(false)}
-                        className="flex items-center gap-2"
-                    >
-                        <List className="h-4 w-4" />
-                        Studio View
-                    </Button>
-                </div>
-            </div>
-            
-            {showMatrix && matrixData.length > 0 ? (
-                <PersonaThemeMatrix matrixData={matrixData} />
-            ) : showMatrix ? (
-                <div className="text-center text-gray-600 py-12">
-                    <p>No persona data available. Add evidence with personas to see the matrix.</p>
-                </div>
-            ) : (
-                <ThemeStudio themes={themes} />
-            )}
-        </div>
-    )
+	const { themes, matrixData } = useLoaderData<typeof loader>()
+	const [showMatrix, setShowMatrix] = useState(false)
+
+	// Show generate button when no themes exist
+	if (themes.length === 0) {
+		return (
+			<div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
+				<div className="space-y-2 text-center">
+					<h2 className="font-semibold text-2xl text-gray-900">No themes found</h2>
+					<p className="max-w-md text-gray-600">
+						Generate themes automatically from your evidence to identify patterns and insights.
+					</p>
+				</div>
+				<GenerateThemesButton />
+			</div>
+		)
+	}
+
+	return (
+		<div className="mx-auto h-full max-w-7xl p-8">
+			<div className="mb-6 ">
+				<div className="flex items-center gap-2">
+					<Button
+						variant={showMatrix ? "default" : "outline"}
+						size="sm"
+						onClick={() => setShowMatrix(true)}
+						className="flex items-center gap-2"
+					>
+						<Grid3X3 className="h-4 w-4" />
+						Matrix View
+					</Button>
+					<Button
+						variant={showMatrix ? "outline" : "default"}
+						size="sm"
+						onClick={() => setShowMatrix(false)}
+						className="flex items-center gap-2"
+					>
+						<List className="h-4 w-4" />
+						Studio View
+					</Button>
+				</div>
+			</div>
+
+			{showMatrix && matrixData.length > 0 ? (
+				<PersonaThemeMatrix matrixData={matrixData} />
+			) : showMatrix ? (
+				<div className="py-12 text-center text-gray-600">
+					<p>No persona data available. Add evidence with personas to see the matrix.</p>
+				</div>
+			) : (
+				<ThemeStudio themes={themes} />
+			)}
+		</div>
+	)
 }

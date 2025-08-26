@@ -118,7 +118,7 @@ function FieldSelector({ value, onChange }: { value: FieldKey[]; onChange: (next
 
 /** ========== Persona Header (kind-aware) ========== */
 
-function PersonaHeader({ p, accent }: { p: Persona; accent: string }) {
+function _PersonaHeader({ p, accent }: { p: Persona; accent: string }) {
 	const Icon = p.kind === "contrast" ? Contrast : p.kind === "provisional" ? Dot : Users
 	return (
 		<div className="flex items-center gap-2">

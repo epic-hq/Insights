@@ -1,9 +1,9 @@
 import consola from "consola"
 import ProcessingScreen from "../components/ProcessingScreen"
+import ProjectGoalsScreen from "../components/ProjectGoalsScreen"
 import ProjectStatusScreen from "../components/ProjectStatusScreen"
 import QuestionsScreen from "../components/QuestionsScreen"
 import UploadScreen from "../components/UploadScreen"
-import WelcomeScreen from "../components/WelcomeScreen"
 
 // Mock data for testing components
 const mockQuestionsData = {
@@ -16,7 +16,7 @@ function MockWelcomeScreen() {
 		consola.log("Welcome screen next:", data)
 	}
 
-	return <WelcomeScreen onNext={handleNext} />
+	return <ProjectGoalsScreen onNext={handleNext} />
 }
 
 function MockQuestionsScreen() {

@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useCallback } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { createClient } from "~/lib/supabase/client"
 import type { Interview } from "~/types"
 
@@ -50,26 +50,29 @@ export function useInterviewProgress(interviewId: string | null) {
 	}, [])
 
 	// Start synthetic progress animation for current status
-	const startSyntheticProgress = useCallback((currentStatus: string, startProgress: number, targetProgress: number) => {
-		cleanupTimers()
-		setSyntheticProgress(startProgress)
+	const startSyntheticProgress = useCallback(
+		(currentStatus: string, startProgress: number, targetProgress: number) => {
+			cleanupTimers()
+			setSyntheticProgress(startProgress)
 
-		// Animate progress smoothly over time
-		const duration = getProgressDuration(currentStatus) // Duration in seconds
-		const steps = duration * 4 // Update 4 times per second
-		const increment = (targetProgress - startProgress) / steps
+			// Animate progress smoothly over time
+			const duration = getProgressDuration(currentStatus) // Duration in seconds
+			const steps = duration * 4 // Update 4 times per second
+			const increment = (targetProgress - startProgress) / steps
 
-		let currentStep = 0
-		progressTimerRef.current = setInterval(() => {
-			currentStep++
-			const newProgress = Math.min(startProgress + (increment * currentStep), targetProgress)
-			setSyntheticProgress(newProgress)
+			let currentStep = 0
+			progressTimerRef.current = setInterval(() => {
+				currentStep++
+				const newProgress = Math.min(startProgress + increment * currentStep, targetProgress)
+				setSyntheticProgress(newProgress)
 
-			if (currentStep >= steps) {
-				cleanupTimers()
-			}
-		}, 250) // Update every 250ms for smooth animation
-	}, [cleanupTimers, getProgressDuration])
+				if (currentStep >= steps) {
+					cleanupTimers()
+				}
+			}, 250) // Update every 250ms for smooth animation
+		},
+		[cleanupTimers, getProgressDuration]
+	)
 
 	useEffect(() => {
 		if (!interviewId) return

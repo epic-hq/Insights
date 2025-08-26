@@ -1,6 +1,6 @@
 import { b } from "baml_client"
-import type { SupabaseClient, Database, ThemeInsert, Theme_EvidenceInsert, Theme } from "~/app/types"
 import consola from "consola"
+import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/app/types"
 
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
 interface EvidenceForTheme {
@@ -31,10 +31,10 @@ export type AutoGroupThemesResult = {
 // Select evidence rows to analyze
 async function loadEvidence(
 	supabase: SupabaseClient,
-	account_id: string,
+	_account_id: string,
 	project_id?: string | null,
 	evidence_ids?: string[],
-	limit: number = 200
+	limit = 200
 ): Promise<EvidenceForTheme[]> {
 	let query = supabase
 		.from("evidence")
@@ -94,11 +94,7 @@ async function upsertTheme(
 		anti_examples: payload.anti_examples ?? [],
 	}
 
-	const { data: created, error } = await supabase
-		.from("themes")
-		.insert(insertBody)
-		.select("*")
-		.single()
+	const { data: created, error } = await supabase.from("themes").insert(insertBody).select("*").single()
 	if (error) throw error
 	return created as Theme
 }
@@ -121,7 +117,11 @@ async function upsertThemeEvidence(
 	if (existing) {
 		const { error } = await supabase
 			.from("theme_evidence")
-			.update({ rationale: payload.rationale, confidence: payload.confidence ?? null, project_id: payload.project_id ?? null })
+			.update({
+				rationale: payload.rationale,
+				confidence: payload.confidence ?? null,
+				project_id: payload.project_id ?? null,
+			})
 			.eq("id", existing.id)
 		if (error) throw error
 		return existing.id
@@ -135,13 +135,9 @@ async function upsertThemeEvidence(
 		rationale: payload.rationale ?? null,
 		confidence: payload.confidence ?? null,
 	}
-	const { data, error } = await supabase
-		.from("theme_evidence")
-		.insert(insertBody)
-		.select("id")
-		.single()
+	const { data, error } = await supabase.from("theme_evidence").insert(insertBody).select("id").single()
 	if (error) throw error
-	return data!.id as string
+	return data?.id as string
 }
 
 /**

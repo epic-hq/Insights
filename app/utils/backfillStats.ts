@@ -94,7 +94,7 @@ export function groupInterviewsByPotentialPerson(interviews: Interview[]): Map<s
 		if (!groups.has(key)) {
 			groups.set(key, [])
 		}
-		groups.get(key)!.push(interview)
+		groups.get(key)?.push(interview)
 	})
 
 	return groups

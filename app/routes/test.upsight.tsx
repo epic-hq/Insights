@@ -1,7 +1,7 @@
-import type { LoaderFunctionArgs } from "react-router"
-import { mastra } from "~/mastra"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
 import consola from "consola"
+import type { LoaderFunctionArgs } from "react-router"
+import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { mastra } from "~/mastra"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	try {
@@ -21,7 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const testInput = {
 			accountId: user.account_id,
 			searchText: "user",
-			limit: 5
+			limit: 5,
 		}
 
 		consola.log("Testing upsight tool with input:", testInput)
@@ -31,8 +31,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			context: {
 				user_id: user.id,
 				account_id: user.account_id,
-				project_id: "test-project"
-			}
+				project_id: "test-project",
+			},
 		})
 
 		consola.log("Agent result:", result)
@@ -41,21 +41,24 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			success: true,
 			agentResult: result,
 			testInput,
-			timestamp: new Date().toISOString()
+			timestamp: new Date().toISOString(),
 		}
 	} catch (error) {
 		consola.error("Error testing upsight tool:", error)
-		return Response.json({
-			error: "Failed to test upsight tool",
-			details: error instanceof Error ? error.message : String(error)
-		}, { status: 500 })
+		return Response.json(
+			{
+				error: "Failed to test upsight tool",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			{ status: 500 }
+		)
 	}
 }
 
 export default function TestUpsight() {
 	return (
 		<div className="p-8">
-			<h1 className="text-2xl font-bold mb-4">Upsight Tool Test</h1>
+			<h1 className="mb-4 font-bold text-2xl">Upsight Tool Test</h1>
 			<p>Check the browser console and network tab for test results.</p>
 		</div>
 	)

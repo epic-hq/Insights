@@ -20,6 +20,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
+import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
@@ -73,20 +74,12 @@ export async function loader({
 	}
 	if (!project) throw new Response("Project not found", { status: 404 })
 
-	// Fetch sections (ordered: position asc NULLS LAST, then created_at desc)
-	const { data: sections, error: sErr } = await supabase
-		.from("project_sections")
-		.select("*")
-		.eq("project_id", projectId)
-		.order("position", { ascending: true, nullsFirst: false })
-		.order("created_at", { ascending: false })
+	// Fetch sections using db function
+	const { data: sections, error: sErr } = await getProjectSections({ supabase, projectId })
 	if (sErr) throw new Response(`Error fetching sections: ${sErr.message}`, { status: 500 })
 
-	// Fetch available kinds for button selector
-	const { data: kindsRows, error: kErr } = await supabase
-		.from("project_section_kinds")
-		.select("id")
-		.order("id", { ascending: true })
+	// Fetch available kinds using db function
+	const { data: kindsRows, error: kErr } = await getProjectSectionKinds({ supabase })
 	if (kErr) throw new Response(`Error fetching section kinds: ${kErr.message}`, { status: 500 })
 
 	const kinds = (kindsRows ?? []).map((k) => k.id)

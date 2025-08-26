@@ -47,9 +47,9 @@ export const getInsights = async ({
 
 	const { data, error } = await query
 	// Get linked themes for all insights via evidence relationship
-	const insightIds = data?.map(i => i.id) || []
-	let themesMap = new Map<string, any[]>()
-	
+	const insightIds = data?.map((i) => i.id) || []
+	const themesMap = new Map<string, any[]>()
+
 	if (insightIds.length > 0) {
 		const { data: themeLinks } = await supabase
 			.from("theme_evidence")
@@ -58,10 +58,10 @@ export const getInsights = async ({
 				evidence:evidence (interview_id)
 			`)
 			.eq("project_id", projectId)
-		
+
 		// Build map of interview_id -> themes
 		const interviewThemesMap = new Map<string, any[]>()
-		themeLinks?.forEach(link => {
+		themeLinks?.forEach((link) => {
 			const interviewId = link.evidence?.interview_id
 			if (interviewId && link.themes) {
 				if (!interviewThemesMap.has(interviewId)) {
@@ -70,15 +70,13 @@ export const getInsights = async ({
 				interviewThemesMap.get(interviewId)?.push(link.themes)
 			}
 		})
-		
+
 		// Map themes to insights via interview_id
-		data?.forEach(insight => {
+		data?.forEach((insight) => {
 			if (insight.interview_id) {
 				const themes = interviewThemesMap.get(insight.interview_id) || []
 				// Deduplicate themes by id
-				const uniqueThemes = themes.filter((theme, index, arr) => 
-					arr.findIndex(t => t.id === theme.id) === index
-				)
+				const uniqueThemes = themes.filter((theme, index, arr) => arr.findIndex((t) => t.id === theme.id) === index)
 				themesMap.set(insight.id, uniqueThemes)
 			}
 		})

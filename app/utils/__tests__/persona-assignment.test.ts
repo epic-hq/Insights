@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Simple mock for BAML function
 const mockAssignPersonaToInterview = vi.fn()
@@ -83,7 +83,8 @@ describe("Intelligent Persona Assignment - Core Logic", () => {
 			persona_id: "moderate-789",
 			persona_name: "Budget Conscious",
 			confidence_score: 0.73,
-			reasoning: "Moderate alignment based on price sensitivity. Some behavioral overlap with existing persona but demographic differences noted.",
+			reasoning:
+				"Moderate alignment based on price sensitivity. Some behavioral overlap with existing persona but demographic differences noted.",
 			new_persona_data: null,
 		}
 
@@ -100,16 +101,16 @@ describe("Intelligent Persona Assignment - Core Logic", () => {
 		expect(result.confidence_score).toBeGreaterThan(0.0)
 		expect(result.confidence_score).toBeLessThanOrEqual(1.0)
 		expect(typeof result.confidence_score).toBe("number")
-		
+
 		// Validate reasoning quality
 		expect(result.reasoning).toBeDefined()
 		expect(typeof result.reasoning).toBe("string")
 		expect(result.reasoning.length).toBeGreaterThan(20)
 		expect(result.reasoning).toContain("alignment")
-		
+
 		// Validate action consistency
 		expect(result.action).toMatch(/^(assign_existing|create_new)$/)
-		
+
 		if (result.action === "assign_existing") {
 			expect(result.persona_id).toBeDefined()
 			expect(result.persona_name).toBeDefined()

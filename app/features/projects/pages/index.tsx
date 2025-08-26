@@ -46,8 +46,6 @@ export default function ProjectsIndexPage() {
 	const currentProjectContext = useCurrentProject()
 	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout")
 	const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
-	consola.log("projects index page: acct accounts & currentProjectContext:", accounts, currentProjectContext)
-	consola.log("projects index page: projects:", projects)
 
 	const getStatusColor = (status: string) => {
 		switch (status) {

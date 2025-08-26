@@ -13,9 +13,6 @@ export default function AIChatButton({ context = "general" }: AIChatButtonProps)
 
 	const sendMessage = () => {
 		if (!chatMessage.trim()) return
-
-		// Here you would implement the actual message sending logic
-		console.log("Sending message:", chatMessage)
 		setChatMessage("")
 	}
 

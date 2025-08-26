@@ -6,19 +6,17 @@ import {
 	Check,
 	CheckSquare,
 	Lightbulb,
-	MessageCircle,
 	Pencil,
 	QuoteIcon,
 	Send,
 	Sparkles,
-	ThumbsDown,
-	ThumbsUp,
 	TrendingUp,
 } from "lucide-react"
 import React, { useState } from "react"
 import { useFetcher, useParams } from "react-router"
 
 import EditableTextarea from "~/components/EditableTextarea"
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
@@ -59,7 +57,7 @@ const getCategoryColor = (category: string) => {
 		"Mobile Experience": "bg-green-100 text-green-800 border-green-200",
 		Dashboard: "bg-purple-100 text-purple-800 border-purple-200",
 	}
-	return colors[category as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200"
+	return colors[category as keyof typeof colors] || "bg-muted text-foreground border-border"
 }
 
 const getJourneyStageColor = (stage: string) => {
@@ -68,7 +66,7 @@ const getJourneyStageColor = (stage: string) => {
 		Usage: "bg-teal-100 text-teal-800 border-teal-200",
 		Optimization: "bg-indigo-100 text-indigo-800 border-indigo-200",
 	}
-	return colors[stage as keyof typeof colors] || "bg-gray-100 text-gray-800 border-gray-200"
+	return colors[stage as keyof typeof colors] || "bg-muted text-foreground border-border"
 }
 
 // Error boundary component (currently unused but kept for future use)
@@ -182,7 +180,7 @@ export default function InsightCardV2({
 									dir="ltr"
 									onChange={(e) => setEditingValue(e.target.value)}
 									onBlur={() => handleSaveField(field)}
-									className={`w-full resize-none border-blue-200 border-b bg-white pr-8 focus:outline-none ${className || ""}`}
+									className={`w-full resize-none border-blue-200 border-b bg-background pr-8 focus:outline-none ${className || ""}`}
 									placeholder={placeholder}
 								/>
 							) : (
@@ -194,7 +192,7 @@ export default function InsightCardV2({
 									dir="ltr"
 									onChange={(e) => setEditingValue(e.target.value)}
 									onBlur={() => handleSaveField(field)}
-									className={`w-full border-blue-200 border-b bg-white pr-8 focus:outline-none ${className || ""}`}
+									className={`w-full border-blue-200 border-b bg-background pr-8 focus:outline-none ${className || ""}`}
 									placeholder={placeholder}
 								/>
 							)}
@@ -209,7 +207,7 @@ export default function InsightCardV2({
 							aria-label={`Save ${field}`}
 						>
 							{isSaving ? (
-								<CheckSquare className="h-4 w-4 animate-spin text-gray-400" />
+								<CheckSquare className="h-4 w-4 animate-spin text-foreground/40" />
 							) : (
 								<Check className="h-4 w-4 text-green-500 hover:text-green-700" />
 							)}
@@ -218,7 +216,7 @@ export default function InsightCardV2({
 				) : (
 					<>
 						<div className={`w-full pr-8 ${className || ""}`}>
-							{value || <span className="text-gray-400">{placeholder || "(No value)"}</span>}
+							{value || <span className="text-foreground/40">{placeholder || "(No value)"}</span>}
 						</div>
 						<button
 							type="button"
@@ -226,7 +224,7 @@ export default function InsightCardV2({
 							onClick={() => handleEditStart(field)}
 							aria-label={`Edit ${field}`}
 						>
-							<Pencil className="h-4 w-4 text-gray-400 hover:text-gray-700" />
+							<Pencil className="h-4 w-4 text-foreground/40 hover:text-foreground/70" />
 						</button>
 					</>
 				)}
@@ -249,7 +247,7 @@ export default function InsightCardV2({
 	const [showComments, setShowComments] = useState<{ [key: string]: boolean }>({})
 	const [newComments, setNewComments] = useState<{ [key: string]: string }>({})
 
-	const handleVote = async (voteType: "up" | "down") => {
+	const _handleVote = async (voteType: "up" | "down") => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
 			consola.error("Cannot vote: missing insight ID or project ID", { insightId, projectId })
@@ -317,7 +315,7 @@ export default function InsightCardV2({
 		)
 	}
 
-	const handleHide = async () => {
+	const _handleHide = async () => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
 			consola.error("Cannot hide: missing insight ID or project ID", { insightId, projectId })
@@ -333,7 +331,7 @@ export default function InsightCardV2({
 		)
 	}
 
-	const handleArchive = async () => {
+	const _handleArchive = async () => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId || !projectId) {
 			consola.error("Cannot archive: missing insight ID or project ID", { insightId, projectId })
@@ -349,7 +347,7 @@ export default function InsightCardV2({
 		)
 	}
 
-	const toggleComments = () => {
+	const _toggleComments = () => {
 		const insightId = validateInsightId(localInsight?.id)
 		if (!insightId) {
 			consola.error("toggleComments: invalid insight ID", { localInsight })
@@ -362,7 +360,7 @@ export default function InsightCardV2({
 	}
 
 	return (
-		<Card className="flex flex-col border-0 bg-white shadow-lg transition-all duration-300 hover:shadow-xl">
+		<Card className="flex flex-col border-0 bg-background text-foreground shadow-lg transition-all duration-300 hover:shadow-xl">
 			<CardHeader className="pb-4">
 				{/* Name field with Stage and Category on same row */}
 				<div className="mb-3 flex items-start justify-between gap-4">
@@ -376,7 +374,7 @@ export default function InsightCardV2({
 									setLocalInsight((prev) => ({ ...prev, pain: newValue }))
 									await handleSaveField("pain", newValue)
 								}}
-								textClassName="text-gray-900 text-xl"
+								textClassName="text-foreground text-xl"
 								inputClassName="text-sm"
 								submitOnBlur
 								autoFocus={false}
@@ -396,14 +394,14 @@ export default function InsightCardV2({
 							</Badge>
 							<EditableField
 								field="name"
-								className="ml-2 font-thin text-gray-500 text-md"
+								className="ml-2 font-thin text-foreground/60 text-md"
 								placeholder="Enter insight name"
 							/>
 						</div>
 					</div>
 					<div className="flex w-1/4 flex-col gap-2">
 						<div className="flex flex-col gap-1">
-							<div className="font-light text-xs">Stage</div>
+							<div className="font-light text-foreground/70 text-xs">Stage</div>
 							<Badge
 								variant="outline"
 								className={getJourneyStageColor(localInsight.journey_stage || "")}
@@ -423,14 +421,14 @@ export default function InsightCardV2({
 						<div className="flex items-start gap-2">
 							<QuoteIcon className="mt-0.5 h-4 w-4 flex-shrink-0 " />
 							<div className="flex-1">
-								<h4 className="mb-1 font-medium text-blue-700 text-xs">Evidence</h4>
+								<h4 className="mb-1 font-medium text-blue-700 text-xs dark:text-blue-300">Evidence</h4>
 								<InlineEdit
 									value={localInsight.evidence || ""}
 									onSubmit={async (newValue: string) => {
 										setLocalInsight((prev) => ({ ...prev, evidence: newValue }))
 										await handleSaveField("evidence", newValue)
 									}}
-									textClassName="font-medium text-blue-800 text-sm leading-relaxed"
+									textClassName="font-medium text-blue-800 dark:text-blue-200 text-sm leading-relaxed"
 									inputClassName="text-sm"
 									submitOnBlur
 									autoFocus={false}
@@ -444,7 +442,7 @@ export default function InsightCardV2({
 
 					{/* Details */}
 					<div>
-						<h4 className="mb-1 text-gray-500 text-xs uppercase">Context & Details</h4>
+						<h4 className="mb-1 text-foreground/60 text-xs uppercase">Context & Details</h4>
 						<InlineEdit
 							value={localInsight.details || ""}
 							onSubmit={async (newValue: string) => {
@@ -463,7 +461,7 @@ export default function InsightCardV2({
 
 					{/* Desired Outcome */}
 					<div>
-						<h4 className="mb-1 text-gray-500 text-xs uppercase">Desired Outcome</h4>
+						<h4 className="mb-1 text-foreground/60 text-xs uppercase">Desired Outcome</h4>
 						<InlineEdit
 							value={localInsight.desired_outcome || ""}
 							onSubmit={async (newValue: string) => {
@@ -483,7 +481,7 @@ export default function InsightCardV2({
 					{/* Emotional Response */}
 					{localInsight.emotional_response && (
 						<div>
-							<h4 className="mb-1 text-gray-500 text-xs uppercase">Emotional Response</h4>
+							<h4 className="mb-1 text-foreground/60 text-xs uppercase">Emotional Response</h4>
 							<InlineEdit
 								value={localInsight.emotional_response || ""}
 								onSubmit={async (newValue: string) => {
@@ -504,7 +502,7 @@ export default function InsightCardV2({
 					{/* Underlying Motivation */}
 					{localInsight.motivation && (
 						<div>
-							<h4 className="mb-1 text-gray-500 text-xs uppercase">Underlying Motivation</h4>
+							<h4 className="mb-1 text-foreground/60 text-xs uppercase">Underlying Motivation</h4>
 							<InlineEdit
 								value={localInsight.motivation || ""}
 								onSubmit={async (newValue: string) => {
@@ -527,7 +525,7 @@ export default function InsightCardV2({
 						<div className="flex items-center gap-4">
 							<div className="flex items-center gap-1">
 								<TrendingUp className="h-4 w-4 text-red-500" />
-								<span className="font-medium text-sm">Impact</span>
+								<span className="font-medium text-foreground text-sm">Impact</span>
 								<div className="flex gap-1">
 									{[1, 2, 3, 4, 5].map((i) => (
 										<div
@@ -535,7 +533,7 @@ export default function InsightCardV2({
 											className={`h-2 w-2 rounded-full ${
 												i <= (typeof localInsight.impact === "number" ? localInsight.impact : 0)
 													? "bg-red-500"
-													: "bg-gray-200"
+													: "bg-muted"
 											}`}
 										/>
 									))}
@@ -543,13 +541,13 @@ export default function InsightCardV2({
 							</div>
 							<div className="flex items-center gap-1">
 								<Sparkles className="h-4 w-4 text-purple-500" />
-								<span className="font-medium text-sm">Novelty</span>
+								<span className="font-medium text-foreground text-sm">Novelty</span>
 								<div className="flex gap-1">
 									{[1, 2, 3, 4, 5].map((i) => (
 										<div
 											key={i}
 											className={`h-2 w-2 rounded-full ${
-												i <= (localInsight.novelty || 0) ? "bg-purple-500" : "bg-gray-200"
+												i <= (localInsight.novelty || 0) ? "bg-purple-500" : "bg-muted"
 											}`}
 										/>
 									))}
@@ -563,14 +561,14 @@ export default function InsightCardV2({
 						<div className="flex items-start gap-2">
 							<CheckSquare className="mt-0.5 h-4 w-4 flex-shrink-0 text-blue-600" />
 							<div className="flex-1">
-								<h4 className="mb-1 font-medium text-blue-700 text-xs">JTBD</h4>
+								<h4 className="mb-1 font-medium text-blue-700 text-xs dark:text-blue-300">JTBD</h4>
 								<InlineEdit
 									value={localInsight.jtbd || ""}
 									onSubmit={async (newValue: string) => {
 										setLocalInsight((prev) => ({ ...prev, jtbd: newValue }))
 										await handleSaveField("jtbd", newValue)
 									}}
-									textClassName="font-medium text-blue-800 text-sm leading-relaxed"
+									textClassName="font-medium text-blue-800 dark:text-blue-200 text-sm leading-relaxed"
 									inputClassName="text-sm"
 									submitOnBlur
 									autoFocus={false}
@@ -608,7 +606,7 @@ export default function InsightCardV2({
 							<div className="flex items-start gap-2">
 								<AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
 								<div className="flex-1">
-									<h4 className="font-medium text-amber-800 text-sm">Contradictions</h4>
+									<h4 className="font-medium text-amber-800 text-sm dark:text-amber-200">Contradictions</h4>
 									<EditableTextarea
 										table="insights"
 										id={localInsight.id}
@@ -625,7 +623,7 @@ export default function InsightCardV2({
 					{/* Related Tags */}
 					{localInsight.related_tags && localInsight.related_tags.length > 0 && (
 						<div>
-							<h4 className="mb-2 text-gray-500 text-xs uppercase">Related Tags</h4>
+							<h4 className="mb-2 text-foreground/60 text-xs uppercase">Related Tags</h4>
 							<div className="flex flex-wrap gap-1">
 								{localInsight.related_tags.map((tag, index) => (
 									<Badge
@@ -645,7 +643,7 @@ export default function InsightCardV2({
 				<Separator />
 
 				{/* <div>
-					<h4 className="mb-2 flex items-center gap-1 font-medium text-gray-700 text-sm">
+					<h4 className="mb-2 flex items-center gap-1 font-medium text-foreground text-sm">
 						<Users className="h-4 w-4" />
 						Source
 					</h4>
@@ -661,7 +659,7 @@ export default function InsightCardV2({
 
 				{localInsight.opportunity_ideas && localInsight.opportunity_ideas.length > 0 && (
 					<div className="rounded-lg border border-gray-200 bg-green-50 p-3">
-						<h4 className="mb-2 flex items-center gap-1 font-medium text-gray-700 text-sm">
+						<h4 className="mb-2 flex items-center gap-1 font-medium text-foreground text-sm">
 							<Lightbulb className="h-4 w-4" />
 							Opportunity Ideas
 						</h4>
@@ -671,7 +669,7 @@ export default function InsightCardV2({
 									key={`${idea}-${index}`}
 									className="flex items-center justify-between rounded-md border border-gray-100 bg-white p-2"
 								>
-									<span className="text-gray-700 text-sm">{idea}</span>
+									<span className="text-foreground text-sm">{idea}</span>
 									<Button
 										size="sm"
 										variant="ghost"
@@ -694,17 +692,17 @@ export default function InsightCardV2({
 				{/* Comments Section */}
 				{showComments[localInsight.id] && (
 					<div className="space-y-3 border-t pt-4">
-						<h4 className="font-medium text-gray-700 text-sm">Comments</h4>
+						<h4 className="font-medium text-foreground text-sm">Comments</h4>
 						<div className="max-h-40 space-y-2 overflow-y-auto">
 							{localInsight.comments?.map((comment) => (
-								<div key={comment.id} className="rounded-md bg-gray-50 p-2">
+								<div key={comment.id} className="rounded-md bg-muted/50 p-2">
 									<div className="mb-1 flex items-start justify-between">
-										<span className="font-medium text-gray-700 text-xs">{comment.author || "Anonymous"}</span>
-										<span className="text-gray-500 text-xs">
+										<span className="font-medium text-foreground text-xs">{comment.author || "Anonymous"}</span>
+										<span className="text-foreground/60 text-xs">
 											{new Date(comment.timestamp || comment.created_at || "").toLocaleDateString()}
 										</span>
 									</div>
-									<p className="text-gray-600 text-sm">{comment.text || comment.content}</p>
+									<p className="text-foreground/80 text-sm">{comment.text || comment.content}</p>
 								</div>
 							))}
 						</div>
@@ -728,60 +726,8 @@ export default function InsightCardV2({
 				)}
 			</CardContent>
 
-			<CardFooter className="border-t bg-gray-50 pt-4">
-				<div className="flex w-full items-center justify-between">
-					<div className="flex items-center gap-2">
-						<Button
-							variant="ghost"
-							size="sm"
-							className={`h-8 px-2 ${
-								votedInsights[localInsight.id] === "up" ? "bg-green-100 text-green-700" : "hover:bg-green-50"
-							}`}
-							onClick={() => handleVote("up")}
-						>
-							<ThumbsUp className="mr-1 h-4 w-4" />
-							{localInsight.upvotes || 0}
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className={`h-8 px-2 ${
-								votedInsights[localInsight.id] === "down" ? "bg-red-100 text-red-700" : "hover:bg-red-50"
-							}`}
-							onClick={() => handleVote("down")}
-						>
-							<ThumbsDown className="mr-1 h-4 w-4" />
-							{localInsight.downvotes || 0}
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className={`h-8 px-2 ${showComments[localInsight.id] ? "bg-blue-100 text-blue-700" : ""}`}
-							onClick={toggleComments}
-						>
-							<MessageCircle className="mr-1 h-4 w-4" />
-							{localInsight.comments?.length || 0}
-						</Button>
-					</div>
-					<div className="flex items-center gap-2">
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-8 px-2 text-gray-500 hover:text-gray-700"
-							onClick={handleHide}
-						>
-							Hide
-						</Button>
-						<Button
-							variant="ghost"
-							size="sm"
-							className="h-8 px-2 text-gray-500 hover:text-gray-700"
-							onClick={handleArchive}
-						>
-							Archive
-						</Button>
-					</div>
-				</div>
+			<CardFooter className="border-t bg-background/50 pt-4">
+				<EntityInteractionPanel entityType="insight" entityId={insight.id} />
 			</CardFooter>
 		</Card>
 	)

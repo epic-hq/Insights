@@ -4,7 +4,7 @@
  */
 
 import { useCallback, useEffect, useState } from "react"
-import { createJunctionTableManager, type JunctionTableManager } from "~/lib/database/junction-helpers"
+import { createJunctionTableManager } from "~/lib/database/junction-helpers"
 import { createBrowserClient } from "~/lib/supabase/client"
 
 /**

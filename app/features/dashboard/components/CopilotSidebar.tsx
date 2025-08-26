@@ -45,7 +45,7 @@ export function CopilotSidebar({ expandedSection, onClose, className, projectDat
 	// Update agent state when project data changes
 	useEffect(() => {
 		if (projectData) {
-			setState(prev => ({
+			setState((prev) => ({
 				...prev,
 				projectStatus: {
 					...prev.projectStatus,
@@ -58,27 +58,29 @@ export function CopilotSidebar({ expandedSection, onClose, className, projectDat
 					currentPhase: projectData.projectStatusData?.currentPhase || "Research",
 					progressPercent: projectData.projectStatusData?.progressPercent || 0,
 					lastUpdated: new Date().toISOString(),
-				}
+				},
 			}))
 		}
 	}, [projectData])
 
-	const sectionContext = expandedSection 
+	const sectionContext = expandedSection
 		? `currently viewing the ${expandedSection} section of their dashboard`
-		: `viewing the main dashboard`
+		: "viewing the main dashboard"
 
-	const projectStatusSummary = state.projectStatus ? `
+	const projectStatusSummary = state.projectStatus
+		? `
 PROJECT STATUS:
-- Project: ${state.projectStatus.projectName || 'Current Project'}
-- Phase: ${state.projectStatus.currentPhase || 'Research'}
+- Project: ${state.projectStatus.projectName || "Current Project"}
+- Phase: ${state.projectStatus.currentPhase || "Research"}
 - Progress: ${state.projectStatus.progressPercent || 0}%
 - Insights: ${state.projectStatus.totalInsights}
 - Interviews: ${state.projectStatus.totalInterviews}
 - Opportunities: ${state.projectStatus.totalOpportunities}
 - People: ${state.projectStatus.totalPeople}
 - Personas: ${state.projectStatus.totalPersonas}
-${state.projectStatus.must_do ? `- MUST DO: ${state.projectStatus.must_do}` : ''}
-` : ''
+${state.projectStatus.must_do ? `- MUST DO: ${state.projectStatus.must_do}` : ""}
+`
+		: ""
 
 	const instructions = `You are an expert business analyst and user research consultant helping analyze project data.
 
@@ -120,21 +122,12 @@ When the user asks about their project, use your tools to gather comprehensive d
 		<div className={`relative h-full ${className || ""}`}>
 			{onClose && (
 				<div className="absolute top-2 right-2 z-10">
-					<Button
-						variant="ghost"
-						size="icon"
-						onClick={onClose}
-						className="h-6 w-6 text-gray-500 hover:text-gray-700"
-					>
+					<Button variant="ghost" size="icon" onClick={onClose} className="h-6 w-6 text-gray-500 hover:text-gray-700">
 						<X className="h-3 w-3" />
 					</Button>
 				</div>
 			)}
-			<BaseCopilotSidebar
-				instructions={instructions}
-				className="h-full"
-				defaultOpen={true}
-			/>
+			<BaseCopilotSidebar instructions={instructions} className="h-full" defaultOpen={true} />
 		</div>
 	)
 }

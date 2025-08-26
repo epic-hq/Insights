@@ -109,10 +109,13 @@ export function ExampleOpportunityInsightsComponent({ opportunityId }: { opportu
 
 	const handleLinkInsights = async (insightIds: string[]) => {
 		// Assign decreasing weights (1.0, 0.9, 0.8, ...)
-		const weights = insightIds.reduce((acc, id, index) => {
-			acc[id] = Math.max(0, 1 - index * 0.1)
-			return acc
-		}, {} as Record<string, number>)
+		const weights = insightIds.reduce(
+			(acc, id, index) => {
+				acc[id] = Math.max(0, 1 - index * 0.1)
+				return acc
+			},
+			{} as Record<string, number>
+		)
 		await syncInsights(insightIds, weights)
 	}
 
@@ -223,7 +226,7 @@ export function ExampleRealTimeComponent({ insightId, accountId }: { insightId: 
 
 	return (
 		<div>
-			<div className="text-slate-600 text-sm mb-2">Current tags: {(tags || []).join(", ") || "(none)"}</div>
+			<div className="mb-2 text-slate-600 text-sm">Current tags: {(tags || []).join(", ") || "(none)"}</div>
 			<button
 				onClick={() => handleOptimisticTagUpdate([...(tags || []), "new-tag"])}
 				className="mr-2 rounded bg-indigo-600 px-3 py-1 text-white hover:bg-indigo-700"
@@ -271,7 +274,9 @@ export async function exampleBatchOperations({ request }: ActionFunctionArgs) {
 		})
 	)
 
-	const successCount = results.filter((r: any) => r && (r.error === null || typeof r.error === "undefined") && r.success !== false).length
+	const successCount = results.filter(
+		(r: any) => r && (r.error === null || typeof r.error === "undefined") && r.success !== false
+	).length
 	const errorCount = results.length - successCount
 
 	return {

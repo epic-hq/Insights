@@ -33,7 +33,7 @@ export default function Table() {
 				<InsightsDataTable data={insightsData} />
 			) : (
 				<div className="rounded-lg bg-card p-8 text-center shadow-sm">
-					<p className="text-muted-foreground text-lg">No insights match your current filters</p>
+					<p className="text-lg text-muted-foreground">No insights match your current filters</p>
 					<button type="button" onClick={clearFilters} className="mt-4 text-primary hover:underline">
 						Clear all filters
 					</button>

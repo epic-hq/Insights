@@ -5,15 +5,13 @@
 
 import type { ActionFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/server"
-import { loadContext } from "~/server/load-context"
-import { userContext } from "~/server/user-context"
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	try {
 		// User already authenticated by middleware, get from context instead of making API call
 		const user = await getAuthenticatedUser(request)
-		const supabase = getServerClient(request)
+		const _supabase = getServerClient(request)
 
 		if (!user) {
 			return Response.json({ error: "User not authenticated" }, { status: 401 })
@@ -57,7 +55,6 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		return Response.json({ error: "Invalid action. Use 'stats' or 'backfill'" }, { status: 400 })
 	} catch (error) {
-		console.error("Backfill API error:", error)
 		return Response.json(
 			{
 				error: error instanceof Error ? error.message : "Unknown error occurred",

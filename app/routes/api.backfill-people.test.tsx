@@ -393,7 +393,7 @@ describe("api.backfill-people", () => {
 			})
 
 			const response = await action({ request: mockRequest } as any)
-			const data = await response.json()
+			const _data = await response.json()
 
 			expect(response.status).toBe(200)
 			expect(backfillMissingPeople).toHaveBeenCalledWith(mockRequest, {

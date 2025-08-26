@@ -1,8 +1,8 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate } from "react-router-dom"
-import { userContext } from "~/server/user-context"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { userContext } from "~/server/user-context"
 import OnboardingFlow, { type OnboardingData } from "../../onboarding/components/OnboardingFlow"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -16,7 +16,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Get existing project data
 	const projectResult = await getProjectById({
 		supabase: ctx.supabase,
-		accountId,
 		id: projectId,
 	})
 

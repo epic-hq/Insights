@@ -9,8 +9,8 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { userContext } from "~/server/user-context"
 import { getSupabaseClient } from "~/lib/supabase/client"
+import { userContext } from "~/server/user-context"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -128,6 +128,7 @@ export default function InterviewDetail() {
 	const participants = interview.participants || []
 	const primaryParticipant = participants[0]?.people
 	consola.log("InterviewDetail participants: ", participants)
+	consola.log("InterviewDetail insights: ", insights)
 
 	const [isProcessing, setIsProcessing] = useState(false)
 
@@ -177,7 +178,7 @@ export default function InterviewDetail() {
 											}
 										}}
 										disabled={fetcher.state !== "idle" || isProcessing}
-										className="inline-flex items-center rounded-md border px-3 py-2 text-sm font-semibold shadow-sm disabled:opacity-60"
+										className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm disabled:opacity-60"
 										title="Re-run AI analysis on this interview"
 									>
 										{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Retry analysis"}
@@ -236,7 +237,7 @@ export default function InterviewDetail() {
 					)}
 
 					<div>
-						<label className="mb-1 block font-bold text-lg text-foreground">Observations & Notes</label>
+						<label className="mb-1 block font-bold text-foreground text-lg">Observations & Notes</label>
 						<InlineEdit
 							textClassName="text-foreground"
 							value={

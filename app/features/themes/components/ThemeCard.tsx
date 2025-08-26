@@ -1,15 +1,15 @@
-import { useEffect, useMemo, useState } from "react"
 import { motion } from "framer-motion"
 import { ChevronDown, ChevronUp, FileText, Lightbulb } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
+import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import type { Evidence, Insight, Person, Theme } from "~/types"
-import { createClient } from "~/lib/supabase/client"
 
 export type ThemeCardTheme = Pick<Theme, "id" | "name" | "statement"> & {
 	evidence_count?: number
@@ -128,7 +128,7 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 			className={cn(
 				"group relative overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
 				"transition-all duration-300 ease-out",
-				"hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-white/5",
+				"hover:shadow-black/5 hover:shadow-lg dark:hover:shadow-white/5",
 				!isExpanded && "cursor-pointer",
 				className
 			)}
@@ -144,7 +144,7 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 				<div className="mb-4 flex items-start justify-between">
 					<div className="flex-1">
 						<motion.h3
-							className="font-light text-xl text-gray-900 dark:text-white tracking-tight leading-tight mb-2"
+							className="mb-2 font-light text-gray-900 text-xl leading-tight tracking-tight dark:text-white"
 							style={{ color: isHovered ? "#6366f1" : undefined }}
 							transition={{ duration: 0.3 }}
 						>
@@ -168,7 +168,7 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 				{theme.statement && (
 					<div className="mb-4">
 						<p
-							className={cn("text-gray-600 dark:text-gray-400 text-sm leading-relaxed", !isExpanded && "line-clamp-2")}
+							className={cn("text-gray-600 text-sm leading-relaxed dark:text-gray-400", !isExpanded && "line-clamp-2")}
 						>
 							{theme.statement}
 						</p>
@@ -224,7 +224,7 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 												<div className="mt-1 flex items-center justify-between">
 													<span className="text-gray-500 text-xs">{e.support}</span>
 													{e.participants && e.participants.length > 0 && (
-														<div className="flex -space-x-1">
+														<div className="-space-x-1 flex">
 															{e.participants.slice(0, 2).map((p, idx) => {
 																const initials = (p.person.name || "?")
 																	.split(" ")
@@ -251,16 +251,35 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 						{/* Insights Preview */}
 						{insightsPreview.length > 0 && (
 							<div>
-								<h4 className="mb-2 font-medium text-gray-900 text-sm dark:text-white">Related Insights</h4>
-								<div className="flex flex-wrap gap-2">
-									{insightsPreview.map((i) => (
-										<Link key={i.id} to={routes.insights.detail(i.id)}>
-											<Badge variant="secondary" className="max-w-[200px] truncate text-xs">
-												{i.name || i.id}
-											</Badge>
-										</Link>
-									))}
-								</div>
+								<h3 className="mb-4 font-semibold text-foreground">Insights</h3>
+								{insights.length > 0 && (
+									<div className="">
+										{" "}
+										{/* TODO: border bg-background p-6 */}
+										<div className="space-y-3">
+											{insights.map((insight) => (
+												<div key={insight.id} className="max-w-xl rounded-lg border p-2">
+													<div key={insight.id} className="border-green-500 border-l-4 pl-3">
+														<Link
+															to={routes.insights.detail(insight.id)}
+															className="font-medium text-blue-600 hover:text-blue-800"
+														>
+															{insight.name}
+														</Link>
+														{insight.category && (
+															<Badge variant="secondary" className="ml-2">
+																{insight.category}
+															</Badge>
+														)}
+														{insight.impact && (
+															<div className="mt-1 text-foreground/50 text-sm">Impact: {insight.impact}</div>
+														)}
+													</div>
+												</div>
+											))}
+										</div>
+									</div>
+								)}
 							</div>
 						)}
 					</div>

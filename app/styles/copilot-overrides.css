@@ -33,17 +33,17 @@
 .copilotkit-input,
 .copilotkit-textarea,
 .copilotkit-prompt-input {
-	background: var(--copilotkit-input-background) !important;
-	color: var(--copilotkit-input-foreground) !important;
-	border-color: var(--copilotkit-input-border) !important;
+	background: var(--copilotkit-input-background);
+	color: var(--copilotkit-input-foreground);
+	border-color: var(--copilotkit-input-border);
 }
 
 /* Message bubbles */
 .copilotkit-message-user {
-	background: var(--copilotkit-user-message-background) !important;
-	color: var(--copilotkit-user-message-foreground) !important;
+	background: var(--copilotkit-user-message-background);
+	color: var(--copilotkit-user-message-foreground);
 }
 .copilotkit-message-assistant {
-	background: var(--copilotkit-assistant-message-background) !important;
-	color: var(--copilotkit-assistant-message-foreground) !important;
+	background: var(--copilotkit-assistant-message-background);
+	color: var(--copilotkit-assistant-message-foreground);
 }

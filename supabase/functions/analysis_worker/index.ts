@@ -32,7 +32,6 @@ Deno.serve(async (req) => {
 			.limit(10)
 
 		if (fetchError) {
-			console.error("Failed to fetch analysis jobs:", fetchError)
 			return new Response(JSON.stringify({ error: "Failed to fetch jobs" }), {
 				status: 500,
 				headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -44,15 +43,11 @@ Deno.serve(async (req) => {
 				headers: { ...corsHeaders, "Content-Type": "application/json" },
 			})
 		}
-
-		console.log(`Processing ${jobs.length} analysis jobs`)
 		let processed = 0
 		let errors = 0
 
 		for (const job of jobs as AnalysisJob[]) {
 			try {
-				console.log(`Processing job ${job.id} for interview ${job.interview_id}`)
-
 				// Mark job as in progress
 				await supabase
 					.from("analysis_jobs")
@@ -85,8 +80,7 @@ Deno.serve(async (req) => {
 					throw new Error(`Processing failed: ${response.status} ${await response.text()}`)
 				}
 
-				const result = await response.json()
-				console.log(`Successfully processed job ${job.id}`)
+				const _result = await response.json()
 
 				// Mark job as complete
 				await supabase
@@ -103,7 +97,6 @@ Deno.serve(async (req) => {
 
 				processed++
 			} catch (error) {
-				console.error(`Failed to process job ${job.id}:`, error)
 				errors++
 
 				// Mark job as error
@@ -132,7 +125,6 @@ Deno.serve(async (req) => {
 			}
 		)
 	} catch (error) {
-		console.error("Analysis worker error:", error)
 		return new Response(JSON.stringify({ error: error instanceof Error ? error.message : "Unknown error" }), {
 			status: 500,
 			headers: { ...corsHeaders, "Content-Type": "application/json" },

@@ -141,15 +141,16 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 								</svg>
 								{/* Percentage in center */}
 								<div className="absolute inset-0 flex items-center justify-center">
-									<span className="text-2xl font-light text-white">{Math.round(progress)}%</span>
+									<span className="font-light text-2xl text-white">{Math.round(progress)}%</span>
 								</div>
 							</div>
 						</div>
 
 						{/* Processing Stage */}
-						<h2 className="mb-2 text-xl font-light text-white">{processingStage}</h2>
+						<h2 className="mb-2 font-light text-white text-xl">{processingStage}</h2>
 						<p className="text-gray-400 text-sm">
-							{Math.max(1, Math.ceil((100 - progress) / 20))} {Math.ceil((100 - progress) / 20) === 1 ? 'minute' : 'minutes'} remaining
+							{Math.max(1, Math.ceil((100 - progress) / 20))}{" "}
+							{Math.ceil((100 - progress) / 20) === 1 ? "minute" : "minutes"} remaining
 						</p>
 					</div>
 
@@ -161,7 +162,7 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 							</div>
 						</div>
 
-						<h3 className="mb-3 text-lg font-medium text-white">{currentCard.title}</h3>
+						<h3 className="mb-3 font-medium text-lg text-white">{currentCard.title}</h3>
 						<p className="text-gray-300 text-sm leading-relaxed">{currentCard.content}</p>
 
 						{/* Simple dots indicator */}

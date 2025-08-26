@@ -41,8 +41,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		}
 
 		return { opportunity }
-	} catch (error) {
-		console.error("Error loading opportunity:", error)
+	} catch (_error) {
 		throw new Response("Failed to load opportunity", { status: 500 })
 	}
 }
@@ -73,13 +72,11 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			})
 
 			if (error) {
-				console.error("Error deleting opportunity:", error)
 				return { error: "Failed to delete opportunity" }
 			}
 
 			return redirect("/opportunities")
-		} catch (error) {
-			console.error("Error deleting opportunity:", error)
+		} catch (_error) {
 			return { error: "Failed to delete opportunity" }
 		}
 	}
@@ -105,13 +102,11 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		})
 
 		if (error) {
-			console.error("Error updating opportunity:", error)
 			return { error: "Failed to update opportunity" }
 		}
 
 		return redirect(`/opportunities/${data.id}`)
-	} catch (error) {
-		console.error("Error updating opportunity:", error)
+	} catch (_error) {
 		return { error: "Failed to update opportunity" }
 	}
 }

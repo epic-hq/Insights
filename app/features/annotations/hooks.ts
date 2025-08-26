@@ -71,7 +71,7 @@ export function useAnnotations({
 
 		fetcher.load(`${routes.api.annotations()}?${searchParams}`)
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, annotationType, includeThreads, projectPath])
+	}, [entityType, entityId, annotationType, includeThreads, projectPath, fetcher.load, routes.api.annotations])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -195,7 +195,7 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 		const votesUrl = routes.api.votes()
 		fetcher.load(`${votesUrl}?${searchParams}`)
 		// Depend only on stable inputs to avoid loops
-	}, [entityType, entityId, projectPath])
+	}, [entityType, entityId, projectPath, fetcher.load, routes.api.votes])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -298,7 +298,7 @@ export function useEntityFlags({ entityType, entityId }: { entityType: EntityTyp
 
 		fetcher.load(`${routes.api.entityFlags()}?${searchParams}`)
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, projectPath])
+	}, [entityType, entityId, projectPath, fetcher.load, routes.api.entityFlags])
 
 	// Handle fetcher state changes
 	useEffect(() => {

@@ -2,7 +2,6 @@ import React from "react"
 import { Link } from "react-router-dom"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { PATHS } from "~/paths"
 import Breadcrumbs from "./Breadcrumbs"
 
 interface BreadcrumbItem {

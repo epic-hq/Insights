@@ -71,9 +71,9 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		// const currentProject = context.get(currentProjectContext)
 		const ctx = context.get(userContext)
 		const { supabase } = ctx
-		const accountId = params?.accountId
+		const _accountId = params?.accountId
 		const projectId = params?.projectId
-		const project = await getProjectById({ supabase, accountId, id: projectId })
+		const project = await getProjectById({ supabase, id: projectId })
 
 		return {
 			projectId,

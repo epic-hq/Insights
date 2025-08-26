@@ -1,10 +1,10 @@
+import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Form, useLoaderData, useNavigation } from "react-router-dom"
+import { Button } from "~/components/ui/button"
+import { ThemeCard, type ThemeCardTheme } from "~/features/themes/components/ThemeCard"
 import { userContext } from "~/server/user-context"
 import type { Evidence } from "~/types"
-import { ThemeCard, type ThemeCardTheme } from "~/features/themes/components/ThemeCard"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
@@ -112,7 +112,7 @@ export default function ThemeDetail() {
 			<Button onClick={() => setShowAddEvidence(!showAddEvidence)}>Add Evidence</Button>
 			{showAddEvidence ? (
 				<div className="rounded-2xl border border-gray-200 bg-white p-6 dark:border-gray-700 dark:bg-gray-900">
-					<h2 className="mb-4 font-medium text-lg text-gray-900 dark:text-white">Link New Evidence</h2>
+					<h2 className="mb-4 font-medium text-foreground text-lg">Link New Evidence</h2>
 					<Form method="post" className="grid gap-4 sm:grid-cols-2">
 						<label className="flex flex-col gap-2">
 							<span className="font-medium text-gray-700 text-sm dark:text-gray-300">Evidence</span>
@@ -156,7 +156,7 @@ export default function ThemeDetail() {
 							<button
 								type="submit"
 								disabled={nav.state === "submitting"}
-								className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700 disabled:opacity-50 disabled:cursor-not-allowed"
+								className="rounded-lg bg-indigo-600 px-4 py-2 font-medium text-sm text-white transition-colors hover:bg-indigo-700 disabled:cursor-not-allowed disabled:opacity-50"
 							>
 								{nav.state === "submitting" ? "Linking…" : "Link Evidence"}
 							</button>

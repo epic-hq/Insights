@@ -1,4 +1,4 @@
-import { describe, it, expect, vi, beforeEach } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 
 // Mock for testing error scenarios
 const mockAssignPersonaToInterview = vi.fn()
@@ -20,15 +20,11 @@ describe("Persona Assignment Error Handling", () => {
 		mockAssignPersonaToInterview.mockRejectedValue(serviceError)
 
 		const { b } = await import("~/../baml_client")
-		
+
 		// Verify error is properly thrown (will be caught by processInterview fallback)
-		await expect(
-			b.AssignPersonaToInterview(
-				"test transcript",
-				'{"name": "Test User"}',
-				"[]"
-			)
-		).rejects.toThrow("BAML service unavailable")
+		await expect(b.AssignPersonaToInterview("test transcript", '{"name": "Test User"}', "[]")).rejects.toThrow(
+			"BAML service unavailable"
+		)
 	})
 
 	it("should handle edge cases in input data", async () => {
@@ -48,7 +44,7 @@ describe("Persona Assignment Error Handling", () => {
 		mockAssignPersonaToInterview.mockResolvedValue(edgeCaseDecision)
 
 		const { b } = await import("~/../baml_client")
-		
+
 		// Test with empty transcript
 		const result = await b.AssignPersonaToInterview(
 			"", // Empty transcript

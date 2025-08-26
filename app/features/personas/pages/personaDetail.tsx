@@ -179,11 +179,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export default function PersonaDetailRoute() {
 	const { persona, interviews, insights, people } = useLoaderData<typeof loader>()
 	const params = useParams()
-	
+
 	// Extract accountId and projectId directly from URL params
 	const accountId = params.accountId || ""
 	const projectId = params.projectId || ""
-	
+
 	// Single source of truth for all route generation
 	const routes = useProjectRoutesFromIds(accountId, projectId)
 
@@ -214,7 +214,7 @@ export default function PersonaDetailRoute() {
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
 			{/* Clean Metro-Style Header */}
-			<div className="border-gray-200 dark:border-gray-800 border-b bg-white dark:bg-gray-950 px-6 py-12">
+			<div className="border-gray-200 border-b bg-white px-6 py-12 dark:border-gray-800 dark:bg-gray-950">
 				<div className="mx-auto max-w-6xl">
 					<motion.div
 						className="mb-8 flex flex-col gap-8 md:flex-row md:items-start md:justify-between"
@@ -224,16 +224,12 @@ export default function PersonaDetailRoute() {
 					>
 						{/* Avatar Section - Separated */}
 						<div className="flex items-center justify-center md:justify-start">
-							<motion.div
-								className="relative"
-								whileHover={{ scale: 1.02 }}
-								transition={{ duration: 0.2 }}
-							>
-								<Avatar className="h-16 w-16 border-2 border-white shadow-lg dark:border-gray-800" style={{ borderColor: `${themeColor}30` }}>
-									<AvatarFallback
-										className="font-bold text-white text-xl"
-										style={{ backgroundColor: themeColor }}
-									>
+							<motion.div className="relative" whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
+								<Avatar
+									className="h-16 w-16 border-2 border-white shadow-lg dark:border-gray-800"
+									style={{ borderColor: `${themeColor}30` }}
+								>
+									<AvatarFallback className="font-bold text-white text-xl" style={{ backgroundColor: themeColor }}>
 										{initials}
 									</AvatarFallback>
 								</Avatar>
@@ -243,7 +239,7 @@ export default function PersonaDetailRoute() {
 						{/* Title Section - Clean Typography */}
 						<div className="flex-1 text-center md:text-left">
 							<motion.h1
-								className="font-light text-4xl md:text-5xl text-gray-900 dark:text-white tracking-tight leading-tight mb-4"
+								className="mb-4 font-light text-4xl text-gray-900 leading-tight tracking-tight md:text-5xl dark:text-white"
 								style={{ color: themeColor }}
 								initial={{ opacity: 0, y: 20 }}
 								animate={{ opacity: 1, y: 0 }}
@@ -254,7 +250,7 @@ export default function PersonaDetailRoute() {
 
 							{/* Theme Color Accent Line */}
 							<motion.div
-								className="h-1 w-24 rounded-full mb-6 mx-auto md:mx-0"
+								className="mx-auto mb-6 h-1 w-24 rounded-full md:mx-0"
 								style={{ backgroundColor: themeColor }}
 								initial={{ width: 0 }}
 								animate={{ width: "6rem" }}
@@ -262,7 +258,7 @@ export default function PersonaDetailRoute() {
 							/>
 
 							<motion.p
-								className="text-gray-600 dark:text-gray-400 text-xl leading-relaxed max-w-2xl"
+								className="max-w-2xl text-gray-600 text-xl leading-relaxed dark:text-gray-400"
 								initial={{ opacity: 0, y: 20 }}
 								animate={{ opacity: 1, y: 0 }}
 								transition={{ delay: 0.3, duration: 0.5 }}
@@ -273,7 +269,7 @@ export default function PersonaDetailRoute() {
 
 						{/* Action Buttons */}
 						<motion.div
-							className="flex gap-3 justify-center md:justify-start"
+							className="flex justify-center gap-3 md:justify-start"
 							initial={{ opacity: 0, scale: 0.9 }}
 							animate={{ opacity: 1, scale: 1 }}
 							transition={{ delay: 0.5, duration: 0.3 }}
@@ -375,81 +371,81 @@ export default function PersonaDetailRoute() {
 								{ label: "Languages", value: persona.languages },
 								{ label: "Segment", value: persona.segment },
 								{ label: "Role", value: persona.role },
-							{
-								label: "Motivations",
-								value:
-									Array.isArray(persona.motivations) && persona.motivations.length > 0
-										? persona.motivations.join(", ")
-										: null,
-							},
-							{
-								label: "Values",
-								value: Array.isArray(persona.values) && persona.values.length > 0 ? persona.values.join(", ") : null,
-							},
-							{
-								label: "Frustrations",
-								value:
-									Array.isArray(persona.frustrations) && persona.frustrations.length > 0
-										? persona.frustrations.join(", ")
-										: null,
-							},
-							{ label: "Preferences", value: persona.preferences },
-							{ label: "Learning Style", value: persona.learning_style },
-							{ label: "Tech Comfort Level", value: persona.tech_comfort_level },
-							{ label: "Frequency of Purchase", value: persona.frequency_of_purchase },
-							{ label: "Frequency of Use", value: persona.frequency_of_use },
-							{
-								label: "Key Tasks",
-								value:
-									Array.isArray(persona.key_tasks) && persona.key_tasks.length > 0
-										? persona.key_tasks.join(", ")
-										: null,
-							},
-							{
-								label: "Tools Used",
-								value:
-									Array.isArray(persona.tools_used) && persona.tools_used.length > 0
-										? persona.tools_used.join(", ")
-										: null,
-							},
-							{ label: "Primary Goal", value: persona.primary_goal },
-							{
-								label: "Secondary Goals",
-								value:
-									Array.isArray(persona.secondary_goals) && persona.secondary_goals.length > 0
-										? persona.secondary_goals.join(", ")
-										: null,
-							},
-							{
-								label: "Sources",
-								value: Array.isArray(persona.sources) && persona.sources.length > 0 ? persona.sources.join(", ") : null,
-							},
-							{
-								label: "Quotes",
-								value:
-									Array.isArray(persona.quotes) && persona.quotes.length > 0
-										? persona.quotes.map((q: string) => `"${q}"`).join(" ")
-										: null,
-							},
-							{
-								label: "Percentage",
-								value:
-									typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
-										? `${persona.percentage}%`
-										: null,
-							},
-						]
-							.filter((item) => item.value && String(item.value).trim() !== "")
-							.map((item, _idx) => (
-								<div key={item.label} className="flex">
-									<span className="w-40 font-medium text-foreground">{item.label}:</span>
-									<span className="text-muted-foreground">{item.value}</span>
-								</div>
-							))}
+								{
+									label: "Motivations",
+									value:
+										Array.isArray(persona.motivations) && persona.motivations.length > 0
+											? persona.motivations.join(", ")
+											: null,
+								},
+								{
+									label: "Values",
+									value: Array.isArray(persona.values) && persona.values.length > 0 ? persona.values.join(", ") : null,
+								},
+								{
+									label: "Frustrations",
+									value:
+										Array.isArray(persona.frustrations) && persona.frustrations.length > 0
+											? persona.frustrations.join(", ")
+											: null,
+								},
+								{ label: "Preferences", value: persona.preferences },
+								{ label: "Learning Style", value: persona.learning_style },
+								{ label: "Tech Comfort Level", value: persona.tech_comfort_level },
+								{ label: "Frequency of Purchase", value: persona.frequency_of_purchase },
+								{ label: "Frequency of Use", value: persona.frequency_of_use },
+								{
+									label: "Key Tasks",
+									value:
+										Array.isArray(persona.key_tasks) && persona.key_tasks.length > 0
+											? persona.key_tasks.join(", ")
+											: null,
+								},
+								{
+									label: "Tools Used",
+									value:
+										Array.isArray(persona.tools_used) && persona.tools_used.length > 0
+											? persona.tools_used.join(", ")
+											: null,
+								},
+								{ label: "Primary Goal", value: persona.primary_goal },
+								{
+									label: "Secondary Goals",
+									value:
+										Array.isArray(persona.secondary_goals) && persona.secondary_goals.length > 0
+											? persona.secondary_goals.join(", ")
+											: null,
+								},
+								{
+									label: "Sources",
+									value:
+										Array.isArray(persona.sources) && persona.sources.length > 0 ? persona.sources.join(", ") : null,
+								},
+								{
+									label: "Quotes",
+									value:
+										Array.isArray(persona.quotes) && persona.quotes.length > 0
+											? persona.quotes.map((q: string) => `"${q}"`).join(" ")
+											: null,
+								},
+								{
+									label: "Percentage",
+									value:
+										typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
+											? `${persona.percentage}%`
+											: null,
+								},
+							]
+								.filter((item) => item.value && String(item.value).trim() !== "")
+								.map((item, _idx) => (
+									<div key={item.label} className="flex">
+										<span className="w-40 font-medium text-foreground">{item.label}:</span>
+										<span className="text-muted-foreground">{item.value}</span>
+									</div>
+								))}
 						</div>
 					</CardContent>
 				</Card>
-
 
 				{/* People Section */}
 				{people && people.length > 0 && (

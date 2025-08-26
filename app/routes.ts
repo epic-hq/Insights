@@ -1,8 +1,8 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
 import aiChatRoutes from "./features/aichat/routes"
-import evidenceRoutes from "./features/evidence/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
+import evidenceRoutes from "./features/evidence/routes"
 import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
@@ -77,6 +77,7 @@ const routes = [
 	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
 	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
+	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

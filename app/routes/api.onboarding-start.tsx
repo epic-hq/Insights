@@ -308,8 +308,12 @@ Please extract insights that specifically address these research questions and h
 					iab_categories: true,
 					format_text: true,
 					punctuate: true,
-					auto_chapters: true,
+					// auto_chapters: true,
 					sentiment_analysis: false,
+					auto_highlights: true,
+					summarization: true,
+					summary_model: "informative",
+					summary_type: "bullets",
 				}),
 			})
 

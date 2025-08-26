@@ -108,8 +108,8 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 							<Upload className="h-5 w-5" />
 							<span className="font-medium text-sm">Media Upload</span>
 						</div> */}
-						{/* <h2 className="font-bold text-2xl text-white">Add your first interview</h2> */}
-						{/* <p className="text-gray-300 text-sm leading-relaxed">
+					{/* <h2 className="font-bold text-2xl text-white">Add your first interview</h2> */}
+					{/* <p className="text-gray-300 text-sm leading-relaxed">
 							Upload an audio, video or transcript from a conversation or interview.
 						</p>
 					</div> */}
@@ -236,14 +236,16 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* File Requirements - Compact */}
 					<div className="rounded-lg bg-gray-900/50 p-3">
-						<p className="mb-2 text-xs font-medium text-gray-300">Supported: MP3, MP4, WAV, M4A, MOV, AVI (max 500MB)</p>
-						<p className="text-xs text-gray-400">💡 Clear audio works best</p>
+						<p className="mb-2 font-medium text-gray-300 text-xs">
+							Supported: MP3, MP4, WAV, M4A, MOV, AVI (max 500MB)
+						</p>
+						<p className="text-gray-400 text-xs">💡 Clear audio works best</p>
 					</div>
 				</div>
 			</div>
 
 			{/* Bottom Action */}
-			<div className="mx-auto max-w-xl p-4 mt-8 mb-20 border-gray-800 border-t bg-black p-4">
+			<div className="mx-auto mt-8 mb-20 max-w-xl border-gray-800 border-t bg-black p-4 p-4">
 				<Button
 					onClick={handleNext}
 					disabled={!selectedFile}

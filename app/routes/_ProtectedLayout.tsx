@@ -2,7 +2,7 @@ import { CopilotKit } from "@copilotkit/react-core"
 import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
-import { Outlet, useLoaderData, useRouteLoaderData, useParams, redirect } from "react-router"
+import { Outlet, redirect, useLoaderData, useParams, useRouteLoaderData } from "react-router"
 import MainNav from "~/components/navigation/MainNav"
 import PageHeader from "~/components/navigation/PageHeader"
 import { AuthProvider } from "~/contexts/AuthContext"
@@ -133,9 +133,13 @@ export default function ProtectedLayout() {
 						"X-ProjectId": String(params.projectId ?? ""),
 					}}
 				>
-					<MainNav />
-					<PageHeader title="" showBreadcrumbs={false} />
-					<Outlet />
+					<div className="min-h-screen bg-background">
+						<MainNav />
+						<PageHeader title="" showBreadcrumbs={false} />
+						<main className="flex-1">
+							<Outlet />
+						</main>
+					</div>
 
 					{/* Persistent AI Chat Button */}
 					<div className="fixed right-0 bottom-0 left-0 z-40 border-gray-800 border-t bg-black p-3">

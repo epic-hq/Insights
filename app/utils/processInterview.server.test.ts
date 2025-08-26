@@ -15,7 +15,7 @@ vi.mock("~/lib/baml/client")
 // Import after mocking
 const { processInterviewTranscript } = await import("./processInterview.server")
 const { getServerClient } = await import("~/lib/supabase/server")
-const consola = await import("consola")
+const _consola = await import("consola")
 const { b } = await import("~/lib/baml/client")
 
 // Create mock Supabase client

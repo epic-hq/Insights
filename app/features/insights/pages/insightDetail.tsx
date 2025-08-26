@@ -5,6 +5,8 @@ import { useLoaderData } from "react-router-dom"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
 import { getInsightById } from "~/features/insights/db"
 import { userContext } from "~/server/user-context"
+import { InsightCardV3 } from "../components/InsightCardV3"
+import { InsightCardV3Page } from "../components/InsightCardV3Page"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -86,7 +88,7 @@ export default function InsightDetail() {
 				<span className="text-gray-900">{insight.name}</span>
 			</div> */}
 			<ErrorBoundary>
-				<InsightCardV2 insight={insight} />
+				<InsightCardV3Page insight={insight} extended={true} />
 			</ErrorBoundary>
 		</div>
 	)

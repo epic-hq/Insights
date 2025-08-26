@@ -30,7 +30,7 @@ export const getPeople = async ({
 				)
 			)
 		`)
-		.eq("account_id", accountId)
+		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
@@ -79,7 +79,6 @@ export const getPersonById = async ({
 				)
 			)
 		`)
-		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)
 		.single()
@@ -130,7 +129,6 @@ export const updatePerson = async ({
 		.from("people")
 		.update(data)
 		.eq("id", id)
-		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.select()
 		.single()
@@ -158,5 +156,5 @@ export const deletePerson = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase.from("people").delete().eq("id", id).eq("account_id", accountId).eq("project_id", projectId)
+	return await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
 }

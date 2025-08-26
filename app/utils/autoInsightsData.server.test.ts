@@ -34,7 +34,7 @@ describe("Auto-Insights Data Aggregation", () => {
 			mockSupabase.from.mockReturnValue(mockQuery)
 
 			// Mock count queries
-			mockQuery.select.mockImplementation((fields, options) => {
+			mockQuery.select.mockImplementation((_fields, options) => {
 				if (options?.count === "exact") {
 					return Promise.resolve({ count: 54, error: null })
 				}
@@ -91,7 +91,7 @@ describe("Auto-Insights Data Aggregation", () => {
 						data: mockInsights,
 						error: null,
 					})
-					mockQuery.select.mockImplementation((fields, options) => {
+					mockQuery.select.mockImplementation((_fields, options) => {
 						if (options?.count === "exact") {
 							return Promise.resolve({ count: 54, error: null })
 						}
@@ -107,7 +107,7 @@ describe("Auto-Insights Data Aggregation", () => {
 						data: [],
 						error: null,
 					})
-					mockQuery.select.mockImplementation((fields, options) => {
+					mockQuery.select.mockImplementation((_fields, options) => {
 						if (options?.count === "exact") {
 							return Promise.resolve({ count: 0, error: null })
 						}
@@ -438,7 +438,7 @@ describe("Auto-Insights Data Aggregation", () => {
 
 			// Mock insufficient data
 			mockSupabase.from.mockReturnValue({
-				select: vi.fn().mockImplementation((fields, options) => {
+				select: vi.fn().mockImplementation((_fields, options) => {
 					if (options?.count === "exact") {
 						return Promise.resolve({ count: 2, error: null }) // Below minimum
 					}
@@ -483,7 +483,7 @@ describe("Auto-Insights Data Aggregation", () => {
 					})
 				}
 
-				mockQuery.select.mockImplementation((fields, options) => {
+				mockQuery.select.mockImplementation((_fields, options) => {
 					if (options?.count === "exact") {
 						return Promise.resolve({ count: 1, error: null })
 					}

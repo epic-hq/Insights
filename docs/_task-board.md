@@ -8,23 +8,23 @@
 - [x] **Admin client authentication** - Webhooks use admin credentials for system operations
 - [x] **Nullable audit fields** - Made `created_by`/`updated_by` nullable for admin operations
 - [x] Simplify the Processing component to show actual steps over % completion. Let user know they can leave/return.
-- [ ] Transcription record doesn't have diarization
+- [x] Transcription record doesn't have diarization
 - [x] Tie in the Add Interview Button to use the pipeline. What is the new add interview buttonfor the new onboarding process. assume it will be same flow, jsut not the first interview.
-- [ ] People not being generated. can be under Personas.
 - [x] Merge agent-persona branch and simpleui so we have the benefit of the mastra dockerfile fixes
 - [x] Get Fly.io to a clean state where releases complete
 - [x] Fix OOM errors with increased memory allocation (1GB → 2GB)
 - [x] Fix Mastra instrumentation.mjs missing file error
-
-## Metro UI
-
-- [x] New Project Status page acceptance
-'/Users/richardmoy/Downloads/page.tsx' contains some suggestions on how to add insights cards into the metro-index display. but we should think holisticlaly about it.
-- [ ] Figure out how to easily plug metro in as a layout option for mobile screen size.Claude has plan.
+Remaining Critical:
+- [x] People not added. `app/utils/processInterview.server.ts` it was accountId param query again.
+- [ ] Personas generated. Add role into formulation so it doesnt sound too emotional.
 - [ ] Verify all entities created from new onboarding step with right accountId if needed.
 - [ ] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
-- [ ] Redesign Entity components for Metro style.
 
+## Simple UI
+
+- [ ] Decide on new menu items for Simple UI. Stepper layout.
+- [ ] Implement for desktop
+- [ ] Detect mobile and implement mobile version.
 
 ### 🛠️ Critical Conventions to Remember
 
@@ -121,7 +121,7 @@ TEST IT MORE
 - [ ] Analyze Personas feature: make recommendations.
 - [ ] Chat about Personas
 
-## New Interviews
+## New Interviews - Show what's changed
 
 - [ ] ProjectStatus page shold tell user what changed if its added in, as an annotation.
 

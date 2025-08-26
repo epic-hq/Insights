@@ -1,4 +1,4 @@
-/** biome-ignore-all lint/correctness/noUnusedImports: <explanation> */
+/** biome-ignore-all lint/correctness/noUnusedImports: needed for component imports */
 
 import consola from "consola"
 import {
@@ -19,16 +19,17 @@ import { useEffect, useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
 import { useNavigate, useParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
+import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
 import { Logo, LogoBrand } from "~/components/branding"
 import type { TreeNode } from "~/components/charts/TreeMap"
-import { BottomActionBar } from "~/features/dashboard/components/BottomActionBar"
-import { CopilotSidebar } from "~/features/dashboard/components/CopilotSidebar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 // Hooks for current project routing
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { BottomActionBar } from "~/features/dashboard/components/BottomActionBar"
+import { CopilotSidebar } from "~/features/dashboard/components/CopilotSidebar"
 import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen"
 import { getPeople } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
@@ -42,7 +43,6 @@ import { userContext } from "~/server/user-context"
 import type { Insight, InsightView, Interview, OpportunityView, Person, Persona, Project } from "~/types"
 import { getProjectStatusData } from "~/utils/project-status.server"
 import { createProjectRoutes } from "~/utils/routes.server"
-import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -244,7 +244,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	})
 
 	// Sort and apply colors to top N tags
-	const baseColors = ["#3b82f6", "#10b981", "#f59e0b", "#ec4899", "#6366f1"]
+	const baseColors = ["var(--primary)", "var(--secondary)", "var(--accent)", "var(--muted)", "var(--card)"]
 	const topN = 5
 
 	const themeTree: TreeNode[] = Array.from(tagMap.values())
@@ -313,7 +313,7 @@ const mainSections = [
 		title: "Personas",
 		subtitle: "User groups & their needs",
 		icon: Users,
-		color: "bg-blue-600",
+		color: "bg-primary",
 		size: "large" as const,
 		image: "https://pub-1b22566a2cb84e9eb583920bfaeb9a99.r2.dev/personas1.png",
 	},
@@ -322,7 +322,7 @@ const mainSections = [
 		title: "Insights",
 		subtitle: "Friction points & problems",
 		icon: Lightbulb,
-		color: "bg-green-600",
+		color: "bg-secondary",
 		size: "large" as const,
 		image:
 			"https://images.unsplash.com/photo-1626808642875-0aa545482dfb?q=80&w=774&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D",
@@ -332,7 +332,7 @@ const mainSections = [
 		title: "Sources",
 		subtitle: "Research conversations",
 		icon: MessageSquare,
-		color: "bg-red-600",
+		color: "bg-accent",
 		size: "medium" as const,
 		image: "https://pub-1b22566a2cb84e9eb583920bfaeb9a99.r2.dev/people-talking-bubbles.png",
 	},
@@ -341,11 +341,11 @@ const mainSections = [
 		title: "Projects",
 		subtitle: "Active initiatives",
 		icon: FolderOpen,
-		color: "bg-purple-600",
+		color: "bg-muted",
 		size: "medium" as const,
 		image: "https://pub-1b22566a2cb84e9eb583920bfaeb9a99.r2.dev/project-management-dashboard.png",
 	},
-	{ id: "people", title: "People", subtitle: "Participants", icon: Users, color: "bg-gray-600", size: "full" as const },
+	{ id: "people", title: "People", subtitle: "Participants", icon: Users, color: "bg-card", size: "full" as const },
 ]
 
 export default function MetroIndex() {
@@ -362,9 +362,8 @@ export default function MetroIndex() {
 	} = useLoaderData<typeof loader>()
 	const [showExpandedSection, _setShowExpandedSection] = useState<boolean>(false)
 
-	const navigate = useNavigate()
 	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const _routes = useProjectRoutes(projectPath || "")
 
 	const sectionData: Record<string, any[]> = useMemo(
 		() => ({
@@ -379,7 +378,7 @@ export default function MetroIndex() {
 
 	const [expandedSection, setExpandedSection] = useState<string | null>(null)
 	const [fullScreenContent, _setFullScreenContent] = useState<any>(null)
-	const [showSearch, setShowSearch] = useState(false)
+	const [_showSearch, _setShowSearch] = useState(false)
 	const [showChat, setShowChat] = useState(false)
 	const [selectedItem, setSelectedItem] = useState<any>(null)
 
@@ -389,12 +388,13 @@ export default function MetroIndex() {
 			medium: "col-span-1 row-span-3 h-72",
 			full: "col-span-2 row-span-3 h-72",
 		} as const
-		return `${sizeClasses[size]} ${color} text-white rounded-none relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-200 shadow-xl`
+		return `${sizeClasses[size]} ${color} text-primary-foreground rounded-none relative overflow-hidden cursor-pointer hover:scale-[1.02] transition-all duration-200 shadow-xl`
 	}
 
 	const toggleSection = (sectionId: string) => setExpandedSection(expandedSection === sectionId ? null : sectionId)
-	const getSectionColor = (sectionId: string) => mainSections.find((s) => s.id === sectionId)?.color || "bg-gray-800"
-	const toggleChat = () => {
+	const getSectionColor = (sectionId: string) =>
+		mainSections.find((s) => s.id === sectionId)?.color || "bg-muted-foreground"
+	const _toggleChat = () => {
 		setShowChat(!showChat)
 	}
 
@@ -426,13 +426,13 @@ export default function MetroIndex() {
 						<div className="space-y-3">
 							<div className={`-mx-4 mb-4 flex items-center justify-between p-3 ${getSectionColor(expandedSection)}`}>
 								<div>
-									<h2 className="font-bold text-white text-xl capitalize">{expandedSection}</h2>
-									<p className="text-gray-200 text-sm">{sectionData[expandedSection]?.length ?? 0} items</p>
+									<h2 className="font-bold text-primary-foreground text-xl capitalize">{expandedSection}</h2>
+									<p className="text-primary-foreground text-sm">{sectionData[expandedSection]?.length ?? 0} items</p>
 								</div>
 								<Button
 									variant="ghost"
 									size="icon"
-									className="text-white hover:bg-black hover:bg-opacity-20"
+									className="text-primary-foreground hover:bg-background/20"
 									onClick={() => setExpandedSection(null)}
 									title="Back to main view"
 								>
@@ -459,7 +459,7 @@ export default function MetroIndex() {
 														</div>
 													)}
 													<div className="min-w-0 flex-1">
-														<h3 className="mb-1 line-clamp-2 font-medium text-sm text-foreground">
+														<h3 className="mb-1 line-clamp-2 font-medium text-foreground text-sm">
 															{item.title || item.name || item.display_name || item.participant_name}
 														</h3>
 														<p className="line-clamp-2 text-muted-foreground text-xs">
@@ -513,11 +513,13 @@ export default function MetroIndex() {
 												<p className="hidden text-base leading-tight opacity-80 lg:block" title={section.subtitle}>
 													{section.subtitle}
 												</p>
-												<div className="mt-3 rounded-lg bg-black/20 p-2 backdrop-blur-sm">
+												<div className="mt-3 rounded-lg bg-background/20 p-2 backdrop-blur-sm">
 													<div className="flex items-start justify-between gap-2">
 														<div className="flex flex-1 items-start gap-2">
 															<Sparkles className="mt-0.5 h-3 w-3 flex-shrink-0 opacity-80" />
-															<p className="flex-1 text-white/90 text-xs leading-relaxed">Tap to explore</p>
+															<p className="flex-1 text-primary-foreground/90 text-xs leading-relaxed">
+																Tap to explore
+															</p>
 														</div>
 													</div>
 												</div>
@@ -554,11 +556,13 @@ export default function MetroIndex() {
 													<section.icon className="mb-4 h-10 w-10 opacity-90" />
 													<h2 className="mb-2 font-bold text-3xl">{section.title}</h2>
 													<p className="hidden text-base leading-tight opacity-80 lg:block">{section.subtitle}</p>
-													<div className="mt-3 rounded-lg bg-black/20 p-2 backdrop-blur-sm">
+													<div className="mt-3 rounded-lg bg-background/20 p-2 backdrop-blur-sm">
 														<div className="flex items-start justify-between gap-2">
 															<div className="flex flex-1 items-start gap-2">
 																<Sparkles className="mt-0.5 h-3 w-3 flex-shrink-0 opacity-80" />
-																<p className="flex-1 text-white/90 text-xs leading-relaxed">Tap to explore</p>
+																<p className="flex-1 text-primary-foreground/90 text-xs leading-relaxed">
+																	Tap to explore
+																</p>
 															</div>
 														</div>
 													</div>
@@ -583,7 +587,7 @@ export default function MetroIndex() {
 
 			{/* CopilotSidebar - Right side overlay */}
 			{showChat && (
-				<div className="fixed bottom-16 right-0 top-0 z-30 w-80 bg-card text-foreground shadow-2xl border-l border-border">
+				<div className="fixed top-0 right-0 bottom-16 z-30 w-80 border-border border-l bg-card text-foreground shadow-2xl">
 					<CopilotSidebar
 						expandedSection={expandedSection}
 						onClose={() => setShowChat(false)}
@@ -603,10 +607,10 @@ export default function MetroIndex() {
 
 			{/* Selected item drawer */}
 			{selectedItem && (
-				<div className="fixed inset-0 z-40 bg-background">
+				<div className="fixed inset-0 z-40 bg-background text-foreground">
 					<div className={`h-16 ${getSectionColor(selectedItem.section)} flex items-center justify-between px-4`}>
 						<div className="flex items-center gap-3">
-							<h2 className="font-bold text-lg text-white">
+							<h2 className="font-bold text-lg text-primary-foreground">
 								{selectedItem.section?.[0]?.toUpperCase() + selectedItem.section?.slice(1)}:{" "}
 								{selectedItem.title || selectedItem.name}
 							</h2>
@@ -615,7 +619,7 @@ export default function MetroIndex() {
 							variant="ghost"
 							size="icon"
 							onClick={() => setSelectedItem(null)}
-							className="text-white hover:bg-white hover:bg-opacity-20"
+							className="text-primary-foreground hover:bg-primary-foreground/20"
 						>
 							<X className="h-6 w-6" />
 						</Button>
@@ -633,7 +637,9 @@ export default function MetroIndex() {
 									</div>
 								)}
 								<div className="space-y-4">
-									<p className="text-muted-foreground leading-relaxed">{selectedItem.description || selectedItem.evidence}</p>
+									<p className="text-muted-foreground leading-relaxed">
+										{selectedItem.description || selectedItem.evidence}
+									</p>
 									{Array.isArray(selectedItem.tags) && (
 										<div className="flex flex-wrap gap-2">
 											{selectedItem.tags.map((tag: string) => (
@@ -643,17 +649,17 @@ export default function MetroIndex() {
 											))}
 										</div>
 									)}
-									<div className="rounded-lg bg-gradient-to-r from-indigo-600 to-purple-600 p-4">
+									<div className="rounded-lg bg-gradient-to-r from-primary to-accent p-4">
 										<div className="mb-3 flex items-center justify-between">
 											<div className="flex items-center gap-2">
-												<Bot className="h-4 w-4 text-white" />
-												<h3 className="font-medium text-white">AI Assistant</h3>
+												<Bot className="h-4 w-4 text-primary-foreground" />
+												<h3 className="font-medium text-primary-foreground">AI Assistant</h3>
 											</div>
 											<Button
 												variant="ghost"
 												size="icon"
 												onClick={() => setShowChat(false)}
-												className="h-6 w-6 text-white hover:bg-white hover:bg-opacity-20"
+												className="h-6 w-6 text-primary-foreground hover:bg-primary-foreground/20"
 											>
 												<X className="h-3 w-3" />
 											</Button>

@@ -122,7 +122,7 @@ export const action: ActionFunction = async ({ context, request }) => {
 					if (metadataStr) {
 						metadata = JSON.parse(metadataStr)
 					}
-				} catch (e) {
+				} catch (_e) {
 					consola.warn("Invalid metadata JSON:", metadataStr)
 				}
 
@@ -159,7 +159,7 @@ export const action: ActionFunction = async ({ context, request }) => {
 				let updates = {}
 				try {
 					updates = JSON.parse(updatesStr)
-				} catch (e) {
+				} catch (_e) {
 					return Response.json({ error: { message: "Invalid updates JSON" } }, { status: 400 })
 				}
 

@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs } from "react-router"
 import consola from "consola"
+import type { LoaderFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -17,10 +17,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		consola.info("Fetching transcript for interview:", { interviewId, projectId })
 
 		// Build query - only filter by projectId if provided
-		let query = supabase
-			.from("interviews")
-			.select("transcript, transcript_formatted")
-			.eq("id", interviewId)
+		let query = supabase.from("interviews").select("transcript, transcript_formatted").eq("id", interviewId)
 
 		if (projectId) {
 			query = query.eq("project_id", projectId)
@@ -28,11 +25,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 		const { data: transcriptData, error } = await query.single()
 
-		consola.info("Transcript query result:", { 
-			error: error?.message, 
+		consola.info("Transcript query result:", {
+			error: error?.message,
 			hasData: !!transcriptData,
 			transcriptLength: transcriptData?.transcript?.length || 0,
-			hasFormattedTranscript: !!transcriptData?.transcript_formatted 
+			hasFormattedTranscript: !!transcriptData?.transcript_formatted,
 		})
 
 		if (error) {
@@ -51,20 +48,20 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			transcript_formatted: transcriptData.transcript_formatted,
 		}
 
-		consola.info("Returning transcript response:", { 
+		consola.info("Returning transcript response:", {
 			transcriptLength: response.transcript?.length || 0,
-			hasFormattedTranscript: !!response.transcript_formatted 
+			hasFormattedTranscript: !!response.transcript_formatted,
 		})
 
 		return response
 	} catch (error) {
 		consola.error("Unexpected error in transcript API:", error)
-		
+
 		// Handle different error types
 		if (error instanceof Response) {
 			throw error // Re-throw Response errors as-is
 		}
-		
+
 		const errorMessage = error instanceof Error ? error.message : String(error)
 		throw new Response(`Failed to load transcript: ${errorMessage}`, { status: 500 })
 	}

@@ -55,7 +55,7 @@ describe("processInterviewTranscript Integration", () => {
 		}
 
 		// Mock the BAML client
-		const originalExtractInsights = (await import("~/../baml_client")).b.ExtractInsights
+		const _originalExtractInsights = (await import("~/../baml_client")).b.ExtractInsights
 		const mockExtractInsights = vi.fn().mockResolvedValue(mockBAMLResponse)
 		vi.doMock("~/../baml_client", () => ({
 			b: { ExtractInsights: mockExtractInsights },
@@ -204,7 +204,7 @@ describe("processInterviewTranscript Integration", () => {
 			headers: { Authorization: "Bearer test-token" },
 		})
 
-		const result = await processInterviewTranscript({
+		const _result = await processInterviewTranscript({
 			metadata: {
 				accountId: TEST_ACCOUNT_ID,
 				interviewTitle: "Test Interview",

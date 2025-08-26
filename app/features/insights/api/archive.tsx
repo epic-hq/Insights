@@ -10,8 +10,8 @@ interface ArchivePayload {
 
 export const action: ActionFunction = async ({ context, request }) => {
 	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = ctx.account_id
+	const _supabase = ctx.supabase
+	const _accountId = ctx.account_id
 
 	try {
 		const payload = (await request.json()) as ArchivePayload

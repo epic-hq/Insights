@@ -1,8 +1,8 @@
+import { Download, FileText } from "lucide-react"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
-import { FileText, Download } from "lucide-react"
-import { TranscriptResults } from "./TranscriptResults"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { TranscriptResults } from "./TranscriptResults"
 
 interface LazyTranscriptResultsProps {
 	interviewId: string
@@ -89,7 +89,7 @@ export function LazyTranscriptResults({
 						<FileText className="h-5 w-5 text-gray-400" />
 						<div>
 							<h3 className="font-medium text-foreground">Interview Transcript</h3>
-							<p className="text-sm text-foreground ">
+							<p className="text-foreground text-sm ">
 								{hasFormattedTranscript ? "Full transcript with analysis available" : "Raw transcript available"}
 							</p>
 						</div>

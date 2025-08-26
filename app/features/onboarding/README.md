@@ -7,13 +7,13 @@ Mobile-first onboarding flow based on the Metro design system that guides users 
 ### `OnboardingFlow.tsx`
 Main container component that manages the flow state and navigation between screens.
 
-### `WelcomeScreen.tsx` (Frame 1)
+### `ProjectGoalsScreen.tsx` (Frame 1)
 - Captures target market/ICP and research goal
 - Single column mobile-first layout
 - Auto-focus on input field
 - Progress indicator (Step 1 of 3)
 
-### `QuestionsScreen.tsx` (Frame 2)  
+### `QuestionsScreen.tsx` (Frame 2)
 - Collects research questions
 - Pre-filled suggestions based on research goal
 - Editable questions with add/remove functionality

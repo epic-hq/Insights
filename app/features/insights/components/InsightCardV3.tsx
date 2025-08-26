@@ -1,19 +1,25 @@
+import { Quote } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
+import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
-import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Insight } from "~/types"
-import { Quote } from "lucide-react"
 
 interface InsightCardV3Props {
 	insight: Insight
 }
 
-export function InsightCardV3({ insight }: InsightCardV3Props) {
+export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 	const [selected, setSelected] = useState<Insight | null>(null)
+	const _projectId = insight.project_id
+	const { accountId, projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
 	return (
 		<>
@@ -63,7 +69,7 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 									{selected.evidence && (
 										<div className="space-y-2">
 											<h4 className="font-medium text-foreground text-sm">Evidence</h4>
-											<div className="flex items-center bg-blue-400/20 gap-2 rounded-lg  p-3">
+											<div className="flex items-center gap-2 rounded-lg bg-blue-400/20 p-3">
 												<Quote className="h-4 w-4 " />
 												<p className="text-muted-foreground text-sm leading-relaxed">{selected.evidence}</p>
 											</div>
@@ -79,12 +85,26 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 								</div>
 							)}
 
-							{selected.jtbd && (
+							{selected.linked_themes && selected.linked_themes.length > 0 && (
+								<div className="space-y-3">
+									<h4 className="font-medium text-gray-700 text-sm">Linked Themes</h4>
+									<div className="flex flex-wrap gap-2">
+										{selected.linked_themes.map((theme: any) => (
+											<Link key={theme.id} to={routes.themes.detail(theme.id)}>
+												<Badge variant="secondary" className="text-xs">
+													{theme.name}
+												</Badge>
+											</Link>
+										))}
+									</div>
+								</div>
+							)}
+							{/* {selected.jtbd && (
 								<div className="space-y-2">
 									<h4 className="font-medium text-foreground text-sm">Job to be Done</h4>
 									<p className="text-muted-foreground text-sm leading-relaxed">{selected.jtbd}</p>
 								</div>
-							)}
+							)} */}
 
 							{selected.insight_tags && (
 								<div className="space-y-3">
@@ -97,19 +117,6 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 								</div>
 							)}
 
-							{selected.linked_themes && selected.linked_themes.length > 0 && (
-								<div className="space-y-3">
-									<h4 className="font-medium text-gray-700 text-sm">Linked Themes</h4>
-									<div className="flex flex-wrap gap-2">
-										{selected.linked_themes.map((theme: any) => (
-											<Badge key={theme.id} variant="secondary" className="text-xs">
-												{theme.name}
-											</Badge>
-										))}
-									</div>
-								</div>
-							)}
-
 							{selected.emotional_response && (
 								<div className="flex items-center justify-end pt-2">
 									<EmotionBadge emotion_string={selected.emotional_response} muted />
@@ -117,7 +124,7 @@ export function InsightCardV3({ insight }: InsightCardV3Props) {
 							)}
 						</div>
 
-						<DialogFooter className="mt-6 flex-row items-start justify-start pt-4 border-t">
+						<DialogFooter className="mt-6 flex-row items-start justify-start border-t pt-4">
 							<EntityInteractionPanel entityType="insight" entityId={selected.id} />
 						</DialogFooter>
 					</DialogContent>

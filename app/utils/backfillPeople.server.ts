@@ -4,7 +4,6 @@
  */
 
 import consola from "consola"
-import type { Database } from "~/../supabase/types"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InterviewPeopleInsert, PeopleInsert } from "~/types"
 

@@ -37,9 +37,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Sort by priority and take the requested number of questions
 		// Priority is an int where 1 is highest priority, 2 is medium, 3 is lowest
-		const topQuestions = allQuestions
-			.sort((a, b) => a.priority - b.priority)
-			.slice(0, questionCount)
+		const topQuestions = allQuestions.sort((a, b) => a.priority - b.priority).slice(0, questionCount)
 
 		return Response.json({
 			success: true,

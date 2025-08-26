@@ -69,7 +69,7 @@ export default function PersonaCard({ persona, style }: PersonaCardProps) {
 				</div>
 
 				{/* Description */}
-				{persona.description && persona.description.trim() && (
+				{persona.description?.trim() && (
 					<div className="mb-4">
 						<p className="text-gray-600 text-sm leading-relaxed">{persona.description}</p>
 					</div>

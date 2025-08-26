@@ -1,9 +1,9 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate, useRevalidator } from "react-router-dom"
-import { userContext } from "~/server/user-context"
+import OnboardingFlow, { type OnboardingData } from "~/features/onboarding/components/OnboardingFlow"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import OnboardingFlow, { type OnboardingData } from "~/features/onboarding/components/OnboardingFlow"
+import { userContext } from "~/server/user-context"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -16,7 +16,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Get existing project data
 	const projectResult = await getProjectById({
 		supabase: ctx.supabase,
-		accountId,
 		id: projectId,
 	})
 
@@ -39,7 +38,7 @@ export default function AddInterviewPage() {
 	const revalidator = useRevalidator()
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
-	const handleOnboardingComplete = async (data: OnboardingData) => {
+	const handleOnboardingComplete = async (_data: OnboardingData) => {
 		// Navigate to project dashboard after adding interview
 		if (routes.dashboard) {
 			navigate(routes.dashboard())

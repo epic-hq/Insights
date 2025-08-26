@@ -39,20 +39,23 @@ graph TD
 
 ---
 
-## Navigation Map
-```
-/ (dashboard)
-/studies/new
-/studies/:id/upload
-/interviews (list view of all interviews)
-/interviews/:iid (interview detail)
-/insights (list view of all insights with filtering)
-/insights/:iid (insight detail)
-/personas (list view of all personas)
-/personas/:pid (persona detail)
-/themes (theme matrix/heatmap)
-/opportunities (kanban board of all opportunities)
-```
+## Navigation
+Problem: We have too many things, and no clear flow.
+HMW: guide user better to Wow and reduce clutter
+
+- [ ] Desktop version: Top bar or sidenav?
+
+First interaction. How long does it take to get to Wow? After a User uploads an interview, the priority is to understand the target market, people & personas. Then dig into the top themes for the target personas, how much evidence is there, and who resonates with it. Then formulate insights we can validate or act upon
+
+So a lean menu in both mobile and desktop could look like this, with (items) appearing on page or as subnav.
+
+1. Research (status, recommendations, questions, experiments, transcripts, add interviews, surveys) - define goals & get the evidence
+2. Personas (people, interviews, evidence, themes, personas x themes) - analyze people & what makes them tick
+3. Patterns (themes, themes x personas) - what are the signals we are getting, the top themes, how much evidence is there, and who resonates with it. Then formulate insights we can validate or act upon
+4. Insights & Opportunities (future) - what are the insights we can validate or act upon & next steps
+
+Global: Workspace switcher ▸ Projects ▸ Settings/Team
+
 
 ---
 

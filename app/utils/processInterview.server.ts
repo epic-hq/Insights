@@ -3,18 +3,19 @@
 // NOTE: tsconfig path alias `~` maps to `app/`, so baml_client (generated at project root)
 // is accessible via `~/../baml_client`.
 // Import BAML client - this file is server-only so it's safe to import directly
+
+import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { b } from "~/../baml_client"
-import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import type { Database, Json } from "~/../supabase/types"
-import type { SupabaseClient } from "@supabase/supabase-js"
+import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 
 // Supabase table types
 type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"]
 type InterviewPeopleInsert = Database["public"]["Tables"]["interview_people"]["Insert"]
-type PersonasRow = Database["public"]["Tables"]["personas"]["Row"]
+type EvidenceInsert = Database["public"]["Tables"]["evidence"]["Insert"]
 
 export interface ProcessingResult {
 	stored: InsightInsert[]
@@ -46,6 +47,33 @@ export interface ExtractedInsight {
 	opportunity_ideas?: string[]
 	confidence?: "low" | "medium" | "high"
 	contradictions?: string
+}
+
+// Utilities ---------------------------------------------------------------
+type AllowedSupport = "supports" | "refutes" | "neutral"
+const allowedEvidenceSupport = new Set<AllowedSupport>(["supports", "refutes", "neutral"])
+
+function normalizeSupport(s: unknown): AllowedSupport {
+	const val = typeof s === "string" ? (s.toLowerCase().trim() as AllowedSupport) : ("supports" as AllowedSupport)
+	return allowedEvidenceSupport.has(val) ? val : "supports"
+}
+
+function sanitizeVerbatim(input: unknown): string | null {
+	if (typeof input !== "string") return null
+	// Replace smart quotes, collapse whitespace, and drop ASCII control chars
+	const mapQuotes = input.replace(/[\u2018\u2019\u201B\u2032]/g, "'").replace(/[\u201C\u201D\u2033]/g, '"')
+	let out = ""
+	for (let i = 0; i < mapQuotes.length; i++) {
+		const code = mapQuotes.charCodeAt(i)
+		// Skip control chars: 0-31 and 127
+		if ((code >= 0 && code <= 31) || code === 127) {
+			out += " "
+		} else {
+			out += mapQuotes[i]
+		}
+	}
+	const cleaned = out.replace(/\s+/g, " ").trim()
+	return cleaned.length ? cleaned : null
 }
 
 /**
@@ -152,7 +180,7 @@ async function processInterviewTranscriptWithClient({
 				transcript_formatted: transcriptData as unknown as Json,
 				duration_min: (transcriptData as any).audio_duration
 					? Math.round(((transcriptData as any).audio_duration as number) / 60)
-					: existing.duration_min ?? null,
+					: (existing.duration_min ?? null),
 			})
 			.eq("id", existingInterviewId)
 			.select("*")
@@ -173,15 +201,13 @@ async function processInterviewTranscriptWithClient({
 			media_url: mediaUrl || null,
 			transcript: fullTranscript,
 			transcript_formatted: transcriptData as unknown as Json,
-			duration_min: (transcriptData as any).audio_duration ? Math.round(((transcriptData as any).audio_duration as number) / 60) : null,
+			duration_min: (transcriptData as any).audio_duration
+				? Math.round(((transcriptData as any).audio_duration as number) / 60)
+				: null,
 			status: "processing" as const,
 		} as InterviewInsert
 
-		const { data: created, error: interviewError } = await db
-			.from("interviews")
-			.insert(interviewData)
-			.select()
-			.single()
+		const { data: created, error: interviewError } = await db.from("interviews").insert(interviewData).select().single()
 		if (interviewError || !created) {
 			throw new Error(`Failed to create interview record: ${interviewError?.message}`)
 		}
@@ -201,14 +227,15 @@ async function processInterviewTranscriptWithClient({
 	}
 	let chapters: Array<{ start_ms: number; end_ms?: number; summary?: string; title?: string }> = []
 	try {
-		const rawChapters = ((transcriptData as Record<string, unknown>).chapters as RawChapter[] | undefined)
-			|| ((transcriptData as Record<string, unknown>).segments as RawChapter[] | undefined)
-			|| []
+		const rawChapters =
+			((transcriptData as Record<string, unknown>).chapters as RawChapter[] | undefined) ||
+			((transcriptData as Record<string, unknown>).segments as RawChapter[] | undefined) ||
+			[]
 		if (Array.isArray(rawChapters)) {
 			chapters = rawChapters
 				.map((c: RawChapter) => ({
-					start_ms: typeof c.start_ms === "number" ? c.start_ms : (typeof c.start === "number" ? c.start : 0),
-					end_ms: typeof c.end_ms === "number" ? c.end_ms : (typeof c.end === "number" ? c.end : undefined),
+					start_ms: typeof c.start_ms === "number" ? c.start_ms : typeof c.start === "number" ? c.start : 0,
+					end_ms: typeof c.end_ms === "number" ? c.end_ms : typeof c.end === "number" ? c.end : undefined,
 					summary: c.summary ?? c.gist ?? undefined,
 					title: c.title ?? undefined,
 				}))
@@ -227,101 +254,110 @@ async function processInterviewTranscriptWithClient({
 	let insertedEvidenceIds: string[] = []
 
 	try {
-		consola.log('ExtractEvidence starting')
+		consola.log("ExtractEvidence starting")
 		evidenceUnits = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language)
-		consola.log(`Extracted ${evidenceUnits?.length || 0} evidence units`)
-	} catch (e) {
-		consola.warn("Evidence extraction failed; continuing without evidence", e)
-	}
 
-	if (evidenceUnits?.length) {
-		// Map BAML EvidenceUnit -> DB rows
-		const evidenceRows = evidenceUnits.map((ev: EvidenceFromBaml[number]) => ({
-			account_id: metadata.accountId,
-			project_id: metadata.projectId,
-			interview_id: interviewRecord.id,
-			source_type: "primary",
-			method: "interview",
-			modality: "qual",
-			support: ev.support ?? "supports",
-			kind_tags: Array.isArray(ev.kind_tags)
-				? ev.kind_tags
-				: (
-					// ev.kind_tags could be a structured object; flatten its string arrays into a single array
-					Object.values(ev.kind_tags ?? {})
-						.flat()
-						.filter((x): x is string => typeof x === "string")
-				),
-			personas: (ev.personas ?? []) as string[],
-			segments: (ev.segments ?? []) as string[],
-			journey_stage: ev.journey_stage || null,
-			weight_quality: 0.8,
-			weight_relevance: 0.8,
-			confidence: ev.confidence ?? "medium",
-			verbatim: ev.verbatim,
-			anchors: (ev.anchors ?? []) as unknown as Json,
-			created_by: metadata.userId,
-			updated_by: metadata.userId,
-		}))
-
-		const { data: insertedEvidence, error: evidenceError } = await db
-			.from("evidence")
-			.insert(evidenceRows)
-			.select("id, kind_tags")
-
-		if (evidenceError) {
-			consola.warn(`Failed to insert evidence: ${evidenceError.message}`)
-		} else if (insertedEvidence?.length) {
-			// Stash IDs for later linking to people
-			try {
-				insertedEvidenceIds = (insertedEvidence as Array<{ id: string }>).map((e) => e.id)
-			} catch {}
-			// Optionally upsert tags from kind_tags and link via evidence_tag
-			try {
-				// Build unique tag list
-				const tagsSet = new Set<string>()
-				const insertedEvidenceTyped = insertedEvidence as Array<{ id: string; kind_tags: string[] | null }>
-				insertedEvidenceTyped.forEach((ev) => {
-					; (ev.kind_tags || []).forEach((t) => {
-						if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
-					})
+		if (evidenceUnits?.length) {
+			// Map BAML EvidenceUnit -> DB rows
+			const evidenceRows: EvidenceInsert[] = evidenceUnits
+				.map((ev: EvidenceFromBaml[number]) => {
+					const verb = sanitizeVerbatim(ev.verbatim)
+					if (!verb) return null
+					const support = normalizeSupport((ev as unknown as { support?: string })?.support)
+					const kind_tags = Array.isArray(ev.kind_tags)
+						? (ev.kind_tags as string[])
+						: Object.values(ev.kind_tags ?? {})
+								.flat()
+								.filter((x): x is string => typeof x === "string")
+					const row: EvidenceInsert = {
+						account_id: metadata.accountId,
+						project_id: (metadata.projectId ?? null) as any,
+						interview_id: interviewRecord.id,
+						source_type: "primary",
+						method: "interview",
+						modality: "qual",
+						support,
+						kind_tags,
+						personas: (ev.personas ?? []) as string[],
+						segments: (ev.segments ?? []) as string[],
+						journey_stage: ev.journey_stage || null,
+						weight_quality: 0.8,
+						weight_relevance: 0.8,
+						confidence: (ev as unknown as { confidence?: EvidenceInsert["confidence"] })?.confidence ?? "medium",
+						verbatim: verb,
+						anchors: (ev.anchors ?? []) as unknown as Json,
+					}
+					return row
 				})
-				const tags = Array.from(tagsSet)
+				.filter((row): row is EvidenceInsert => row !== null)
 
-				const tagIdByName = new Map<string, string>()
-				for (const tagName of tags) {
-					const { data: tagRow, error: tagErr } = await db
-						.from("tags")
-						.upsert({ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId }, { onConflict: "account_id,tag" })
-						.select("id")
-						.single()
-					if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
-				}
+			if (evidenceRows.length === 0) {
+				consola.warn("No valid evidence rows after sanitization; skipping evidence insert")
+			}
 
-				// Link evidence -> tags
-				for (const ev of insertedEvidenceTyped) {
-					for (const tagName of ev.kind_tags || []) {
-						const tagId = tagIdByName.get(tagName)
-						if (!tagId) continue
-						const { error: etErr } = await db
-							.from("evidence_tag")
-							.insert({
-								evidence_id: ev.id,
-								tag_id: tagId,
-								account_id: metadata.accountId,
-								project_id: metadata.projectId,
-							})
-							.select()
+			const { data: insertedEvidence, error: evidenceError } = evidenceRows.length
+				? await db.from("evidence").insert(evidenceRows).select("id, kind_tags")
+				: { data: [] as Array<{ id: string; kind_tags: string[] | null }>, error: null as null }
+
+			if (evidenceError) {
+				consola.warn(`Failed to insert evidence: ${evidenceError.message}`)
+			} else if (insertedEvidence?.length) {
+				// Stash IDs for later linking to people
+				try {
+					insertedEvidenceIds = (insertedEvidence as Array<{ id: string }>).map((e) => e.id)
+				} catch {}
+				// Optionally upsert tags from kind_tags and link via evidence_tag
+				try {
+					// Build unique tag list
+					const tagsSet = new Set<string>()
+					const insertedEvidenceTyped = insertedEvidence as Array<{ id: string; kind_tags: string[] | null }>
+					insertedEvidenceTyped.forEach((ev) => {
+						;(ev.kind_tags || []).forEach((t) => {
+							if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
+						})
+					})
+					const tags = Array.from(tagsSet)
+
+					const tagIdByName = new Map<string, string>()
+					for (const tagName of tags) {
+						const { data: tagRow, error: tagErr } = await db
+							.from("tags")
+							.upsert(
+								{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
+								{ onConflict: "account_id,tag" }
+							)
+							.select("id")
 							.single()
-						if (etErr && !etErr.message?.includes("duplicate")) {
-							consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+						if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
+					}
+
+					// Link evidence -> tags
+					for (const ev of insertedEvidenceTyped) {
+						for (const tagName of ev.kind_tags || []) {
+							const tagId = tagIdByName.get(tagName)
+							if (!tagId) continue
+							const { error: etErr } = await db
+								.from("evidence_tag")
+								.insert({
+									evidence_id: ev.id,
+									tag_id: tagId,
+									account_id: metadata.accountId,
+									project_id: metadata.projectId,
+								})
+								.select()
+								.single()
+							if (etErr && !etErr.message?.includes("duplicate")) {
+								consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+							}
 						}
 					}
+				} catch (linkErr) {
+					consola.warn("Failed to create/link tags for evidence", linkErr)
 				}
-			} catch (linkErr) {
-				consola.warn("Failed to create/link tags for evidence", linkErr)
 			}
 		}
+	} catch (evidenceExtractErr) {
+		consola.warn("Evidence extraction/insert phase failed; continuing", evidenceExtractErr)
 	}
 
 	// 3. Auto-generate themes from accumulated evidence before insights
@@ -441,15 +477,13 @@ async function processInterviewTranscriptWithClient({
 	// Link evidence -> person via evidence_people for this interview's participant
 	if (insertedEvidenceIds.length) {
 		for (const evId of insertedEvidenceIds) {
-			const { error: epErr } = await db
-				.from("evidence_people")
-				.insert({
-					evidence_id: evId,
-					person_id: personData.id,
-					account_id: metadata.accountId,
-					project_id: metadata.projectId,
-					role: "speaker",
-				})
+			const { error: epErr } = await db.from("evidence_people").insert({
+				evidence_id: evId,
+				person_id: personData.id,
+				account_id: metadata.accountId,
+				project_id: metadata.projectId,
+				role: "speaker",
+			})
 			if (epErr && !epErr.message?.includes("duplicate")) {
 				consola.warn(`Failed linking evidence ${evId} to person ${personData.id}: ${epErr.message}`)
 			}
@@ -465,14 +499,16 @@ async function processInterviewTranscriptWithClient({
 	const { error: junctionError } = await db.from("interview_people").insert(junctionData)
 	if (junctionError) throw new Error(`Failed to link person to interview: ${junctionError.message}`)
 
-	    // Assign persona to the person using BAML client
+	// Assign persona to the person using BAML client
 	try {
-		// Fetch existing personas for this account
-		const { data: existingPersonas, error: personasError } = await db
-			.from("personas")
-			.select("id, name, description")
-			.eq("account_id", metadata.accountId)
-			.order("created_at", { ascending: false })
+		// Fetch existing personas for this project (RLS scopes to account)
+		let personasQuery = db.from("personas").select("id, name, description").order("created_at", { ascending: false })
+
+		if (metadata.projectId) {
+			personasQuery = personasQuery.eq("project_id", metadata.projectId)
+		}
+
+		const { data: existingPersonas, error: personasError } = await personasQuery
 
 		if (personasError) {
 			consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
@@ -495,11 +531,7 @@ async function processInterviewTranscriptWithClient({
 		)
 
 		// Call BAML to decide whether to assign to existing persona or create new one
-		const personaDecision = await b.AssignPersonaToInterview(
-			fullTranscript,
-			intervieweeInfo,
-			existingPersonasForBaml
-		)
+		const personaDecision = await b.AssignPersonaToInterview(fullTranscript, intervieweeInfo, existingPersonasForBaml)
 
 		consola.log("Persona assignment decision:", personaDecision)
 
@@ -520,8 +552,6 @@ async function processInterviewTranscriptWithClient({
 					name: newPersona.name,
 					description: newPersona.description || null,
 					color_hex: newPersona.color_hex || null,
-					created_by: metadata.userId,
-					updated_by: metadata.userId,
 				})
 				.select("id")
 				.single()
@@ -536,9 +566,8 @@ async function processInterviewTranscriptWithClient({
 
 		// Link person to persona if we have a valid persona ID
 		if (personaId && personData.id) {
-			const { error: linkError } = await db
-				.from("people_personas")
-				.insert({
+			const { error: linkError } = await db.from("people_personas").upsert(
+				{
 					person_id: personData.id,
 					persona_id: personaId,
 					interview_id: interviewRecord.id,
@@ -546,7 +575,9 @@ async function processInterviewTranscriptWithClient({
 					confidence_score: personaDecision.confidence_score || 0.5,
 					source: "ai_assignment",
 					assigned_at: new Date().toISOString(),
-				})
+				},
+				{ onConflict: "person_id,persona_id" }
+			)
 
 			if (linkError) {
 				consola.warn(`Failed to link person to persona: ${linkError.message}`)

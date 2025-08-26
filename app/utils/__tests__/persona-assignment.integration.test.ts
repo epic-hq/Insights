@@ -1,13 +1,13 @@
-import { describe, it, expect, beforeEach, afterEach } from "vitest"
 import { createClient } from "@supabase/supabase-js"
+import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import type { Database } from "~/../supabase/types"
 
 // Integration test using real Supabase instance (requires environment variables)
-const supabaseUrl = typeof process !== 'undefined' ? process.env.SUPABASE_URL : undefined
-const supabaseKey = typeof process !== 'undefined' ? process.env.SUPABASE_ANON_KEY : undefined
+const supabaseUrl = typeof process !== "undefined" ? process.env.SUPABASE_URL : undefined
+const supabaseKey = typeof process !== "undefined" ? process.env.SUPABASE_ANON_KEY : undefined
 
 // Skip integration tests if environment variables not available or in browser
-const skipIntegration = !supabaseUrl || !supabaseKey || typeof process === 'undefined'
+const skipIntegration = !supabaseUrl || !supabaseKey || typeof process === "undefined"
 
 const testDb = skipIntegration ? null : createClient<Database>(supabaseUrl, supabaseKey)
 const TEST_ACCOUNT_ID = "test-persona-assignment"
@@ -16,7 +16,7 @@ const TEST_PROJECT_ID = "test-project-assignment"
 describe.skipIf(skipIntegration)("Persona Assignment Integration", () => {
 	beforeEach(async () => {
 		if (!testDb) return
-		
+
 		// Clean up test data
 		await testDb.from("people_personas").delete().eq("project_id", TEST_PROJECT_ID)
 		await testDb.from("interview_people").delete().eq("project_id", TEST_PROJECT_ID)
@@ -27,7 +27,7 @@ describe.skipIf(skipIntegration)("Persona Assignment Integration", () => {
 
 	afterEach(async () => {
 		if (!testDb) return
-		
+
 		// Clean up test data
 		await testDb.from("people_personas").delete().eq("project_id", TEST_PROJECT_ID)
 		await testDb.from("interview_people").delete().eq("project_id", TEST_PROJECT_ID)
@@ -141,7 +141,7 @@ describe.skipIf(skipIntegration)("Persona Assignment Integration", () => {
 
 		// Verify personas are distinct
 		if (personas) {
-			const personaNames = personas.map(p => p.name)
+			const personaNames = personas.map((p) => p.name)
 			expect(personaNames).toContain("Persona A")
 			expect(personaNames).toContain("Persona B")
 			expect(new Set(personaNames).size).toBe(2) // Ensure uniqueness
@@ -181,10 +181,7 @@ describe.skipIf(skipIntegration)("Persona Assignment Integration", () => {
 		expect(otherPersona).toBeDefined()
 
 		// Query personas for test account only
-		const { data: testAccountPersonas } = await testDb
-			.from("personas")
-			.select("*")
-			.eq("account_id", TEST_ACCOUNT_ID)
+		const { data: testAccountPersonas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID)
 
 		// Should only return personas from test account
 		expect(testAccountPersonas).toHaveLength(1)
