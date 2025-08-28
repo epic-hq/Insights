@@ -7,6 +7,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
+import { FlowDiagram } from "~/features/projects/components/Flow"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -88,6 +89,40 @@ export default function ProjectDetail() {
 			</div>
 
 			<div className="grid gap-12 lg:grid-cols-3">
+				<div className="space-y-8">
+					{/* Research Flow */}
+					<div className="rounded-2xl border border-gray-200 bg-white p-6 shadow-sm">
+						<h2 className="mb-6 text-center font-light text-2xl text-gray-900">Research Flow</h2>
+						<FlowDiagram
+							counts={{
+								questionsTotal: 12,
+								questionsAnswered: 8,
+								inputs: 15,
+								evidence: 45,
+								quotes: 28,
+								people: people.length,
+								personas: personas.length,
+								themes: 8,
+								insights: 12,
+								opportunities: 6,
+							}}
+							labels={{
+								researchGoals: "Key questions to answer",
+								inputs: "Interviews & conversations",
+								evidence: "Organized findings",
+								personasThemes: "Patterns & archetypes",
+								insights: "Key learnings",
+								opportunities: "Action items",
+							}}
+							compact={true}
+							onNodeClick={(_id) => {
+								// Navigate to relevant section based on node clicked
+								// TODO: Implement navigation to specific sections
+							}}
+						/>
+					</div>
+				</div>
+
 				<div className="space-y-8 lg:col-span-2">
 					<div className="rounded-2xl border border-gray-200 bg-white p-8 shadow-sm">
 						<div className="mb-6 flex items-center justify-between">

@@ -1,6 +1,7 @@
 import { CheckCircle, ChevronLeft, File, Mic, Upload, Video } from "lucide-react"
 import { useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
+import { OnboardingStepper } from "./OnboardingStepper"
 
 interface UploadScreenProps {
 	onNext: (file: File, mediaType: string, projectId?: string) => void
@@ -72,6 +73,12 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 		return <File className="h-6 w-6" />
 	}
 
+	const onboardingSteps = [
+		{ id: "goals", title: "Project Goals", description: "Define objectives" },
+		{ id: "questions", title: "Questions", description: "Generate questions" },
+		{ id: "upload", title: "Upload", description: "Add interviews" },
+	]
+
 	return (
 		<div className="relative min-h-screen bg-black text-white">
 			{/* Hidden file input */}
@@ -79,9 +86,14 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 				ref={fileInputRef}
 				type="file"
 				onChange={handleFileInputChange}
-				accept="audio/*,video/*,.mp3,.mp4,.wav,.m4a,.mov,.avi"
+				accept="audio/*,video/*,.mp3,.mp4,.wav,.m4a,.mov,.avi,.txt,.md"
 				className="hidden"
 			/>
+
+			{/* Stepper */}
+			<div className="bg-black p-4 pb-8">
+				<OnboardingStepper steps={onboardingSteps} currentStepId="upload" className="text-white" />
+			</div>
 
 			{/* Header */}
 			<div className="border-gray-800 border-b bg-black p-4">
@@ -90,12 +102,8 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 text-white hover:bg-gray-800">
 							<ChevronLeft className="h-4 w-4" />
 						</Button>
-						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-medium text-sm text-white">
-							3
-						</div>
 						<h1 className="font-semibold text-lg text-white">Add Content</h1>
 					</div>
-					{/* <div className="text-gray-400 text-sm">Step 3 of 3</div> */}
 				</div>
 			</div>
 
@@ -237,7 +245,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 					{/* File Requirements - Compact */}
 					<div className="rounded-lg bg-gray-900/50 p-3">
 						<p className="mb-2 font-medium text-gray-300 text-xs">
-							Supported: MP3, MP4, WAV, M4A, MOV, AVI (max 500MB)
+							Supported: MP3, MP4, WAV, M4A, MOV, AVI, TXT, MD (max 500MB)
 						</p>
 						<p className="text-gray-400 text-xs">💡 Clear audio works best</p>
 					</div>

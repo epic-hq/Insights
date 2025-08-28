@@ -14,7 +14,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		}
 
 		// Load all relevant sections
-		const sectionTypes = ["target_market", "goal", "assumptions", "risks"]
+		const sectionTypes = ["target_orgs", "target_roles", "research_goal", "assumptions", "unknowns", "custom_instructions"]
 		const sectionsData: Record<string, any> = {}
 
 		for (const kind of sectionTypes) {
@@ -37,26 +37,32 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 		// Parse the data into the format expected by the component
 		const result = {
-			targetOrg: "",
-			targetRoles: [] as string[],
-			goalTitle: "",
-			goalDetail: "",
+			target_orgs: [] as string[],
+			target_roles: [] as string[],
+			research_goal: "",
+			research_goal_details: "",
 			assumptions: [] as string[],
 			unknowns: [] as string[],
+			custom_instructions: "",
 		}
 
-		// Parse target market data
-		if (sectionsData.target_market) {
-			const meta = sectionsData.target_market.meta || {}
-			result.targetOrg = meta.targetOrg || ""
-			result.targetRoles = meta.targetRoles || []
+		// Parse target orgs data
+		if (sectionsData.target_orgs) {
+			const meta = sectionsData.target_orgs.meta || {}
+			result.target_orgs = meta.target_orgs || []
 		}
 
-		// Parse goal data
-		if (sectionsData.goal) {
-			const meta = sectionsData.goal.meta || {}
-			result.goalTitle = meta.goalTitle || ""
-			result.goalDetail = meta.goalDetail || ""
+		// Parse target roles data
+		if (sectionsData.target_roles) {
+			const meta = sectionsData.target_roles.meta || {}
+			result.target_roles = meta.target_roles || []
+		}
+
+		// Parse research goal data
+		if (sectionsData.research_goal) {
+			const meta = sectionsData.research_goal.meta || {}
+			result.research_goal = meta.research_goal || ""
+			result.research_goal_details = meta.research_goal_details || ""
 		}
 
 		// Parse assumptions data
@@ -65,10 +71,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			result.assumptions = meta.assumptions || []
 		}
 
-		// Parse unknowns/risks data
-		if (sectionsData.risks) {
-			const meta = sectionsData.risks.meta || {}
+		// Parse unknowns data
+		if (sectionsData.unknowns) {
+			const meta = sectionsData.unknowns.meta || {}
 			result.unknowns = meta.unknowns || []
+		}
+
+		// Parse custom instructions data
+		if (sectionsData.custom_instructions) {
+			const meta = sectionsData.custom_instructions.meta || {}
+			result.custom_instructions = meta.custom_instructions || ""
 		}
 
 		consola.log(`Loaded project goals data for project ${projectId}`)

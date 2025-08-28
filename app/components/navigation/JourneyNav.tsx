@@ -32,13 +32,13 @@ export const journeySteps: JourneyStep[] = [
 	},
 	{
 		key: "personas",
-		title: "Personas",
+		title: "Personas & People",
 		description: "Analyze who we're hearing from",
 		icon: Users,
 		routes: ["/personas", "/people"],
 		subItems: [
-			{ label: "People", route: "/people", description: "Interview participants" },
 			{ label: "Personas", route: "/personas", description: "User archetypes & segments" },
+			{ label: "People", route: "/people", description: "Interview participants" },
 			{ label: "Evidence", route: "/personas/evidence", description: "Supporting quotes & data" },
 		],
 	},

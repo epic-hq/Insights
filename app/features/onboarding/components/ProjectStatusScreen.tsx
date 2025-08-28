@@ -32,6 +32,9 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { ProjectStatusData } from "~/utils/project-status.server"
 import type { Project_Section } from "~/types"
 import { createClient } from "~/lib/supabase/client"
+import { FlowDiagram } from "~/features/projects/components/Flow"
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog"
+import { Workflow } from "lucide-react"
 
 interface ProjectStatusScreenProps {
 	projectName: string
@@ -721,6 +724,45 @@ export default function ProjectStatusScreen({
 					</div>
 				</div>
 			)}
+
+			{/* Flow Diagram Modal */}
+			<Dialog>
+				<DialogTrigger asChild>
+					<Button variant="outline" className="w-full mt-6">
+						<Workflow className="w-4 h-4 mr-2" />
+						View Research Flow
+					</Button>
+				</DialogTrigger>
+				<DialogContent className="max-w-[95vw] max-h-[95vh] w-full h-full">
+					<DialogHeader>
+						<DialogTitle>Research Process Flow</DialogTitle>
+					</DialogHeader>
+					<div className="flex-1 overflow-auto">
+						<FlowDiagram 
+							counts={{
+								questionsTotal: statusData?.questionAnswers?.length || (statusData?.answeredQuestions?.length || 0) + (statusData?.openQuestions?.length || 0),
+								questionsAnswered: statusData?.answeredQuestions?.length || 0,
+								inputs: statusData?.totalInterviews || 0,
+								evidence: statusData?.totalEvidence || 0,
+								quotes: statusData?.totalEvidence || 0, // Using evidence count as proxy for quotes
+								people: statusData?.totalInterviews || 0, // Using interviews as proxy for people
+								personas: statusData?.totalPersonas || personas?.length || 0,
+								themes: statusData?.totalThemes || 0,
+								insights: statusData?.totalInsights || insights?.length || 0,
+								opportunities: 0, // Not tracked in current statusData structure
+							}}
+							labels={{
+								researchGoals: `${statusData?.answeredQuestions?.length || 0} of ${statusData?.questionAnswers?.length || (statusData?.answeredQuestions?.length || 0) + (statusData?.openQuestions?.length || 0)} questions answered`,
+								inputs: "Interviews conducted with participants",
+								evidence: "Evidence pieces and quotes collected",
+								personasThemes: "User personas and thematic patterns identified",
+								insights: "Key insights discovered from research",
+								opportunities: "Strategic opportunities identified",
+							}}
+						/>
+					</div>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }

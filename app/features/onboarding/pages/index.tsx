@@ -9,6 +9,9 @@ export default function OnboardingPage() {
 	const navigate = useNavigate()
 	const { projectPath, projectId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+	
+	// For standalone onboarding route, projectId might be empty initially
+	// The OnboardingFlow will create a new project and update the projectId
 
 	const handleOnboardingComplete = async (data: OnboardingData) => {
 		// In a real app, this would:
@@ -53,7 +56,7 @@ export default function OnboardingPage() {
 			onComplete={handleOnboardingComplete}
 			onAddMoreInterviews={handleAddMoreInterviews}
 			onViewResults={handleViewResults}
-			projectId={projectId}
+			projectId={projectId || undefined}
 		/>
 	)
 }

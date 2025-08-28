@@ -1,62 +1,150 @@
-import consola from "consola"
-import { ChevronRight, HelpCircle, Plus, Target, Users, X } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
+import { ChevronDown, ChevronRight, HelpCircle, Plus, Target, Users, X } from "lucide-react"
 import { z } from "zod"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
+import consola from "consola"
+import { useAutoSave } from "../hooks/useAutoSave"
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
-	targetOrg: z.string().min(1, "Target organization is required"),
-	targetRoles: z.array(z.string()).min(1, "At least one target role is required"),
-	goalTitle: z.string().min(1, "Goal title is required"),
-	goalDetail: z.string().min(1, "Goal details are required"),
+	target_orgs: z.array(z.string()).min(1, "At least one target organization is required"),
+	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
+	research_goal: z.string().min(1, "Research goal is required"),
+	research_goal_details: z.string().min(1, "Research goal details are required"),
 	assumptions: z.array(z.string()),
 	unknowns: z.array(z.string()),
+	custom_instructions: z.string().optional(),
 })
 
 type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
 interface ProjectGoalsScreenProps {
-	onNext: (data: { icp: string; role: string; goal: string; customGoal?: string }) => void
+	onNext: (data: {
+		target_orgs: string[]
+		target_roles: string[]
+		research_goal: string
+		research_goal_details: string
+		assumptions: string[]
+		unknowns: string[]
+		custom_instructions?: string
+	}) => void
 	projectId?: string
 }
 
 export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsScreenProps) {
-	const [targetOrg, setTargetOrg] = useState("")
-	const [targetRoles, setTargetRoles] = useState<string[]>([])
+	const [target_orgs, setTargetOrgs] = useState<string[]>([])
+	const [target_roles, setTargetRoles] = useState<string[]>([])
+	const [newOrg, setNewOrg] = useState("")
 	const [newRole, setNewRole] = useState("")
-	const [goalTitle, setGoalTitle] = useState("")
-	const [goalDetail, setGoalDetail] = useState("")
+	const [research_goal, setResearchGoal] = useState("")
+	const [research_goal_details, setResearchGoalDetails] = useState("")
 	const [assumptions, setAssumptions] = useState<string[]>([])
 	const [unknowns, setUnknowns] = useState<string[]>([])
 	const [newAssumption, setNewAssumption] = useState("")
 	const [newUnknown, setNewUnknown] = useState("")
+	const [custom_instructions, setCustomInstructions] = useState("")
 	const [isLoading, setIsLoading] = useState(false)
-	const [hasChanges, setHasChanges] = useState(false)
+	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
+	const [isCreatingProject, setIsCreatingProject] = useState(false)
+	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+
+	// Auto-save hook - always call but skip operations when no projectId
+	const {
+		saveTargetOrgs,
+		saveTargetRoles,
+		saveResearchGoal,
+		saveAssumptions,
+		saveUnknowns,
+		saveCustomInstructions,
+		isSaving,
+	} = useAutoSave({
+		projectId: currentProjectId || "",
+		onSaveStart: () => {
+			consola.log("🔄 Auto-save started", { projectId: currentProjectId })
+		},
+		onSaveComplete: () => {
+			consola.log("✅ Auto-save completed", { projectId: currentProjectId })
+		},
+		onSaveError: (error) => {
+			consola.error("❌ Auto-save error:", error, { projectId: currentProjectId })
+		},
+	})
+
+	// Function to create project on first input
+	const createProjectIfNeeded = useCallback(async () => {
+		if (currentProjectId || isCreatingProject) return currentProjectId
+
+		setIsCreatingProject(true)
+		try {
+			const formData = new FormData()
+			formData.append("projectData", JSON.stringify({
+				target_orgs: target_orgs.length > 0 ? target_orgs : ["New Organization"],
+				target_roles: target_roles.length > 0 ? target_roles : ["New Role"],
+				research_goal: research_goal || "New Research Project",
+				research_goal_details: research_goal_details || "",
+			}))
+
+			const response = await fetch("/api/create-project", {
+				method: "POST",
+				body: formData,
+				credentials: 'include'
+			})
+
+			if (!response.ok) {
+				throw new Error("Project creation failed")
+			}
+
+			const result = await response.json()
+			const newProjectId = result.project?.id
+			
+			if (newProjectId) {
+				setCurrentProjectId(newProjectId)
+				consola.log("🎯 Created project on first input:", newProjectId)
+				
+				// Force update the auto-save hook with new projectId
+				setTimeout(() => {
+					// Save any pending data now that we have a projectId
+					if (assumptions.length > 0) saveAssumptions(assumptions)
+					if (unknowns.length > 0) saveUnknowns(unknowns)
+					if (research_goal.trim()) saveResearchGoal(research_goal, research_goal_details)
+				}, 200)
+				
+				return newProjectId
+			}
+		} catch (error) {
+			consola.error("Failed to create project:", error)
+		} finally {
+			setIsCreatingProject(false)
+		}
+		return currentProjectId
+	}, [currentProjectId, isCreatingProject, target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, saveAssumptions, saveUnknowns, saveResearchGoal])
 
 	const loadProjectData = useCallback(async () => {
-		if (!projectId) return
+		if (!currentProjectId) return
 
 		try {
-			const response = await fetch(`/api/load-project-goals?projectId=${projectId}`)
+			const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`)
 			const result = await response.json()
 
 			if (result.success && result.data) {
 				const data = result.data
-				setTargetOrg(data.targetOrg || "")
-				setTargetRoles(data.targetRoles || [])
-				setGoalTitle(data.goalTitle || "")
-				setGoalDetail(data.goalDetail || "")
+				setTargetOrgs(data.target_orgs || [])
+				setTargetRoles(data.target_roles || [])
+				setResearchGoal(data.research_goal || "")
+				setResearchGoalDetails(data.research_goal_details || "")
 				setAssumptions(data.assumptions || [])
 				setUnknowns(data.unknowns || [])
+				setCustomInstructions(data.custom_instructions || "")
 				consola.log("Successfully loaded project data from database")
 			}
 		} catch (error) {
 			consola.error("Failed to load project data:", error)
+		} finally {
+			setIsLoading(false)
 		}
 	}, [projectId])
 
@@ -65,181 +153,174 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 		if (projectId) {
 			loadProjectData()
 		}
-	}, [projectId, loadProjectData])
+	}, [currentProjectId, loadProjectData])
 
-	const saveProjectData = useCallback(async () => {
-		if (!projectId || !hasChanges) return
-
-		setIsLoading(true)
-		try {
-			const payload = {
-				projectId,
-				targetOrg,
-				targetRoles,
-				goalTitle,
-				goalDetail,
-				assumptions,
-				unknowns,
-			}
-
-			const response = await fetch("/api/save-project-goals", {
-				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify(payload),
-			})
-
-			const result = await response.json()
-
-			if (result.success) {
-				setHasChanges(false)
-				consola.log("Project data saved successfully to database")
-			} else {
-				consola.error("Failed to save project data:", result.error)
-			}
-		} catch (error) {
-			consola.error("Failed to save project data:", error)
-		} finally {
-			setIsLoading(false)
+	const addOrg = async () => {
+		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
+			await createProjectIfNeeded()
+			const newOrgs = [...target_orgs, newOrg.trim()]
+			setTargetOrgs(newOrgs)
+			setNewOrg("")
+			saveTargetOrgs(newOrgs)
 		}
-	}, [projectId, hasChanges])
+	}
 
-	// Auto-save when fields lose focus and data has changed
-	useEffect(() => {
-		if (hasChanges) {
-			const timeout = setTimeout(saveProjectData, 1000) // Debounce saves
-			return () => clearTimeout(timeout)
-		}
-	}, [hasChanges, saveProjectData])
+	const removeOrg = (org: string) => {
+		const newOrgs = target_orgs.filter((o) => o !== org)
+		setTargetOrgs(newOrgs)
+		saveTargetOrgs(newOrgs)
+	}
 
-	const markChanged = () => setHasChanges(true)
-
-	const addRole = () => {
-		if (newRole.trim() && !targetRoles.includes(newRole.trim())) {
-			setTargetRoles([...targetRoles, newRole.trim()])
+	const addRole = async () => {
+		if (newRole.trim() && !target_roles.includes(newRole.trim())) {
+			await createProjectIfNeeded()
+			const newRoles = [...target_roles, newRole.trim()]
+			setTargetRoles(newRoles)
 			setNewRole("")
-			markChanged()
+			saveTargetRoles(newRoles)
 		}
 	}
 
 	const removeRole = (role: string) => {
-		setTargetRoles(targetRoles.filter((r) => r !== role))
-		markChanged()
+		const newRoles = target_roles.filter((r) => r !== role)
+		setTargetRoles(newRoles)
+		saveTargetRoles(newRoles)
 	}
 
-	const addAssumption = () => {
-		if (newAssumption.trim()) {
-			setAssumptions([...assumptions, newAssumption.trim()])
+	const addAssumption = async () => {
+		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
+			if (!currentProjectId) {
+				await createProjectIfNeeded()
+				// Don't save here, wait for projectId to be set
+				const newAssumptions = [...assumptions, newAssumption.trim()]
+				setAssumptions(newAssumptions)
+				setNewAssumption("")
+				return
+			}
+			const newAssumptions = [...assumptions, newAssumption.trim()]
+			setAssumptions(newAssumptions)
 			setNewAssumption("")
-			markChanged()
+			saveAssumptions(newAssumptions)
 		}
 	}
 
-	const addUnknown = () => {
+	const addUnknown = async () => {
 		if (newUnknown.trim()) {
-			setUnknowns([...unknowns, newUnknown.trim()])
+			if (!currentProjectId) {
+				await createProjectIfNeeded()
+				const newUnknowns = [...unknowns, newUnknown.trim()]
+				setUnknowns(newUnknowns)
+				setNewUnknown("")
+				return
+			}
+			const newUnknowns = [...unknowns, newUnknown.trim()]
+			setUnknowns(newUnknowns)
 			setNewUnknown("")
-			markChanged()
+			saveUnknowns(newUnknowns)
 		}
 	}
 
 	const removeAssumption = (index: number) => {
-		setAssumptions(assumptions.filter((_, i) => i !== index))
-		markChanged()
+		const newAssumptions = assumptions.filter((_, i) => i !== index)
+		setAssumptions(newAssumptions)
+		saveAssumptions(newAssumptions)
 	}
 
 	const removeUnknown = (index: number) => {
-		setUnknowns(unknowns.filter((_, i) => i !== index))
-		markChanged()
+		const newUnknowns = unknowns.filter((_, i) => i !== index)
+		setUnknowns(newUnknowns)
+		saveUnknowns(newUnknowns)
 	}
 
 	const handleNext = () => {
-		if (targetOrg.trim() && targetRoles.length > 0 && goalTitle.trim()) {
-			// Save before proceeding
-			saveProjectData()
-
-			// Convert to legacy format for onNext callback
+		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && research_goal_details.trim()) {
+			// Pass snake_case data to next step
 			onNext({
-				icp: targetOrg.trim(),
-				role: targetRoles.join(", "),
-				goal: "custom",
-				customGoal: goalTitle.trim(),
+				target_orgs,
+				target_roles,
+				research_goal,
+				research_goal_details,
+				assumptions,
+				unknowns,
+				custom_instructions: custom_instructions || undefined,
+				projectId: currentProjectId,
 			})
 		}
 	}
 
-	const handleFieldBlur = () => {
-		// Mark as changed when field loses focus and value is different
-		markChanged()
+	// Auto-save handlers for blur (immediate save, non-debounced)
+	const handleResearchGoalBlur = async () => {
+		if (!research_goal.trim()) return
+		if (!currentProjectId) await createProjectIfNeeded()
+		saveResearchGoal(research_goal, research_goal_details, false)
 	}
 
-	const isValid = targetOrg.trim() && targetRoles.length > 0 && goalTitle.trim() && goalDetail.trim()
+	const handleResearchGoalDetailsBlur = async () => {
+		if (!research_goal.trim()) return
+		if (!currentProjectId) await createProjectIfNeeded()
+		saveResearchGoal(research_goal, research_goal_details, false)
+	}
+
+	const handleCustomInstructionsBlur = () => {
+		if (custom_instructions.trim()) {
+			saveCustomInstructions(custom_instructions)
+		}
+	}
+
+	// Custom instructions: blur-only save to reduce chatter
+
+	const isValid =
+		target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && research_goal_details.trim()
+
+	const onboardingSteps = [
+		{ id: "goals", title: "Project Goals" },
+		{ id: "questions", title: "Questions" },
+		{ id: "upload", title: "Upload" },
+	]
 
 	return (
 		<div className="mx-auto min-h-screen max-w-4xl bg-background p-8 text-foreground">
+			{/* Stepper */}
+			<div className="mb-12">
+				<div className="flex items-center justify-center space-x-8">
+					{onboardingSteps.map((step, index) => (
+						<div key={step.id} className="flex items-center space-x-2">
+							<div
+								className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
+									step.id === "goals"
+										? "bg-primary text-primary-foreground"
+										: "bg-muted text-muted-foreground"
+								}`}
+							>
+								{index + 1}
+							</div>
+							<span
+								className={`text-sm font-medium ${
+									step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+								}`}
+							>
+								{step.title}
+							</span>
+							{index < onboardingSteps.length - 1 && (
+								<div className="ml-8 h-px w-16 bg-border" />
+							)}
+						</div>
+					))}
+				</div>
+			</div>
+
 			<div className="mb-8">
 				<div className="mb-4 flex items-center gap-3">
-					<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-sm">
-						1
-					</div>
 					<h1 className="mb-2 text-3xl text-foreground">Project Setup</h1>
-					{isLoading && <div className="text-muted-foreground text-sm">Saving...</div>}
+					{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
 				</div>
 				<p className="text-muted-foreground">
-					Define your target audience and research goals to get started with evidence-based insights.
+					Define your research goals and target audience to get started with evidence-based insights.
 				</p>
 			</div>
 
 			<div className="space-y-8">
-				{/* Target Audience */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Users className="h-5 w-5" />
-							Target Audience
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-6">
-						<div>
-							<label className="mb-2 block text-foreground">Target Organization Type</label>
-							<Input
-								placeholder="e.g., B2B SaaS companies, E-commerce retailers, Healthcare providers"
-								value={targetOrg}
-								onChange={(e) => setTargetOrg(e.target.value)}
-								onBlur={handleFieldBlur}
-								className="border-border bg-background text-foreground"
-								autoFocus
-							/>
-						</div>
-
-						<div>
-							<label className="mb-2 block text-foreground">Target Roles</label>
-							<div className="mb-3 flex gap-2">
-								<Input
-									placeholder="e.g., Product Manager, Marketing Director"
-									value={newRole}
-									onChange={(e) => setNewRole(e.target.value)}
-									onKeyPress={(e) => e.key === "Enter" && addRole()}
-									className="border-border bg-background text-foreground"
-								/>
-								<Button onClick={addRole} variant="outline">
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-							<div className="flex flex-wrap gap-2">
-								{targetRoles.map((role) => (
-									<Badge key={role} variant="secondary" className="flex items-center gap-1">
-										{role}
-										<X className="h-3 w-3 cursor-pointer" onClick={() => removeRole(role)} />
-									</Badge>
-								))}
-							</div>
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* Research Goal */}
+				{/* Research Goal - moved first */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
@@ -249,12 +330,12 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 					</CardHeader>
 					<CardContent className="space-y-6">
 						<div>
-							<label className="mb-2 block text-foreground">Goal Title</label>
+							<label className="mb-2 block text-foreground">Research Goal</label>
 							<Input
 								placeholder="e.g., Understanding price sensitivity for our new pricing tier"
-								value={goalTitle}
-								onChange={(e) => setGoalTitle(e.target.value)}
-								onBlur={handleFieldBlur}
+								value={research_goal}
+								onChange={(e) => setResearchGoal(e.target.value)}
+								onBlur={handleResearchGoalBlur}
 								className="border-border bg-background text-foreground"
 							/>
 						</div>
@@ -263,9 +344,9 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 							<label className="mb-2 block text-foreground">Goal Details</label>
 							<Textarea
 								placeholder="Describe what you want to learn and why it matters for your product/business decisions..."
-								value={goalDetail}
-								onChange={(e) => setGoalDetail(e.target.value)}
-								onBlur={handleFieldBlur}
+								value={research_goal_details}
+								onChange={(e) => setResearchGoalDetails(e.target.value)}
+								onBlur={handleResearchGoalDetailsBlur}
 								rows={4}
 								className="border-border bg-background text-foreground"
 							/>
@@ -287,7 +368,10 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 							</div>
 							<div className="space-y-2">
 								{assumptions.map((assumption, index) => (
-									<div key={`assumption-${index}-${assumption.slice(0, 10)}`} className="flex items-center gap-2 rounded bg-blue-50 p-2 dark:bg-blue-950">
+									<div
+										key={`assumption-${index}-${assumption.slice(0, 10)}`}
+										className="flex items-center gap-2 rounded bg-blue-50 p-2 dark:bg-blue-950"
+									>
 										<span className="flex-1 text-foreground">{assumption}</span>
 										<X
 											className="h-4 w-4 cursor-pointer text-muted-foreground"
@@ -314,7 +398,10 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 							</div>
 							<div className="space-y-2">
 								{unknowns.map((unknown, index) => (
-									<div key={`unknown-${index}-${unknown.slice(0, 10)}`} className="flex items-center gap-2 rounded bg-amber-50 p-2 dark:bg-amber-950">
+									<div
+										key={`unknown-${index}-${unknown.slice(0, 10)}`}
+										className="flex items-center gap-2 rounded bg-amber-50 p-2 dark:bg-amber-950"
+									>
 										<HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
 										<span className="flex-1 text-foreground">{unknown}</span>
 										<X className="h-4 w-4 cursor-pointer text-muted-foreground" onClick={() => removeUnknown(index)} />
@@ -325,10 +412,99 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 					</CardContent>
 				</Card>
 
-				<div className="flex justify-between">
-					<Button variant="outline" onClick={saveProjectData} disabled={isLoading}>
-						{isLoading ? "Saving..." : "Save as Draft"}
+				{/* Target Audience - moved after Research Goal */}
+				<Card>
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Users className="h-5 w-5" />
+							Target Audience
+						</CardTitle>
+					</CardHeader>
+					<CardContent className="space-y-6">
+						<div>
+							<label className="mb-2 block text-foreground">Target Organizations</label>
+							<div className="mb-3 flex gap-2">
+								<Input
+									placeholder="e.g., B2B SaaS companies, E-commerce retailers"
+									value={newOrg}
+									onChange={(e) => setNewOrg(e.target.value)}
+									onKeyPress={(e) => e.key === "Enter" && addOrg()}
+									className="border-border bg-background text-foreground"
+								/>
+								<Button onClick={addOrg} variant="outline">
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								{target_orgs.map((org) => (
+									<Badge key={org} variant="secondary" className="flex items-center gap-1">
+										{org}
+										<X className="h-3 w-3 cursor-pointer" onClick={() => removeOrg(org)} />
+									</Badge>
+								))}
+							</div>
+						</div>
+
+						<div>
+							<label className="mb-2 block text-foreground">Target Roles</label>
+							<div className="mb-3 flex gap-2">
+								<Input
+									placeholder="e.g., Product Manager, Marketing Director"
+									value={newRole}
+									onChange={(e) => setNewRole(e.target.value)}
+									onKeyPress={(e) => e.key === "Enter" && addRole()}
+									className="border-border bg-background text-foreground"
+								/>
+								<Button onClick={addRole} variant="outline">
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+							<div className="flex flex-wrap gap-2">
+								{target_roles.map((role) => (
+									<Badge key={role} variant="secondary" className="flex items-center gap-1">
+										{role}
+										<X className="h-3 w-3 cursor-pointer" onClick={() => removeRole(role)} />
+									</Badge>
+								))}
+							</div>
+						</div>
+
+					</CardContent>
+				</Card>
+
+				{/* Custom Instructions Collapsible Section */}
+				<div className="mb-6">
+					<Button
+						variant="ghost"
+						onClick={() => setShowCustomInstructions(!showCustomInstructions)}
+						className="flex items-center gap-2 p-0 text-sm text-muted-foreground hover:text-foreground"
+					>
+						{showCustomInstructions ? (
+							<ChevronDown className="h-4 w-4" />
+						) : (
+							<ChevronRight className="h-4 w-4" />
+						)}
+						Custom Instructions (Optional)
 					</Button>
+					
+					{showCustomInstructions && (
+						<div className="mt-3">
+							<Textarea
+								placeholder="Any specific instructions for the AI analysis or interview generation..."
+								value={custom_instructions}
+								onChange={(e) => setCustomInstructions(e.target.value)}
+								onBlur={handleCustomInstructionsBlur}
+								rows={3}
+								className="border-border bg-background text-foreground"
+							/>
+						</div>
+					)}
+				</div>
+
+				<div className="flex justify-between">
+					<div className="flex items-center">
+						{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
+					</div>
 					<Button onClick={handleNext} disabled={!isValid || isLoading}>
 						Generate Interview Questions
 						<ChevronRight className="ml-2 h-4 w-4" />

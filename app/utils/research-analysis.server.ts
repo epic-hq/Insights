@@ -157,11 +157,11 @@ export async function getProjectAnalysisData(supabase: any, projectId: string, a
 	const [sectionsResult, insightsResult, peopleResult, personasResult] = await Promise.all([
 		supabase.from("project_sections").select("*").eq("project_id", projectId),
 
-		supabase.from("insights").select("*").eq("project_id", projectId).eq("account_id", accountId),
+		supabase.from("insights").select("*").eq("project_id", projectId),
 
-		supabase.from("people").select("*").eq("project_id", projectId).eq("account_id", accountId),
+		supabase.from("people").select("*").eq("project_id", projectId),
 
-		supabase.from("personas").select("*").eq("project_id", projectId).eq("account_id", accountId),
+		supabase.from("personas").select("*").eq("project_id", projectId),
 	])
 
 	return {
@@ -176,15 +176,18 @@ export async function getProjectAnalysisData(supabase: any, projectId: string, a
  * Generate smart research questions for onboarding
  */
 export async function generateResearchQuestions(
-	icp: string,
-	role: string,
-	researchGoal: string,
-	customInstructions: string
+	target_orgs: string,
+	target_roles: string,
+	research_goal: string,
+	research_goal_details: string,
+	assumptions: string,
+	unknowns: string,
+	custom_instructions: string
 ) {
 	try {
-		consola.log("Generating smart research questions for:", { icp, role, researchGoal, customInstructions })
+		consola.log("Generating smart research questions for:", { target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions })
 
-		const suggestions = await b.GenerateResearchQuestions(icp, role, researchGoal, customInstructions)
+		const suggestions = await b.GenerateResearchQuestions(target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions)
 
 		consola.log("Research questions generated successfully:", suggestions)
 		return suggestions
@@ -196,7 +199,7 @@ export async function generateResearchQuestions(
 		return {
 			core_questions: [
 				{
-					question: `What challenges do ${role} face when working with ${icp}?`,
+					question: `What challenges do ${target_roles} face when working with ${target_orgs}?`,
 					rationale: "Understanding core challenges helps identify opportunities",
 					interview_type: "user_interview" as const,
 					priority: 1,

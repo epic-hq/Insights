@@ -2,6 +2,7 @@ import { Dialog, Transition } from "@headlessui/react"
 import { Fragment, useState } from "react"
 import { useDropzone } from "react-dropzone"
 import { useNotification } from "~/contexts/NotificationContext"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 
 interface UploadModalProps {
@@ -16,6 +17,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 	const [error, setError] = useState<string | null>(null)
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const { showNotification } = useNotification()
+	const { accountId, projectId } = useCurrentProject()
 
 	const handleFileUpload = async (files: File[]) => {
 		if (!files.length) return
@@ -24,14 +26,33 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 		setSelectedFile(file)
 		setError(null)
 		setIsProcessing(true)
-		setProcessingMessage("Uploading file...")
+
+		// Detect file type for optimized messaging
+		const isTextFile = file.type.startsWith("text/") || 
+			file.name.endsWith(".txt") || 
+			file.name.endsWith(".md") || 
+			file.name.endsWith(".markdown")
+
+		setProcessingMessage(isTextFile ? "Processing text with AI..." : "Uploading and transcribing...")
 
 		try {
+			if (!accountId || !projectId) {
+				throw new Error("Missing account or project context")
+			}
+
 			const formData = new FormData()
 			formData.append("file", file)
+			formData.append("accountId", accountId)
+			formData.append("projectId", projectId)
 
-			setProcessingMessage("Processing transcript with AI...")
-			const response = await fetch("/api/upload", {
+			// Update progress message based on file type
+			if (isTextFile) {
+				setProcessingMessage("Extracting insights from text...")
+			} else {
+				setProcessingMessage("Transcribing audio/video...")
+			}
+
+			const response = await fetch("/api/upload-file", {
 				method: "POST",
 				body: formData,
 			})
@@ -41,13 +62,20 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 				throw new Error(errorData.error || `HTTP ${response.status}`)
 			}
 
-			const result: ProcessingResult = await response.json()
+			const result = await response.json()
 
-			setProcessingMessage("Processing complete!")
+			setProcessingMessage(isTextFile ? "Text processing complete!" : "Transcription and analysis complete!")
+
+			// Show success notification with file type context
+			showNotification(
+				`${isTextFile ? 'Text' : 'Audio/Video'} processed successfully! Generated ${result.insights?.length || 0} insights.`,
+				"success",
+				4000
+			)
 
 			// Store results for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				;(window as any).lastProcessingResult = result
+				(window as unknown as Record<string, unknown>).lastProcessingResult = result
 			}
 
 			// Call success callback if provided
@@ -71,7 +99,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 			// Store error for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				;(window as any).lastUploadError = err
+				(window as unknown as Record<string, unknown>).lastUploadError = err
 			}
 		}
 	}
@@ -158,7 +186,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 											{isDragActive ? "Drop file here" : "Drop transcript file here or click to browse"}
 										</p>
 										<p className="text-gray-500 text-xs dark:text-gray-400">
-											Supports .txt, .md, audio (.mp3, .wav, .m4a), and video (.mp4, .mov, .avi) files
+											Text files (.txt, .md) process instantly • Audio/video files are transcribed first
 										</p>
 									</div>
 								)}

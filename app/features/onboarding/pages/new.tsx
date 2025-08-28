@@ -96,6 +96,7 @@ export default function AddInterviewPage() {
 			onViewResults={handleViewResults}
 			onRefresh={handleRefresh}
 			projectId={projectId}
+			accountId={accountId}
 			existingProject={{
 				name: project.name,
 				icp: project.description || "",

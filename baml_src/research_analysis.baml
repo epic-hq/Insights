@@ -181,9 +181,12 @@ class ResearchQuestionSuggestions {
 }
 
 function GenerateResearchQuestions(
-	icp: string,
-	role: string,
+	target_org: string,
+	target_roles: string,
 	research_goal: string,
+	research_goal_details: string,
+	assumptions: string,
+	unknowns: string,
 	custom_instructions: string
 ) -> ResearchQuestionSuggestions {
   client CustomGPT4o
@@ -191,9 +194,12 @@ function GenerateResearchQuestions(
     You are an expert UX researcher helping someone design interview questions.
 
     CONTEXT:
-    - Target Audience: {{ icp }}
-    - User Role/Segment: {{ role }}
+    - Target Audience: {{ target_org }}
+    - User Role/Segment: {{ target_roles }}
     - Research Goal: {{ research_goal }}
+		- Research Goal Details: {{ research_goal_details }}
+		- Assumptions: {{ assumptions }}
+		- Unknowns: {{ unknowns }}
 
 		If we have custom_instructions, use them, otherwise follow the guidlines below.
 
@@ -243,7 +249,7 @@ function GenerateResearchQuestions(
     - What type of interview it's best for
     - Priority level
 
-    Make questions conversational and natural, as if asking a friend.
+		Make questions helpful, unique, conversational and natural, as if asking a friend.
     Avoid jargon and make them appropriate for the target audience.
 
 		Output format:

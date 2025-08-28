@@ -3,6 +3,7 @@ import { ChevronDown, ChevronLeft, ChevronRight, Lightbulb, Loader2, Plus, X } f
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Textarea } from "~/components/ui/textarea"
+import { OnboardingStepper } from "./OnboardingStepper"
 
 interface Question {
 	id: string
@@ -13,14 +14,18 @@ interface Question {
 }
 
 interface QuestionsScreenProps {
-	icp: string
-	role: string
-	goal: string
+	target_orgs: string[]
+	target_roles: string[]
+	research_goal: string
+	research_goal_details: string
+	assumptions: string[]
+	unknowns: string[]
+	custom_instructions?: string
 	onNext: (questions: string[]) => void
 	onBack: () => void
 }
 
-export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: QuestionsScreenProps) {
+export default function QuestionsScreen({ target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions, onNext, onBack }: QuestionsScreenProps) {
 	const [questions, setQuestions] = useState<Question[]>([])
 	const [newQuestion, setNewQuestion] = useState("")
 	const [showAddQuestion, setShowAddQuestion] = useState(false)
@@ -39,16 +44,20 @@ export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: Que
 
 			setIsGeneratingQuestions(true)
 			try {
+				const formData = new FormData()
+				formData.append("targetOrg", target_orgs.join(", "))
+				formData.append("targetRoles", target_roles.join(", "))
+				formData.append("goalTitle", research_goal)
+				formData.append("goalDetail", research_goal_details)
+				formData.append("assumptions", assumptions.join(", "))
+				formData.append("unknowns", unknowns.join(", "))
+				if (instructions) {
+					formData.append("customInstructions", instructions)
+				}
+
 				const response = await fetch("/api/generate-questions", {
 					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({
-						icp,
-						role,
-						goal,
-						customInstructions: instructions,
-						questionCount: 4,
-					}),
+					body: formData,
 				})
 
 				if (response.ok) {
@@ -80,15 +89,15 @@ export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: Que
 				setIsGeneratingQuestions(false)
 			}
 		},
-		[icp, role, goal, isGeneratingQuestions]
+		[target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, isGeneratingQuestions]
 	)
 
 	useEffect(() => {
-		if (icp && role && goal && !hasInitialized.current && !isGeneratingQuestions) {
+		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal && !hasInitialized.current && !isGeneratingQuestions) {
 			hasInitialized.current = true
-			generateSmartQuestions()
+			generateSmartQuestions(custom_instructions)
 		}
-	}, [icp, role, goal, generateSmartQuestions, isGeneratingQuestions])
+	}, [target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions, generateSmartQuestions, isGeneratingQuestions])
 
 	const removeQuestion = (id: string) => {
 		setQuestions(questions.filter((q) => q.id !== id))
@@ -124,8 +133,19 @@ export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: Que
 
 	const isValid = questions.some((q) => q.text.trim())
 
+	const onboardingSteps = [
+		{ id: "goals", title: "Project Goals", description: "Define objectives" },
+		{ id: "questions", title: "Questions", description: "Generate questions" },
+		{ id: "upload", title: "Upload", description: "Add interviews" },
+	]
+
 	return (
 		<div className="relative min-h-screen bg-black text-white">
+			{/* Stepper */}
+			<div className="bg-black p-4 pb-8">
+				<OnboardingStepper steps={onboardingSteps} currentStepId="questions" className="text-white" />
+			</div>
+
 			{/* Header */}
 			<div className="border-gray-800 border-b bg-black p-4">
 				<div className="flex items-center justify-between">
@@ -133,12 +153,8 @@ export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: Que
 						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 text-white hover:bg-gray-800">
 							<ChevronLeft className="h-4 w-4" />
 						</Button>
-						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-blue-600 font-medium text-sm text-white">
-							2
-						</div>
 						<h1 className="font-semibold text-lg text-white">Questions</h1>
 					</div>
-					{/* <div className="text-gray-400 text-sm">Step 2 of 3</div> */}
 				</div>
 			</div>
 
@@ -158,7 +174,7 @@ export default function QuestionsScreen({ icp, role, goal, onNext, onBack }: Que
 						{/* Regenerate Controls */}
 						{hasInitialized.current && !isGeneratingQuestions && (
 							<div className="space-y-2">
-								<div className="flex gap-2">
+								<div className="flex gap-2 w-max-sm">
 									<Button
 										variant="outline"
 										size="sm"

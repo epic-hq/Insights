@@ -7,6 +7,7 @@ import { Link, useFetcher } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -39,7 +40,7 @@ export async function loader({ request, params }: { request: Request; params: { 
 	}
 
 	// Note: calculation method functionality removed for simplified persona display
-
+	consola.log("load personas: ", personas, projectId)
 	return { personas: personas || [] }
 }
 
@@ -59,6 +60,9 @@ export default function Personas() {
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+			{/* Compact Subnav */}
+			<PersonaPeopleSubnav />
+
 			{/* Clean Header - Metro Style */}
 			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
 				<div className="mx-auto max-w-6xl">

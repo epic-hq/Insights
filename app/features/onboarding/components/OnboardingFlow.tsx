@@ -8,10 +8,13 @@ import UploadScreen from "./UploadScreen"
 export type OnboardingStep = "welcome" | "questions" | "upload" | "processing" | "complete"
 
 export interface OnboardingData {
-	icp: string
-	role: string
-	goal: string
-	customGoal?: string
+	target_orgs: string[]
+	target_roles: string[]
+	research_goal: string
+	research_goal_details: string
+	assumptions: string[]
+	unknowns: string[]
+	custom_instructions?: string
 	questions: string[]
 	file?: File
 	mediaType?: string
@@ -25,11 +28,16 @@ interface OnboardingFlowProps {
 	onViewResults: () => void
 	onRefresh?: () => void
 	projectId?: string
+	accountId?: string
 	existingProject?: {
 		name: string
-		icp: string
-		role: string
-		goal: string
+		target_orgs: string[]
+		target_roles: string[]
+		research_goal: string
+		research_goal_details: string
+		assumptions: string[]
+		unknowns: string[]
+		custom_instructions?: string
 		questions: string[]
 	}
 }
@@ -40,21 +48,41 @@ export default function OnboardingFlow({
 	onViewResults,
 	onRefresh,
 	projectId,
+	accountId,
 	existingProject,
 }: OnboardingFlowProps) {
 	// Start at upload step if we have existing project context
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
 	// TODO: use form library to parse form data, and loader to fetch data
 	const [data, setData] = useState<OnboardingData>({
-		icp: existingProject?.icp || "",
-		role: existingProject?.role || "",
-		goal: existingProject?.goal || "",
+		target_orgs: existingProject?.target_orgs || [],
+		target_roles: existingProject?.target_roles || [],
+		research_goal: existingProject?.research_goal || "",
+		research_goal_details: existingProject?.research_goal_details || "",
+		assumptions: existingProject?.assumptions || [],
+		unknowns: existingProject?.unknowns || [],
+		custom_instructions: existingProject?.custom_instructions,
 		questions: existingProject?.questions || [],
 		projectId,
 	})
 
-	const handleWelcomeNext = (welcomeData: { icp: string; role: string; goal: string; customGoal?: string }) => {
-		setData((prev) => ({ ...prev, ...welcomeData }))
+	const handleWelcomeNext = async (welcomeData: {
+		target_orgs: string[]
+		target_roles: string[]
+		research_goal: string
+		research_goal_details: string
+		assumptions: string[]
+		unknowns: string[]
+		custom_instructions?: string
+		projectId?: string
+	}) => {
+		// Update data with welcome data and projectId if provided
+		setData((prev) => ({ 
+			...prev, 
+			...welcomeData,
+			projectId: welcomeData.projectId || prev.projectId || projectId
+		}))
+		
 		setCurrentStep("questions")
 	}
 
@@ -75,10 +103,13 @@ export default function OnboardingFlow({
 			formData.append(
 				"onboardingData",
 				JSON.stringify({
-					icp: data.icp,
-					role: data.role,
-					goal: data.goal,
-					customGoal: data.customGoal,
+					target_orgs: data.target_orgs,
+					target_roles: data.target_roles,
+					research_goal: data.research_goal,
+					research_goal_details: data.research_goal_details,
+					assumptions: data.assumptions,
+					unknowns: data.unknowns,
+					custom_instructions: data.custom_instructions,
 					questions: data.questions,
 					mediaType,
 				})
@@ -133,32 +164,39 @@ export default function OnboardingFlow({
 		}
 	}
 
-	// Generate project name from ICP and role
+	// Generate project name from target orgs and roles
 	const getProjectName = () => {
-		if (!data.icp) return "New Project"
-		if (data.role) {
-			return `${data.role} at ${data.icp} Research`
+		if (data.target_orgs.length === 0) return "New Project"
+		if (data.target_roles.length > 0) {
+			return `${data.target_roles[0]} at ${data.target_orgs[0]} Research`
 		}
-		return `${data.icp} Research`
+		return `${data.target_orgs[0]} Research`
 	}
+
+		// Use the most current projectId - either from data (newly created) or props (existing)
+		const currentProjectId = data.projectId || projectId
 
 	switch (currentStep) {
 		case "welcome":
-			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={projectId} />
+			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
 
 		case "questions":
 			return (
 				<QuestionsScreen
-					icp={data.icp}
-					role={data.role}
-					goal={data.goal}
+					target_orgs={data.target_orgs}
+					target_roles={data.target_roles}
+					research_goal={data.research_goal}
+					research_goal_details={data.research_goal_details}
+					assumptions={data.assumptions}
+					unknowns={data.unknowns}
+					custom_instructions={data.custom_instructions}
 					onNext={handleQuestionsNext}
 					onBack={handleBack}
 				/>
 			)
 
 		case "upload":
-			return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={projectId} />
+			return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} />
 
 		case "processing":
 			return (
@@ -173,12 +211,13 @@ export default function OnboardingFlow({
 			return (
 				<ProjectStatusScreen
 					projectName={getProjectName()}
-					icp={data.icp}
+					target_orgs={data.target_orgs}
 					projectId={data.projectId}
+					accountId={accountId}
 				/>
 			)
 
 		default:
-			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={projectId} />
+			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
 	}
 }

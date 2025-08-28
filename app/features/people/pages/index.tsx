@@ -4,6 +4,7 @@ import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
 import { getPeople } from "~/features/people/db"
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 import { createProjectRoutes } from "~/utils/routes.server"
@@ -50,47 +51,71 @@ export default function PeopleIndexPage() {
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 
 	return (
-		<div className="space-y-6 px-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="font-bold text-3xl tracking-tight">People</h1>
-					<p className="text-muted-foreground">Manage research participants, contacts, and interview subjects.</p>
+		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+			{/* Compact Subnav */}
+			<PersonaPeopleSubnav />
+
+			{/* Clean Header - Metro Style */}
+			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
+				<div className="mx-auto max-w-6xl">
+					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+						<div>
+							<h1 className="font-light text-3xl text-gray-900 tracking-tight dark:text-white">People</h1>
+							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400">
+								Research participants, contacts, and interview subjects
+							</p>
+						</div>
+						<div className="flex flex-wrap gap-3">
+							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+								<Link to={routes.people.new()}>Add Person</Link>
+							</Button>
+						</div>
+					</div>
 				</div>
-				<Button asChild>
-					<Link to={routes.people.new()}>Add Person</Link>
-				</Button>
 			</div>
 
-			{people.length === 0 ? (
-				<div className="flex flex-col items-center justify-center py-12">
-					<h3 className="mb-2 font-semibold text-lg">No people yet</h3>
-					<p className="mb-4 text-muted-foreground">
-						Add your first person to start tracking research participants and contacts.
-					</p>
-					<Button asChild>
-						<Link to={routes.people.new()}>Add Person</Link>
-					</Button>
-				</div>
-			) : (
-				<div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-					{people.map((person) => (
-						<EnhancedPersonCard
-							key={person.id}
-							person={{
-								...person,
-								people_personas: (person.people_personas || []).map((pp) => ({
-									personas: pp.personas
-										? {
-												name: pp.personas.name,
-												color_hex: pp.personas.color_hex || undefined,
-											}
-										: undefined,
-								})),
-							}}
-						/>
-					))}
-				</div>
-			)}
+			{/* Main Content */}
+			<div className="mx-auto max-w-6xl px-6 py-12">
+				{people.length === 0 ? (
+					<div className="py-16 text-center">
+						<div className="mx-auto max-w-md">
+							<div className="mb-6 flex justify-center">
+								<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
+									<svg className="h-12 w-12 text-gray-400 dark:text-gray-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+										<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z" />
+									</svg>
+								</div>
+							</div>
+							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No people yet</h3>
+							<p className="mb-8 text-gray-600 dark:text-gray-400">
+								Add your first person to start tracking research participants and contacts.
+							</p>
+							<Button asChild>
+								<Link to={routes.people.new()}>Add Person</Link>
+							</Button>
+						</div>
+					</div>
+				) : (
+					<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+						{people.map((person) => (
+							<EnhancedPersonCard
+								key={person.id}
+								person={{
+									...person,
+									people_personas: (person.people_personas || []).map((pp) => ({
+										personas: pp.personas
+											? {
+													name: pp.personas.name,
+													color_hex: pp.personas.color_hex || undefined,
+												}
+											: undefined,
+									})),
+								}}
+							/>
+						))}
+					</div>
+				)}
+			</div>
 		</div>
 	)
 }
