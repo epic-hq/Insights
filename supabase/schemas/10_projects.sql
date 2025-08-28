@@ -162,6 +162,8 @@ before update on public.project_sections
 for each row execute function public.set_updated_at();
 
 -- 4) Indexes tuned for your queries
+create unique index if not exists idx_project_sections_project_id_kind_unique
+  on public.project_sections (project_id, kind);
 create index if not exists idx_project_sections_project_id_kind_key
   on public.project_sections (project_id, kind);
 

@@ -1,6 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { generateResearchQuestions } from "~/utils/research-analysis.server"
+import { generateQuestionSetCanonical } from "~/utils/research-analysis.server"
+
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -36,51 +37,37 @@ export async function action({ request }: ActionFunctionArgs) {
 			)
 		}
 
-		consola.log("Generating questions for:", {
+		consola.log("Generating questions (canonical) for:", {
 			target_orgs,
 			target_roles,
 			research_goal,
 			research_goal_details,
 			assumptions,
 			unknowns,
+			questionCount,
 		})
 
-		const suggestions = await generateResearchQuestions(
+		const questionSet = await generateQuestionSetCanonical({
 			target_orgs,
 			target_roles,
 			research_goal,
 			research_goal_details,
 			assumptions,
 			unknowns,
-			custom_instructions || ""
-		)
+			custom_instructions: custom_instructions || "",
+			session_id: `session_${Date.now()}`,
+			round: 1,
+			total_per_round: questionCount || 10,
+			per_category_min: 1,
+			per_category_max: 3,
+			interview_time_limit: Number(formData.get("interview_time_limit") ?? 60),
+		})
 
-		consola.log("BAML suggestions result:", JSON.stringify(suggestions, null, 2))
-
-		// Flatten the categorized questions into a simple array for the UI
-		const allQuestions = [
-			...(suggestions.core_questions || []),
-			...(suggestions.behavioral_questions || []),
-			...(suggestions.pain_point_questions || []),
-			...(suggestions.solution_questions || []),
-			...(suggestions.context_questions || []),
-		]
-
-		consola.log("All questions flattened:", allQuestions)
-
-		// Sort by priority and take the requested number of questions
-		// Priority is an int where 1 is highest priority, 2 is medium, 3 is lowest
-		const topQuestions = allQuestions
-			.sort((a, b) => Number(a.priority ?? 2) - Number(b.priority ?? 2))
-			.slice(0, questionCount)
+		consola.log("BAML questionSet result:", JSON.stringify(questionSet, null, 2))
 
 		return Response.json({
 			success: true,
-			questions: topQuestions.map((q) => ({
-				question: q.question,
-				rationale: q.rationale,
-				priority: q.priority,
-			})),
+			questionSet,
 		})
 	} catch (error) {
 		consola.error("Failed to generate questions:", error)

@@ -83,6 +83,14 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Questions
+	questions: {
+		index: () => string
+		new: () => string
+		detail: (id: string) => string
+		edit: (id: string) => string
+	}
+
 	// Projects (note: these are at account level, not project level)
 	projects: {
 		index: () => string
@@ -197,6 +205,14 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `${base}/opportunities/new`,
 			detail: (id: string) => `${base}/opportunities/${id}`,
 			edit: (id: string) => `${base}/opportunities/${id}/edit`,
+		},
+
+		// Questions
+		questions: {
+			index: () => `${base}/questions`,
+			new: () => `${base}/questions/new`,
+			detail: (id: string) => `${base}/questions/${id}`,
+			edit: (id: string) => `${base}/questions/${id}/edit`,
 		},
 
 		// Projects (note: these are at account level, not project level)

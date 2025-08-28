@@ -14,7 +14,7 @@ CREATE POLICY "Users can view annotations in their projects" ON public.annotatio
   FOR SELECT USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
   );
 
@@ -23,9 +23,9 @@ CREATE POLICY "Users can create annotations in their projects" ON public.annotat
   FOR INSERT WITH CHECK (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
-    AND account_id = (auth.jwt() ->> 'account_id')::uuid
+    AND account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     AND (created_by_user_id = auth.uid() OR created_by_ai = TRUE)
   );
 
@@ -34,7 +34,7 @@ CREATE POLICY "Users can update their own annotations" ON public.annotations
   FOR UPDATE USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
     AND created_by_user_id = auth.uid()
   );
@@ -44,7 +44,7 @@ CREATE POLICY "Users can delete their own annotations" ON public.annotations
   FOR DELETE USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
     AND created_by_user_id = auth.uid()
   );
@@ -55,7 +55,7 @@ CREATE POLICY "Users can view votes in their projects" ON public.votes
   FOR SELECT USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
   );
 
@@ -64,9 +64,9 @@ CREATE POLICY "Users can create votes in their projects" ON public.votes
   FOR INSERT WITH CHECK (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
-    AND account_id = (auth.jwt() ->> 'account_id')::uuid
+    AND account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     AND user_id = auth.uid()
   );
 
@@ -75,7 +75,7 @@ CREATE POLICY "Users can update their own votes" ON public.votes
   FOR UPDATE USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
     AND user_id = auth.uid()
   );
@@ -85,7 +85,7 @@ CREATE POLICY "Users can delete their own votes" ON public.votes
   FOR DELETE USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
     AND user_id = auth.uid()
   );
@@ -96,7 +96,7 @@ CREATE POLICY "Users can view flags in their projects" ON public.entity_flags
   FOR SELECT USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
   );
 
@@ -105,9 +105,9 @@ CREATE POLICY "Users can create flags in their projects" ON public.entity_flags
   FOR INSERT WITH CHECK (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
-    AND account_id = (auth.jwt() ->> 'account_id')::uuid
+    AND account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     AND user_id = auth.uid()
   );
 
@@ -116,7 +116,7 @@ CREATE POLICY "Users can update their own flags" ON public.entity_flags
   FOR UPDATE USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
     AND user_id = auth.uid()
   );
@@ -126,7 +126,7 @@ CREATE POLICY "Users can delete their own flags" ON public.entity_flags
   FOR DELETE USING (
     project_id IN (
       SELECT p.id FROM public.projects p
-      WHERE p.account_id = (auth.jwt() ->> 'account_id')::uuid
+      WHERE p.account_id IN (SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid())
     )
     AND user_id = auth.uid()
   );

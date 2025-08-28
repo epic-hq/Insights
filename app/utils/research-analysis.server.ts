@@ -2,10 +2,10 @@
  * Research Analysis Utils - BAML-driven analysis of insights against research goals
  */
 
+import type { SupabaseClient } from "@supabase/supabase-js"
 import { b } from "baml_client"
 import consola from "consola"
-import type { Project_Section, Insight, Person, Persona } from "~/types"
-
+import type { Insight, Person, Persona, Project_Section } from "~/types"
 
 interface ResearchGoalData {
 	icp: string
@@ -33,8 +33,63 @@ function extractResearchGoal(sections: Project_Section[]): ResearchGoalData {
 		goal: goalSection?.content_md || "Research user needs",
 		questions: questionsSection?.content_md ? JSON.parse(questionsSection.content_md) : [],
 		assumptions: assumptionsSection?.content_md ? JSON.parse(assumptionsSection.content_md) : [],
-		unknowns: unknownsSection?.content_md ? JSON.parse(unknownsSection.content_md) : []
+		unknowns: unknownsSection?.content_md ? JSON.parse(unknownsSection.content_md) : [],
 	}
+}
+
+/**
+ * Canonical: Generate QuestionSet directly from BAML
+ */
+export async function generateQuestionSetCanonical(params: {
+	target_orgs: string
+	target_roles: string
+	research_goal: string
+	research_goal_details: string
+	assumptions: string
+	unknowns: string
+	custom_instructions?: string
+	session_id?: string
+	round?: number
+	total_per_round?: number
+	per_category_min?: number
+	per_category_max?: number
+	interview_time_limit?: number
+}) {
+	const {
+		target_orgs,
+		target_roles,
+		research_goal,
+		research_goal_details,
+		assumptions,
+		unknowns,
+		custom_instructions,
+		session_id,
+		round,
+		total_per_round,
+		per_category_min,
+		per_category_max,
+		interview_time_limit,
+	} = params
+
+	consola.log("[generateQuestionSetCanonical] Calling BAML GenerateQuestionSet with canonical params")
+
+	const questionSet = await b.GenerateQuestionSet({
+		target_org: target_orgs,
+		target_roles,
+		research_goal,
+		research_goal_details,
+		assumptions,
+		unknowns,
+		custom_instructions: custom_instructions || "",
+		session_id: session_id || `session_${Date.now()}`,
+		round: round ?? 1,
+		total_per_round: total_per_round ?? 10,
+		per_category_min: per_category_min ?? 1,
+		per_category_max: per_category_max ?? 3,
+		interview_time_limit: interview_time_limit ?? 60,
+	})
+
+	return questionSet
 }
 
 /**
@@ -153,7 +208,7 @@ export async function generateExecutiveSummary(
 /**
  * Get project data for analysis from Supabase
  */
-export async function getProjectAnalysisData(supabase: any, projectId: string, accountId: string) {
+export async function getProjectAnalysisData(supabase: SupabaseClient, projectId: string, _accountId: string) {
 	const [sectionsResult, insightsResult, peopleResult, personasResult] = await Promise.all([
 		supabase.from("project_sections").select("*").eq("project_id", projectId),
 
@@ -185,7 +240,15 @@ export async function generateResearchQuestions(
 	custom_instructions: string
 ) {
 	try {
-		consola.log("Generating smart research questions for:", { target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions })
+		consola.log("Generating smart research questions for:", {
+			target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+			custom_instructions,
+		})
 
 		const questionSet = await b.GenerateQuestionSet({
 			target_org: target_orgs,
@@ -199,41 +262,51 @@ export async function generateResearchQuestions(
 			round: 1,
 			total_per_round: 10,
 			per_category_min: 1,
-			per_category_max: 3
+			per_category_max: 3,
 		})
 
 		// Convert new QuestionSet format to legacy format for backward compatibility
 		const suggestions = {
-			core_questions: questionSet.questions.filter(q => q.categoryId === 'goals' || q.categoryId === 'core').map(q => ({
-				question: q.text,
-				rationale: q.rationale || 'Core question for research goals',
-				interview_type: 'user_interview' as const,
-				priority: Math.round(q.scores.importance * 3) || 1
-			})),
-			behavioral_questions: questionSet.questions.filter(q => q.categoryId === 'workflow' || q.categoryId === 'behavior').map(q => ({
-				question: q.text,
-				rationale: q.rationale || 'Understanding user behavior',
-				interview_type: 'user_interview' as const,
-				priority: Math.round(q.scores.importance * 3) || 2
-			})),
-			pain_point_questions: questionSet.questions.filter(q => q.categoryId === 'pain' || q.categoryId === 'challenges').map(q => ({
-				question: q.text,
-				rationale: q.rationale || 'Identifying pain points',
-				interview_type: 'user_interview' as const,
-				priority: Math.round(q.scores.importance * 3) || 2
-			})),
-			solution_questions: questionSet.questions.filter(q => q.categoryId === 'willingness' || q.categoryId === 'solutions').map(q => ({
-				question: q.text,
-				rationale: q.rationale || 'Validating solutions',
-				interview_type: 'user_interview' as const,
-				priority: Math.round(q.scores.importance * 3) || 2
-			})),
-			context_questions: questionSet.questions.filter(q => q.categoryId === 'context' || q.categoryId === 'constraints').map(q => ({
-				question: q.text,
-				rationale: q.rationale || 'Understanding context',
-				interview_type: 'user_interview' as const,
-				priority: Math.round(q.scores.importance * 3) || 3
-			}))
+			core_questions: questionSet.questions
+				.filter((q) => q.categoryId === "goals" || q.categoryId === "core")
+				.map((q) => ({
+					question: q.text,
+					rationale: q.rationale || "Core question for research goals",
+					interview_type: "user_interview" as const,
+					priority: Math.round(q.scores.importance * 3) || 1,
+				})),
+			behavioral_questions: questionSet.questions
+				.filter((q) => q.categoryId === "workflow" || q.categoryId === "behavior")
+				.map((q) => ({
+					question: q.text,
+					rationale: q.rationale || "Understanding user behavior",
+					interview_type: "user_interview" as const,
+					priority: Math.round(q.scores.importance * 3) || 2,
+				})),
+			pain_point_questions: questionSet.questions
+				.filter((q) => q.categoryId === "pain" || q.categoryId === "challenges")
+				.map((q) => ({
+					question: q.text,
+					rationale: q.rationale || "Identifying pain points",
+					interview_type: "user_interview" as const,
+					priority: Math.round(q.scores.importance * 3) || 2,
+				})),
+			solution_questions: questionSet.questions
+				.filter((q) => q.categoryId === "willingness" || q.categoryId === "solutions")
+				.map((q) => ({
+					question: q.text,
+					rationale: q.rationale || "Validating solutions",
+					interview_type: "user_interview" as const,
+					priority: Math.round(q.scores.importance * 3) || 2,
+				})),
+			context_questions: questionSet.questions
+				.filter((q) => q.categoryId === "context" || q.categoryId === "constraints")
+				.map((q) => ({
+					question: q.text,
+					rationale: q.rationale || "Understanding context",
+					interview_type: "user_interview" as const,
+					priority: Math.round(q.scores.importance * 3) || 3,
+				})),
 		}
 
 		consola.log("Research questions generated successfully:", suggestions)

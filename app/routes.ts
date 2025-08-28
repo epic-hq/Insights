@@ -13,6 +13,7 @@ import opportunitiesRoutes from "./features/opportunities/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
 import projectsRoutes from "./features/projects/routes"
+import questionsRoutes from "./features/questions/routes"
 import themesRoutes from "./features/themes/routes"
 
 const routes = [
@@ -43,6 +44,7 @@ const routes = [
 				...personasRoutes,
 				...themesRoutes,
 				...mobileRoutes,
+				...questionsRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),

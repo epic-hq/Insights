@@ -302,31 +302,6 @@ export type Database = {
       [_ in never]: never
     }
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_settings: {
@@ -1607,6 +1582,143 @@ export type Database = {
           },
         ]
       }
+      project_answer_evidence: {
+        Row: {
+          answer_id: string
+          created_at: string
+          end_seconds: number | null
+          id: string
+          interview_id: string | null
+          payload: Json | null
+          project_id: string
+          source: string
+          start_seconds: number | null
+          text: string | null
+          transcript_chunk_id: string | null
+          updated_at: string
+        }
+        Insert: {
+          answer_id: string
+          created_at?: string
+          end_seconds?: number | null
+          id?: string
+          interview_id?: string | null
+          payload?: Json | null
+          project_id: string
+          source: string
+          start_seconds?: number | null
+          text?: string | null
+          transcript_chunk_id?: string | null
+          updated_at?: string
+        }
+        Update: {
+          answer_id?: string
+          created_at?: string
+          end_seconds?: number | null
+          id?: string
+          interview_id?: string | null
+          payload?: Json | null
+          project_id?: string
+          source?: string
+          start_seconds?: number | null
+          text?: string | null
+          transcript_chunk_id?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_answer_evidence_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
+            referencedRelation: "project_answers"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answer_evidence_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answer_evidence_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_answers: {
+        Row: {
+          answer_text: string | null
+          confidence: number | null
+          created_at: string
+          id: string
+          interview_id: string | null
+          interviewer_user_id: string | null
+          project_id: string
+          question_id: string | null
+          question_text: string
+          respondent_person_id: string | null
+          status: string | null
+          time_spent_seconds: number | null
+          updated_at: string
+        }
+        Insert: {
+          answer_text?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          interview_id?: string | null
+          interviewer_user_id?: string | null
+          project_id: string
+          question_id?: string | null
+          question_text: string
+          respondent_person_id?: string | null
+          status?: string | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+        }
+        Update: {
+          answer_text?: string | null
+          confidence?: number | null
+          created_at?: string
+          id?: string
+          interview_id?: string | null
+          interviewer_user_id?: string | null
+          project_id?: string
+          question_id?: string | null
+          question_text?: string
+          respondent_person_id?: string | null
+          status?: string | null
+          time_spent_seconds?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_answers_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_respondent_person_id_fkey"
+            columns: ["respondent_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_people: {
         Row: {
           created_at: string | null
@@ -2660,9 +2772,6 @@ export const Constants = {
         "unpaid",
       ],
     },
-  },
-  graphql_public: {
-    Enums: {},
   },
   public: {
     Enums: {

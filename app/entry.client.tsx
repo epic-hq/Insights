@@ -44,7 +44,7 @@ async function hydrate() {
 							api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
 							defaults: "2025-05-24",
 							capture_exceptions: true, // This enables capturing exceptions using Error Tracking, set to false if you don't want this
-							debug: import.meta.env.MODE === "development",
+							// debug: import.meta.env.MODE === "development",
 						}}
 					>
 						<HydratedRouter />

@@ -123,7 +123,7 @@ export default function ProtectedLayout() {
 			email: auth.user.email,
 			full_name: auth.user.user_metadata?.full_name,
 		})
-		consola.log("[protectedLayout] Identify user: ", auth.user)
+		// consola.log("[protectedLayout] Identify user: ", auth.user)
 	}, [auth.user])
 
 	return (
