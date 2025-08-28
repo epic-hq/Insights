@@ -187,7 +187,54 @@ export async function generateResearchQuestions(
 	try {
 		consola.log("Generating smart research questions for:", { target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions })
 
-		const suggestions = await b.GenerateResearchQuestions(target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions)
+		const questionSet = await b.GenerateQuestionSet({
+			target_org: target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+			custom_instructions,
+			session_id: `session_${Date.now()}`,
+			round: 1,
+			total_per_round: 10,
+			per_category_min: 1,
+			per_category_max: 3
+		})
+
+		// Convert new QuestionSet format to legacy format for backward compatibility
+		const suggestions = {
+			core_questions: questionSet.questions.filter(q => q.categoryId === 'goals' || q.categoryId === 'core').map(q => ({
+				question: q.text,
+				rationale: q.rationale || 'Core question for research goals',
+				interview_type: 'user_interview' as const,
+				priority: Math.round(q.scores.importance * 3) || 1
+			})),
+			behavioral_questions: questionSet.questions.filter(q => q.categoryId === 'workflow' || q.categoryId === 'behavior').map(q => ({
+				question: q.text,
+				rationale: q.rationale || 'Understanding user behavior',
+				interview_type: 'user_interview' as const,
+				priority: Math.round(q.scores.importance * 3) || 2
+			})),
+			pain_point_questions: questionSet.questions.filter(q => q.categoryId === 'pain' || q.categoryId === 'challenges').map(q => ({
+				question: q.text,
+				rationale: q.rationale || 'Identifying pain points',
+				interview_type: 'user_interview' as const,
+				priority: Math.round(q.scores.importance * 3) || 2
+			})),
+			solution_questions: questionSet.questions.filter(q => q.categoryId === 'willingness' || q.categoryId === 'solutions').map(q => ({
+				question: q.text,
+				rationale: q.rationale || 'Validating solutions',
+				interview_type: 'user_interview' as const,
+				priority: Math.round(q.scores.importance * 3) || 2
+			})),
+			context_questions: questionSet.questions.filter(q => q.categoryId === 'context' || q.categoryId === 'constraints').map(q => ({
+				question: q.text,
+				rationale: q.rationale || 'Understanding context',
+				interview_type: 'user_interview' as const,
+				priority: Math.round(q.scores.importance * 3) || 3
+			}))
+		}
 
 		consola.log("Research questions generated successfully:", suggestions)
 		return suggestions

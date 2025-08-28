@@ -1,4 +1,5 @@
 import { CopilotKit } from "@copilotkit/react-core"
+import { useEffect } from "react"
 import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
@@ -10,6 +11,7 @@ import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
+import posthog from "posthog-js"
 
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
@@ -115,6 +117,14 @@ export default function ProtectedLayout() {
 	const navigation = useNavigation()
 
 	const isLoading = navigation.state === "loading"
+
+	useEffect(() => {
+		posthog.identify(auth.user.sub, {
+			email: auth.user.email,
+			full_name: auth.user.user_metadata?.full_name,
+		})
+		consola.log("[protectedLayout] Identify user: ", auth.user)
+	}, [auth.user])
 
 	return (
 		<AuthProvider

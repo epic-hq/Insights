@@ -8,19 +8,52 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	try {
-		const body = await request.json()
-		const { icp, role, goal, customInstructions, questionCount = 4 } = body
+		const formData = await request.formData()
+		const target_orgs = formData.get("target_orgs") as string
+		const target_roles = formData.get("target_roles") as string
+		const research_goal = formData.get("research_goal") as string
+		const research_goal_details = formData.get("research_goal_details") as string
+		const assumptions = formData.get("assumptions") as string
+		const unknowns = formData.get("unknowns") as string
+		const custom_instructions = formData.get("custom_instructions") as string
+		const questionCount = Number(formData.get("questionCount") ?? 10)
 
-		if (!icp || !role || !goal) {
-			return Response.json({ error: "Missing required fields: icp, role, goal" }, { status: 400 })
+		consola.log("Generating questions for:", {
+			target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+		})
+		if (!target_orgs || !target_roles || !research_goal || !research_goal_details || !assumptions || !unknowns) {
+			return Response.json(
+				{
+					error:
+						"Missing required fields: target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns",
+				},
+				{ status: 400 }
+			)
 		}
 
-		consola.log("Generating questions for:", { icp, role, goal, customInstructions, questionCount })
+		consola.log("Generating questions for:", {
+			target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+		})
 
-		// Include custom instructions in the goal if provided
-		const enhancedGoal = customInstructions ? `${goal}. Additional requirements: ${customInstructions}` : goal
-
-		const suggestions = await generateResearchQuestions(icp, role, enhancedGoal, customInstructions || "")
+		const suggestions = await generateResearchQuestions(
+			target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+			custom_instructions || ""
+		)
 
 		consola.log("BAML suggestions result:", JSON.stringify(suggestions, null, 2))
 
@@ -37,7 +70,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Sort by priority and take the requested number of questions
 		// Priority is an int where 1 is highest priority, 2 is medium, 3 is lowest
-		const topQuestions = allQuestions.sort((a, b) => a.priority - b.priority).slice(0, questionCount)
+		const topQuestions = allQuestions
+			.sort((a, b) => Number(a.priority ?? 2) - Number(b.priority ?? 2))
+			.slice(0, questionCount)
 
 		return Response.json({
 			success: true,

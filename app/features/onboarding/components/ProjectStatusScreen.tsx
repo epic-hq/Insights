@@ -17,9 +17,10 @@ import {
 	BookOpen,
 	Search,
 	PlusCircle,
+	Headphones,
 } from "lucide-react"
 import { useState, useEffect } from "react"
-import { useRevalidator } from "react-router-dom"
+import { Link, useRevalidator } from "react-router-dom"
 import ReactMarkdown from "react-markdown"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -728,7 +729,7 @@ export default function ProjectStatusScreen({
 			{/* Flow Diagram Modal */}
 			<Dialog>
 				<DialogTrigger asChild>
-					<Button variant="outline" className="w-full mt-6">
+					<Button variant="outline" className="w-md mt-6">
 						<Workflow className="w-4 h-4 mr-2" />
 						View Research Flow
 					</Button>
@@ -738,9 +739,11 @@ export default function ProjectStatusScreen({
 						<DialogTitle>Research Process Flow</DialogTitle>
 					</DialogHeader>
 					<div className="flex-1 overflow-auto">
-						<FlowDiagram 
+						<FlowDiagram
 							counts={{
-								questionsTotal: statusData?.questionAnswers?.length || (statusData?.answeredQuestions?.length || 0) + (statusData?.openQuestions?.length || 0),
+								questionsTotal:
+									statusData?.questionAnswers?.length ||
+									(statusData?.answeredQuestions?.length || 0) + (statusData?.openQuestions?.length || 0),
 								questionsAnswered: statusData?.answeredQuestions?.length || 0,
 								inputs: statusData?.totalInterviews || 0,
 								evidence: statusData?.totalEvidence || 0,

@@ -1,6 +1,6 @@
 import consola from "consola"
 import { motion } from "framer-motion"
-import { Trash2 } from "lucide-react"
+import { Trash2, Edit3, Plus, Save, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
@@ -17,6 +17,7 @@ import {
 } from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Switch } from "~/components/ui/switch"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
@@ -234,8 +235,10 @@ export default function EditProject() {
 	const { project, sections, kinds } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 
-	// Simple client-side guard for accidental empty section adds
+	// UI state management
 	const [err, setErr] = useState<string | null>(null)
+	const [editingSections, setEditingSections] = useState<Set<string>>(new Set())
+	const [showAddForm, setShowAddForm] = useState(false)
 	const validateNew = useCallback((e: React.FormEvent<HTMLFormElement>) => {
 		const fd = new FormData(e.currentTarget)
 		const kind = (fd.get("new_kind") as string)?.trim()
@@ -245,6 +248,29 @@ export default function EditProject() {
 			setErr("Kind and content are required")
 		}
 	}, [])
+
+	const toggleEditing = (sectionId: string) => {
+		setEditingSections(prev => {
+			const newSet = new Set(prev)
+			if (newSet.has(sectionId)) {
+				newSet.delete(sectionId)
+			} else {
+				newSet.add(sectionId)
+			}
+			return newSet
+		})
+	}
+
+	const getKindColor = (kind: string) => {
+		const colors: Record<string, string> = {
+			goal: "bg-blue-100 text-blue-800 dark:bg-blue-900/20 dark:text-blue-300",
+			target_market: "bg-purple-100 text-purple-800 dark:bg-purple-900/20 dark:text-purple-300",
+			assumptions: "bg-orange-100 text-orange-800 dark:bg-orange-900/20 dark:text-orange-300",
+			risks: "bg-red-100 text-red-800 dark:bg-red-900/20 dark:text-red-300",
+			question: "bg-green-100 text-green-800 dark:bg-green-900/20 dark:text-green-300",
+		}
+		return colors[kind] || "bg-gray-100 text-gray-800 dark:bg-gray-900/20 dark:text-gray-300"
+	}
 
 	const _fmt = (v: unknown) => (v == null ? "" : String(v))
 
@@ -306,72 +332,144 @@ export default function EditProject() {
 							</div>
 						</form>
 
-						{/* Sections editor */}
-						<div>
-							<div className="mb-2 font-semibold text-sm">Sections</div>
+						{/* Project Sections - Clean Card-Based Design */}
+						<div className="space-y-6">
+							<div className="flex items-center justify-between">
+								<h2 className="text-lg font-semibold text-foreground">Project Sections</h2>
+								<Button
+									type="button"
+									variant="outline"
+									size="sm"
+									onClick={() => setShowAddForm(true)}
+									className="gap-2"
+								>
+									<Plus className="h-4 w-4" />
+									Add Section
+								</Button>
+							</div>
+
+							{/* Existing Sections */}
 							<form method="post" className="space-y-4">
 								<input type="hidden" name="intent" value="save_sections" />
-								{sections.map((s) => (
-									<div key={s.id} className="rounded-lg border p-3">
-										<div className="mb-2 grid grid-cols-1 gap-3 md:grid-cols-6">
-											<input type="hidden" name="section_id[]" value={s.id} />
-											<div className="space-y-1 md:col-span-3">
-												<Label>Kind</Label>
-												<KindSelector name="section_kind[]" value={s.kind} kinds={kinds} />
-											</div>
-											<div className="space-y-1 md:col-span-2">
-												<Label>Position</Label>
-												<Input
-													name="section_position[]"
-													type="number"
-													defaultValue={s.position ?? ""}
-													placeholder="(optional)"
-												/>
-											</div>
-											<div className="flex items-end justify-end md:col-span-1">
-												<AlertDialog>
-													<AlertDialogTrigger asChild>
-														<Button type="button" variant="destructive" size="sm" className="gap-2">
-															<Trash2 className="h-4 w-4" /> Delete
+								<div className="grid gap-4">
+									{sections.map((s) => {
+										const isEditing = editingSections.has(s.id)
+										return (
+											<motion.div
+												key={s.id}
+												initial={{ opacity: 0, y: 20 }}
+												animate={{ opacity: 1, y: 0 }}
+												className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
+											>
+												<input type="hidden" name="section_id[]" value={s.id} />
+												
+												{/* Header with content and controls */}
+												<div className="flex items-start justify-between gap-4">
+													<div className="flex-1 min-w-0">
+														{/* Content - prominent at top */}
+														{isEditing ? (
+															<Textarea
+																name="section_content_md[]"
+																className="mb-4 font-mono resize-none"
+																rows={4}
+																defaultValue={s.content_md || ""}
+																placeholder="Enter section content..."
+															/>
+														) : (
+															<div className="mb-4">
+																<p className="font-medium text-lg text-gray-900 leading-relaxed dark:text-white">
+																	{s.content_md || "No content"}
+																</p>
+															</div>
+														)}
+														
+														{/* Kind and Position - only show when editing */}
+														{isEditing && (
+															<div className="flex gap-3 mb-4">
+																<div className="flex-1">
+																	<Label className="text-xs text-gray-500 mb-1">Kind</Label>
+																	<KindSelector name="section_kind[]" value={s.kind} kinds={kinds} />
+																</div>
+																<div className="w-24">
+																	<Label className="text-xs text-gray-500 mb-1">Position</Label>
+																	<Input
+																		name="section_position[]"
+																		type="number"
+																		defaultValue={s.position ?? ""}
+																		placeholder="#"
+																		size="sm"
+																	/>
+																</div>
+															</div>
+														)}
+													</div>
+
+													{/* Controls */}
+													<div className="flex items-center gap-2 flex-shrink-0">
+														{!isEditing && (
+															<div className={`px-3 py-1 rounded-full text-xs font-medium ${getKindColor(s.kind)}`}>
+																{s.kind}
+															</div>
+														)}
+														
+														<Button
+															type="button"
+															variant="ghost"
+															size="sm"
+															onClick={() => toggleEditing(s.id)}
+															className="h-8 w-8 p-0"
+														>
+															{isEditing ? <X className="h-4 w-4" /> : <Edit3 className="h-4 w-4" />}
 														</Button>
-													</AlertDialogTrigger>
-													<AlertDialogContent>
-														<AlertDialogHeader>
-															<AlertDialogTitle>Delete this section?</AlertDialogTitle>
-															<AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
-														</AlertDialogHeader>
-														<AlertDialogFooter>
-															<AlertDialogCancel>Cancel</AlertDialogCancel>
-															<AlertDialogAction
-																onClick={() => {
-																	const f = document.getElementById(`delete-section-${s.id}`) as HTMLFormElement | null
-																	f?.requestSubmit()
-																}}
-															>
-																Yes, delete
-															</AlertDialogAction>
-														</AlertDialogFooter>
-													</AlertDialogContent>
-												</AlertDialog>
-											</div>
-										</div>
-										<div className="space-y-1">
-											<Label>Content (Markdown)</Label>
-											<Textarea
-												name="section_content_md[]"
-												className="font-mono"
-												rows={5}
-												defaultValue={s.content_md || ""}
-											/>
-										</div>
-									</div>
-								))}
-								<div className="flex gap-3">
-									<Button type="submit">Save Sections</Button>
+
+														<AlertDialog>
+															<AlertDialogTrigger asChild>
+																<Button
+																	type="button"
+																	variant="ghost"
+																	size="sm"
+																	className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+																>
+																	<Trash2 className="h-4 w-4" />
+																</Button>
+															</AlertDialogTrigger>
+															<AlertDialogContent>
+																<AlertDialogHeader>
+																	<AlertDialogTitle>Delete section?</AlertDialogTitle>
+																	<AlertDialogDescription>This action cannot be undone.</AlertDialogDescription>
+																</AlertDialogHeader>
+																<AlertDialogFooter>
+																	<AlertDialogCancel>Cancel</AlertDialogCancel>
+																	<AlertDialogAction
+																		onClick={() => {
+																			const f = document.getElementById(`delete-section-${s.id}`) as HTMLFormElement
+																			f?.requestSubmit()
+																		}}
+																	>
+																		Delete
+																	</AlertDialogAction>
+																</AlertDialogFooter>
+															</AlertDialogContent>
+														</AlertDialog>
+													</div>
+												</div>
+											</motion.div>
+										)
+									})}
 								</div>
+
+								{/* Save Button - only show if editing */}
+								{editingSections.size > 0 && (
+									<div className="flex justify-end pt-4 border-t">
+										<Button type="submit" className="gap-2">
+											<Save className="h-4 w-4" />
+											Save Changes
+										</Button>
+									</div>
+								)}
 							</form>
-							
-							{/* Hidden delete forms - moved outside the main sections form */}
+
+							{/* Hidden delete forms */}
 							{sections.map((s) => (
 								<form key={`delete-${s.id}`} id={`delete-section-${s.id}`} method="post" style={{ display: 'none' }}>
 									<input type="hidden" name="intent" value="delete_section" />
@@ -379,28 +477,77 @@ export default function EditProject() {
 								</form>
 							))}
 
-							{/* Add new section */}
-							<form method="post" className="mt-6 space-y-3" onSubmit={validateNew}>
-								<input type="hidden" name="intent" value="add_section" />
-								{err && <div className="text-red-600 text-sm">{err}</div>}
-								<div className="grid grid-cols-1 gap-3 md:grid-cols-6">
-									<div className="space-y-1 md:col-span-3">
-										<Label htmlFor="new_kind">New Kind</Label>
-										<KindSelector name="new_kind" kinds={kinds} />
-									</div>
-									<div className="space-y-1 md:col-span-2">
-										<Label htmlFor="new_position">Position</Label>
-										<Input id="new_position" name="new_position" type="number" placeholder="(optional)" />
-									</div>
-								</div>
-								<div className="space-y-1">
-									<Label htmlFor="new_content_md">Content (Markdown)</Label>
-									<Textarea id="new_content_md" name="new_content_md" rows={4} className="font-mono" />
-								</div>
-								<div>
-									<Button type="submit">Add Section</Button>
-								</div>
-							</form>
+							{/* Add New Section Form */}
+							{showAddForm && (
+								<motion.div
+									initial={{ opacity: 0, y: 20 }}
+									animate={{ opacity: 1, y: 0 }}
+									className="rounded-2xl border border-dashed border-gray-300 p-6 dark:border-gray-600"
+								>
+									<form method="post" onSubmit={validateNew} className="space-y-4">
+										<input type="hidden" name="intent" value="add_section" />
+										
+										<div className="flex items-center justify-between mb-4">
+											<h3 className="font-medium text-lg">Add New Section</h3>
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onClick={() => setShowAddForm(false)}
+												className="h-8 w-8 p-0"
+											>
+												<X className="h-4 w-4" />
+											</Button>
+										</div>
+										
+										{err && <div className="text-red-600 text-sm mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/20">{err}</div>}
+										
+										<div className="space-y-4">
+											<div>
+												<Label htmlFor="new_content_md" className="mb-2 block">Content *</Label>
+												<Textarea
+													id="new_content_md"
+													name="new_content_md"
+													rows={4}
+													className="font-mono"
+													placeholder="Enter the section content..."
+													required
+												/>
+											</div>
+											
+											<div className="grid grid-cols-2 gap-4">
+												<div>
+													<Label htmlFor="new_kind" className="mb-2 block">Kind *</Label>
+													<KindSelector name="new_kind" kinds={kinds} />
+												</div>
+												<div>
+													<Label htmlFor="new_position" className="mb-2 block">Position</Label>
+													<Input
+														id="new_position"
+														name="new_position"
+														type="number"
+														placeholder="Optional"
+													/>
+												</div>
+											</div>
+										</div>
+										
+										<div className="flex gap-3 pt-4">
+											<Button type="submit" className="gap-2">
+												<Plus className="h-4 w-4" />
+												Add Section
+											</Button>
+											<Button
+												type="button"
+												variant="outline"
+												onClick={() => setShowAddForm(false)}
+											>
+												Cancel
+											</Button>
+										</div>
+									</form>
+								</motion.div>
+							)}
 						</div>
 
 						{/* Danger zone: delete project */}

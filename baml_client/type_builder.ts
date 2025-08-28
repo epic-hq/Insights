@@ -35,6 +35,8 @@ export default class TypeBuilder {
     
     AutoInsightsResponse: ClassViewer<'AutoInsightsResponse', "executive_summary" | "top_opportunities" | "critical_insights" | "persona_analysis" | "competitive_considerations" | "immediate_actions" | "strategic_recommendations">;
     
+    Category: ClassViewer<'Category', "id" | "label" | "weight">;
+    
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
     
     EvidenceLinkProposal: ClassViewer<'EvidenceLinkProposal', "evidence_id" | "rationale" | "confidence">;
@@ -50,6 +52,10 @@ export default class TypeBuilder {
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
     GapAnalysis: ClassViewer<'GapAnalysis', "unanswered_questions" | "partially_answered_questions" | "follow_up_recommendations" | "suggested_interview_topics">;
+    
+    GenerateInputs: ClassViewer<'GenerateInputs', "target_org" | "target_roles" | "research_goal" | "research_goal_details" | "assumptions" | "unknowns" | "custom_instructions" | "session_id" | "round" | "total_per_round" | "per_category_min" | "per_category_max" | "interview_time_limit">;
+    
+    HistoryItem: ClassViewer<'HistoryItem', "questionId" | "action" | "ts" | "interviewId">;
     
     InsightMatch: ClassViewer<'InsightMatch', "question" | "insights_found" | "confidence" | "answer_summary" | "evidence">;
     
@@ -79,15 +85,25 @@ export default class TypeBuilder {
     
     ProjectAnalysis: ClassViewer<'ProjectAnalysis', "research_goal" | "question_answers" | "gap_analysis" | "key_discoveries" | "confidence_score" | "next_steps">;
     
+    Question: ClassViewer<'Question', "id" | "text" | "categoryId" | "rationale" | "tags" | "scores" | "status" | "source" | "displayOrder" | "externalRef">;
+    
+    QuestionPolicy: ClassViewer<'QuestionPolicy', "totalPerRound" | "perCategoryMin" | "perCategoryMax" | "dedupeWindowRounds" | "balanceBy">;
+    
+    QuestionSet: ClassViewer<'QuestionSet', "sessionId" | "policy" | "categories" | "questions" | "history" | "round">;
+    
     ResearchGoal: ClassViewer<'ResearchGoal', "goal" | "icp" | "role" | "questions">;
     
     ResearchQuestion: ClassViewer<'ResearchQuestion', "question" | "priority">;
     
     ResearchQuestionSuggestions: ClassViewer<'ResearchQuestionSuggestions', "core_questions" | "behavioral_questions" | "pain_point_questions" | "solution_questions" | "context_questions">;
     
+    Scores: ClassViewer<'Scores', "goalMatch" | "novelty" | "importance" | "uncertainty">;
+    
     Set: ClassViewer<'Set', "name" | "description" | "members">;
     
     SetRecord: ClassViewer<'SetRecord', "term" | "definition">;
+    
+    Source: ClassViewer<'Source'>;
     
     Spectrum: ClassViewer<'Spectrum', "axis" | "rationale" | "supporting_evidence" | "alternatives">;
     
@@ -104,7 +120,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","Chapter","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Set","SetRecord","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","Category","Chapter","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","Question","QuestionPolicy","QuestionSet","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -126,6 +142,10 @@ export default class TypeBuilder {
         
         this.AutoInsightsResponse = this.tb.classViewer("AutoInsightsResponse", [
           "executive_summary","top_opportunities","critical_insights","persona_analysis","competitive_considerations","immediate_actions","strategic_recommendations",
+        ]);
+        
+        this.Category = this.tb.classViewer("Category", [
+          "id","label","weight",
         ]);
         
         this.Chapter = this.tb.classViewer("Chapter", [
@@ -158,6 +178,14 @@ export default class TypeBuilder {
         
         this.GapAnalysis = this.tb.classViewer("GapAnalysis", [
           "unanswered_questions","partially_answered_questions","follow_up_recommendations","suggested_interview_topics",
+        ]);
+        
+        this.GenerateInputs = this.tb.classViewer("GenerateInputs", [
+          "target_org","target_roles","research_goal","research_goal_details","assumptions","unknowns","custom_instructions","session_id","round","total_per_round","per_category_min","per_category_max","interview_time_limit",
+        ]);
+        
+        this.HistoryItem = this.tb.classViewer("HistoryItem", [
+          "questionId","action","ts","interviewId",
         ]);
         
         this.InsightMatch = this.tb.classViewer("InsightMatch", [
@@ -216,6 +244,18 @@ export default class TypeBuilder {
           "research_goal","question_answers","gap_analysis","key_discoveries","confidence_score","next_steps",
         ]);
         
+        this.Question = this.tb.classViewer("Question", [
+          "id","text","categoryId","rationale","tags","scores","status","source","displayOrder","externalRef",
+        ]);
+        
+        this.QuestionPolicy = this.tb.classViewer("QuestionPolicy", [
+          "totalPerRound","perCategoryMin","perCategoryMax","dedupeWindowRounds","balanceBy",
+        ]);
+        
+        this.QuestionSet = this.tb.classViewer("QuestionSet", [
+          "sessionId","policy","categories","questions","history","round",
+        ]);
+        
         this.ResearchGoal = this.tb.classViewer("ResearchGoal", [
           "goal","icp","role","questions",
         ]);
@@ -228,12 +268,20 @@ export default class TypeBuilder {
           "core_questions","behavioral_questions","pain_point_questions","solution_questions","context_questions",
         ]);
         
+        this.Scores = this.tb.classViewer("Scores", [
+          "goalMatch","novelty","importance","uncertainty",
+        ]);
+        
         this.Set = this.tb.classViewer("Set", [
           "name","description","members",
         ]);
         
         this.SetRecord = this.tb.classViewer("SetRecord", [
           "term","definition",
+        ]);
+        
+        this.Source = this.tb.classViewer("Source", [
+          
         ]);
         
         this.Spectrum = this.tb.classViewer("Spectrum", [

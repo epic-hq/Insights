@@ -15,6 +15,7 @@ import { ClientOnly } from "~/components/ClientOnly"
 import ErrorBoundaryComponent from "~/components/ErrorBoundary"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import { ThemeProvider } from "~/contexts/ThemeContext"
+import { PostHogProvider } from 'posthog-js/react'
 import { loadContext } from "~/server/load-context"
 import type { Route } from "./+types/root"
 import { ClientHintCheck, getHints } from "./services/client-hints"
@@ -76,9 +77,19 @@ export default function App({ loaderData }: Route.ComponentProps) {
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}
 			<ThemeProvider defaultTheme="light">
-				<NotificationProvider>
-					<Outlet />
-				</NotificationProvider>
+				<PostHogProvider
+					apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+					options={{
+						api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+						defaults: "2025-05-24",
+						capture_exceptions: true, // This enables capturing exceptions using Error Tracking, set to false if you don't want this
+						debug: import.meta.env.MODE === "development",
+					}}
+				>
+					<NotificationProvider>
+						<Outlet />
+					</NotificationProvider>
+				</PostHogProvider>
 			</ThemeProvider>
 			{/* </AuthProvider> */}
 		</ClientOnly>

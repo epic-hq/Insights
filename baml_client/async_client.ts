@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, type HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, Chapter, Emotions, EvidenceLinkProposal, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, Category, Chapter, Emotions, EvidenceLinkProposal, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, Question, QuestionPolicy, QuestionSet, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -479,10 +479,10 @@ export class BamlAsyncClient {
     }
   }
   
-  async GenerateResearchQuestions(
-      target_org: string,target_roles: string,research_goal: string,research_goal_details: string,assumptions: string,unknowns: string,custom_instructions: string,
+  async GenerateQuestionSet(
+      inputs: types.GenerateInputs,
       __baml_options__?: BamlCallOptions
-  ): Promise<types.ResearchQuestionSuggestions> {
+  ): Promise<types.QuestionSet> {
     try {
       const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
       const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
@@ -491,9 +491,9 @@ export class BamlAsyncClient {
         Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
       );
       const raw = await this.runtime.callFunction(
-        "GenerateResearchQuestions",
+        "GenerateQuestionSet",
         {
-          "target_org": target_org,"target_roles": target_roles,"research_goal": research_goal,"research_goal_details": research_goal_details,"assumptions": assumptions,"unknowns": unknowns,"custom_instructions": custom_instructions
+          "inputs": inputs
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),
@@ -501,7 +501,7 @@ export class BamlAsyncClient {
         collector,
         env,
       )
-      return raw.parsed(false) as types.ResearchQuestionSuggestions
+      return raw.parsed(false) as types.QuestionSet
     } catch (error) {
       throw toBamlError(error);
     }
@@ -1053,10 +1053,10 @@ class BamlStreamClient {
     }
   }
   
-  GenerateResearchQuestions(
-      target_org: string,target_roles: string,research_goal: string,research_goal_details: string,assumptions: string,unknowns: string,custom_instructions: string,
+  GenerateQuestionSet(
+      inputs: types.GenerateInputs,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, collector?: Collector | Collector[], env?: Record<string, string | undefined> }
-  ): BamlStream<partial_types.ResearchQuestionSuggestions, types.ResearchQuestionSuggestions> {
+  ): BamlStream<partial_types.QuestionSet, types.QuestionSet> {
     try {
       const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
       const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
@@ -1065,9 +1065,9 @@ class BamlStreamClient {
         Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
       );
       const raw = this.runtime.streamFunction(
-        "GenerateResearchQuestions",
+        "GenerateQuestionSet",
         {
-          "target_org": target_org,"target_roles": target_roles,"research_goal": research_goal,"research_goal_details": research_goal_details,"assumptions": assumptions,"unknowns": unknowns,"custom_instructions": custom_instructions
+          "inputs": inputs
         },
         undefined,
         this.ctxManager.cloneContext(),
@@ -1076,10 +1076,10 @@ class BamlStreamClient {
         collector,
         env,
       )
-      return new BamlStream<partial_types.ResearchQuestionSuggestions, types.ResearchQuestionSuggestions>(
+      return new BamlStream<partial_types.QuestionSet, types.QuestionSet>(
         raw,
-        (a): partial_types.ResearchQuestionSuggestions => a,
-        (a): types.ResearchQuestionSuggestions => a,
+        (a): partial_types.QuestionSet => a,
+        (a): types.QuestionSet => a,
         this.ctxManager.cloneContext(),
       )
     } catch (error) {

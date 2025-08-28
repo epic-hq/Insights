@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  Chapter,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Set,  SetRecord,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  Category,  Chapter,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  Question,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -59,6 +59,11 @@ export namespace partial_types {
       competitive_considerations: string[]
       immediate_actions: ActionButton[]
       strategic_recommendations: string[]
+    }
+    export interface Category {
+      id?: string | null
+      label?: string | null
+      weight?: number | null
     }
     export interface Chapter {
       start_ms?: number | null
@@ -129,6 +134,27 @@ export namespace partial_types {
       partially_answered_questions: string[]
       follow_up_recommendations: string[]
       suggested_interview_topics: string[]
+    }
+    export interface GenerateInputs {
+      target_org?: string | null
+      target_roles?: string | null
+      research_goal?: string | null
+      research_goal_details?: string | null
+      assumptions?: string | null
+      unknowns?: string | null
+      custom_instructions?: string | null
+      session_id?: string | null
+      round?: number | null
+      total_per_round?: number | null
+      per_category_min?: number | null
+      per_category_max?: number | null
+      interview_time_limit?: number | null
+    }
+    export interface HistoryItem {
+      questionId?: string | null
+      action?: "shown" | "rejected" | "asked" | "answered" | null
+      ts?: string | null
+      interviewId?: string | null
     }
     export interface InsightMatch {
       question?: string | null
@@ -289,6 +315,33 @@ export namespace partial_types {
       confidence_score?: number | null
       next_steps: string[]
     }
+    export interface Question {
+      id?: string | null
+      text?: string | null
+      categoryId?: string | null
+      rationale?: string | null
+      tags?: string[] | null
+      scores?: Scores | null
+      status?: "proposed" | "shown" | "rejected" | "asked" | "answered" | null
+      source?: "llm" | "curated" | "custom" | null
+      displayOrder?: number | null
+      externalRef?: string | null
+    }
+    export interface QuestionPolicy {
+      totalPerRound?: number | null
+      perCategoryMin?: number | null
+      perCategoryMax?: number | null
+      dedupeWindowRounds?: number | null
+      balanceBy?: string[] | null
+    }
+    export interface QuestionSet {
+      sessionId?: string | null
+      policy?: QuestionPolicy | null
+      categories: Category[]
+      questions: Question[]
+      history: HistoryItem[]
+      round?: number | null
+    }
     export interface ResearchGoal {
       goal?: string | null
       icp?: string | null
@@ -306,6 +359,12 @@ export namespace partial_types {
       solution_questions: SuggestedQuestion[]
       context_questions: SuggestedQuestion[]
     }
+    export interface Scores {
+      goalMatch?: number | null
+      novelty?: number | null
+      importance?: number | null
+      uncertainty?: number | null
+    }
     export interface Set {
       name?: string | null
       description?: string | null
@@ -314,6 +373,8 @@ export namespace partial_types {
     export interface SetRecord {
       term?: string | null
       definition?: string | null
+    }
+    export interface Source {
     }
     export interface Spectrum {
       axis?: string | null

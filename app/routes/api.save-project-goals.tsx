@@ -3,6 +3,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { upsertProjectSection } from "~/features/projects/db"
 import { getServerClient } from "~/lib/supabase/server"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import type { Database } from "~/types"
 
 interface ProjectSectionData {
 	project_id: string
@@ -15,12 +16,12 @@ interface ProjectSectionData {
 const sectionFormatters = {
 	array_numbered: (data: string[], fieldName: string) => ({
 		content_md: data.map((item, index) => `${index + 1}. ${item}`).join("\n"),
-		meta: { [fieldName]: data, count: data.length }
+		meta: { [fieldName]: data }
 	}),
 	
 	array_spaced: (data: string[], fieldName: string) => ({
 		content_md: data.map((item, index) => `${index + 1}. ${item}`).join("\n\n"),
-		meta: { [fieldName]: data, count: data.length }
+		meta: { [fieldName]: data }
 	}),
 	
 	goal_with_details: (goal: string, details: string) => ({
@@ -36,14 +37,12 @@ const sectionFormatters = {
 
 // Data-independent section processor
 function processSection(kind: string, data: unknown): Omit<ProjectSectionData, 'project_id'> | null {
-	const baseTimestamp = { lastUpdated: new Date().toISOString() }
-	
 	switch (kind) {
 		case "target_orgs":
 		case "target_roles":
 			if (Array.isArray(data) && data.length > 0) {
 				const formatted = sectionFormatters.array_numbered(data, kind)
-				return { kind, ...formatted, meta: { ...formatted.meta, ...baseTimestamp } }
+				return { kind, ...formatted }
 			}
 			break
 			
@@ -52,7 +51,7 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, '
 				const goalData = data as { research_goal: string; research_goal_details?: string }
 				if (goalData.research_goal?.trim()) {
 					const formatted = sectionFormatters.goal_with_details(goalData.research_goal, goalData.research_goal_details || "")
-					return { kind, ...formatted, meta: { ...formatted.meta, ...baseTimestamp } }
+					return { kind, ...formatted }
 				}
 			}
 			break
@@ -61,14 +60,14 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, '
 		case "unknowns":
 			if (Array.isArray(data) && data.length > 0) {
 				const formatted = sectionFormatters.array_spaced(data, kind)
-				return { kind, ...formatted, meta: { ...formatted.meta, ...baseTimestamp } }
+				return { kind, ...formatted }
 			}
 			break
 			
 		case "custom_instructions":
 			if (typeof data === 'string' && data.trim()) {
 				const formatted = sectionFormatters.plain_text(data, kind)
-				return { kind, ...formatted, meta: { ...formatted.meta, ...baseTimestamp } }
+				return { kind, ...formatted }
 			}
 			break
 	}
@@ -95,7 +94,7 @@ async function saveSingleSection(supabase: SupabaseClient, projectId: string, se
 		data: {
 			project_id: projectId,
 			...processedSection,
-			meta: processedSection.meta as Record<string, unknown>,
+			meta: processedSection.meta as Database["public"]["Tables"]["project_sections"]["Insert"]["meta"],
 		},
 	})
 }
@@ -118,6 +117,12 @@ export async function action({ request }: ActionFunctionArgs) {
 		const formData = await request.formData()
 		const action = formData.get("action") as string
 		const projectId = formData.get("projectId") as string
+
+		// Debug: Log all form data
+		consola.log("Received form data:")
+		for (const [key, value] of formData.entries()) {
+			consola.log(`  ${key}: ${typeof value === 'string' ? value.substring(0, 100) : value}`)
+		}
 
 		if (!projectId) {
 			return Response.json({ error: "Project ID is required" }, { status: 400 })
@@ -150,18 +155,30 @@ export async function action({ request }: ActionFunctionArgs) {
 			
 			case "save-project-goals":
 			default: {
-				// Extract all form data dynamically
-				const formFields = {
-					target_orgs: JSON.parse(formData.get("target_orgs") as string || "[]"),
-					target_roles: JSON.parse(formData.get("target_roles") as string || "[]"),
-					research_goal: {
-						research_goal: formData.get("research_goal") as string,
-						research_goal_details: formData.get("research_goal_details") as string
-					},
-					assumptions: JSON.parse(formData.get("assumptions") as string || "[]"),
-					unknowns: JSON.parse(formData.get("unknowns") as string || "[]"),
-					custom_instructions: formData.get("custom_instructions") as string
+				// Extract all form data dynamically with safe parsing
+				const safeParseArray = (value: string | null): string[] => {
+					if (!value) return []
+					try {
+						const parsed = JSON.parse(value)
+						return Array.isArray(parsed) ? parsed : []
+					} catch {
+						return []
+					}
 				}
+
+				const formFields = {
+					target_orgs: safeParseArray(formData.get("target_orgs") as string),
+					target_roles: safeParseArray(formData.get("target_roles") as string),
+					research_goal: {
+						research_goal: formData.get("research_goal") as string || "",
+						research_goal_details: formData.get("research_goal_details") as string || ""
+					},
+					assumptions: safeParseArray(formData.get("assumptions") as string),
+					unknowns: safeParseArray(formData.get("unknowns") as string),
+					custom_instructions: formData.get("custom_instructions") as string || ""
+				}
+
+				consola.log("Parsed form fields:", formFields)
 
 				// Process all sections using the generic processor
 				const sectionsToSave: ProjectSectionData[] = []
@@ -179,14 +196,26 @@ export async function action({ request }: ActionFunctionArgs) {
 				// Save all sections
 				const results = []
 				for (const section of sectionsToSave) {
-					const result = await upsertProjectSection({
-						supabase,
-						data: {
-							...section,
-							meta: section.meta as Record<string, unknown>
-						},
-					})
-					results.push(result)
+					try {
+						consola.log(`Saving section ${section.kind}:`, section)
+						const result = await upsertProjectSection({
+							supabase,
+							data: {
+								...section,
+								meta: section.meta as Database["public"]["Tables"]["project_sections"]["Insert"]["meta"],
+							},
+						})
+						
+						if ('error' in result && result.error) {
+							consola.error(`Failed to save section ${section.kind}:`, result.error)
+							return Response.json({ error: `Failed to save ${section.kind}: ${result.error}` }, { status: 400 })
+						}
+						
+						results.push(result)
+					} catch (error) {
+						consola.error(`Exception saving section ${section.kind}:`, error)
+						return Response.json({ error: `Exception saving ${section.kind}: ${error}` }, { status: 500 })
+					}
 				}
 
 				consola.log(`Successfully saved ${results.length} project sections for project ${projectId}`)

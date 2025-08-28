@@ -108,7 +108,9 @@ export default function Dashboard({
 						</Link>
 					</div>
 				</div>
-				<AddInterviewButton />
+				<div className="flex items-center gap-3">
+					<AddInterviewButton />
+				</div>
 				{/* <FilterBar segments={["Students", "Teachers", "Admins"]} /> */}
 			</div>
 			{interviews.length > 0 && (

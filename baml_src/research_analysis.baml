@@ -164,95 +164,265 @@ function GenerateExecutiveSummary(
   "#
 }
 
-// Smart Research Question Generation for Onboarding
+// // Smart Research Question Generation for Onboarding
+// class SuggestedQuestion {
+//   question string
+//   rationale string // Why this question is important for their research
+//   interview_type "user_interview" | "stakeholder_interview" | "expert_interview"
+//   priority int @description(#" 1 - 3 with 1 being highest "#)
+// }
+
+// class ResearchQuestionSuggestions {
+//   core_questions SuggestedQuestion[] // 3-4 essential questions
+//   behavioral_questions SuggestedQuestion[] // Understanding user behavior
+//   pain_point_questions SuggestedQuestion[] // Identifying problems
+//   solution_questions SuggestedQuestion[] // Validating solutions
+//   context_questions SuggestedQuestion[] // Understanding environment/constraints
+// }
+
+// function GenerateResearchQuestions(
+// 	target_org: string,
+// 	target_roles: string,
+// 	research_goal: string,
+// 	research_goal_details: string,
+// 	assumptions: string,
+// 	unknowns: string,
+// 	custom_instructions: string
+// ) -> ResearchQuestionSuggestions {
+//   client CustomGPT4o
+//   prompt #"
+//     You are an expert UX researcher helping someone design interview questions.
+
+//     CONTEXT:
+//     - Target Audience: {{ target_org }}
+//     - User Role/Segment: {{ target_roles }}
+//     - Research Goal: {{ research_goal }}
+// 		- Research Goal Details: {{ research_goal_details }}
+// 		- Assumptions: {{ assumptions }}
+// 		- Unknowns: {{ unknowns }}
+
+// 		If we have custom_instructions, use them, otherwise follow the guidlines below.
+
+// 		CUSTOM_INSTRUCTIONS:
+
+//     {{ custom_instructions }}
+
+//     GUIDELINES:
+
+//     Generate specific, actionable interview questions organized by category.
+
+//     1. Questions should be open-ended and behavior-focused
+//     2. Avoid leading questions or yes/no questions
+//     3. Include follow-up prompts in the question
+//     4. Make questions specific to their ICP and goal
+//     5. Prioritize questions that will reveal real user needs and pain points
+
+//     CATEGORIES:
+
+//     Core Questions (3-4 must-ask questions):
+//     - Essential questions that directly address their research goal
+//     - Should uncover key insights about user behavior and needs
+
+//     Behavioral Questions:
+//     - How users currently solve problems
+//     - Workflow and process understanding
+//     - Decision-making factors
+
+//     Pain Point Questions:
+//     - Current frustrations and challenges
+//     - Gaps in existing solutions
+//     - Cost of current approaches
+
+//     Solution Questions (if applicable):
+//     - Validation of potential solutions
+//     - Feature importance and prioritization
+//     - Willingness to pay or adopt
+
+//     Context Questions:
+//     - Environmental factors
+//     - Constraints and limitations
+//     - Stakeholder influences
+
+//     For each question provide:
+//     - The specific question text
+//     - Why it's important for their research (rationale)
+//     - What type of interview it's best for
+//     - Priority level
+
+// 		Make questions helpful, unique, conversational and natural, as if asking a friend.
+//     Avoid jargon and make them appropriate for the target audience.
+
+// 		Output format:
+// 		{{ ctx.output_format }}
+//   "#
+// }
+
+// ---------- Core data classes ----------
+class Category {
+  id string @description("Stable string ID for the category (e.g., 'goals', 'pain'). Use lowercase kebab/camel; must be unique within this QuestionSet.")
+  label string @description("Human-readable category name shown in the UI (e.g., 'Goals & Outcomes').")
+  weight float? @description("Optional multiplier (>=0.5 to <=1.5 typical) that boosts selection priority for this category. default = 1.0")
+}
+
+class Scores {
+  goalMatch float @description("0..1. How strongly this question aligns with the user's stated goals. Higher = more aligned.")
+  novelty float @description("0..1. How different this question is from previously shown/asked items. Higher = more novel.")
+  importance float @description("0..1. Domain importance for understanding needs vs potential. Weight this highest.")
+  uncertainty float? @description("0..1. Confidence gap. Higher = exploring unknowns; helps diversify when uncertainty is high.")
+}
+
+class Source {
+
+}
+
+class Question {
+  id string @description("Unique string identifier (uuid/ulid-like). Must be unique across this QuestionSet.")
+  text string @description("The complete, conversational question text as you would ask a person. Include natural follow-ups when helpful.")
+  categoryId string @description("Category.id this question belongs to. Must match a Category in this QuestionSet.")
+  rationale string? @description("One short sentence on why this question matters for needs/potential.")
+  tags string[]? @description("Optional short tags for filtering (e.g., 'pricing', 'workflow', 'adoption').")
+  scores Scores @description("Scoring object. Provide values in [0,1] per field; the app computes a composite.")
+  status "proposed" | "shown" | "rejected" | "asked" | "answered" @description("Lifecycle state. New questions must start as 'proposed'.")
+  source "llm" | "curated" | "custom" @description("Origin of the question. Use 'llm' for generated items by default.")
+  displayOrder int? @description("Optional UI order hint. Leave unset; the app may assign.")
+  externalRef string? @description("Optional reference to a template/library identifier for provenance.")
+}
+
+class HistoryItem {
+  questionId string @description("The Question.id this event relates to.")
+  action "shown" | "rejected" | "asked" | "answered" @description("What happened to the question at the given timestamp.")
+  ts string @description("ISO-8601 timestamp of the event (e.g., '2025-08-27T04:15:00Z').")
+  interviewId string? @description("Optional interview identifier to tie this event to a specific interview.")
+}
+
+class QuestionPolicy {
+  totalPerRound int @description("Maximum number of questions to surface in the next round.")
+  perCategoryMin int? @description("Minimum number to include from each category for coverage. Use 0–2 typically.")
+  perCategoryMax int? @description("Maximum number allowed from any single category to avoid flooding.")
+  dedupeWindowRounds int? @description("How many previous rounds to consider for avoiding repeats. Use 1–3.")
+  balanceBy string[]? @description("Balancing dimensions. Usually include 'category' and optionally 'novelty' or 'importance'.")
+}
+
+class QuestionSet {
+  sessionId string @description("Stable session identifier provided by the caller; reuse across rounds for the same user/research flow.")
+  policy QuestionPolicy @description("Selection policy used by the app when choosing the next round.")
+  categories Category[] @description("The complete list of categories available for this session. Keep to 5–8.")
+  questions Question[] @description("Pool of proposed questions. Start all as 'proposed'. Do not include duplicates.")
+  history HistoryItem[] @description("Past events for this session. If the caller provides prior history, do not alter it; only append in the app.")
+  round int @description("Current round number (1-based). Echo back the caller-provided value.")
+}
+
+// ---------- Legacy compatibility (kept) ----------
 class SuggestedQuestion {
-  question string
-  rationale string // Why this question is important for their research
-  interview_type "user_interview" | "stakeholder_interview" | "expert_interview"
-  priority int @description(#" 1 - 3 with 1 being highest "#)
+  question string @description("Plain-text question wording.")
+  rationale string @description("Why this question is important for research.")
+  interview_type "user_interview" | "stakeholder_interview" | "expert_interview" @description("Primary interview type this question suits best.")
+  priority int @description("1..3 (1 = highest). Indicate urgency/importance for early rounds.")
 }
 
 class ResearchQuestionSuggestions {
-  core_questions SuggestedQuestion[] // 3-4 essential questions
-  behavioral_questions SuggestedQuestion[] // Understanding user behavior
-  pain_point_questions SuggestedQuestion[] // Identifying problems
-  solution_questions SuggestedQuestion[] // Validating solutions
-  context_questions SuggestedQuestion[] // Understanding environment/constraints
+  core_questions SuggestedQuestion[] @description("3–4 must-ask questions aligned to the research goal.")
+  behavioral_questions SuggestedQuestion[] @description("Questions to understand current workflows/behaviors.")
+  pain_point_questions SuggestedQuestion[] @description("Questions that surface current problems and friction.")
+  solution_questions SuggestedQuestion[] @description("Questions to validate potential solutions and value.")
+  context_questions SuggestedQuestion[] @description("Questions to capture environment, constraints, stakeholders.")
 }
 
-function GenerateResearchQuestions(
-	target_org: string,
-	target_roles: string,
-	research_goal: string,
-	research_goal_details: string,
-	assumptions: string,
-	unknowns: string,
-	custom_instructions: string
-) -> ResearchQuestionSuggestions {
+// ---------- Inputs ----------
+class GenerateInputs {
+  target_org string @description("Target organization context (industry, size, market).")
+  target_roles string @description("Primary user roles/segments to interview (comma-separated or natural language).")
+  research_goal string @description("Short statement of the overarching research goal.")
+  research_goal_details string @description("Specific details and hypotheses relevant to this study.")
+  assumptions string @description("Key assumptions the team currently holds.")
+  unknowns string @description("Open questions and uncertainties to investigate.")
+  custom_instructions string @description("Optional caller-provided guidance that overrides defaults.")
+  session_id string @description("Session identifier to embed into the returned QuestionSet.sessionId.")
+  round int @description("1-based round number provided by the caller.")
+  total_per_round int? @description("Default 25: number of questions to show per round.")
+  per_category_min int? @description("Default 3: minimum per category.")
+  per_category_max int? @description("Default 5: maximum per category.")
+	interview_time_limit int? @description("Default 60: Expected interview time in minutes, use this to guide the selection of must ask questions.")
+}
+
+// ---------- Main generation function ----------
+function GenerateQuestionSet(
+  inputs: GenerateInputs
+) -> QuestionSet {
   client CustomGPT4o
   prompt #"
-    You are an expert UX researcher helping someone design interview questions.
+  You are an expert UX researcher producing a JSON QuestionSet to guide interviews.
+	You will generate a larger set than can be asked in the available time, and prioritize the most important questions based on importance, goalMatch, and novelty.
+	Estimate 4-7 minutes per question and a total time of: {{ inputs.interview_time_limit }} minutes.
+	This accounts for the interviewer to modify questions and have backups.
 
-    CONTEXT:
-    - Target Audience: {{ target_org }}
-    - User Role/Segment: {{ target_roles }}
-    - Research Goal: {{ research_goal }}
-		- Research Goal Details: {{ research_goal_details }}
-		- Assumptions: {{ assumptions }}
-		- Unknowns: {{ unknowns }}
+  CONTEXT
+  - Target Org: {{ inputs.target_org }}
+  - Roles/Segments: {{ inputs.target_roles }}
+  - Research Goal: {{ inputs.research_goal }}
+  - Goal Details: {{ inputs.research_goal_details }}
+  - Assumptions: {{ inputs.assumptions }}
+  - Unknowns: {{ inputs.unknowns }}
 
-		If we have custom_instructions, use them, otherwise follow the guidlines below.
+  INSTRUCTIONS
+  - If custom_instructions exist, follow them; otherwise follow GUIDELINES.
+  - GUIDELINES:
+    1) Questions must be open-ended, behavior-focused, and non-leading.
+    2) Include natural follow-ups in the question text when helpful.
+    3) Tailor to the ICP and the stated goal.
+    4) Prefer questions that expose real needs, pains, constraints, and willingness.
+    5) Provide balanced coverage across categories:
+       context, goals, pain, workflow, motivation, constraints, willingness.
+    6) Provide scores in [0,1]: importance (highest signal), goalMatch, novelty.
+    7) New questions must have status 'proposed'.
+    8) Use unique string IDs for questions (uuid/ulid-like).
+    9) Provide category weights if some categories are more informative for the goal.
 
-		CUSTOM_INSTRUCTIONS:
+  OUTPUT SHAPE
+  Return only valid JSON matching QuestionSet:
+  {
+    "sessionId": string,
+    "policy": {
+      "totalPerRound": number,
+      "perCategoryMin": number,
+      "perCategoryMax": number,
+      "dedupeWindowRounds": number,
+      "balanceBy": ["category","novelty"]
+    },
+    "categories": Category[],
+    "questions": Question[],
+    "history": [],
+    "round": number
+  }
 
-    {{ custom_instructions }}
+  DEFAULTS
+  - policy.totalPerRound = {{ inputs.total_per_round }} or twice as many as interview_time_limit permits.
+  - policy.perCategoryMin = {{ inputs.per_category_min }}
+  - policy.perCategoryMax = {{ inputs.per_category_max }}
+  - policy.dedupeWindowRounds = 2
+  - policy.balanceBy = ["category","novelty"]
 
-    GUIDELINES:
-
-    Generate specific, actionable interview questions organized by category.
-
-    1. Questions should be open-ended and behavior-focused
-    2. Avoid leading questions or yes/no questions
-    3. Include follow-up prompts in the question
-    4. Make questions specific to their ICP and goal
-    5. Prioritize questions that will reveal real user needs and pain points
-
-    CATEGORIES:
-
-    Core Questions (3-4 must-ask questions):
-    - Essential questions that directly address their research goal
-    - Should uncover key insights about user behavior and needs
-
-    Behavioral Questions:
-    - How users currently solve problems
-    - Workflow and process understanding
-    - Decision-making factors
-
-    Pain Point Questions:
-    - Current frustrations and challenges
-    - Gaps in existing solutions
-    - Cost of current approaches
-
-    Solution Questions (if applicable):
-    - Validation of potential solutions
-    - Feature importance and prioritization
-    - Willingness to pay or adopt
-
-    Context Questions:
-    - Environmental factors
-    - Constraints and limitations
-    - Stakeholder influences
-
-    For each question provide:
-    - The specific question text
-    - Why it's important for their research (rationale)
-    - What type of interview it's best for
-    - Priority level
-
-		Make questions helpful, unique, conversational and natural, as if asking a friend.
-    Avoid jargon and make them appropriate for the target audience.
-
-		Output format:
-		{{ ctx.output_format }}
+  Return JSON only:
+  {{ ctx.output_format }}
   "#
+}
+
+test GenerateQuestionSet_Custom_Instructions2 {
+  functions [GenerateQuestionSet]
+  args {
+		inputs {
+    target_org "Regional nonprofit hospital network (6 clinics, 450-bed hospital)",
+    target_roles "Patients (outpatient), Front-desk staff, Nurses, Primary-care physicians",
+    research_goal "Improve patient intake and follow-up experience",
+    research_goal_details "Reduce waiting time, clarify instructions, and raise follow-up adherence for chronic care patients (diabetes, hypertension).",
+    assumptions "Patients miss follow-ups due to confusing discharge instructions; staff tools are fragmented.",
+    unknowns "Which steps create the most confusion? How do staff prioritize time? What would increase adherence?",
+    custom_instructions "Favor plain language for patients 8th-grade reading level; include at least 2 questions about accessibility and language.",
+    session_id "proj_health_001",
+    round 1,
+    total_per_round 25,
+    per_category_min 3,
+    per_category_max 5
+	}
+  }
 }

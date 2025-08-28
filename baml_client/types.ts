@@ -328,6 +328,13 @@ export interface AutoInsightsResponse {
   
 }
 
+export interface Category {
+  id: string
+  label: string
+  weight?: number | null
+  
+}
+
 export interface Chapter {
   start_ms: number
   end_ms?: number | null
@@ -411,6 +418,31 @@ export interface GapAnalysis {
   partially_answered_questions: string[]
   follow_up_recommendations: string[]
   suggested_interview_topics: string[]
+  
+}
+
+export interface GenerateInputs {
+  target_org: string
+  target_roles: string
+  research_goal: string
+  research_goal_details: string
+  assumptions: string
+  unknowns: string
+  custom_instructions: string
+  session_id: string
+  round: number
+  total_per_round?: number | null
+  per_category_min?: number | null
+  per_category_max?: number | null
+  interview_time_limit?: number | null
+  
+}
+
+export interface HistoryItem {
+  questionId: string
+  action: "shown" | "rejected" | "asked" | "answered"
+  ts: string
+  interviewId?: string | null
   
 }
 
@@ -601,6 +633,39 @@ export interface ProjectAnalysis {
   
 }
 
+export interface Question {
+  id: string
+  text: string
+  categoryId: string
+  rationale?: string | null
+  tags?: string[] | null
+  scores: Scores
+  status: "proposed" | "shown" | "rejected" | "asked" | "answered"
+  source: "llm" | "curated" | "custom"
+  displayOrder?: number | null
+  externalRef?: string | null
+  
+}
+
+export interface QuestionPolicy {
+  totalPerRound: number
+  perCategoryMin?: number | null
+  perCategoryMax?: number | null
+  dedupeWindowRounds?: number | null
+  balanceBy?: string[] | null
+  
+}
+
+export interface QuestionSet {
+  sessionId: string
+  policy: QuestionPolicy
+  categories: Category[]
+  questions: Question[]
+  history: HistoryItem[]
+  round: number
+  
+}
+
 export interface ResearchGoal {
   goal: string
   icp: string
@@ -624,6 +689,14 @@ export interface ResearchQuestionSuggestions {
   
 }
 
+export interface Scores {
+  goalMatch: number
+  novelty: number
+  importance: number
+  uncertainty?: number | null
+  
+}
+
 export interface Set {
   name: string
   description: string
@@ -634,6 +707,10 @@ export interface Set {
 export interface SetRecord {
   term: string
   definition: string
+  
+}
+
+export interface Source {
   
 }
 

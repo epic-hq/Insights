@@ -7,6 +7,7 @@ import { I18nextProvider, initReactI18next } from "react-i18next"
 import { HydratedRouter } from "react-router/dom"
 import { getInitialNamespaces } from "remix-i18next/client"
 import i18n from "~/localization/i18n"
+import { PostHogProvider } from "posthog-js/react"
 
 async function hydrate() {
 	// eslint-disable-next-line import/no-named-as-default-member
@@ -37,7 +38,17 @@ async function hydrate() {
 			document,
 			<I18nextProvider i18n={i18next}>
 				<StrictMode>
-					<HydratedRouter />
+					<PostHogProvider
+						apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+						options={{
+							api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+							defaults: "2025-05-24",
+							capture_exceptions: true, // This enables capturing exceptions using Error Tracking, set to false if you don't want this
+							debug: import.meta.env.MODE === "development",
+						}}
+					>
+						<HydratedRouter />
+					</PostHogProvider>
 				</StrictMode>
 			</I18nextProvider>
 		)

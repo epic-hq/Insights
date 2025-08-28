@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, ClientRegistry, Image, Audio, Pdf, Vi
 import { toBamlError, HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, Chapter, Emotions, EvidenceLinkProposal, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Set, SetRecord, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, Category, Chapter, Emotions, EvidenceLinkProposal, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, Question, QuestionPolicy, QuestionSet, ResearchGoal, ResearchQuestion, ResearchQuestionSuggestions, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
 import type TypeBuilder from "./type_builder"
 
 type BamlCallOptions = {
@@ -385,8 +385,8 @@ export class HttpRequest {
     }
   }
   
-  GenerateResearchQuestions(
-      target_org: string,target_roles: string,research_goal: string,research_goal_details: string,assumptions: string,unknowns: string,custom_instructions: string,
+  GenerateQuestionSet(
+      inputs: types.GenerateInputs,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -395,9 +395,9 @@ export class HttpRequest {
         Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
       );
       return this.runtime.buildRequestSync(
-        "GenerateResearchQuestions",
+        "GenerateQuestionSet",
         {
-          "target_org": target_org,"target_roles": target_roles,"research_goal": research_goal,"research_goal_details": research_goal_details,"assumptions": assumptions,"unknowns": unknowns,"custom_instructions": custom_instructions
+          "inputs": inputs
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -816,8 +816,8 @@ export class HttpStreamRequest {
     }
   }
   
-  GenerateResearchQuestions(
-      target_org: string,target_roles: string,research_goal: string,research_goal_details: string,assumptions: string,unknowns: string,custom_instructions: string,
+  GenerateQuestionSet(
+      inputs: types.GenerateInputs,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -826,9 +826,9 @@ export class HttpStreamRequest {
         Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
       );
       return this.runtime.buildRequestSync(
-        "GenerateResearchQuestions",
+        "GenerateQuestionSet",
         {
-          "target_org": target_org,"target_roles": target_roles,"research_goal": research_goal,"research_goal_details": research_goal_details,"assumptions": assumptions,"unknowns": unknowns,"custom_instructions": custom_instructions
+          "inputs": inputs
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

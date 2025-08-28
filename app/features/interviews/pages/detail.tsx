@@ -178,6 +178,13 @@ export default function InterviewDetail() {
 						<div className="flex items-center justify-between gap-3">
 							<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
 							<div className="flex items-center gap-2">
+								<Link
+									to={routes.interviews.realtime(interview.id)}
+									className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
+									title="Start realtime transcription and copilot"
+								>
+									Record Now
+								</Link>
 								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
 									<button
 										onClick={() => {
@@ -199,7 +206,7 @@ export default function InterviewDetail() {
 								)}
 								<Link
 									to={routes.interviews.edit(interview.id)}
-									className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
+									className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
 								>
 									Edit Interview
 								</Link>

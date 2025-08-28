@@ -1,31 +1,49 @@
-test GenerateResearchQuestions_Pizza_Needs {
-  functions [GenerateResearchQuestions]
-  args {
-    icp "mom and pop pizza shops"
-    role "small business owners"
-    research_goal "needs"
-    custom_instructions ""
+test GenerateQuestionSet_Pizza_Needs {
+  functions [GenerateQuestionSet]
+  args { inputs {
+			target_org "mom and pop pizza shops"
+			target_roles "small business owners"
+			research_goal "needs"
+			research_goal_details ""
+			assumptions ""
+			unknowns ""
+			custom_instructions ""
   }
 }
-
-test GenerateResearchQuestions_SaaS_Willingness {
-  functions [GenerateResearchQuestions]
-  args {
-    icp "early-stage SaaS companies"
-    role "founding engineers"
-    research_goal "willingness"
-		custom_instructions ""
-  }
 }
 
-test GenerateResearchQuestions_Custom_Instructions {
-  functions [GenerateResearchQuestions]
-  args {
-    icp "pizza shop owners"
-    role "owner-chefs"
-    research_goal "needs"
-    custom_instructions "Focus on pricing and cost management questions"
+test GenerateQuestionSet_SaaS_Willingness {
+  functions [GenerateQuestionSet]
+  args { inputs {
+			target_org "HealthCareVibe"
+			target_roles "Founding CEO, CTO, CMO"
+			research_goal "willingness to adopt our healthcare technology"
+			research_goal_details "We are a healthcare technology company and are looking to understand the willingness of healthcare providers to adopt our platform."
+			assumptions "Healthcare providers are willing to adopt our technology but may have concerns about integrating our platform into their existing systems."
+			unknowns "We are unsure how healthcare providers will perceive our technology and how much they will be willing to pay for it."
+			custom_instructions "Please generate a list of 5-10 questions to interview healthcare providers about their willingness to adopt our technology. Include questions about their concerns about integrating our platform, their perception of our technology, and their willingness to pay for our services. Please also include questions about their current technology stack and how they currently manage their patient data."
+			interview_time_limit "30 minutes"
+	 }
+	  }
+}
+
+test GenerateQuestionSet_Custom_Instructions {
+  functions [GenerateQuestionSet]
+  args { inputs {
+    target_org "Regional nonprofit hospital network (6 clinics, 450-bed hospital)",
+    target_roles "Patients (outpatient), Front-desk staff, Nurses, Primary-care physicians",
+    research_goal "Improve patient intake and follow-up experience",
+    research_goal_details "Reduce waiting time, clarify instructions, and raise follow-up adherence for chronic care patients (diabetes, hypertension).",
+    assumptions "Patients miss follow-ups due to confusing discharge instructions; staff tools are fragmented.",
+    unknowns "Which steps create the most confusion? How do staff prioritize time? What would increase adherence?",
+    custom_instructions "Favor plain language for patients 8th-grade reading level; include at least 2 questions about accessibility and language.",
+    session_id "proj_health_001",
+    round 1,
+    total_per_round 8,
+    per_category_min 1,
+    per_category_max 3
   }
+	}
 }
 
 test GenerateExecutiveSummary_Pizza_Basic {
