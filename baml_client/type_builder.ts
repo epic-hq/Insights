@@ -85,7 +85,7 @@ export default class TypeBuilder {
     
     ProjectAnalysis: ClassViewer<'ProjectAnalysis', "research_goal" | "question_answers" | "gap_analysis" | "key_discoveries" | "confidence_score" | "next_steps">;
     
-    Question: ClassViewer<'Question', "id" | "text" | "categoryId" | "rationale" | "tags" | "scores" | "status" | "source" | "displayOrder" | "externalRef">;
+    Question: ClassViewer<'Question', "id" | "text" | "categoryId" | "rationale" | "tags" | "scores" | "estimatedMinutes" | "status" | "source" | "displayOrder" | "externalRef">;
     
     QuestionPolicy: ClassViewer<'QuestionPolicy', "totalPerRound" | "perCategoryMin" | "perCategoryMax" | "dedupeWindowRounds" | "balanceBy">;
     
@@ -245,7 +245,7 @@ export default class TypeBuilder {
         ]);
         
         this.Question = this.tb.classViewer("Question", [
-          "id","text","categoryId","rationale","tags","scores","status","source","displayOrder","externalRef",
+          "id","text","categoryId","rationale","tags","scores","estimatedMinutes","status","source","displayOrder","externalRef",
         ]);
         
         this.QuestionPolicy = this.tb.classViewer("QuestionPolicy", [

@@ -102,7 +102,6 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 text-white hover:bg-gray-800">
 							<ChevronLeft className="h-4 w-4" />
 						</Button>
-						<h1 className="font-semibold text-lg text-white">Add Content</h1>
 					</div>
 				</div>
 			</div>

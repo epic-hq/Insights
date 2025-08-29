@@ -282,6 +282,7 @@ class Question {
   rationale string? @description("One short sentence on why this question matters for needs/potential.")
   tags string[]? @description("Optional short tags for filtering (e.g., 'pricing', 'workflow', 'adoption').")
   scores Scores @description("Scoring object. Provide values in [0,1] per field; the app computes a composite.")
+  estimatedMinutes float @description("Realistic time estimate in minutes for this question (2-7 minutes typical). Consider question complexity, follow-ups, and discussion depth.")
   status "proposed" | "shown" | "rejected" | "asked" | "answered" @description("Lifecycle state. New questions must start as 'proposed'.")
   source "llm" | "curated" | "custom" @description("Origin of the question. Use 'llm' for generated items by default.")
   displayOrder int? @description("Optional UI order hint. Leave unset; the app may assign.")
@@ -353,8 +354,15 @@ function GenerateQuestionSet(
   prompt #"
   You are an expert UX researcher producing a JSON QuestionSet to guide interviews.
 	You will generate a larger set than can be asked in the available time, and prioritize the most important questions based on importance, goalMatch, and novelty.
-	Estimate 4-7 minutes per question and a total time of: {{ inputs.interview_time_limit }} minutes.
-	This accounts for the interviewer to modify questions and have backups.
+
+	IMPORTANT: For each question, provide a realistic estimatedMinutes value (2-7 minutes typical):
+	- Simple yes/no or factual questions: 1-2 minutes
+	- Open-ended exploratory questions: 3-4 minutes
+	- Complex scenario or deep-dive questions: 5-6 minutes
+	- Consider follow-up discussion time in your estimate
+
+	Total available time: {{ inputs.interview_time_limit }} minutes.
+	Generate more questions than can fit to give the interviewer options and backups.
 
   CONTEXT
   - Target Org: {{ inputs.target_org }}

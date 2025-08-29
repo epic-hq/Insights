@@ -322,6 +322,7 @@ export namespace partial_types {
       rationale?: string | null
       tags?: string[] | null
       scores?: Scores | null
+      estimatedMinutes?: number | null
       status?: "proposed" | "shown" | "rejected" | "asked" | "answered" | null
       source?: "llm" | "curated" | "custom" | null
       displayOrder?: number | null

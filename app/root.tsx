@@ -11,6 +11,7 @@ import {
 	useRouteError,
 } from "react-router"
 import { useChangeLanguage } from "remix-i18next/react"
+import { Toaster } from "sonner"
 import { ClientOnly } from "~/components/ClientOnly"
 import ErrorBoundaryComponent from "~/components/ErrorBoundary"
 import { NotificationProvider } from "~/contexts/NotificationContext"
@@ -88,6 +89,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
 				>
 					<NotificationProvider>
 						<Outlet />
+						<Toaster />
 					</NotificationProvider>
 				</PostHogProvider>
 			</ThemeProvider>

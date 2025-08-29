@@ -2,6 +2,7 @@ import consola from "consola"
 import React, { useState, useMemo, useCallback, useEffect } from "react"
 import { useLoaderData, useParams } from "react-router-dom"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import { toast } from "sonner"
 import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -434,16 +435,23 @@ export default function QuestionsIndex() {
 
 	const addQuestionFromReserve = useCallback(
 		async (question: Question) => {
-			if (!selectedQuestionIds.includes(question.id)) {
-				const newSelectedQuestionIds = [...selectedQuestionIds, question.id]
-				setSelectedQuestionIds(newSelectedQuestionIds)
+			if (selectedQuestionIds.includes(question.id)) return
 
-				// Persist to database immediately
-				await saveQuestionsToDatabase(questions, newSelectedQuestionIds)
-				consola.log("Added question from reserve, new selection:", newSelectedQuestionIds)
-			}
+			// If this is the first manual selection, seed with the current auto-selected pack
+			const baseIds =
+				selectedQuestionIds.length > 0
+					? selectedQuestionIds
+					: (questionPack.questions.map((q) => q.id))
+
+			const newSelectedQuestionIds = [...baseIds, question.id]
+			setSelectedQuestionIds(newSelectedQuestionIds)
+			setHasInitialized(true)
+
+			// Persist to database immediately
+			await saveQuestionsToDatabase(questions, newSelectedQuestionIds)
+			consola.log("Added question from reserve, seeded selection if needed. New selection:", newSelectedQuestionIds)
 		},
-		[selectedQuestionIds, questions, saveQuestionsToDatabase]
+		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
 	)
 
 	const getCategoryColor = (categoryId: string) => {
@@ -510,14 +518,20 @@ export default function QuestionsIndex() {
 					const newQuestions = data.questionSet.questions
 
 					// Save to project_sections with kind="questions"
-					const existingQuestions = questions.map((q) => ({
-						id: q.id,
-						text: q.text,
-						categoryId: q.categoryId,
-						scores: q.scores,
-						rationale: q.rationale,
-						status: q.status,
-					}))
+					// Use the same format as saveQuestionsToDatabase to preserve selection data
+					const existingQuestions = questions.map((q) => {
+						const selectedIndex = selectedQuestionIds.indexOf(q.id)
+						return {
+							id: q.id,
+							text: q.text,
+							categoryId: q.categoryId,
+							scores: q.scores,
+							rationale: q.rationale,
+							status: "proposed",
+							selectedOrder: selectedIndex >= 0 ? selectedIndex : null,
+							isSelected: selectedIndex >= 0,
+						}
+					})
 
 					const allQuestions = [...existingQuestions, ...newQuestions]
 
@@ -549,8 +563,11 @@ export default function QuestionsIndex() {
 						// Add new questions to the bottom of the available list (not selected by default)
 						setQuestions((prev) => [...prev, ...formattedNewQuestions])
 
-						// Show success message or indication that questions were added
-						consola.log(`Added ${formattedNewQuestions.length} new questions to available list`)
+						// Show success toast notification
+						toast.success(`Added ${formattedNewQuestions.length} new questions to the bottom of your available list`, {
+							description: "You can now select them to add to your question pack",
+							duration: 4000,
+						})
 					}
 				}
 			}
@@ -601,7 +618,7 @@ export default function QuestionsIndex() {
 							onValueChange={(value) => setIsDesktopSettingsOpen(value === "settings")}
 						>
 							<AccordionItem value="settings">
-								<AccordionTrigger className="hover:no-underline px-6 py-4">
+								<AccordionTrigger className="hover:no-underline px-3 py-0">
 									<div className="flex items-center gap-2">
 										<Settings className="w-5 h-5" />
 										Interview Settings
@@ -668,7 +685,7 @@ export default function QuestionsIndex() {
 
 					{/* AI Generate Questions */}
 					<Card>
-						<CardContent className="p-4 space-y-3">
+						<CardContent className="p-3 space-y-3">
 							<Textarea
 								placeholder="Modify questions"
 								value={customInstructions}
@@ -692,14 +709,10 @@ export default function QuestionsIndex() {
 					</Card>
 
 					{/* Start Interview */}
-					<Card>
-						<CardContent className="p-4">
-							<Button size="lg" className="w-full">
-								<Play className="w-5 h-5 mr-2" />
-								Start Interview
-							</Button>
-						</CardContent>
-					</Card>
+					<Button size="lg" className="w-full">
+						<Play className="w-5 h-5 mr-2" />
+						Upload New Interview
+					</Button>
 				</div>
 
 				{/* Right Column: Question Pack */}
@@ -709,7 +722,7 @@ export default function QuestionsIndex() {
 						<CardHeader>
 							<CardTitle className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
-									<span>Your Question Pack ({questionPack.questions.length} questions)</span>
+									<span>Your Question Pack ({questionPack.questions.length})</span>
 								</div>
 								<div className="text-right">
 									<div
@@ -719,12 +732,12 @@ export default function QuestionsIndex() {
 									>
 										{Math.round(questionPack.totalEstimatedTime)}m / {questionPack.targetTime}m
 									</div>
-									{questionPack.totalEstimatedTime > questionPack.targetTime && (
+									{/* {questionPack.totalEstimatedTime > questionPack.targetTime && (
 										<div className="text-xs text-red-600">
 											Consider removing {Math.ceil((questionPack.totalEstimatedTime - questionPack.targetTime) / 4)}{" "}
 											questions
 										</div>
-									)}
+									)} */}
 								</div>
 							</CardTitle>
 						</CardHeader>
@@ -771,7 +784,7 @@ export default function QuestionsIndex() {
 																				: "border-l-orange-500 bg-orange-50/30 dark:bg-orange-950/30"
 																		}`}
 																	>
-																		<CardContent className="p-3">
+																		<CardContent className="px-3">
 																			<div className="flex items-start gap-3">
 																				<div className="flex items-center gap-2 mt-0.5">
 																					<div {...provided.dragHandleProps}>
@@ -783,7 +796,14 @@ export default function QuestionsIndex() {
 																				</div>
 
 																				<div className="flex-1 min-w-0">
-																					<div className="flex items-center gap-2 mb-1.5 flex-wrap">
+																					<p
+																						className="text-sm font-medium leading-relaxed mb-2"
+																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																					>
+																						{question.text}
+																					</p>
+
+																					<div className="flex items-center gap-2 flex-wrap">
 																						<Badge className={getCategoryColor(question.categoryId)}>
 																							{questionCategories.find((c) => c.id === question.categoryId)?.name}
 																						</Badge>
@@ -802,13 +822,6 @@ export default function QuestionsIndex() {
 																							</Badge>
 																						)}
 																					</div>
-
-																					<p
-																						className="text-sm leading-relaxed"
-																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																					>
-																						{question.text}
-																					</p>
 																				</div>
 
 																				<Button
@@ -856,7 +869,7 @@ export default function QuestionsIndex() {
 												{questionPack.remainingQuestions.map((question, index) => (
 													<Card
 														key={question.id}
-														className="border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors"
+														className="border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors py-2"
 														onClick={() => addQuestionFromReserve(question)}
 													>
 														<CardContent className="p-3">
@@ -867,6 +880,12 @@ export default function QuestionsIndex() {
 																</div>
 
 																<div className="flex-1 min-w-0">
+																	<p
+																		className="text-sm leading-relaxed"
+																		title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																	>
+																		{question.text}
+																	</p>
 																	<div className="flex items-center gap-2 mb-2 flex-wrap">
 																		<Badge className={getCategoryColor(question.categoryId)} variant="outline">
 																			{questionCategories.find((c) => c.id === question.categoryId)?.name}
@@ -878,13 +897,6 @@ export default function QuestionsIndex() {
 																			{question.timesAnswered}x answered
 																		</Badge>
 																	</div>
-
-																	<p
-																		className="text-sm leading-relaxed"
-																		title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																	>
-																		{question.text}
-																	</p>
 																</div>
 															</div>
 														</CardContent>

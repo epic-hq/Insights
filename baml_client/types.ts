@@ -640,6 +640,7 @@ export interface Question {
   rationale?: string | null
   tags?: string[] | null
   scores: Scores
+  estimatedMinutes: number
   status: "proposed" | "shown" | "rejected" | "asked" | "answered"
   source: "llm" | "curated" | "custom"
   displayOrder?: number | null
