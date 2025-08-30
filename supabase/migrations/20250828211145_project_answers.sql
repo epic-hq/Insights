@@ -1,4 +1,4 @@
-create table "public"."project_answer_evidence" (
+aicreate table "public"."project_answer_evidence" (
     "id" uuid not null default gen_random_uuid(),
     "project_id" uuid not null,
     "answer_id" uuid not null,
@@ -280,5 +280,3 @@ CREATE TRIGGER set_project_answer_evidence_user_tracking BEFORE INSERT OR UPDATE
 CREATE TRIGGER set_project_answers_timestamp BEFORE INSERT OR UPDATE ON public.project_answers FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
 CREATE TRIGGER set_project_answers_user_tracking BEFORE INSERT OR UPDATE ON public.project_answers FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_user_tracking();
-
-

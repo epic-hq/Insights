@@ -51,8 +51,6 @@ export const mastra = new Mastra({
 				runtimeContext.set("account_id", account_id || "")
 				runtimeContext.set("project_id", project_id || "")
 				runtimeContext.set("jwt", jwt || "") // Add JWT to runtime context
-
-				consola.log("mastra runtimeContext", runtimeContext)
 				await next()
 			},
 		],

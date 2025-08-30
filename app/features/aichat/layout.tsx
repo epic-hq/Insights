@@ -6,13 +6,13 @@ export default function AIChatLayout() {
 		<CopilotKit
 			agent="mainAgent"
 			runtimeUrl="/api/copilotkit"
-			publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-			showDevConsole={true}
-			headers={{
-				"X-UserId": "100",
-				"X-AccountId": "200",
-				"X-ProjectId": "300",
-			}}
+			// publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
+			showDevConsole={false}
+			// headers={{
+			// 	"X-UserId": "100",
+			// 	"X-AccountId": "200",
+			// 	"X-ProjectId": "300",
+			// }}
 		>
 			<div className="h-screen bg-gray-50">
 				<Outlet />

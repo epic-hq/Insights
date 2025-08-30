@@ -81,17 +81,20 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 		setIsCreatingProject(true)
 		try {
 			const formData = new FormData()
-			formData.append("projectData", JSON.stringify({
-				target_orgs: target_orgs.length > 0 ? target_orgs : ["New Organization"],
-				target_roles: target_roles.length > 0 ? target_roles : ["New Role"],
-				research_goal: research_goal || "New Research Project",
-				research_goal_details: research_goal_details || "",
-			}))
+			formData.append(
+				"projectData",
+				JSON.stringify({
+					target_orgs: target_orgs.length > 0 ? target_orgs : ["New Organization"],
+					target_roles: target_roles.length > 0 ? target_roles : ["New Role"],
+					research_goal: research_goal || "New Research Project",
+					research_goal_details: research_goal_details || "",
+				})
+			)
 
 			const response = await fetch("/api/create-project", {
 				method: "POST",
 				body: formData,
-				credentials: 'include'
+				credentials: "include",
 			})
 
 			if (!response.ok) {
@@ -100,11 +103,11 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 
 			const result = await response.json()
 			const newProjectId = result.project?.id
-			
+
 			if (newProjectId) {
 				setCurrentProjectId(newProjectId)
 				consola.log("🎯 Created project on first input:", newProjectId)
-				
+
 				// Force update the auto-save hook with new projectId
 				setTimeout(() => {
 					// Save any pending data now that we have a projectId
@@ -112,7 +115,7 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 					if (unknowns.length > 0) saveUnknowns(unknowns)
 					if (research_goal.trim()) saveResearchGoal(research_goal, research_goal_details)
 				}, 200)
-				
+
 				return newProjectId
 			}
 		} catch (error) {
@@ -121,7 +124,19 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 			setIsCreatingProject(false)
 		}
 		return currentProjectId
-	}, [currentProjectId, isCreatingProject, target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, saveAssumptions, saveUnknowns, saveResearchGoal])
+	}, [
+		currentProjectId,
+		isCreatingProject,
+		target_orgs,
+		target_roles,
+		research_goal,
+		research_goal_details,
+		assumptions,
+		unknowns,
+		saveAssumptions,
+		saveUnknowns,
+		saveResearchGoal,
+	])
 
 	const loadProjectData = useCallback(async () => {
 		if (!currentProjectId) return
@@ -279,30 +294,30 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 	]
 
 	return (
-		<div className="mx-auto min-h-screen max-w-4xl bg-background p-8 text-foreground">
+		<div className="mx-auto min-h-screen max-w-4xl bg-background p-4 text-foreground sm:p-4 md:p-6 lg:p-8">
 			{/* Stepper */}
-			<div className="mb-12">
-				<div className="flex items-center justify-center space-x-8">
+			<div className="mb-6">
+				<div className="flex items-start justify-center gap-4 sm:gap-6 md:gap-10">
 					{onboardingSteps.map((step, index) => (
-						<div key={step.id} className="flex items-center space-x-2">
-							<div
-								className={`flex h-8 w-8 items-center justify-center rounded-full text-sm font-medium ${
-									step.id === "goals"
-										? "bg-primary text-primary-foreground"
-										: "bg-muted text-muted-foreground"
-								}`}
-							>
-								{index + 1}
+						<div key={step.id} className="flex items-center">
+							<div className="flex flex-col items-center">
+								<div
+									className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium sm:h-8 sm:w-8 sm:text-sm ${
+										step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+									}`}
+								>
+									{index + 1}
+								</div>
+								<span
+									className={`mt-1 line-clamp-1 text-[10px] font-medium sm:text-xs md:text-sm ${
+										step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+									}`}
+								>
+									{step.title}
+								</span>
 							</div>
-							<span
-								className={`text-sm font-medium ${
-									step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-								}`}
-							>
-								{step.title}
-							</span>
 							{index < onboardingSteps.length - 1 && (
-								<div className="ml-8 h-px w-16 bg-border" />
+								<div className="mx-3 hidden h-px w-10 bg-border sm:block md:w-16" />
 							)}
 						</div>
 					))}
@@ -311,26 +326,22 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 
 			<div className="mb-8">
 				<div className="mb-4 flex items-center gap-3">
-					<h1 className="mb-2 text-3xl text-foreground">Project Setup</h1>
 					{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
 				</div>
-				<p className="text-muted-foreground">
+				{/* <p className="text-muted-foreground sm:hidden l:visible">
 					Define your research goals and target audience to get started with evidence-based insights.
-				</p>
+				</p> */}
 			</div>
 
 			<div className="space-y-8">
 				{/* Research Goal - moved first */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Target className="h-5 w-5" />
-							Research Goal
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-6">
+				<div className="flex items-center gap-2 mb-3">
+					<Target className="h-5 w-5" /> Research Goal
+				</div>
+				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+					<CardContent className="space-y-3 sm:p-3">
 						<div>
-							<label className="mb-2 block text-foreground">Research Goal</label>
+							<label className="mb-2 block text-foreground">What do we want to learn?</label>
 							<Input
 								placeholder="e.g., Understanding price sensitivity for our new pricing tier"
 								value={research_goal}
@@ -353,10 +364,38 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						</div>
 
 						<div>
-							<label className="mb-2 block text-foreground">Current Assumptions</label>
+							<label className="mb-2 block text-foreground">What do we not know?</label>
 							<div className="mb-3 flex gap-2">
 								<Input
-									placeholder="What do you currently believe to be true?"
+									// placeholder="What are you unsure about?"
+									value={newUnknown}
+									onChange={(e) => setNewUnknown(e.target.value)}
+									onKeyPress={(e) => e.key === "Enter" && addUnknown()}
+									className="border-border bg-background text-foreground"
+								/>
+								<Button onClick={addUnknown} variant="outline">
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+							<div className="space-y-2">
+								{unknowns.map((unknown, index) => (
+									<div
+										key={`unknown-${index}-${unknown.slice(0, 10)}`}
+										className="flex items-center gap-2 rounded bg-amber-50 p-2 dark:bg-amber-950"
+									>
+										<HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+										<span className="flex-1 text-foreground">{unknown}</span>
+										<X className="h-4 w-4 cursor-pointer text-muted-foreground" onClick={() => removeUnknown(index)} />
+									</div>
+								))}
+							</div>
+						</div>
+
+						<div>
+							<label className="mb-2 block text-foreground">What do we think we know?</label>
+							<div className="mb-3 flex gap-2">
+								<Input
+									// placeholder="What do you currently believe to be true?"
 									value={newAssumption}
 									onChange={(e) => setNewAssumption(e.target.value)}
 									onKeyPress={(e) => e.key === "Enter" && addAssumption()}
@@ -381,48 +420,17 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 								))}
 							</div>
 						</div>
-
-						<div>
-							<label className="mb-2 block text-foreground">Key Unknowns</label>
-							<div className="mb-3 flex gap-2">
-								<Input
-									placeholder="What are you unsure about?"
-									value={newUnknown}
-									onChange={(e) => setNewUnknown(e.target.value)}
-									onKeyPress={(e) => e.key === "Enter" && addUnknown()}
-									className="border-border bg-background text-foreground"
-								/>
-								<Button onClick={addUnknown} variant="outline">
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-							<div className="space-y-2">
-								{unknowns.map((unknown, index) => (
-									<div
-										key={`unknown-${index}-${unknown.slice(0, 10)}`}
-										className="flex items-center gap-2 rounded bg-amber-50 p-2 dark:bg-amber-950"
-									>
-										<HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-										<span className="flex-1 text-foreground">{unknown}</span>
-										<X className="h-4 w-4 cursor-pointer text-muted-foreground" onClick={() => removeUnknown(index)} />
-									</div>
-								))}
-							</div>
-						</div>
 					</CardContent>
 				</Card>
-
 				{/* Target Audience - moved after Research Goal */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Users className="h-5 w-5" />
-							Target Audience
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-6">
+				<div className="flex items-center gap-2 mb-3">
+					<Users className="h-5 w-5" />
+					Your Market
+				</div>
+				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm py-0">
+					<CardContent className="space-y-3 sm:p-3">
 						<div>
-							<label className="mb-2 block text-foreground">Target Organizations</label>
+							<label className="mb-2 block text-foreground">Organizations</label>
 							<div className="mb-3 flex gap-2">
 								<Input
 									placeholder="e.g., B2B SaaS companies, E-commerce retailers"
@@ -446,7 +454,7 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						</div>
 
 						<div>
-							<label className="mb-2 block text-foreground">Target Roles</label>
+							<label className="mb-2 block text-foreground">People's Roles</label>
 							<div className="mb-3 flex gap-2">
 								<Input
 									placeholder="e.g., Product Manager, Marketing Director"
@@ -468,10 +476,8 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 								))}
 							</div>
 						</div>
-
 					</CardContent>
 				</Card>
-
 				{/* Custom Instructions Collapsible Section */}
 				<div className="mb-6">
 					<Button
@@ -479,14 +485,10 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						onClick={() => setShowCustomInstructions(!showCustomInstructions)}
 						className="flex items-center gap-2 p-0 text-sm text-muted-foreground hover:text-foreground"
 					>
-						{showCustomInstructions ? (
-							<ChevronDown className="h-4 w-4" />
-						) : (
-							<ChevronRight className="h-4 w-4" />
-						)}
+						{showCustomInstructions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 						Custom Instructions (Optional)
 					</Button>
-					
+
 					{showCustomInstructions && (
 						<div className="mt-3">
 							<Textarea
@@ -500,7 +502,6 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						</div>
 					)}
 				</div>
-
 				<div className="flex justify-between">
 					<div className="flex items-center">
 						{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}

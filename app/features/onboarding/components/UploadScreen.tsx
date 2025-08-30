@@ -80,7 +80,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 	]
 
 	return (
-		<div className="relative min-h-screen bg-black text-white">
+		<div className="relative min-h-screen bg-black p-4 text-white sm:p-4 md:p-6 lg:p-8">
 			{/* Hidden file input */}
 			<input
 				ref={fileInputRef}
@@ -107,7 +107,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			</div>
 
 			{/* Main Content */}
-			<div className="mx-auto max-w-xl p-4">
+			<div className="mx-auto max-w-xl">
 				<div className="space-y-6">
 					{/* Instructions */}
 					{/* <div className="space-y-2">
@@ -252,7 +252,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			</div>
 
 			{/* Bottom Action */}
-			<div className="mx-auto mt-8 mb-20 max-w-xl border-gray-800 border-t bg-black p-4 p-4">
+			<div className="mx-auto mt-8 mb-20 max-w-xl border-gray-800 border-t bg-black p-4">
 				<Button
 					onClick={handleNext}
 					disabled={!selectedFile}

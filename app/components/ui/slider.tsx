@@ -11,21 +11,20 @@ function Slider({
   max = 100,
   ...props
 }: React.ComponentProps<typeof SliderPrimitive.Root>) {
-  const _values = React.useMemo(
-    () =>
-      Array.isArray(value)
-        ? value
-        : Array.isArray(defaultValue)
-          ? defaultValue
-          : [min, max],
-    [value, defaultValue, min, max]
-  )
+  // Determine controlled vs uncontrolled to avoid passing both value and defaultValue
+  const isControlled = value !== undefined
+
+  // Stable list length for rendering thumbs (do not generate new arrays unnecessarily)
+  const _values = React.useMemo(() => {
+    if (isControlled && Array.isArray(value)) return value
+    if (!isControlled && Array.isArray(defaultValue)) return defaultValue
+    return [min]
+  }, [isControlled, value, defaultValue, min])
 
   return (
     <SliderPrimitive.Root
       data-slot="slider"
-      defaultValue={defaultValue}
-      value={value}
+      {...(isControlled ? { value } : { defaultValue })}
       min={min}
       max={max}
       className={cn(

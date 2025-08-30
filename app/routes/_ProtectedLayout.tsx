@@ -138,7 +138,7 @@ export default function ProtectedLayout() {
 					agent="mainAgent"
 					runtimeUrl="/api/copilotkit"
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-					showDevConsole={clientEnv?.NODE_ENV === "development"}
+					showDevConsole={false} // {clientEnv?.NODE_ENV === "development"}
 					headers={{
 						"X-UserId": String(auth?.user?.sub ?? ""),
 						"X-AccountId": String(params.accountId ?? auth?.accountId ?? ""),

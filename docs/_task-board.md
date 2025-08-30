@@ -164,6 +164,11 @@ TEST IT MORE
 
 ## Refactor & Ops
 
+- [ ] Analysis Pipeline!!! text processing bypasses analysis_jobs entirely, but the correct fix should be:
+Keep analysis_jobs for both audio/video AND text
+Restore the worker system or process analysis_jobs immediately in the webhook/API
+Maintain consistent architecture across all file types
+
 - [ ] **Move API routes under their respective feature directories**
 
   **Current Structure:** All API routes in `/app/routes/api.*` (21 routes)
