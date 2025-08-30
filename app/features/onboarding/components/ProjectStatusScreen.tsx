@@ -103,6 +103,7 @@ export default function ProjectStatusScreen({
 	const getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market")
 	const getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
 	const getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
+	const getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
 
 	// Map analysis results to original goals
 	const getGoalStatus = (goalContent: string) => {
@@ -127,6 +128,37 @@ export default function ProjectStatusScreen({
 		return { status: "open", confidence: 0 }
 	}
 
+	// Map analysis results to interview questions stored in project_sections
+	const getQuestionStatus = (questionText: string) => {
+		if (!statusData?.questionAnswers) return { status: "pending", confidence: 0 }
+
+		// Try to match this question with answered questions from analysis
+		const matchedAnswer = statusData.questionAnswers.find((qa) => {
+			const qaText = qa.question.toLowerCase()
+			const qText = questionText.toLowerCase()
+			// More flexible matching for question text
+			return (
+				qaText.includes(qText.split(" ").slice(0, 5).join(" ")) ||
+				qText.includes(qaText.split(" ").slice(0, 5).join(" ")) ||
+				// Fuzzy match key words
+				qaText.split(" ").some((word) => word.length > 3 && qText.includes(word)) ||
+				qText.split(" ").some((word) => word.length > 3 && qaText.includes(word))
+			)
+		})
+
+		if (matchedAnswer) {
+			return {
+				status: "answered" as const,
+				confidence: matchedAnswer.confidence || 0,
+				answer: matchedAnswer.answer_summary,
+				evidence: matchedAnswer.evidence,
+				insights_found: matchedAnswer.insights_found,
+			}
+		}
+
+		return { status: "pending" as const, confidence: 0 }
+	}
+
 	const runCustomAnalysis = async () => {
 		if (!projectId) return
 		setIsAnalyzing(true)
@@ -147,7 +179,7 @@ export default function ProjectStatusScreen({
 				setCustomInstructions("")
 				revalidator.revalidate()
 				// Auto-open gap analysis once data is available
-				setShowGapAnalysis(true)
+				// Analysis complete
 			}
 		} catch (_error) {
 			// Handle error silently
@@ -850,23 +882,73 @@ export default function ProjectStatusScreen({
 									<Card>
 										<CardContent>
 											<div className="space-y-3">
-												{statusData?.interviewQuestions?.slice(0, 5).map((question, index) => (
-													<div
-														key={`interview-${index}`}
-														className="p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
-													>
-														<div className="flex items-start gap-2 mb-2">
-															<CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-															<div className="flex-1">
-																<p className="font-medium text-sm text-foreground">{question}</p>
+												{getQuestionsSections().length > 0 ? (
+													getQuestionsSections().slice(0, 1).map((section) => {
+														const questions = Array.isArray(section.meta?.questions) ? section.meta.questions : []
+														return (
+															<div key={section.id} className="space-y-3">
+																{questions.slice(0, 5).map((question: { text: string; id: string }, index: number) => {
+																	const questionStatus = getQuestionStatus(question.text)
+																	return (
+																		<div
+																			key={`question-${question.id || index}`}
+																			className={`p-3 rounded-lg border ${
+																				questionStatus.status === 'answered'
+																					? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20'
+																					: 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20'
+																			}`}
+																		>
+																			<div className="flex items-start gap-2">
+																				{questionStatus.status === 'answered' ? (
+																					<CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+																				) : (
+																					<CircleHelp className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+																				)}
+																				<div className="flex-1">
+																					<p className="font-medium text-sm text-foreground">{question.text}</p>
+																					{questionStatus.status === 'answered' && questionStatus.answer && (
+																						<div className="mt-2 text-sm text-muted-foreground">{questionStatus.answer}</div>
+																					)}
+																					{questionStatus.confidence && (
+																						<Badge variant="outline" className="mt-2 text-xs">
+																							{questionStatus.confidence === 1
+																								? "High"
+																								: questionStatus.confidence === 2
+																									? "Medium"
+																									: "Low"}{" "}
+																							confidence
+																						</Badge>
+																					)}
+																				</div>
+																			</div>
+																		</div>
+																	)
+																})}
+																{questions.length > 5 && (
+																	<p className="text-xs text-muted-foreground">
+																		+{questions.length - 5} more interview questions
+																	</p>
+																)}
 															</div>
-														</div>
+														)
+													})
+												) : (
+													<div className="text-center py-6">
+														<BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+														<p className="text-sm text-muted-foreground">No interview questions generated yet</p>
+														<Button
+															variant="outline"
+															size="sm"
+															className="mt-2"
+															onClick={() => {
+																if (routes) {
+																	window.location.href = routes.projects.setup()
+																}
+															}}
+														>
+															Generate Questions
+														</Button>
 													</div>
-												))}
-												{statusData?.interviewQuestions?.length > 5 && (
-													<p className="text-xs text-muted-foreground">
-														+{statusData?.interviewQuestions?.length - 5} more interview questions
-													</p>
 												)}
 											</div>
 										</CardContent>
