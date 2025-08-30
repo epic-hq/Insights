@@ -123,21 +123,10 @@ export async function action({ request }: ActionFunctionArgs) {
 						required: false,
 					},
 					{
-						name: "importance",
-						type: "number",
-						description: "Importance rating from 1-5",
-						required: false,
-					},
-					{
-						name: "ideal_solution",
-						type: "string",
-						description: "Description of their ideal solution",
-						required: false,
-					},
-					{
 						name: "content_types",
 						type: "string",
-						description: "Types of content they want to analyze",
+						description:
+							"Types of content they want to analyze; user interviews, focus groups, user testing, case studies, etc.",
 						required: false,
 					},
 					{
@@ -147,13 +136,11 @@ export async function action({ request }: ActionFunctionArgs) {
 						required: false,
 					},
 				],
-				handler: async ({ problem, challenges, importance, ideal_solution, content_types, other_feedback }) => {
+				handler: async ({ problem, challenges, content_types, other_feedback }) => {
 					try {
 						const chatData = {
 							problem,
 							challenges,
-							importance,
-							ideal_solution,
 							content_types,
 							other_feedback,
 							completed: true,
@@ -164,7 +151,7 @@ export async function action({ request }: ActionFunctionArgs) {
 						const headerAccountId = request.headers.get("X-AccountId")
 						const headerProjectId = request.headers.get("X-ProjectId")
 
-						consola.log("mastra agent saving chat data: ", {
+						consola.log("features/aichat/api/copilotkit agent saving chat data: ", {
 							chatData,
 							context: {
 								user_id: user.sub,

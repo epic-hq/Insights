@@ -4,6 +4,7 @@ import { generateQuestionSetCanonical } from "~/utils/research-analysis.server"
 import { getServerClient } from "~/lib/supabase/server"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { currentProjectContext } from "~/server/current-project-context"
+import { randomUUID } from "node:crypto"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -128,6 +129,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		})
 
 		consola.log("BAML questionSet result:", JSON.stringify(questionSet, null, 2))
+
+		// Ensure all questions have unique, stable IDs
+		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
+			questionSet.questions = questionSet.questions.map((question: any) => ({
+				...question,
+				id: question.id && typeof question.id === 'string' && question.id.length > 0 
+					? question.id 
+					: randomUUID()
+			}))
+		}
 
 		return Response.json({
 			success: true,

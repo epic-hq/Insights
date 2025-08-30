@@ -1,10 +1,10 @@
 import { Command, CommandInput } from "~/components/ui/command"
 import { DropdownMenu } from "~/components/ui/dropdown-menu"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
-import { CategoryFilterChipBasic } from "~/features/aichat/components/FilterChips"
-import { IdeasBoard } from "~/features/aichat/components/IdeasBoard"
+import { CategoryFilterChipBasic } from "~/features/signup-chat/components/FilterChips"
+import { IdeasBoard } from "~/features/signup-chat/components/IdeasBoard"
 // import { CategoryFilterChip } from "~/components/CategoryFilterChip";
-import { InsightsList } from "~/features/aichat/components/InsightsList"
+import { InsightsList } from "~/features/signup-chat/components/InsightsList"
 // import { ChatSheet } from "~/features/insights/pages/ChatSheet";
 
 import consola from "consola"

@@ -18,6 +18,7 @@ import {
 	Search,
 	PlusCircle,
 	Headphones,
+	Settings2,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
@@ -141,7 +142,9 @@ export default function ProjectStatusScreen({
 				qaText.includes(qText.split(" ").slice(0, 5).join(" ")) ||
 				qText.includes(qaText.split(" ").slice(0, 5).join(" ")) ||
 				// Fuzzy match key words
-				qaText.split(" ").some((word) => word.length > 3 && qText.includes(word)) ||
+				qaText
+					.split(" ")
+					.some((word) => word.length > 3 && qText.includes(word)) ||
 				qText.split(" ").some((word) => word.length > 3 && qaText.includes(word))
 			)
 		})
@@ -629,7 +632,7 @@ export default function ProjectStatusScreen({
 												}
 											}}
 										>
-											Edit Target Market
+											Edit
 										</Button>
 									</div>
 									<Card>
@@ -875,63 +878,84 @@ export default function ProjectStatusScreen({
 
 								{/* Interview Questions */}
 								<div>
-									<div className="flex items-center gap-2 mb-3">
-										<Headphones className="h-5 w-5 text-indigo-600" />
-										Interview Questions
+									<div className="flex flex-row justify-between gap-2">
+										<div className="flex items-center gap-2 mb-3">
+											<Headphones className="h-5 w-5 text-indigo-600" />
+											Interview Questions
+										</div>
+										<div className="flex flex-row items-center gap-2">
+											<Button
+												variant="outline"
+												onClick={() => {
+													if (routes) {
+														window.location.href = routes.questions?.index() || "#"
+													}
+												}}
+											>
+												<Settings2 className="h-5 w-5 text-indigo-600" />
+												Edit
+											</Button>
+										</div>
 									</div>
 									<Card>
 										<CardContent>
 											<div className="space-y-3">
 												{getQuestionsSections().length > 0 ? (
-													getQuestionsSections().slice(0, 1).map((section) => {
-														const questions = Array.isArray(section.meta?.questions) ? section.meta.questions : []
-														return (
-															<div key={section.id} className="space-y-3">
-																{questions.slice(0, 5).map((question: { text: string; id: string }, index: number) => {
-																	const questionStatus = getQuestionStatus(question.text)
-																	return (
-																		<div
-																			key={`question-${question.id || index}`}
-																			className={`p-3 rounded-lg border ${
-																				questionStatus.status === 'answered'
-																					? 'border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20'
-																					: 'border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20'
-																			}`}
-																		>
-																			<div className="flex items-start gap-2">
-																				{questionStatus.status === 'answered' ? (
-																					<CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
-																				) : (
-																					<CircleHelp className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-																				)}
-																				<div className="flex-1">
-																					<p className="font-medium text-sm text-foreground">{question.text}</p>
-																					{questionStatus.status === 'answered' && questionStatus.answer && (
-																						<div className="mt-2 text-sm text-muted-foreground">{questionStatus.answer}</div>
-																					)}
-																					{questionStatus.confidence && (
-																						<Badge variant="outline" className="mt-2 text-xs">
-																							{questionStatus.confidence === 1
-																								? "High"
-																								: questionStatus.confidence === 2
-																									? "Medium"
-																									: "Low"}{" "}
-																							confidence
-																						</Badge>
-																					)}
+													getQuestionsSections()
+														.slice(0, 1)
+														.map((section) => {
+															const questions = Array.isArray(section.meta?.questions) ? section.meta.questions : []
+															return (
+																<div key={section.id} className="space-y-3">
+																	{questions
+																		.slice(0, 5)
+																		.map((question: { text: string; id: string }, index: number) => {
+																			const questionStatus = getQuestionStatus(question.text)
+																			return (
+																				<div
+																					key={`question-${question.id || index}`}
+																					className={`p-3 rounded-lg border ${
+																						questionStatus.status === "answered"
+																							? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
+																							: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20"
+																					}`}
+																				>
+																					<div className="flex items-start gap-2">
+																						{questionStatus.status === "answered" ? (
+																							<CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+																						) : (
+																							<CircleHelp className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+																						)}
+																						<div className="flex-1">
+																							<p className="font-medium text-sm text-foreground">{question.text}</p>
+																							{questionStatus.status === "answered" && questionStatus.answer && (
+																								<div className="mt-2 text-sm text-muted-foreground">
+																									{questionStatus.answer}
+																								</div>
+																							)}
+																							{questionStatus.confidence && (
+																								<Badge variant="outline" className="mt-2 text-xs">
+																									{questionStatus.confidence === 1
+																										? "High"
+																										: questionStatus.confidence === 2
+																											? "Medium"
+																											: "Low"}{" "}
+																									confidence
+																								</Badge>
+																							)}
+																						</div>
+																					</div>
 																				</div>
-																			</div>
-																		</div>
-																	)
-																})}
-																{questions.length > 5 && (
-																	<p className="text-xs text-muted-foreground">
-																		+{questions.length - 5} more interview questions
-																	</p>
-																)}
-															</div>
-														)
-													})
+																			)
+																		})}
+																	{questions.length > 5 && (
+																		<p className="text-xs text-muted-foreground">
+																			+{questions.length - 5} more interview questions
+																		</p>
+																	)}
+																</div>
+															)
+														})
 												) : (
 													<div className="text-center py-6">
 														<BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-2" />

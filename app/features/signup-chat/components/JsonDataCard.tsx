@@ -8,7 +8,7 @@ export function JsonDataCard({ title, jsonData }: { title?: string; jsonData?: R
 	return (
 		<div className="m-2 flex flex-col justify-start rounded-md border border-gray-600 p-2">
 			<div className="pl-4 font-semibold text-foreground text-sm">{title}</div>
-			<div className="flex items-center justify-between border-b bg-gray-50 pl-4">
+			<div className="flex items-center justify-between border-b pl-4">
 				<div className="flex flex-1 items-center gap-2">
 					<div className="grid grid-cols-2 gap-2">
 						{Object.entries(jsonData || {}).map(([key, value]) => (
@@ -21,7 +21,7 @@ export function JsonDataCard({ title, jsonData }: { title?: string; jsonData?: R
 								>
 									{key}
 								</Badge>
-								<div className="col-span-1 ml-2 text-xs">{value}</div>
+								<div className="col-span-1 ml-2 text-xs text-foreground">{value}</div>
 							</div>
 						))}
 					</div>

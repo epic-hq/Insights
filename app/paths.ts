@@ -24,4 +24,5 @@ export const PATHS = {
 	AUTH,
 	PROFILE: "/profile",
 	HOME: "/home",
+	SIGNUP_CHAT: "/signup-chat",
 } as const

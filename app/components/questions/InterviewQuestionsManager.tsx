@@ -134,8 +134,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
         if (settings.goDeepMode !== undefined) setGoDeepMode(settings.goDeepMode)
         if (settings.customInstructions) setCustomInstructions(settings.customInstructions)
         
-        const formattedQuestions: Question[] = questionsData.map((q: any, index: number) => ({
-          id: q.id || `q_${index}`,
+        const formattedQuestions: Question[] = questionsData.map((q: any) => ({
+          id: q.id || crypto.randomUUID(),
           text: q.text || q.question,
           categoryId: q.categoryId || q.category || "context",
           scores: q.scores || {
@@ -145,7 +145,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
           },
           rationale: q.rationale || "",
           status: (q.status as Question["status"]) || "proposed",
-          timesAnswered: answerCountMap.get(q.id || `q_${index}`) || 0,
+          timesAnswered: answerCountMap.get(q.id || crypto.randomUUID()) || 0,
         }))
 
         const selectedQuestionsWithOrder = questionsData

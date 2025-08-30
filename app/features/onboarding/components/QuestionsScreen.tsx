@@ -4,7 +4,6 @@ import { Button } from "~/components/ui/button"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { OnboardingStepper } from "~/components/ui/onboarding-stepper"
 
-
 interface QuestionsScreenProps {
 	target_orgs: string[]
 	target_roles: string[]
@@ -20,7 +19,6 @@ interface QuestionsScreenProps {
 	/** Optional projectId to load/save questions context when available */
 	projectId?: string
 }
-
 
 export default function QuestionsScreen({
 	target_orgs,
