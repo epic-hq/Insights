@@ -15,12 +15,18 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	// Use account_id from middleware (already resolved to team account)
 	consola.log("home loader account_id:", account_id)
 
+	const signup_completed = user_settings?.signup_data?.completed ?? false
+	// if (!signup_completed) {
+	// 	consola.log("Signup not completed. Redirecting to signup-chat.")
+	// 	return redirect("/signup-chat")
+	// }
+
 	// if !onboarding_completed redirect to /onboarding
-	const onboardingCompleted = user_settings?.onboarding_completed ?? false
-	if (!onboardingCompleted) {
-		consola.log("Onboarding not completed. Redirecting to onboarding.")
-		return redirect("/onboarding")
-	}
+	// const onboardingCompleted = user_settings?.onboarding_completed ?? false
+	// if (!onboardingCompleted) {
+	// 	consola.log("Onboarding not completed. Redirecting to onboarding.")
+	// 	return redirect("/onboarding")
+	// }
 
 	if (!account_id) {
 		return {

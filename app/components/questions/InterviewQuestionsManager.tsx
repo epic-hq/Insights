@@ -168,7 +168,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
     loadQuestions()
   }, [projectId, supabase])
 
-  const estimateMinutesPerQuestion = (q: Question, p: Purpose, f: Familiarity): number => {
+  const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
     const baseTimes = { exploratory: 6.5, validation: 4.5, followup: 3.5 }
     const categoryAdjustments: Record<string, number> = {
       pain: 0.5,
@@ -182,13 +182,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
     const baseTime = baseTimes[p]
     const categoryAdj = categoryAdjustments[q.categoryId] || 0
     return Math.max(2.5, baseTime + categoryAdj + familiarityAdjustment)
-  }
+  }, [])
 
-  const calculateCompositeScore = (q: Question): number => {
+  const calculateCompositeScore = useCallback((q: Question): number => {
     const categoryWeight = questionCategories.find((c) => c.id === q.categoryId)?.weight || 1
     const s = q.scores
     return 0.5 * (s.importance || 0) + 0.35 * (s.goalMatch || 0) + 0.15 * (s.novelty || 0) * categoryWeight
-  }
+  }, [])
 
   const questionPack = useMemo(() => {
     const targetCounts: Record<number, { base: number; validation: number; cold: number }> = {
@@ -250,17 +250,38 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
     }
 
     const idsToUse = selectedQuestionIds.length > 0 ? selectedQuestionIds : autoSelectedIds
+    // Ensure uniqueness in the selected order to prevent duplicate rendering/markers
+    const seen = new Set<string>()
     const orderedSelectedQuestions = idsToUse
       .map((id) => allQuestionsWithScores.find((q) => q.id === id))
-      .filter(Boolean) as (Question & { compositeScore: number; estimatedMinutes: number })[]
+      .filter((q): q is (Question & { compositeScore: number; estimatedMinutes: number }) => Boolean(q))
+      .filter((q) => {
+        if (seen.has(q.id)) return false
+        seen.add(q.id)
+        return true
+      })
 
     const totalEstimatedTime = orderedSelectedQuestions.reduce((sum, q) => sum + q.estimatedMinutes, 0)
+
+    // Compute overflow index (first index where cumulative time exceeds target)
+    let overflowIndex = -1
+    let running = 0
+    for (let i = 0; i < orderedSelectedQuestions.length; i++) {
+      running += orderedSelectedQuestions[i].estimatedMinutes
+      if (overflowIndex === -1 && running > timeMinutes) {
+        overflowIndex = i
+        break
+      }
+    }
+    const belowCount = overflowIndex >= 0 ? orderedSelectedQuestions.length - overflowIndex : 0
 
     return {
       questions: orderedSelectedQuestions,
       totalEstimatedTime,
       targetTime: timeMinutes,
       remainingQuestions: allQuestionsWithScores.filter((q) => !orderedSelectedQuestions.find((s) => s.id === q.id)),
+      overflowIndex,
+      belowCount,
     }
   }, [timeMinutes, purpose, familiarity, goDeepMode, questions, selectedQuestionIds, hasInitialized, calculateCompositeScore, estimateMinutesPerQuestion])
 
@@ -386,26 +407,24 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
     if (generating) return
     setGenerating(true)
     try {
-      // Prefer onboarding context if provided, else load from project sections on the server
-      const payload: any = {
-        target_org: target_orgs?.join(", ") || undefined,
-        target_roles: target_roles?.join(", ") || undefined,
-        research_goal,
-        research_goal_details,
-        assumptions: assumptions?.join(", ") || undefined,
-        unknowns: unknowns?.join(", ") || undefined,
-        custom_instructions: customInstructions || undefined,
-        interview_time_limit: timeMinutes,
-        purpose,
-        familiarity,
-        go_deep_mode: goDeepMode,
-        project_id: projectId,
-      }
+      // Create FormData for remix-style API
+      const formData = new FormData()
+      formData.append("project_id", projectId || "")
+      formData.append("custom_instructions", customInstructions || "")
+      formData.append("questionCount", "10")
+      formData.append("interview_time_limit", timeMinutes.toString())
+      
+      // Add optional fields from props (for onboarding flow)
+      if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
+      if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
+      if (research_goal) formData.append("research_goal", research_goal)
+      if (research_goal_details) formData.append("research_goal_details", research_goal_details)
+      if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
+      if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
 
       const response = await fetch("/api/generate-questions", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
+        body: formData,
       })
 
       if (response.ok) {
@@ -443,10 +462,29 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
             description: "You can now select them to add to your question pack",
             duration: 4000,
           })
+        } else {
+          toast.error("Failed to generate questions", {
+            description: "The response was successful but contained no questions",
+          })
+        }
+      } else {
+        // Handle API error response
+        try {
+          const errorData = await response.json()
+          toast.error("Failed to generate questions", {
+            description: errorData.error || `Server error: ${response.status}`,
+          })
+        } catch {
+          toast.error("Failed to generate questions", {
+            description: `Server error: ${response.status}`,
+          })
         }
       }
     } catch (e) {
       consola.error("Error generating questions:", e)
+      toast.error("Failed to generate questions", {
+        description: "An unexpected error occurred. Please try again.",
+      })
     } finally {
       setGenerating(false)
     }
@@ -588,9 +626,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
                 {(provided) => (
                   <div className="space-y-4" {...provided.droppableProps} ref={provided.innerRef}>
                     {questionPack.questions.map((question, index) => {
+                      const isFirstOverflow = index === questionPack.overflowIndex
                       const runningTime = questionPack.questions.slice(0, index + 1).reduce((sum, q) => sum + q.estimatedMinutes, 0)
                       const fitsInTime = runningTime <= timeMinutes
-                      const isFirstOverflow = !fitsInTime && (index === 0 || questionPack.questions.slice(0, index).reduce((sum, q) => sum + q.estimatedMinutes, 0) <= timeMinutes)
 
                       return (
                         <React.Fragment key={question.id}>
@@ -598,7 +636,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
                             <div className="border-t-2 border-dashed border-orange-300 pt-4 mt-6">
                               <div className="flex items-center gap-2 mb-4">
                                 <Clock className="w-4 h-4 text-orange-600" />
-                                <span className="text-sm font-medium text-orange-600">Questions below may not fit in your {timeMinutes}-minute time limit</span>
+                                <span className="text-sm font-medium text-orange-600">Questions below may not fit in your {timeMinutes}-minute time limit ({questionPack.belowCount} below)</span>
                               </div>
                             </div>
                           )}

@@ -48,6 +48,9 @@ const routes = [
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
+				
+				// Project setup route
+				route("setup", "./features/projects/pages/setup.tsx"),
 
 				// Annotations API routes (need project context)
 				...annotationsRoutes,

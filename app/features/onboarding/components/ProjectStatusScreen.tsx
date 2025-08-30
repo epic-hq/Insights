@@ -241,13 +241,9 @@ export default function ProjectStatusScreen({
 									className="bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all w-full max-w-sm text-center"
 									whileHover={{ scale: 1.02 }}
 									onClick={() => {
-										setShowFlowView(false)
-										setTimeout(() => {
-											const questionsSection = document.querySelector('[data-section="questions"]')
-											if (questionsSection) {
-												questionsSection.scrollIntoView({ behavior: 'smooth' })
-											}
-										}, 300)
+										if (routes) {
+											window.location.href = routes.projects.setup()
+										}
 									}}
 								>
 									<Target className="h-8 w-8 text-blue-600 mx-auto mb-3" />
@@ -385,7 +381,11 @@ export default function ProjectStatusScreen({
 										<Button 
 											variant="outline" 
 											className="w-full justify-start h-12 text-base"
-											onClick={() => routes && (window.location.href = routes.interviews.onboard())}
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.interviews.onboard()
+												}
+											}}
 										>
 											<PlusCircle className="h-5 w-5 mr-3" />
 											Add Interview
@@ -393,7 +393,11 @@ export default function ProjectStatusScreen({
 										<Button 
 											variant="outline" 
 											className="w-full justify-start h-12 text-base"
-											onClick={() => routes && (window.location.href = routes.evidence.index())}
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.evidence.index()
+												}
+											}}
 										>
 											<Eye className="h-5 w-5 mr-3" />
 											View Evidence
@@ -401,7 +405,11 @@ export default function ProjectStatusScreen({
 										<Button 
 											variant="outline" 
 											className="w-full justify-start h-12 text-base"
-											onClick={() => routes && (window.location.href = routes.personas.index())}
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.personas.index()
+												}
+											}}
 										>
 											<Users className="h-5 w-5 mr-3" />
 											Explore Personas
@@ -661,7 +669,11 @@ export default function ProjectStatusScreen({
 									<Button 
 										variant="outline" 
 										size="sm"
-										onClick={() => routes && (window.location.href = routes.questions?.index() || '#')}
+										onClick={() => {
+											if (routes) {
+												window.location.href = routes.questions?.index() || '#'
+											}
+										}}
 									>
 										<BookOpen className="h-4 w-4 mr-2" />
 										Manage Questions
@@ -799,7 +811,11 @@ export default function ProjectStatusScreen({
 							<CardContent className="space-y-3">
 								<Button
 									// TODO: Temporarily just go to upload instead of naming the interview. it's quicker and we have a small DB insert blocker.
-									onClick={() => routes && (window.location.href = routes.interviews.onboard())}
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.interviews.onboard()
+										}
+									}}
 									// onClick={() => routes && (window.location.href = routes.interviews.new())}
 									className="w-full justify-start bg-green-600 text-white hover:bg-green-700 border-green-600"
 									variant="default"
@@ -809,7 +825,11 @@ export default function ProjectStatusScreen({
 								</Button>
 								{statusData && statusData.openQuestions && statusData.openQuestions.length > 0 && (
 									<Button
-										onClick={() => routes && (window.location.href = routes.interviews.new())}
+										onClick={() => {
+											if (routes) {
+												window.location.href = routes.interviews.new()
+											}
+										}}
 										className="w-full justify-start"
 										variant="default"
 									>
@@ -818,9 +838,33 @@ export default function ProjectStatusScreen({
 										{statusData.openQuestions.length > 1 ? "s" : ""}
 									</Button>
 								)}
+								<Button
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.questions.index()
+										}
+									}}
+									className="w-full justify-start"
+									variant="outline"
+								>
+									<BookOpen className="mr-2 h-4 w-4" />
+									Manage Interview Questions
+								</Button>
+								<Button
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.projects.setup()
+										}
+									}}
+									className="w-full justify-start"
+									variant="outline"
+								>
+									<Target className="mr-2 h-4 w-4" />
+									Edit Research Goals
+								</Button>
 								{/* <Button
 									onClick={() => routes && (window.location.href = routes.evidence.index())}
-									className="w-full justify-start"
+{{ ... }}
 									variant="outline"
 								>
 									<Eye className="mr-2 h-4 w-4" />

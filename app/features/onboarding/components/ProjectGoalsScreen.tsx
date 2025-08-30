@@ -8,6 +8,8 @@ import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
 import consola from "consola"
 import { useAutoSave } from "../hooks/useAutoSave"
+import { createClient } from "~/lib/supabase/client"
+import { getProjectContextGeneric } from "~/features/questions/db"
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
@@ -51,6 +53,7 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
 	const [isCreatingProject, setIsCreatingProject] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+	const supabase = createClient()
 
 	// Auto-save hook - always call but skip operations when no projectId
 	const {
@@ -140,32 +143,61 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 
 	const loadProjectData = useCallback(async () => {
 		if (!currentProjectId) return
+		setIsLoading(true)
 
 		try {
-			const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`)
-			const result = await response.json()
+			// Prefer loading directly from project_sections via generic context merge
+			const ctx = await getProjectContextGeneric(supabase, currentProjectId)
+			let populatedFromContext = false
+			if (ctx?.merged) {
+				const m = ctx.merged as Record<string, unknown>
+				const hasAny =
+					(Array.isArray(m["target_orgs"]) && (m["target_orgs"] as unknown[]).length > 0) ||
+					(Array.isArray(m["target_roles"]) && (m["target_roles"] as unknown[]).length > 0) ||
+					(typeof m["research_goal"] === "string" && (m["research_goal"] as string).length > 0) ||
+					(Array.isArray(m["assumptions"]) && (m["assumptions"] as unknown[]).length > 0) ||
+					(Array.isArray(m["unknowns"]) && (m["unknowns"] as unknown[]).length > 0) ||
+					(typeof m["custom_instructions"] === "string" && (m["custom_instructions"] as string).length > 0)
 
-			if (result.success && result.data) {
-				const data = result.data
-				setTargetOrgs(data.target_orgs || [])
-				setTargetRoles(data.target_roles || [])
-				setResearchGoal(data.research_goal || "")
-				setResearchGoalDetails(data.research_goal_details || "")
-				setAssumptions(data.assumptions || [])
-				setUnknowns(data.unknowns || [])
-				setCustomInstructions(data.custom_instructions || "")
-				consola.log("Successfully loaded project data from database")
+				if (hasAny) {
+					setTargetOrgs(((m["target_orgs"] as string[]) ?? []))
+					setTargetRoles(((m["target_roles"] as string[]) ?? []))
+					setResearchGoal(((m["research_goal"] as string) ?? ""))
+					setResearchGoalDetails(((m["research_goal_details"] as string) ?? ""))
+					setAssumptions(((m["assumptions"] as string[]) ?? []))
+					setUnknowns(((m["unknowns"] as string[]) ?? []))
+					setCustomInstructions(((m["custom_instructions"] as string) ?? ""))
+					populatedFromContext = true
+					consola.log("Loaded project context from project_sections (merged)")
+				}
+			}
+
+			// Fallback to API if context empty or unavailable
+			if (!populatedFromContext) {
+				const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`)
+				const result = await response.json()
+				if (result.success && result.data) {
+					const data = result.data
+					setTargetOrgs(data.target_orgs || [])
+					setTargetRoles(data.target_roles || [])
+					setResearchGoal(data.research_goal || "")
+					setResearchGoalDetails(data.research_goal_details || "")
+					setAssumptions(data.assumptions || [])
+					setUnknowns(data.unknowns || [])
+					setCustomInstructions(data.custom_instructions || "")
+					consola.log("Loaded project goals via API fallback")
+				}
 			}
 		} catch (error) {
 			consola.error("Failed to load project data:", error)
 		} finally {
 			setIsLoading(false)
 		}
-	}, [projectId])
+	}, [currentProjectId, supabase])
 
 	// Load existing data if projectId is provided
 	useEffect(() => {
-		if (projectId) {
+		if (currentProjectId) {
 			loadProjectData()
 		}
 	}, [currentProjectId, loadProjectData])
@@ -347,7 +379,6 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 								value={research_goal}
 								onChange={(e) => setResearchGoal(e.target.value)}
 								onBlur={handleResearchGoalBlur}
-								className="border-border bg-background text-foreground"
 							/>
 						</div>
 
@@ -357,23 +388,22 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 								placeholder="Describe what you want to learn and why it matters for your product/business decisions..."
 								value={research_goal_details}
 								onChange={(e) => setResearchGoalDetails(e.target.value)}
-								onBlur={handleResearchGoalDetailsBlur}
 								rows={4}
-								className="border-border bg-background text-foreground"
+								className="border-2 border-gray-200 bg-white text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-4 py-3 text-base leading-relaxed shadow-sm transition-all duration-200 hover:border-gray-300 resize-none"
 							/>
 						</div>
 
 						<div>
 							<label className="mb-2 block text-foreground">What do we not know?</label>
-							<div className="mb-3 flex gap-2">
+							<div className="mb-4 flex gap-3">
 								<Input
-									// placeholder="What are you unsure about?"
+									placeholder="Add something you're unsure about..."
 									value={newUnknown}
 									onChange={(e) => setNewUnknown(e.target.value)}
 									onKeyPress={(e) => e.key === "Enter" && addUnknown()}
-									className="border-border bg-background text-foreground"
+									className="border-2 border-amber-200 bg-amber-50 text-gray-900 placeholder:text-amber-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
 								/>
-								<Button onClick={addUnknown} variant="outline">
+								<Button onClick={addUnknown} className="bg-amber-500 hover:bg-amber-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
 									<Plus className="h-4 w-4" />
 								</Button>
 							</div>
@@ -381,11 +411,18 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 								{unknowns.map((unknown, index) => (
 									<div
 										key={`unknown-${index}-${unknown.slice(0, 10)}`}
-										className="flex items-center gap-2 rounded bg-amber-50 p-2 dark:bg-amber-950"
+										className="flex items-start gap-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 group"
 									>
-										<HelpCircle className="h-4 w-4 text-amber-600 dark:text-amber-400" />
-										<span className="flex-1 text-foreground">{unknown}</span>
-										<X className="h-4 w-4 cursor-pointer text-muted-foreground" onClick={() => removeUnknown(index)} />
+										<div className="flex-shrink-0 mt-0.5">
+											<HelpCircle className="h-5 w-5 text-amber-600" />
+										</div>
+										<span className="flex-1 text-gray-800 font-medium leading-relaxed">{unknown}</span>
+										<button 
+											onClick={() => removeUnknown(index)}
+											className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full hover:bg-amber-200"
+										>
+											<X className="h-4 w-4 text-amber-700" />
+										</button>
 									</div>
 								))}
 							</div>
@@ -393,15 +430,15 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 
 						<div>
 							<label className="mb-2 block text-foreground">What do we think we know?</label>
-							<div className="mb-3 flex gap-2">
+							<div className="mb-4 flex gap-3">
 								<Input
-									// placeholder="What do you currently believe to be true?"
+									placeholder="Add something you believe to be true..."
 									value={newAssumption}
 									onChange={(e) => setNewAssumption(e.target.value)}
 									onKeyPress={(e) => e.key === "Enter" && addAssumption()}
-									className="border-border bg-background text-foreground"
+									className="border-2 border-blue-200 bg-blue-50 text-gray-900 placeholder:text-blue-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
 								/>
-								<Button onClick={addAssumption} variant="outline">
+								<Button onClick={addAssumption} className="bg-blue-500 hover:bg-blue-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
 									<Plus className="h-4 w-4" />
 								</Button>
 							</div>
@@ -409,13 +446,18 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 								{assumptions.map((assumption, index) => (
 									<div
 										key={`assumption-${index}-${assumption.slice(0, 10)}`}
-										className="flex items-center gap-2 rounded bg-blue-50 p-2 dark:bg-blue-950"
+										className="flex items-start gap-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 group"
 									>
-										<span className="flex-1 text-foreground">{assumption}</span>
-										<X
-											className="h-4 w-4 cursor-pointer text-muted-foreground"
+										<div className="flex-shrink-0 mt-1">
+											<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+										</div>
+										<span className="flex-1 text-gray-800 font-medium leading-relaxed">{assumption}</span>
+										<button 
 											onClick={() => removeAssumption(index)}
-										/>
+											className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full hover:bg-blue-200"
+										>
+											<X className="h-4 w-4 text-blue-700" />
+										</button>
 									</div>
 								))}
 							</div>
@@ -431,48 +473,58 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 					<CardContent className="space-y-3 sm:p-3">
 						<div>
 							<label className="mb-2 block text-foreground">Organizations</label>
-							<div className="mb-3 flex gap-2">
+							<div className="mb-4 flex gap-3">
 								<Input
 									placeholder="e.g., B2B SaaS companies, E-commerce retailers"
 									value={newOrg}
 									onChange={(e) => setNewOrg(e.target.value)}
 									onKeyPress={(e) => e.key === "Enter" && addOrg()}
-									className="border-border bg-background text-foreground"
+									className="border-2 border-green-200 bg-green-50 text-gray-900 placeholder:text-green-600 focus:border-green-400 focus:ring-2 focus:ring-green-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
 								/>
-								<Button onClick={addOrg} variant="outline">
+								<Button onClick={addOrg} className="bg-green-500 hover:bg-green-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
 									<Plus className="h-4 w-4" />
 								</Button>
 							</div>
-							<div className="flex flex-wrap gap-2">
+							<div className="flex flex-wrap gap-3">
 								{target_orgs.map((org) => (
-									<Badge key={org} variant="secondary" className="flex items-center gap-1">
-										{org}
-										<X className="h-3 w-3 cursor-pointer" onClick={() => removeOrg(org)} />
-									</Badge>
+									<div key={org} className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-300 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 group">
+										<span className="text-green-800 font-medium">{org}</span>
+										<button 
+											onClick={() => removeOrg(org)}
+											className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-0.5 rounded-full hover:bg-green-200"
+										>
+											<X className="h-3 w-3 text-green-700" />
+										</button>
+									</div>
 								))}
 							</div>
 						</div>
 
 						<div>
 							<label className="mb-2 block text-foreground">People's Roles</label>
-							<div className="mb-3 flex gap-2">
+							<div className="mb-4 flex gap-3">
 								<Input
 									placeholder="e.g., Product Manager, Marketing Director"
 									value={newRole}
 									onChange={(e) => setNewRole(e.target.value)}
 									onKeyPress={(e) => e.key === "Enter" && addRole()}
-									className="border-border bg-background text-foreground"
+									className="border-2 border-purple-200 bg-purple-50 text-gray-900 placeholder:text-purple-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
 								/>
-								<Button onClick={addRole} variant="outline">
+								<Button onClick={addRole} className="bg-purple-500 hover:bg-purple-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
 									<Plus className="h-4 w-4" />
 								</Button>
 							</div>
-							<div className="flex flex-wrap gap-2">
+							<div className="flex flex-wrap gap-3">
 								{target_roles.map((role) => (
-									<Badge key={role} variant="secondary" className="flex items-center gap-1">
-										{role}
-										<X className="h-3 w-3 cursor-pointer" onClick={() => removeRole(role)} />
-									</Badge>
+									<div key={role} className="bg-gradient-to-r from-purple-100 to-violet-100 border border-purple-300 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 group">
+										<span className="text-purple-800 font-medium">{role}</span>
+										<button 
+											onClick={() => removeRole(role)}
+											className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-0.5 rounded-full hover:bg-purple-200"
+										>
+											<X className="h-3 w-3 text-purple-700" />
+										</button>
+									</div>
 								))}
 							</div>
 						</div>
