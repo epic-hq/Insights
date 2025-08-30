@@ -1,11 +1,18 @@
 # UI Style & Component Palette
 
-_Last updated: 2025-08-11
+## Current UI Design Principles
 
-## UI Design Principles: Metro-Inspired Mobile Insights App
+Designing for mobile first. Then we will make it look good on desktop.
+Desire is to be bold and modern, with a clean aesthetic. Based on top Apps like Linear, Vercel, and Superhuman. Here are some interim design principles to adhere to.
 
-This interface follows a **Windows Phone Metro design philosophy** adapted for modern mobile-first user research workflows. Here are the core principles:
-![windows metro](image.png)
+Titles of content section will be outside the card, and the card will be the content. The card border will be hidden on sm breakpoint. And only appear on md & larger. Padding will be tighter as well.
+Reference implementation is currently on `ProjectGoalsScreen` and color styles reference `EnhancedPersonaCard`
+
+Tailwind css brand logo color is --brand-logo
+TBD define other colors and style elements.
+
+Category colors we use for content on badges established as `color` variant eg as used in `InterviewQuestionManager`
+
 
 ### **1. Tile-Based Information Architecture**
 
@@ -49,7 +56,7 @@ A modern, clean aesthetic inspired by Linear, Vercel, and Superhuman.
 
 ---
 
-## 1. Color Palette – "Bold-Business × Artsy"
+## 1. Color Palette
 
 | Token | Hex | Usage |
 |-------|-----|-------|
