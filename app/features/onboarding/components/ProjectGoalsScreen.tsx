@@ -365,13 +365,14 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 				</p> */}
 			</div>
 
-			<div className="space-y-8">
+			<div className="space-y-6">
 				{/* Research Goal - moved first */}
-				<div className="flex items-center gap-2 mb-3">
-					<Target className="h-5 w-5" /> Research Goal
-				</div>
-				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-					<CardContent className="space-y-3 sm:p-3">
+				<div>
+					<div className="flex items-center gap-2 mb-4">
+						<Target className="h-5 w-5" /> Research Goal
+					</div>
+					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+						<CardContent className="space-y-3 p-3 sm:p-4">
 						<div>
 							<label className="mb-2 block text-foreground">What do we want to learn?</label>
 							<Input
@@ -464,13 +465,16 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						</div>
 					</CardContent>
 				</Card>
-				{/* Target Audience - moved after Research Goal */}
-				<div className="flex items-center gap-2 mb-3">
-					<Users className="h-5 w-5" />
-					Your Market
 				</div>
-				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm py-0">
-					<CardContent className="space-y-3 sm:p-3">
+				
+				{/* Target Audience - moved after Research Goal */}
+				<div>
+					<div className="flex items-center gap-2 mb-4">
+						<Users className="h-5 w-5" />
+						Your Market
+					</div>
+					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+						<CardContent className="space-y-3 p-3 sm:p-4">
 						<div>
 							<label className="mb-2 block text-foreground">Organizations</label>
 							<div className="mb-4 flex gap-3">
@@ -530,6 +534,8 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						</div>
 					</CardContent>
 				</Card>
+				</div>
+				
 				{/* Custom Instructions Collapsible Section */}
 				<div className="mb-6">
 					<Button
