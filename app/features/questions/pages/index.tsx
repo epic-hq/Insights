@@ -3,7 +3,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 
 export default function QuestionsIndex() {
-	const { projectId } = useCurrentProject()
+	const { projectId, projectPath } = useCurrentProject()
 
 	if (!projectId) {
 		return (
@@ -27,7 +27,7 @@ export default function QuestionsIndex() {
 				</p>
 			</div>
 
-			<InterviewQuestionsManager projectId={projectId} />
+			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
 		</div>
 	)
 }

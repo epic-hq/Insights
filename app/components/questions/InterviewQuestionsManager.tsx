@@ -3,6 +3,7 @@ import consola from "consola"
 import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
 import { toast } from "sonner"
 import { createClient } from "~/lib/supabase/client"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { Button } from "~/components/ui/button"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -18,6 +19,7 @@ export type Familiarity = "cold" | "warm"
 
 export interface InterviewQuestionsManagerProps {
 	projectId?: string
+	projectPath?: string
 	target_orgs?: string[]
 	target_roles?: string[]
 	research_goal?: string
@@ -44,17 +46,93 @@ interface Question {
 }
 
 const questionCategories = [
-	{ id: "context", name: "Context & Background", weight: 1.0 },
-	{ id: "pain", name: "Pain Points & Problems", weight: 1.2 },
-	{ id: "workflow", name: "Workflow & Behavior", weight: 1.1 },
-	{ id: "goals", name: "Goals & Motivations", weight: 1.0 },
-	{ id: "constraints", name: "Constraints & Barriers", weight: 0.9 },
-	{ id: "willingness", name: "Willingness to Pay", weight: 0.8 },
+	{
+		id: "context",
+		name: "Context & Background",
+		weight: 1.0,
+		color: "border-blue-100 text-blue-800 dark:border-blue-900 dark:text-blue-200",
+	},
+	{
+		id: "pain",
+		name: "Pain Points & Problems",
+		weight: 1.2,
+		color: "border-red-100 text-red-800 dark:border-red-900 dark:text-red-200",
+	},
+	{
+		id: "workflow",
+		name: "Workflow & Behavior",
+		weight: 1.1,
+		color: "border-purple-100 text-purple-800 dark:border-purple-900 dark:text-purple-200",
+	},
+	{
+		id: "goals",
+		name: "Goals & Motivations",
+		weight: 1.0,
+		color: "border-green-100 text-green-800 dark:border-green-900 dark:text-green-200",
+	},
+	{
+		id: "constraints",
+		name: "Constraints & Barriers",
+		weight: 0.9,
+		color: "border-orange-100 text-orange-800 dark:border-orange-900 dark:text-orange-200",
+	},
+	{
+		id: "willingness",
+		name: "Willingness to Pay",
+		weight: 0.8,
+		color: "border-indigo-100 text-indigo-800 dark:border-indigo-900 dark:text-indigo-200",
+	},
 ]
+
+const questionCategoriesVariants = {
+	context: {
+		id: "context",
+		name: "Context & Background",
+		color: "border-blue-100 text-blue-800 dark:border-blue-900 dark:text-blue-200",
+		colorVariant: "blue",
+	},
+	goals: {
+		id: "goals",
+		name: "Goals & Outcomes",
+		color: "border-green-100 text-green-800 dark:border-green-900 dark:text-green-200",
+		colorVariant: "green",
+	},
+	pain: {
+		id: "pain",
+		name: "Pain Points",
+		color: "border-red-100 text-red-800 dark:border-red-900 dark:text-red-200",
+		colorVariant: "red",
+	},
+	workflow: {
+		id: "workflow",
+		name: "Workflow & Process",
+		color: "border-purple-100 text-purple-800 dark:border-purple-900 dark:text-purple-200",
+		colorVariant: "purple",
+	},
+	motivation: {
+		id: "motivation",
+		name: "Motivation & Drivers",
+		color: "border-yellow-100 text-yellow-800 dark:border-yellow-900 dark:text-yellow-200",
+		colorVariant: "yellow",
+	},
+	constraints: {
+		id: "constraints",
+		name: "Constraints & Barriers",
+		color: "border-orange-100 text-orange-800 dark:border-orange-900 dark:text-orange-200",
+		colorVariant: "orange",
+	},
+	willingness: {
+		id: "willingness",
+		name: "Willingness & Adoption",
+		color: "border-indigo-100 text-indigo-800 dark:border-indigo-900 dark:text-indigo-200",
+		colorVariant: "indigo",
+	},
+} as const
 
 export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const {
 		projectId,
+		projectPath,
 		target_orgs,
 		target_roles,
 		research_goal,
@@ -69,6 +147,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		onSelectedQuestionsChange,
 	} = props
 
+	const routes = useProjectRoutes(projectPath)
 	const [timeMinutes, setTimeMinutes] = useState<number>(defaultTimeMinutes)
 	const [purpose, setPurpose] = useState<Purpose>(defaultPurpose)
 	const [familiarity, setFamiliarity] = useState<Familiarity>(defaultFamiliarity)
@@ -416,22 +495,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	)
 
 	const getCategoryColor = (categoryId: string) => {
-		const colors: Record<string, string> = {
-			context: "bg-blue-100 text-blue-800",
-			pain: "bg-red-100 text-red-800",
-			workflow: "bg-purple-100 text-purple-800",
-			goals: "bg-green-100 text-green-800",
-			constraints: "bg-yellow-100 text-yellow-800",
-			willingness: "bg-orange-100 text-orange-800",
-		}
-		return colors[categoryId] || "bg-gray-100 text-gray-800"
+		const category = questionCategories.find((c) => c.id === categoryId)
+		return category?.color || "border-gray-100 text-gray-800 dark:border-gray-900 dark:text-gray-200"
 	}
 
 	const getAnsweredCountColor = (count: number) => {
-		if (count === 0) return "bg-transparent text-gray-600"
-		if (count <= 3) return "bg-transparent text-yellow-600"
-		if (count <= 10) return "bg-transparent text-green-600"
-		return "bg-transparent text-blue-600"
+		if (count === 0) return "bg-transparent text-gray-600 dark:text-gray-400"
+		if (count <= 3) return "bg-transparent text-yellow-600 dark:text-yellow-400"
+		if (count <= 10) return "bg-transparent text-green-600 dark:text-green-400"
+		return "bg-transparent text-blue-600 dark:text-blue-400"
 	}
 
 	const generateQuestions = async () => {
@@ -665,26 +737,36 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						</div>
 					</CardContent>
 				</Card>
+
+				<Button
+					onClick={() => {
+						if (routes) {
+							window.location.href = routes.interviews.onboard()
+						}
+					}}
+					variant="default"
+					disabled={questionPack.questions.length === 0}
+				>
+					Add Interview
+				</Button>
 			</div>
 
 			{/* Right Column: Question Pack */}
 			<div className="lg:col-span-2 space-y-6">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<span>Your Question Pack ({questionPack.questions.length})</span>
+					</div>
+					<div className="text-right">
+						<div
+							className={`text-sm font-medium ${questionPack.totalEstimatedTime > questionPack.targetTime ? "text-red-600" : "text-green-600"}`}
+						>
+							{Math.round(questionPack.totalEstimatedTime)}m / {questionPack.targetTime}m
+						</div>
+					</div>
+				</div>
 				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center justify-between">
-							<div className="flex items-center gap-2">
-								<span>Your Question Pack ({questionPack.questions.length})</span>
-							</div>
-							<div className="text-right">
-								<div
-									className={`text-sm font-medium ${questionPack.totalEstimatedTime > questionPack.targetTime ? "text-red-600" : "text-green-600"}`}
-								>
-									{Math.round(questionPack.totalEstimatedTime)}m / {questionPack.targetTime}m
-								</div>
-							</div>
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
+					<CardContent className="py-3">
 						<DragDropContext onDragEnd={onDragEnd}>
 							<Droppable droppableId="question-pack">
 								{(provided) => (
@@ -725,31 +807,33 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				<div {...provided.dragHandleProps}>
 																					<GripVertical className="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing" />
 																				</div>
-																				<Badge variant="outline" className="text-xs">
-																					#{index + 1}
+																				<Badge variant="outline" className="text-xs text-foreground/50">
+																					{index + 1}
 																				</Badge>
 																			</div>
 																			<div className="flex-1 min-w-0">
+																				<div className="flex items-center gap-2 flex-wrap">
+																					<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
+																						{questionCategories.find((c) => c.id === question.categoryId)?.name}
+																					</Badge>
+																					<Badge variant="outline" className="text-xs text-muted-foreground">
+																						~{Math.round(question.estimatedMinutes)}m
+																					</Badge>
+																					{question.timesAnswered > 0 && (
+																						<Badge
+																							className={getAnsweredCountColor(question.timesAnswered)}
+																							variant="outline"
+																						>
+																							{question.timesAnswered}
+																						</Badge>
+																					)}
+																				</div>
 																				<p
 																					className="text-sm font-medium leading-relaxed mb-2"
 																					title={question.rationale ? `Why: ${question.rationale}` : undefined}
 																				>
 																					{question.text}
 																				</p>
-																				<div className="flex items-center gap-2 flex-wrap">
-																					<Badge className={getCategoryColor(question.categoryId)}>
-																						{questionCategories.find((c) => c.id === question.categoryId)?.name}
-																					</Badge>
-																					<Badge variant="outline" className="text-xs">
-																						~{Math.round(question.estimatedMinutes)}m
-																					</Badge>
-																					<Badge
-																						className={getAnsweredCountColor(question.timesAnswered)}
-																						variant="outline"
-																					>
-																						{question.timesAnswered}x answered
-																					</Badge>
-																				</div>
 																			</div>
 																			<Button
 																				variant="ghost"
@@ -804,26 +888,28 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																<MoreHorizontal className="w-4 h-4 text-gray-400" />
 															</div>
 															<div className="flex-1 min-w-0">
+																<div className="flex items-center gap-2 mb-2 flex-wrap">
+																	<Badge variant="outline" className={getCategoryColor((question as any).categoryId)}>
+																		{questionCategories.find((c) => c.id === (question as any).categoryId)?.name}
+																	</Badge>
+																	<Badge variant="outline" className="text-xs text-muted-foreground">
+																		~{Math.round((question as any).estimatedMinutes)}m
+																	</Badge>
+																	{question.timesAnswered > 0 && (
+																		<Badge
+																			className={getAnsweredCountColor((question as any).timesAnswered)}
+																			variant="outline"
+																		>
+																			{(question as any).timesAnswered}
+																		</Badge>
+																	)}
+																</div>
 																<p
 																	className="text-sm leading-relaxed"
 																	title={question.rationale ? `Why: ${question.rationale}` : undefined}
 																>
 																	{question.text}
 																</p>
-																<div className="flex items-center gap-2 mb-2 flex-wrap">
-																	<Badge className={getCategoryColor((question as any).categoryId)} variant="outline">
-																		{questionCategories.find((c) => c.id === (question as any).categoryId)?.name}
-																	</Badge>
-																	<Badge variant="outline" className="text-xs">
-																		~{Math.round((question as any).estimatedMinutes)}
-																	</Badge>
-																	<Badge
-																		className={getAnsweredCountColor((question as any).timesAnswered)}
-																		variant="outline"
-																	>
-																		{(question as any).timesAnswered}x answered
-																	</Badge>
-																</div>
 															</div>
 														</div>
 													</CardContent>

@@ -18,6 +18,8 @@ interface QuestionsScreenProps {
 	showStepper?: boolean
 	/** Optional projectId to load/save questions context when available */
 	projectId?: string
+	/** Optional projectPath for routing */
+	projectPath?: string
 }
 
 export default function QuestionsScreen({
@@ -31,6 +33,7 @@ export default function QuestionsScreen({
 	onBack,
 	showStepper = true,
 	projectId,
+	projectPath,
 }: QuestionsScreenProps) {
 	// Collect the current selection from the shared manager to pass on Next
 	const [selectedForNext, setSelectedForNext] = useState<{ id: string; text: string }[]>([])
@@ -59,6 +62,7 @@ export default function QuestionsScreen({
 			<div className="mb-6">
 				<InterviewQuestionsManager
 					projectId={projectId}
+					projectPath={projectPath}
 					target_orgs={target_orgs}
 					target_roles={target_roles}
 					research_goal={research_goal}

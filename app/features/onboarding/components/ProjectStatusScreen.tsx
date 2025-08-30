@@ -632,6 +632,7 @@ export default function ProjectStatusScreen({
 												}
 											}}
 										>
+											<Settings2 className="h-5 w-5 text-indigo-600" />
 											Edit
 										</Button>
 									</div>
@@ -878,7 +879,7 @@ export default function ProjectStatusScreen({
 
 								{/* Interview Questions */}
 								<div>
-									<div className="flex flex-row justify-between gap-2">
+									<div className="flex flex-row justify-between gap-2 mb-3">
 										<div className="flex items-center gap-2 mb-3">
 											<Headphones className="h-5 w-5 text-indigo-600" />
 											Interview Questions
