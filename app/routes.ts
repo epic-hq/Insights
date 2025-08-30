@@ -1,5 +1,5 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
-import aiChatRoutes from "./features/aichat/routes"
+import signupChatRoutes from "./features/signup-chat/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import evidenceRoutes from "./features/evidence/routes"
@@ -25,6 +25,7 @@ const routes = [
 		// Home dashboard for logged-in users
 		...homeRoutes,
 		...onboardingRoutes,
+		...signupChatRoutes,
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -34,7 +35,6 @@ const routes = [
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
 				// Mobile routes
-				...aiChatRoutes,
 				...dashboardRoutes,
 				...interviewsRoutes,
 				...insightsRoutes,
@@ -69,7 +69,7 @@ const routes = [
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
-	route("api/copilotkit", "./features/aichat/api/copilotkit.tsx"),
+	route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/create-project", "./routes/api.create-project.tsx"),
 	route("api/save-project-goals", "./routes/api.save-project-goals.tsx"),

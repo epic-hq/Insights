@@ -17,28 +17,13 @@ import { ArrowRight, CheckCircle } from "lucide-react"
 import type { z } from "zod"
 // Agent state type from Mastra agents
 import type { Database } from "~/../supabase/types"
-import { JsonDataCard } from "~/features/aichat/components/JsonDataCard"
-import { PlanCard } from "~/features/aichat/components/PlanCard"
+import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
+import { PlanCard } from "~/features/signup-chat/components/PlanCard"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
+import consola from "consola"
 
 type AgentState = z.infer<typeof SignupAgentState>
-
-interface SignupChatData {
-	problem?: string
-	challenges?: string
-	importance?: number
-	ideal_solution?: string
-	content_types?: string
-	other_feedback?: string
-	completed?: boolean
-}
-
-interface LoaderData {
-	user: Database["public"]["Tables"]["account_settings"]["Row"] | null
-	existingChatData?: SignupChatData
-	copilotRuntimeUrl: string
-}
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -55,7 +40,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		.eq("user_id", user.sub)
 		.single()
 
-	const existingChatData = userSettings?.signup_data as SignupChatData
+	const existingChatData = userSettings?.signup_data as AgentState
 
 	return data({
 		user,
@@ -74,7 +59,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const action = formData.get("action")
 
 	if (action === "save_chat_data") {
-		const chatData = JSON.parse(formData.get("chatData") as string) as SignupChatData
+		const chatData = JSON.parse(formData.get("chatData") as string) as AgentState
 
 		const { client: supabase } = getServerClient(request)
 
@@ -96,7 +81,7 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function SignupChat() {
-	const { existingChatData, copilotRuntimeUrl } = useLoaderData<LoaderData>()
+	const { existingChatData, copilotRuntimeUrl } = useLoaderData()
 	const navigate = useNavigate()
 	const chatCompleted = Boolean(existingChatData?.completed || false)
 
@@ -155,12 +140,8 @@ export default function SignupChat() {
 	return (
 		<div className="flex h-full flex-col bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
 			<div className="container mx-auto flex flex-1 flex-col overflow-y-auto p-4">
-				<div className="mb-8 text-center">
-					<h1 className="mb-2 font-bold text-4xl text-gray-900 dark:text-white">Welcome to UpSight!</h1>
-					<p className="text-gray-600 text-lg dark:text-gray-300">
-						Let's get to know you better. This will help us tailor your experience.
-					</p>
-					<p className="text-blue-600 text-sm dark:text-blue-400">Remember: Your first month is free!</p>
+				<div className="text-center">
+					<h1 className="mb-2 font-bold text-2xl text-foreground">Welcome! 🎉 </h1>
 				</div>
 
 				<CopilotKit
@@ -179,31 +160,23 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 	// Use the agent state inside the CopilotKit context (from @copilotkit/react-core)
 	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
-		initialState: {
-			goal: "Understand user's use case and collect data to help them get started with the app",
-			plan: [
-				{ milestone: "Welcome", completed: true },
-				{ milestone: "Ask questions", completed: false },
-				{ milestone: "Save data", completed: false },
-			],
-			signupChatData: {},
-		},
+		// initialState: existingChatData,
 	})
 
-	// consola.log("checklist state:", state)
+	consola.log("[signupAgent state]", state)
 
-	useCopilotAction({
-		name: "planTool",
-		description: "Show the plan.",
-		available: "frontend",
-		parameters: [
-			{ name: "goal", type: "string", required: true },
-			{ name: "plan", type: "object[]", required: true },
-		],
-		render: ({ args }) => {
-			return <PlanCard goal={args.goal} plan={args.plan} />
-		},
-	})
+	// useCopilotAction({
+	// 	name: "planTool",
+	// 	description: "Show the plan.",
+	// 	available: "frontend",
+	// 	parameters: [
+	// 		{ name: "goal", type: "string", required: true },
+	// 		{ name: "plan", type: "object[]", required: true },
+	// 	],
+	// 	render: ({ args }) => {
+	// 		return <PlanCard goal={args.goal} plan={args.plan} />
+	// 	},
+	// })
 
 	return (
 		<div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-3">
@@ -211,16 +184,18 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 			<div className="col-span-2 rounded-lg bg-white shadow-xl dark:bg-gray-800">
 				<CopilotChat
 					labels={{
-						title: "UpSight Onboarding",
-						initial:
-							"Thanks for signing up for UpSight! 🎉 <br />Just a few quick questions: what's the core problem or use case you're hoping to solve?",
+						title: "UpSight Signup Chat",
+						initial: "Hi, Uppy here!<br />Can you tell me about your use case?",
 					}}
 				/>
 			</div>
-			<div className="col-span-1">
-				<PlanCard goal={state?.goal} plan={state?.plan} />
-				<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
-			</div>
+			{process.env.NODE_ENV === "development" && (
+				<div className="col-span-1">
+					Development:
+					{/* <PlanCard goal={state?.goal} plan={state?.plan} /> */}
+					<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
+				</div>
+			)}
 		</div>
 	)
 }

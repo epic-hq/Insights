@@ -9,7 +9,7 @@ export const Branding = () => {
 export const Logo = () => {
 	return (
 		<svg
-			className="lucide lucide-scan-eye-icon h-8 w-8 text-blue-600"
+			className="lucide lucide-scan-eye-icon h-8 w-8 text-brand"
 			viewBox="0 0 24 24"
 			fill="none"
 			stroke="currentColor"
@@ -32,7 +32,7 @@ export const LogoBrand = () => {
 	return (
 		<div className="flex items-center gap-2">
 			<Logo />
-			<div className="font-semibold font-stretch-75% text-blue-600 text-xl">UpSight</div>
+			<div className="font-semibold font-stretch-75% text-brand text-xl">UpSight</div>
 		</div>
 	)
 }

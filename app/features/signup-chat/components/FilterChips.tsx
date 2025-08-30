@@ -1,5 +1,5 @@
 // FilterChips.tsx
-import type { Filters } from "~/features/aichat/lib/filters"
+import type { Filters } from "~/features/signup-chat/lib/filters"
 
 export function FilterChips({
 	filters,

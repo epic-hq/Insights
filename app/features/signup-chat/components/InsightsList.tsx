@@ -1,9 +1,9 @@
 import { useMemo, useState } from "react"
 import { useLoaderData, useSearchParams } from "react-router-dom"
 import type { Emotion } from "~/components/ui/emotion-badge"
-import { CategoryFilterChip } from "~/features/aichat/components/FilterChips"
-import { InsightCard } from "~/features/aichat/components/InsightCardSmall"
-import { applyFilters, type SortKey, sortInsights } from "~/features/aichat/lib/filters"
+import { CategoryFilterChip } from "~/features/signup-chat/components/FilterChips"
+import { InsightCard } from "~/features/signup-chat/components/InsightCardSmall"
+import { applyFilters, type SortKey, sortInsights } from "~/features/signup-chat/lib/filters"
 import type { Insight } from "~/types"
 
 export function InsightsList() {

@@ -44,14 +44,94 @@ interface QuestionsScreenProps {
 }
 
 const questionCategories = [
-	{ id: "context", name: "Context & Background", color: "bg-blue-100 text-blue-800" },
-	{ id: "goals", name: "Goals & Outcomes", color: "bg-green-100 text-green-800" },
-	{ id: "pain", name: "Pain Points", color: "bg-red-100 text-red-800" },
-	{ id: "workflow", name: "Workflow & Process", color: "bg-purple-100 text-purple-800" },
-	{ id: "motivation", name: "Motivation & Drivers", color: "bg-yellow-100 text-yellow-800" },
-	{ id: "constraints", name: "Constraints & Barriers", color: "bg-orange-100 text-orange-800" },
-	{ id: "willingness", name: "Willingness & Adoption", color: "bg-indigo-100 text-indigo-800" },
+	{
+		id: "context",
+		name: "Context & Background",
+		color: "border-blue-100 text-blue-800 dark:border-blue-900 dark:text-blue-200",
+		colorVariant: "blue",
+	},
+	{
+		id: "goals",
+		name: "Goals & Outcomes",
+		color: "border-green-100 text-green-800 dark:border-green-900 dark:text-green-200",
+		colorVariant: "green",
+	},
+	{
+		id: "pain",
+		name: "Pain Points",
+		color: "border-red-100 text-red-800 dark:border-red-900 dark:text-red-200",
+		colorVariant: "red",
+	},
+	{
+		id: "workflow",
+		name: "Workflow & Process",
+		color: "border-purple-100 text-purple-800 dark:border-purple-900 dark:text-purple-200",
+		colorVariant: "purple",
+	},
+	{
+		id: "motivation",
+		name: "Motivation & Drivers",
+		color: "border-yellow-100 text-yellow-800 dark:border-yellow-900 dark:text-yellow-200",
+		colorVariant: "yellow",
+	},
+	{
+		id: "constraints",
+		name: "Constraints & Barriers",
+		color: "border-orange-100 text-orange-800 dark:border-orange-900 dark:text-orange-200",
+		colorVariant: "orange",
+	},
+	{
+		id: "willingness",
+		name: "Willingness & Adoption",
+		color: "border-indigo-100 text-indigo-800 dark:border-indigo-900 dark:text-indigo-200",
+		colorVariant: "indigo",
+	},
 ]
+
+const questionCategoriesVariants = {
+	context: {
+		id: "context",
+		name: "Context & Background",
+		color: "border-blue-100 text-blue-800 dark:border-blue-900 dark:text-blue-200",
+		colorVariant: "blue",
+	},
+	goals: {
+		id: "goals",
+		name: "Goals & Outcomes",
+		color: "border-green-100 text-green-800 dark:border-green-900 dark:text-green-200",
+		colorVariant: "green",
+	},
+	pain: {
+		id: "pain",
+		name: "Pain Points",
+		color: "border-red-100 text-red-800 dark:border-red-900 dark:text-red-200",
+		colorVariant: "red",
+	},
+	workflow: {
+		id: "workflow",
+		name: "Workflow & Process",
+		color: "border-purple-100 text-purple-800 dark:border-purple-900 dark:text-purple-200",
+		colorVariant: "purple",
+	},
+	motivation: {
+		id: "motivation",
+		name: "Motivation & Drivers",
+		color: "border-yellow-100 text-yellow-800 dark:border-yellow-900 dark:text-yellow-200",
+		colorVariant: "yellow",
+	},
+	constraints: {
+		id: "constraints",
+		name: "Constraints & Barriers",
+		color: "border-orange-100 text-orange-800 dark:border-orange-900 dark:text-orange-200",
+		colorVariant: "orange",
+	},
+	willingness: {
+		id: "willingness",
+		name: "Willingness & Adoption",
+		color: "border-indigo-100 text-indigo-800 dark:border-indigo-900 dark:text-indigo-200",
+		colorVariant: "indigo",
+	},
+} as const
 
 export default function QuestionsScreen({
 	target_orgs,
@@ -89,7 +169,7 @@ export default function QuestionsScreen({
 		if (!hasInitialized || selectedQuestionIds.length === 0) {
 			// Auto-select questions that fit in time, prioritized by composite score
 			const sortedQuestions = [...allQuestionsWithScores].sort((a, b) => b.compositeScore - a.compositeScore)
-			
+
 			let runningTime = 0
 			for (const question of sortedQuestions) {
 				if (runningTime + question.estimatedMinutes <= targetTime) {
@@ -149,9 +229,8 @@ export default function QuestionsScreen({
 		async (question: Question) => {
 			if (!selectedQuestionIds.includes(question.id)) {
 				// If nothing has been explicitly selected yet, seed with the current auto-selected ids
-				const baseIds = selectedQuestionIds.length === 0
-					? (questionPack.selectedIdsUsed as string[])
-					: selectedQuestionIds
+				const baseIds =
+					selectedQuestionIds.length === 0 ? (questionPack.selectedIdsUsed as string[]) : selectedQuestionIds
 				const newSelectedQuestionIds = baseIds.includes(question.id) ? baseIds : [...baseIds, question.id]
 				setSelectedQuestionIds(newSelectedQuestionIds)
 				setHasInitialized(true)
@@ -163,6 +242,11 @@ export default function QuestionsScreen({
 	const getCategoryColor = (categoryId: string) => {
 		const category = questionCategories.find((c) => c.id === categoryId)
 		return category?.color || "bg-gray-100 text-gray-800"
+	}
+
+	const getCategoryColorVariant = (categoryId: string) => {
+		const category = questionCategories.find((c) => c.id === categoryId)
+		return category?.colorVariant || "bg-gray-100 text-gray-800"
 	}
 
 	const getAnsweredCountColor = (count: number) => {
@@ -224,7 +308,7 @@ export default function QuestionsScreen({
 	}
 
 	const handleNext = () => {
-		const questionTexts = questionPack.questions.map(q => q.text)
+		const questionTexts = questionPack.questions.map((q) => q.text)
 		onNext(questionTexts)
 	}
 
@@ -417,39 +501,48 @@ export default function QuestionsScreen({
 																				</div>
 
 																				<div className="flex-1 min-w-0">
-																					<p
-																						className="text-sm font-medium leading-relaxed mb-2"
-																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																					>
-																						{question.text}
-																					</p>
-																					
 																					<div className="flex items-center gap-2 flex-wrap">
-																						<Badge className={getCategoryColor(question.categoryId)}>
+																						<Badge
+																							variant="outline"
+																							color={
+																								questionCategoriesVariants[
+																									question.categoryId as keyof typeof questionCategoriesVariants
+																								].colorVariant
+																							}
+																						>
 																							{questionCategories.find((c) => c.id === question.categoryId)?.name}
 																						</Badge>
-																						<Badge variant="outline" className="text-xs">
+																						<Badge variant="outline" className="text-xs text-muted-foreground">
 																							~{Math.round(question.estimatedMinutes)}m
 																						</Badge>
-																						<Badge
-																							className={getAnsweredCountColor(question.timesAnswered)}
-																							variant="outline"
-																						>
-																							{question.timesAnswered}x answered
-																						</Badge>
+																						{/* Answered */}
+																						{question.timesAnswered > 0 && (
+																							<Badge
+																								className={getAnsweredCountColor(question.timesAnswered)}
+																								variant="outline"
+																							>
+																								{question.timesAnswered}
+																							</Badge>
+																						)}
 																						{goDeepMode && index < 3 && (
 																							<Badge className="bg-yellow-100 text-yellow-800 text-xs">
 																								Power Question
 																							</Badge>
 																						)}
 																					</div>
+																					<p
+																						className="text-sm font-medium leading-relaxed mb-2"
+																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																					>
+																						{question.text}
+																					</p>
 																				</div>
 
 																				<Button
 																					variant="ghost"
 																					size="sm"
 																					onClick={() => removeQuestion(question.id)}
-																					className="text-red-500 hover:text-red-700"
+																					className="text-red-500/70 hover:text-red-700"
 																				>
 																					<Trash2 className="w-4 h-4" />
 																				</Button>
@@ -502,7 +595,10 @@ export default function QuestionsScreen({
 
 																<div className="flex-1 min-w-0">
 																	<div className="flex items-center gap-2 mb-2 flex-wrap">
-																		<Badge className={getCategoryColor(question.categoryId)} variant="outline">
+																		<Badge
+																			variant="outline"
+																			color={questionCategoriesVariants[question.categoryId].colorVariant}
+																		>
 																			{questionCategories.find((c) => c.id === question.categoryId)?.name}
 																		</Badge>
 																		<Badge variant="outline" className="text-xs">

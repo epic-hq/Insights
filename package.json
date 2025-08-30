@@ -53,6 +53,7 @@
 		"@mastra/loggers": "0.10.6",
 		"@mastra/mcp": "0.10.11",
 		"@mastra/memory": "0.12.2",
+		"@mastra/pg": "0.14.5",
 		"@radix-ui/react-accordion": "1.2.11",
 		"@radix-ui/react-alert-dialog": "1.1.14",
 		"@radix-ui/react-avatar": "1.1.10",

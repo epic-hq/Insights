@@ -9,6 +9,7 @@ import { mainAgent } from "./agents/main-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { weatherWorkflow } from "./workflows/weather-workflow"
+import { signupAgent } from "./agents/signup-agent"
 
 // Create global SupabaseClient for workflows
 export const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
@@ -23,7 +24,7 @@ export type UserContext = {
 
 export const mastra = new Mastra({
 	workflows: { dailyBriefWorkflow, weatherWorkflow },
-	agents: { mainAgent, weatherAgent, insightsAgent },
+	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent },
 	storage: new LibSQLStore({
 		// stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
 		url: ":memory:",
