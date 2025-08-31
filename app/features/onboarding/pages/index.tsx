@@ -9,7 +9,7 @@ export default function OnboardingPage() {
 	const navigate = useNavigate()
 	const { projectPath, projectId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
-	
+
 	// For standalone onboarding route, projectId might be empty initially
 	// The OnboardingFlow will create a new project and update the projectId
 

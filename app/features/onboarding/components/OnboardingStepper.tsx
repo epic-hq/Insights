@@ -14,7 +14,7 @@ interface OnboardingStepperProps {
 }
 
 export function OnboardingStepper({ steps, currentStepId, className }: OnboardingStepperProps) {
-	const currentIndex = steps.findIndex(step => step.id === currentStepId)
+	const currentIndex = steps.findIndex((step) => step.id === currentStepId)
 
 	return (
 		<div className={cn("w-full", className)}>
@@ -30,7 +30,7 @@ export function OnboardingStepper({ steps, currentStepId, className }: Onboardin
 								<div className="flex flex-col items-center">
 									<div
 										className={cn(
-											"flex h-10 w-10 items-center justify-center rounded-full border-2 text-sm font-medium",
+											"flex h-10 w-10 items-center justify-center rounded-full border-2 font-medium text-sm",
 											{
 												"border-primary bg-primary text-primary-foreground": isCompleted,
 												"border-primary bg-background text-primary": isCurrent,
@@ -38,15 +38,11 @@ export function OnboardingStepper({ steps, currentStepId, className }: Onboardin
 											}
 										)}
 									>
-										{isCompleted ? (
-											<Check className="h-5 w-5" />
-										) : (
-											<span>{index + 1}</span>
-										)}
+										{isCompleted ? <Check className="h-5 w-5" /> : <span>{index + 1}</span>}
 									</div>
 									<div className="mt-2 text-center">
 										<div
-											className={cn("text-sm font-medium", {
+											className={cn("font-medium text-sm", {
 												"text-primary": isCompleted || isCurrent,
 												"text-muted-foreground": isUpcoming,
 											})}
@@ -54,21 +50,16 @@ export function OnboardingStepper({ steps, currentStepId, className }: Onboardin
 											{step.title}
 										</div>
 										{step.description && (
-											<div className="text-xs text-muted-foreground max-w-24">
-												{step.description}
-											</div>
+											<div className="max-w-24 text-muted-foreground text-xs">{step.description}</div>
 										)}
 									</div>
 								</div>
 								{index < steps.length - 1 && (
 									<div
-										className={cn(
-											"ml-8 h-0.5 w-16",
-											{
-												"bg-primary": index < currentIndex,
-												"bg-muted-foreground": index >= currentIndex,
-											}
-										)}
+										className={cn("ml-8 h-0.5 w-16", {
+											"bg-primary": index < currentIndex,
+											"bg-muted-foreground": index >= currentIndex,
+										})}
 									/>
 								)}
 							</li>

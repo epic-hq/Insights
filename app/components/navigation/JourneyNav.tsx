@@ -1,8 +1,8 @@
-import { Search, Users, TrendingUp, Lightbulb, ChevronRight } from "lucide-react"
+import { ChevronRight, Lightbulb, Search, TrendingUp, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
-import { cn } from "~/lib/utils"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
 
 export interface JourneyStep {
 	key: string
@@ -120,7 +120,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 									<NavLink
 										to={getRouteUrl(primaryRoute)}
 										className={cn(
-											"flex items-center space-x-2 px-3 py-1 rounded-full text-sm font-medium transition-colors cursor-pointer hover:bg-accent",
+											"flex cursor-pointer items-center space-x-2 rounded-full px-3 py-1 font-medium text-sm transition-colors hover:bg-accent",
 											isActive
 												? "bg-primary text-primary-foreground"
 												: isCompleted
@@ -131,7 +131,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 										<Icon className="h-4 w-4" />
 										<span>{step.title}</span>
 									</NavLink>
-									{index < journeySteps.length - 1 && <ChevronRight className="h-4 w-4 text-muted-foreground mx-2" />}
+									{index < journeySteps.length - 1 && <ChevronRight className="mx-2 h-4 w-4 text-muted-foreground" />}
 								</div>
 							)
 						})}
@@ -145,7 +145,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 		return (
 			<nav
 				className={cn(
-					"fixed bottom-0 left-0 right-0 bg-background border-t flex items-center justify-around py-2 z-50",
+					"fixed right-0 bottom-0 left-0 z-50 flex items-center justify-around border-t bg-background py-2",
 					className
 				)}
 			>
@@ -159,8 +159,8 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 							key={step.key}
 							to={getRouteUrl(primaryRoute)}
 							className={cn(
-								"flex flex-col items-center space-y-1 px-3 py-2 rounded-lg text-xs font-medium transition-colors min-w-0 flex-1",
-								isActive ? "text-primary bg-primary/10" : "text-muted-foreground hover:text-foreground hover:bg-accent"
+								"flex min-w-0 flex-1 flex-col items-center space-y-1 rounded-lg px-3 py-2 font-medium text-xs transition-colors",
+								isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
 							)}
 						>
 							<Icon className="h-5 w-5" />
@@ -174,13 +174,13 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 
 	// Default sidebar variant
 	return (
-		<nav className={cn("w-64 bg-background border-r flex flex-col", className)}>
-			<div className="p-4 border-b">
+		<nav className={cn("flex w-64 flex-col border-r bg-background", className)}>
+			<div className="border-b p-4">
 				<h2 className="font-semibold text-lg">Research Journey</h2>
-				<p className="text-sm text-muted-foreground">4-step process to insights</p>
+				<p className="text-muted-foreground text-sm">4-step process to insights</p>
 			</div>
 			<div className="flex-1 overflow-y-auto">
-				{journeySteps.map((step, stepIndex) => {
+				{journeySteps.map((step, _stepIndex) => {
 					const isActive = step.key === currentStep
 					const Icon = step.icon
 
@@ -188,14 +188,14 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 						<div key={step.key} className="p-2">
 							<div
 								className={cn(
-									"flex items-center space-x-3 p-3 rounded-lg transition-colors",
+									"flex items-center space-x-3 rounded-lg p-3 transition-colors",
 									isActive ? "bg-primary/10 text-primary" : "hover:bg-accent"
 								)}
 							>
 								<Icon className="h-5 w-5 flex-shrink-0" />
-								<div className="flex-1 min-w-0">
+								<div className="min-w-0 flex-1">
 									<h3 className="font-medium text-sm">{step.title}</h3>
-									<p className="text-xs text-muted-foreground truncate">{step.description}</p>
+									<p className="truncate text-muted-foreground text-xs">{step.description}</p>
 								</div>
 							</div>
 							{isActive && step.subItems && (
@@ -206,10 +206,10 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 											to={getRouteUrl(item.route)}
 											className={({ isActive: isSubActive }) =>
 												cn(
-													"block px-3 py-2 text-sm rounded-md transition-colors",
+													"block rounded-md px-3 py-2 text-sm transition-colors",
 													isSubActive
 														? "bg-primary text-primary-foreground"
-														: "text-muted-foreground hover:text-foreground hover:bg-accent"
+														: "text-muted-foreground hover:bg-accent hover:text-foreground"
 												)
 											}
 										>

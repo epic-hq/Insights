@@ -1,5 +1,5 @@
 import { Lightbulb, MessageSquare, RefreshCw, Target, TrendingUp } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -29,7 +29,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 	const [loading, setLoading] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 
-	const fetchAgentState = async () => {
+	const fetchAgentState = useCallback(async () => {
 		setLoading(true)
 		setError(null)
 
@@ -56,11 +56,11 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 		} finally {
 			setLoading(false)
 		}
-	}
+	}, [agentId])
 
 	useEffect(() => {
 		fetchAgentState()
-	}, [agentId])
+	}, [fetchAgentState])
 
 	const handleRefresh = () => {
 		fetchAgentState()
@@ -172,7 +172,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 						</h4>
 						<div className="space-y-2">
 							{projectStatus.keyFindings.map((finding, index) => (
-								<div key={index} className="flex items-start gap-2">
+								<div key={`${index}-${finding}`} className="flex items-start gap-2">
 									<Badge variant="secondary" className="mt-0.5">
 										{index + 1}
 									</Badge>
@@ -194,7 +194,7 @@ export function AgentStatusDisplay({ agentId = "mainAgent", className, onRefresh
 						</h4>
 						<div className="space-y-2">
 							{projectStatus.nextSteps.map((step, index) => (
-								<div key={index} className="flex items-start gap-2">
+								<div key={`${index}-${step}`} className="flex items-start gap-2">
 									<Badge variant="outline" className="mt-0.5">
 										{index + 1}
 									</Badge>

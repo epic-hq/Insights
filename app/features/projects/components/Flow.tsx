@@ -1,6 +1,7 @@
-import React, { useMemo } from "react"
 import { motion } from "framer-motion"
 import { ArrowDown } from "lucide-react"
+import type React from "react"
+import { useMemo } from "react"
 
 /**
  * FlowDiagram
@@ -61,8 +62,8 @@ function clsx(...xs: Array<string | false | undefined>) {
 }
 
 function pct(a?: Countish, b?: Countish) {
-	const ans = Number(a ?? 0),
-		tot = Number(b ?? 0)
+	const ans = Number(a ?? 0)
+	const tot = Number(b ?? 0)
 	if (!tot || tot <= 0) return 0
 	return Math.max(0, Math.min(100, Math.round((ans / tot) * 100)))
 }
@@ -70,7 +71,7 @@ function pct(a?: Countish, b?: Countish) {
 function Badge({ value }: { value?: Countish }) {
 	if (value == null) return null
 	return (
-		<span className="absolute -top-2 -right-2 rounded-full bg-slate-900 text-white text-xs font-semibold px-2 py-1 shadow-sm">
+		<span className="-top-2 -right-2 absolute rounded-full bg-slate-900 px-2 py-1 font-semibold text-white text-xs shadow-sm">
 			{value}
 		</span>
 	)
@@ -107,9 +108,9 @@ function NodeCard({
 			tabIndex={0}
 		>
 			<Badge value={count} />
-			<div className="text-sm font-semibold tracking-wide text-slate-800">{title}</div>
+			<div className="font-semibold text-slate-800 text-sm tracking-wide">{title}</div>
 			{children}
-			{sublabel ? <div className="mt-2 text-xs text-slate-500 max-w-[220px]">{sublabel}</div> : null}
+			{sublabel ? <div className="mt-2 max-w-[220px] text-slate-500 text-xs">{sublabel}</div> : null}
 		</motion.div>
 	)
 }
@@ -139,7 +140,7 @@ function RadialPercent({ value }: { value: number }) {
 				y={30}
 				dominantBaseline="middle"
 				textAnchor="middle"
-				className="fill-slate-900 text-[12px] font-bold"
+				className="fill-slate-900 font-bold text-[12px]"
 			>
 				{value}%
 			</text>
@@ -149,8 +150,8 @@ function RadialPercent({ value }: { value: number }) {
 
 function VerticalArrow() {
 	return (
-		<div className="flex items-center justify-center my-2">
-			<ArrowDown className="w-6 h-6 text-slate-400" />
+		<div className="my-2 flex items-center justify-center">
+			<ArrowDown className="h-6 w-6 text-slate-400" />
 		</div>
 	)
 }
@@ -170,8 +171,8 @@ function GroupCard({
 	onClick?: (id: string) => void
 }) {
 	return (
-		<div className="relative rounded-2xl border border-slate-200 bg-white p-4 shadow-sm min-w-[220px]">
-			<div className="text-sm font-semibold tracking-wide text-slate-800 text-center">{title}</div>
+		<div className="relative min-w-[220px] rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+			<div className="text-center font-semibold text-slate-800 text-sm tracking-wide">{title}</div>
 			<div className="mt-3 grid grid-cols-1 gap-2">
 				{items.map((it) => (
 					<button
@@ -180,15 +181,15 @@ function GroupCard({
 						className="relative rounded-xl border border-slate-200 px-3 py-2 text-left hover:border-slate-300 focus:outline-none"
 					>
 						{it.count != null && (
-							<span className="absolute -top-2 -right-2 rounded-full bg-slate-900 text-white text-[10px] font-semibold px-1.5 py-0.5 shadow-sm">
+							<span className="-top-2 -right-2 absolute rounded-full bg-slate-900 px-1.5 py-0.5 font-semibold text-[10px] text-white shadow-sm">
 								{it.count}
 							</span>
 						)}
-						<div className="text-xs font-medium text-slate-700">{it.label}</div>
+						<div className="font-medium text-slate-700 text-xs">{it.label}</div>
 					</button>
 				))}
 			</div>
-			{sublabel ? <div className="mt-2 text-xs text-slate-500 text-center">{sublabel}</div> : null}
+			{sublabel ? <div className="mt-2 text-center text-slate-500 text-xs">{sublabel}</div> : null}
 		</div>
 	)
 }
@@ -212,7 +213,7 @@ export function FlowDiagram({ counts, labels, compact = false, onNodeClick, clas
 					highlight
 				>
 					<RadialPercent value={answeredPct} />
-					<div className="mt-1 text-xs text-slate-600">
+					<div className="mt-1 text-slate-600 text-xs">
 						{counts?.questionsAnswered ?? 0}/{counts?.questionsTotal ?? 0} answered
 					</div>
 				</NodeCard>

@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"
@@ -15,7 +15,7 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	// Use account_id from middleware (already resolved to team account)
 	consola.log("home loader account_id:", account_id)
 
-	const signup_completed = user_settings?.signup_data?.completed ?? false
+	const _signup_completed = user_settings?.signup_data?.completed ?? false
 	// if (!signup_completed) {
 	// 	consola.log("Signup not completed. Redirecting to signup-chat.")
 	// 	return redirect("/signup-chat")

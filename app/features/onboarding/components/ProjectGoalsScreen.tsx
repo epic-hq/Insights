@@ -1,15 +1,14 @@
-import { useCallback, useEffect, useState } from "react"
+import consola from "consola"
 import { ChevronDown, ChevronRight, HelpCircle, Plus, Target, Users, X } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { z } from "zod"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
-import consola from "consola"
-import { useAutoSave } from "../hooks/useAutoSave"
-import { createClient } from "~/lib/supabase/client"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { createClient } from "~/lib/supabase/client"
+import { useAutoSave } from "../hooks/useAutoSave"
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
@@ -152,21 +151,21 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 			if (ctx?.merged) {
 				const m = ctx.merged as Record<string, unknown>
 				const hasAny =
-					(Array.isArray(m["target_orgs"]) && (m["target_orgs"] as unknown[]).length > 0) ||
-					(Array.isArray(m["target_roles"]) && (m["target_roles"] as unknown[]).length > 0) ||
-					(typeof m["research_goal"] === "string" && (m["research_goal"] as string).length > 0) ||
-					(Array.isArray(m["assumptions"]) && (m["assumptions"] as unknown[]).length > 0) ||
-					(Array.isArray(m["unknowns"]) && (m["unknowns"] as unknown[]).length > 0) ||
-					(typeof m["custom_instructions"] === "string" && (m["custom_instructions"] as string).length > 0)
+					(Array.isArray(m.target_orgs) && (m.target_orgs as unknown[]).length > 0) ||
+					(Array.isArray(m.target_roles) && (m.target_roles as unknown[]).length > 0) ||
+					(typeof m.research_goal === "string" && (m.research_goal as string).length > 0) ||
+					(Array.isArray(m.assumptions) && (m.assumptions as unknown[]).length > 0) ||
+					(Array.isArray(m.unknowns) && (m.unknowns as unknown[]).length > 0) ||
+					(typeof m.custom_instructions === "string" && (m.custom_instructions as string).length > 0)
 
 				if (hasAny) {
-					setTargetOrgs(((m["target_orgs"] as string[]) ?? []))
-					setTargetRoles(((m["target_roles"] as string[]) ?? []))
-					setResearchGoal(((m["research_goal"] as string) ?? ""))
-					setResearchGoalDetails(((m["research_goal_details"] as string) ?? ""))
-					setAssumptions(((m["assumptions"] as string[]) ?? []))
-					setUnknowns(((m["unknowns"] as string[]) ?? []))
-					setCustomInstructions(((m["custom_instructions"] as string) ?? ""))
+					setTargetOrgs((m.target_orgs as string[]) ?? [])
+					setTargetRoles((m.target_roles as string[]) ?? [])
+					setResearchGoal((m.research_goal as string) ?? "")
+					setResearchGoalDetails((m.research_goal_details as string) ?? "")
+					setAssumptions((m.assumptions as string[]) ?? [])
+					setUnknowns((m.unknowns as string[]) ?? [])
+					setCustomInstructions((m.custom_instructions as string) ?? "")
 					populatedFromContext = true
 					consola.log("Loaded project context from project_sections (merged)")
 				}
@@ -302,7 +301,7 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 		saveResearchGoal(research_goal, research_goal_details, false)
 	}
 
-	const handleResearchGoalDetailsBlur = async () => {
+	const _handleResearchGoalDetailsBlur = async () => {
 		if (!research_goal.trim()) return
 		if (!currentProjectId) await createProjectIfNeeded()
 		saveResearchGoal(research_goal, research_goal_details, false)
@@ -334,14 +333,14 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						<div key={step.id} className="flex items-center">
 							<div className="flex flex-col items-center">
 								<div
-									className={`flex h-7 w-7 items-center justify-center rounded-full text-xs font-medium sm:h-8 sm:w-8 sm:text-sm ${
+									className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
 										step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
 									}`}
 								>
 									{index + 1}
 								</div>
 								<span
-									className={`mt-1 line-clamp-1 text-[10px] font-medium sm:text-xs md:text-sm ${
+									className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
 										step.id === "goals" ? "text-foreground" : "text-muted-foreground"
 									}`}
 								>
@@ -368,180 +367,198 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 			<div className="space-y-6">
 				{/* Research Goal - moved first */}
 				<div>
-					<div className="flex items-center gap-2 mb-4">
+					<div className="mb-4 flex items-center gap-2">
 						<Target className="h-5 w-5" /> Research Goal
 					</div>
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
-						<div>
-							<label className="mb-2 block text-foreground">What do we want to learn?</label>
-							<Input
-								placeholder="e.g., Understanding price sensitivity for our new pricing tier"
-								value={research_goal}
-								onChange={(e) => setResearchGoal(e.target.value)}
-								onBlur={handleResearchGoalBlur}
-							/>
-						</div>
-
-						<div>
-							<label className="mb-2 block text-foreground">Goal Details</label>
-							<Textarea
-								placeholder="Describe what you want to learn and why it matters for your product/business decisions..."
-								value={research_goal_details}
-								onChange={(e) => setResearchGoalDetails(e.target.value)}
-								rows={4}
-								className="border-2 border-gray-200 bg-white text-gray-900 placeholder:text-gray-500 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 rounded-lg px-4 py-3 text-base leading-relaxed shadow-sm transition-all duration-200 hover:border-gray-300 resize-none"
-							/>
-						</div>
-
-						<div>
-							<label className="mb-2 block text-foreground">What do we not know?</label>
-							<div className="mb-4 flex gap-3">
+							<div>
+								<label className="mb-2 block text-foreground">What do we want to learn?</label>
 								<Input
-									placeholder="Add something you're unsure about..."
-									value={newUnknown}
-									onChange={(e) => setNewUnknown(e.target.value)}
-									onKeyPress={(e) => e.key === "Enter" && addUnknown()}
-									className="border-2 border-amber-200 bg-amber-50 text-gray-900 placeholder:text-amber-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
+									placeholder="e.g., Understanding price sensitivity for our new pricing tier"
+									value={research_goal}
+									onChange={(e) => setResearchGoal(e.target.value)}
+									onBlur={handleResearchGoalBlur}
 								/>
-								<Button onClick={addUnknown} className="bg-amber-500 hover:bg-amber-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
-									<Plus className="h-4 w-4" />
-								</Button>
 							</div>
-							<div className="space-y-2">
-								{unknowns.map((unknown, index) => (
-									<div
-										key={`unknown-${index}-${unknown.slice(0, 10)}`}
-										className="flex items-start gap-3 rounded-xl bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 group"
-									>
-										<div className="flex-shrink-0 mt-0.5">
-											<HelpCircle className="h-5 w-5 text-amber-600" />
-										</div>
-										<span className="flex-1 text-gray-800 font-medium leading-relaxed">{unknown}</span>
-										<button 
-											onClick={() => removeUnknown(index)}
-											className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full hover:bg-amber-200"
-										>
-											<X className="h-4 w-4 text-amber-700" />
-										</button>
-									</div>
-								))}
-							</div>
-						</div>
 
-						<div>
-							<label className="mb-2 block text-foreground">What do we think we know?</label>
-							<div className="mb-4 flex gap-3">
-								<Input
-									placeholder="Add something you believe to be true..."
-									value={newAssumption}
-									onChange={(e) => setNewAssumption(e.target.value)}
-									onKeyPress={(e) => e.key === "Enter" && addAssumption()}
-									className="border-2 border-blue-200 bg-blue-50 text-gray-900 placeholder:text-blue-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
+							<div>
+								<label className="mb-2 block text-foreground">Goal Details</label>
+								<Textarea
+									placeholder="Describe what you want to learn and why it matters for your product/business decisions..."
+									value={research_goal_details}
+									onChange={(e) => setResearchGoalDetails(e.target.value)}
+									rows={4}
+									className="resize-none rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base text-gray-900 leading-relaxed shadow-sm transition-all duration-200 placeholder:text-gray-500 hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
 								/>
-								<Button onClick={addAssumption} className="bg-blue-500 hover:bg-blue-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
-									<Plus className="h-4 w-4" />
-								</Button>
 							</div>
-							<div className="space-y-2">
-								{assumptions.map((assumption, index) => (
-									<div
-										key={`assumption-${index}-${assumption.slice(0, 10)}`}
-										className="flex items-start gap-3 rounded-xl bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 p-4 shadow-sm hover:shadow-md transition-all duration-200 group"
+
+							<div>
+								<label className="mb-2 block text-foreground">What do we not know?</label>
+								<div className="mb-4 flex gap-3">
+									<Input
+										placeholder="Add something you're unsure about..."
+										value={newUnknown}
+										onChange={(e) => setNewUnknown(e.target.value)}
+										onKeyPress={(e) => e.key === "Enter" && addUnknown()}
+										className="rounded-lg border-2 border-amber-200 bg-amber-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-amber-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+									/>
+									<Button
+										onClick={addUnknown}
+										className="rounded-lg border-0 bg-amber-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-amber-600"
 									>
-										<div className="flex-shrink-0 mt-1">
-											<div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-										</div>
-										<span className="flex-1 text-gray-800 font-medium leading-relaxed">{assumption}</span>
-										<button 
-											onClick={() => removeAssumption(index)}
-											className="flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 rounded-full hover:bg-blue-200"
+										<Plus className="h-4 w-4" />
+									</Button>
+								</div>
+								<div className="space-y-2">
+									{unknowns.map((unknown, index) => (
+										<div
+											key={`unknown-${index}-${unknown.slice(0, 10)}`}
+											className="group flex items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
-											<X className="h-4 w-4 text-blue-700" />
-										</button>
-									</div>
-								))}
+											<div className="mt-0.5 flex-shrink-0">
+												<HelpCircle className="h-5 w-5 text-amber-600" />
+											</div>
+											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{unknown}</span>
+											<button
+												onClick={() => removeUnknown(index)}
+												className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-amber-200 group-hover:opacity-100"
+											>
+												<X className="h-4 w-4 text-amber-700" />
+											</button>
+										</div>
+									))}
+								</div>
 							</div>
-						</div>
-					</CardContent>
-				</Card>
+
+							<div>
+								<label className="mb-2 block text-foreground">What do we think we know?</label>
+								<div className="mb-4 flex gap-3">
+									<Input
+										placeholder="Add something you believe to be true..."
+										value={newAssumption}
+										onChange={(e) => setNewAssumption(e.target.value)}
+										onKeyPress={(e) => e.key === "Enter" && addAssumption()}
+										className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-blue-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+									/>
+									<Button
+										onClick={addAssumption}
+										className="rounded-lg border-0 bg-blue-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-blue-600"
+									>
+										<Plus className="h-4 w-4" />
+									</Button>
+								</div>
+								<div className="space-y-2">
+									{assumptions.map((assumption, index) => (
+										<div
+											key={`assumption-${index}-${assumption.slice(0, 10)}`}
+											className="group flex items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 shadow-sm transition-all duration-200 hover:shadow-md"
+										>
+											<div className="mt-1 flex-shrink-0">
+												<div className="h-2 w-2 rounded-full bg-blue-500" />
+											</div>
+											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{assumption}</span>
+											<button
+												onClick={() => removeAssumption(index)}
+												className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-blue-200 group-hover:opacity-100"
+											>
+												<X className="h-4 w-4 text-blue-700" />
+											</button>
+										</div>
+									))}
+								</div>
+							</div>
+						</CardContent>
+					</Card>
 				</div>
-				
+
 				{/* Target Audience - moved after Research Goal */}
 				<div>
-					<div className="flex items-center gap-2 mb-4">
+					<div className="mb-4 flex items-center gap-2">
 						<Users className="h-5 w-5" />
 						Your Market
 					</div>
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
-						<div>
-							<label className="mb-2 block text-foreground">Organizations</label>
-							<div className="mb-4 flex gap-3">
-								<Input
-									placeholder="e.g., B2B SaaS companies, E-commerce retailers"
-									value={newOrg}
-									onChange={(e) => setNewOrg(e.target.value)}
-									onKeyPress={(e) => e.key === "Enter" && addOrg()}
-									className="border-2 border-green-200 bg-green-50 text-gray-900 placeholder:text-green-600 focus:border-green-400 focus:ring-2 focus:ring-green-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
-								/>
-								<Button onClick={addOrg} className="bg-green-500 hover:bg-green-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-							<div className="flex flex-wrap gap-3">
-								{target_orgs.map((org) => (
-									<div key={org} className="bg-gradient-to-r from-green-100 to-emerald-100 border border-green-300 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 group">
-										<span className="text-green-800 font-medium">{org}</span>
-										<button 
-											onClick={() => removeOrg(org)}
-											className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-0.5 rounded-full hover:bg-green-200"
+							<div>
+								<label className="mb-2 block text-foreground">Organizations</label>
+								<div className="mb-4 flex gap-3">
+									<Input
+										placeholder="e.g., B2B SaaS companies, E-commerce retailers"
+										value={newOrg}
+										onChange={(e) => setNewOrg(e.target.value)}
+										onKeyPress={(e) => e.key === "Enter" && addOrg()}
+										className="rounded-lg border-2 border-green-200 bg-green-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-green-600 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
+									/>
+									<Button
+										onClick={addOrg}
+										className="rounded-lg border-0 bg-green-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-green-600"
+									>
+										<Plus className="h-4 w-4" />
+									</Button>
+								</div>
+								<div className="flex flex-wrap gap-3">
+									{target_orgs.map((org) => (
+										<div
+											key={org}
+											className="group flex items-center gap-2 rounded-full border border-green-300 bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-2 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
-											<X className="h-3 w-3 text-green-700" />
-										</button>
-									</div>
-								))}
+											<span className="font-medium text-green-800">{org}</span>
+											<button
+												onClick={() => removeOrg(org)}
+												className="rounded-full p-0.5 opacity-0 transition-opacity duration-200 hover:bg-green-200 group-hover:opacity-100"
+											>
+												<X className="h-3 w-3 text-green-700" />
+											</button>
+										</div>
+									))}
+								</div>
 							</div>
-						</div>
 
-						<div>
-							<label className="mb-2 block text-foreground">People's Roles</label>
-							<div className="mb-4 flex gap-3">
-								<Input
-									placeholder="e.g., Product Manager, Marketing Director"
-									value={newRole}
-									onChange={(e) => setNewRole(e.target.value)}
-									onKeyPress={(e) => e.key === "Enter" && addRole()}
-									className="border-2 border-purple-200 bg-purple-50 text-gray-900 placeholder:text-purple-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200"
-								/>
-								<Button onClick={addRole} className="bg-purple-500 hover:bg-purple-600 text-white border-0 rounded-lg px-4 py-2.5 shadow-sm transition-all duration-200">
-									<Plus className="h-4 w-4" />
-								</Button>
-							</div>
-							<div className="flex flex-wrap gap-3">
-								{target_roles.map((role) => (
-									<div key={role} className="bg-gradient-to-r from-purple-100 to-violet-100 border border-purple-300 rounded-full px-4 py-2 flex items-center gap-2 shadow-sm hover:shadow-md transition-all duration-200 group">
-										<span className="text-purple-800 font-medium">{role}</span>
-										<button 
-											onClick={() => removeRole(role)}
-											className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-0.5 rounded-full hover:bg-purple-200"
+							<div>
+								<label className="mb-2 block text-foreground">People's Roles</label>
+								<div className="mb-4 flex gap-3">
+									<Input
+										placeholder="e.g., Product Manager, Marketing Director"
+										value={newRole}
+										onChange={(e) => setNewRole(e.target.value)}
+										onKeyPress={(e) => e.key === "Enter" && addRole()}
+										className="rounded-lg border-2 border-purple-200 bg-purple-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-purple-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20"
+									/>
+									<Button
+										onClick={addRole}
+										className="rounded-lg border-0 bg-purple-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-purple-600"
+									>
+										<Plus className="h-4 w-4" />
+									</Button>
+								</div>
+								<div className="flex flex-wrap gap-3">
+									{target_roles.map((role) => (
+										<div
+											key={role}
+											className="group flex items-center gap-2 rounded-full border border-purple-300 bg-gradient-to-r from-purple-100 to-violet-100 px-4 py-2 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
-											<X className="h-3 w-3 text-purple-700" />
-										</button>
-									</div>
-								))}
+											<span className="font-medium text-purple-800">{role}</span>
+											<button
+												onClick={() => removeRole(role)}
+												className="rounded-full p-0.5 opacity-0 transition-opacity duration-200 hover:bg-purple-200 group-hover:opacity-100"
+											>
+												<X className="h-3 w-3 text-purple-700" />
+											</button>
+										</div>
+									))}
+								</div>
 							</div>
-						</div>
-					</CardContent>
-				</Card>
+						</CardContent>
+					</Card>
 				</div>
-				
+
 				{/* Custom Instructions Collapsible Section */}
 				<div className="mb-6">
 					<Button
 						variant="ghost"
 						onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-						className="flex items-center gap-2 p-0 text-sm text-muted-foreground hover:text-foreground"
+						className="flex items-center gap-2 p-0 text-muted-foreground text-sm hover:text-foreground"
 					>
 						{showCustomInstructions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 						Custom Instructions (Optional)

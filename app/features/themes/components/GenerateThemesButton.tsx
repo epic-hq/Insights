@@ -1,9 +1,9 @@
+import consola from "consola"
 import { Loader2, Sparkles } from "lucide-react"
 import { useState } from "react"
 import { useFetcher } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import consola from "consola"
 
 export function GenerateThemesButton() {
 	const { projectId } = useCurrentProject()

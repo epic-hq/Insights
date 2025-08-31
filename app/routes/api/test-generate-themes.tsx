@@ -12,12 +12,15 @@ export async function action({ context, request }: ActionFunctionArgs) {
 	consola.log("[Test Generate Themes] Account ID:", account_id)
 
 	if (!projectId || !account_id) {
-		return Response.json({ 
-			success: false, 
-			error: "Missing projectId or account_id",
-			projectId,
-			account_id 
-		}, { status: 400 })
+		return Response.json(
+			{
+				success: false,
+				error: "Missing projectId or account_id",
+				projectId,
+				account_id,
+			},
+			{ status: 400 }
+		)
 	}
 
 	try {
@@ -31,11 +34,14 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
 		if (testError) {
 			consola.error("[Test Generate Themes] Supabase test failed:", testError)
-			return Response.json({
-				success: false,
-				error: "Supabase connection failed",
-				details: testError.message
-			}, { status: 500 })
+			return Response.json(
+				{
+					success: false,
+					error: "Supabase connection failed",
+					details: testError.message,
+				},
+				{ status: 500 }
+			)
 		}
 
 		consola.log("[Test Generate Themes] Evidence count for project:", testData)
@@ -50,11 +56,14 @@ export async function action({ context, request }: ActionFunctionArgs) {
 
 		if (evidenceError) {
 			consola.error("[Test Generate Themes] Evidence loading failed:", evidenceError)
-			return Response.json({
-				success: false,
-				error: "Evidence loading failed",
-				details: evidenceError.message
-			}, { status: 500 })
+			return Response.json(
+				{
+					success: false,
+					error: "Evidence loading failed",
+					details: evidenceError.message,
+				},
+				{ status: 500 }
+			)
 		}
 
 		consola.log("[Test Generate Themes] Evidence loaded:", evidence?.length || 0, "items")
@@ -63,36 +72,41 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		try {
 			const { b } = await import("baml_client")
 			consola.log("[Test Generate Themes] BAML client imported successfully")
-			
+
 			return Response.json({
 				success: true,
 				tests: {
 					supabase: "✅ Connected",
 					evidence_count: evidence?.length || 0,
 					baml_client: "✅ Imported",
-					first_evidence: evidence?.[0] ? "✅ Available" : "❌ None found"
-				}
+					first_evidence: evidence?.[0] ? "✅ Available" : "❌ None found",
+				},
 			})
 		} catch (bamlError) {
 			consola.error("[Test Generate Themes] BAML import failed:", bamlError)
-			return Response.json({
-				success: false,
-				error: "BAML client import failed",
-				details: bamlError instanceof Error ? bamlError.message : String(bamlError),
-				tests: {
-					supabase: "✅ Connected",
-					evidence_count: evidence?.length || 0,
-					baml_client: "❌ Import failed"
-				}
-			}, { status: 500 })
+			return Response.json(
+				{
+					success: false,
+					error: "BAML client import failed",
+					details: bamlError instanceof Error ? bamlError.message : String(bamlError),
+					tests: {
+						supabase: "✅ Connected",
+						evidence_count: evidence?.length || 0,
+						baml_client: "❌ Import failed",
+					},
+				},
+				{ status: 500 }
+			)
 		}
-
 	} catch (error) {
 		consola.error("[Test Generate Themes] Unexpected error:", error)
-		return Response.json({
-			success: false,
-			error: "Unexpected error",
-			details: error instanceof Error ? error.message : String(error)
-		}, { status: 500 })
+		return Response.json(
+			{
+				success: false,
+				error: "Unexpected error",
+				details: error instanceof Error ? error.message : String(error),
+			},
+			{ status: 500 }
+		)
 	}
 }

@@ -1,4 +1,4 @@
-import { ArrowUpDown, Eye, Filter, Grid3X3, Info, HelpCircle } from "lucide-react"
+import { ArrowUpDown, Grid3X3, HelpCircle, Info } from "lucide-react"
 import { useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -149,7 +149,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 
 						<div className="flex items-center gap-4 text-foreground/60 text-sm">
 							<Tooltip>
-								<TooltipTrigger className="flex items-center gap-2 cursor-help">
+								<TooltipTrigger className="flex cursor-help items-center gap-2">
 									<Info className="h-4 w-4" />
 									<span>Coverage vs Strength</span>
 									<HelpCircle className="h-3 w-3" />
@@ -352,7 +352,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 
 								{viewMode === "coverage" ? (
 									<>
-										<div className="text-sm font-medium text-foreground mb-2">
+										<div className="mb-2 font-medium text-foreground text-sm">
 											Coverage View - How widespread is this theme?
 										</div>
 										<div className="flex items-center gap-3">
@@ -374,7 +374,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 									</>
 								) : (
 									<>
-										<div className="text-sm font-medium text-foreground mb-2">
+										<div className="mb-2 font-medium text-foreground text-sm">
 											Strength View - How much evidence do we have?
 										</div>
 										<div className="flex items-center gap-3">
@@ -397,8 +397,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 								)}
 							</div>
 
-							<div className="pt-3 border-t border-foreground">
-								<p className="text-xs text-foreground">
+							<div className="border-foreground border-t pt-3">
+								<p className="text-foreground text-xs">
 									<strong>What to look for:</strong> Purple wedges are your best opportunities. High coverage + high
 									strength = validated themes worth building for.
 								</p>
@@ -454,8 +454,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 						<CardContent>
 							{selectedPersona && (
 								<div className="space-y-4">
-									<div className="mb-4 p-3 bg-blue-50 rounded-lg border border-blue-200">
-										<p className="text-sm text-blue-800">
+									<div className="mb-4 rounded-lg border border-blue-200 bg-blue-50 p-3">
+										<p className="text-blue-800 text-sm">
 											<strong>What this tells you:</strong> These are all the themes that matter to {selectedPersona}.
 											Purple wedges show where they care much more than other personas - your best opportunities to
 											build something they'll love.
@@ -478,11 +478,11 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 											}) => (
 												<div
 													key={theme.themeId}
-													className={`rounded-lg border p-4 ${theme.wedge ? "bg-purple-50 border-purple-200" : "bg-gray-50 border-gray-200"}`}
+													className={`rounded-lg border p-4 ${theme.wedge ? "border-purple-200 bg-purple-50" : "border-gray-200 bg-gray-50"}`}
 												>
 													<div className="flex items-start justify-between">
 														<div className="flex-1">
-															<div className="flex items-center gap-2 mb-2">
+															<div className="mb-2 flex items-center gap-2">
 																<h4 className="font-medium">{theme.themeName}</h4>
 																{theme.wedge && (
 																	<Badge className="bg-purple-600 text-white text-xs">Wedge Opportunity</Badge>
@@ -492,7 +492,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 																<div>
 																	<span className="text-gray-600">Coverage:</span>
 																	<div className="font-medium">{Math.round(theme.coverage * 100)}%</div>
-																	<div className="text-xs text-gray-500">
+																	<div className="text-gray-500 text-xs">
 																		{theme.coverage >= 0.8
 																			? "Nearly universal"
 																			: theme.coverage >= 0.6
@@ -505,7 +505,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 																<div>
 																	<span className="text-gray-600">Evidence Strength:</span>
 																	<div className="font-medium">{theme.nEff.toFixed(1)} pieces</div>
-																	<div className="text-xs text-gray-500">
+																	<div className="text-gray-500 text-xs">
 																		{theme.nEff >= 10
 																			? "Very reliable"
 																			: theme.nEff >= 7
@@ -517,7 +517,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 																</div>
 															</div>
 															{theme.wedge && (
-																<div className="mt-2 p-2 bg-purple-100 rounded text-xs text-purple-800">
+																<div className="mt-2 rounded bg-purple-100 p-2 text-purple-800 text-xs">
 																	<strong>💡 Opportunity:</strong> This persona cares significantly more about this
 																	theme than others. Consider building features specifically for them around this need.
 																</div>
@@ -532,8 +532,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 
 							{selectedTheme && (
 								<div className="space-y-4">
-									<div className="mb-4 p-3 bg-green-50 rounded-lg border border-green-200">
-										<p className="text-sm text-green-800">
+									<div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
+										<p className="text-green-800 text-sm">
 											<strong>What this tells you:</strong> See how "{selectedTheme}" affects different personas. Look
 											for big differences - if one group cares way more, that's a wedge opportunity.
 										</p>
@@ -550,11 +550,11 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 										.map((data: { persona: string; coverage?: number; nEff?: number; wedge?: boolean }) => (
 											<div
 												key={data.persona}
-												className={`rounded-lg border p-4 ${data.wedge ? "bg-purple-50 border-purple-200" : "bg-gray-50 border-gray-200"}`}
+												className={`rounded-lg border p-4 ${data.wedge ? "border-purple-200 bg-purple-50" : "border-gray-200 bg-gray-50"}`}
 											>
 												<div className="flex items-start justify-between">
 													<div className="flex-1">
-														<div className="flex items-center gap-2 mb-2">
+														<div className="mb-2 flex items-center gap-2">
 															<h4 className="font-medium">{data.persona}</h4>
 															{data.wedge && (
 																<Badge className="bg-purple-600 text-white text-xs">Wedge Opportunity</Badge>
@@ -564,7 +564,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 															<div>
 																<span className="text-gray-600">Coverage:</span>
 																<div className="font-medium">{Math.round((data.coverage || 0) * 100)}%</div>
-																<div className="text-xs text-gray-500">
+																<div className="text-gray-500 text-xs">
 																	{(data.coverage || 0) >= 0.8
 																		? "Nearly universal"
 																		: (data.coverage || 0) >= 0.6
@@ -577,7 +577,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 															<div>
 																<span className="text-gray-600">Evidence Strength:</span>
 																<div className="font-medium">{(data.nEff || 0).toFixed(1)} pieces</div>
-																<div className="text-xs text-gray-500">
+																<div className="text-gray-500 text-xs">
 																	{(data.nEff || 0) >= 10
 																		? "Very reliable"
 																		: (data.nEff || 0) >= 7
@@ -589,7 +589,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 															</div>
 														</div>
 														{data.wedge && (
-															<div className="mt-2 p-2 bg-purple-100 rounded text-xs text-purple-800">
+															<div className="mt-2 rounded bg-purple-100 p-2 text-purple-800 text-xs">
 																<strong>💡 Wedge Alert:</strong> {data.persona} cares much more about this theme than
 																other personas. This is a prime opportunity to build something specifically for them.
 															</div>

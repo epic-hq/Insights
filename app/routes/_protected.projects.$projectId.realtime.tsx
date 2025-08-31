@@ -12,8 +12,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	}
 
 	// Get user from supabase auth
-	const { data: { user }, error: authError } = await supabase.auth.getUser()
-	
+	const {
+		data: { user },
+		error: authError,
+	} = await supabase.auth.getUser()
+
 	if (authError || !user) {
 		throw new Response("Authentication required", { status: 401 })
 	}
@@ -32,7 +35,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	return {
 		project,
 		projectId,
-		user
+		user,
 	}
 }
 

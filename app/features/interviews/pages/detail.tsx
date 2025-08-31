@@ -6,9 +6,9 @@ import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { EvidenceCard } from "~/features/evidence/components/EvidenceCard"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
-import { EvidenceCard } from "~/features/evidence/components/EvidenceCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
@@ -388,13 +388,10 @@ export default function InterviewDetail() {
 					{/* Evidence Section */}
 					{evidence.length > 0 && (
 						<div className="space-y-4">
-							<h2 className="font-semibold text-lg text-foreground">Evidence</h2>
+							<h2 className="font-semibold text-foreground text-lg">Evidence</h2>
 							<div className="space-y-4">
 								{evidence.map((evidenceItem) => (
-									<EvidenceCard
-										key={evidenceItem.id}
-										evidence={evidenceItem}
-									/>
+									<EvidenceCard key={evidenceItem.id} evidence={evidenceItem} />
 								))}
 							</div>
 						</div>
@@ -434,7 +431,6 @@ export default function InterviewDetail() {
 								</div>
 							</div>
 						)}
-
 
 						{/* Insights */}
 						{insights.length > 0 && (

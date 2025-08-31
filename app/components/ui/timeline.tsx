@@ -95,7 +95,7 @@ export interface TimelineItem {
 	status?: "default" | "completed" | "active" | "pending" | "error"
 	icon?: React.ReactNode
 	content?: React.ReactNode
-	metadata?: Record<string, any>
+	metadata?: Record<string, unknown>
 }
 
 export interface TimelineProps extends VariantProps<typeof timelineVariants> {

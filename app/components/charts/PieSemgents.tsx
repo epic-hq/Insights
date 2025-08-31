@@ -56,8 +56,8 @@ export function PrettySegmentPie({
 						return `${name} · ${pct}%`
 					}}
 				>
-					{data.map((_, i) => (
-						<Cell key={i} fill={colors[i % colors.length]} />
+					{data.map((d, i) => (
+						<Cell key={d.name ?? String(i)} fill={colors[i % colors.length]} />
 					))}
 
 					{/* center total */}

@@ -1,3 +1,4 @@
+import type { CSSProperties } from "react"
 import { Badge } from "~/components/ui/badge"
 import { cn } from "~/lib/utils"
 
@@ -11,14 +12,14 @@ interface TagDisplayProps {
 	maxTags?: number
 }
 
-export const StyledTag = ({ name, style, frequency }: { name: string; style: any; frequency?: number }) => {
+export const StyledTag = ({ name, style, frequency }: { name: string; style: CSSProperties; frequency?: number }) => {
 	return (
 		<div
 			key={`${name}-${frequency}`}
 			className="m-2 cursor-pointer rounded-full transition-all duration-200 hover:scale-105"
 			style={style}
 		>
-			<Badge className={cn("bg-slate-400", style)}>
+			<Badge className={cn("bg-slate-400")} style={style}>
 				{name}
 				{frequency && <span className="ml-2 text-xs opacity-90">{frequency}</span>}
 			</Badge>

@@ -1,2 +1,7 @@
 # Ignore generated Supabase types file which contains many unused generic helper types
 supabase/**
+.react-router/**
+build/**
+coverage/**
+baml_client/**
+.mastra/**

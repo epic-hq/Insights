@@ -57,6 +57,9 @@ export type UserSettings = Tables<"user_settings">
 export type Evidence = Tables<"evidence">
 export type Theme = Tables<"themes">
 export type Theme_Evidence = Tables<"theme_evidence">
+// Newly exposed domain types to replace `any` usage in components
+export type Annotation = Tables<"annotations">
+export type EntityFlag = Tables<"entity_flags">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
@@ -90,6 +93,38 @@ export type ThemeInsert = TablesInsert<"themes">
 export type ThemeUpdate = TablesUpdate<"themes">
 export type Theme_EvidenceInsert = TablesInsert<"theme_evidence">
 export type Theme_EvidenceUpdate = TablesUpdate<"theme_evidence">
+export type AnnotationInsert = TablesInsert<"annotations">
+export type AnnotationUpdate = TablesUpdate<"annotations">
+export type EntityFlagInsert = TablesInsert<"entity_flags">
+export type EntityFlagUpdate = TablesUpdate<"entity_flags">
+
+// Convenience UI-facing narrows (kept minimal, align with DB rows)
+export type UserFlag = Pick<EntityFlag, "flag_type" | "flag_value">
+
+// Comment-like annotations used in some UIs (annotation_type === "comment")
+// Note: annotation_type is string in DB; narrow in usage sites if you enforce literal unions elsewhere
+export type AnnotationComment = Annotation & { annotation_type: string }
+
+// Questions: shape coming from persisted section meta before normalization
+export type QuestionInput = {
+	id?: string
+	text?: string
+	question?: string
+	categoryId?: string
+	category?: string
+	rationale?: string
+	scores?: {
+		importance?: number
+		goalMatch?: number
+		novelty?: number
+	}
+	importance?: number
+	goalMatch?: number
+	novelty?: number
+	status?: "proposed" | "asked" | "answered" | "skipped"
+	isSelected?: boolean
+	selectedOrder?: number
+}
 
 // 4. View-model helpers
 // ---------------------

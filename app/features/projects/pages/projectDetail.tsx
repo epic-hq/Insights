@@ -4,10 +4,10 @@ import { Link, useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { FlowDiagram } from "~/features/projects/components/Flow"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
-import { FlowDiagram } from "~/features/projects/components/Flow"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [

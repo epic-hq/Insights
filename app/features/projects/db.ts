@@ -122,11 +122,7 @@ export const upsertProjectSection = async ({
 	supabase: SupabaseClient<Database>
 	data: Project_SectionInsert & { id?: string }
 }) => {
-	return await supabase
-		.from("project_sections")
-		.upsert(data, { onConflict: "project_id,kind" })
-		.select()
-		.single()
+	return await supabase.from("project_sections").upsert(data, { onConflict: "project_id,kind" }).select().single()
 }
 
 export const deleteProjectSection = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {

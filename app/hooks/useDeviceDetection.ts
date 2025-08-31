@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 
 export function useDeviceDetection() {
 	const [isMobile, setIsMobile] = useState(false)
@@ -11,13 +11,13 @@ export function useDeviceDetection() {
 		}
 
 		checkDevice()
-		window.addEventListener('resize', checkDevice)
-		
-		return () => window.removeEventListener('resize', checkDevice)
+		window.addEventListener("resize", checkDevice)
+
+		return () => window.removeEventListener("resize", checkDevice)
 	}, [])
 
 	return {
 		isMobile,
-		isDesktop: !isMobile
+		isDesktop: !isMobile,
 	}
 }

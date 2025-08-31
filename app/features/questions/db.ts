@@ -20,12 +20,7 @@ type SectionRow = {
 }
 
 /** Deep merge: arrays union (by primitive identity), objects recurse, scalars take newer */
-function deepMergeWithTime(
-	base: JSONValue,
-	incoming: JSONValue,
-	baseTs: number,
-	incomingTs: number
-): JSONValue {
+function deepMergeWithTime(base: JSONValue, incoming: JSONValue, baseTs: number, incomingTs: number): JSONValue {
 	// Arrays → union
 	if (Array.isArray(base) && Array.isArray(incoming)) {
 		const s = new Set<JSONValue>(base)
@@ -61,7 +56,7 @@ function deepMergeWithTime(
 	}
 
 	// If base is non-null/defined scalar and incoming is null, keep base
-	if ((base !== null && base !== undefined) && (incoming === null || incoming === undefined)) {
+	if (base !== null && base !== undefined && (incoming === null || incoming === undefined)) {
 		return base
 	}
 
@@ -93,7 +88,7 @@ export async function getProjectContextGeneric(
 
 		// Sort ascending so later (newer) wins deterministically in merges
 		if (sections.length > 1) {
-			sections.sort((a, b) => (Date.parse(a.updated_at ?? "0") - Date.parse(b.updated_at ?? "0")))
+			sections.sort((a, b) => Date.parse(a.updated_at ?? "0") - Date.parse(b.updated_at ?? "0"))
 		}
 
 		const result: ProjectContextGeneric = {

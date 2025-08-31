@@ -1,7 +1,7 @@
-import { ChevronLeft, ChevronRight, BookOpen } from "lucide-react"
+import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react"
 import { useState } from "react"
-import { Button } from "~/components/ui/button"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
+import { Button } from "~/components/ui/button"
 import { OnboardingStepper } from "~/components/ui/onboarding-stepper"
 
 interface QuestionsScreenProps {
@@ -44,12 +44,12 @@ export default function QuestionsScreen({
 	}
 
 	return (
-		<div className="p-4 sm:p-8 max-w-7xl mx-auto">
+		<div className="mx-auto max-w-7xl p-4 sm:p-8">
 			{/* Onboarding Progress Header */}
 			{showStepper && <OnboardingStepper currentStep="questions" />}
 
 			<div className="mb-6 sm:mb-8">
-				<h2 className="text-2xl sm:text-3xl mb-2 flex items-center gap-2">
+				<h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
 					<BookOpen className="h-8 w-8" />
 					Interview Questions
 				</h2>

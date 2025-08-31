@@ -1,19 +1,18 @@
+import { Plus, User, Users, X } from "lucide-react"
+import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { useState } from "react"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Checkbox } from "~/components/ui/checkbox"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Textarea } from "~/components/ui/textarea"
 import { createInterview } from "~/features/interviews/db"
 import { createPerson, getPeople } from "~/features/people/db"
 import { userContext } from "~/server/user-context"
-import { createSupabaseAdminClient } from "~/lib/supabase/server"
-import { Plus, User, Users, X } from "lucide-react"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "New Interview | Insights" }, { name: "description", content: "Create a new interview" }]
@@ -55,7 +54,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const formData = await request.formData()
 	const title = formData.get("title") as string
 	const interviewDate = formData.get("interview_date") as string
-	const description = formData.get("description") as string
+	const _description = formData.get("description") as string
 	const participantPseudonym = formData.get("participant_pseudonym") as string
 	const segment = formData.get("segment") as string
 	const durationMin = formData.get("duration_min") as string
@@ -84,7 +83,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				interview_date: interviewDate || null,
 				participant_pseudonym: participantPseudonym?.trim() || null,
 				segment: segment?.trim() || null,
-				duration_min: durationMin ? parseInt(durationMin, 10) : null,
+				duration_min: durationMin ? Number.parseInt(durationMin, 10) : null,
 				account_id: accountId,
 				project_id: projectId,
 			},
@@ -182,7 +181,7 @@ export default function NewInterview() {
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-4">
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
 								<Label htmlFor="title">Title *</Label>
 								<Input
@@ -201,7 +200,7 @@ export default function NewInterview() {
 							</div>
 						</div>
 
-						<div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
 								<Label htmlFor="participant_pseudonym">Participant Name/Pseudonym</Label>
 								<Input
@@ -265,7 +264,7 @@ export default function NewInterview() {
 							<Users className="h-5 w-5" />
 							Participants (Optional)
 						</CardTitle>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							Link existing people or add new participants for better tracking and persona analysis.
 						</p>
 					</CardHeader>
@@ -278,22 +277,22 @@ export default function NewInterview() {
 						/>
 						{/* Add New Person Section */}
 						<div className="mb-6">
-							<div className="flex items-center justify-between mb-3">
-								<h4 className="font-medium text-sm text-foreground">Add New Participants</h4>
+							<div className="mb-3 flex items-center justify-between">
+								<h4 className="font-medium text-foreground text-sm">Add New Participants</h4>
 								<Button
 									type="button"
 									variant="outline"
 									size="sm"
 									onClick={() => setShowNewPersonForm(!showNewPersonForm)}
 								>
-									<Plus className="h-4 w-4 mr-1" />
+									<Plus className="mr-1 h-4 w-4" />
 									Add Person
 								</Button>
 							</div>
 
 							{showNewPersonForm && (
-								<div className="p-4 border border-border rounded-lg bg-muted/30 space-y-3">
-									<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+								<div className="space-y-3 rounded-lg border border-border bg-muted/30 p-4">
+									<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 										<div>
 											<Label htmlFor="new_person_name">Name</Label>
 											<Input
@@ -331,11 +330,11 @@ export default function NewInterview() {
 							{/* Display added new people */}
 							{newPeople.length > 0 && (
 								<div className="space-y-2">
-									<h5 className="font-medium text-sm text-foreground">New Participants to Add:</h5>
+									<h5 className="font-medium text-foreground text-sm">New Participants to Add:</h5>
 									{newPeople.map((person) => (
 										<div
 											key={person.tempId}
-											className="flex items-center justify-between p-2 bg-green-50 dark:bg-green-950/20 border border-green-200 dark:border-green-800 rounded"
+											className="flex items-center justify-between rounded border border-green-200 bg-green-50 p-2 dark:border-green-800 dark:bg-green-950/20"
 										>
 											<div className="flex items-center gap-2">
 												<span className="font-medium text-sm">{person.name}</span>
@@ -357,12 +356,12 @@ export default function NewInterview() {
 						{/* Existing People Selection */}
 						{people.length > 0 && (
 							<div className="space-y-3">
-								<h4 className="font-medium text-sm text-foreground">Select from Existing People</h4>
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+								<h4 className="font-medium text-foreground text-sm">Select from Existing People</h4>
+								<div className="grid grid-cols-1 gap-3 md:grid-cols-2">
 									{people.map((person) => (
 										<div
 											key={person.id}
-											className="flex items-center space-x-3 p-3 border border-border rounded-lg hover:bg-muted/50 transition-colors"
+											className="flex items-center space-x-3 rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
 										>
 											<Checkbox
 												id={`person-${person.id}`}
@@ -376,7 +375,7 @@ export default function NewInterview() {
 												disabled={!selectedPeople.includes(person.id)}
 											/>
 											<div className="flex-1">
-												<label htmlFor={`person-${person.id}`} className="font-medium text-sm cursor-pointer">
+												<label htmlFor={`person-${person.id}`} className="cursor-pointer font-medium text-sm">
 													{person.name}
 												</label>
 												{person.segment && (
@@ -385,15 +384,15 @@ export default function NewInterview() {
 													</Badge>
 												)}
 												{person.description && (
-													<p className="text-xs text-muted-foreground mt-1 line-clamp-2">{person.description}</p>
+													<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">{person.description}</p>
 												)}
 											</div>
 										</div>
 									))}
 								</div>
 								{(selectedPeople.length > 0 || newPeople.length > 0) && (
-									<div className="mt-4 p-3 bg-blue-50 dark:bg-blue-950/20 rounded-lg border border-blue-200 dark:border-blue-800">
-										<p className="text-sm text-blue-700 dark:text-blue-300">
+									<div className="mt-4 rounded-lg border border-blue-200 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/20">
+										<p className="text-blue-700 text-sm dark:text-blue-300">
 											✓ {selectedPeople.length + newPeople.length} participant
 											{selectedPeople.length + newPeople.length > 1 ? "s" : ""} will be linked
 										</p>
@@ -402,18 +401,18 @@ export default function NewInterview() {
 							</div>
 						)}
 						{people.length === 0 && (
-							<div className="text-center py-8 text-muted-foreground">
-								<Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
+							<div className="py-8 text-center text-muted-foreground">
+								<Users className="mx-auto mb-4 h-12 w-12 opacity-50" />
 								<p className="text-sm">No people in your database yet.</p>
-								<p className="text-xs mt-1">Use "Add Person" above to create participants for this interview.</p>
+								<p className="mt-1 text-xs">Use "Add Person" above to create participants for this interview.</p>
 							</div>
 						)}
 					</CardContent>
 				</Card>
 
 				{actionData?.error && (
-					<div className="rounded-md bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 p-4">
-						<p className="text-red-700 dark:text-red-300 text-sm">{actionData.error}</p>
+					<div className="rounded-md border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
+						<p className="text-red-700 text-sm dark:text-red-300">{actionData.error}</p>
 					</div>
 				)}
 

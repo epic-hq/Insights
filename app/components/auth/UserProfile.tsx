@@ -1,5 +1,5 @@
 import consola from "consola"
-import { LogOut, User, FolderOpen } from "lucide-react"
+import { FolderOpen, LogOut, User } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import {
@@ -11,8 +11,8 @@ import {
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
 import { useAuth } from "~/contexts/AuthContext"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { PATHS } from "~/paths"
 
 export function UserProfile() {
@@ -56,7 +56,7 @@ export function UserProfile() {
 						/>
 					) : (
 						// Generate avatar from initials if no avatar URL
-						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-primary-foreground text-sm font-medium">
+						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-sm">
 							{(user.user_metadata?.full_name || user.email || "U")
 								.split(" ")
 								.map((name: string) => name[0])
@@ -85,10 +85,7 @@ export function UserProfile() {
 					</div>
 				</DropdownMenuLabel>
 				<DropdownMenuSeparator className="bg-border/50" />
-				<DropdownMenuItem
-					asChild
-					className="cursor-pointer text-foreground hover:bg-accent"
-				>
+				<DropdownMenuItem asChild className="cursor-pointer text-foreground hover:bg-accent">
 					<Link to={routes.projects.index()} className="flex items-center">
 						<FolderOpen className="mr-2 h-4 w-4" />
 						<span>Switch Project</span>

@@ -1,8 +1,8 @@
 import { Dialog, Transition } from "@headlessui/react"
 import { Fragment, useState } from "react"
 import { useDropzone } from "react-dropzone"
-import { useNotification } from "~/contexts/NotificationContext"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useNotification } from "~/contexts/NotificationContext"
 import type { ProcessingResult } from "~/utils/processInterview.server"
 
 interface UploadModalProps {
@@ -28,9 +28,10 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 		setIsProcessing(true)
 
 		// Detect file type for optimized messaging
-		const isTextFile = file.type.startsWith("text/") || 
-			file.name.endsWith(".txt") || 
-			file.name.endsWith(".md") || 
+		const isTextFile =
+			file.type.startsWith("text/") ||
+			file.name.endsWith(".txt") ||
+			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown")
 
 		setProcessingMessage(isTextFile ? "Processing text with AI..." : "Uploading and transcribing...")
@@ -68,14 +69,14 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 			// Show success notification with file type context
 			showNotification(
-				`${isTextFile ? 'Text' : 'Audio/Video'} processed successfully! Generated ${result.insights?.length || 0} insights.`,
+				`${isTextFile ? "Text" : "Audio/Video"} processed successfully! Generated ${result.insights?.length || 0} insights.`,
 				"success",
 				4000
 			)
 
 			// Store results for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				(window as unknown as Record<string, unknown>).lastProcessingResult = result
+				;(window as unknown as Record<string, unknown>).lastProcessingResult = result
 			}
 
 			// Call success callback if provided
@@ -99,7 +100,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 			// Store error for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
-				(window as unknown as Record<string, unknown>).lastUploadError = err
+				;(window as unknown as Record<string, unknown>).lastUploadError = err
 			}
 		}
 	}

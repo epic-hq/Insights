@@ -1,5 +1,4 @@
 import { layout, type RouteConfig, route } from "@react-router/dev/routes"
-import signupChatRoutes from "./features/signup-chat/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import evidenceRoutes from "./features/evidence/routes"
@@ -14,6 +13,7 @@ import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
+import signupChatRoutes from "./features/signup-chat/routes"
 import themesRoutes from "./features/themes/routes"
 
 const routes = [
@@ -48,7 +48,7 @@ const routes = [
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
-				
+
 				// Project setup route
 				route("setup", "./features/projects/pages/setup.tsx"),
 

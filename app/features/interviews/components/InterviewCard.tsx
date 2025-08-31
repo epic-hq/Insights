@@ -71,7 +71,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 				className={cn(
 					"group relative cursor-pointer overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900",
 					"transition-all duration-300 ease-out",
-					"hover:shadow-lg hover:shadow-black/5 dark:hover:shadow-white/5",
+					"hover:shadow-black/5 hover:shadow-lg dark:hover:shadow-white/5",
 					className
 				)}
 				onMouseEnter={() => setIsHovered(true)}
@@ -94,7 +94,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 
 					{/* Interview Title - Prominent */}
 					<div className="mb-4">
-						<h3 className="font-semibold text-gray-900 text-lg leading-tight dark:text-white line-clamp-2">
+						<h3 className="line-clamp-2 font-semibold text-gray-900 text-lg leading-tight dark:text-white">
 							{interviewTitle}
 						</h3>
 					</div>

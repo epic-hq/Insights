@@ -363,12 +363,12 @@ export default function MetroIndex() {
 		setShowChat(!showChat)
 	}
 
-	const handleToggleChat = () => {
+	const _handleToggleChat = () => {
 		setShowChat(!showChat)
 	}
 
 	// Check if any interviews are currently uploading/processing
-	const isUploading = interviews.some((interview) =>
+	const _isUploading = interviews.some((interview) =>
 		["uploading", "processing", "transcribing"].includes(interview.status)
 	)
 

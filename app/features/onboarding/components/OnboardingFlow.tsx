@@ -77,12 +77,12 @@ export default function OnboardingFlow({
 		projectId?: string
 	}) => {
 		// Update data with welcome data and projectId if provided
-		setData((prev) => ({ 
-			...prev, 
+		setData((prev) => ({
+			...prev,
 			...welcomeData,
-			projectId: welcomeData.projectId || prev.projectId || projectId
+			projectId: welcomeData.projectId || prev.projectId || projectId,
 		}))
-		
+
 		setCurrentStep("questions")
 	}
 
@@ -173,8 +173,8 @@ export default function OnboardingFlow({
 		return `${data.target_orgs[0]} Research`
 	}
 
-		// Use the most current projectId - either from data (newly created) or props (existing)
-		const currentProjectId = data.projectId || projectId
+	// Use the most current projectId - either from data (newly created) or props (existing)
+	const currentProjectId = data.projectId || projectId
 
 	switch (currentStep) {
 		case "welcome":

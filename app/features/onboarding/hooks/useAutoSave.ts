@@ -1,5 +1,5 @@
-import { useCallback, useEffect, useRef, useState } from "react"
 import consola from "consola"
+import { useCallback, useEffect, useRef, useState } from "react"
 
 interface UseAutoSaveOptions {
 	projectId: string
@@ -49,12 +49,12 @@ export function useAutoSave({
 				const response = await fetch("/api/save-project-goals", {
 					method: "POST",
 					body: formData,
-					credentials: 'include'
+					credentials: "include",
 				})
 
 				consola.log(`📥 Response status: ${response.status}`)
 				const result = await response.json()
-				consola.log(`📋 Response data:`, result)
+				consola.log("📋 Response data:", result)
 
 				if (result.success) {
 					setIsSaving(false)
@@ -132,11 +132,7 @@ export function useAutoSave({
 	const saveResearchGoal = useCallback(
 		(research_goal: string, research_goal_details: string, debounced = true) => {
 			if (research_goal.trim()) {
-				saveProjectSection(
-					"research_goal",
-					{ research_goal, research_goal_details },
-					debounced,
-				)
+				saveProjectSection("research_goal", { research_goal, research_goal_details }, debounced)
 			}
 		},
 		[saveProjectSection]
@@ -180,4 +176,3 @@ export function useAutoSave({
 		isSaving,
 	}
 }
-

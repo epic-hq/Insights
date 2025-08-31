@@ -54,8 +54,8 @@ const LiquidLoading = () => {
 
 	return (
 		<div className="flex items-end space-x-4 p-8">
-			{heights.map((height, index) => (
-				<div key={index} className="relative flex flex-col items-center">
+			{heights.map((height) => (
+				<div key={String(height)} className="relative flex flex-col items-center">
 					{/* Droplet with liquid physics */}
 					<div
 						className={`h-4 w-4 rounded-full bg-gradient-to-r ${colors[index]} mb-3 transition-all duration-500 ease-out ${

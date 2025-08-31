@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
-import { userContext } from "~/server/user-context"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
+import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => [{ title: "Interview Realtime | Insights" }]
 

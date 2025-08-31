@@ -7,6 +7,7 @@ import { Textarea } from "~/components/ui/textarea"
 import type { EntityType } from "~/features/annotations/db"
 import { useEntityAnnotations } from "~/features/annotations/hooks"
 import { cn } from "~/lib/utils"
+import type { Annotation, AnnotationComment, UserFlag } from "~/types"
 
 interface EntityInteractionPanelProps {
 	entityType: EntityType
@@ -42,8 +43,8 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 		const uniqueUserIds = Array.from(
 			new Set(
 				(annotations || [])
-					.filter((a: any) => a.annotation_type === "comment" && a.created_by_user_id && !a.created_by_ai)
-					.map((a: any) => a.created_by_user_id)
+					.filter((a: Annotation) => a.annotation_type === "comment" && a.created_by_user_id && !a.created_by_ai)
+					.map((a: Annotation) => a.created_by_user_id)
 			)
 		).filter((id) => id && !userProfiles[id])
 
@@ -92,26 +93,25 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 	const handleArchive = () => {
 		submitFlag({
 			flag_type: "archived",
-			flag_value: !userFlags?.some(
-				(f: { flag_type: string; flag_value: any }) => f.flag_type === "archived" && f.flag_value
-			),
+			flag_value: !userFlags?.some((f: UserFlag) => f.flag_type === "archived" && !!f.flag_value),
 		})
 	}
 
 	const handleHide = () => {
 		submitFlag({
 			flag_type: "hidden",
-			flag_value: !userFlags?.some(
-				(f: { flag_type: string; flag_value: any }) => f.flag_type === "hidden" && f.flag_value
-			),
+			flag_value: !userFlags?.some((f: UserFlag) => f.flag_type === "hidden" && !!f.flag_value),
 		})
 	}
 
 	const upvotes = voteCounts?.upvotes || 0
 	const downvotes = voteCounts?.downvotes || 0
-	const comments = annotations?.filter((a: any) => a.annotation_type === "comment") || []
-	const isArchived = userFlags?.some((f: any) => f.flag_type === "archived" && f.flag_value) || false
-	const isHidden = userFlags?.some((f: any) => f.flag_type === "hidden" && f.flag_value) || false
+	const comments: AnnotationComment[] =
+		(annotations?.filter(
+			(a: Annotation): a is AnnotationComment => a.annotation_type === "comment"
+		) as AnnotationComment[]) || []
+	const isArchived = userFlags?.some((f: UserFlag) => f.flag_type === "archived" && !!f.flag_value) || false
+	const isHidden = userFlags?.some((f: UserFlag) => f.flag_type === "hidden" && !!f.flag_value) || false
 
 	return (
 		<div
@@ -195,7 +195,7 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 					<h4 className="font-medium text-foreground text-sm">Notes</h4>
 					{comments.length > 0 ? (
 						<div className="max-h-40 space-y-2 overflow-y-auto">
-							{comments.map((comment: any) => (
+							{comments.map((comment) => (
 								<div key={comment.id} className="rounded-md bg-gray-50 p-3">
 									<div className="mb-1 flex items-start justify-between">
 										<span className="flex items-center gap-2 font-medium text-foreground/60 text-xs">

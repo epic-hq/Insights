@@ -3,7 +3,8 @@ import { useEffect } from "react"
 import "@copilotkit/react-ui/styles.css"
 import "~/styles/copilot-overrides.css"
 import consola from "consola"
-import { Outlet, redirect, useLoaderData, useNavigation, useParams, useRouteLoaderData } from "react-router"
+import posthog from "posthog-js"
+import { redirect, useLoaderData, useNavigation, useParams, useRouteLoaderData } from "react-router"
 import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
@@ -11,7 +12,6 @@ import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
-import posthog from "posthog-js"
 
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
@@ -148,7 +148,7 @@ export default function ProtectedLayout() {
 					<div className="min-h-screen bg-background">
 						{/* Global Loading Indicator */}
 						{isLoading && (
-							<div className="fixed left-0 right-0 top-0 z-50 h-1 bg-gray-200">
+							<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
 								<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
 									<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
 								</div>

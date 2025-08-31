@@ -21,7 +21,7 @@ export function JsonDataCard({ title, jsonData }: { title?: string; jsonData?: R
 								>
 									{key}
 								</Badge>
-								<div className="col-span-1 ml-2 text-xs text-foreground">{value}</div>
+								<div className="col-span-1 ml-2 text-foreground text-xs">{value}</div>
 							</div>
 						))}
 					</div>

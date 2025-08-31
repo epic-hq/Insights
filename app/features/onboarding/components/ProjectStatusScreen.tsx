@@ -1,47 +1,36 @@
+import { motion } from "framer-motion"
 import {
-	AlertCircle,
+	ArrowRight,
+	BookOpen,
 	CheckCircle,
 	CircleHelp,
 	Eye,
-	FileText,
+	Headphones,
 	Info,
 	Lightbulb,
 	Loader2,
-	MessageSquare,
-	Target,
-	TrendingUp,
-	Users,
-	X,
-	Zap,
-	ArrowRight,
-	BookOpen,
-	Search,
-	PlusCircle,
-	Headphones,
-	Settings2,
-	MicVocalIcon,
 	Mic2Icon,
+	PlusCircle,
+	Search,
+	Settings2,
+	Target,
+	Users,
+	Zap,
 } from "lucide-react"
-import { motion } from "framer-motion"
-import { useState, useEffect } from "react"
-import { Link, useRevalidator } from "react-router-dom"
+import { useEffect, useState } from "react"
 import ReactMarkdown from "react-markdown"
-import { toast } from "sonner"
-import { Button } from "~/components/ui/button"
-import { Input } from "~/components/ui/input"
+import { useRevalidator } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { ProjectStatusData } from "~/utils/project-status.server"
-import type { Project_Section } from "~/types"
 import { createClient } from "~/lib/supabase/client"
-import { FlowDiagram } from "~/features/projects/components/Flow"
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "~/components/ui/dialog"
-import { Workflow } from "lucide-react"
-import { QuestionWidget } from "~/components/questions/QuestionWidget"
+import type { Project_Section } from "~/types"
+import type { ProjectStatusData } from "~/utils/project-status.server"
 
 interface ProjectStatusScreenProps {
 	projectName: string
@@ -67,7 +56,7 @@ export default function ProjectStatusScreen({
 	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false)
 	const [projectSections, setProjectSections] = useState<Project_Section[]>([])
 	const [loading, setLoading] = useState(true)
-	const [showFlowView, setShowFlowView] = useState(false)
+	const [showFlowView, _setShowFlowView] = useState(false)
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
 	const projectPath =
@@ -91,8 +80,7 @@ export default function ProjectStatusScreen({
 				if (data && !error) {
 					setProjectSections(data)
 				}
-			} catch (error) {
-				console.error("Error fetching project sections:", error)
+			} catch (_error) {
 			} finally {
 				setLoading(false)
 			}
@@ -104,8 +92,8 @@ export default function ProjectStatusScreen({
 	// Helper functions to organize project sections and match with analysis
 	const getGoalSections = () => projectSections.filter((section) => section.kind === "goal")
 	const getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market")
-	const getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
-	const getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
+	const _getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
+	const _getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
 	const getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
 
 	// Map analysis results to original goals
@@ -237,7 +225,7 @@ export default function ProjectStatusScreen({
 	return (
 		<div className="relative min-h-screen bg-background text-foreground">
 			{isAnalyzing && (
-				<div className="fixed inset-0 bg-background/80 flex items-center justify-center z-50">
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
 					<Loader2 className="h-8 w-8 animate-spin text-foreground" />
 				</div>
 			)}
@@ -246,7 +234,7 @@ export default function ProjectStatusScreen({
 			<div className="border-border border-b bg-background px-6 py-4">
 				<div className="mx-auto flex max-w-6xl items-center justify-between">
 					<div>
-						<p className="text-foreground font-semibold  text-xl">Goal: {displayData.projectName}</p>
+						<p className="font-semibold text-foreground text-xl">Goal: {displayData.projectName}</p>
 					</div>
 					<div className="flex items-center gap-3">
 						{/* Flow View Toggle Button */}
@@ -270,14 +258,14 @@ export default function ProjectStatusScreen({
 
 			{showFlowView ? (
 				/* Flow View - Two Column Layout */
-				<div className="flex-1 min-h-screen bg-background">
+				<div className="min-h-screen flex-1 bg-background">
 					<div className="mx-auto max-w-7xl px-6 py-8">
-						<div className="grid grid-cols-2 gap-12 min-h-[80vh]">
+						<div className="grid min-h-[80vh] grid-cols-2 gap-12">
 							{/* Left Side: Flow Diagram */}
 							<div className="flex flex-col items-center justify-center space-y-6 pr-8">
 								{/* Research Goals */}
 								<motion.div
-									className="bg-blue-50 dark:bg-blue-950/20 border-2 border-blue-200 dark:border-blue-800 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all w-full max-w-sm text-center"
+									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-blue-200 bg-blue-50 p-6 text-center transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/20"
 									whileHover={{ scale: 1.02 }}
 									onClick={() => {
 										if (routes) {
@@ -285,65 +273,65 @@ export default function ProjectStatusScreen({
 										}
 									}}
 								>
-									<Target className="h-8 w-8 text-blue-600 mx-auto mb-3" />
-									<h3 className="font-semibold text-xl text-blue-800 dark:text-blue-300 mb-2">Research Goals</h3>
+									<Target className="mx-auto mb-3 h-8 w-8 text-blue-600" />
+									<h3 className="mb-2 font-semibold text-blue-800 text-xl dark:text-blue-300">Research Goals</h3>
 									<div className="text-blue-600 dark:text-blue-400">
 										{statusData?.questionAnswers?.length || 0}/
 										{(statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0)} Questions
 									</div>
 								</motion.div>
 
-								<div className="w-px h-12 bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
 
 								{/* Interviews */}
 								<motion.div
-									className="bg-green-50 dark:bg-green-950/20 border-2 border-green-200 dark:border-green-800 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all w-full max-w-sm text-center"
+									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-green-200 bg-green-50 p-6 text-center transition-all hover:shadow-lg dark:border-green-800 dark:bg-green-950/20"
 									whileHover={{ scale: 1.02 }}
 									onClick={() => routes && (window.location.href = routes.interviews.index())}
 								>
-									<Headphones className="h-8 w-8 text-green-600 mx-auto mb-3" />
-									<h3 className="font-semibold text-xl text-green-800 dark:text-green-300 mb-2">Interviews</h3>
+									<Headphones className="mx-auto mb-3 h-8 w-8 text-green-600" />
+									<h3 className="mb-2 font-semibold text-green-800 text-xl dark:text-green-300">Interviews</h3>
 									<div className="text-green-600 dark:text-green-400">{statusData?.totalInterviews || 0} Conducted</div>
 								</motion.div>
 
-								<div className="w-px h-12 bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
 
 								{/* Evidence */}
 								<motion.div
-									className="bg-purple-50 dark:bg-purple-950/20 border-2 border-purple-200 dark:border-purple-800 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all w-full max-w-sm text-center"
+									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-purple-200 bg-purple-50 p-6 text-center transition-all hover:shadow-lg dark:border-purple-800 dark:bg-purple-950/20"
 									whileHover={{ scale: 1.02 }}
 									onClick={() => routes && (window.location.href = routes.evidence.index())}
 								>
-									<BookOpen className="h-8 w-8 text-purple-600 mx-auto mb-3" />
-									<h3 className="font-semibold text-xl text-purple-800 dark:text-purple-300 mb-2">Evidence</h3>
+									<BookOpen className="mx-auto mb-3 h-8 w-8 text-purple-600" />
+									<h3 className="mb-2 font-semibold text-purple-800 text-xl dark:text-purple-300">Evidence</h3>
 									<div className="text-purple-600 dark:text-purple-400">{statusData?.totalEvidence || 0} Pieces</div>
 								</motion.div>
 
-								<div className="w-px h-12 bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
 
 								{/* Personas */}
 								<motion.div
-									className="bg-orange-50 dark:bg-orange-950/20 border-2 border-orange-200 dark:border-orange-800 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all w-full max-w-sm text-center"
+									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-orange-200 bg-orange-50 p-6 text-center transition-all hover:shadow-lg dark:border-orange-800 dark:bg-orange-950/20"
 									whileHover={{ scale: 1.02 }}
 									onClick={() => routes && (window.location.href = routes.personas.index())}
 								>
-									<Users className="h-8 w-8 text-orange-600 mx-auto mb-3" />
-									<h3 className="font-semibold text-xl text-orange-800 dark:text-orange-300 mb-2">Personas</h3>
+									<Users className="mx-auto mb-3 h-8 w-8 text-orange-600" />
+									<h3 className="mb-2 font-semibold text-orange-800 text-xl dark:text-orange-300">Personas</h3>
 									<div className="text-orange-600 dark:text-orange-400">
 										{statusData?.totalPersonas || personas?.length || 0} Identified
 									</div>
 								</motion.div>
 
-								<div className="w-px h-12 bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
 
 								{/* Insights */}
 								<motion.div
-									className="bg-indigo-50 dark:bg-indigo-950/20 border-2 border-indigo-200 dark:border-indigo-800 rounded-xl p-6 cursor-pointer hover:shadow-lg transition-all w-full max-w-sm text-center"
+									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-indigo-200 bg-indigo-50 p-6 text-center transition-all hover:shadow-lg dark:border-indigo-800 dark:bg-indigo-950/20"
 									whileHover={{ scale: 1.02 }}
 									onClick={() => routes && (window.location.href = routes.insights.index())}
 								>
-									<Lightbulb className="h-8 w-8 text-indigo-600 mx-auto mb-3" />
-									<h3 className="font-semibold text-xl text-indigo-800 dark:text-indigo-300 mb-2">Insights</h3>
+									<Lightbulb className="mx-auto mb-3 h-8 w-8 text-indigo-600" />
+									<h3 className="mb-2 font-semibold text-indigo-800 text-xl dark:text-indigo-300">Insights</h3>
 									<div className="text-indigo-600 dark:text-indigo-400">
 										{statusData?.totalInsights || insights?.length || 0} Generated
 									</div>
@@ -351,23 +339,23 @@ export default function ProjectStatusScreen({
 							</div>
 
 							{/* Right Side: Data Details */}
-							<div className="overflow-y-auto pl-8 border-l border-gray-200 dark:border-gray-700 space-y-8">
+							<div className="space-y-8 overflow-y-auto border-gray-200 border-l pl-8 dark:border-gray-700">
 								<div className="space-y-6">
-									<h3 className="font-semibold text-2xl text-foreground flex items-center gap-3">
+									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Target className="h-6 w-6 text-blue-600" />
 										Research Progress
 									</h3>
 									<div className="space-y-4">
-										<div className="flex justify-between items-center">
+										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground">Questions Answered</span>
 											<span className="font-semibold text-lg">
 												{statusData?.questionAnswers?.length || 0} /{" "}
 												{(statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0)}
 											</span>
 										</div>
-										<div className="w-full bg-gray-200 rounded-full h-3 dark:bg-gray-700">
+										<div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700">
 											<div
-												className="bg-blue-600 h-3 rounded-full transition-all"
+												className="h-3 rounded-full bg-blue-600 transition-all"
 												style={{
 													width: `${((statusData?.questionAnswers?.length || 0) / Math.max(1, (statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0))) * 100}%`,
 												}}
@@ -377,84 +365,84 @@ export default function ProjectStatusScreen({
 								</div>
 
 								<div className="space-y-6">
-									<h3 className="font-semibold text-2xl text-foreground flex items-center gap-3">
+									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Headphones className="h-6 w-6 text-green-600" />
 										Data Collection
 									</h3>
 									<div className="grid grid-cols-2 gap-4">
-										<div className="bg-card border border-border rounded-xl p-6 text-center">
-											<div className="text-3xl font-bold text-foreground mb-2">{statusData?.totalInterviews || 0}</div>
-											<div className="text-sm text-muted-foreground">Interviews</div>
+										<div className="rounded-xl border border-border bg-card p-6 text-center">
+											<div className="mb-2 font-bold text-3xl text-foreground">{statusData?.totalInterviews || 0}</div>
+											<div className="text-muted-foreground text-sm">Interviews</div>
 										</div>
-										<div className="bg-card border border-border rounded-xl p-6 text-center">
-											<div className="text-3xl font-bold text-foreground mb-2">{statusData?.totalEvidence || 0}</div>
-											<div className="text-sm text-muted-foreground">Evidence</div>
+										<div className="rounded-xl border border-border bg-card p-6 text-center">
+											<div className="mb-2 font-bold text-3xl text-foreground">{statusData?.totalEvidence || 0}</div>
+											<div className="text-muted-foreground text-sm">Evidence</div>
 										</div>
 									</div>
 								</div>
 
 								<div className="space-y-6">
-									<h3 className="font-semibold text-2xl text-foreground flex items-center gap-3">
+									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Users className="h-6 w-6 text-orange-600" />
 										Analysis Results
 									</h3>
 									<div className="grid grid-cols-2 gap-4">
-										<div className="bg-card border border-border rounded-xl p-6 text-center">
-											<div className="text-3xl font-bold text-foreground mb-2">
+										<div className="rounded-xl border border-border bg-card p-6 text-center">
+											<div className="mb-2 font-bold text-3xl text-foreground">
 												{statusData?.totalPersonas || personas?.length || 0}
 											</div>
-											<div className="text-sm text-muted-foreground">Personas</div>
+											<div className="text-muted-foreground text-sm">Personas</div>
 										</div>
-										<div className="bg-card border border-border rounded-xl p-6 text-center">
-											<div className="text-3xl font-bold text-foreground mb-2">
+										<div className="rounded-xl border border-border bg-card p-6 text-center">
+											<div className="mb-2 font-bold text-3xl text-foreground">
 												{statusData?.totalInsights || insights?.length || 0}
 											</div>
-											<div className="text-sm text-muted-foreground">Insights</div>
+											<div className="text-muted-foreground text-sm">Insights</div>
 										</div>
 									</div>
 								</div>
 
 								{/* Quick Actions */}
 								<div className="space-y-6">
-									<h3 className="font-semibold text-2xl text-foreground flex items-center gap-3">
+									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Zap className="h-6 w-6 text-yellow-600" />
 										Quick Actions
 									</h3>
 									<div className="space-y-3">
 										<Button
 											variant="outline"
-											className="w-full justify-start h-12 text-base"
+											className="h-12 w-full justify-start text-base"
 											onClick={() => {
 												if (routes) {
 													window.location.href = routes.interviews.onboard()
 												}
 											}}
 										>
-											<PlusCircle className="h-5 w-5 mr-3" />
+											<PlusCircle className="mr-3 h-5 w-5" />
 											Add Interview
 										</Button>
 										<Button
 											variant="outline"
-											className="w-full justify-start h-12 text-base"
+											className="h-12 w-full justify-start text-base"
 											onClick={() => {
 												if (routes) {
 													window.location.href = routes.evidence.index()
 												}
 											}}
 										>
-											<Eye className="h-5 w-5 mr-3" />
+											<Eye className="mr-3 h-5 w-5" />
 											View Evidence
 										</Button>
 										<Button
 											variant="outline"
-											className="w-full justify-start h-12 text-base"
+											className="h-12 w-full justify-start text-base"
 											onClick={() => {
 												if (routes) {
 													window.location.href = routes.personas.index()
 												}
 											}}
 										>
-											<Users className="h-5 w-5 mr-3" />
+											<Users className="mr-3 h-5 w-5" />
 											Explore Personas
 										</Button>
 									</div>
@@ -468,27 +456,27 @@ export default function ProjectStatusScreen({
 				<div>
 					{/* Prominent Analysis Action */}
 					<div className="mx-auto max-w-6xl px-6 py-4">
-						<div className="bg-gradient-to-r from-blue-50 to-indigo-50 dark:from-blue-950/20 dark:to-indigo-950/20 rounded-lg p-4 border border-blue-200 dark:border-blue-800">
+						<div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 dark:border-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20">
 							<div className="flex items-start justify-between">
 								<div className="flex-1">
-									<h2 className="font-semibold text-lg text-foreground">Research Analysis</h2>
+									<h2 className="font-semibold text-foreground text-lg">Research Analysis</h2>
 									{/* Progress indicator moved here */}
 									{statusData && displayData.completionScore > 0 && (
-										<div className="flex items-center gap-2 mt-2">
-											<div className="w-24 h-2 rounded-full bg-white/20">
+										<div className="mt-2 flex items-center gap-2">
+											<div className="h-2 w-24 rounded-full bg-white/20">
 												<div
 													className="h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all"
 													style={{ width: `${displayData.completionScore}%` }}
 												/>
 											</div>
-											<span className="text-sm font-medium text-blue-700 dark:text-blue-300">
+											<span className="font-medium text-blue-700 text-sm dark:text-blue-300">
 												{displayData.completionScore}% complete
 											</span>
 										</div>
 									)}
 								</div>
 
-								<div className="flex flex-col gap-2 ml-4">
+								<div className="ml-4 flex flex-col gap-2">
 									<TooltipProvider>
 										<Tooltip>
 											<TooltipTrigger asChild>
@@ -545,13 +533,13 @@ export default function ProjectStatusScreen({
 
 					{/* Main Research Framework */}
 					<div className="mx-auto max-w-6xl px-6 py-6">
-						<div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+						<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
 							{/* Left Column: Research Goals & Gap Analysis */}
-							<div className="lg:col-span-2 space-y-6">
+							<div className="space-y-6 lg:col-span-2">
 								{/* Research Goals Section */}
 								{getGoalSections().length > 0 && (
 									<div>
-										<div className="flex items-center justify-between mb-3">
+										<div className="mb-3 flex items-center justify-between">
 											<div className="flex items-center gap-2">
 												<Target className="h-5 w-5 text-blue-600" />
 												Research Goals
@@ -573,12 +561,12 @@ export default function ProjectStatusScreen({
 										<CardTitle className="flex items-center gap-2"></CardTitle>
 									</CardHeader> */}
 											<CardContent className="space-y-4">
-												<div className="text-sm text-muted-foreground/50">Desired Findings (Goal Details)</div>
+												<div className="text-muted-foreground/50 text-sm">Desired Findings (Goal Details)</div>
 												{getGoalSections().map((goalSection) => {
 													const goalStatus = getGoalStatus(goalSection.content_md)
 													return (
 														<div key={goalSection.id} className="flex items-start gap-3">
-															<div className="flex-shrink-0 mt-1">
+															<div className="mt-1 flex-shrink-0">
 																{goalStatus.status === "answered" ? (
 																	<CheckCircle className="h-5 w-5 text-green-600" />
 																) : goalStatus.status === "open" ? (
@@ -590,8 +578,8 @@ export default function ProjectStatusScreen({
 															<div className="flex-1">
 																<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
 																{goalStatus.status === "answered" && goalStatus.answer && (
-																	<div className="mt-2 p-3 rounded bg-green-50 dark:bg-green-950/20">
-																		<p className="text-sm text-green-800 dark:text-green-200">{goalStatus.answer}</p>
+																	<div className="mt-2 rounded bg-green-50 p-3 dark:bg-green-950/20">
+																		<p className="text-green-800 text-sm dark:text-green-200">{goalStatus.answer}</p>
 																		{goalStatus.confidence && (
 																			<Badge variant="outline" className="mt-2 text-xs">
 																				{goalStatus.confidence === 1
@@ -605,7 +593,7 @@ export default function ProjectStatusScreen({
 																	</div>
 																)}
 																{goalStatus.status === "open" && (
-																	<p className="text-sm text-muted-foreground mt-1">
+																	<p className="mt-1 text-muted-foreground text-sm">
 																		Needs more evidence from interviews
 																	</p>
 																)}
@@ -620,7 +608,7 @@ export default function ProjectStatusScreen({
 
 								{/* Target Market & What We Learned */}
 								<div>
-									<div className="flex items-center justify-between mb-3">
+									<div className="mb-3 flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
 											Target Market & What We Learned
@@ -650,7 +638,7 @@ export default function ProjectStatusScreen({
 																{/* Target Organizations */}
 																{meta?.target_orgs && (
 																	<div>
-																		<div className="text-xs text-muted-foreground mb-1">Target Organizations</div>
+																		<div className="mb-1 text-muted-foreground text-xs">Target Organizations</div>
 																		<div className="flex flex-wrap gap-1">
 																			{(Array.isArray(meta.target_orgs)
 																				? meta.target_orgs
@@ -667,7 +655,7 @@ export default function ProjectStatusScreen({
 																{/* Target Roles */}
 																{meta?.target_roles && (
 																	<div>
-																		<div className="text-xs text-muted-foreground mb-1">Target Roles</div>
+																		<div className="mb-1 text-muted-foreground text-xs">Target Roles</div>
 																		<div className="flex flex-wrap gap-1">
 																			{(Array.isArray(meta.target_roles)
 																				? meta.target_roles
@@ -684,8 +672,8 @@ export default function ProjectStatusScreen({
 																{/* Research Goal Details */}
 																{meta?.research_goal_details && (
 																	<div>
-																		<div className="text-xs text-muted-foreground mb-1">Goal Details</div>
-																		<div className="text-sm text-foreground bg-muted/30 p-2 rounded">
+																		<div className="mb-1 text-muted-foreground text-xs">Goal Details</div>
+																		<div className="rounded bg-muted/30 p-2 text-foreground text-sm">
 																			{meta.research_goal_details}
 																		</div>
 																	</div>
@@ -694,8 +682,8 @@ export default function ProjectStatusScreen({
 																{/* Unknowns */}
 																{meta?.unknowns && (
 																	<div>
-																		<div className="text-xs text-muted-foreground mb-1">Key Unknowns</div>
-																		<div className="text-sm text-foreground bg-muted/30 p-2 rounded">
+																		<div className="mb-1 text-muted-foreground text-xs">Key Unknowns</div>
+																		<div className="rounded bg-muted/30 p-2 text-foreground text-sm">
 																			{Array.isArray(meta.unknowns) ? meta.unknowns.join(", ") : meta.unknowns}
 																		</div>
 																	</div>
@@ -703,8 +691,8 @@ export default function ProjectStatusScreen({
 
 																{/* Original markdown content as fallback */}
 																{!meta?.target_orgs && !meta?.target_roles && (
-																	<div className="p-2 rounded-lg bg-muted/50">
-																		<div className="text-sm text-foreground prose prose-sm max-w-none">
+																	<div className="rounded-lg bg-muted/50 p-2">
+																		<div className="prose prose-sm max-w-none text-foreground text-sm">
 																			<ReactMarkdown>{section.content_md}</ReactMarkdown>
 																		</div>
 																	</div>
@@ -718,12 +706,12 @@ export default function ProjectStatusScreen({
 											{/* Discovered Personas */}
 											{personas.length > 0 && (
 												<div>
-													<div className="flex items-center gap-2 mb-3">
-														<h4 className="font-medium text-sm text-muted-foreground">Personas Discovered</h4>
+													<div className="mb-3 flex items-center gap-2">
+														<h4 className="font-medium text-muted-foreground text-sm">Personas Discovered</h4>
 														<TooltipProvider>
 															<Tooltip>
 																<TooltipTrigger>
-																	<Info className="h-3 w-3 text-muted-foreground hover:text-foreground transition-colors" />
+																	<Info className="h-3 w-3 text-muted-foreground transition-colors hover:text-foreground" />
 																</TooltipTrigger>
 																<TooltipContent>
 																	<p className="max-w-xs">
@@ -738,24 +726,24 @@ export default function ProjectStatusScreen({
 														{personas.slice(0, 3).map((persona) => (
 															<div
 																key={persona.id}
-																className="flex items-start gap-3 p-3 rounded-lg border border-border bg-card hover:bg-muted/50 cursor-pointer transition-colors"
+																className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50"
 																onClick={() => routes && (window.location.href = routes.personas.detail(persona.id))}
 															>
-																<div className="flex-shrink-0 w-8 h-8 rounded-full bg-purple-100 dark:bg-purple-900/20 flex items-center justify-center">
+																<div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20">
 																	<Users className="h-4 w-4 text-purple-600" />
 																</div>
 																<div className="flex-1">
-																	<div className="flex items-center gap-2 mb-1">
-																		<h5 className="font-medium text-sm text-foreground">{persona.name}</h5>
+																	<div className="mb-1 flex items-center gap-2">
+																		<h5 className="font-medium text-foreground text-sm">{persona.name}</h5>
 																		{persona.percentage && (
 																			<Badge variant="secondary" className="text-xs">
 																				{persona.percentage}%
 																			</Badge>
 																		)}
 																	</div>
-																	<p className="text-xs text-muted-foreground line-clamp-2">{persona.description}</p>
+																	<p className="line-clamp-2 text-muted-foreground text-xs">{persona.description}</p>
 																	{persona.topThemes && persona.topThemes.length > 0 && (
-																		<div className="flex flex-wrap gap-1 mt-2">
+																		<div className="mt-2 flex flex-wrap gap-1">
 																			{persona.topThemes.slice(0, 3).map((theme: string, i: number) => (
 																				<Badge key={i} variant="outline" className="text-xs">
 																					{theme}
@@ -767,7 +755,7 @@ export default function ProjectStatusScreen({
 															</div>
 														))}
 													</div>
-													<div className="flex gap-2 mt-3">
+													<div className="mt-3 flex gap-2">
 														<Button
 															variant="outline"
 															size="sm"
@@ -792,9 +780,9 @@ export default function ProjectStatusScreen({
 								</div>
 
 								{/* Questions Answered Status */}
-								{statusData && statusData.hasAnalysis && (
+								{statusData?.hasAnalysis && (
 									<div data-section="questions">
-										<div className="flex items-center justify-between mb-3">
+										<div className="mb-3 flex items-center justify-between">
 											<div className="flex items-center gap-2">
 												<Search className="h-5 w-5 text-green-600" />
 												Questions (Answered {statusData?.questionAnswers?.length || 0} of{" "}
@@ -809,7 +797,7 @@ export default function ProjectStatusScreen({
 													}
 												}}
 											>
-												<BookOpen className="h-4 w-4 mr-2" />
+												<BookOpen className="mr-2 h-4 w-4" />
 												Manage Questions
 											</Button>
 										</div>
@@ -822,14 +810,14 @@ export default function ProjectStatusScreen({
 															{statusData.questionAnswers.slice(0, 5).map((qa) => (
 																<div
 																	key={`qa-${qa.question}`}
-																	className="p-3 rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
+																	className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20"
 																>
-																	<div className="flex items-start gap-2 mb-2">
-																		<CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+																	<div className="mb-2 flex items-start gap-2">
+																		<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
 																		<div className="flex-1">
-																			<p className="font-medium text-sm text-foreground">{qa.question}</p>
+																			<p className="font-medium text-foreground text-sm">{qa.question}</p>
 																			{qa.answer_summary && (
-																				<p className="text-sm text-muted-foreground mt-1">{qa.answer_summary}</p>
+																				<p className="mt-1 text-muted-foreground text-sm">{qa.answer_summary}</p>
 																			)}
 																			{qa.confidence && (
 																				<Badge variant="outline" className="mt-2 text-xs">
@@ -842,7 +830,7 @@ export default function ProjectStatusScreen({
 																</div>
 															))}
 															{statusData.questionAnswers.length > 5 && (
-																<p className="text-xs text-muted-foreground">
+																<p className="text-muted-foreground text-xs">
 																	+{statusData.questionAnswers.length - 5} more questions answered
 																</p>
 															)}
@@ -853,21 +841,21 @@ export default function ProjectStatusScreen({
 												{/* Open Questions */}
 												{statusData.openQuestions && statusData.openQuestions.length > 0 && (
 													<div>
-														<h4 className="font-medium text-sm text-amber-700 dark:text-amber-400 mb-3">
+														<h4 className="mb-3 font-medium text-amber-700 text-sm dark:text-amber-400">
 															Unanswered ({statusData.openQuestions.length})
 														</h4>
 														<div className="space-y-2">
 															{statusData.openQuestions.slice(0, 5).map((question, index) => (
 																<div
 																	key={`open-${index}`}
-																	className="flex items-start gap-2 p-3 rounded-lg border border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20"
+																	className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20"
 																>
-																	<CircleHelp className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
-																	<p className="text-sm text-foreground">{question}</p>
+																	<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+																	<p className="text-foreground text-sm">{question}</p>
 																</div>
 															))}
 															{statusData.openQuestions.length > 5 && (
-																<p className="text-xs text-muted-foreground">
+																<p className="text-muted-foreground text-xs">
 																	+{statusData.openQuestions.length - 5} more questions need answers
 																</p>
 															)}
@@ -881,8 +869,8 @@ export default function ProjectStatusScreen({
 
 								{/* Interview Questions */}
 								<div>
-									<div className="flex flex-row justify-between gap-2 mb-3">
-										<div className="flex items-center gap-2 mb-3">
+									<div className="mb-3 flex flex-row justify-between gap-2">
+										<div className="mb-3 flex items-center gap-2">
 											<Headphones className="h-5 w-5 text-indigo-600" />
 											Interview Questions
 										</div>
@@ -917,22 +905,22 @@ export default function ProjectStatusScreen({
 																			return (
 																				<div
 																					key={`question-${question.id || index}`}
-																					className={`p-3 rounded-lg border ${
+																					className={`rounded-lg border p-3 ${
 																						questionStatus.status === "answered"
-																							? "border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-950/20"
-																							: "border-amber-200 dark:border-amber-800 bg-amber-50 dark:bg-amber-950/20"
+																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
 																					}`}
 																				>
 																					<div className="flex items-start gap-2">
 																						{questionStatus.status === "answered" ? (
-																							<CheckCircle className="h-4 w-4 text-green-600 flex-shrink-0 mt-0.5" />
+																							<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
 																						) : (
-																							<CircleHelp className="h-4 w-4 text-amber-600 flex-shrink-0 mt-0.5" />
+																							<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
 																						)}
 																						<div className="flex-1">
-																							<p className="font-medium text-sm text-foreground">{question.text}</p>
+																							<p className="font-medium text-foreground text-sm">{question.text}</p>
 																							{questionStatus.status === "answered" && questionStatus.answer && (
-																								<div className="mt-2 text-sm text-muted-foreground">
+																								<div className="mt-2 text-muted-foreground text-sm">
 																									{questionStatus.answer}
 																								</div>
 																							)}
@@ -952,7 +940,7 @@ export default function ProjectStatusScreen({
 																			)
 																		})}
 																	{questions.length > 5 && (
-																		<p className="text-xs text-muted-foreground">
+																		<p className="text-muted-foreground text-xs">
 																			+{questions.length - 5} more interview questions
 																		</p>
 																	)}
@@ -960,9 +948,9 @@ export default function ProjectStatusScreen({
 															)
 														})
 												) : (
-													<div className="text-center py-6">
-														<BookOpen className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-														<p className="text-sm text-muted-foreground">No interview questions generated yet</p>
+													<div className="py-6 text-center">
+														<BookOpen className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
+														<p className="text-muted-foreground text-sm">No interview questions generated yet</p>
 														<Button
 															variant="outline"
 															size="sm"
@@ -985,16 +973,16 @@ export default function ProjectStatusScreen({
 								{/* Add Interviews section when no interviews exist */}
 								{(!statusData?.totalInterviews || statusData.totalInterviews === 0) && (
 									<div>
-										<div className="flex items-center gap-2 mb-3">
+										<div className="mb-3 flex items-center gap-2">
 											<Headphones className="h-5 w-5 text-green-600" />
 											Research Analysis
 										</div>
 										<Card>
-											<CardContent className="text-center py-8">
+											<CardContent className="py-8 text-center">
 												<div className="space-y-4">
 													<div>
-														<Headphones className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
-														<h3 className="font-semibold text-lg text-foreground">No Interviews Yet</h3>
+														<Headphones className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+														<h3 className="font-semibold text-foreground text-lg">No Interviews Yet</h3>
 														<p className="text-muted-foreground text-sm">
 															Add your first interview to start generating insights and analysis
 														</p>
@@ -1019,7 +1007,7 @@ export default function ProjectStatusScreen({
 								{/* Next Actions */}
 								{statusData && displayData.nextSteps?.length > 0 && (
 									<div>
-										<div className="flex items-center gap-2 mb-3">
+										<div className="mb-3 flex items-center gap-2">
 											<ArrowRight className="h-5 w-5 text-blue-600" />
 											Recommended Actions
 										</div>
@@ -1027,10 +1015,10 @@ export default function ProjectStatusScreen({
 											<CardContent className="space-y-3">
 												{displayData.nextSteps.slice(0, 3).map((step: string, index: number) => (
 													<div key={`action-${index}`} className="flex items-start gap-3">
-														<div className="flex-shrink-0 w-6 h-6 rounded-full bg-blue-600 text-white text-xs font-bold flex items-center justify-center mt-0.5">
+														<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
 															{index + 1}
 														</div>
-														<p className="text-sm text-foreground">{step}</p>
+														<p className="text-foreground text-sm">{step}</p>
 													</div>
 												))}
 											</CardContent>
@@ -1055,13 +1043,13 @@ export default function ProjectStatusScreen({
 												}
 											}}
 											// onClick={() => routes && (window.location.href = routes.interviews.new())}
-											className="w-full justify-start bg-green-600 text-white hover:bg-green-700 border-green-600"
+											className="w-full justify-start border-green-600 bg-green-600 text-white hover:bg-green-700"
 											variant="default"
 										>
 											<PlusCircle className="mr-2 h-4 w-4" />
 											Add Interview
 										</Button>
-										{statusData && statusData.openQuestions && statusData.openQuestions.length > 0 && (
+										{statusData?.openQuestions && statusData.openQuestions.length > 0 && (
 											<Button
 												onClick={() => {
 													if (routes) {
@@ -1115,7 +1103,7 @@ export default function ProjectStatusScreen({
 											<CardTitle>Research Status</CardTitle>
 										</CardHeader>
 										<CardContent>
-											<div className="flex items-center gap-2 mb-3">
+											<div className="mb-3 flex items-center gap-2">
 												<Badge
 													variant={
 														displayData.confidenceLevel === 1
@@ -1133,7 +1121,7 @@ export default function ProjectStatusScreen({
 													Confidence
 												</Badge>
 											</div>
-											<p className="text-sm text-muted-foreground">
+											<p className="text-muted-foreground text-sm">
 												{displayData.completionScore < 50
 													? "Add more interviews to strengthen findings"
 													: displayData.completionScore < 80

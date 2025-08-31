@@ -43,11 +43,11 @@ export async function action({ context, request }: ActionFunctionArgs) {
 			account_id,
 		})
 		return Response.json(
-			{ 
-				success: false, 
+			{
+				success: false,
 				error: error instanceof Error ? error.message : String(error),
-				details: "Check server logs for full error details"
-			}, 
+				details: "Check server logs for full error details",
+			},
 			{ status: 500 }
 		)
 	}

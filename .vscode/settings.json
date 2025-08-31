@@ -5,10 +5,10 @@
 	"editor.rulers": [120, 160],
 	"editor.codeActionsOnSave": {
 		"source.fixAll": "never",
-		"source.fixAll.biome": "on",
-		"source.organizeImports": "never",
-		"source.organizeImports.biome": "on",
-		"quickfix.biome": "never"
+		"source.fixAll.biome": "explicit",
+		"source.organizeImports": "on",
+		"source.organizeImports.biome": "explicit",
+		"quickfix.biome": "on"
 	},
 	"eslint.enable": false,
 	"prettier.enable": false,

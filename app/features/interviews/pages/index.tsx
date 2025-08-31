@@ -4,13 +4,12 @@ import { Grid, List, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
-import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
-import { Button } from "~/components/ui/button"
-import { routes } from "~/utils/routes"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
+import { Button } from "~/components/ui/button"
+import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { getInterviews } from "~/features/interviews/db"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
+import { getInterviews } from "~/features/interviews/db"
 import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
@@ -116,12 +115,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
 			{/* Clean Header - Metro Style */}
-			<div className="border-b border-gray-200 bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
+			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
 				<div className="mx-auto max-w-6xl">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<h1 className="text-3xl font-light tracking-tight text-gray-900 dark:text-white">Sources</h1>
-							<p className="mt-2 text-lg text-gray-600 dark:text-gray-400">
+							<h1 className="font-light text-3xl text-gray-900 tracking-tight dark:text-white">Sources</h1>
+							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400">
 								Conversations, interviews, and transcripts
 							</p>
 						</div>
@@ -163,7 +162,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 
 			{/* Segment Chart Section - Fixed */}
 			{showPie && segmentData.length > 0 && (
-				<div className="border-b border-gray-200 bg-white px-6 py-6 dark:border-gray-800 dark:bg-gray-950">
+				<div className="border-gray-200 border-b bg-white px-6 py-6 dark:border-gray-800 dark:bg-gray-950">
 					<div className="mx-auto max-w-6xl">
 						<div className="flex justify-center">
 							<PrettySegmentPie data={segmentData} />
@@ -182,7 +181,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									<Upload className="h-12 w-12 text-gray-400 dark:text-gray-500" />
 								</div>
 							</div>
-							<h3 className="mb-3 text-xl font-semibold text-gray-900 dark:text-white">No interviews yet</h3>
+							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No interviews yet</h3>
 							<p className="mb-8 text-gray-600 dark:text-gray-400">
 								Upload your first interview recording or transcript to start gathering insights from your research.
 							</p>
@@ -206,25 +205,25 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							<table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
 								<thead>
 									<tr>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Interview
 										</th>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Participant
 										</th>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Persona
 										</th>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Evidence
 										</th>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Duration
 										</th>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Status
 										</th>
-										<th className="px-4 py-3 text-left text-xs font-medium uppercase tracking-wider text-gray-500 dark:text-gray-400">
+										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Date
 										</th>
 									</tr>
@@ -238,19 +237,19 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 														{interview.title || `Interview with ${interview.participant}`}
 													</div>
 													<div className="mt-1">
-														<MediaTypeIcon 
-															mediaType={interview.media_type} 
-															iconClassName="h-3 w-3" 
+														<MediaTypeIcon
+															mediaType={interview.media_type}
+															iconClassName="h-3 w-3"
 															labelClassName="text-xs"
 														/>
 													</div>
 												</Link>
 											</td>
 											<td className="px-4 py-3">
-												<div className="text-sm text-gray-900 dark:text-white">
+												<div className="text-gray-900 text-sm dark:text-white">
 													{interview.interview_people?.[0]?.people?.name || interview.participant}
 												</div>
-												<div className="text-sm text-gray-500 dark:text-gray-400">
+												<div className="text-gray-500 text-sm dark:text-gray-400">
 													{interview.interview_people?.[0]?.people?.segment || "Participant"}
 												</div>
 											</td>
@@ -260,18 +259,18 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 														persona={interview.interview_people[0].people.people_personas[0].personas}
 													/>
 												) : (
-													<span className="text-sm text-gray-500">No Persona</span>
+													<span className="text-gray-500 text-sm">No Persona</span>
 												)}
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span className="font-medium text-purple-600">{interview.insightCount}</span>
 											</td>
-											<td className="whitespace-nowrap px-4 py-3 text-sm text-gray-900 dark:text-white">
+											<td className="whitespace-nowrap px-4 py-3 text-gray-900 text-sm dark:text-white">
 												{interview.duration}
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
 														interview.status === "ready"
 															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 															: interview.status === "transcribed"
@@ -282,7 +281,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>
 											</td>
-											<td className="whitespace-nowrap px-4 py-3 text-sm text-gray-500 dark:text-gray-400">
+											<td className="whitespace-nowrap px-4 py-3 text-gray-500 text-sm dark:text-gray-400">
 												{formatDistance(new Date(interview.date), new Date(), { addSuffix: true })}
 											</td>
 										</tr>

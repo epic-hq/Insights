@@ -144,7 +144,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Interviews
 		interviews: {
 			index: () => `${base}/interviews`,
-			onboard: () => `${base}/interviews/onboard`,  // aka upload
+			onboard: () => `${base}/interviews/onboard`, // aka upload
 			new: () => `${base}/interviews/new`,
 			detail: (id: string) => `${base}/interviews/${id}`,
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
@@ -219,7 +219,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		projects: {
 			index: () => `/a/${extractAccountId(projectPath)}/projects`,
 			new: () => `/a/${extractAccountId(projectPath)}/projects/new`,
-			setup: () => '/onboarding',
+			setup: () => "/onboarding",
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			edit: (id: string) => `/a/${extractAccountId(projectPath)}/projects/${id}/edit`,
 			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,

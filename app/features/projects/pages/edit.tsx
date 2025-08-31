@@ -1,6 +1,6 @@
 import consola from "consola"
 import { motion } from "framer-motion"
-import { Trash2, Edit3, Plus, Save, X } from "lucide-react"
+import { Edit3, Plus, Save, Trash2, X } from "lucide-react"
 import type React from "react"
 import { useCallback, useEffect, useState } from "react"
 import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
@@ -17,7 +17,6 @@ import {
 } from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Switch } from "~/components/ui/switch"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
@@ -200,7 +199,7 @@ function KindSelector({ name, value, kinds }: { name: string; value?: string; ki
 					type="button"
 					size="sm"
 					variant={!isCustom && selected === k ? "default" : "outline"}
-				className={!isCustom && selected === k ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+					className={!isCustom && selected === k ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
 					onClick={() => {
 						setIsCustom(false)
 						setSelected(k)
@@ -213,7 +212,7 @@ function KindSelector({ name, value, kinds }: { name: string; value?: string; ki
 				type="button"
 				size="sm"
 				variant={isCustom ? "default" : "outline"}
-			className={isCustom ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
+				className={isCustom ? "bg-blue-600 text-white hover:bg-blue-700" : ""}
 				onClick={() => setIsCustom((v) => !v)}
 			>
 				Other…
@@ -250,7 +249,7 @@ export default function EditProject() {
 	}, [])
 
 	const toggleEditing = (sectionId: string) => {
-		setEditingSections(prev => {
+		setEditingSections((prev) => {
 			const newSet = new Set(prev)
 			if (newSet.has(sectionId)) {
 				newSet.delete(sectionId)
@@ -335,7 +334,7 @@ export default function EditProject() {
 						{/* Project Sections - Clean Card-Based Design */}
 						<div className="space-y-6">
 							<div className="flex items-center justify-between">
-								<h2 className="text-lg font-semibold text-foreground">Project Sections</h2>
+								<h2 className="font-semibold text-foreground text-lg">Project Sections</h2>
 								<Button
 									type="button"
 									variant="outline"
@@ -362,36 +361,36 @@ export default function EditProject() {
 												className="group relative overflow-hidden rounded-2xl border border-gray-200 bg-white p-6 shadow-sm transition-all duration-300 hover:shadow-md dark:border-gray-700 dark:bg-gray-900"
 											>
 												<input type="hidden" name="section_id[]" value={s.id} />
-												
+
 												{/* Header with content and controls */}
 												<div className="flex items-start justify-between gap-4">
-													<div className="flex-1 min-w-0">
+													<div className="min-w-0 flex-1">
 														{/* Content - prominent at top */}
 														{isEditing ? (
 															<Textarea
 																name="section_content_md[]"
-																className="mb-4 font-mono resize-none"
+																className="mb-4 resize-none font-mono"
 																rows={4}
 																defaultValue={s.content_md || ""}
 																placeholder="Enter section content..."
 															/>
 														) : (
 															<div className="mb-4">
-																<p className="font-medium text-lg text-gray-900 leading-relaxed dark:text-white">
+																<p className="font-medium text-gray-900 text-lg leading-relaxed dark:text-white">
 																	{s.content_md || "No content"}
 																</p>
 															</div>
 														)}
-														
+
 														{/* Kind and Position - only show when editing */}
 														{isEditing && (
-															<div className="flex gap-3 mb-4">
+															<div className="mb-4 flex gap-3">
 																<div className="flex-1">
-																	<Label className="text-xs text-gray-500 mb-1">Kind</Label>
+																	<Label className="mb-1 text-gray-500 text-xs">Kind</Label>
 																	<KindSelector name="section_kind[]" value={s.kind} kinds={kinds} />
 																</div>
 																<div className="w-24">
-																	<Label className="text-xs text-gray-500 mb-1">Position</Label>
+																	<Label className="mb-1 text-gray-500 text-xs">Position</Label>
 																	<Input
 																		name="section_position[]"
 																		type="number"
@@ -405,13 +404,13 @@ export default function EditProject() {
 													</div>
 
 													{/* Controls */}
-													<div className="flex items-center gap-2 flex-shrink-0">
+													<div className="flex flex-shrink-0 items-center gap-2">
 														{!isEditing && (
-															<div className={`px-3 py-1 rounded-full text-xs font-medium ${getKindColor(s.kind)}`}>
+															<div className={`rounded-full px-3 py-1 font-medium text-xs ${getKindColor(s.kind)}`}>
 																{s.kind}
 															</div>
 														)}
-														
+
 														<Button
 															type="button"
 															variant="ghost"
@@ -428,7 +427,7 @@ export default function EditProject() {
 																	type="button"
 																	variant="ghost"
 																	size="sm"
-																	className="h-8 w-8 p-0 text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950"
+																	className="h-8 w-8 p-0 text-red-500 hover:bg-red-50 hover:text-red-600 dark:hover:bg-red-950"
 																>
 																	<Trash2 className="h-4 w-4" />
 																</Button>
@@ -460,7 +459,7 @@ export default function EditProject() {
 
 								{/* Save Button - only show if editing */}
 								{editingSections.size > 0 && (
-									<div className="flex justify-end pt-4 border-t">
+									<div className="flex justify-end border-t pt-4">
 										<Button type="submit" className="gap-2">
 											<Save className="h-4 w-4" />
 											Save Changes
@@ -471,7 +470,7 @@ export default function EditProject() {
 
 							{/* Hidden delete forms */}
 							{sections.map((s) => (
-								<form key={`delete-${s.id}`} id={`delete-section-${s.id}`} method="post" style={{ display: 'none' }}>
+								<form key={`delete-${s.id}`} id={`delete-section-${s.id}`} method="post" style={{ display: "none" }}>
 									<input type="hidden" name="intent" value="delete_section" />
 									<input type="hidden" name="section_id" value={s.id} />
 								</form>
@@ -482,12 +481,12 @@ export default function EditProject() {
 								<motion.div
 									initial={{ opacity: 0, y: 20 }}
 									animate={{ opacity: 1, y: 0 }}
-									className="rounded-2xl border border-dashed border-gray-300 p-6 dark:border-gray-600"
+									className="rounded-2xl border border-gray-300 border-dashed p-6 dark:border-gray-600"
 								>
 									<form method="post" onSubmit={validateNew} className="space-y-4">
 										<input type="hidden" name="intent" value="add_section" />
-										
-										<div className="flex items-center justify-between mb-4">
+
+										<div className="mb-4 flex items-center justify-between">
 											<h3 className="font-medium text-lg">Add New Section</h3>
 											<Button
 												type="button"
@@ -499,12 +498,16 @@ export default function EditProject() {
 												<X className="h-4 w-4" />
 											</Button>
 										</div>
-										
-										{err && <div className="text-red-600 text-sm mb-4 p-3 rounded-lg bg-red-50 dark:bg-red-950/20">{err}</div>}
-										
+
+										{err && (
+											<div className="mb-4 rounded-lg bg-red-50 p-3 text-red-600 text-sm dark:bg-red-950/20">{err}</div>
+										)}
+
 										<div className="space-y-4">
 											<div>
-												<Label htmlFor="new_content_md" className="mb-2 block">Content *</Label>
+												<Label htmlFor="new_content_md" className="mb-2 block">
+													Content *
+												</Label>
 												<Textarea
 													id="new_content_md"
 													name="new_content_md"
@@ -514,34 +517,29 @@ export default function EditProject() {
 													required
 												/>
 											</div>
-											
+
 											<div className="grid grid-cols-2 gap-4">
 												<div>
-													<Label htmlFor="new_kind" className="mb-2 block">Kind *</Label>
+													<Label htmlFor="new_kind" className="mb-2 block">
+														Kind *
+													</Label>
 													<KindSelector name="new_kind" kinds={kinds} />
 												</div>
 												<div>
-													<Label htmlFor="new_position" className="mb-2 block">Position</Label>
-													<Input
-														id="new_position"
-														name="new_position"
-														type="number"
-														placeholder="Optional"
-													/>
+													<Label htmlFor="new_position" className="mb-2 block">
+														Position
+													</Label>
+													<Input id="new_position" name="new_position" type="number" placeholder="Optional" />
 												</div>
 											</div>
 										</div>
-										
+
 										<div className="flex gap-3 pt-4">
 											<Button type="submit" className="gap-2">
 												<Plus className="h-4 w-4" />
 												Add Section
 											</Button>
-											<Button
-												type="button"
-												variant="outline"
-												onClick={() => setShowAddForm(false)}
-											>
+											<Button type="button" variant="outline" onClick={() => setShowAddForm(false)}>
 												Cancel
 											</Button>
 										</div>

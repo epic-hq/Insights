@@ -61,7 +61,7 @@ export function CopilotSidebar({ expandedSection, onClose, className, projectDat
 				},
 			}))
 		}
-	}, [projectData])
+	}, [projectData, setState])
 
 	const sectionContext = expandedSection
 		? `currently viewing the ${expandedSection} section of their dashboard`

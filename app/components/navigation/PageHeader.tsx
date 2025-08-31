@@ -16,7 +16,12 @@ interface PageHeaderProps {
 	className?: string
 }
 
-const PageHeader: React.FC<PageHeaderProps> = ({ title = "", showBreadcrumbs = true, breadcrumbs, className = "" }) => {
+const PageHeader: React.FC<PageHeaderProps> = ({
+	title: _title = "",
+	showBreadcrumbs = true,
+	breadcrumbs,
+	className = "",
+}) => {
 	const { projectPath } = useCurrentProject()
 	const _routes = useProjectRoutes(projectPath || "")
 

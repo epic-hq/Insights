@@ -14,7 +14,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		}
 
 		// Load all relevant sections
-		const sectionTypes = ["target_orgs", "target_roles", "research_goal", "assumptions", "unknowns", "custom_instructions"]
+		const sectionTypes = [
+			"target_orgs",
+			"target_roles",
+			"research_goal",
+			"assumptions",
+			"unknowns",
+			"custom_instructions",
+		]
 		const sectionsData: Record<string, any> = {}
 
 		for (const kind of sectionTypes) {

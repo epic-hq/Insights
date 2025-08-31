@@ -5,7 +5,6 @@ import { EntityInteractionPanel } from "~/components/EntityInteractionPanel"
 import { StyledTag } from "~/components/TagDisplay"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -16,7 +15,7 @@ interface InsightCardV3Props {
 }
 
 export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
-	const [selected, setSelected] = useState<Insight | null>(null)
+	const [_selected, _setSelected] = useState<Insight | null>(null)
 	const _projectId = insight.project_id
 	const { accountId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")

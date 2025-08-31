@@ -2,10 +2,8 @@ import consola from "consola"
 import React from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router-dom"
-import InsightCardV2 from "~/features/insights/components/InsightCardV2"
 import { getInsightById } from "~/features/insights/db"
 import { userContext } from "~/server/user-context"
-import { InsightCardV3 } from "../components/InsightCardV3"
 import { InsightCardV3Page } from "../components/InsightCardV3Page"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {

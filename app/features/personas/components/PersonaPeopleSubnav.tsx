@@ -1,8 +1,8 @@
-import { Users, User } from "lucide-react"
+import { User, Users } from "lucide-react"
 import { Link, useLocation } from "react-router"
-import { cn } from "~/lib/utils"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
 
 interface PersonaPeopleSubnavProps {
 	className?: string
@@ -23,7 +23,7 @@ export function PersonaPeopleSubnav({ className }: PersonaPeopleSubnavProps) {
 					<Link
 						to={routes.personas.index()}
 						className={cn(
-							"flex items-center space-x-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors hover:text-foreground",
+							"flex items-center space-x-2 border-b-2 px-1 py-4 font-medium text-sm transition-colors hover:text-foreground",
 							isPersonasActive
 								? "border-primary text-primary"
 								: "border-transparent text-muted-foreground hover:border-gray-300"
@@ -35,7 +35,7 @@ export function PersonaPeopleSubnav({ className }: PersonaPeopleSubnavProps) {
 					<Link
 						to={routes.people.index()}
 						className={cn(
-							"flex items-center space-x-2 border-b-2 px-1 py-4 text-sm font-medium transition-colors hover:text-foreground",
+							"flex items-center space-x-2 border-b-2 px-1 py-4 font-medium text-sm transition-colors hover:text-foreground",
 							isPeopleActive
 								? "border-primary text-primary"
 								: "border-transparent text-muted-foreground hover:border-gray-300"

@@ -1,7 +1,7 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
-import { PostgresStore } from "@mastra/pg"
 import { Memory } from "@mastra/memory"
+import { PostgresStore } from "@mastra/pg"
 import { z } from "zod"
 // import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
 

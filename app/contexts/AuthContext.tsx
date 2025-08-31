@@ -36,12 +36,12 @@ export const useAuth = () => {
 interface AuthProviderProps {
 	children: React.ReactNode
 	user?: JwtPayload | null
-	organizations?: any
+	organizations?: unknown
 	account_settings?: AccountSettings
 	user_settings?: UserSettings
 }
 
-export function AuthProvider({ children, user, organizations, account_settings, user_settings }: AuthProviderProps) {
+export function AuthProvider({ children, user, account_settings, user_settings }: AuthProviderProps) {
 	const loading = false // No loading needed with SSR data
 
 	const params = useParams()
@@ -84,7 +84,6 @@ export function AuthProvider({ children, user, organizations, account_settings, 
 		signOut,
 		accountId,
 		projectId,
-		organizations,
 		account_settings,
 		user_settings,
 	}

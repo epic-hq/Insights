@@ -36,7 +36,9 @@ async function loadEvidence(
 	evidence_ids?: string[],
 	limit = 200
 ): Promise<EvidenceForTheme[]> {
-	if (!project_id) { return }
+	if (!project_id) {
+		return
+	}
 	let query = supabase
 		.from("evidence")
 		.select("id, verbatim, kind_tags, personas, segments, journey_stage, support")
@@ -169,7 +171,9 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 		consola.log("[autoGroupThemesAndApply] BAML response received, themes count:", resp.themes?.length || 0)
 	} catch (bamlError) {
 		consola.error("[autoGroupThemesAndApply] BAML call failed:", bamlError)
-		throw new Error(`BAML AutoGroupThemes failed: ${bamlError instanceof Error ? bamlError.message : String(bamlError)}`)
+		throw new Error(
+			`BAML AutoGroupThemes failed: ${bamlError instanceof Error ? bamlError.message : String(bamlError)}`
+		)
 	}
 
 	// 3) Persist themes and links

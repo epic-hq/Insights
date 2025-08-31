@@ -6,10 +6,10 @@ import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
+import { signupAgent } from "./agents/signup-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { weatherWorkflow } from "./workflows/weather-workflow"
-import { signupAgent } from "./agents/signup-agent"
 
 // Create global SupabaseClient for workflows
 export const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)

@@ -1,5 +1,5 @@
 import { ArrowLeft, Bot, Maximize2, Minimize2, Send, User } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -35,9 +35,9 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 	const messagesEndRef = useRef<HTMLDivElement>(null)
 	const inputRef = useRef<HTMLInputElement>(null)
 
-	const scrollToBottom = () => {
+	const scrollToBottom = useCallback(() => {
 		messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-	}
+	}, [])
 
 	useEffect(() => {
 		scrollToBottom()

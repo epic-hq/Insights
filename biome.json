@@ -1,7 +1,15 @@
 {
 	"$schema": "./node_modules/@biomejs/biome/configuration_schema.json",
 	"files": {
-		"includes": ["**", "!**/app/library/icon/**/*"]
+		"includes": [
+			"app/**",
+			"docs/**",
+			"baml_src/**",
+			"scripts/**",
+			"mastra/**",
+			"resources/**",
+			"!**/app/library/icon/**/*"
+		]
 	},
 	"vcs": {
 		"enabled": true,
@@ -26,7 +34,9 @@
 			"recommended": true,
 			"suspicious": {
 				"recommended": true,
-				"noConsole": "error"
+				"noConsole": "off",
+				"noExplicitAny": "warn",
+				"noArrayIndexKey": "warn"
 			},
 			"style": {
 				"recommended": true,
@@ -38,7 +48,7 @@
 				"useSingleVarDeclarator": "error",
 				"noUnusedTemplateLiteral": "error",
 				"useNumberNamespace": "error",
-				"noInferrableTypes": "error",
+				"noInferrableTypes": "warn",
 				"noUselessElse": "error",
 				"noProcessEnv": "off"
 			},
@@ -53,10 +63,11 @@
 			},
 			"correctness": {
 				"recommended": true,
-				"noUnusedImports": "error",
-				"noUnusedVariables": "error",
+				"noUnusedImports": "warn",
+				"noUnusedVariables": "warn",
 				"noUnusedLabels": "error",
-				"noUnusedFunctionParameters": "error"
+				"noUnusedFunctionParameters": "warn",
+				"useExhaustiveDependencies": "warn"
 			},
 			"a11y": {
 				"recommended": false

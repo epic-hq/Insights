@@ -1,10 +1,10 @@
+import { randomUUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { generateQuestionSetCanonical } from "~/utils/research-analysis.server"
-import { getServerClient } from "~/lib/supabase/server"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { getServerClient } from "~/lib/supabase/server"
 import { currentProjectContext } from "~/server/current-project-context"
-import { randomUUID } from "node:crypto"
+import { generateQuestionSetCanonical } from "~/utils/research-analysis.server"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -30,9 +30,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		let research_goal_details = formData.get("research_goal_details") as string
 		let assumptions = formData.get("assumptions") as string
 		let unknowns = formData.get("unknowns") as string
-		let custom_instructions = (formData.get("custom_instructions") as string) || ""
-		let questionCount = Number(formData.get("questionCount") ?? 10)
-		let interview_time_limit = Number(formData.get("interview_time_limit") ?? 60)
+		const custom_instructions = (formData.get("custom_instructions") as string) || ""
+		const questionCount = Number(formData.get("questionCount") ?? 10)
+		const interview_time_limit = Number(formData.get("interview_time_limit") ?? 60)
 
 		// If project_id is provided, load project context from database
 		if (project_id) {
@@ -134,9 +134,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
 			questionSet.questions = questionSet.questions.map((question: any) => ({
 				...question,
-				id: question.id && typeof question.id === 'string' && question.id.length > 0 
-					? question.id 
-					: randomUUID()
+				id: question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID(),
 			}))
 		}
 

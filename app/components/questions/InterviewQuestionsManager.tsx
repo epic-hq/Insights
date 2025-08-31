@@ -1,18 +1,19 @@
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd"
 import consola from "consola"
-import { DragDropContext, Droppable, Draggable } from "@hello-pangea/dnd"
+import { Brain, ChevronDown, Clock, GripVertical, MoreHorizontal, Settings, Trash2 } from "lucide-react"
+import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
-import { createClient } from "~/lib/supabase/client"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { Button } from "~/components/ui/button"
-import { Badge } from "~/components/ui/badge"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Slider } from "~/components/ui/slider"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
+import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
+import { Card, CardContent } from "~/components/ui/card"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Slider } from "~/components/ui/slider"
 import { Switch } from "~/components/ui/switch"
-import { Brain, Clock, GripVertical, MoreHorizontal, Trash2, Settings, ChevronDown } from "lucide-react"
+import { Textarea } from "~/components/ui/textarea"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { createClient } from "~/lib/supabase/client"
+import type { QuestionInput } from "~/types"
 
 export type Purpose = "exploratory" | "validation" | "followup"
 export type Familiarity = "cold" | "warm"
@@ -31,7 +32,10 @@ export interface InterviewQuestionsManagerProps {
 	defaultFamiliarity?: Familiarity
 	defaultGoDeep?: boolean
 	onSelectionChange?: (ids: string[]) => void
-	onComplete?: (questions: { id: string; text: string }) => void | ((questions: { id: string; text: string }[]) => void)
+	onComplete?: (questions: {
+		id: string
+		text: string
+	}) => undefined | ((questions: { id: string; text: string }[]) => void)
 	onSelectedQuestionsChange?: (questions: { id: string; text: string }[]) => void
 }
 
@@ -84,7 +88,7 @@ const questionCategories = [
 	},
 ]
 
-const questionCategoriesVariants = {
+const _questionCategoriesVariants = {
 	context: {
 		id: "context",
 		name: "Context & Background",
@@ -202,9 +206,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					}
 				})
 
-				const meta = (questionsSection?.meta as any) || {}
-				const questionsData = meta.questions || []
-				const settings = meta.settings || {}
+				const meta = (questionsSection?.meta as Record<string, unknown>) || {}
+				const questionsData = (meta.questions as QuestionInput[] | undefined) || []
+				const settings = (meta.settings as Record<string, unknown> | undefined) || {}
 
 				// Load saved settings if they exist
 				if (settings.timeMinutes) setTimeMinutes(settings.timeMinutes)
@@ -213,14 +217,14 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				if (settings.goDeepMode !== undefined) setGoDeepMode(settings.goDeepMode)
 				if (settings.customInstructions) setCustomInstructions(settings.customInstructions)
 
-				const formattedQuestions: Question[] = questionsData.map((q: any) => ({
+				const formattedQuestions: Question[] = questionsData.map((q: QuestionInput) => ({
 					id: q.id || crypto.randomUUID(),
-					text: q.text || q.question,
+					text: q.text || q.question || "",
 					categoryId: q.categoryId || q.category || "context",
 					scores: q.scores || {
-						importance: q.importance || 0.5,
-						goalMatch: q.goalMatch || 0.5,
-						novelty: q.novelty || 0.5,
+						importance: q.importance ?? 0.5,
+						goalMatch: q.goalMatch ?? 0.5,
+						novelty: q.novelty ?? 0.5,
 					},
 					rationale: q.rationale || "",
 					status: (q.status as Question["status"]) || "proposed",
@@ -228,9 +232,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				}))
 
 				const selectedQuestionsWithOrder = questionsData
-					.filter((q: any) => q.isSelected === true)
-					.sort((a: any, b: any) => (a.selectedOrder || 0) - (b.selectedOrder || 0))
-					.map((q: any) => q.id as string)
+					.filter((q: QuestionInput) => q.isSelected === true)
+					.sort((a: QuestionInput, b: QuestionInput) => (a.selectedOrder || 0) - (b.selectedOrder || 0))
+					.map((q: QuestionInput) => (q.id as string) || crypto.randomUUID())
 
 				setQuestions(formattedQuestions)
 				if (selectedQuestionsWithOrder.length > 0) {
@@ -304,7 +308,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const categoryMap = new Map<string, typeof allQuestionsWithScores>()
 			for (const q of allQuestionsWithScores) {
 				if (!categoryMap.has(q.categoryId)) categoryMap.set(q.categoryId, [])
-				categoryMap.get(q.categoryId)!.push(q)
+				categoryMap.get(q.categoryId)?.push(q)
 			}
 			for (const arr of categoryMap.values()) arr.sort((a, b) => b.compositeScore - a.compositeScore)
 
@@ -374,7 +378,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		goDeepMode,
 		questions,
 		selectedQuestionIds,
-		hasInitialized,
 		calculateCompositeScore,
 		estimateMinutesPerQuestion,
 	])
@@ -441,18 +444,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			saveQuestionsToDatabase(questions, selectedQuestionIds)
 		}, 1000) // Debounce saves - longer timeout for settings
 		return () => clearTimeout(timeoutId)
-	}, [
-		timeMinutes,
-		purpose,
-		familiarity,
-		goDeepMode,
-		customInstructions,
-		projectId,
-		hasInitialized,
-		questions,
-		selectedQuestionIds,
-		saveQuestionsToDatabase,
-	])
+	}, [projectId, hasInitialized, questions, selectedQuestionIds, saveQuestionsToDatabase])
 
 	const removeQuestion = useCallback(
 		async (id: string) => {
@@ -476,7 +468,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
 	)
 
-	const onDragEnd = (result: any) => {
+	const onDragEnd = (result: DropResult) => {
 		if (!result.destination) return
 		const { source, destination } = result
 		if (source.index !== destination.index) moveQuestion(source.index, destination.index)
@@ -533,7 +525,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			if (response.ok) {
 				const data = await response.json()
 				if (data.success && data.questionSet?.questions) {
-					const newQuestions = data.questionSet.questions
+					const newQuestions = data.questionSet.questions as QuestionInput[]
 					if (projectId) {
 						const existingQuestions = questions.map((q) => {
 							const idx = selectedQuestionIds.indexOf(q.id)
@@ -560,7 +552,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						)
 					}
 
-					const formattedNewQuestions: Question[] = newQuestions.map((q: any) => ({
+					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => ({
 						id: q.id || crypto.randomUUID(),
 						text: q.text,
 						categoryId: q.categoryId || "context",
@@ -606,11 +598,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		return (
 			<div className="p-4 sm:p-8">
 				<div className="animate-pulse">
-					<div className="h-8 bg-gray-200 rounded w-1/3 mb-4">{""}</div>
-					<div className="h-4 bg-gray-200 rounded w-2/3 mb-8">{""}</div>
+					<div className="mb-4 h-8 w-1/3 rounded bg-gray-200">{""}</div>
+					<div className="mb-8 h-4 w-2/3 rounded bg-gray-200">{""}</div>
 					<div className="space-y-4">
 						{[1, 2, 3].map((i) => (
-							<div key={i} className="h-24 bg-gray-200 rounded">
+							<div key={i} className="h-24 rounded bg-gray-200">
 								{""}
 							</div>
 						))}
@@ -621,7 +613,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	}
 
 	return (
-		<div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+		<div className="grid grid-cols-1 gap-8 lg:grid-cols-3">
 			{/* Left Column: Settings & AI Generation */}
 			<div className="space-y-6">
 				<Card>
@@ -632,9 +624,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						onValueChange={(v) => setIsDesktopSettingsOpen(v === "settings")}
 					>
 						<AccordionItem value="settings">
-							<AccordionTrigger className="hover:no-underline px-3 py-3">
+							<AccordionTrigger className="px-3 py-3 hover:no-underline">
 								<div className="flex items-center gap-2">
-									<Settings className="w-4 h-4" />
+									<Settings className="h-4 w-4" />
 									{isDesktopSettingsOpen ? (
 										<span>Interview Settings</span>
 									) : (
@@ -648,7 +640,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								<CardContent className="space-y-4">
 									<div className="space-y-4">
 										<div>
-											<label className="block text-sm mb-3">Available Time: {timeMinutes} minutes</label>
+											<label className="mb-3 block text-sm">Available Time: {timeMinutes} minutes</label>
 											<Slider
 												value={[timeMinutes]}
 												onValueChange={(v) => setTimeMinutes(v[0])}
@@ -657,7 +649,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												step={15}
 												className="w-full"
 											/>
-											<div className="flex justify-between text-xs text-gray-500 mt-1">
+											<div className="mt-1 flex justify-between text-gray-500 text-xs">
 												<span>15m</span>
 												<span>30m</span>
 												<span>45m</span>
@@ -666,7 +658,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										</div>
 
 										<div>
-											<label className="block text-sm mb-2">Interview Purpose</label>
+											<label className="mb-2 block text-sm">Interview Purpose</label>
 											<Select value={purpose} onValueChange={(v: Purpose) => setPurpose(v)}>
 												<SelectTrigger>
 													<SelectValue />
@@ -680,7 +672,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										</div>
 
 										<div>
-											<label className="block text-sm mb-2">Participant Familiarity</label>
+											<label className="mb-2 block text-sm">Participant Familiarity</label>
 											<Select value={familiarity} onValueChange={(v: Familiarity) => setFamiliarity(v)}>
 												<SelectTrigger>
 													<SelectValue />
@@ -704,7 +696,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				</Card>
 
 				<Card>
-					<CardContent className="p-3 space-y-3">
+					<CardContent className="space-y-3 p-3">
 						{showCustomInstructions && (
 							<Textarea
 								placeholder="Modify questions"
@@ -717,12 +709,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							<Button onClick={generateQuestions} disabled={generating} variant="outline" className="flex-1">
 								{generating ? (
 									<>
-										<div className="animate-spin rounded-full h-4 w-4 border-b-2 border-current mr-2" /> Generating
+										<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" /> Generating
 										Questions...
 									</>
 								) : (
 									<>
-										<Brain className="w-4 h-4 mr-2" /> Generate New Questions
+										<Brain className="mr-2 h-4 w-4" /> Generate New Questions
 									</>
 								)}
 							</Button>
@@ -732,7 +724,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								size="icon"
 								className="shrink-0"
 							>
-								<ChevronDown className={`w-4 h-4 transition-transform ${showCustomInstructions ? "rotate-180" : ""}`} />
+								<ChevronDown className={`h-4 w-4 transition-transform ${showCustomInstructions ? "rotate-180" : ""}`} />
 							</Button>
 						</div>
 					</CardContent>
@@ -752,14 +744,14 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			</div>
 
 			{/* Right Column: Question Pack */}
-			<div className="lg:col-span-2 space-y-6">
+			<div className="space-y-6 lg:col-span-2">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						<span>Your Question Pack ({questionPack.questions.length})</span>
 					</div>
 					<div className="text-right">
 						<div
-							className={`text-sm font-medium ${questionPack.totalEstimatedTime > questionPack.targetTime ? "text-red-600" : "text-green-600"}`}
+							className={`font-medium text-sm ${questionPack.totalEstimatedTime > questionPack.targetTime ? "text-red-600" : "text-green-600"}`}
 						>
 							{Math.round(questionPack.totalEstimatedTime)}m / {questionPack.targetTime}m
 						</div>
@@ -781,10 +773,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 											return (
 												<React.Fragment key={question.id}>
 													{isFirstOverflow && (
-														<div className="border-t-2 border-dashed border-orange-300 pt-4 mt-6">
-															<div className="flex items-center gap-2 mb-4">
-																<Clock className="w-4 h-4 text-orange-600" />
-																<span className="text-sm font-medium text-orange-600">
+														<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
+															<div className="mb-4 flex items-center gap-2">
+																<Clock className="h-4 w-4 text-orange-600" />
+																<span className="font-medium text-orange-600 text-sm">
 																	Questions below may not fit in your {timeMinutes}-minute time limit (
 																	{questionPack.belowCount} below)
 																</span>
@@ -803,20 +795,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																>
 																	<CardContent className="px-3">
 																		<div className="flex items-start gap-3">
-																			<div className="flex items-center gap-2 mt-0.5">
+																			<div className="mt-0.5 flex items-center gap-2">
 																				<div {...provided.dragHandleProps}>
-																					<GripVertical className="w-4 h-4 text-gray-400 cursor-grab active:cursor-grabbing" />
+																					<GripVertical className="h-4 w-4 cursor-grab text-gray-400 active:cursor-grabbing" />
 																				</div>
-																				<Badge variant="outline" className="text-xs text-foreground/50">
+																				<Badge variant="outline" className="text-foreground/50 text-xs">
 																					{index + 1}
 																				</Badge>
 																			</div>
-																			<div className="flex-1 min-w-0">
-																				<div className="flex items-center gap-2 flex-wrap">
+																			<div className="min-w-0 flex-1">
+																				<div className="flex flex-wrap items-center gap-2">
 																					<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
 																						{questionCategories.find((c) => c.id === question.categoryId)?.name}
 																					</Badge>
-																					<Badge variant="outline" className="text-xs text-muted-foreground">
+																					<Badge variant="outline" className="text-muted-foreground text-xs">
 																						~{Math.round(question.estimatedMinutes)}m
 																					</Badge>
 																					{question.timesAnswered > 0 && (
@@ -829,7 +821,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					)}
 																				</div>
 																				<p
-																					className="text-sm font-medium leading-relaxed mb-2"
+																					className="mb-2 font-medium text-sm leading-relaxed"
 																					title={question.rationale ? `Why: ${question.rationale}` : undefined}
 																				>
 																					{question.text}
@@ -841,7 +833,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				onClick={() => removeQuestion(question.id)}
 																				className="text-red-500 hover:text-red-700"
 																			>
-																				<Trash2 className="w-4 h-4" />
+																				<Trash2 className="h-4 w-4" />
 																			</Button>
 																		</div>
 																	</CardContent>
@@ -864,43 +856,42 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 									<Button
 										variant="outline"
 										onClick={() => setShowAllQuestions(!showAllQuestions)}
-										className="w-full mb-4"
+										className="mb-4 w-full"
 									>
-										<MoreHorizontal className="w-4 h-4 mr-2" /> {showAllQuestions ? "Hide" : "Show"} Additional
+										<MoreHorizontal className="mr-2 h-4 w-4" /> {showAllQuestions ? "Hide" : "Show"} Additional
 										Questions ({questionPack.remainingQuestions.length})
 									</Button>
 
 									{showAllQuestions && (
 										<div className="mt-4 space-y-3">
-											<p className="text-sm text-gray-600">
+											<p className="text-gray-600 text-sm">
 												Additional questions below the line - click to include in your pack:
 											</p>
 											{questionPack.remainingQuestions.map((question) => (
 												<Card
 													key={question.id}
-													className="border-dashed border-gray-300 cursor-pointer hover:border-blue-400 hover:bg-blue-50/50 transition-colors py-2"
-													onClick={() => addQuestionFromReserve(question as any)}
+													className="cursor-pointer border-gray-300 border-dashed py-2 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
+													onClick={() => addQuestionFromReserve(question)}
 												>
 													<CardContent className="p-3">
 														<div className="flex items-start gap-3">
-															<div className="flex items-center gap-2 mt-1">
-																<GripVertical className="w-4 h-4 text-gray-400" />
-																<MoreHorizontal className="w-4 h-4 text-gray-400" />
+															<div className="mt-1 flex items-center gap-2">
+																<GripVertical className="h-4 w-4 text-gray-400" />
+																<MoreHorizontal className="h-4 w-4 text-gray-400" />
 															</div>
-															<div className="flex-1 min-w-0">
-																<div className="flex items-center gap-2 mb-2 flex-wrap">
-																	<Badge variant="outline" className={getCategoryColor((question as any).categoryId)}>
-																		{questionCategories.find((c) => c.id === (question as any).categoryId)?.name}
+															<div className="min-w-0 flex-1">
+																<div className="mb-2 flex flex-wrap items-center gap-2">
+																	<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
+																		{questionCategories.find((c) => c.id === question.categoryId)?.name}
 																	</Badge>
-																	<Badge variant="outline" className="text-xs text-muted-foreground">
-																		~{Math.round((question as any).estimatedMinutes)}m
+																	<Badge variant="outline" className="text-muted-foreground text-xs">
+																		~
+																		{Math.round((question as unknown as { estimatedMinutes: number }).estimatedMinutes)}
+																		m
 																	</Badge>
 																	{question.timesAnswered > 0 && (
-																		<Badge
-																			className={getAnsweredCountColor((question as any).timesAnswered)}
-																			variant="outline"
-																		>
-																			{(question as any).timesAnswered}
+																		<Badge className={getAnsweredCountColor(question.timesAnswered)} variant="outline">
+																			{question.timesAnswered}
 																		</Badge>
 																	)}
 																</div>

@@ -1,10 +1,10 @@
-import { useState, useCallback, useEffect } from "react"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Button } from "~/components/ui/button"
+import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, Users } from "lucide-react"
+import { useCallback, useState } from "react"
+import { type Question, QuestionWidget } from "~/components/questions/QuestionWidget"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
-import { Mic, MicOff, Play, Pause, MessageSquare, Lightbulb, Users } from "lucide-react"
-import { QuestionWidget, type Question } from "~/components/questions/QuestionWidget"
 
 interface InterviewCopilotProps {
 	projectId: string
@@ -26,21 +26,18 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const [currentCaption, setCurrentCaption] = useState("")
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
-	
+
 	// Mock project data - in real app, fetch from project
-	const [projectData, setProjectData] = useState({
+	const [projectData, _setProjectData] = useState({
 		target_orgs: ["Tech Startups", "SaaS Companies"],
 		target_roles: ["Product Managers", "Engineering Leaders"],
 		research_goal: "Understand leadership challenges in remote teams",
 		research_goal_details: "How do leaders maintain team cohesion and productivity in distributed environments?",
 		assumptions: ["Remote work creates communication gaps", "Leaders struggle with visibility"],
-		unknowns: ["What tools are most effective?", "How do different team sizes affect leadership?"]
+		unknowns: ["What tools are most effective?", "How do different team sizes affect leadership?"],
 	})
 
-	const handleQuestionStatusChange = useCallback((questionId: string, status: Question["status"]) => {
-		// In real app, save to backend
-		console.log(`Question ${questionId} marked as ${status}`)
-		
+	const handleQuestionStatusChange = useCallback((_questionId: string, status: Question["status"]) => {
 		// Generate AI suggestion based on status
 		if (status === "answered") {
 			const suggestion: AISuggestion = {
@@ -48,14 +45,14 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				type: "follow_up",
 				text: "Great answer! Consider asking: 'Can you give me a specific example of when this happened?'",
 				confidence: 0.85,
-				timestamp: new Date()
+				timestamp: new Date(),
 			}
-			setAiSuggestions(prev => [suggestion, ...prev.slice(0, 4)]) // Keep last 5
+			setAiSuggestions((prev) => [suggestion, ...prev.slice(0, 4)]) // Keep last 5
 		}
 	}, [])
 
 	const toggleRecording = useCallback(() => {
-		setIsRecording(prev => !prev)
+		setIsRecording((prev) => !prev)
 		if (!isRecording) {
 			// Start recording simulation
 			const interval = setInterval(() => {
@@ -63,15 +60,15 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					"So in our team, we've been struggling with...",
 					"The main challenge is that people feel disconnected...",
 					"We tried using Slack but it's not the same as being in person...",
-					"I think the biggest issue is trust and accountability..."
+					"I think the biggest issue is trust and accountability...",
 				]
 				const randomCaption = mockCaptions[Math.floor(Math.random() * mockCaptions.length)]
 				setCurrentCaption(randomCaption)
-				
+
 				// Add to captions history
-				setCaptions(prev => [randomCaption, ...prev.slice(0, 9)]) // Keep last 10
+				setCaptions((prev) => [randomCaption, ...prev.slice(0, 9)]) // Keep last 10
 			}, 3000)
-			
+
 			// Store interval ID for cleanup
 			;(window as any).recordingInterval = interval
 		} else {
@@ -88,50 +85,58 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			{
 				type: "probe_deeper" as const,
 				text: "Ask them to elaborate on the specific tools they mentioned. What works and what doesn't?",
-				confidence: 0.92
+				confidence: 0.92,
 			},
 			{
 				type: "follow_up" as const,
 				text: "This sounds like a communication issue. Ask about their current meeting cadence.",
-				confidence: 0.78
+				confidence: 0.78,
 			},
 			{
 				type: "redirect" as const,
 				text: "They're focusing on tools, but consider asking about team culture and relationships.",
-				confidence: 0.85
-			}
+				confidence: 0.85,
+			},
 		]
-		
+
 		const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)]
 		const newSuggestion: AISuggestion = {
 			id: `suggestion_${Date.now()}`,
 			...randomSuggestion,
-			timestamp: new Date()
+			timestamp: new Date(),
 		}
-		
-		setAiSuggestions(prev => [newSuggestion, ...prev.slice(0, 4)])
+
+		setAiSuggestions((prev) => [newSuggestion, ...prev.slice(0, 4)])
 	}, [])
 
 	const getSuggestionIcon = (type: AISuggestion["type"]) => {
 		switch (type) {
-			case "follow_up": return <MessageSquare className="h-4 w-4" />
-			case "probe_deeper": return <Lightbulb className="h-4 w-4" />
-			case "redirect": return <Users className="h-4 w-4" />
-			case "wrap_up": return <Play className="h-4 w-4" />
+			case "follow_up":
+				return <MessageSquare className="h-4 w-4" />
+			case "probe_deeper":
+				return <Lightbulb className="h-4 w-4" />
+			case "redirect":
+				return <Users className="h-4 w-4" />
+			case "wrap_up":
+				return <Play className="h-4 w-4" />
 		}
 	}
 
 	const getSuggestionColor = (type: AISuggestion["type"]) => {
 		switch (type) {
-			case "follow_up": return "bg-blue-100 text-blue-800"
-			case "probe_deeper": return "bg-purple-100 text-purple-800"
-			case "redirect": return "bg-orange-100 text-orange-800"
-			case "wrap_up": return "bg-green-100 text-green-800"
+			case "follow_up":
+				return "bg-blue-100 text-blue-800"
+			case "probe_deeper":
+				return "bg-purple-100 text-purple-800"
+			case "redirect":
+				return "bg-orange-100 text-orange-800"
+			case "wrap_up":
+				return "bg-green-100 text-green-800"
 		}
 	}
 
 	return (
-		<div className="grid grid-cols-1 lg:grid-cols-2 gap-6 h-screen p-6">
+		<div className="grid h-screen grid-cols-1 gap-6 p-6 lg:grid-cols-2">
 			{/* Left Side - Questions */}
 			<div className="space-y-4 overflow-y-auto">
 				<QuestionWidget
@@ -167,19 +172,15 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<Button
-							onClick={toggleRecording}
-							variant={isRecording ? "destructive" : "default"}
-							className="w-full"
-						>
+						<Button onClick={toggleRecording} variant={isRecording ? "destructive" : "default"} className="w-full">
 							{isRecording ? (
 								<>
-									<Pause className="h-4 w-4 mr-2" />
+									<Pause className="mr-2 h-4 w-4" />
 									Stop Recording
 								</>
 							) : (
 								<>
-									<Play className="h-4 w-4 mr-2" />
+									<Play className="mr-2 h-4 w-4" />
 									Start Recording
 								</>
 							)}
@@ -194,13 +195,13 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					</CardHeader>
 					<CardContent>
 						{currentCaption && (
-							<div className="p-3 bg-blue-50 rounded-lg border-l-4 border-blue-400 mb-3">
-								<p className="text-sm font-medium text-blue-900">{currentCaption}</p>
+							<div className="mb-3 rounded-lg border-blue-400 border-l-4 bg-blue-50 p-3">
+								<p className="font-medium text-blue-900 text-sm">{currentCaption}</p>
 							</div>
 						)}
-						<div className="space-y-2 max-h-32 overflow-y-auto">
+						<div className="max-h-32 space-y-2 overflow-y-auto">
 							{captions.map((caption, index) => (
-								<p key={index} className="text-xs text-muted-foreground p-2 bg-gray-50 rounded">
+								<p key={index} className="rounded bg-gray-50 p-2 text-muted-foreground text-xs">
 									{caption}
 								</p>
 							))}
@@ -225,26 +226,24 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						{aiSuggestions.map((suggestion) => (
 							<Card key={suggestion.id} className="border-l-4 border-l-blue-400">
 								<CardContent className="p-3">
-									<div className="flex items-start gap-2 mb-2">
+									<div className="mb-2 flex items-start gap-2">
 										{getSuggestionIcon(suggestion.type)}
 										<Badge variant="outline" className={getSuggestionColor(suggestion.type)}>
-											{suggestion.type.replace('_', ' ')}
+											{suggestion.type.replace("_", " ")}
 										</Badge>
 										<Badge variant="secondary" className="ml-auto text-xs">
 											{Math.round(suggestion.confidence * 100)}%
 										</Badge>
 									</div>
 									<p className="text-sm">{suggestion.text}</p>
-									<p className="text-xs text-muted-foreground mt-1">
-										{suggestion.timestamp.toLocaleTimeString()}
-									</p>
+									<p className="mt-1 text-muted-foreground text-xs">{suggestion.timestamp.toLocaleTimeString()}</p>
 								</CardContent>
 							</Card>
 						))}
-						
+
 						{aiSuggestions.length === 0 && (
-							<div className="text-center py-4 text-muted-foreground">
-								<Lightbulb className="h-6 w-6 mx-auto mb-2 opacity-50" />
+							<div className="py-4 text-center text-muted-foreground">
+								<Lightbulb className="mx-auto mb-2 h-6 w-6 opacity-50" />
 								<p className="text-sm">AI suggestions will appear here during the interview</p>
 							</div>
 						)}

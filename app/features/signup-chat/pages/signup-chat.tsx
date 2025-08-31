@@ -1,4 +1,4 @@
-import { CopilotKit, useCoAgent, useCopilotAction } from "@copilotkit/react-core"
+import { CopilotKit, useCoAgent } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
 import { useEffect } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
@@ -13,15 +13,12 @@ const progressStyles = `
 }
 `
 
+import consola from "consola"
 import { ArrowRight, CheckCircle } from "lucide-react"
 import type { z } from "zod"
-// Agent state type from Mastra agents
-import type { Database } from "~/../supabase/types"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
-import { PlanCard } from "~/features/signup-chat/components/PlanCard"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
-import consola from "consola"
 
 type AgentState = z.infer<typeof SignupAgentState>
 
