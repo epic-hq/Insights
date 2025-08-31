@@ -17,11 +17,11 @@ export const ProjectEditButton = ({ project }: { project: Project }) => {
 					<Link
 						to={routes.projects.edit(project.id)}
 						onClickCapture={(e) => e.stopPropagation()}
-						className="z-20"
+						className="z-20 border border-gray-200"
 						aria-label="Edit project"
 						title="Edit project"
 					>
-						<Button variant="ghost" size="icon" className="h-8 w-8">
+						<Button variant="ghost" className="rounded-md">
 							<Settings2 className="h-4 w-4" /> Edit
 						</Button>
 					</Link>

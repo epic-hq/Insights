@@ -19,6 +19,8 @@ import {
 	PlusCircle,
 	Headphones,
 	Settings2,
+	MicVocalIcon,
+	Mic2Icon,
 } from "lucide-react"
 import { motion } from "framer-motion"
 import { useState, useEffect } from "react"
@@ -244,11 +246,11 @@ export default function ProjectStatusScreen({
 			<div className="border-border border-b bg-background px-6 py-4">
 				<div className="mx-auto flex max-w-6xl items-center justify-between">
 					<div>
-						<p className="text-foreground font-semibold  text-xl">{displayData.projectName}</p>
+						<p className="text-foreground font-semibold  text-xl">Goal: {displayData.projectName}</p>
 					</div>
 					<div className="flex items-center gap-3">
 						{/* Flow View Toggle Button */}
-						<Button
+						{/* <Button
 							variant={showFlowView ? "default" : "outline"}
 							size="sm"
 							onClick={() => setShowFlowView(!showFlowView)}
@@ -260,7 +262,7 @@ export default function ProjectStatusScreen({
 						>
 							<Workflow className="w-4 h-4 mr-2" />
 							{showFlowView ? "Dashboard View" : "Research Flow"}
-						</Button>
+						</Button> */}
 						<ProjectEditButton project={{ id: projectId }} />
 					</div>
 				</div>
@@ -1088,14 +1090,21 @@ export default function ProjectStatusScreen({
 											Manage Interview Questions
 										</Button>
 
-										{/* <Button
-									onClick={() => routes && (window.location.href = routes.evidence.index())}
-{{ ... }}
-									variant="outline"
-								>
-									<Eye className="mr-2 h-4 w-4" />
-									Explore All Evidence
-								</Button> */}
+										<Button
+											onClick={() => routes && (window.location.href = routes.evidence.index())}
+											variant="outline"
+										>
+											<Eye className="mr-2 h-4 w-4" />
+											Explore All Evidence
+										</Button>
+
+										<Button
+											variant="outline"
+											onClick={() => routes && (window.location.href = routes.interviews.index())}
+										>
+											<Mic2Icon className="mr-2 h-4 w-4" />
+											Interviews
+										</Button>
 									</CardContent>
 								</Card>
 

@@ -124,8 +124,8 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 											isActive
 												? "bg-primary text-primary-foreground"
 												: isCompleted
-													? "bg-muted text-muted-foreground"
-													: "bg-muted text-muted-foreground hover:text-foreground"
+													? "bg-muted text-foreground"
+													: "bg-muted text-foreground hover:text-foreground"
 										)}
 									>
 										<Icon className="h-4 w-4" />

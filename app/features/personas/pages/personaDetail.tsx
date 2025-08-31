@@ -470,7 +470,7 @@ export default function PersonaDetailRoute() {
 				{insights && insights.length > 0 && (
 					<div className="space-y-6">
 						<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
-						<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+						<div className="grid gap-6 grid-cols-1 lg:grid-cols-2 xl:grid-cols-3">
 							{insights.map((insight) => (
 								<InsightCardV2 key={insight.id} insight={insight} />
 							))}

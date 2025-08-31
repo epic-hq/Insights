@@ -84,9 +84,9 @@ export default function Personas() {
 			</div>
 
 			{/* Main Content */}
-			<div className="mx-auto max-w-6xl px-6 py-12">
+			<div className="mx-auto max-w-6xl px-6 py-8">
 				{personas.length === 0 ? (
-					<div className="py-16 text-center">
+					<div className="py-8 text-center">
 						<div className="mx-auto max-w-md">
 							<div className="mb-6 flex justify-center">
 								<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">

@@ -184,14 +184,14 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 							<ArrowUpDown className="h-4 w-4" />
 							Swap Axes
 						</Button>
-						<Button variant="outline" size="sm">
+						{/* <Button variant="outline" size="sm">
 							<Eye className="mr-2 h-4 w-4" />
 							View Details
 						</Button>
 						<Button variant="outline" size="sm">
 							<Filter className="mr-2 h-4 w-4" />
 							Filter
-						</Button>
+						</Button> */}
 					</div>
 				</div>
 
