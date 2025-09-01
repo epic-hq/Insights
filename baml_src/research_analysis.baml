@@ -352,7 +352,13 @@ function GenerateQuestionSet(
 ) -> QuestionSet {
   client CustomGPT4o
   prompt #"
-  You are an expert UX researcher producing a JSON QuestionSet to guide interviews.
+  You are creating natural conversation starters for informal interviews. Think like a curious friend who wants to understand someone's work and life, not a corporate consultant.
+
+  CRITICAL: Follow these CUSTOM INSTRUCTIONS above all else:
+  {{ inputs.custom_instructions }}
+
+  IMPORTANT: If the custom instructions above conflict with any context below, ALWAYS prioritize the custom instructions. The custom instructions define the true goal and scope of this research.
+
 	You will generate a larger set than can be asked in the available time, and prioritize the most important questions based on importance, goalMatch, and novelty.
 
 	IMPORTANT: For each question, provide a realistic estimatedMinutes value (2-7 minutes typical):
@@ -364,7 +370,7 @@ function GenerateQuestionSet(
 	Total available time: {{ inputs.interview_time_limit }} minutes.
 	Generate more questions than can fit to give the interviewer options and backups.
 
-  CONTEXT
+  BACKGROUND CONTEXT (use only if it aligns with custom instructions above):
   - Target Org: {{ inputs.target_org }}
   - Roles/Segments: {{ inputs.target_roles }}
   - Research Goal: {{ inputs.research_goal }}
@@ -372,19 +378,47 @@ function GenerateQuestionSet(
   - Assumptions: {{ inputs.assumptions }}
   - Unknowns: {{ inputs.unknowns }}
 
-  INSTRUCTIONS
-  - If custom_instructions exist, follow them; otherwise follow GUIDELINES.
-  - GUIDELINES:
-    1) Questions must be open-ended, behavior-focused, and non-leading.
+  IMPORTANT: Pay special attention to the TARGET ROLES/SEGMENTS above. Create questions that are:
+  1) Highly specific to their daily work, creative processes, and unique challenges
+  2) Focused on their actual tools, platforms, and workflows they use
+  3) Addressing their specific pain points in their creative field
+  4) Understanding their community, audience, and collaboration patterns
+  5) Exploring their business model, income streams, and professional needs
+
+  EXAMPLES of GOOD conversational questions:
+  - "I'm curious - when you're stuck on a design, what do you actually do? Like, do you take a walk, scroll Instagram, call a friend?"
+  - "What's the most annoying thing clients do? I bet you have some stories..."
+  - "Show me your workspace - what's the one tool or app you can't live without?"
+  - "When was the last time you collaborated with another artist? How did that come about?"
+  - "What's your biggest creative struggle right now? The thing that keeps you up at night?"
+  - "Where do you actually find your best ideas? I'm always curious about this."
+
+  EXAMPLES of BAD formal/corporate questions to AVOID:
+  - "What challenges do you face in your creative process?" (too formal)
+  - "How do you align your content with your organizational mission?" (corporate speak)
+  - "What are your primary goals when creating content?" (consultant-speak)
+  - "What platforms do you use for inspiration and how do they influence your creative process?" (too wordy/formal)
+
+  TONE & LANGUAGE REQUIREMENTS:
+  - Write questions like you're having coffee with a friend who does this work
+  - Use casual, natural language - avoid formal research-speak
+  - Be genuinely curious, not corporate or consultant-like
+  - Include contractions, casual phrases, personal touches
+  - Ask about real, specific situations they've experienced
+  - Show you understand their world (tools, platforms, community, struggles)
+
+  GUIDELINES:
+    1) Questions must be conversational, open-ended, and genuinely curious.
     2) Include natural follow-ups in the question text when helpful.
-    3) Tailor to the ICP and the stated goal.
-    4) Prefer questions that expose real needs, pains, constraints, and willingness.
-    5) Provide balanced coverage across categories:
+    3) Tailor specifically to the roles/segments - get into the weeds of their actual work.
+    4) Ask about specific situations, tools, processes they encounter daily.
+    5) Focus on real stories, concrete examples, day-to-day reality.
+    6) Provide balanced coverage across categories:
        context, goals, pain, workflow, motivation, constraints, willingness.
-    6) Provide scores in [0,1]: importance (highest signal), goalMatch, novelty.
-    7) New questions must have status 'proposed'.
-    8) Use unique string IDs for questions (uuid/ulid-like).
-    9) Provide category weights if some categories are more informative for the goal.
+    7) Provide scores in [0,1]: importance (highest signal), goalMatch, novelty.
+    8) New questions must have status 'proposed'.
+    9) Use unique string IDs for questions (uuid/ulid-like).
+    10) Sound like a human talking to another human, not a researcher conducting an interview.
 
   OUTPUT SHAPE
   Return only valid JSON matching QuestionSet:

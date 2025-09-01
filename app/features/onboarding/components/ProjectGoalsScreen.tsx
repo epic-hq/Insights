@@ -34,9 +34,11 @@ interface ProjectGoalsScreenProps {
 		custom_instructions?: string
 	}) => void
 	projectId?: string
+	showStepper?: boolean
+	showNextButton?: boolean
 }
 
-export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsScreenProps) {
+export default function ProjectGoalsScreen({ onNext, projectId, showStepper = true, showNextButton = true }: ProjectGoalsScreenProps) {
 	const [target_orgs, setTargetOrgs] = useState<string[]>([])
 	const [target_roles, setTargetRoles] = useState<string[]>([])
 	const [newOrg, setNewOrg] = useState("")
@@ -326,34 +328,36 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 
 	return (
 		<div className="mx-auto min-h-screen max-w-4xl bg-background p-4 text-foreground sm:p-4 md:p-6 lg:p-8">
-			{/* Stepper */}
-			<div className="mb-6">
-				<div className="flex items-start justify-center gap-4 sm:gap-6 md:gap-10">
-					{onboardingSteps.map((step, index) => (
-						<div key={step.id} className="flex items-center">
-							<div className="flex flex-col items-center">
-								<div
-									className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-										step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-									}`}
-								>
-									{index + 1}
+			{/* Stepper - only show in onboarding mode */}
+			{showStepper && (
+				<div className="mb-6">
+					<div className="flex items-start justify-center gap-4 sm:gap-6 md:gap-10">
+						{onboardingSteps.map((step, index) => (
+							<div key={step.id} className="flex items-center">
+								<div className="flex flex-col items-center">
+									<div
+										className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
+											step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+										}`}
+									>
+										{index + 1}
+									</div>
+									<span
+										className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
+											step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+										}`}
+									>
+										{step.title}
+									</span>
 								</div>
-								<span
-									className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-										step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-									}`}
-								>
-									{step.title}
-								</span>
+								{index < onboardingSteps.length - 1 && (
+									<div className="mx-3 hidden h-px w-10 bg-border sm:block md:w-16" />
+								)}
 							</div>
-							{index < onboardingSteps.length - 1 && (
-								<div className="mx-3 hidden h-px w-10 bg-border sm:block md:w-16" />
-							)}
-						</div>
-					))}
+						))}
+					</div>
 				</div>
-			</div>
+			)}
 
 			<div className="mb-8">
 				<div className="mb-4 flex items-center gap-3">
@@ -368,7 +372,7 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 				{/* Research Goal - moved first */}
 				<div>
 					<div className="mb-4 flex items-center gap-2">
-						<Target className="h-5 w-5" /> Research Goal
+						<Target className="h-5 w-5" /> Goal
 					</div>
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
@@ -577,15 +581,17 @@ export default function ProjectGoalsScreen({ onNext, projectId }: ProjectGoalsSc
 						</div>
 					)}
 				</div>
-				<div className="flex justify-between">
-					<div className="flex items-center">
-						{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
+				{showNextButton && (
+					<div className="flex justify-between">
+						<div className="flex items-center">
+							{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
+						</div>
+						<Button onClick={handleNext} disabled={!isValid || isLoading}>
+							Generate Interview Questions
+							<ChevronRight className="ml-2 h-4 w-4" />
+						</Button>
 					</div>
-					<Button onClick={handleNext} disabled={!isValid || isLoading}>
-						Generate Interview Questions
-						<ChevronRight className="ml-2 h-4 w-4" />
-					</Button>
-				</div>
+				)}
 			</div>
 		</div>
 	)

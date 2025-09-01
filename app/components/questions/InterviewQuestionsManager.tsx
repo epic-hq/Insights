@@ -1,12 +1,13 @@
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd"
 import consola from "consola"
-import { Brain, ChevronDown, Clock, GripVertical, MoreHorizontal, Settings, Trash2 } from "lucide-react"
+import { Brain, ChevronDown, Clock, GripVertical, MoreHorizontal, Plus, Settings, Trash2, User, X } from "lucide-react"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
+import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Slider } from "~/components/ui/slider"
 import { Switch } from "~/components/ui/switch"
@@ -45,8 +46,9 @@ interface Question {
 	categoryId: string
 	scores: { importance: number; goalMatch: number; novelty: number }
 	rationale?: string
-	status: "proposed" | "asked" | "answered" | "skipped"
+	status: "proposed" | "asked" | "answered" | "skipped" | "rejected"
 	timesAnswered: number
+	source?: "ai" | "user" // Track whether question is AI-generated or user-created
 }
 
 const questionCategories = [
@@ -165,6 +167,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
 	const [isDesktopSettingsOpen, setIsDesktopSettingsOpen] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+	const [showAddCustomQuestion, setShowAddCustomQuestion] = useState(false)
+	const [newQuestionText, setNewQuestionText] = useState("")
+	const [newQuestionCategory, setNewQuestionCategory] = useState("context")
 
 	const supabase = createClient()
 
@@ -229,6 +234,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					rationale: q.rationale || "",
 					status: (q.status as Question["status"]) || "proposed",
 					timesAnswered: answerCountMap.get(q.id || crypto.randomUUID()) || 0,
+					source: (q as QuestionInput & { source?: "ai" | "user" }).source || "ai", // Default to AI for existing questions
 				}))
 
 				const selectedQuestionsWithOrder = questionsData
@@ -288,7 +294,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		)
 
 		const allQuestionsWithScores = questions
-			.filter((q) => q.status === "proposed")
+			.filter((q) => q.status === "proposed") // Only include proposed questions, exclude rejected
 			.map((q) => ({
 				...q,
 				compositeScore: calculateCompositeScore(q),
@@ -409,6 +415,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						status: "proposed",
 						selectedOrder: selectedIndex >= 0 ? selectedIndex : null,
 						isSelected: selectedIndex >= 0,
+						source: q.source || "ai", // Ensure source is preserved
 					}
 				})
 				const { error } = await supabase.from("project_sections").upsert(
@@ -486,6 +493,66 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
 	)
 
+	const addCustomQuestion = useCallback(
+		async () => {
+			if (!newQuestionText.trim()) {
+				toast.error("Please enter a question")
+				return
+			}
+
+			const customQuestion: Question = {
+				id: crypto.randomUUID(),
+				text: newQuestionText.trim(),
+				categoryId: newQuestionCategory,
+				scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 }, // Default decent scores for custom questions
+				rationale: "Custom user question",
+				status: "proposed",
+				timesAnswered: 0,
+				source: "user"
+			}
+
+			const updatedQuestions = [...questions, customQuestion]
+			setQuestions(updatedQuestions)
+			
+			// Auto-add to selected questions
+			const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
+			setSelectedQuestionIds(newSelectedIds)
+			
+			// Save to database
+			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			
+			// Reset form
+			setNewQuestionText("")
+			setNewQuestionCategory("context")
+			setShowAddCustomQuestion(false)
+			
+			toast.success("Custom question added", {
+				description: "Your question has been added to the question pack"
+			})
+		},
+		[newQuestionText, newQuestionCategory, questions, selectedQuestionIds, saveQuestionsToDatabase]
+	)
+
+	const rejectQuestion = useCallback(
+		async (questionId: string) => {
+			const updatedQuestions = questions.map((q) => 
+				q.id === questionId ? { ...q, status: "rejected" as const } : q
+			)
+			setQuestions(updatedQuestions)
+			
+			// Also remove from selected questions if it was selected
+			const newSelectedIds = selectedQuestionIds.filter(id => id !== questionId)
+			setSelectedQuestionIds(newSelectedIds)
+			
+			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			
+			toast.success("Question rejected", {
+				description: "This question won't appear in future generations"
+			})
+		},
+		[questions, selectedQuestionIds, saveQuestionsToDatabase]
+	)
+
 	const getCategoryColor = (categoryId: string) => {
 		const category = questionCategories.find((c) => c.id === categoryId)
 		return category?.color || "border-gray-100 text-gray-800 dark:border-gray-900 dark:text-gray-200"
@@ -560,6 +627,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						rationale: q.rationale || "",
 						status: "proposed",
 						timesAnswered: 0,
+						source: "ai",
 					}))
 					setQuestions((prev) => [...prev, ...formattedNewQuestions])
 					toast.success(`Added ${formattedNewQuestions.length} new questions to the bottom of your available list`, {
@@ -731,6 +799,61 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</CardContent>
 				</Card>
 
+				<Card>
+					<CardContent className="space-y-3 p-3">
+						{showAddCustomQuestion ? (
+							<div className="space-y-3">
+								<Textarea
+									placeholder="Enter your custom question..."
+									value={newQuestionText}
+									onChange={(e) => setNewQuestionText(e.target.value)}
+									rows={3}
+								/>
+								<Select value={newQuestionCategory} onValueChange={setNewQuestionCategory}>
+									<SelectTrigger>
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{questionCategories.map((cat) => (
+											<SelectItem key={cat.id} value={cat.id}>
+												{cat.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<div className="flex gap-2">
+									<Button
+										onClick={addCustomQuestion}
+										disabled={!newQuestionText.trim()}
+										variant="default"
+										className="flex-1"
+									>
+										<Plus className="mr-2 h-4 w-4" /> Add Custom Question
+									</Button>
+									<Button
+										onClick={() => {
+											setShowAddCustomQuestion(false)
+											setNewQuestionText("")
+											setNewQuestionCategory("context")
+										}}
+										variant="outline"
+									>
+										Cancel
+									</Button>
+								</div>
+							</div>
+						) : (
+							<Button
+								onClick={() => setShowAddCustomQuestion(true)}
+								variant="outline"
+								className="w-full"
+							>
+								<User className="mr-2 h-4 w-4" /> Add Custom Question
+							</Button>
+						)}
+					</CardContent>
+				</Card>
+
 				<Button
 					onClick={() => {
 						if (routes) {
@@ -812,6 +935,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					<Badge variant="outline" className="text-muted-foreground text-xs">
 																						~{Math.round(question.estimatedMinutes)}m
 																					</Badge>
+																					{question.source === "user" && (
+																						<Badge variant="outline" className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200">
+																							<User className="mr-1 h-3 w-3" />
+																							Custom
+																						</Badge>
+																					)}
 																					{question.timesAnswered > 0 && (
 																						<Badge
 																							className={getAnsweredCountColor(question.timesAnswered)}
@@ -871,15 +1000,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 											{questionPack.remainingQuestions.map((question) => (
 												<Card
 													key={question.id}
-													className="cursor-pointer border-gray-300 border-dashed py-2 transition-colors hover:border-blue-400 hover:bg-blue-50/50"
-													onClick={() => addQuestionFromReserve(question)}
+													className="border-gray-300 border-dashed py-2"
 												>
 													<CardContent className="p-3">
 														<div className="flex items-start gap-3">
-															<div className="mt-1 flex items-center gap-2">
+															<button
+																onClick={() => addQuestionFromReserve(question)}
+																className="mt-1 flex items-center gap-2 rounded p-1 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900"
+																title="Add question to your pack"
+															>
 																<GripVertical className="h-4 w-4 text-gray-400" />
-																<MoreHorizontal className="h-4 w-4 text-gray-400" />
-															</div>
+																<Plus className="h-4 w-4 text-blue-500" />
+															</button>
 															<div className="min-w-0 flex-1">
 																<div className="mb-2 flex flex-wrap items-center gap-2">
 																	<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
@@ -890,6 +1022,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																		{Math.round((question as unknown as { estimatedMinutes: number }).estimatedMinutes)}
 																		m
 																	</Badge>
+																	{question.source === "user" && (
+																		<Badge variant="outline" className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200">
+																			<User className="mr-1 h-3 w-3" />
+																			Custom
+																		</Badge>
+																	)}
 																	{question.timesAnswered > 0 && (
 																		<Badge className={getAnsweredCountColor(question.timesAnswered)} variant="outline">
 																			{question.timesAnswered}
@@ -903,6 +1041,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																	{question.text}
 																</p>
 															</div>
+															<button
+																onClick={() => rejectQuestion(question.id)}
+																className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
+																title="Reject this question (won't appear in future generations)"
+															>
+																<X className="h-4 w-4" />
+															</button>
 														</div>
 													</CardContent>
 												</Card>

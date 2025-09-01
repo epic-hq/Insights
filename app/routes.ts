@@ -88,6 +88,7 @@ const routes = [
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
 	route("api/test-generate-themes", "./routes/api/test-generate-themes.tsx"),
+	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

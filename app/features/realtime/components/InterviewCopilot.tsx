@@ -1,10 +1,12 @@
+import consola from "consola"
 import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, Users } from "lucide-react"
-import { useCallback, useState } from "react"
-import { type Question, QuestionWidget } from "~/components/questions/QuestionWidget"
+import { useCallback, useEffect, useState } from "react"
+import { InterviewQuestionsManager } from "~/components/questions/InterviewQuestionsManager"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
+import { createClient } from "~/lib/supabase/client"
 
 interface InterviewCopilotProps {
 	projectId: string
@@ -20,12 +22,105 @@ interface AISuggestion {
 }
 
 export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotProps) {
-	const [questions, setQuestions] = useState<Question[]>([])
+	const [selectedQuestions, setSelectedQuestions] = useState<{id: string, text: string}[]>([])
 	const [isRecording, setIsRecording] = useState(false)
 	const [captions, setCaptions] = useState<string[]>([])
 	const [currentCaption, setCurrentCaption] = useState("")
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
+	const supabase = createClient()
+
+	// Save interview notes to database (debounced)
+	const saveInterviewNotes = useCallback(
+		async (notes: string) => {
+			if (!interviewId || !notes.trim()) return
+			try {
+				const { error } = await supabase
+					.from('interviews')
+					.update({ observations_and_notes: notes })
+					.eq('id', interviewId)
+				
+				if (error) {
+					consola.error('Error saving interview notes:', error)
+				}
+			} catch (error) {
+				consola.error('Error saving interview notes:', error)
+			}
+		},
+		[interviewId, supabase]
+	)
+
+	// Save AI suggestion as annotation
+	const saveAISuggestionAsAnnotation = useCallback(
+		async (suggestion: AISuggestion) => {
+			if (!interviewId) return
+			try {
+				const { error } = await supabase
+					.from('annotations')
+					.insert({
+						entity_type: 'interview',
+						entity_id: interviewId,
+						project_id: projectId,
+						annotation_type: 'ai_suggestion',
+						content: suggestion.text,
+						metadata: {
+							suggestion_type: suggestion.type,
+							confidence: suggestion.confidence,
+							timestamp: suggestion.timestamp.toISOString(),
+						},
+						created_by_ai: true,
+						ai_model: 'copilot',
+						status: 'active',
+						visibility: 'team'
+					})
+				
+				if (error) {
+					consola.error('Error saving AI suggestion:', error)
+				}
+			} catch (error) {
+				consola.error('Error saving AI suggestion:', error)
+			}
+		},
+		[interviewId, projectId, supabase]
+	)
+
+	// Load existing interview notes
+	useEffect(() => {
+		const loadInterviewNotes = async () => {
+			if (!interviewId) return
+			try {
+				const { data, error } = await supabase
+					.from('interviews')
+					.select('observations_and_notes')
+					.eq('id', interviewId)
+					.single()
+				
+				if (error) {
+					consola.error('Error loading interview notes:', error)
+					return
+				}
+				
+				if (data?.observations_and_notes) {
+					setInterviewNotes(data.observations_and_notes)
+				}
+			} catch (error) {
+				consola.error('Error loading interview notes:', error)
+			}
+		}
+		
+		loadInterviewNotes()
+	}, [interviewId, supabase])
+
+	// Debounce notes saving
+	useEffect(() => {
+		const timeoutId = setTimeout(() => {
+			if (interviewNotes.trim()) {
+				saveInterviewNotes(interviewNotes)
+			}
+		}, 1000) // Save after 1 second of inactivity
+		
+		return () => clearTimeout(timeoutId)
+	}, [interviewNotes, saveInterviewNotes])
 
 	// Mock project data - in real app, fetch from project
 	const [projectData, _setProjectData] = useState({
@@ -37,7 +132,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		unknowns: ["What tools are most effective?", "How do different team sizes affect leadership?"],
 	})
 
-	const handleQuestionStatusChange = useCallback((_questionId: string, status: Question["status"]) => {
+	const handleQuestionStatusChange = useCallback(async (_questionId: string, status: "proposed" | "asked" | "answered" | "skipped") => {
 		// Generate AI suggestion based on status
 		if (status === "answered") {
 			const suggestion: AISuggestion = {
@@ -48,8 +143,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				timestamp: new Date(),
 			}
 			setAiSuggestions((prev) => [suggestion, ...prev.slice(0, 4)]) // Keep last 5
+			
+			// Save AI suggestion as annotation
+			await saveAISuggestionAsAnnotation(suggestion)
 		}
-	}, [])
+	}, [saveAISuggestionAsAnnotation])
 
 	const toggleRecording = useCallback(() => {
 		setIsRecording((prev) => !prev)
@@ -80,7 +178,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}, [isRecording])
 
-	const generateAISuggestion = useCallback(() => {
+	const generateAISuggestion = useCallback(async () => {
 		const suggestions = [
 			{
 				type: "probe_deeper" as const,
@@ -107,7 +205,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 
 		setAiSuggestions((prev) => [newSuggestion, ...prev.slice(0, 4)])
-	}, [])
+		
+		// Save AI suggestion as annotation
+		await saveAISuggestionAsAnnotation(newSuggestion)
+	}, [saveAISuggestionAsAnnotation])
 
 	const getSuggestionIcon = (type: AISuggestion["type"]) => {
 		switch (type) {
@@ -139,20 +240,15 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		<div className="grid h-screen grid-cols-1 gap-6 p-6 lg:grid-cols-2">
 			{/* Left Side - Questions */}
 			<div className="space-y-4 overflow-y-auto">
-				<QuestionWidget
-					questions={questions}
-					onQuestionsChange={setQuestions}
+				<InterviewQuestionsManager
+					projectId={projectId}
 					target_orgs={projectData.target_orgs}
 					target_roles={projectData.target_roles}
 					research_goal={projectData.research_goal}
 					research_goal_details={projectData.research_goal_details}
 					assumptions={projectData.assumptions}
 					unknowns={projectData.unknowns}
-					mode="realtime"
-					showGenerateButton={true}
-					showCustomQuestions={true}
-					maxQuestions={10}
-					onQuestionStatusChange={handleQuestionStatusChange}
+					onSelectedQuestionsChange={setSelectedQuestions}
 				/>
 			</div>
 

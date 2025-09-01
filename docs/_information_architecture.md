@@ -16,6 +16,260 @@ Craft a simple promise anyone in the company can repeat.
 
 ---
 
+## Answering the user’s original questions
+
+The clean way to make this “make sense from the user’s original questions” is to separate two layers of questions and keep traceability from the evidence all the way back.
+Example:
+
+
+### The model (condensed)
+
+* Goal → what outcome we’re pursuing.
+
+* Decision Question (DQ) → the user’s original “questions they want answered” (your goal details / desired findings).
+
+* Research Question (RQ) → what we ask (or probe) to elicit evidence that answers a DQ.
+
+* Interview Prompt (IP) → the literal prompt asked in an interview/guide (atomic).
+
+* Evidence → quotes, observations, metrics, clips; each item links upward and is coded.
+
+### Relationships (many-to-many where noted)
+
+* Goal ⟶ DQ (1:N)
+
+* DQ ⟷ RQ (M:N) // several RQs may address one DQ; one RQ can help multiple DQs
+
+* RQ ⟶ IP (1:N)
+
+* IP ⟶ Evidence (1:N)
+
+* Evidence ⟷ {DQ, RQ} (M:N) with a role: supports | refutes | relevant/neutral and strength (low/med/high)
+
+* Evidence ⟷ Theme/Tag (M:N) // manual + semantic (later via vectors)
+
+* Evidence ⟶ {Interview, Person, Persona, Timecode, Source}
+
+**Key point:** Evidence should link to both the prompt actually asked (IP/RQ) and the Decision Question (DQ) it helps answer. That gives you ground-truth traceability and roll-up to the user’s original questions.
+
+### The logic users care about
+
+Users don’t think in “what we asked”; they think in “did you answer my question?” So make Decision Question the primary lens.
+
+For each Decision Question card:
+
+* Answer summary (one sentence)
+
+* Confidence (0–100 or Low/Med/High) with rationale
+
+* Coverage (% of target personas/interviews that produced relevant evidence)
+
+* Directionality (e.g., “Likely Yes”, “Mixed”, “No”)
+
+* Top supporting/refuting evidence chips (key quotes with timecodes)
+
+* Gaps (unanswered sub-aspects)
+
+* Next steps (follow-up RQs, experiments)
+
+**Then, let the user drill down:**
+
+DQ → related RQs → specific prompts asked → raw evidence (clips/quotes) → transcript snippet.
+
+### Scoring & roll-ups
+
+For each DQ:
+
+* coverage = (# interviews with ≥1 linked evidence to this DQ) / (target interviews)
+
+* support score = Σ(strength for supports) − Σ(strength for refutes)
+
+* confidence = function(support score, coverage, recency, persona fit)
+
+* status = answered | partial | unknown (derive from confidence + coverage thresholds)
+
+For each RQ:
+
+* show which DQs it contributed to, and which prompts yielded the best signal (so your team learns which probes work).
+
+### UI snapshots that “click” for users
+
+1. Goals → Questions (DQ) view
+
+* Grid/list of DQs with status pills, coverage %, confidence.
+
+* Click DQ → “Answer card” (summary, evidence chips, gaps, next steps), plus a Traceability tab that shows the exact RQs → prompts → evidence path.
+
+2. Matrix view
+
+* Rows: DQs. Columns: Personas (or segments).
+
+* Cells show coverage + direction (↗ supports, ↘ refutes, • mixed). Great for spotting blind spots.
+
+3. Interview Progress view
+
+* For each interview, show which prompts were asked and which DQs received new evidence. Encourages complete coverage.
+
+4. Gaps & Next Steps
+
+* Auto-list DQs with low coverage / low confidence and propose the top RQs/prompts or experiments to run next.
+
+### Practical workflow
+
+1. Create Goal → capture Decision Questions (the user’s “desired findings”).
+
+2. For each DQ, define 2–5 Research Questions that would most directly inform an answer.
+
+3. Build your guide from Prompts under each RQ.
+
+4. During/after interviews:
+
+* Log PromptAsk events.
+
+* Capture Evidence items as they appear (quotes, observations).
+
+* Link Evidence → PromptAsk (provenance) and add EvidenceLink to the relevant DQ (and RQ), with role + strength.
+
+* Tag themes.
+
+5. Your DQ cards auto-update coverage, confidence, and summary.
+
+here are two concrete, end-to-end examples showing how the dual-linking works and what the user sees.
+
+1) B2C EdTech (your space): “Why aren’t students converting from trial to paid?”
+
+Goal: Increase trial→paid by +30% among college students this semester.
+
+#### Decision Questions (what the user wants answered)
+
+DQ1: What’s the #1 blocker to upgrading during the trial?
+
+DQ2: Would a $3/week plan outperform $12/month for students?
+
+DQ3: Does “guided plan + reminders” materially improve perceived value?
+
+#### Research Questions (what we probe to elicit evidence)
+
+RQ1 → DQ1: When during the trial do students decide whether to pay, and why?
+
+RQ2 → DQ1: Which moments feel “aha” vs “meh”?
+
+RQ3 → DQ2: How do students mentally budget for small, recurring expenses?
+
+RQ4 → DQ3: Do scheduling nudges feel helpful or annoying?
+
+#### Interview Prompts (what we actually ask)
+
+IP1 (→ RQ1): “Walk me through your first week using the app—where did you stop?”
+
+IP2 (→ RQ2): “What was the last moment you felt ‘oh this is useful’ vs ‘not worth it’?”
+
+IP3 (→ RQ3): “How do you think about $3/week vs $12/month for school tools?”
+
+IP4 (→ RQ4): “If we text you a 5-min study nudge at your preferred time, is that good or spam?”
+
+#### Evidence (linked to both the prompt asked and the DQ it informs)
+
+E1 (quote, IP1, Interview #7): “I tried to build a plan but didn’t know what to study first.”
+Links: supports DQ1 (blocker = onboarding clarity), strength 4/5; tags: onboarding, guidance
+
+E2 (quote, IP2, Interview #4): “When it auto-split my exam topics into 20-min blocks—that was the moment.”
+Links: supports DQ1 (aha = auto-split), supports DQ3 (guided plan value), strength 3/5; tags: aha, chunking
+
+E3 (quote, IP3, Interview #11): “Weekly sounds cheaper mentally; monthly feels like a commitment.”
+Links: supports DQ2 ($/week framing), strength 3/5; tags: pricing, framing
+
+E4 (metric, cohort log): 18% higher day-3 retention for users who set a reminder on day-0.
+Links: supports DQ3, strength 5/5; tags: reminders, retention
+
+E5 (quote, IP4, Interview #9): “One text at 7pm is fine; more than one feels pushy.”
+Links: refutes over-frequent nudges for DQ3, strength 2/5; tags: frequency tolerance
+
+What the user sees (Decision Question cards)
+
+DQ1 – Blocker to upgrading?
+Answer: Onboarding lacks “what to study first”; auto-split is the primary aha.
+Confidence: High (coverage 72%, mixed qual+quant).
+Top evidence: E1, E2.
+Next steps: Add 60-sec “Start here” wizard; default to auto-split.
+
+DQ2 – $3/week vs $12/month?
+Answer: Weekly framing likely improves perceived affordability.
+Confidence: Medium (qual strong, need pricing test).
+Next steps: 2-cell price test; measure upgrade rate + 28-day churn.
+
+DQ3 – Do guided plan + reminders improve value?
+Answer: Yes, when reminders are limited to 1/day at a chosen time.
+Confidence: High (E4 metric + interviews).
+Next steps: Require reminder setup in onboarding; throttle to ≤1/day.
+
+2) B2B Research Ops: “Should we prioritize a Salesforce add-in for SDRs?”
+
+Goal: Choose the first “Insights” CRM integration that yields fastest adoption.
+
+Decision Questions
+
+DQ1: Do SDRs actually need in-CRM interview capture & evidence tagging?
+
+DQ2: Will Salesforce yield faster bottoms-up adoption than HubSpot for our ICP?
+
+DQ3: What’s the minimal feature set to validate this integration?
+
+Research Questions
+
+RQ1 → DQ1: Where does interview evidence currently “live” in SDR workflows?
+
+RQ2 → DQ2: Which CRM has the denser daily usage among target teams?
+
+RQ3 → DQ3: Which 2–3 actions must be instant inside CRM to feel valuable?
+
+#### Interview Prompts
+
+IP1 (→ RQ1): “Show me where you put discovery notes after a call.”
+
+IP2 (→ RQ2): “Open your CRM and show today’s view; what tabs do you live in?”
+
+IP3 (→ RQ3): “If you had a button here, what would it do in under 10 seconds?”
+
+#### Evidence
+
+E6 (screen share, IP1): 9/12 SDRs paste notes into Salesforce Activity; tags lost in free-text.
+Links: supports DQ1, strength 4/5; tags: notes, loss, friction
+
+E7 (metric, tool usage logs): 78% of target accounts have >5 daily Salesforce logins/user vs 42% for HubSpot.
+Links: supports DQ2 (Salesforce denser), strength 5/5; tags: DAU, footprint
+
+E8 (quote, IP3): “I need 1-click: tag quote → attach to Opp → send to PM in Slack.”
+Links: supports DQ3, strength 3/5; tags: one-click, attach, share
+
+E9 (quote, IP2): “If it opens a separate web app, I won’t use it mid-call.”
+Links: refutes heavy external app for DQ3, strength 3/5; tags: in-place, latency
+
+#### What the user sees
+
+DQ1 – Do SDRs need in-CRM capture/tagging?
+Answer: Yes; current notes are unstructured → evidence gets lost.
+Confidence: High.
+Next steps: Inline capture + tag assistant in Activity composer.
+
+DQ2 – Salesforce vs HubSpot first?
+Answer: Salesforce first (higher daily usage among ICP).
+Confidence: High (behavioral logs + interviews).
+Next steps: Build SFDC app (Opp/Lead Activity extension), pilot with 3 teams.
+
+DQ3 – Minimal feature set?
+Answer: 1-click “Capture → Tag → Attach to Opp → Share to Slack,” in-place.
+Confidence: Medium-High.
+Next steps: Ship v0 with (a) inline quote capture, (b) tag chips, (c) attach to Opp, (d) Slack share; <10s.
+
+#### How the links look under the hood (short)
+
+Evidence always stores provenance (which prompt in which interview), and also links to the Decision Question(s) it informs with a role (supports/refutes/neutral) and strength.
+
+RQs connect DQs ⇄ Prompts, so you can see both: “did we answer it?” and “which probes worked?”
+
+---
+
 ## Core entities (crisp definitions)
 
 * **Project**: Container for all work.

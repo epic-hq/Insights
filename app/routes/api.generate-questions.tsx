@@ -91,16 +91,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			)
 		}
 
-		consola.log("Generating questions for:", {
-			project_id,
-			target_orgs,
-			target_roles,
-			research_goal,
-			research_goal_details,
-			assumptions,
-			unknowns,
-			custom_instructions,
-		})
+		// consola.log("Generating questions for:", {
+		// 	project_id,
+		// 	target_orgs,
+		// 	target_roles,
+		// 	research_goal,
+		// 	research_goal_details,
+		// 	assumptions,
+		// 	unknowns,
+		// 	custom_instructions,
+		// })
 
 		consola.log("Generating questions (canonical) for:", {
 			target_orgs,
@@ -110,6 +110,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			assumptions,
 			unknowns,
 			questionCount,
+			interview_time_limit,
+			custom_instructions,
 		})
 
 		const questionSet = await generateQuestionSetCanonical({

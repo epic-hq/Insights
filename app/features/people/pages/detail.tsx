@@ -101,9 +101,7 @@ export default function PersonDetail() {
 					</Button>
 				</div>
 				{person.description && (
-					<p className="mt-4 w-full max-w-2xl whitespace-pre-wrap text-base text-muted-foreground">
-						{person.description}
-					</p>
+					<p className="mt-4 w-full max-w-2xl whitespace-pre-wrap text-base text-foreground">{person.description}</p>
 				)}
 			</motion.div>
 			{/* Persona Section (optional, could be expanded for more personas) */}
@@ -112,7 +110,7 @@ export default function PersonDetail() {
 				<div className="lg:col-span-2">
 					{interviews.length > 0 && (
 						<motion.div
-							className="rounded-xl border bg-white p-6"
+							className="rounded-xl border bg-background p-6"
 							initial={{ opacity: 0, y: 16 }}
 							animate={{ opacity: 1, y: 0 }}
 							transition={{ delay: 0.1, duration: 0.4 }}
@@ -133,12 +131,12 @@ export default function PersonDetail() {
 											{interviewPerson.interviews.title}
 										</Link>
 										{interviewPerson.interviews.interview_date && (
-											<div className="text-gray-600 text-sm">
+											<div className="text-muted-foreground text-sm">
 												{new Date(interviewPerson.interviews.interview_date).toLocaleDateString()}
 											</div>
 										)}
 										{interviewPerson.interviews.duration_min && (
-											<div className="text-gray-500 text-sm">
+											<div className="text-muted-foreground text-sm">
 												Duration: {interviewPerson.interviews.duration_min} minutes
 											</div>
 										)}
@@ -150,7 +148,7 @@ export default function PersonDetail() {
 				</div>
 				<div className="space-y-6">
 					<motion.div
-						className="rounded-xl border bg-white p-6"
+						className="rounded-xl border bg-background p-6"
 						initial={{ opacity: 0, y: 16 }}
 						animate={{ opacity: 1, y: 0 }}
 						transition={{ delay: 0.15, duration: 0.4 }}
@@ -158,13 +156,13 @@ export default function PersonDetail() {
 						<h3 className="mb-4 font-semibold">Statistics</h3>
 						<div className="space-y-3">
 							<div>
-								<label className="font-medium text-gray-500 text-sm">Total Interviews</label>
-								<div className="mt-1 font-bold text-2xl text-gray-900">{interviews.length}</div>
+								<label className="font-medium text-muted-foreground text-sm">Total Interviews</label>
+								<div className="mt-1 font-bold text-2xl text-foreground">{interviews.length}</div>
 							</div>
 							{interviews.length > 0 && (
 								<div>
-									<label className="font-medium text-gray-500 text-sm">Latest Interview</label>
-									<div className="mt-1 text-gray-900 text-sm">
+									<label className="font-medium text-muted-foreground text-sm">Latest Interview</label>
+									<div className="mt-1 text-foreground text-sm">
 										{new Date(
 											Math.max(
 												...interviews.map((ip) =>
@@ -176,13 +174,13 @@ export default function PersonDetail() {
 								</div>
 							)}
 							<div>
-								<label className="font-medium text-gray-500 text-sm">Added</label>
-								<div className="mt-1 text-gray-900 text-sm">{new Date(person.created_at).toLocaleDateString()}</div>
+								<label className="font-medium text-muted-foreground text-sm">Added</label>
+								<div className="mt-1 text-foreground text-sm">{new Date(person.created_at).toLocaleDateString()}</div>
 							</div>
 							{person.updated_at && (
 								<div>
-									<label className="font-medium text-gray-500 text-sm">Last Updated</label>
-									<div className="mt-1 text-gray-900 text-sm">{new Date(person.updated_at).toLocaleDateString()}</div>
+									<label className="font-medium text-muted-foreground text-sm">Last Updated</label>
+									<div className="mt-1 text-foreground text-sm">{new Date(person.updated_at).toLocaleDateString()}</div>
 								</div>
 							)}
 						</div>

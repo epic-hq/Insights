@@ -16,8 +16,9 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		const formData = await request.formData()
 		const personaId = formData.get("personaId") as string
-		if (!personaId) {
-			throw new Response("Missing personaId", { status: 400 })
+		const projectId = formData.get("projectId") as string
+		if (!personaId || !projectId) {
+			throw new Response("Missing personaId or projectId", { status: 400 })
 		}
 
 		// 1. Aggregate people for this persona
@@ -70,6 +71,17 @@ export async function action({ request }: ActionFunctionArgs) {
 				interviewsRecords = interviewsData || []
 			}
 		}
+		// get evidence
+		const { data: evidenceData, error: evidenceError } = await supabase
+			.from("evidence")
+			.select("*")
+			.eq("project_id", projectId)
+
+		if (evidenceError) {
+			consola.error("[Persona Insights API] Error fetching evidence:", evidenceError)
+			throw new Response("Failed to fetch evidence", { status: 500 })
+		}
+		const evidenceRecords = evidenceData || []
 
 		// 3. Prepare data for baml
 		const peopleRecords = (people ?? []).map((p: any) => p.people).filter(Boolean)
@@ -78,12 +90,14 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.log("[Persona Insights API] People Records:", peopleRecords)
 		consola.log("[Persona Insights API] Insights Records:", insightsRecords)
 		consola.log("[Persona Insights API] Interviews Records:", interviewsRecords)
+		consola.log("[Persona Insights API] Evidence Records:", evidenceRecords)
 
 		// 4. Call baml ExtractPersona
 		const bamlResult = await b.ExtractPersona(
 			JSON.stringify(peopleRecords),
 			JSON.stringify(insightsRecords),
-			JSON.stringify(interviewsRecords)
+			JSON.stringify(interviewsRecords),
+			JSON.stringify(evidenceRecords),
 		)
 
 		consola.log("[Persona Insights API] BAML Result:", bamlResult)

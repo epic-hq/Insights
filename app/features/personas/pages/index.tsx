@@ -1,12 +1,14 @@
 import consola from "consola"
 import { Sparkle, Users } from "lucide-react"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 // GeneratePersonasButton component
 import { Link, useFetcher } from "react-router-dom"
 import { Button } from "~/components/ui/button"
+import NavPageLayout from "~/components/layout/NavPageLayout"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
+import PersonaCompareBoard from "~/features/personas/components/PersonaCompareBoard"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
@@ -47,6 +49,7 @@ export async function loader({ request, params }: { request: Request; params: { 
 export default function Personas() {
 	const { personas } = useLoaderData<typeof loader>()
 	const [, setSearchParams] = useSearchParams()
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
@@ -58,62 +61,75 @@ export default function Personas() {
 		})
 	}
 
-	return (
-		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
-			{/* Compact Subnav */}
-			<PersonaPeopleSubnav />
+	// Transform personas data for PersonaCompareBoard
+	const transformedPersonas = personas.map(persona => ({
+		id: persona.id,
+		name: persona.name,
+		kind: persona.kind || "core" as const,
+		avatarUrl: persona.image_url,
+		color: persona.color,
+		tags: persona.tags || [],
+		goals: persona.goals || [],
+		pains: persona.pains || [],
+		differentiators: persona.differentiators || [],
+		behaviors: persona.behaviors || [],
+		roles: persona.roles || [],
+		spectra1d: persona.spectra1d || {},
+		spectra2d: persona.spectra2d || {},
+	}))
 
-			{/* Clean Header - Metro Style */}
-			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
-				<div className="mx-auto max-w-6xl">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<h1 className="font-light text-3xl text-gray-900 tracking-tight dark:text-white">User Personas</h1>
-							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400">
-								Research-based user archetypes and behavioral patterns
-							</p>
+	return (
+		<NavPageLayout
+			title="User Personas"
+			description="Research-based user archetypes and behavioral patterns"
+			viewMode={viewMode}
+			onViewModeChange={setViewMode}
+			showViewToggle={personas.length > 0}
+			showSubnav={true}
+			subnav={<PersonaPeopleSubnav />}
+			itemCount={personas.length}
+			actionButtons={[
+				<GeneratePersonasButton key="generate" />,
+			]}
+			primaryAction={
+				<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+					<Link to={routes.personas.new()}>Add Persona</Link>
+				</Button>
+			}
+		>
+			{personas.length === 0 ? (
+				<div className="py-8 text-center">
+					<div className="mx-auto max-w-md">
+						<div className="mb-6 flex justify-center">
+							<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
+								<Users className="h-12 w-12 text-gray-400 dark:text-gray-500" />
+							</div>
 						</div>
-						<div className="flex flex-wrap gap-3">
+						<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No personas yet</h3>
+						<p className="mb-8 text-gray-600 dark:text-gray-400">
+							Generate personas from your research data or create them manually to understand your users better.
+						</p>
+						<div className="flex justify-center gap-3">
 							<GeneratePersonasButton />
-							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-								<Link to={routes.personas.new()}>Add Persona</Link>
+							<Button asChild variant="outline">
+								<Link to={routes.personas.new()}>Create Manually</Link>
 							</Button>
 						</div>
 					</div>
 				</div>
-			</div>
-
-			{/* Main Content */}
-			<div className="mx-auto max-w-6xl px-6 py-8">
-				{personas.length === 0 ? (
-					<div className="py-8 text-center">
-						<div className="mx-auto max-w-md">
-							<div className="mb-6 flex justify-center">
-								<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
-									<Users className="h-12 w-12 text-gray-400 dark:text-gray-500" />
-								</div>
-							</div>
-							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No personas yet</h3>
-							<p className="mb-8 text-gray-600 dark:text-gray-400">
-								Generate personas from your research data or create them manually to understand your users better.
-							</p>
-							<div className="flex justify-center gap-3">
-								<GeneratePersonasButton />
-								<Button asChild variant="outline">
-									<Link to={routes.personas.new()}>Create Manually</Link>
-								</Button>
-							</div>
-						</div>
-					</div>
-				) : (
-					<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-						{personas.map((persona) => (
-							<EnhancedPersonaCard key={persona.id} persona={persona} />
-						))}
-					</div>
-				)}
-			</div>
-		</div>
+			) : viewMode === "cards" ? (
+				<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+					{personas.map((persona) => (
+						<EnhancedPersonaCard key={persona.id} persona={persona} />
+					))}
+				</div>
+			) : (
+				<PersonaCompareBoard 
+					personas={transformedPersonas}
+					visibleFields={["goals", "pains", "differentiators"]}
+				/>
+			)}
+		</NavPageLayout>
 	)
 }
 
@@ -127,12 +143,24 @@ function GeneratePersonasButton() {
 		}
 	}, [fetcher.data])
 
+	const handleGenerate = () => {
+		const confirmed = window.confirm(
+			"⚠️ This will generate additional personas based on your research data. This feature is experimental and may create duplicate or similar personas. Do you want to proceed?"
+		)
+		if (confirmed) {
+			fetcher.submit({}, { method: "post", action: "api/generate-personas" })
+		}
+	}
+
 	return (
-		<fetcher.Form method="post" action="api/generate-personas">
-			<Button type="submit" variant="secondary" disabled={isGenerating}>
-				<Sparkle className="mr-2 h-4 w-4" />
-				{isGenerating ? "Generating..." : "Generate Personas"}
-			</Button>
-		</fetcher.Form>
+		<Button 
+			onClick={handleGenerate} 
+			variant="secondary" 
+			disabled={isGenerating}
+			type="button"
+		>
+			<Sparkle className="mr-2 h-4 w-4" />
+			{isGenerating ? "Generating..." : "Generate Personas"}
+		</Button>
 	)
 }

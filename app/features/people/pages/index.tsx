@@ -60,10 +60,7 @@ export default function PeopleIndexPage() {
 				<div className="mx-auto max-w-6xl">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<h1 className="font-light text-3xl text-gray-900 tracking-tight dark:text-white">People</h1>
-							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400">
-								Research participants, contacts, and interview subjects
-							</p>
+							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400"> </p>
 						</div>
 						<div className="flex flex-wrap gap-3">
 							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">

@@ -617,8 +617,8 @@ export default function ProjectStatusScreen({
 											variant="outline"
 											size="sm"
 											onClick={() => {
-												if (routes) {
-													window.location.href = routes.projects.setup()
+												if (routes && projectId) {
+													window.location.href = routes.projects.edit(projectId)
 												}
 											}}
 										>

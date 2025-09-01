@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
+import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Database, Insight, Interview } from "~/types"
@@ -284,6 +285,7 @@ export default function PersonaDetailRoute() {
 								onClick={async () => {
 									const formData = new FormData()
 									formData.append("personaId", persona.id)
+									formData.append("projectId", projectId)
 									try {
 										const res = await fetch("/api/generate-persona-insights", {
 											method: "POST",
@@ -305,7 +307,7 @@ export default function PersonaDetailRoute() {
 					</motion.div>
 
 					{/* KPI Stats Section */}
-					<motion.div
+					{/* <motion.div
 						className="grid grid-cols-3 gap-6"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
@@ -347,7 +349,7 @@ export default function PersonaDetailRoute() {
 								{interviews.length > 0 ? (insights.length / interviews.length).toFixed(1) : "0"}
 							</p>
 						</div>
-					</motion.div>
+					</motion.div> */}
 				</div>
 			</div>
 
@@ -355,7 +357,7 @@ export default function PersonaDetailRoute() {
 			<div className="mx-auto max-w-6xl px-6 py-12">
 				{/* Persona Details Card */}
 				<Card className="mb-8">
-					<CardHeader>
+					<CardHeader className="pb-4">
 						<h2 className="font-semibold text-xl">Details</h2>
 						<p className="text-muted-foreground text-xs">Only showing available fields</p>
 					</CardHeader>
@@ -428,55 +430,72 @@ export default function PersonaDetailRoute() {
 											? persona.quotes.map((q: string) => `"${q}"`).join(" ")
 											: null,
 								},
-								{
-									label: "Percentage",
-									value:
-										typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
-											? `${persona.percentage}%`
-											: null,
-								},
+								// {
+								// 	label: "Percentage",
+								// 	value:
+								// 		typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
+								// 			? `${persona.percentage * 100}%`
+								// 			: null,
+								// },
 							]
 								.filter((item) => item.value && String(item.value).trim() !== "")
 								.map((item, _idx) => (
 									<div key={item.label} className="flex">
-										<span className="w-40 font-medium text-foreground">{item.label}:</span>
-										<span className="text-muted-foreground">{item.value}</span>
+										<span className="w-40 font-medium text-muted-foreground">{item.label}:</span>
+										<span className="text-foreground">{item.value}</span>
 									</div>
 								))}
 						</div>
 					</CardContent>
 				</Card>
 
-				{/* People Section */}
-				{people && people.length > 0 && (
-					<Card className="mb-8">
-						<CardHeader>
-							<h3 className="font-semibold text-lg">People ({people.length})</h3>
-						</CardHeader>
-						<CardContent>
-							<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-								{people.map((person) => (
-									<div key={person.id} className="rounded-lg border p-4">
-										<h4 className="font-medium">{person.name}</h4>
-										{person.segment && <p className="text-muted-foreground text-sm">{person.segment}</p>}
-									</div>
+				<div className="space-y-6">
+					{/* People Section */}
+					{people && people.length > 0 ? (
+						<Card className="mb-8">
+							<CardHeader>
+								<div className="font-semibold text-lg">People ({people.length})</div>
+							</CardHeader>
+							<CardContent>
+								<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+									{people.map((person) => (
+										<MiniPersonCard key={person.id} person={person} />
+									))}
+								</div>
+							</CardContent>
+						</Card>
+					) : (
+						<Card className="max-w-sm">
+							<CardHeader>
+								<h3 className="font-semibold text-lg">People</h3>
+							</CardHeader>
+							<CardContent>
+								<div className="pl-4 text-muted-foreground">No people found</div>
+							</CardContent>
+						</Card>
+					)}
+
+					{/* Insights Section */}
+					{insights && insights.length > 0 ? (
+						<div className="space-y-3">
+							<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
+							<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+								{insights.map((insight) => (
+									<InsightCardV2 key={insight.id} insight={insight} />
 								))}
 							</div>
-						</CardContent>
-					</Card>
-				)}
-
-				{/* Insights Section */}
-				{insights && insights.length > 0 && (
-					<div className="space-y-6">
-						<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
-						<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-							{insights.map((insight) => (
-								<InsightCardV2 key={insight.id} insight={insight} />
-							))}
 						</div>
-					</div>
-				)}
+					) : (
+						<Card className="max-w-sm">
+							<CardHeader>
+								<h3 className="font-semibold text-lg">Insights</h3>
+							</CardHeader>
+							<CardContent>
+								<div className="pl-4 text-muted-foreground">No insights found</div>
+							</CardContent>
+						</Card>
+					)}
+				</div>
 			</div>
 		</div>
 	)
