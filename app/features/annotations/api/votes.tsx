@@ -33,10 +33,12 @@ export const loader: LoaderFunction = async ({ request, params, context }) => {
 	}
 
 	// Claims are optional for GET; fetch locally if not provided (no network due to SSR settings)
-	if (!userId) {
+	if (!userId && supabase) {
 		try {
-			const { data: claims } = await supabase?.auth.getClaims()
-			userId = (claims?.claims as any)?.sub
+			type Claims = { sub?: string }
+			const { data } = await supabase.auth.getClaims()
+			const sub = (data?.claims as Claims | undefined)?.sub
+			if (sub) userId = sub
 		} catch {}
 	}
 
@@ -123,10 +125,12 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 
 	try {
 		if (!userId || !accountId) {
-			const { data: claims } = await supabase.auth.getClaims()
-			const c = claims?.claims as any
-			userId = userId || c?.sub
-			accountId = accountId || c?.sub
+			type Claims = { sub?: string; account_id?: string }
+			const { data } = await supabase.auth.getClaims()
+			const c = (data?.claims as Claims | undefined) || {}
+			userId = userId || c.sub
+			// Fallback: some tokens only have sub; prefer context when available
+			accountId = accountId || c.account_id || c.sub
 		}
 	} catch {}
 

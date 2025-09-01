@@ -77,7 +77,7 @@ async function parse_project_id_from_params({
 // This middleware runs before every loader in current-project-layout routes
 // It ensures the user is authenticated and sets up the user context
 export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
-	async ({ request, context, params }) => {
+	async ({ request: _request, context, params }) => {
 		try {
 			const supabase = context.get(userContext).supabase
 

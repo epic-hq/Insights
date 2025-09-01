@@ -6,7 +6,7 @@
 	"sideEffects": false,
 	"license": "MIT",
 	"type": "module",
-	"scripts": {
+  "scripts": {
 		"execute": "tsx",
 		"clean": "git clean -fdX --exclude=\"!.env\"",
 		"script": "tsx scripts/setup.ts",
@@ -23,8 +23,9 @@
 		"test:all": "vitest run --browser.headless && vitest run --config vitest.integration.config.ts",
 		"typecheck": "react-router typegen && tsc -p tsconfig.typecheck.json",
 		"validate": "pnpm run check && pnpm run typecheck && pnpm run test && pnpm run check:unused",
-		"check": "biome check .",
-		"check:fix": "biome check --write --unsafe .",
+    "check": "biome check .",
+    "check:fix": "biome check --write --unsafe .",
+    "check:fix:chunks": "biome check app/components --write --unsafe && biome check app/features --write --unsafe && biome check app/routes --write --unsafe && biome check scripts --write --unsafe",
 		"check:unused": "knip --max-issues 100 --no-exit-code",
 		"check:unused:fix": "knip --fix",
 		"typegen": "react-router typegen",

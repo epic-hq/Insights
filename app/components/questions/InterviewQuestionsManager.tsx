@@ -631,7 +631,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										<span>Interview Settings</span>
 									) : (
 										<span>
-											{timeMinutes}m {purpose.charAt(0).toUpperCase() + purpose.slice(1)}
+											{purpose.charAt(0).toUpperCase() + purpose.slice(1)} {timeMinutes}m
 										</span>
 									)}
 								</div>
@@ -654,6 +654,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												<span>30m</span>
 												<span>45m</span>
 												<span>60m</span>
+												<span>90m</span>
 											</div>
 										</div>
 

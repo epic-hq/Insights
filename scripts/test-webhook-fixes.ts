@@ -7,10 +7,11 @@
 
 import { createClient } from "@supabase/supabase-js"
 
-const SUPABASE_URL = process.env.SUPABASE_URL!
-const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
+const SUPABASE_URL = process.env.SUPABASE_URL
+const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY
 
 if (!SUPABASE_URL || !SUPABASE_SERVICE_ROLE_KEY) {
+	console.error("Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars")
 	process.exit(1)
 }
 
@@ -36,7 +37,7 @@ async function testIdempotency() {
 		return false
 	}
 
-	const { data: uploadJob, error: uploadError } = await supabase
+	const { error: uploadError } = await supabase
 		.from("upload_jobs")
 		.insert({
 			id: `upload-${testId}`,
@@ -138,7 +139,7 @@ async function testAuditFields() {
 	}
 
 	// Test creating insight without created_by (should work with nullable fields)
-	const { data: insight, error: insightError } = await supabase
+	const { error: insightError } = await supabase
 		.from("insights")
 		.insert({
 			interview_id: interview.id,
@@ -165,7 +166,7 @@ async function testAuditFields() {
 	}
 
 	// Test creating insight with created_by
-	const { data: insightWithAudit, error: auditError } = await supabase
+	const { error: auditError } = await supabase
 		.from("insights")
 		.insert({
 			interview_id: interview.id,
