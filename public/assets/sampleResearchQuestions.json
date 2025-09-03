@@ -1,0 +1,555 @@
+[
+	{
+		"goal": "Boost engagement with weekly newsletter",
+		"decision_questions": [
+			{
+				"id": "dq1",
+				"text": "Which content topics drive the highest clicks and shares?",
+				"rationale": "Helps prioritize editorial focus for engagement growth.",
+				"key_metrics": [
+					"CTR",
+					"share_rate",
+					"read_time"
+				],
+				"risks_if_wrong": [
+					"Producing irrelevant content",
+					"Wasted editorial resources"
+				]
+			},
+			{
+				"id": "dq2",
+				"text": "Should we shift our newsletter format toward video or text?",
+				"rationale": "Format strongly influences subscriber retention and value perception.",
+				"key_metrics": [
+					"open_rate",
+					"unsubscribe_rate",
+					"time_on_content"
+				],
+				"risks_if_wrong": [
+					"Investing in costly format that doesn’t engage",
+					"Churn from format fatigue"
+				]
+			}
+		],
+		"research_questions": [
+			{
+				"id": "rq1a",
+				"dq_id": "dq1",
+				"text": "What content topics do subscribers recall and share most often?",
+				"rationale": "Reveals resonance and word-of-mouth drivers.",
+				"evidence_types": [
+					"QUOTES",
+					"OBSERVATIONS",
+					"ANALYTICS"
+				],
+				"suggested_methods": [
+					"subscriber interviews",
+					"open-text survey",
+					"engagement analytics"
+				]
+			},
+			{
+				"id": "rq1b",
+				"dq_id": "dq1",
+				"text": "Which segments respond to which topics?",
+				"rationale": "Different audiences may prefer different themes.",
+				"evidence_types": [
+					"ANALYTICS"
+				],
+				"suggested_methods": [
+					"segmented email performance reports"
+				]
+			},
+			{
+				"id": "rq2a",
+				"dq_id": "dq2",
+				"text": "How do readers perceive value in video vs text content?",
+				"rationale": "Perceived value drives engagement and retention.",
+				"evidence_types": [
+					"QUOTES",
+					"SURVEY"
+				],
+				"suggested_methods": [
+					"subscriber interviews",
+					"format preference survey"
+				]
+			}
+		],
+		"interview_prompts": [
+			{
+				"id": "ip1",
+				"rq_ids": [
+					"rq1a"
+				],
+				"text": "What was the last newsletter article you clicked or shared, and why?",
+				"followups": [
+					"Who did you share it with?",
+					"What made it worth passing along?"
+				],
+				"bias_checks": [
+					"Avoid suggesting topics — let user recall naturally."
+				]
+			},
+			{
+				"id": "ip2",
+				"rq_ids": [
+					"rq2a"
+				],
+				"text": "When you get newsletters, do you prefer short videos, articles, or quick tips?",
+				"followups": [
+					"Can you tell me about a time you enjoyed one format more?",
+					"What felt less valuable?"
+				],
+				"bias_checks": [
+					"Frame neutrally — don’t imply video is better."
+				]
+			}
+		],
+		"other_data_sources": [
+			"Email analytics (open/click rates segmented by topic)",
+			"Social engagement metrics (shares, likes)",
+			"A/B tests of subject lines and formats"
+		]
+	},
+	{
+		"goal": "Validate product–market fit for task automation app",
+		"decision_questions": [
+			{
+				"id": "dq1",
+				"text": "Does the app solve a real and painful problem?",
+				"rationale": "Critical to PMF validation — no pain, no adoption.",
+				"key_metrics": [
+					"task_completion_time_saved",
+					"self-reported pain reduction"
+				],
+				"risks_if_wrong": [
+					"Building a nice-to-have app",
+					"High churn after trial"
+				]
+			},
+			{
+				"id": "dq2",
+				"text": "Who are the early adopter segments?",
+				"rationale": "Targeting the right users is essential for traction.",
+				"key_metrics": [
+					"segment_adoption_rate",
+					"willingness_to_pay"
+				],
+				"risks_if_wrong": [
+					"Wasting acquisition spend on wrong segment",
+					"Slow growth"
+				]
+			}
+		],
+		"research_questions": [
+			{
+				"id": "rq1a",
+				"dq_id": "dq1",
+				"text": "What repetitive tasks frustrate users most today?",
+				"rationale": "Reveals areas where automation adds clear value.",
+				"evidence_types": [
+					"QUOTES",
+					"SUPPORT_TICKETS"
+				],
+				"suggested_methods": [
+					"user interviews",
+					"support ticket analysis"
+				]
+			},
+			{
+				"id": "rq1b",
+				"dq_id": "dq1",
+				"text": "What outcomes signal that automation is worth paying for?",
+				"rationale": "Links value perception to monetization.",
+				"evidence_types": [
+					"SURVEY",
+					"EXPERIMENT"
+				],
+				"suggested_methods": [
+					"survey willingness-to-pay",
+					"pricing test"
+				]
+			},
+			{
+				"id": "rq2a",
+				"dq_id": "dq2",
+				"text": "Which roles or industries express strongest interest?",
+				"rationale": "Identifies natural early adopter clusters.",
+				"evidence_types": [
+					"BETA_LOGS",
+					"QUOTES"
+				],
+				"suggested_methods": [
+					"analyze beta tester demographics",
+					"segment interviews"
+				]
+			}
+		],
+		"interview_prompts": [
+			{
+				"id": "ip1",
+				"rq_ids": [
+					"rq1a"
+				],
+				"text": "Tell me about the last time you wished a task could be automated.",
+				"followups": [
+					"How did you try to handle it?",
+					"How often does this come up?"
+				],
+				"bias_checks": [
+					"Avoid naming tasks — let them share."
+				]
+			},
+			{
+				"id": "ip2",
+				"rq_ids": [
+					"rq2a"
+				],
+				"text": "What tools do you currently use to handle repetitive work?",
+				"followups": [
+					"Which ones help most?",
+					"What gaps remain?"
+				],
+				"bias_checks": [
+					"Avoid suggesting our app as a solution."
+				]
+			}
+		],
+		"other_data_sources": [
+			"Usage logs from beta testers",
+			"Market sizing reports for automation",
+			"Competitor feature comparisons",
+			"Support tickets tagging repetitive issues"
+		]
+	},
+	{
+		"goal": "Explore viability of subscription meal-kit for athletes",
+		"decision_questions": [
+			{
+				"id": "dq1",
+				"text": "Will athletes pay a premium for specialized nutrition?",
+				"rationale": "Revenue viability hinges on willingness to pay.",
+				"key_metrics": [
+					"subscription_conversion_rate",
+					"average_order_value"
+				],
+				"risks_if_wrong": [
+					"Low adoption",
+					"Unsustainable unit economics"
+				]
+			},
+			{
+				"id": "dq2",
+				"text": "Which features (speed, customization, price) matter most to athletes?",
+				"rationale": "Focus resources on what drives purchase decisions.",
+				"key_metrics": [
+					"feature_preference_score",
+					"churn_rate_by_feature"
+				],
+				"risks_if_wrong": [
+					"Over-investing in low-value features"
+				]
+			}
+		],
+		"research_questions": [
+			{
+				"id": "rq1a",
+				"dq_id": "dq1",
+				"text": "How much do athletes currently spend on prepared meals and supplements?",
+				"rationale": "Provides baseline for price sensitivity.",
+				"evidence_types": [
+					"SURVEY",
+					"MARKET_DATA"
+				],
+				"suggested_methods": [
+					"spend survey",
+					"fitness app spend analysis"
+				]
+			},
+			{
+				"id": "rq2a",
+				"dq_id": "dq2",
+				"text": "Which aspects of meal services athletes tried were most frustrating?",
+				"rationale": "Reveals differentiation opportunities.",
+				"evidence_types": [
+					"QUOTES"
+				],
+				"suggested_methods": [
+					"athlete interviews",
+					"forum scraping"
+				]
+			}
+		],
+		"interview_prompts": [
+			{
+				"id": "ip1",
+				"rq_ids": [
+					"rq1a"
+				],
+				"text": "Walk me through your typical week of meals — how do you balance convenience and nutrition?",
+				"followups": [
+					"What do you prepare yourself vs. buy?",
+					"How much do you spend weekly?"
+				],
+				"bias_checks": [
+					"Don’t imply current spend is ‘too high’ or ‘too low’."
+				]
+			},
+			{
+				"id": "ip2",
+				"rq_ids": [
+					"rq2a"
+				],
+				"text": "Have you tried a meal-kit or prepared meal service? What worked and what didn’t?",
+				"followups": [
+					"What features would make it better?",
+					"What was missing?"
+				],
+				"bias_checks": [
+					"Avoid suggesting features — let them describe."
+				]
+			}
+		],
+		"other_data_sources": [
+			"Competitive pricing from other meal kits",
+			"Surveys in athlete forums/communities",
+			"Nutrition spend data from fitness apps",
+			"Google Trends on 'meal prep' searches"
+		]
+	},
+	{
+		"goal": "Grow active participation in online founder community",
+		"decision_questions": [
+			{
+				"id": "dq1",
+				"text": "What motivates members to post and invite others?",
+				"rationale": "Drives organic growth and vibrancy of community.",
+				"key_metrics": [
+					"posts_per_member",
+					"referral_rate"
+				],
+				"risks_if_wrong": [
+					"Stagnant engagement",
+					"Low referral growth"
+				]
+			},
+			{
+				"id": "dq2",
+				"text": "Which incentives sustain long-term participation?",
+				"rationale": "Ensures retention and loyalty.",
+				"key_metrics": [
+					"DAU/WAU ratio",
+					"retention_curve"
+				],
+				"risks_if_wrong": [
+					"Churn after novelty fades",
+					"Wasted incentive budget"
+				]
+			}
+		],
+		"research_questions": [
+			{
+				"id": "rq1a",
+				"dq_id": "dq1",
+				"text": "What emotional or practical triggers lead members to contribute?",
+				"rationale": "Identifies the hooks that move lurkers to active.",
+				"evidence_types": [
+					"QUOTES",
+					"ANALYTICS"
+				],
+				"suggested_methods": [
+					"member interviews",
+					"usage data analysis"
+				]
+			},
+			{
+				"id": "rq2a",
+				"dq_id": "dq2",
+				"text": "Which referral benefits feel meaningful enough to share?",
+				"rationale": "Shapes the referral program design.",
+				"evidence_types": [
+					"SURVEY",
+					"EXPERIMENT"
+				],
+				"suggested_methods": [
+					"survey",
+					"incentive A/B test"
+				]
+			}
+		],
+		"interview_prompts": [
+			{
+				"id": "ip1",
+				"rq_ids": [
+					"rq1a"
+				],
+				"text": "What makes you decide to post or comment instead of just reading?",
+				"followups": [
+					"Tell me about a time you chose not to engage.",
+					"What would encourage you to contribute more?"
+				],
+				"bias_checks": [
+					"Avoid framing as a deficiency — respect both lurking and posting."
+				]
+			},
+			{
+				"id": "ip2",
+				"rq_ids": [
+					"rq2a"
+				],
+				"text": "When was the last time you invited someone to join a community? What made you do it?",
+				"followups": [
+					"What kind of reward or benefit would have motivated you more?",
+					"What doesn’t matter to you?"
+				],
+				"bias_checks": [
+					"Avoid leading with specific incentives."
+				]
+			}
+		],
+		"other_data_sources": [
+			"Community platform analytics (DAU/WAU, posts per member)",
+			"Referral funnel data (invites sent → accepted)",
+			"Survey on incentive appeal (discounts, recognition, perks)",
+			"Benchmarks from similar communities"
+		]
+	},
+	{
+		"goal": "Create optimal onboarding experience for business leaders seeking growth clarity",
+		"decision_questions": [
+			{
+				"id": "dq1",
+				"text": "How can we help leaders clarify their top business goal quickly?",
+				"rationale": "Clarity at the start reduces overwhelm and increases action-taking.",
+				"key_metrics": [
+					"time_to_goal_clarity",
+					"onboarding_completion_rate"
+				],
+				"risks_if_wrong": [
+					"Leaders drop off",
+					"Plans lack focus"
+				]
+			},
+			{
+				"id": "dq2",
+				"text": "Should onboarding emphasize structured templates or flexible exploration?",
+				"rationale": "The right balance affects usability and adoption.",
+				"key_metrics": [
+					"leader_confidence_score",
+					"plan_completion_rate"
+				],
+				"risks_if_wrong": [
+					"Overwhelming rigidity",
+					"Unhelpful vagueness"
+				]
+			},
+			{
+				"id": "dq3",
+				"text": "Should we integrate live customer practice interviews into onboarding?",
+				"rationale": "Direct experience may boost confidence but could slow onboarding.",
+				"key_metrics": [
+					"practice_interview_completion",
+					"confidence_gain"
+				],
+				"risks_if_wrong": [
+					"Leaders skip onboarding",
+					"Missed learning opportunity"
+				]
+			}
+		],
+		"research_questions": [
+			{
+				"id": "rq1a",
+				"dq_id": "dq1",
+				"text": "What methods do leaders currently use to set goals, and where do they get stuck?",
+				"rationale": "Identifies friction in existing processes.",
+				"evidence_types": [
+					"QUOTES",
+					"OBSERVATIONS"
+				],
+				"suggested_methods": [
+					"leader interviews",
+					"survey"
+				]
+			},
+			{
+				"id": "rq2a",
+				"dq_id": "dq2",
+				"text": "Do leaders feel more empowered by guided templates or freeform brainstorming?",
+				"rationale": "Clarifies design trade-offs.",
+				"evidence_types": [
+					"SURVEY",
+					"EXPERIMENT"
+				],
+				"suggested_methods": [
+					"preference survey",
+					"A/B test onboarding flow"
+				]
+			},
+			{
+				"id": "rq3a",
+				"dq_id": "dq3",
+				"text": "What value do leaders see in practicing customer interviews?",
+				"rationale": "Assesses appetite for experiential learning.",
+				"evidence_types": [
+					"QUOTES",
+					"OBSERVATIONS"
+				],
+				"suggested_methods": [
+					"leader pilot test",
+					"post-onboarding survey"
+				]
+			}
+		],
+		"interview_prompts": [
+			{
+				"id": "ip1",
+				"rq_ids": [
+					"rq1a"
+				],
+				"text": "Walk me through the last time you set a growth goal. What helped you, and what made it difficult?",
+				"followups": [
+					"What did you do after setting it?",
+					"How clear did it feel at the time?"
+				],
+				"bias_checks": [
+					"Don’t assume goals were unclear — ask openly."
+				]
+			},
+			{
+				"id": "ip2",
+				"rq_ids": [
+					"rq2a"
+				],
+				"text": "When you’re shown structured templates vs. open space to brainstorm, which helps you more?",
+				"followups": [
+					"Can you share a time one approach worked better?",
+					"What felt limiting?"
+				],
+				"bias_checks": [
+					"Avoid framing one option as better."
+				]
+			},
+			{
+				"id": "ip3",
+				"rq_ids": [
+					"rq3a"
+				],
+				"text": "Would practicing customer interviews during onboarding help you feel more confident?",
+				"followups": [
+					"Why or why not?",
+					"What would make it feel useful and not overwhelming?"
+				],
+				"bias_checks": [
+					"Avoid suggesting they ‘should’ want practice."
+				]
+			}
+		],
+		"other_data_sources": [
+			"Onboarding funnel analytics (completion, drop-offs)",
+			"Leader confidence surveys pre/post onboarding",
+			"Usage logs of template vs. freeform flows",
+			"Pilot test feedback from leaders"
+		]
+	}
+]

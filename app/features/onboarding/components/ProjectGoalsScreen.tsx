@@ -8,7 +8,39 @@ import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { createClient } from "~/lib/supabase/client"
+import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
+// Sample data extracted from sampleResearchQuestions.json
+const sampleData = [
+  {
+    goal: "Boost engagement with weekly newsletter",
+    orgs: ["Newsletter publishers", "Content creators", "Media companies"],
+    roles: ["Content Manager", "Marketing Director", "Editor", "Growth Manager"],
+    assumptions: ["Users want more engaging content", "Current topics may not resonate", "Email format affects engagement"],
+    unknowns: ["Which content topics drive highest clicks", "What format performs better", "Which segments engage most"]
+  },
+  {
+    goal: "Validate product–market fit for task automation app", 
+    orgs: ["SaaS companies", "Productivity tool users", "Small businesses"],
+    roles: ["Product Manager", "Founder", "Operations Manager", "Developer"],
+    assumptions: ["Users struggle with repetitive tasks", "Automation saves valuable time", "People will pay for time savings"],
+    unknowns: ["What tasks frustrate users most", "Which segments convert best", "What outcomes justify payment"]
+  },
+  {
+    goal: "Explore viability of subscription meal-kit for athletes",
+    orgs: ["Fitness brands", "Athletic organizations", "Health-focused companies"],
+    roles: ["Product Manager", "Marketing Manager", "Nutritionist", "Athlete"],
+    assumptions: ["Athletes prioritize nutrition", "Convenience matters for busy training", "Premium pricing is acceptable"],
+    unknowns: ["How much athletes spend on meals", "Which features matter most", "What service aspects are frustrating"]
+  },
+  {
+    goal: "Grow active participation in online founder community",
+    orgs: ["Online communities", "SaaS platforms", "Membership sites"],
+    roles: ["Community Manager", "Product Manager", "Founder", "Growth Manager"],
+    assumptions: ["Members want to contribute", "Current incentives aren't motivating", "Community provides value"],
+    unknowns: ["What motivates posting vs lurking", "Which incentives sustain participation", "What triggers referrals"]
+  }
+]
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
@@ -23,6 +55,78 @@ const projectGoalsSchema = z.object({
 
 type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
+// Sample suggestions extracted from data
+const sampleGoals = sampleData.map(item => item.goal)
+
+// Context-aware suggestions based on research goal
+const getContextualSuggestions = (goal: string) => {
+  // Find matching sample based on goal keywords
+  const sample = sampleData.find(item => {
+    const goalLower = goal.toLowerCase()
+    const sampleGoalLower = item.goal.toLowerCase()
+    return goalLower.length > 3 && (
+      sampleGoalLower.includes(goalLower) || 
+      goalLower.includes("newsletter") && sampleGoalLower.includes("newsletter") ||
+      goalLower.includes("automation") && sampleGoalLower.includes("automation") ||
+      goalLower.includes("meal") && sampleGoalLower.includes("meal") ||
+      goalLower.includes("community") && sampleGoalLower.includes("community")
+    )
+  })
+  
+  if (sample) {
+    return {
+      orgs: sample.orgs,
+      roles: sample.roles, 
+      assumptions: sample.assumptions,
+      unknowns: sample.unknowns
+    }
+  }
+  
+  // Default suggestions when no match found
+  return {
+    orgs: ["Startups", "SaaS companies", "E-commerce retailers", "Digital agencies"],
+    roles: ["Product Manager", "Marketing Manager", "Founder", "Growth Manager"],
+    assumptions: ["Users want better solutions", "Market timing is good", "Current approach needs improvement"],
+    unknowns: ["What features drive adoption", "Which segments convert best", "How much users will pay"]
+  }
+}
+
+// Suggestion badge component
+interface SuggestionBadgesProps {
+  suggestions: string[]
+  onSuggestionClick: (suggestion: string) => void
+  show: boolean
+  color?: "blue" | "green" | "purple" | "amber"
+}
+
+function SuggestionBadges({ suggestions, onSuggestionClick, show, color = "blue" }: SuggestionBadgesProps) {
+  if (!show || suggestions.length === 0) return null
+  
+  const colorClasses = {
+    blue: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200",
+    green: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200", 
+    purple: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200",
+    amber: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200"
+  }
+  
+  return (
+    <div className="mb-4 mt-3 flex flex-wrap gap-2">
+      {suggestions.slice(0, 4).map((suggestion, index) => (
+        <button
+          key={index}
+          onMouseDown={(e) => {
+            e.preventDefault()
+            onSuggestionClick(suggestion)
+          }}
+          className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-all hover:scale-105 ${colorClasses[color]}`}
+        >
+          + {suggestion}
+        </button>
+      ))}
+    </div>
+  )
+}
+
 interface ProjectGoalsScreenProps {
 	onNext: (data: {
 		target_orgs: string[]
@@ -33,18 +137,27 @@ interface ProjectGoalsScreenProps {
 		unknowns: string[]
 		custom_instructions?: string
 	}) => void
+	project?: Project
 	projectId?: string
 	showStepper?: boolean
 	showNextButton?: boolean
 }
 
-export default function ProjectGoalsScreen({ onNext, projectId, showStepper = true, showNextButton = true }: ProjectGoalsScreenProps) {
+export default function ProjectGoalsScreen({
+	onNext,
+	project,
+	projectId,
+	showStepper = true,
+	showNextButton = true,
+}: ProjectGoalsScreenProps) {
 	const [target_orgs, setTargetOrgs] = useState<string[]>([])
 	const [target_roles, setTargetRoles] = useState<string[]>([])
 	const [newOrg, setNewOrg] = useState("")
 	const [newRole, setNewRole] = useState("")
 	const [research_goal, setResearchGoal] = useState("")
 	const [research_goal_details, setResearchGoalDetails] = useState("")
+	const [decision_questions, setDecisionQuestions] = useState<string[]>([])
+	const [newDecisionQuestion, setNewDecisionQuestion] = useState("")
 	const [assumptions, setAssumptions] = useState<string[]>([])
 	const [unknowns, setUnknowns] = useState<string[]>([])
 	const [newAssumption, setNewAssumption] = useState("")
@@ -54,6 +167,12 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
 	const [isCreatingProject, setIsCreatingProject] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+	const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
+	const [showDecisionQuestionSuggestions, setShowDecisionQuestionSuggestions] = useState(false)
+	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
+	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
+	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
+	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const supabase = createClient()
 
 	// Auto-save hook - always call but skip operations when no projectId
@@ -235,6 +354,28 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 		saveTargetRoles(newRoles)
 	}
 
+	const addDecisionQuestion = async () => {
+		if (newDecisionQuestion.trim() && !decision_questions.includes(newDecisionQuestion.trim())) {
+			if (!currentProjectId) {
+				await createProjectIfNeeded()
+				const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
+				setDecisionQuestions(newQuestions)
+				setNewDecisionQuestion("")
+				return
+			}
+			const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
+			setDecisionQuestions(newQuestions)
+			setNewDecisionQuestion("")
+			// TODO: Save to backend when available
+		}
+	}
+
+	const removeDecisionQuestion = (index: number) => {
+		const newQuestions = decision_questions.filter((_, i) => i !== index)
+		setDecisionQuestions(newQuestions)
+		// TODO: Save to backend when available
+	}
+
 	const addAssumption = async () => {
 		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
 			if (!currentProjectId) {
@@ -282,6 +423,8 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 
 	const handleNext = () => {
 		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && research_goal_details.trim()) {
+			// Ensure goal + details are persisted even if textarea didn't blur
+			saveResearchGoal(research_goal, research_goal_details, false)
 			// Pass snake_case data to next step
 			onNext({
 				target_orgs,
@@ -303,17 +446,15 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 		saveResearchGoal(research_goal, research_goal_details, false)
 	}
 
-	const _handleResearchGoalDetailsBlur = async () => {
-		if (!research_goal.trim()) return
-		if (!currentProjectId) await createProjectIfNeeded()
-		saveResearchGoal(research_goal, research_goal_details, false)
-	}
 
 	const handleCustomInstructionsBlur = () => {
 		if (custom_instructions.trim()) {
 			saveCustomInstructions(custom_instructions)
 		}
 	}
+
+	// Get contextual suggestions based on current research goal
+	const contextualSuggestions = getContextualSuggestions(research_goal)
 
 	// Custom instructions: blur-only save to reduce chatter
 
@@ -359,6 +500,7 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 				</div>
 			)}
 
+			<div className="text-semibold text-xl">Project: {project?.name}</div>
 			<div className="mb-8">
 				<div className="mb-4 flex items-center gap-3">
 					{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
@@ -377,24 +519,76 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
 							<div>
-								<label className="mb-2 block text-foreground">What do we want to learn?</label>
+								<label className="mb-2 block text-foreground">Our objective</label>
 								<Input
 									placeholder="e.g., Understanding price sensitivity for our new pricing tier"
 									value={research_goal}
 									onChange={(e) => setResearchGoal(e.target.value)}
-									onBlur={handleResearchGoalBlur}
+									onFocus={() => setShowGoalSuggestions(true)}
+									onBlur={() => {
+										handleResearchGoalBlur()
+										// Hide suggestions after a delay to allow clicks
+										setTimeout(() => setShowGoalSuggestions(false), 150)
+									}}
+								/>
+								<SuggestionBadges
+									suggestions={sampleGoals}
+									onSuggestionClick={(goal) => {
+										setResearchGoal(goal)
+										setShowGoalSuggestions(false)
+									}}
+									show={showGoalSuggestions}
+									color="blue"
 								/>
 							</div>
 
 							<div>
-								<label className="mb-2 block text-foreground">Goal Details</label>
-								<Textarea
-									placeholder="Describe what you want to learn and why it matters for your product/business decisions..."
-									value={research_goal_details}
-									onChange={(e) => setResearchGoalDetails(e.target.value)}
-									rows={4}
-									className="resize-none rounded-lg border-2 border-gray-200 bg-white px-4 py-3 text-base text-gray-900 leading-relaxed shadow-sm transition-all duration-200 placeholder:text-gray-500 hover:border-gray-300 focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20"
+								<label className="mb-2 block text-foreground">Key decision questions</label>
+								<div className="mb-4 flex gap-3">
+									<Input
+										placeholder="What specific decisions need to be made?"
+										value={newDecisionQuestion}
+										onChange={(e) => setNewDecisionQuestion(e.target.value)}
+										onKeyPress={(e) => e.key === "Enter" && addDecisionQuestion()}
+										onFocus={() => setShowDecisionQuestionSuggestions(true)}
+										onBlur={() => setTimeout(() => setShowDecisionQuestionSuggestions(false), 150)}
+										className="flex-1"
+									/>
+									<Button
+										onClick={addDecisionQuestion}
+										className="bg-blue-500 px-3 py-2 text-white transition-all duration-200 hover:bg-blue-600"
+									>
+										<Plus className="h-4 w-4" />
+									</Button>
+								</div>
+								<SuggestionBadges
+									suggestions={["Which pricing tier drives highest conversion", "What content format engages users most", "Which features justify premium pricing", "What onboarding flow reduces churn"]}
+									onSuggestionClick={(suggestion) => {
+										setNewDecisionQuestion(suggestion)
+										setShowDecisionQuestionSuggestions(false)
+									}}
+									show={showDecisionQuestionSuggestions}
+									color="blue"
 								/>
+								<div className="space-y-2">
+									{decision_questions.map((question, index) => (
+										<div
+											key={`decision-${index}-${question.slice(0, 10)}`}
+											className="group flex items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 shadow-sm transition-all duration-200 hover:shadow-md"
+										>
+											<div className="mt-1 flex-shrink-0">
+												<div className="h-2 w-2 rounded-full bg-blue-500" />
+											</div>
+											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{question}</span>
+											<button
+												onClick={() => removeDecisionQuestion(index)}
+												className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-blue-200 group-hover:opacity-100"
+											>
+												<X className="h-4 w-4 text-blue-700" />
+											</button>
+										</div>
+									))}
+								</div>
 							</div>
 
 							<div>
@@ -405,15 +599,26 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 										value={newUnknown}
 										onChange={(e) => setNewUnknown(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addUnknown()}
-										className="rounded-lg border-2 border-amber-200 bg-amber-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-amber-600 focus:border-amber-400 focus:ring-2 focus:ring-amber-400/20"
+										onFocus={() => setShowUnknownSuggestions(true)}
+										onBlur={() => setTimeout(() => setShowUnknownSuggestions(false), 150)}
+										className="flex-1"
 									/>
 									<Button
 										onClick={addUnknown}
-										className="rounded-lg border-0 bg-amber-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-amber-600"
+										className="bg-amber-500 px-3 py-2 text-white transition-all duration-200 hover:bg-amber-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
+								<SuggestionBadges
+									suggestions={contextualSuggestions.unknowns}
+									onSuggestionClick={(unknown) => {
+										setNewUnknown(unknown)
+										setShowUnknownSuggestions(false)
+									}}
+									show={showUnknownSuggestions}
+									color="amber"
+								/>
 								<div className="space-y-2">
 									{unknowns.map((unknown, index) => (
 										<div
@@ -443,15 +648,26 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 										value={newAssumption}
 										onChange={(e) => setNewAssumption(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addAssumption()}
-										className="rounded-lg border-2 border-blue-200 bg-blue-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-blue-600 focus:border-blue-400 focus:ring-2 focus:ring-blue-400/20"
+										onFocus={() => setShowAssumptionSuggestions(true)}
+										onBlur={() => setTimeout(() => setShowAssumptionSuggestions(false), 150)}
+										className="flex-1"
 									/>
 									<Button
 										onClick={addAssumption}
-										className="rounded-lg border-0 bg-blue-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-blue-600"
+										className="bg-blue-500 px-3 py-2 text-white transition-all duration-200 hover:bg-blue-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
+								<SuggestionBadges
+									suggestions={contextualSuggestions.assumptions}
+									onSuggestionClick={(assumption) => {
+										setNewAssumption(assumption)
+										setShowAssumptionSuggestions(false)
+									}}
+									show={showAssumptionSuggestions}
+									color="blue"
+								/>
 								<div className="space-y-2">
 									{assumptions.map((assumption, index) => (
 										<div
@@ -492,15 +708,26 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 										value={newOrg}
 										onChange={(e) => setNewOrg(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addOrg()}
-										className="rounded-lg border-2 border-green-200 bg-green-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-green-600 focus:border-green-400 focus:ring-2 focus:ring-green-400/20"
+										onFocus={() => setShowOrgSuggestions(true)}
+										onBlur={() => setTimeout(() => setShowOrgSuggestions(false), 150)}
+										className="flex-1"
 									/>
 									<Button
 										onClick={addOrg}
-										className="rounded-lg border-0 bg-green-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-green-600"
+										className="bg-green-500 px-3 py-2 text-white transition-all duration-200 hover:bg-green-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
+								<SuggestionBadges
+									suggestions={contextualSuggestions.orgs}
+									onSuggestionClick={(org) => {
+										setNewOrg(org)
+										setShowOrgSuggestions(false)
+									}}
+									show={showOrgSuggestions}
+									color="green"
+								/>
 								<div className="flex flex-wrap gap-3">
 									{target_orgs.map((org) => (
 										<div
@@ -527,15 +754,26 @@ export default function ProjectGoalsScreen({ onNext, projectId, showStepper = tr
 										value={newRole}
 										onChange={(e) => setNewRole(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addRole()}
-										className="rounded-lg border-2 border-purple-200 bg-purple-50 px-4 py-2.5 text-gray-900 shadow-sm transition-all duration-200 placeholder:text-purple-600 focus:border-purple-400 focus:ring-2 focus:ring-purple-400/20"
+										onFocus={() => setShowRoleSuggestions(true)}
+										onBlur={() => setTimeout(() => setShowRoleSuggestions(false), 150)}
+										className="flex-1"
 									/>
 									<Button
 										onClick={addRole}
-										className="rounded-lg border-0 bg-purple-500 px-4 py-2.5 text-white shadow-sm transition-all duration-200 hover:bg-purple-600"
+										className="bg-purple-500 px-3 py-2 text-white transition-all duration-200 hover:bg-purple-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
+								<SuggestionBadges
+									suggestions={contextualSuggestions.roles}
+									onSuggestionClick={(role) => {
+										setNewRole(role)
+										setShowRoleSuggestions(false)
+									}}
+									show={showRoleSuggestions}
+									color="purple"
+								/>
 								<div className="flex flex-wrap gap-3">
 									{target_roles.map((role) => (
 										<div

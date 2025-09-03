@@ -15,6 +15,7 @@ interface OnboardingStepperProps {
 
 export function OnboardingStepper({ steps, currentStepId, className }: OnboardingStepperProps) {
 	const currentIndex = steps.findIndex((step) => step.id === currentStepId)
+	const showDescription = false
 
 	return (
 		<div className={cn("w-full", className)}>
@@ -49,7 +50,7 @@ export function OnboardingStepper({ steps, currentStepId, className }: Onboardin
 										>
 											{step.title}
 										</div>
-										{step.description && (
+										{showDescription && step.description && (
 											<div className="max-w-24 text-muted-foreground text-xs">{step.description}</div>
 										)}
 									</div>

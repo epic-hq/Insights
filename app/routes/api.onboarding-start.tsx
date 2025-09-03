@@ -7,14 +7,29 @@ import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 
-interface OnboardingData {
-	icp: string
-	role: string
-	goal: string
-	customGoal?: string
-	questions: string[]
-	mediaType: string
+// Accept both legacy (icp/role/goal) and new snake_case onboarding payloads
+type LegacyOnboardingData = {
+  icp: string
+  role: string
+  goal: string
+  customGoal?: string
+  questions: string[]
+  mediaType: string
 }
+
+type NewOnboardingData = {
+  target_orgs: string[]
+  target_roles: string[]
+  research_goal: string
+  research_goal_details?: string
+  assumptions?: string[]
+  unknowns?: string[]
+  custom_instructions?: string
+  questions: string[]
+  mediaType: string
+}
+
+type OnboardingData = LegacyOnboardingData | NewOnboardingData
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -78,18 +93,24 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		consola.log("Starting onboarding for account:", teamAccountId, "project:", projectId)
 
+		// Normalize fields across legacy and new shapes
+		const primaryOrg = ("target_orgs" in onboardingData && onboardingData.target_orgs?.[0]) ||
+			("icp" in onboardingData ? onboardingData.icp : "")
+		const primaryRole = ("target_roles" in onboardingData && onboardingData.target_roles?.[0]) ||
+			("role" in onboardingData ? onboardingData.role : "")
+		const researchGoal = ("research_goal" in onboardingData && onboardingData.research_goal) ||
+			("goal" in onboardingData ? onboardingData.goal : "")
+		const researchGoalDetails = "research_goal_details" in onboardingData ? onboardingData.research_goal_details ?? "" : ""
+		const customInstructionsInput = "custom_instructions" in onboardingData ? onboardingData.custom_instructions : undefined
+		const questionsInput = onboardingData.questions || []
+		const mediaTypeInput = onboardingData.mediaType
+
 		// 1. Use existing project or create new one if projectId not provided
 		let finalProjectId = projectId
 
 		if (!projectId) {
-			const baseProjectName = `${onboardingData.icp}_${onboardingData.role} Research`
-			const projectDescription = `Research project for ${onboardingData.role} at ${onboardingData.icp}. Goal: ${
-				onboardingData.goal === "other" && onboardingData.customGoal
-					? onboardingData.customGoal
-					: onboardingData.goal === "needs"
-						? "Understand user needs & motivations"
-						: "Evaluate willingness to pay for features"
-			}`
+			const baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
+			const projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
 
 			// Find available project name by checking for slug conflicts
 			let projectName = baseProjectName
@@ -128,38 +149,35 @@ export async function action({ request }: ActionFunctionArgs) {
 			finalProjectId = project.id as UUID
 			consola.log("Created new project:", project.id)
 
-			// Create project sections for onboarding data
+			// Create project sections for onboarding data (snake_case friendly)
 			const projectSections = [
 				{
 					project_id: finalProjectId,
-					kind: "target_market",
-					content_md: `**Role:** ${onboardingData.role}\n\n**Company/Organization:** ${onboardingData.icp}`,
-					meta: {
-						role: onboardingData.role,
-						icp: onboardingData.icp,
-					},
+					kind: "target_orgs",
+					content_md: Array.isArray((onboardingData as any).target_orgs)
+						? ((onboardingData as any).target_orgs as string[]).join(", ")
+						: primaryOrg,
+					meta: { target_orgs: (onboardingData as any).target_orgs || (primaryOrg ? [primaryOrg] : []) },
 				},
 				{
 					project_id: finalProjectId,
-					kind: "goal",
-					content_md:
-						onboardingData.goal === "other" && onboardingData.customGoal
-							? onboardingData.customGoal
-							: onboardingData.goal === "needs"
-								? "Understand user needs & motivations"
-								: "Evaluate willingness to pay for features",
-					meta: {
-						goalType: onboardingData.goal,
-						customGoal: onboardingData.customGoal,
-					},
+					kind: "target_roles",
+					content_md: Array.isArray((onboardingData as any).target_roles)
+						? ((onboardingData as any).target_roles as string[]).join(", ")
+						: primaryRole,
+					meta: { target_roles: (onboardingData as any).target_roles || (primaryRole ? [primaryRole] : []) },
+				},
+				{
+					project_id: finalProjectId,
+					kind: "research_goal",
+					content_md: researchGoal,
+					meta: { research_goal: researchGoal, research_goal_details: researchGoalDetails },
 				},
 				{
 					project_id: finalProjectId,
 					kind: "questions",
-					content_md: onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join("\n\n"),
-					meta: {
-						questionCount: onboardingData.questions.length,
-					},
+					content_md: questionsInput.map((q, i) => `${i + 1}. ${q}`).join("\n\n"),
+					meta: { questionCount: questionsInput.length },
 				},
 			]
 
@@ -174,12 +192,12 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// 2. Create interview record with initial status
-		const customInstructions = `This interview is part of research about ${onboardingData.role} at ${onboardingData.icp}.
+		const customInstructions = `This interview is part of research about ${primaryRole} at ${primaryOrg}.
 
 Key research questions to focus on:
-${onboardingData.questions.map((q, i) => `${i + 1}. ${q}`).join("\n")}
+${questionsInput.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
-Please extract insights that specifically address these research questions and help understand ${onboardingData.role} at ${onboardingData.icp} better.`
+Please extract insights that specifically address these research questions and help understand ${primaryRole} at ${primaryOrg} better.`
 
 		const interviewData: InterviewInsert = {
 			account_id: user.sub, // Personal ownership for RLS compatibility
@@ -189,7 +207,7 @@ Please extract insights that specifically address these research questions and h
 			participant_pseudonym: "Participant 1",
 			segment: null,
 			media_url: null, // Will be set by upload worker
-			media_type: onboardingData.mediaType, // Store the selected media type
+			media_type: mediaTypeInput, // Store the selected media type
 			transcript: null, // Will be set by transcription
 			transcript_formatted: null,
 			duration_min: null,

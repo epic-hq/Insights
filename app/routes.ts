@@ -1,4 +1,4 @@
-import { layout, type RouteConfig, route } from "@react-router/dev/routes"
+import { index, layout, type RouteConfig, route } from "@react-router/dev/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import evidenceRoutes from "./features/evidence/routes"
@@ -7,7 +7,6 @@ import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
 import marketingRoutes from "./features/marketing/routes"
 import mobileRoutes from "./features/mobile/insights/routes"
-import onboardingRoutes from "./features/onboarding/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
@@ -24,7 +23,6 @@ const routes = [
 	layout("./routes/_ProtectedLayout.tsx", [
 		// Home dashboard for logged-in users
 		...homeRoutes,
-		...onboardingRoutes,
 		...signupChatRoutes,
 
 		// Account-scoped routes
@@ -34,6 +32,8 @@ const routes = [
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
+            // Default index: show Project Status screen
+            index("./features/projects/pages/project-index.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
 				...interviewsRoutes,
@@ -49,12 +49,15 @@ const routes = [
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
 
-				// Project setup route
-				route("setup", "./features/projects/pages/setup.tsx"),
+            // Project setup route
+            route("setup", "./features/projects/pages/setup.tsx"),
+
+            // Project settings route (new, replacing deprecated /projects/:id/edit)
+            route("settings", "./features/projects/pages/edit.tsx"),
 
 				// Annotations API routes (need project context)
 				...annotationsRoutes,
-			]),
+        ]),
 		]),
 	]),
 

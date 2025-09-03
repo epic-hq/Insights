@@ -21,7 +21,7 @@ export interface RouteDefinitions {
 	// Interviews
 	interviews: {
 		index: () => string
-		onboard: () => string
+		upload: () => string
 		new: () => string
 		detail: (id: string) => string
 		edit: (id: string) => string
@@ -144,7 +144,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Interviews
 		interviews: {
 			index: () => `${base}/interviews`,
-			onboard: () => `${base}/interviews/onboard`, // aka upload
+			upload: () => `${base}/interviews/upload`,
 			new: () => `${base}/interviews/new`,
 			detail: (id: string) => `${base}/interviews/${id}`,
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
@@ -219,9 +219,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		projects: {
 			index: () => `/a/${extractAccountId(projectPath)}/projects`,
 			new: () => `/a/${extractAccountId(projectPath)}/projects/new`,
-			setup: () => "/onboarding",
+			// Setup should be project-scoped; keep within current `${base}` context
+			setup: () => `${base}/setup`,
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
-			edit: (id: string) => `/a/${extractAccountId(projectPath)}/projects/${id}/edit`,
+			// Deprecated old edit path; point to project-scoped settings
+			edit: (_id: string) => `${base}/settings`,
 			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,
 		},
 

@@ -37,7 +37,7 @@ export function BottomActionBar({ onToggleChat, isUploading = false }: BottomAct
 					{/* New Project → navigate to routes.projects.new() */}
 					<button
 						className="flex h-14 cursor-pointer flex-col items-center justify-center rounded-lg bg-purple-600 text-white transition-all duration-200 hover:scale-[1.02] active:scale-95"
-						onClick={() => navigate(routes.interviews.onboard())}
+						onClick={() => navigate(routes.interviews.upload())}
 						type="button"
 					>
 						<Plus className="h-4 w-4" />

@@ -146,7 +146,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							</div>
 							<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
 								<Button asChild variant="default" className="gap-2">
-									<Link to={routes.interviews.onboard()}>
+									<Link to={routes.interviews.upload()}>
 										<Upload className="h-4 w-4" />
 										Add Interview
 									</Link>
@@ -186,7 +186,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								Upload your first interview recording or transcript to start gathering insights from your research.
 							</p>
 							<Button asChild className="gap-2">
-								<Link to={routes.interviews.onboard()}>
+								<Link to={routes.interviews.upload()}>
 									<Upload className="h-4 w-4" />
 									Add Your First Interview
 								</Link>

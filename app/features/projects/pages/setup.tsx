@@ -37,21 +37,21 @@ export default function ProjectSetupPage() {
 	const routes = useProjectRoutes(`/a/${accountId}/${projectId}`)
 
 	const handleNext = () => {
-		// Navigate back to project detail or dashboard
-		navigate(routes.projects.detail())
+		// After goals, go to questions step inside project context
+		navigate(routes.questions.index())
 	}
 
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<div className="mx-auto max-w-4xl px-4 py-8">
-				<div className="mb-8">
+				{/* <div className="mb-8">
 					<h1 className="font-bold text-2xl text-gray-900">Project Setup</h1>
 					<p className="mt-2 text-gray-600">
 						Configure your research goals and target market for <strong>{project.name}</strong>
 					</p>
-				</div>
+				</div> */}
 
-				<ProjectGoalsScreen onNext={handleNext} projectId={projectId} />
+				<ProjectGoalsScreen onNext={handleNext} project={project} projectId={projectId} />
 			</div>
 		</div>
 	)

@@ -1,8 +1,7 @@
 import consola from "consola"
 import { motion } from "framer-motion"
-import { BookOpen, Save, Settings2, Target, Trash2 } from "lucide-react"
-import { useEffect, useState } from "react"
-import { type MetaFunction, redirect, useActionData, useLoaderData, useSearchParams } from "react-router-dom"
+import { Save, Trash2 } from "lucide-react"
+import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -18,10 +17,7 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 import { Textarea } from "~/components/ui/textarea"
-import ProjectGoalsScreen from "~/features/onboarding/components/ProjectGoalsScreen"
-import QuestionsScreen from "~/features/onboarding/components/QuestionsScreen"
 import { getProjectSectionKinds, getProjectSections } from "~/features/projects/db"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/types"
@@ -217,186 +213,78 @@ export async function action({
 }
 
 export default function EditProject() {
-	const { project, projectData } = useLoaderData<typeof loader>()
+	const { project } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
-	const [searchParams, setSearchParams] = useSearchParams()
-	const [activeTab, setActiveTab] = useState("goals")
-
-	// Initialize tab from URL search params
-	useEffect(() => {
-		const tabParam = searchParams.get("tab")
-		if (tabParam && ["goals", "questions", "settings"].includes(tabParam)) {
-			setActiveTab(tabParam)
-		}
-	}, [searchParams])
-
-	// Update URL when tab changes
-	const handleTabChange = (newTab: string) => {
-		setActiveTab(newTab)
-		const newSearchParams = new URLSearchParams(searchParams)
-		newSearchParams.set("tab", newTab)
-		setSearchParams(newSearchParams, { replace: true })
-	}
-
-	// Handle project goals update (just auto-save, no navigation)
-	const handleGoalsUpdate = () => {
-		// Goals are auto-saved by ProjectGoalsScreen, no action needed
-		consola.log("Project goals updated via auto-save")
-	}
-
-	// Handle questions update (just auto-save, no navigation) 
-	const handleQuestionsUpdate = () => {
-		// Questions are auto-saved by QuestionsScreen, no action needed
-		consola.log("Project questions updated via auto-save")
-	}
 
 	return (
 		<div className="mx-auto max-w-6xl px-4 py-6">
 			<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 				<Card>
 					<CardHeader>
-						<CardTitle className="flex items-center gap-3 text-2xl">
-							<Settings2 className="h-6 w-6 text-blue-600" />
-							Edit Project: {project.name}
-						</CardTitle>
-						<div className="text-muted-foreground text-xs">
-							<span>Created: {new Date(project.created_at).toLocaleString()}</span>
-							<span className="mx-2">•</span>
-							<span>Updated: {new Date(project.updated_at).toLocaleString()}</span>
-						</div>
+						<CardTitle className="text-2xl">Project Settings</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-6">
 						{actionData?.error && (
 							<div className="rounded-md bg-red-50 p-4 text-red-700 text-sm">{actionData.error}</div>
 						)}
-
-						<Tabs value={activeTab} onValueChange={handleTabChange}>
-							<TabsList className="grid w-full grid-cols-3">
-								<TabsTrigger value="goals" className="flex items-center gap-2">
-									<Target className="h-4 w-4" />
-									Goals & Target Market
-								</TabsTrigger>
-								<TabsTrigger value="questions" className="flex items-center gap-2">
-									<BookOpen className="h-4 w-4" />
-									Interview Questions
-								</TabsTrigger>
-								<TabsTrigger value="settings" className="flex items-center gap-2">
-									<Settings2 className="h-4 w-4" />
-									Project Settings
-								</TabsTrigger>
-							</TabsList>
-
-							<TabsContent value="goals" className="mt-6">
-								<ProjectGoalsScreen
-									onNext={handleGoalsUpdate}
-									projectId={project.id}
-									showStepper={false}
-									showNextButton={false}
-								/>
-							</TabsContent>
-
-							<TabsContent value="questions" className="mt-6">
-								<QuestionsScreen
-									target_orgs={projectData.target_orgs}
-									target_roles={projectData.target_roles}
-									research_goal={projectData.research_goal}
-									research_goal_details={projectData.research_goal_details}
-									assumptions={projectData.assumptions}
-									unknowns={projectData.unknowns}
-									custom_instructions={projectData.custom_instructions}
-									onNext={handleQuestionsUpdate}
-									onBack={() => setActiveTab("goals")}
-									showStepper={false}
-									projectId={project.id}
-								/>
-							</TabsContent>
-
-							<TabsContent value="settings" className="mt-6">
-								<div className="space-y-6">
-									{/* Core project settings */}
-									<Card>
-										<CardHeader>
-											<CardTitle className="text-lg">Project Settings</CardTitle>
-										</CardHeader>
-										<CardContent>
-											<form method="post" className="space-y-4">
-												<input type="hidden" name="intent" value="update_project" />
-												<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-													<div className="space-y-2 md:col-span-2">
-														<Label htmlFor="name">Name *</Label>
-														<Input id="name" name="name" type="text" required defaultValue={project.name || ""} />
-													</div>
-													<div className="space-y-2 md:col-span-2">
-														<Label htmlFor="description">Description</Label>
-														<Textarea id="description" name="description" rows={3} defaultValue={project.description || ""} />
-													</div>
-													<div className="space-y-2">
-														<Label htmlFor="status">Status</Label>
-														<Input
-															id="status"
-															name="status"
-															type="text"
-															defaultValue={project.status || ""}
-															placeholder="active | paused | archived"
-														/>
-													</div>
-													<div className="space-y-2">
-														<Label htmlFor="slug">Slug</Label>
-														<Input
-															id="slug"
-															name="slug"
-															type="text"
-															defaultValue={project.slug || ""}
-															placeholder="auto-generated if blank"
-														/>
-													</div>
-												</div>
-												<Button type="submit" className="gap-2">
-													<Save className="h-4 w-4" />
-													Save Project Settings
-												</Button>
-											</form>
-										</CardContent>
-									</Card>
-
-									{/* Danger zone */}
-									<Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
-										<CardHeader>
-											<CardTitle className="text-red-900 dark:text-red-300">Danger Zone</CardTitle>
-										</CardHeader>
-										<CardContent>
-											<p className="mb-4 text-red-700 text-sm dark:text-red-400">
-												Deleting this project will permanently remove it and all associated data. This action cannot be undone.
-											</p>
-											<form id="delete-project" method="post">
-												<input type="hidden" name="intent" value="delete_project" />
-											</form>
-											<AlertDialog>
-												<AlertDialogTrigger asChild>
-													<Button variant="destructive" size="sm" className="gap-2">
-														<Trash2 className="h-4 w-4" /> Delete Project
-													</Button>
-												</AlertDialogTrigger>
-												<AlertDialogContent>
-													<AlertDialogHeader>
-														<AlertDialogTitle>Delete this project?</AlertDialogTitle>
-														<AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
-													</AlertDialogHeader>
-													<AlertDialogFooter>
-														<AlertDialogCancel>Cancel</AlertDialogCancel>
-														<AlertDialogAction
-															onClick={() => (document.getElementById("delete-project") as HTMLFormElement)?.requestSubmit()}
-														>
-															Yes, delete
-														</AlertDialogAction>
-													</AlertDialogFooter>
-												</AlertDialogContent>
-											</AlertDialog>
-										</CardContent>
-									</Card>
+						<form method="post" className="space-y-4">
+							<input type="hidden" name="intent" value="update_project" />
+							<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+								<div className="space-y-2 md:col-span-2">
+									<Label htmlFor="name">Name *</Label>
+									<Input id="name" name="name" type="text" required defaultValue={project.name || ""} />
 								</div>
-							</TabsContent>
-						</Tabs>
+								<div className="space-y-2 md:col-span-2">
+									<Label htmlFor="description">Description</Label>
+									<Textarea id="description" name="description" rows={3} defaultValue={project.description || ""} />
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="status">Status</Label>
+									<Input id="status" name="status" type="text" defaultValue={project.status || ""} placeholder="active | paused | archived" />
+								</div>
+								<div className="space-y-2">
+									<Label htmlFor="slug">Slug</Label>
+									<Input id="slug" name="slug" type="text" defaultValue={project.slug || ""} placeholder="auto-generated if blank" />
+								</div>
+							</div>
+							<Button type="submit" className="gap-2">
+								<Save className="h-4 w-4" />
+								Save Project Settings
+							</Button>
+						</form>
+					</CardContent>
+				</Card>
+
+				<Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
+					<CardHeader>
+						<CardTitle className="text-red-900 dark:text-red-300">Danger Zone</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<p className="mb-4 text-red-700 text-sm dark:text-red-400">
+							Deleting this project will permanently remove it and all associated data. This action cannot be undone.
+						</p>
+						<form id="delete-project" method="post">
+							<input type="hidden" name="intent" value="delete_project" />
+						</form>
+						<AlertDialog>
+							<AlertDialogTrigger asChild>
+								<Button variant="destructive" size="sm" className="gap-2">
+									<Trash2 className="h-4 w-4" /> Delete Project
+								</Button>
+							</AlertDialogTrigger>
+							<AlertDialogContent>
+								<AlertDialogHeader>
+									<AlertDialogTitle>Delete this project?</AlertDialogTitle>
+									<AlertDialogDescription>This cannot be undone.</AlertDialogDescription>
+								</AlertDialogHeader>
+								<AlertDialogFooter>
+									<AlertDialogCancel>Cancel</AlertDialogCancel>
+									<AlertDialogAction onClick={() => (document.getElementById("delete-project") as HTMLFormElement)?.requestSubmit()}>
+										Yes, delete
+									</AlertDialogAction>
+								</AlertDialogFooter>
+							</AlertDialogContent>
+						</AlertDialog>
 					</CardContent>
 				</Card>
 			</motion.div>

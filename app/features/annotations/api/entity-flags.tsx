@@ -29,13 +29,13 @@ export const loader: LoaderFunction = async ({ context, request, params }) => {
 		return Response.json({ error: { message: "Missing entityType or entityId" } }, { status: 400 })
 	}
 
-	consola.log("getentity-flags", {
-		accountId,
-		projectId,
-		entityType,
-		entityId,
-		userId,
-	})
+	// consola.log("getentity-flags", {
+	// 	accountId,
+	// 	projectId,
+	// 	entityType,
+	// 	entityId,
+	// 	userId,
+	// })
 	try {
 		const { data: flags, error } = await getUserFlagsForEntity({
 			supabase,

@@ -1,6 +1,19 @@
 import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-pangea/dnd"
 import consola from "consola"
-import { Brain, ChevronDown, Clock, GripVertical, MoreHorizontal, Plus, Settings, Trash2, User, X } from "lucide-react"
+import {
+	Brain,
+	Check,
+	ChevronDown,
+	Clock,
+	GripVertical,
+	MoreHorizontal,
+	Pencil,
+	Plus,
+	Settings,
+	Trash2,
+	User,
+	X,
+} from "lucide-react"
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { toast } from "sonner"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
@@ -170,6 +183,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [showAddCustomQuestion, setShowAddCustomQuestion] = useState(false)
 	const [newQuestionText, setNewQuestionText] = useState("")
 	const [newQuestionCategory, setNewQuestionCategory] = useState("context")
+	const [editingId, setEditingId] = useState<string | null>(null)
+	const [editingText, setEditingText] = useState("")
 
 	const supabase = createClient()
 
@@ -493,61 +508,56 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
 	)
 
-	const addCustomQuestion = useCallback(
-		async () => {
-			if (!newQuestionText.trim()) {
-				toast.error("Please enter a question")
-				return
-			}
+	const addCustomQuestion = useCallback(async () => {
+		if (!newQuestionText.trim()) {
+			toast.error("Please enter a question")
+			return
+		}
 
-			const customQuestion: Question = {
-				id: crypto.randomUUID(),
-				text: newQuestionText.trim(),
-				categoryId: newQuestionCategory,
-				scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 }, // Default decent scores for custom questions
-				rationale: "Custom user question",
-				status: "proposed",
-				timesAnswered: 0,
-				source: "user"
-			}
+		const customQuestion: Question = {
+			id: crypto.randomUUID(),
+			text: newQuestionText.trim(),
+			categoryId: newQuestionCategory,
+			scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 }, // Default decent scores for custom questions
+			rationale: "Custom user question",
+			status: "proposed",
+			timesAnswered: 0,
+			source: "user",
+		}
 
-			const updatedQuestions = [...questions, customQuestion]
-			setQuestions(updatedQuestions)
-			
-			// Auto-add to selected questions
-			const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
-			setSelectedQuestionIds(newSelectedIds)
-			
-			// Save to database
-			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
-			
-			// Reset form
-			setNewQuestionText("")
-			setNewQuestionCategory("context")
-			setShowAddCustomQuestion(false)
-			
-			toast.success("Custom question added", {
-				description: "Your question has been added to the question pack"
-			})
-		},
-		[newQuestionText, newQuestionCategory, questions, selectedQuestionIds, saveQuestionsToDatabase]
-	)
+		const updatedQuestions = [...questions, customQuestion]
+		setQuestions(updatedQuestions)
+
+		// Auto-add to selected questions
+		const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
+		setSelectedQuestionIds(newSelectedIds)
+
+		// Save to database
+		await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+
+		// Reset form
+		setNewQuestionText("")
+		setNewQuestionCategory("context")
+		setShowAddCustomQuestion(false)
+
+		toast.success("Custom question added", {
+			description: "Your question has been added to the question pack",
+		})
+	}, [newQuestionText, newQuestionCategory, questions, selectedQuestionIds, saveQuestionsToDatabase])
 
 	const rejectQuestion = useCallback(
 		async (questionId: string) => {
-			const updatedQuestions = questions.map((q) => 
-				q.id === questionId ? { ...q, status: "rejected" as const } : q
-			)
+			const updatedQuestions = questions.map((q) => (q.id === questionId ? { ...q, status: "rejected" as const } : q))
 			setQuestions(updatedQuestions)
-			
+
 			// Also remove from selected questions if it was selected
-			const newSelectedIds = selectedQuestionIds.filter(id => id !== questionId)
+			const newSelectedIds = selectedQuestionIds.filter((id) => id !== questionId)
 			setSelectedQuestionIds(newSelectedIds)
-			
+
 			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
-			
+
 			toast.success("Question rejected", {
-				description: "This question won't appear in future generations"
+				description: "This question won't appear in future generations",
 			})
 		},
 		[questions, selectedQuestionIds, saveQuestionsToDatabase]
@@ -722,7 +732,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												<span>30m</span>
 												<span>45m</span>
 												<span>60m</span>
-												<span>90m</span>
 											</div>
 										</div>
 
@@ -752,11 +761,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												</SelectContent>
 											</Select>
 										</div>
-
+										{/*
 										<div className="flex items-center justify-between">
 											<label className="text-sm">Go Deep Quick Mode</label>
 											<Switch checked={goDeepMode} onCheckedChange={setGoDeepMode} />
-										</div>
+										</div> */}
 									</div>
 								</CardContent>
 							</AccordionContent>
@@ -843,11 +852,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								</div>
 							</div>
 						) : (
-							<Button
-								onClick={() => setShowAddCustomQuestion(true)}
-								variant="outline"
-								className="w-full"
-							>
+							<Button onClick={() => setShowAddCustomQuestion(true)} variant="outline" className="w-full">
 								<User className="mr-2 h-4 w-4" /> Add Custom Question
 							</Button>
 						)}
@@ -857,7 +862,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				<Button
 					onClick={() => {
 						if (routes) {
-							window.location.href = routes.interviews.onboard()
+							window.location.href = routes.interviews.upload()
 						}
 					}}
 					variant="default"
@@ -930,13 +935,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																			<div className="min-w-0 flex-1">
 																				<div className="flex flex-wrap items-center gap-2">
 																					<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
-																						{questionCategories.find((c) => c.id === question.categoryId)?.name}
+																						{questionCategories.find((c) => c.id === question.categoryId)?.name ||
+																							question.categoryId
+																								?.replace(/[-_]/g, " ")
+																								.replace(/\b\w/g, (m) => m.toUpperCase()) ||
+																							"Other"}
 																					</Badge>
 																					<Badge variant="outline" className="text-muted-foreground text-xs">
 																						~{Math.round(question.estimatedMinutes)}m
 																					</Badge>
 																					{question.source === "user" && (
-																						<Badge variant="outline" className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200">
+																						<Badge
+																							variant="outline"
+																							className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+																						>
 																							<User className="mr-1 h-3 w-3" />
 																							Custom
 																						</Badge>
@@ -950,13 +962,60 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						</Badge>
 																					)}
 																				</div>
-																				<p
-																					className="mb-2 font-medium text-sm leading-relaxed"
-																					title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																				>
-																					{question.text}
-																				</p>
+																				{editingId === question.id ? (
+																					<div className="mb-2 flex items-center gap-2">
+														<Textarea
+															value={editingText}
+															onChange={(e) => setEditingText(e.target.value)}
+															autoFocus
+															rows={2}
+															className="resize-none"
+														/>
+																						<Button
+																							variant="ghost"
+																							size="icon"
+																							onClick={async () => {
+																								const updated = questions.map((q) =>
+																									q.id === question.id ? { ...q, text: editingText } : q
+																								)
+																								setQuestions(updated)
+																								await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																								setEditingId(null)
+																								setEditingText("")
+																							}}
+																							className="text-green-600"
+																						>
+																							<Check className="h-4 w-4" />
+																						</Button>
+																						<Button
+																							variant="ghost"
+																							size="icon"
+																							onClick={() => {
+																								setEditingId(null)
+																								setEditingText("")
+																							}}
+																							className="text-gray-500"
+																						>
+																							<X className="h-4 w-4" />
+																						</Button>
+																					</div>
+																				) : (
+																					<p
+																						className="mb-2 font-medium text-sm leading-relaxed"
+																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																					>
+																						{question.text}
+																					</p>
+																				)}
 																			</div>
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				onClick={() => setEditingId(question.id) || setEditingText(question.text)}
+																				className="text-gray-500 hover:text-gray-700"
+																			>
+																				<Pencil className="h-4 w-4" />
+																			</Button>
 																			<Button
 																				variant="ghost"
 																				size="sm"
@@ -998,10 +1057,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												Additional questions below the line - click to include in your pack:
 											</p>
 											{questionPack.remainingQuestions.map((question) => (
-												<Card
-													key={question.id}
-													className="border-gray-300 border-dashed py-2"
-												>
+												<Card key={question.id} className="border-gray-300 border-dashed py-2">
 													<CardContent className="p-3">
 														<div className="flex items-start gap-3">
 															<button
@@ -1015,7 +1071,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 															<div className="min-w-0 flex-1">
 																<div className="mb-2 flex flex-wrap items-center gap-2">
 																	<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
-																		{questionCategories.find((c) => c.id === question.categoryId)?.name}
+																		{questionCategories.find((c) => c.id === question.categoryId)?.name ||
+																			question.categoryId
+																				?.replace(/[-_]/g, " ")
+																				.replace(/\b\w/g, (m) => m.toUpperCase()) ||
+																			"Other"}
 																	</Badge>
 																	<Badge variant="outline" className="text-muted-foreground text-xs">
 																		~
@@ -1023,7 +1083,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																		m
 																	</Badge>
 																	{question.source === "user" && (
-																		<Badge variant="outline" className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200">
+																		<Badge
+																			variant="outline"
+																			className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+																		>
 																			<User className="mr-1 h-3 w-3" />
 																			Custom
 																		</Badge>

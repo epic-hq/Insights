@@ -10,9 +10,12 @@ import {
 	Lightbulb,
 	Loader2,
 	Mic2Icon,
+	MicIcon,
 	PlusCircle,
 	Search,
 	Settings2,
+	Square,
+	SquareCheckBig,
 	Target,
 	Users,
 	Zap,
@@ -32,30 +35,73 @@ import { createClient } from "~/lib/supabase/client"
 import type { Project_Section } from "~/types"
 import type { ProjectStatusData } from "~/utils/project-status.server"
 
+function ConfidenceBadge({ value }: { value?: number }) {
+	if (value === undefined || value === null) return null
+	const pct = Math.round((value || 0) * 100)
+	let color = "bg-gray-200 text-gray-800"
+	if (pct >= 80) color = "bg-green-100 text-green-800"
+	else if (pct >= 60) color = "bg-yellow-100 text-yellow-800"
+	else color = "bg-orange-100 text-orange-800"
+	return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{pct}%</span>
+}
+
+function DecisionRow({ qa }: { qa: any }) {
+	const [expanded, setExpanded] = useState(false)
+	return (
+		<div className="rounded-md border p-3">
+			<div className="flex items-start justify-between gap-3">
+				<div className="min-w-0 flex-1">
+					<div className="mb-1 font-medium">{qa?.decision || qa?.answer_summary || "Decision summary unavailable"}</div>
+					<div className="text-muted-foreground text-xs">Based on interview analysis</div>
+				</div>
+				<ConfidenceBadge value={qa?.confidence} />
+				<Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
+					{expanded ? "Less" : "More"}
+				</Button>
+			</div>
+			{expanded && (
+				<div className="mt-3 border-t pt-3">
+					<div className="mb-1 text-muted-foreground text-xs">Supporting Q&A</div>
+					<div className="space-y-2 pl-3">
+						<div className="text-foreground text-sm">
+							<span className="font-medium">Q: </span>
+							{qa?.question || "Question text"}
+						</div>
+						<div className="text-foreground text-sm">
+							<span className="font-medium">A: </span>
+							{qa?.answer_summary || "Answer summary"}
+						</div>
+					</div>
+				</div>
+			)}
+		</div>
+	)
+}
+
 interface ProjectStatusScreenProps {
 	projectName: string
-	icp: string
 	projectId?: string
 	accountId?: string
 	statusData?: ProjectStatusData | null
 	personas?: any[]
 	insights?: any[]
+	projectSections?: Project_Section[]
 }
 
 export default function ProjectStatusScreen({
 	projectName,
-	icp,
 	projectId,
 	accountId,
 	statusData,
 	personas = [],
 	insights = [],
+	projectSections: initialSections,
 }: ProjectStatusScreenProps) {
 	const [isAnalyzing, setIsAnalyzing] = useState(false)
 	const [customInstructions, setCustomInstructions] = useState("")
 	const [showCustomAnalysis, setShowCustomAnalysis] = useState(false)
-	const [projectSections, setProjectSections] = useState<Project_Section[]>([])
-	const [loading, setLoading] = useState(true)
+	const [projectSections, setProjectSections] = useState<Project_Section[]>(initialSections || [])
+	const [loading, setLoading] = useState(!initialSections)
 	const [showFlowView, _setShowFlowView] = useState(false)
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
@@ -64,36 +110,35 @@ export default function ProjectStatusScreen({
 	const routes = useProjectRoutes(projectPath)
 	const supabase = createClient()
 
-	// Fetch project sections (goals from onboarding)
+	// Fetch project sections client-side only if not provided by loader
 	useEffect(() => {
+		if (initialSections && initialSections.length >= 0) {
+			setLoading(false)
+			return
+		}
 		const fetchProjectSections = async () => {
 			if (!projectId) return
-
 			try {
-				const { data, error } = await supabase
+				const { data } = await supabase
 					.from("project_sections")
 					.select("*")
 					.eq("project_id", projectId)
 					.order("position", { ascending: true, nullsFirst: false })
 					.order("created_at", { ascending: false })
-
-				if (data && !error) {
-					setProjectSections(data)
-				}
-			} catch (_error) {
+				if (data) setProjectSections(data)
 			} finally {
 				setLoading(false)
 			}
 		}
-
 		fetchProjectSections()
-	}, [projectId, supabase])
+	}, [projectId, supabase, initialSections])
 
 	// Helper functions to organize project sections and match with analysis
-	const getGoalSections = () => projectSections.filter((section) => section.kind === "goal")
+	const getGoalSections = () =>
+		projectSections.filter((section) => section.kind === "goal" || section.kind === "research_goal")
 	const getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market")
-	const _getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
-	const _getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
+	const getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
+	const getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
 	const getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
 
 	// Map analysis results to original goals
@@ -184,7 +229,6 @@ export default function ProjectStatusScreen({
 	// Use external data if available, otherwise fallback to props
 	const displayData = statusData || {
 		projectName,
-		icp,
 		totalInterviews: 1,
 		totalInsights: 5,
 		totalPersonas: 2,
@@ -214,6 +258,15 @@ export default function ProjectStatusScreen({
 		return
 	}
 
+	// Derive a single-line research goal for display
+	const researchGoalText = (() => {
+		const gs = getGoalSections()
+		if (gs.length === 0) return ""
+		const section = gs[0]
+		const meta: any = section.meta || {}
+		return meta.research_goal || meta.customGoal || section.content_md || ""
+	})()
+
 	if (loading) {
 		return (
 			<div className="flex h-screen items-center justify-center">
@@ -234,7 +287,7 @@ export default function ProjectStatusScreen({
 			<div className="border-border border-b bg-background px-6 py-4">
 				<div className="mx-auto flex max-w-6xl items-center justify-between">
 					<div>
-						<p className="font-semibold text-foreground text-xl">Goal: {displayData.projectName}</p>
+						<p className="font-semibold text-foreground text-xl">Project: {displayData.projectName}</p>
 					</div>
 					<div className="flex items-center gap-3">
 						{/* Flow View Toggle Button */}
@@ -414,7 +467,7 @@ export default function ProjectStatusScreen({
 											className="h-12 w-full justify-start text-base"
 											onClick={() => {
 												if (routes) {
-													window.location.href = routes.interviews.onboard()
+													window.location.href = routes.interviews.upload()
 												}
 											}}
 										>
@@ -455,95 +508,57 @@ export default function ProjectStatusScreen({
 				/* Dashboard View - Original Layout */
 				<div>
 					{/* Prominent Analysis Action */}
-					<div className="mx-auto max-w-6xl px-6 py-4">
-						<div className="rounded-lg border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 dark:border-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20">
-							<div className="flex items-start justify-between">
-								<div className="flex-1">
-									<h2 className="font-semibold text-foreground text-lg">Research Analysis</h2>
-									{/* Progress indicator moved here */}
-									{statusData && displayData.completionScore > 0 && (
-										<div className="mt-2 flex items-center gap-2">
-											<div className="h-2 w-24 rounded-full bg-white/20">
-												<div
-													className="h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all"
-													style={{ width: `${displayData.completionScore}%` }}
-												/>
-											</div>
-											<span className="font-medium text-blue-700 text-sm dark:text-blue-300">
-												{displayData.completionScore}% complete
-											</span>
-										</div>
-									)}
-								</div>
-
-								<div className="ml-4 flex flex-col gap-2">
-									<TooltipProvider>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													onClick={() => setShowCustomAnalysis(true)}
-													disabled={isAnalyzing}
-													variant="outline"
-													size="sm"
-												>
-													{isAnalyzing ? (
-														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													) : (
-														<Zap className="mr-2 h-4 w-4" />
-													)}
-													Custom Analysis
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent>
-												<p>Run analysis with custom instructions to focus on specific aspects</p>
-											</TooltipContent>
-										</Tooltip>
-									</TooltipProvider>
-
-									<TooltipProvider>
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<Button
-													onClick={runCustomAnalysis}
-													disabled={isAnalyzing}
-													className="bg-blue-600 hover:bg-blue-700"
-													size="sm"
-												>
-													{isAnalyzing ? (
-														<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-													) : (
-														<Target className="mr-2 h-4 w-4" />
-													)}
-													{statusData?.hasAnalysis ? "Update Analysis" : "Run Analysis"}
-												</Button>
-											</TooltipTrigger>
-											<TooltipContent>
-												<p>
-													{statusData?.hasAnalysis
-														? "Re-run analysis with latest interview data"
-														: "Analyze interviews to identify patterns, gaps, and insights"}
-												</p>
-											</TooltipContent>
-										</Tooltip>
-									</TooltipProvider>
-								</div>
-							</div>
-						</div>
-					</div>
 
 					{/* Main Research Framework */}
 					<div className="mx-auto max-w-6xl px-6 py-6">
 						<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-							{/* Left Column: Research Goals & Gap Analysis */}
+							{/* Left Column: Reorganized Layout */}
 							<div className="space-y-6 lg:col-span-2">
-								{/* Research Goals Section */}
-								{getGoalSections().length > 0 && (
-									<div>
-										<div className="mb-3 flex items-center justify-between">
-											<div className="flex items-center gap-2">
-												<Target className="h-5 w-5 text-blue-600" />
-												Research Goals
-											</div>
+								{/* 1. Goal and Key Decisions at Top */}
+								<div>
+									<div className="mb-3 flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Target className="h-5 w-5 text-blue-600" />
+											Goal and Key Decisions
+											{/* Progress indicator moved here */}
+											{statusData && displayData.completionScore > 0 && (
+												<div className="mt-2 flex items-center gap-2">
+													<div className="h-2 w-24 rounded-full bg-white/20">
+														<div
+															className="h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all"
+															style={{ width: `${displayData.completionScore}%` }}
+														/>
+													</div>
+													<span className="font-medium text-blue-700 text-sm dark:text-blue-300">
+														{displayData.completionScore}% complete
+													</span>
+												</div>
+											)}
+										</div>
+										<div className="ml-4 flex flex-row gap-2">
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<Button
+															variant="outline"
+															onClick={() => setShowCustomAnalysis(true)}
+															disabled={isAnalyzing}
+															className="hover:bg-blue-700 hover:text-background"
+															size="sm"
+														>
+															{isAnalyzing ? (
+																<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															) : (
+																<Zap className="mr-2 h-4 w-4" />
+															)}
+															Custom Analysis
+														</Button>
+													</TooltipTrigger>
+													<TooltipContent>
+														<p>Run analysis with custom instructions to focus on specific aspects</p>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
 											<Button
 												variant="outline"
 												size="sm"
@@ -553,81 +568,121 @@ export default function ProjectStatusScreen({
 													}
 												}}
 											>
-												Edit ProjectGoals
-											</Button>
+												Edit Project Goals
+											</Button>{" "}
 										</div>
-										<Card>
-											{/* <CardHeader className="pb-2">
-										<CardTitle className="flex items-center gap-2"></CardTitle>
-									</CardHeader> */}
-											<CardContent className="space-y-4">
-												<div className="text-muted-foreground/50 text-sm">Desired Findings (Goal Details)</div>
-												{getGoalSections().map((goalSection) => {
-													const goalStatus = getGoalStatus(goalSection.content_md)
-													return (
-														<div key={goalSection.id} className="flex items-start gap-3">
-															<div className="mt-1 flex-shrink-0">
-																{goalStatus.status === "answered" ? (
-																	<CheckCircle className="h-5 w-5 text-green-600" />
-																) : goalStatus.status === "open" ? (
-																	<CircleHelp className="h-5 w-5 text-amber-600" />
-																) : (
-																	<Target className="h-5 w-5 text-gray-400" />
-																)}
-															</div>
-															<div className="flex-1">
-																<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
-																{goalStatus.status === "answered" && goalStatus.answer && (
-																	<div className="mt-2 rounded bg-green-50 p-3 dark:bg-green-950/20">
-																		<p className="text-green-800 text-sm dark:text-green-200">{goalStatus.answer}</p>
-																		{goalStatus.confidence && (
-																			<Badge variant="outline" className="mt-2 text-xs">
-																				{goalStatus.confidence === 1
-																					? "High"
-																					: goalStatus.confidence === 2
-																						? "Medium"
-																						: "Low"}{" "}
-																				confidence
-																			</Badge>
-																		)}
-																	</div>
-																)}
-																{goalStatus.status === "open" && (
-																	<p className="mt-1 text-muted-foreground text-sm">
-																		Needs more evidence from interviews
-																	</p>
-																)}
-															</div>
-														</div>
-													)
-												})}
-											</CardContent>
-										</Card>
 									</div>
-								)}
+									<Card>
+										<CardContent className="space-y-6">
+											{/* Research Goals */}
+											{getGoalSections().length > 0 && (
+												<div>
+													{getGoalSections().map((goalSection) => {
+														const goalStatus = getGoalStatus(goalSection.content_md)
+														return (
+															<div key={goalSection.id} className="flex items-start gap-3">
+																<div className="mt-1 flex-shrink-0">
+																	{goalStatus.status === "answered" ? (
+																		<SquareCheckBig className="h-5 w-5 text-green-600" />
+																	) : goalStatus.status === "open" ? (
+																		<Square className="h-5 w-5 text-amber-600" />
+																	) : (
+																		<Target className="h-5 w-5 text-gray-400" />
+																	)}
+																</div>
+																<div className="flex-1">
+																	<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
+																	{goalStatus.status === "answered" && goalStatus.answer && (
+																		<div className="mt-2 rounded bg-green-50 p-3 dark:bg-green-950/20">
+																			<p className="text-green-800 text-sm dark:text-green-200">{goalStatus.answer}</p>
+																			{goalStatus.confidence && (
+																				<Badge variant="outline" className="mt-2 text-xs">
+																					{goalStatus.confidence === 1
+																						? "High"
+																						: goalStatus.confidence === 2
+																							? "Medium"
+																							: "Low"}{" "}
+																					confidence
+																				</Badge>
+																			)}
+																		</div>
+																	)}
+																	{goalStatus.status === "open" && (
+																		<p className="mt-1 text-muted-foreground text-sm">
+																			Needs more evidence from interviews
+																		</p>
+																	)}
+																</div>
+															</div>
+														)
+													})}
+												</div>
+											)}
 
-								{/* Target Market & What We Learned */}
+											{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
+											<div>
+												<div className="mb-3 text-muted-foreground/50 text-sm">Key Decisions</div>
+												<div className="space-y-3 border-gray-200 border-l-2 pl-4 dark:border-gray-700">
+													{(displayData.questionAnswers || []).slice(0, 3).map((qa: any, idx: number) => (
+														<DecisionRow key={`dq-${idx}`} qa={qa} />
+													))}
+													{(!displayData.questionAnswers || displayData.questionAnswers.length === 0) && (
+														<p className="text-muted-foreground text-sm">
+															No decisions yet — add interviews to generate findings.
+														</p>
+													)}
+
+													{/* Nested Research Questions */}
+													{statusData?.hasAnalysis &&
+														statusData?.questionAnswers &&
+														statusData.questionAnswers.length > 0 && (
+															<div className="mt-4">
+																<div className="mb-2 text-muted-foreground/50 text-xs">
+																	Supporting Research Questions
+																</div>
+																<div className="space-y-2">
+																	{statusData.questionAnswers.slice(0, 3).map((qa) => (
+																		<div
+																			key={`nested-qa-${qa.question}`}
+																			className="rounded-lg border border-green-200 bg-green-50/50 p-2 dark:border-green-800 dark:bg-green-950/10"
+																		>
+																			<div className="flex items-start gap-2">
+																				<CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-600" />
+																				<div className="flex-1">
+																					<p className="font-medium text-foreground text-xs">{qa.question}</p>
+																					{qa.answer_summary && (
+																						<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
+																							{qa.answer_summary}
+																						</p>
+																					)}
+																				</div>
+																			</div>
+																		</div>
+																	))}
+																</div>
+															</div>
+														)}
+												</div>
+											</div>
+										</CardContent>
+									</Card>
+								</div>
+
+								{/* 2. Personas & Themes */}
 								<div>
 									<div className="mb-3 flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											Target Market & What We Learned
+											Personas & Themes
 										</div>
-										<Button
-											variant="outline"
-											size="sm"
-											onClick={() => {
-												if (routes && projectId) {
-													window.location.href = routes.projects.edit(projectId)
-												}
-											}}
-										>
-											<Settings2 className="h-5 w-5 text-indigo-600" />
-											Edit
-										</Button>
 									</div>
 									<Card>
 										<CardContent className="space-y-4">
+											{personas?.length === 0 && (
+												<p className="text-muted-foreground text-sm">
+													No personas yet — add interviews to generate personas.
+												</p>
+											)}
 											{/* Enhanced Target Market Display */}
 											{getTargetMarketSections().length > 0 && (
 												<div className="space-y-3">
@@ -779,15 +834,14 @@ export default function ProjectStatusScreen({
 									</Card>
 								</div>
 
-								{/* Questions Answered Status */}
-								{statusData?.hasAnalysis && (
-									<div data-section="questions">
-										<div className="mb-3 flex items-center justify-between">
-											<div className="flex items-center gap-2">
-												<Search className="h-5 w-5 text-green-600" />
-												Questions (Answered {statusData?.questionAnswers?.length || 0} of{" "}
-												{(statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0)})
-											</div>
+								{/* 3. Interviews */}
+								<div>
+									<div className="mb-3 flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Headphones className="h-5 w-5 text-indigo-600" />
+											Interviews
+										</div>
+										<div className="flex flex-row items-center gap-2">
 											<Button
 												variant="outline"
 												size="sm"
@@ -797,191 +851,166 @@ export default function ProjectStatusScreen({
 													}
 												}}
 											>
-												<BookOpen className="mr-2 h-4 w-4" />
-												Manage Questions
-											</Button>
-										</div>
-										<Card>
-											<CardContent className="space-y-6">
-												{/* Questions Answered */}
-												{statusData.questionAnswers && statusData.questionAnswers.length > 0 && (
-													<div>
-														<div className="space-y-3">
-															{statusData.questionAnswers.slice(0, 5).map((qa) => (
-																<div
-																	key={`qa-${qa.question}`}
-																	className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950/20"
-																>
-																	<div className="mb-2 flex items-start gap-2">
-																		<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-																		<div className="flex-1">
-																			<p className="font-medium text-foreground text-sm">{qa.question}</p>
-																			{qa.answer_summary && (
-																				<p className="mt-1 text-muted-foreground text-sm">{qa.answer_summary}</p>
-																			)}
-																			{qa.confidence && (
-																				<Badge variant="outline" className="mt-2 text-xs">
-																					{qa.confidence === 1 ? "High" : qa.confidence === 2 ? "Medium" : "Low"}{" "}
-																					confidence
-																				</Badge>
-																			)}
-																		</div>
-																	</div>
-																</div>
-															))}
-															{statusData.questionAnswers.length > 5 && (
-																<p className="text-muted-foreground text-xs">
-																	+{statusData.questionAnswers.length - 5} more questions answered
-																</p>
-															)}
-														</div>
-													</div>
-												)}
-
-												{/* Open Questions */}
-												{statusData.openQuestions && statusData.openQuestions.length > 0 && (
-													<div>
-														<h4 className="mb-3 font-medium text-amber-700 text-sm dark:text-amber-400">
-															Unanswered ({statusData.openQuestions.length})
-														</h4>
-														<div className="space-y-2">
-															{statusData.openQuestions.slice(0, 5).map((question, index) => (
-																<div
-																	key={`open-${index}`}
-																	className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/20"
-																>
-																	<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-																	<p className="text-foreground text-sm">{question}</p>
-																</div>
-															))}
-															{statusData.openQuestions.length > 5 && (
-																<p className="text-muted-foreground text-xs">
-																	+{statusData.openQuestions.length - 5} more questions need answers
-																</p>
-															)}
-														</div>
-													</div>
-												)}
-											</CardContent>
-										</Card>
-									</div>
-								)}
-
-								{/* Interview Questions */}
-								<div>
-									<div className="mb-3 flex flex-row justify-between gap-2">
-										<div className="mb-3 flex items-center gap-2">
-											<Headphones className="h-5 w-5 text-indigo-600" />
-											Interview Questions
-										</div>
-										<div className="flex flex-row items-center gap-2">
-											<Button
-												variant="outline"
-												onClick={() => {
-													if (routes) {
-														window.location.href = routes.questions?.index() || "#"
-													}
-												}}
-											>
 												<Settings2 className="h-5 w-5 text-indigo-600" />
-												Edit
+												Manage Questions
 											</Button>
 										</div>
 									</div>
 									<Card>
-										<CardContent>
-											<div className="space-y-3">
-												{getQuestionsSections().length > 0 ? (
-													getQuestionsSections()
-														.slice(0, 1)
-														.map((section) => {
-															const questions = Array.isArray(section.meta?.questions) ? section.meta.questions : []
-															return (
-																<div key={section.id} className="space-y-3">
-																	{questions
-																		.slice(0, 5)
-																		.map((question: { text: string; id: string }, index: number) => {
-																			const questionStatus = getQuestionStatus(question.text)
-																			return (
-																				<div
-																					key={`question-${question.id || index}`}
-																					className={`rounded-lg border p-3 ${
-																						questionStatus.status === "answered"
-																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-																					}`}
-																				>
-																					<div className="flex items-start gap-2">
-																						{questionStatus.status === "answered" ? (
-																							<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-																						) : (
-																							<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-																						)}
-																						<div className="flex-1">
-																							<p className="font-medium text-foreground text-sm">{question.text}</p>
-																							{questionStatus.status === "answered" && questionStatus.answer && (
-																								<div className="mt-2 text-muted-foreground text-sm">
-																									{questionStatus.answer}
-																								</div>
+										<CardContent className="space-y-6">
+											{/* Interview Questions */}
+											<div>
+												<div className="mb-3 text-muted-foreground/50 text-sm">Interview Questions</div>
+												<div className="space-y-3">
+													{getQuestionsSections().length > 0 ? (
+														getQuestionsSections()
+															.slice(0, 1)
+															.map((section) => {
+																const questions = Array.isArray(section.meta?.questions) ? section.meta.questions : []
+																return (
+																	<div key={section.id} className="space-y-3">
+																		{questions
+																			.slice(0, 3)
+																			.map((question: { text: string; id: string }, index: number) => {
+																				const questionStatus = getQuestionStatus(question.text)
+																				return (
+																					<div
+																						key={`question-${question.id || index}`}
+																						className={`rounded-lg border p-3 ${
+																							questionStatus.status === "answered"
+																								? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+																								: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+																						}`}
+																					>
+																						<div className="flex items-start gap-2">
+																							{questionStatus.status === "answered" ? (
+																								<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+																							) : (
+																								<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
 																							)}
-																							{questionStatus.confidence && (
-																								<Badge variant="outline" className="mt-2 text-xs">
-																									{questionStatus.confidence === 1
-																										? "High"
-																										: questionStatus.confidence === 2
-																											? "Medium"
-																											: "Low"}{" "}
-																									confidence
-																								</Badge>
-																							)}
+																							<div className="flex-1">
+																								<p className="font-medium text-foreground text-sm">{question.text}</p>
+																								{questionStatus.status === "answered" && questionStatus.answer && (
+																									<div className="mt-2 line-clamp-2 text-muted-foreground text-sm">
+																										{questionStatus.answer}
+																									</div>
+																								)}
+																							</div>
 																						</div>
 																					</div>
+																				)
+																			})}
+																		{questions.length > 3 && (
+																			<p className="text-muted-foreground text-xs">
+																				+{questions.length - 3} more interview questions
+																			</p>
+																		)}
+																	</div>
+																)
+															})
+													) : (
+														<div className="py-4 text-center">
+															<BookOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+															<p className="text-muted-foreground text-sm">No interview questions generated yet</p>
+															<Button
+																variant="outline"
+																size="sm"
+																className="mt-2"
+																onClick={() => {
+																	if (routes) {
+																		window.location.href = routes.questions.index()
+																	}
+																}}
+															>
+																Generate Questions
+															</Button>
+														</div>
+													)}
+												</div>
+											</div>
+
+											{/* Interview Status */}
+											{statusData?.hasAnalysis && (
+												<div>
+													<div className="mb-3 text-muted-foreground/50 text-sm">Interview Analysis</div>
+													<div className="space-y-4">
+														{/* Questions Answered */}
+														{statusData.questionAnswers && statusData.questionAnswers.length > 0 && (
+															<div>
+																<h4 className="mb-2 font-medium text-green-700 text-sm dark:text-green-400">
+																	Answered ({statusData.questionAnswers.length})
+																</h4>
+																<div className="space-y-2">
+																	{statusData.questionAnswers.slice(0, 3).map((qa) => (
+																		<div
+																			key={`qa-${qa.question}`}
+																			className="rounded-lg border border-green-200 bg-green-50/50 p-2 dark:border-green-800 dark:bg-green-950/10"
+																		>
+																			<div className="flex items-start gap-2">
+																				<CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-600" />
+																				<div className="flex-1">
+																					<p className="font-medium text-foreground text-xs">{qa.question}</p>
+																					{qa.answer_summary && (
+																						<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
+																							{qa.answer_summary}
+																						</p>
+																					)}
 																				</div>
-																			)
-																		})}
-																	{questions.length > 5 && (
+																			</div>
+																		</div>
+																	))}
+																	{statusData.questionAnswers.length > 3 && (
 																		<p className="text-muted-foreground text-xs">
-																			+{questions.length - 5} more interview questions
+																			+{statusData.questionAnswers.length - 3} more questions answered
 																		</p>
 																	)}
 																</div>
-															)
-														})
-												) : (
-													<div className="py-6 text-center">
-														<BookOpen className="mx-auto mb-2 h-8 w-8 text-muted-foreground" />
-														<p className="text-muted-foreground text-sm">No interview questions generated yet</p>
-														<Button
-															variant="outline"
-															size="sm"
-															className="mt-2"
-															onClick={() => {
-																if (routes) {
-																	window.location.href = routes.projects.setup()
-																}
-															}}
-														>
-															Generate Questions
-														</Button>
+															</div>
+														)}
+
+														{/* Open Questions */}
+														{statusData.openQuestions && statusData.openQuestions.length > 0 && (
+															<div>
+																<h4 className="mb-2 font-medium text-amber-700 text-sm dark:text-amber-400">
+																	Unanswered ({statusData.openQuestions.length})
+																</h4>
+																<div className="space-y-2">
+																	{statusData.openQuestions.slice(0, 3).map((question, index) => (
+																		<div
+																			key={`open-${index}`}
+																			className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-2 dark:border-amber-800 dark:bg-amber-950/10"
+																		>
+																			<CircleHelp className="mt-0.5 h-3 w-3 flex-shrink-0 text-amber-600" />
+																			<p className="text-foreground text-xs">{question}</p>
+																		</div>
+																	))}
+																	{statusData.openQuestions.length > 3 && (
+																		<p className="text-muted-foreground text-xs">
+																			+{statusData.openQuestions.length - 3} more questions need answers
+																		</p>
+																	)}
+																</div>
+															</div>
+														)}
 													</div>
-												)}
-											</div>
+												</div>
+											)}
 										</CardContent>
 									</Card>
 								</div>
 
-								{/* Add Interviews section when no interviews exist */}
+								{/* If no interviews exist, show prompt to add interviews */}
 								{(!statusData?.totalInterviews || statusData.totalInterviews === 0) && (
 									<div>
 										<div className="mb-3 flex items-center gap-2">
-											<Headphones className="h-5 w-5 text-green-600" />
-											Research Analysis
+											<MicIcon className="h-5 w-5 text-green-600" />
+											Get Started with Interviews
 										</div>
 										<Card>
 											<CardContent className="py-8 text-center">
 												<div className="space-y-4">
 													<div>
-														<Headphones className="mx-auto mb-3 h-12 w-12 text-muted-foreground" />
+														<MicIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
 														<h3 className="font-semibold text-foreground text-lg">No Interviews Yet</h3>
 														<p className="text-muted-foreground text-sm">
 															Add your first interview to start generating insights and analysis
@@ -990,7 +1019,7 @@ export default function ProjectStatusScreen({
 													<Button
 														onClick={() => {
 															if (routes) {
-																window.location.href = routes.interviews.onboard()
+																window.location.href = routes.interviews.upload()
 															}
 														}}
 														className="bg-green-600 hover:bg-green-700"
@@ -1004,12 +1033,12 @@ export default function ProjectStatusScreen({
 									</div>
 								)}
 
-								{/* Next Actions */}
+								{/* 4. Recommended Next Steps */}
 								{statusData && displayData.nextSteps?.length > 0 && (
 									<div>
 										<div className="mb-3 flex items-center gap-2">
 											<ArrowRight className="h-5 w-5 text-blue-600" />
-											Recommended Actions
+											Recommended Next Steps
 										</div>
 										<Card>
 											<CardContent className="space-y-3">
@@ -1039,7 +1068,7 @@ export default function ProjectStatusScreen({
 											// TODO: Temporarily just go to upload instead of naming the interview. it's quicker and we have a small DB insert blocker.
 											onClick={() => {
 												if (routes) {
-													window.location.href = routes.interviews.onboard()
+													window.location.href = routes.interviews.upload()
 												}
 											}}
 											// onClick={() => routes && (window.location.href = routes.interviews.new())}
