@@ -6,6 +6,7 @@ import {
 	ChevronDown,
 	Clock,
 	GripVertical,
+	MessageCircleQuestion,
 	MoreHorizontal,
 	Pencil,
 	Plus,
@@ -25,6 +26,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Slider } from "~/components/ui/slider"
 import { Switch } from "~/components/ui/switch"
 import { Textarea } from "~/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import type { QuestionInput } from "~/types"
@@ -62,6 +64,12 @@ interface Question {
 	status: "proposed" | "asked" | "answered" | "skipped" | "rejected"
 	timesAnswered: number
 	source?: "ai" | "user" // Track whether question is AI-generated or user-created
+	qualityFlag?: {
+		assessment: "red" | "yellow" | "green"
+		score: number
+		description: string
+		color?: string // Optional custom color override
+	}
 }
 
 const questionCategories = [
@@ -148,6 +156,45 @@ const _questionCategoriesVariants = {
 	},
 } as const
 
+// Quality flag component
+function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) {
+	if (!qualityFlag) return null
+	
+	const getColorClasses = (assessment: string) => {
+		switch (assessment) {
+			case "red":
+				return "bg-red-100 text-red-700 border-red-200"
+			case "yellow":
+				return "bg-yellow-100 text-yellow-700 border-yellow-200"
+			case "green":
+				return "bg-green-100 text-green-700 border-green-200"
+			default:
+				return "bg-gray-100 text-gray-700 border-gray-200"
+		}
+	}
+
+	return (
+		<TooltipProvider>
+			<Tooltip>
+				<TooltipTrigger asChild>
+					<div className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${getColorClasses(qualityFlag.assessment)}`}>
+						Q
+					</div>
+				</TooltipTrigger>
+				<TooltipContent>
+					<div className="max-w-xs">
+						<div className="font-semibold">Quality Assessment</div>
+						<div className="text-xs text-muted-foreground">
+							Score: {qualityFlag.score}/100 ({qualityFlag.assessment.toUpperCase()})
+						</div>
+						<div className="mt-1 text-xs">{qualityFlag.description}</div>
+					</div>
+				</TooltipContent>
+			</Tooltip>
+		</TooltipProvider>
+	)
+}
+
 export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const {
 		projectId,
@@ -186,6 +233,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [newQuestionCategory, setNewQuestionCategory] = useState("context")
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [editingText, setEditingText] = useState("")
+	const [addingCustomQuestion, setAddingCustomQuestion] = useState(false)
 
 	const supabase = createClient()
 
@@ -231,6 +279,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				const questionsData = (meta.questions as QuestionInput[] | undefined) || []
 				const settings = (meta.settings as Record<string, unknown> | undefined) || {}
 
+				// Assign stable IDs for this load so selection mapping and formatting
+				// reference the exact same identifiers, even when legacy entries
+				// didn't persist an id in meta.
+				const resolvedIds: string[] = questionsData.map((q) => q.id || crypto.randomUUID())
+
 				// Load saved settings if they exist
 				if (settings.timeMinutes) setTimeMinutes(settings.timeMinutes)
 				if (settings.purpose) setPurpose(settings.purpose)
@@ -238,8 +291,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				if (settings.goDeepMode !== undefined) setGoDeepMode(settings.goDeepMode)
 				if (settings.customInstructions) setCustomInstructions(settings.customInstructions)
 
-				const formattedQuestions: Question[] = questionsData.map((q: QuestionInput) => ({
-					id: q.id || crypto.randomUUID(),
+				const formattedQuestions: Question[] = questionsData.map((q: QuestionInput, idx: number) => ({
+					id: resolvedIds[idx],
 					text: q.text || q.question || "",
 					categoryId: q.categoryId || q.category || "context",
 					scores: q.scores || {
@@ -249,14 +302,17 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					},
 					rationale: q.rationale || "",
 					status: (q.status as Question["status"]) || "proposed",
-					timesAnswered: answerCountMap.get(q.id || crypto.randomUUID()) || 0,
+					timesAnswered: answerCountMap.get(q.id || resolvedIds[idx]) || 0,
 					source: (q as QuestionInput & { source?: "ai" | "user" }).source || "ai", // Default to AI for existing questions
 				}))
 
-				const selectedQuestionsWithOrder = questionsData
-					.filter((q: QuestionInput) => q.isSelected === true)
-					.sort((a: QuestionInput, b: QuestionInput) => (a.selectedOrder || 0) - (b.selectedOrder || 0))
-					.map((q: QuestionInput) => (q.id as string) || crypto.randomUUID())
+				// Build selected ids using the same resolvedIds mapping and support both
+				// legacy selectedOrder-only and current isSelected=true markers.
+				const enriched = questionsData.map((q, idx) => ({ q, idx }))
+				const selectedQuestionsWithOrder = enriched
+					.filter(({ q }) => q && (q.isSelected === true || typeof q.selectedOrder === "number"))
+					.sort((a, b) => (a.q.selectedOrder ?? 1e9) - (b.q.selectedOrder ?? 1e9))
+					.map(({ idx }) => resolvedIds[idx])
 
 				setQuestions(formattedQuestions)
 				if (selectedQuestionsWithOrder.length > 0) {
@@ -317,6 +373,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				estimatedMinutes: estimateMinutesPerQuestion(q, purpose, familiarity),
 			}))
 
+		// Quick lookup map for id → question
+		const byId = new Map(allQuestionsWithScores.map((q) => [q.id, q]))
+
 		let autoSelectedIds: string[] = []
 		if (selectedQuestionIds.length === 0) {
 			let selected: typeof allQuestionsWithScores = []
@@ -359,17 +418,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			autoSelectedIds = selected.map((q) => q.id)
 		}
 
-		const idsToUse = selectedQuestionIds.length > 0 ? selectedQuestionIds : autoSelectedIds
-		// Ensure uniqueness in the selected order to prevent duplicate rendering/markers
+		const idsToUseRaw = selectedQuestionIds.length > 0 ? selectedQuestionIds : autoSelectedIds
+		// Sanitize: keep only ids that exist, preserve order, and de-dupe
 		const seen = new Set<string>()
-		const orderedSelectedQuestions = idsToUse
-			.map((id) => allQuestionsWithScores.find((q) => q.id === id))
-			.filter((q): q is Question & { compositeScore: number; estimatedMinutes: number } => Boolean(q))
-			.filter((q) => {
-				if (seen.has(q.id)) return false
-				seen.add(q.id)
-				return true
-			})
+		const idsToUse: string[] = []
+		for (const id of idsToUseRaw) {
+			if (!byId.has(id)) continue
+			if (seen.has(id)) continue
+			seen.add(id)
+			idsToUse.push(id)
+		}
+
+		const orderedSelectedQuestions = idsToUse.map((id) => byId.get(id)!)
 
 		const totalEstimatedTime = orderedSelectedQuestions.reduce((sum, q) => sum + q.estimatedMinutes, 0)
 
@@ -385,11 +445,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 		const belowCount = overflowIndex >= 0 ? orderedSelectedQuestions.length - overflowIndex : 0
 
+		// Remaining = simple set difference for correctness and speed
+		const selectedSet = new Set(idsToUse)
+		const remainingQuestions = allQuestionsWithScores.filter((q) => !selectedSet.has(q.id))
+
 		return {
 			questions: orderedSelectedQuestions,
 			totalEstimatedTime,
 			targetTime: timeMinutes,
-			remainingQuestions: allQuestionsWithScores.filter((q) => !orderedSelectedQuestions.find((s) => s.id === q.id)),
+			remainingQuestions,
 			overflowIndex,
 			belowCount,
 		}
@@ -522,6 +586,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			return
 		}
 
+		setAddingCustomQuestion(true)
 		try {
 			// Evaluate question quality first
 			const response = await fetch("/api/evaluate-question", {
@@ -529,7 +594,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				headers: { "Content-Type": "application/json" },
 				body: JSON.stringify({
 					question: newQuestionText.trim(),
-					research_context: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`
+					research_context: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`,
 				}),
 			})
 
@@ -538,25 +603,28 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			}
 
 			const evaluation = await response.json()
-			
+
 			// Show quality feedback
 			const qualityMessage = `Quality Score: ${evaluation.score}/100 (${evaluation.overall_quality.toUpperCase()})`
-			
+
 			if (evaluation.overall_quality === "red") {
-				toast.error(`Question quality needs improvement`, {
+				toast.error("Question quality needs improvement", {
 					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
 					duration: 6000,
+					className: "text-red-600"
 				})
 				// Still add the question but warn the user
 			} else if (evaluation.overall_quality === "yellow") {
-				toast.warning(`Question could be improved`, {
+				toast.warning("Question could be improved", {
 					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
 					duration: 5000,
+					className: "text-yellow-600"
 				})
 			} else {
-				toast.success(`Great question!`, {
+				toast.success("Great question!", {
 					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
 					duration: 4000,
+					className: "text-green-600"
 				})
 			}
 
@@ -565,15 +633,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				id: crypto.randomUUID(),
 				text: newQuestionText.trim(),
 				categoryId: newQuestionCategory,
-				scores: { 
-					importance: Math.max(0.3, evaluation.score / 100), 
-					goalMatch: 0.6, 
-					novelty: 0.5 
+				scores: {
+					importance: Math.max(0.3, evaluation.score / 100),
+					goalMatch: 0.6,
+					novelty: 0.5,
 				},
 				rationale: `Custom user question (AI quality score: ${evaluation.score}/100)`,
 				status: "proposed",
 				timesAnswered: 0,
 				source: "user",
+				qualityFlag: {
+					assessment: evaluation.overall_quality as "red" | "yellow" | "green",
+					score: evaluation.score,
+					description: evaluation.quick_feedback || "Quality assessment completed"
+				}
 			}
 
 			const updatedQuestions = [...questions, customQuestion]
@@ -592,10 +665,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			setNewQuestionText("")
 			setNewQuestionCategory("context")
 			setShowAddCustomQuestion(false)
-
 		} catch (error) {
 			console.error("Question evaluation/addition error:", error)
-			
+
 			// Fallback to adding without evaluation
 			const customQuestion: Question = {
 				id: crypto.randomUUID(),
@@ -606,6 +678,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				status: "proposed",
 				timesAnswered: 0,
 				source: "user",
+				qualityFlag: {
+					assessment: "yellow",
+					score: 50,
+					description: "Quality evaluation failed - added without assessment"
+				}
 			}
 
 			const updatedQuestions = [...questions, customQuestion]
@@ -627,9 +704,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 			toast.error("Question added without quality check", {
 				description: "Quality evaluation failed, but question was added anyway",
+				className: "text-red-600"
 			})
+		} finally {
+			setAddingCustomQuestion(false)
 		}
-	}, [newQuestionText, newQuestionCategory, questions, selectedQuestionIds, saveQuestionsToDatabase, research_goal, target_roles])
+	}, [
+		newQuestionText,
+		newQuestionCategory,
+		questions,
+		selectedQuestionIds,
+		saveQuestionsToDatabase,
+		research_goal,
+		target_roles,
+	])
 
 	const rejectQuestion = useCallback(
 		async (questionId: string) => {
@@ -872,7 +960,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							/>
 						)}
 						<div className="flex gap-2">
-							<Button onClick={generateQuestions} disabled={generating} variant="outline" className="flex-1">
+							<Button onClick={generateQuestions} disabled={generating} variant="outline" className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50">
 								{generating ? (
 									<>
 										<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" /> Generating
@@ -921,13 +1009,22 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								<div className="flex gap-2">
 									<Button
 										onClick={addCustomQuestion}
-										disabled={!newQuestionText.trim()}
+										disabled={!newQuestionText.trim() || addingCustomQuestion}
 										variant="default"
-										className="flex-1 flex items-center gap-2"
+										className="flex flex-1 items-center gap-2"
 									>
-										<Plus className="h-4 w-4" />
-										<Brain className="h-4 w-4" />
-										Add Question (with Quality Check)
+										{addingCustomQuestion ? (
+											<>
+												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+												Evaluating Quality...
+											</>
+										) : (
+											<>
+												<Plus className="h-4 w-4" />
+												<Brain className="h-4 w-4" />
+												Add Question (with Quality Check)
+											</>
+										)}
 									</Button>
 									<Button
 										onClick={() => {
@@ -942,8 +1039,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								</div>
 							</div>
 						) : (
-							<Button onClick={() => setShowAddCustomQuestion(true)} variant="outline" className="w-full">
-								<User className="mr-2 h-4 w-4" /> Add Custom Question
+							<Button onClick={() => setShowAddCustomQuestion(true)} variant="outline" className="w-full border-blue-500 text-blue-600 hover:bg-blue-50">
+								<MessageCircleQuestion className="mr-2 h-4 w-4" /> Add Custom Question
 							</Button>
 						)}
 					</CardContent>
@@ -955,8 +1052,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							window.location.href = routes.interviews.upload()
 						}
 					}}
-					variant="default"
+					variant="outline"
 					disabled={questionPack.questions.length === 0}
+					className="border-blue-500 text-blue-600 hover:bg-blue-50"
 				>
 					Add Interview
 				</Button>
@@ -976,8 +1074,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						</div>
 					</div>
 				</div>
-				<Card>
-					<CardContent className="py-3">
+				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+					<CardContent className="p-3 sm:p-4">
 						<DragDropContext onDragEnd={onDragEnd}>
 							<Droppable droppableId="question-pack">
 								{(provided) => (
@@ -1010,9 +1108,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																className={`${snapshot.isDragging ? "opacity-50" : ""}`}
 															>
 																<Card
-																	className={`border-l-4 ${fitsInTime ? "border-l-blue-500" : "border-l-orange-500 bg-orange-50/30 dark:bg-orange-950/30"}`}
+																	className={`border-0 shadow-none sm:rounded-xl sm:border sm:border-l-4 sm:shadow-sm ${fitsInTime ? "sm:border-l-blue-500" : "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"}`}
 																>
-																	<CardContent className="px-3">
+																	<CardContent className="p-3 sm:p-4">
 																		<div className="flex items-start gap-3">
 																			<div className="mt-0.5 flex items-center gap-2">
 																				<div {...provided.dragHandleProps}>
@@ -1100,14 +1198,19 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					</p>
 																				)}
 																			</div>
-																			<Button
-																				variant="ghost"
-																				size="sm"
-																				onClick={() => setEditingId(question.id) || setEditingText(question.text)}
-																				className="text-gray-500 hover:text-gray-700"
-																			>
-																				<Pencil className="h-4 w-4" />
-																			</Button>
+																			<div className="flex items-center gap-1">
+																				{question.qualityFlag && (
+																					<QualityFlag qualityFlag={question.qualityFlag} />
+																				)}
+																				<Button
+																					variant="ghost"
+																					size="sm"
+																					onClick={() => setEditingId(question.id) || setEditingText(question.text)}
+																					className="text-gray-500 hover:text-gray-700"
+																				>
+																					<Pencil className="h-4 w-4" />
+																				</Button>
+																			</div>
 																			<Button
 																				variant="ghost"
 																				size="sm"
@@ -1149,8 +1252,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												Additional questions below the line - click to include in your pack:
 											</p>
 											{questionPack.remainingQuestions.map((question) => (
-												<Card key={question.id} className="border-gray-300 border-dashed py-2">
-													<CardContent className="p-3">
+												<Card
+													key={question.id}
+													className="border-0 py-2 shadow-none sm:rounded-xl sm:border sm:border-gray-300 sm:border-dashed sm:shadow-sm"
+												>
+													<CardContent className="p-3 sm:p-4">
 														<div className="flex items-start gap-3">
 															<button
 																onClick={() => addQuestionFromReserve(question)}
@@ -1196,13 +1302,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																	{question.text}
 																</p>
 															</div>
-															<button
-																onClick={() => rejectQuestion(question.id)}
-																className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
-																title="Reject this question (won't appear in future generations)"
-															>
-																<X className="h-4 w-4" />
-															</button>
+															<div className="flex items-center gap-1">
+																{question.qualityFlag && (
+																	<QualityFlag qualityFlag={question.qualityFlag} />
+																)}
+																<button
+																	onClick={() => rejectQuestion(question.id)}
+																	className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
+																	title="Reject this question (won't appear in future generations)"
+																>
+																	<X className="h-4 w-4" />
+																</button>
+															</div>
 														</div>
 													</CardContent>
 												</Card>

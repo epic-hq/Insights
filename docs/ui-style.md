@@ -138,7 +138,16 @@ Inter is available via Google Fonts; fallback to `system-ui`.
 | Hover | Slight darken (`brightness-95`) & `translate-y-0.5` for buttons |
 | Focus | `ring-2 ring-primary-500` |
 | Disabled | `opacity-50 cursor-not-allowed` |
+| Loading | Spinner with `animate-spin rounded-full border-current border-b-2` |
 | Error | Border `error` + icon |
+
+### Loading States & Spinners
+
+For async operations like API calls, use consistent spinner pattern:
+- **Spinner style**: `<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />`  
+- **Button text**: Change to indicate action in progress (e.g., "Evaluating Quality...", "Generating...")
+- **Disable interaction**: Set `disabled={isLoading}` to prevent multiple requests
+- **Examples**: Custom question creation, AI generation, form submissions
 
 ---
 

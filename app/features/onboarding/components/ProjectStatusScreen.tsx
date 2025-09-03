@@ -569,12 +569,12 @@ export default function ProjectStatusScreen({
 													}
 												}}
 											>
-												Edit Project Goals
+												Edit
 											</Button>{" "}
 										</div>
 									</div>
-									<Card>
-										<CardContent className="space-y-6">
+									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+										<CardContent className="space-y-6 p-3 sm:p-4">
 											{/* Research Goals */}
 											{getGoalSections().length > 0 && (
 												<div>
@@ -677,8 +677,8 @@ export default function ProjectStatusScreen({
 											Personas & Themes
 										</div>
 									</div>
-									<Card>
-										<CardContent className="space-y-4">
+									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+										<CardContent className="space-y-4 p-3 sm:p-4">
 											{personas?.length === 0 && (
 												<p className="text-muted-foreground text-sm">
 													No personas yet — add interviews to generate personas.
@@ -853,86 +853,88 @@ export default function ProjectStatusScreen({
 												}}
 											>
 												<Settings2 className="h-5 w-5 text-indigo-600" />
-												Manage Questions
+												Edit
 											</Button>
 										</div>
 									</div>
-									<Card>
-										<CardContent className="space-y-6">
+									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+										<CardContent className="space-y-6 p-3 sm:p-4">
 											{/* Interview Questions */}
 											<div>
 												{/* <div className="mb-3 text-muted-foreground/50 text-sm">Interview Questions</div> */}
 												<div className="space-y-3">
-                                            {getQuestionsSections().length > 0 ? (
-                                                getQuestionsSections()
-                                                    .slice(0, 1)
-                                                    .map((section) => {
-                                                        const all = Array.isArray(section.meta?.questions) ? (section.meta!.questions as any[]) : []
-                                                        // Prefer the user's selected pack order if present
-                                                        const selected = all
-                                                            .filter((q: any) => q && (q.isSelected === true || typeof q.selectedOrder === "number"))
-                                                            .sort((a: any, b: any) => (a.selectedOrder ?? 1e9) - (b.selectedOrder ?? 1e9))
-                                                        const questions = selected.length > 0 ? selected : all
-                                                        const timeLimit = Number((section.meta as any)?.settings?.timeMinutes) || 45
-                                                        let used = 0
-                                                        const fit: { text: string; id: string; estimatedMinutes?: number }[] = []
-                                                        for (const q of questions as any[]) {
-                                                            const est = Number(q?.estimatedMinutes) || 4
-                                                            if (used + est <= timeLimit) {
-                                                                fit.push(q)
-                                                                used += est
-                                                            } else {
-                                                                break
-                                                            }
-                                                        }
-                                                        const remainingCount = Math.max(questions.length - fit.length, 0)
-                                                        return (
-                                                            <div key={section.id} className="space-y-3">
-                                                                {fit.map((question: { text: string; id: string }, index: number) => {
-                                                                    const questionStatus = getQuestionStatus(question.text)
-                                                                    return (
-                                                                        <div
-                                                                            key={`question-${question.id || index}`}
-                                                                            className={`rounded-lg border p-3 ${
-                                                                                questionStatus.status === "answered"
-                                                                                    ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-                                                                                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-                                                                            }`}
-                                                                        >
-                                                                            <div className="flex items-start gap-2">
-                                                                                {questionStatus.status === "answered" ? (
-                                                                                    <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-                                                                                ) : (
-                                                                                    <CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-                                                                                )}
-                                                                                <div className="flex-1">
-                                                                                    <p className="font-medium text-foreground text-sm">
-                                                                                        {question.text}
-                                                                                    </p>
-                                                                                    {questionStatus.status === "answered" && questionStatus.answer && (
-                                                                                        <div className="mt-2 line-clamp-2 text-muted-foreground text-sm">
-                                                                                            {questionStatus.answer}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                            </div>
-                                                                        </div>
-                                                                    )
-                                                                })}
-                                                                {remainingCount > 0 && (
-                                                                    <p className="text-muted-foreground text-xs">
-                                                                        +{remainingCount} more questions (won't fit into {timeLimit}m)
-                                                                    </p>
-                                                                )}
-                                                            </div>
-                                                        )
-                                                    })
-                                            ) : (
-                                                <div className="py-4 text-center">
-                                                    <BookOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-                                                    <p className="text-muted-foreground text-sm">No interview questions generated yet</p>
-                                                    <Button
-                                                        variant="outline"
+													{getQuestionsSections().length > 0 ? (
+														getQuestionsSections()
+															.slice(0, 1)
+															.map((section) => {
+																const all = Array.isArray(section.meta?.questions)
+																	? (section.meta!.questions as any[])
+																	: []
+																// Prefer the user's selected pack order if present
+																const selected = all
+																	.filter(
+																		(q: any) => q && (q.isSelected === true || typeof q.selectedOrder === "number")
+																	)
+																	.sort((a: any, b: any) => (a.selectedOrder ?? 1e9) - (b.selectedOrder ?? 1e9))
+																const questions = selected.length > 0 ? selected : all
+																const timeLimit = Number((section.meta as any)?.settings?.timeMinutes) || 45
+																let used = 0
+																const fit: { text: string; id: string; estimatedMinutes?: number }[] = []
+																for (const q of questions as any[]) {
+																	const est = Number(q?.estimatedMinutes) || 4
+																	if (used + est <= timeLimit) {
+																		fit.push(q)
+																		used += est
+																	} else {
+																		break
+																	}
+																}
+																const remainingCount = Math.max(questions.length - fit.length, 0)
+																return (
+																	<div key={section.id} className="space-y-3">
+																		{fit.map((question: { text: string; id: string }, index: number) => {
+																			const questionStatus = getQuestionStatus(question.text)
+																			return (
+																				<div
+																					key={`question-${question.id || index}`}
+																					className={`rounded-lg border p-3 ${
+																						questionStatus.status === "answered"
+																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+																					}`}
+																				>
+																					<div className="flex items-start gap-2">
+																						{questionStatus.status === "answered" ? (
+																							<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+																						) : (
+																							<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+																						)}
+																						<div className="flex-1">
+																							<p className="font-medium text-foreground text-sm">{question.text}</p>
+																							{questionStatus.status === "answered" && questionStatus.answer && (
+																								<div className="mt-2 line-clamp-2 text-muted-foreground text-sm">
+																									{questionStatus.answer}
+																								</div>
+																							)}
+																						</div>
+																					</div>
+																				</div>
+																			)
+																		})}
+																		{remainingCount > 0 && (
+																			<p className="text-muted-foreground text-xs">
+																				+{remainingCount} more questions (won't fit into {timeLimit}m)
+																			</p>
+																		)}
+																	</div>
+																)
+															})
+													) : (
+														<div className="py-4 text-center">
+															<BookOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+															<p className="text-muted-foreground text-sm">No interview questions generated yet</p>
+															<Button
+																variant="outline"
 																size="sm"
 																className="mt-2"
 																onClick={() => {
@@ -1025,8 +1027,8 @@ export default function ProjectStatusScreen({
 											<MicIcon className="h-5 w-5 text-green-600" />
 											Get Started with Interviews
 										</div>
-										<Card>
-											<CardContent className="py-8 text-center">
+										<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+											<CardContent className="py-8 p-3 sm:p-4 text-center">
 												<div className="space-y-4">
 													<div>
 														<MicIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
@@ -1059,8 +1061,8 @@ export default function ProjectStatusScreen({
 											<ArrowRight className="h-5 w-5 text-blue-600" />
 											Recommended Next Steps
 										</div>
-										<Card>
-											<CardContent className="space-y-3">
+										<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+											<CardContent className="space-y-3 p-3 sm:p-4">
 												{displayData.nextSteps.slice(0, 3).map((step: string, index: number) => (
 													<div key={`action-${index}`} className="flex items-start gap-3">
 														<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
@@ -1078,11 +1080,11 @@ export default function ProjectStatusScreen({
 							{/* Right Column: Quick Actions */}
 							<div className="space-y-6">
 								{/* Quick Actions */}
-								<Card>
-									<CardHeader className="pb-2">
+								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+									<CardHeader className="pb-2 p-3 sm:p-4">
 										<CardTitle>Quick Actions</CardTitle>
 									</CardHeader>
-									<CardContent className="space-y-3">
+									<CardContent className="space-y-3 p-3 sm:p-4">
 										<Button
 											// TODO: Temporarily just go to upload instead of naming the interview. it's quicker and we have a small DB insert blocker.
 											onClick={() => {
@@ -1146,11 +1148,11 @@ export default function ProjectStatusScreen({
 
 								{/* Research Status */}
 								{statusData && displayData.completionScore > 0 && displayData.confidenceLevel && (
-									<Card>
-										<CardHeader className="pb-2">
+									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+										<CardHeader className="pb-2 p-3 sm:p-4">
 											<CardTitle>Research Status</CardTitle>
 										</CardHeader>
-										<CardContent>
+										<CardContent className="p-3 sm:p-4">
 											<div className="mb-3 flex items-center gap-2">
 												<Badge
 													variant={

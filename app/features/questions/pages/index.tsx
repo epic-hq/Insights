@@ -1,4 +1,4 @@
-import { BookOpen } from "lucide-react"
+import { BookOpen, MessageCircleQuestion } from "lucide-react"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { useCurrentProject } from "~/contexts/current-project-context"
 
@@ -19,10 +19,9 @@ export default function QuestionsIndex() {
 		<div className="mx-auto max-w-7xl p-4 sm:p-8">
 			<div className="mb-6 sm:mb-8">
 				<h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
-					<BookOpen className="h-8 w-8" />
+					<MessageCircleQuestion className="h-8 w-8" />
 					Interview Questions
 				</h2>
-				<p className="text-gray-600">Manage your interview questions</p>
 			</div>
 
 			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
