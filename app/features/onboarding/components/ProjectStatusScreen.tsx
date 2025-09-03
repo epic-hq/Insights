@@ -9,6 +9,7 @@ import {
 	Info,
 	Lightbulb,
 	Loader2,
+	MessageCircleQuestionIcon,
 	Mic2Icon,
 	MicIcon,
 	PlusCircle,
@@ -519,7 +520,7 @@ export default function ProjectStatusScreen({
 									<div className="mb-3 flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Target className="h-5 w-5 text-blue-600" />
-											Goal and Key Decisions
+											Goal
 											{/* Progress indicator moved here */}
 											{statusData && displayData.completionScore > 0 && (
 												<div className="mt-2 flex items-center gap-2">
@@ -838,8 +839,8 @@ export default function ProjectStatusScreen({
 								<div>
 									<div className="mb-3 flex items-center justify-between">
 										<div className="flex items-center gap-2">
-											<Headphones className="h-5 w-5 text-indigo-600" />
-											Interviews
+											<MessageCircleQuestionIcon className="h-5 w-5 text-indigo-600" />
+											Questions
 										</div>
 										<div className="flex flex-row items-center gap-2">
 											<Button
@@ -860,60 +861,78 @@ export default function ProjectStatusScreen({
 										<CardContent className="space-y-6">
 											{/* Interview Questions */}
 											<div>
-												<div className="mb-3 text-muted-foreground/50 text-sm">Interview Questions</div>
+												{/* <div className="mb-3 text-muted-foreground/50 text-sm">Interview Questions</div> */}
 												<div className="space-y-3">
-													{getQuestionsSections().length > 0 ? (
-														getQuestionsSections()
-															.slice(0, 1)
-															.map((section) => {
-																const questions = Array.isArray(section.meta?.questions) ? section.meta.questions : []
-																return (
-																	<div key={section.id} className="space-y-3">
-																		{questions
-																			.slice(0, 3)
-																			.map((question: { text: string; id: string }, index: number) => {
-																				const questionStatus = getQuestionStatus(question.text)
-																				return (
-																					<div
-																						key={`question-${question.id || index}`}
-																						className={`rounded-lg border p-3 ${
-																							questionStatus.status === "answered"
-																								? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-																								: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-																						}`}
-																					>
-																						<div className="flex items-start gap-2">
-																							{questionStatus.status === "answered" ? (
-																								<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-																							) : (
-																								<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-																							)}
-																							<div className="flex-1">
-																								<p className="font-medium text-foreground text-sm">{question.text}</p>
-																								{questionStatus.status === "answered" && questionStatus.answer && (
-																									<div className="mt-2 line-clamp-2 text-muted-foreground text-sm">
-																										{questionStatus.answer}
-																									</div>
-																								)}
-																							</div>
-																						</div>
-																					</div>
-																				)
-																			})}
-																		{questions.length > 3 && (
-																			<p className="text-muted-foreground text-xs">
-																				+{questions.length - 3} more interview questions
-																			</p>
-																		)}
-																	</div>
-																)
-															})
-													) : (
-														<div className="py-4 text-center">
-															<BookOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-															<p className="text-muted-foreground text-sm">No interview questions generated yet</p>
-															<Button
-																variant="outline"
+                                            {getQuestionsSections().length > 0 ? (
+                                                getQuestionsSections()
+                                                    .slice(0, 1)
+                                                    .map((section) => {
+                                                        const all = Array.isArray(section.meta?.questions) ? (section.meta!.questions as any[]) : []
+                                                        // Prefer the user's selected pack order if present
+                                                        const selected = all
+                                                            .filter((q: any) => q && (q.isSelected === true || typeof q.selectedOrder === "number"))
+                                                            .sort((a: any, b: any) => (a.selectedOrder ?? 1e9) - (b.selectedOrder ?? 1e9))
+                                                        const questions = selected.length > 0 ? selected : all
+                                                        const timeLimit = Number((section.meta as any)?.settings?.timeMinutes) || 45
+                                                        let used = 0
+                                                        const fit: { text: string; id: string; estimatedMinutes?: number }[] = []
+                                                        for (const q of questions as any[]) {
+                                                            const est = Number(q?.estimatedMinutes) || 4
+                                                            if (used + est <= timeLimit) {
+                                                                fit.push(q)
+                                                                used += est
+                                                            } else {
+                                                                break
+                                                            }
+                                                        }
+                                                        const remainingCount = Math.max(questions.length - fit.length, 0)
+                                                        return (
+                                                            <div key={section.id} className="space-y-3">
+                                                                {fit.map((question: { text: string; id: string }, index: number) => {
+                                                                    const questionStatus = getQuestionStatus(question.text)
+                                                                    return (
+                                                                        <div
+                                                                            key={`question-${question.id || index}`}
+                                                                            className={`rounded-lg border p-3 ${
+                                                                                questionStatus.status === "answered"
+                                                                                    ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+                                                                                    : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+                                                                            }`}
+                                                                        >
+                                                                            <div className="flex items-start gap-2">
+                                                                                {questionStatus.status === "answered" ? (
+                                                                                    <CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
+                                                                                ) : (
+                                                                                    <CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
+                                                                                )}
+                                                                                <div className="flex-1">
+                                                                                    <p className="font-medium text-foreground text-sm">
+                                                                                        {question.text}
+                                                                                    </p>
+                                                                                    {questionStatus.status === "answered" && questionStatus.answer && (
+                                                                                        <div className="mt-2 line-clamp-2 text-muted-foreground text-sm">
+                                                                                            {questionStatus.answer}
+                                                                                        </div>
+                                                                                    )}
+                                                                                </div>
+                                                                            </div>
+                                                                        </div>
+                                                                    )
+                                                                })}
+                                                                {remainingCount > 0 && (
+                                                                    <p className="text-muted-foreground text-xs">
+                                                                        +{remainingCount} more questions (won't fit into {timeLimit}m)
+                                                                    </p>
+                                                                )}
+                                                            </div>
+                                                        )
+                                                    })
+                                            ) : (
+                                                <div className="py-4 text-center">
+                                                    <BookOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+                                                    <p className="text-muted-foreground text-sm">No interview questions generated yet</p>
+                                                    <Button
+                                                        variant="outline"
 																size="sm"
 																className="mt-2"
 																onClick={() => {

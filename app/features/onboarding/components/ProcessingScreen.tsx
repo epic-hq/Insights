@@ -111,7 +111,7 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 			</div>
 
 			{/* Main Content - Centered & Clean */}
-			<div className="flex min-h-[calc(100vh-89px)] items-center justify-center p-8">
+			<div className="flex min-h-[calc(100vh-300px)] items-center justify-center p-8">
 				<div className="w-full max-w-lg text-center">
 					{/* Primary Progress Indicator */}
 					<div className="mb-8">

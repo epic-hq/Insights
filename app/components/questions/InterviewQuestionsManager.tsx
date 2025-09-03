@@ -177,6 +177,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [questions, setQuestions] = useState<Question[]>([])
 	const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([])
 	const [hasInitialized, setHasInitialized] = useState(false)
+	const [skipDebounce, setSkipDebounce] = useState(false)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
 	const [isDesktopSettingsOpen, setIsDesktopSettingsOpen] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
@@ -461,18 +462,21 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 	// Save settings changes to database (separate from question changes)
 	useEffect(() => {
-		if (!projectId || !hasInitialized) return
+		if (!projectId || !hasInitialized || skipDebounce) return
 		const timeoutId = setTimeout(() => {
 			saveQuestionsToDatabase(questions, selectedQuestionIds)
 		}, 1000) // Debounce saves - longer timeout for settings
 		return () => clearTimeout(timeoutId)
-	}, [projectId, hasInitialized, questions, selectedQuestionIds, saveQuestionsToDatabase])
+	}, [projectId, hasInitialized, questions, selectedQuestionIds, saveQuestionsToDatabase, skipDebounce])
 
 	const removeQuestion = useCallback(
 		async (id: string) => {
 			const newIds = selectedQuestionIds.filter((qId) => qId !== id)
 			setSelectedQuestionIds(newIds)
+			setSkipDebounce(true)
 			await saveQuestionsToDatabase(questions, newIds)
+			// Reset the flag after a delay to allow debounced saves for other changes
+			setTimeout(() => setSkipDebounce(false), 1500)
 		},
 		[selectedQuestionIds, questions, saveQuestionsToDatabase]
 	)
@@ -485,7 +489,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			newIds.splice(toIndex, 0, removed)
 			setSelectedQuestionIds(newIds)
 			setHasInitialized(true)
+			setSkipDebounce(true)
 			await saveQuestionsToDatabase(questions, newIds)
+			setTimeout(() => setSkipDebounce(false), 1500)
 		},
 		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
 	)
@@ -503,7 +509,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const newIds = [...baseIds, question.id]
 			setSelectedQuestionIds(newIds)
 			setHasInitialized(true)
+			setSkipDebounce(true)
 			await saveQuestionsToDatabase(questions, newIds)
+			setTimeout(() => setSkipDebounce(false), 1500)
 		},
 		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
 	)
@@ -514,36 +522,114 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			return
 		}
 
-		const customQuestion: Question = {
-			id: crypto.randomUUID(),
-			text: newQuestionText.trim(),
-			categoryId: newQuestionCategory,
-			scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 }, // Default decent scores for custom questions
-			rationale: "Custom user question",
-			status: "proposed",
-			timesAnswered: 0,
-			source: "user",
+		try {
+			// Evaluate question quality first
+			const response = await fetch("/api/evaluate-question", {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					question: newQuestionText.trim(),
+					research_context: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`
+				}),
+			})
+
+			if (!response.ok) {
+				throw new Error("Quality evaluation failed")
+			}
+
+			const evaluation = await response.json()
+			
+			// Show quality feedback
+			const qualityMessage = `Quality Score: ${evaluation.score}/100 (${evaluation.overall_quality.toUpperCase()})`
+			
+			if (evaluation.overall_quality === "red") {
+				toast.error(`Question quality needs improvement`, {
+					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
+					duration: 6000,
+				})
+				// Still add the question but warn the user
+			} else if (evaluation.overall_quality === "yellow") {
+				toast.warning(`Question could be improved`, {
+					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
+					duration: 5000,
+				})
+			} else {
+				toast.success(`Great question!`, {
+					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
+					duration: 4000,
+				})
+			}
+
+			// Add the question regardless of quality (with user awareness)
+			const customQuestion: Question = {
+				id: crypto.randomUUID(),
+				text: newQuestionText.trim(),
+				categoryId: newQuestionCategory,
+				scores: { 
+					importance: Math.max(0.3, evaluation.score / 100), 
+					goalMatch: 0.6, 
+					novelty: 0.5 
+				},
+				rationale: `Custom user question (AI quality score: ${evaluation.score}/100)`,
+				status: "proposed",
+				timesAnswered: 0,
+				source: "user",
+			}
+
+			const updatedQuestions = [...questions, customQuestion]
+			setQuestions(updatedQuestions)
+
+			// Auto-add to selected questions
+			const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
+			setSelectedQuestionIds(newSelectedIds)
+
+			// Save to database
+			setSkipDebounce(true)
+			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			setTimeout(() => setSkipDebounce(false), 1500)
+
+			// Reset form
+			setNewQuestionText("")
+			setNewQuestionCategory("context")
+			setShowAddCustomQuestion(false)
+
+		} catch (error) {
+			console.error("Question evaluation/addition error:", error)
+			
+			// Fallback to adding without evaluation
+			const customQuestion: Question = {
+				id: crypto.randomUUID(),
+				text: newQuestionText.trim(),
+				categoryId: newQuestionCategory,
+				scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 },
+				rationale: "Custom user question",
+				status: "proposed",
+				timesAnswered: 0,
+				source: "user",
+			}
+
+			const updatedQuestions = [...questions, customQuestion]
+			setQuestions(updatedQuestions)
+
+			// Auto-add to selected questions
+			const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
+			setSelectedQuestionIds(newSelectedIds)
+
+			// Save to database
+			setSkipDebounce(true)
+			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			setTimeout(() => setSkipDebounce(false), 1500)
+
+			// Reset form
+			setNewQuestionText("")
+			setNewQuestionCategory("context")
+			setShowAddCustomQuestion(false)
+
+			toast.error("Question added without quality check", {
+				description: "Quality evaluation failed, but question was added anyway",
+			})
 		}
-
-		const updatedQuestions = [...questions, customQuestion]
-		setQuestions(updatedQuestions)
-
-		// Auto-add to selected questions
-		const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
-		setSelectedQuestionIds(newSelectedIds)
-
-		// Save to database
-		await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
-
-		// Reset form
-		setNewQuestionText("")
-		setNewQuestionCategory("context")
-		setShowAddCustomQuestion(false)
-
-		toast.success("Custom question added", {
-			description: "Your question has been added to the question pack",
-		})
-	}, [newQuestionText, newQuestionCategory, questions, selectedQuestionIds, saveQuestionsToDatabase])
+	}, [newQuestionText, newQuestionCategory, questions, selectedQuestionIds, saveQuestionsToDatabase, research_goal, target_roles])
 
 	const rejectQuestion = useCallback(
 		async (questionId: string) => {
@@ -554,7 +640,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const newSelectedIds = selectedQuestionIds.filter((id) => id !== questionId)
 			setSelectedQuestionIds(newSelectedIds)
 
+			setSkipDebounce(true)
 			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			setTimeout(() => setSkipDebounce(false), 1500)
 
 			toast.success("Question rejected", {
 				description: "This question won't appear in future generations",
@@ -835,9 +923,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										onClick={addCustomQuestion}
 										disabled={!newQuestionText.trim()}
 										variant="default"
-										className="flex-1"
+										className="flex-1 flex items-center gap-2"
 									>
-										<Plus className="mr-2 h-4 w-4" /> Add Custom Question
+										<Plus className="h-4 w-4" />
+										<Brain className="h-4 w-4" />
+										Add Question (with Quality Check)
 									</Button>
 									<Button
 										onClick={() => {
@@ -964,13 +1054,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				</div>
 																				{editingId === question.id ? (
 																					<div className="mb-2 flex items-center gap-2">
-														<Textarea
-															value={editingText}
-															onChange={(e) => setEditingText(e.target.value)}
-															autoFocus
-															rows={2}
-															className="resize-none"
-														/>
+																						<Textarea
+																							value={editingText}
+																							onChange={(e) => setEditingText(e.target.value)}
+																							autoFocus
+																							rows={2}
+																							className="resize-none"
+																						/>
 																						<Button
 																							variant="ghost"
 																							size="icon"
@@ -979,7 +1069,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																									q.id === question.id ? { ...q, text: editingText } : q
 																								)
 																								setQuestions(updated)
+																								setSkipDebounce(true)
 																								await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																								setTimeout(() => setSkipDebounce(false), 1500)
 																								setEditingId(null)
 																								setEditingText("")
 																							}}

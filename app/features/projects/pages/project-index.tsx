@@ -4,6 +4,7 @@ import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusS
 import { getProjectById } from "~/features/projects/db"
 import { userContext } from "~/server/user-context"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { getProjectStatusData } from "~/utils/project-status.server"
 
 export const meta: MetaFunction = () => {
   return [{ title: "Project Overview | Insights" }]
@@ -37,6 +38,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     .order("position", { ascending: true, nullsFirst: false })
     .order("created_at", { ascending: false })
 
+  // Load project status (latest analysis or fallback counts)
+  const statusData = await getProjectStatusData(projectId, supabase)
+
   return {
     accountId,
     projectId,
@@ -44,11 +48,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
     icp: project?.description || "",
     projectSections: projectSections || [],
     projectContext,
+    statusData,
   }
 }
 
 export default function ProjectIndex() {
-  const { accountId, projectId, projectName, icp, projectSections } = useLoaderData<typeof loader>()
+  const { accountId, projectId, projectName, icp, projectSections, statusData } = useLoaderData<typeof loader>()
   return (
     <ProjectStatusScreen
       projectName={projectName}
@@ -56,6 +61,7 @@ export default function ProjectIndex() {
       accountId={accountId}
       projectId={projectId}
       projectSections={projectSections}
+      statusData={statusData || undefined}
     />
   )
 }

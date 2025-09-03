@@ -23,23 +23,24 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		} catch {
 			// context not provided for this route; ignore
 		}
-		const project_id = ((formData.get("project_id") as string) || ctxProjectId || null) as string | null
-		let target_orgs = formData.get("target_orgs") as string
-		let target_roles = formData.get("target_roles") as string
-		let research_goal = formData.get("research_goal") as string
-		let research_goal_details = formData.get("research_goal_details") as string
-		let assumptions = formData.get("assumptions") as string
-		let unknowns = formData.get("unknowns") as string
-		const custom_instructions = (formData.get("custom_instructions") as string) || ""
-		const questionCount = Number(formData.get("questionCount") ?? 10)
-		const interview_time_limit = Number(formData.get("interview_time_limit") ?? 60)
+        const project_id = ((formData.get("project_id") as string) || ctxProjectId || null) as string | null
+    let target_orgs = formData.get("target_orgs") as string
+    let target_roles = formData.get("target_roles") as string
+    let research_goal = formData.get("research_goal") as string
+    let research_goal_details = formData.get("research_goal_details") as string
+    let assumptions = formData.get("assumptions") as string
+    let unknowns = formData.get("unknowns") as string
+    let custom_instructions = ((formData.get("custom_instructions") as string) || "").trim()
+        let questionCount = Number(formData.get("questionCount") ?? 10)
+        const interview_time_limit = Number(formData.get("interview_time_limit") ?? 60)
+        let existingQuestions: string[] = []
 
 		// If project_id is provided, load project context from database
-		if (project_id) {
-			const { client: supabase } = getServerClient(request)
+        if (project_id) {
+            const { client: supabase } = getServerClient(request)
 
 			try {
-				const projectContext = await getProjectContextGeneric(supabase, project_id)
+                const projectContext = await getProjectContextGeneric(supabase, project_id)
 
 				consola.log("projectContext:", projectContext)
 
@@ -52,44 +53,81 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					)
 				}
 
-				const meta = projectContext.merged as any
-				// Load from database, keep custom_instructions from request
-				target_orgs = meta.target_orgs?.join?.(", ") || meta.target_orgs || target_orgs || ""
-				target_roles = meta.target_roles?.join?.(", ") || meta.target_roles || target_roles || ""
-				research_goal = meta.research_goal || research_goal || ""
-				research_goal_details = meta.research_goal_details || research_goal_details || ""
-				assumptions = meta.assumptions?.join?.(", ") || meta.assumptions || assumptions || ""
-				unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
-			} catch (error) {
-				consola.warn("Could not load project context from database:", error)
-			}
-		}
+                const meta = projectContext.merged as any
+                // Load from database, keep custom_instructions from request
+                target_orgs = meta.target_orgs?.join?.(", ") || meta.target_orgs || target_orgs || ""
+                target_roles = meta.target_roles?.join?.(", ") || meta.target_roles || target_roles || ""
+                research_goal = meta.research_goal || research_goal || ""
+                research_goal_details = meta.research_goal_details || research_goal_details || ""
+                assumptions = meta.assumptions?.join?.(", ") || meta.assumptions || assumptions || ""
+                unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
 
-		// Validate required fields (only when not loading from database)
-		if (
-			!project_id &&
-			(!target_orgs || !target_roles || !research_goal || !research_goal_details || !assumptions || !unknowns)
-		) {
-			return Response.json(
-				{
-					error:
-						"Missing required fields: target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns",
-				},
-				{ status: 400 }
-			)
-		}
+                // Fallback to project-level custom instructions when request provides none
+                if (!custom_instructions || custom_instructions.length === 0) {
+                    custom_instructions = meta.custom_instructions || meta.settings?.customInstructions || ""
+                }
 
-		// Final validation after potentially loading from database
-		if (!target_orgs || !target_roles || !research_goal || !research_goal_details || !assumptions || !unknowns) {
-			return Response.json(
-				{
-					error: project_id
-						? "Project context not found in database. Please complete project setup first."
-						: "Missing required fields: target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns",
-				},
-				{ status: 400 }
-			)
-		}
+                // Load existing questions to influence dedupe and limit count
+                try {
+                    const { data: questionsSection } = await supabase
+                        .from("project_sections")
+                        .select("meta")
+                        .eq("project_id", project_id)
+                        .eq("kind", "questions")
+                        .order("updated_at", { ascending: false })
+                        .limit(1)
+                        .single()
+                    const metaQ: any = questionsSection?.meta || {}
+                    const qs: any[] = Array.isArray(metaQ.questions) ? metaQ.questions : []
+                    existingQuestions = qs.map((q: any) => (typeof q === "string" ? q : q?.text)).filter(Boolean)
+                    if (existingQuestions.length > 0) {
+                        // Limit new generation to 3 once we already have initial questions
+                        questionCount = 3
+                        // Append a dedupe instruction to custom_instructions
+                        const dedupeList = existingQuestions.slice(0, 25).join("; ")
+                        const dedupeNote = `Avoid repeating or rephrasing these existing questions: ${dedupeList}. Generate complementary questions.`
+                        custom_instructions = `${custom_instructions ? custom_instructions + "\n" : ""}${dedupeNote}`
+                    }
+                } catch (e) {
+                    // Non-fatal
+                }
+            } catch (error) {
+                consola.warn("Could not load project context from database:", error)
+            }
+        }
+
+        // Validate required fields (only when not loading from database)
+        // Only the core trio are required: target_orgs, target_roles, research_goal
+        if (!project_id) {
+            const missing: string[] = []
+            if (!target_orgs?.trim()) missing.push("target_orgs")
+            if (!target_roles?.trim()) missing.push("target_roles")
+            if (!research_goal?.trim()) missing.push("research_goal")
+            // Soft-optional: details/assumptions/unknowns (default to empty if missing)
+            research_goal_details = research_goal_details || ""
+            assumptions = assumptions || ""
+            unknowns = unknowns || ""
+            if (missing.length > 0) {
+                return Response.json(
+                    { error: `Missing required fields: ${missing.join(", ")}` },
+                    { status: 400 }
+                )
+            }
+        }
+
+        // Final validation after potentially loading from database
+        // Require only the core trio; default the rest to empty strings
+        const coreMissing: string[] = []
+        if (!target_orgs?.trim()) coreMissing.push("target_orgs")
+        if (!target_roles?.trim()) coreMissing.push("target_roles")
+        if (!research_goal?.trim()) coreMissing.push("research_goal")
+        research_goal_details = research_goal_details || ""
+        assumptions = assumptions || ""
+        unknowns = unknowns || ""
+        if (coreMissing.length > 0) {
+            const baseMsg = `Missing required fields: ${coreMissing.join(", ")}`
+            return Response.json({ error: project_id ? `${baseMsg} in project context` : baseMsg }, { status: 400 })
+        }
 
 		// consola.log("Generating questions for:", {
 		// 	project_id,
@@ -114,21 +152,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			custom_instructions,
 		})
 
-		const questionSet = await generateQuestionSetCanonical({
-			target_orgs,
-			target_roles,
-			research_goal,
-			research_goal_details,
-			assumptions,
-			unknowns,
-			custom_instructions,
-			session_id: `session_${Date.now()}`,
-			round: 1,
-			total_per_round: questionCount || 10,
-			per_category_min: 1,
-			per_category_max: 3,
-			interview_time_limit,
-		})
+        const questionSet = await generateQuestionSetCanonical({
+            target_orgs,
+            target_roles,
+            research_goal,
+            research_goal_details,
+            assumptions,
+            unknowns,
+            custom_instructions,
+            session_id: `session_${Date.now()}`,
+            round: 1,
+            total_per_round: questionCount || 10,
+            per_category_min: 1,
+            per_category_max: 3,
+            interview_time_limit,
+        })
 
 		consola.log("BAML questionSet result:", JSON.stringify(questionSet, null, 2))
 

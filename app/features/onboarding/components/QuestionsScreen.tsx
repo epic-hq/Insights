@@ -1,4 +1,4 @@
-import { BookOpen, ChevronLeft, ChevronRight } from "lucide-react"
+import { BookOpen, ChevronLeft, ChevronRight, MessageCircleQuestionMark } from "lucide-react"
 import { useState } from "react"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"
@@ -9,6 +9,7 @@ interface QuestionsScreenProps {
 	target_roles: string[]
 	research_goal: string
 	research_goal_details: string
+	decision_questions: string[]
 	assumptions: string[]
 	unknowns: string[]
 	custom_instructions?: string
@@ -27,6 +28,7 @@ export default function QuestionsScreen({
 	target_roles,
 	research_goal,
 	research_goal_details,
+	decision_questions,
 	assumptions,
 	unknowns,
 	onNext,
@@ -50,7 +52,7 @@ export default function QuestionsScreen({
 
 			<div className="mb-6 sm:mb-8">
 				<h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
-					<BookOpen className="h-8 w-8" />
+					<MessageCircleQuestionMark className="h-8 w-8" />
 					Interview Questions
 				</h2>
 				<p className="text-gray-600">

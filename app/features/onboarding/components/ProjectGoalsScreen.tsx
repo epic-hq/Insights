@@ -10,36 +10,61 @@ import { getProjectContextGeneric } from "~/features/questions/db"
 import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
+
 // Sample data extracted from sampleResearchQuestions.json
 const sampleData = [
-  {
-    goal: "Boost engagement with weekly newsletter",
-    orgs: ["Newsletter publishers", "Content creators", "Media companies"],
-    roles: ["Content Manager", "Marketing Director", "Editor", "Growth Manager"],
-    assumptions: ["Users want more engaging content", "Current topics may not resonate", "Email format affects engagement"],
-    unknowns: ["Which content topics drive highest clicks", "What format performs better", "Which segments engage most"]
-  },
-  {
-    goal: "Validate product–market fit for task automation app", 
-    orgs: ["SaaS companies", "Productivity tool users", "Small businesses"],
-    roles: ["Product Manager", "Founder", "Operations Manager", "Developer"],
-    assumptions: ["Users struggle with repetitive tasks", "Automation saves valuable time", "People will pay for time savings"],
-    unknowns: ["What tasks frustrate users most", "Which segments convert best", "What outcomes justify payment"]
-  },
-  {
-    goal: "Explore viability of subscription meal-kit for athletes",
-    orgs: ["Fitness brands", "Athletic organizations", "Health-focused companies"],
-    roles: ["Product Manager", "Marketing Manager", "Nutritionist", "Athlete"],
-    assumptions: ["Athletes prioritize nutrition", "Convenience matters for busy training", "Premium pricing is acceptable"],
-    unknowns: ["How much athletes spend on meals", "Which features matter most", "What service aspects are frustrating"]
-  },
-  {
-    goal: "Grow active participation in online founder community",
-    orgs: ["Online communities", "SaaS platforms", "Membership sites"],
-    roles: ["Community Manager", "Product Manager", "Founder", "Growth Manager"],
-    assumptions: ["Members want to contribute", "Current incentives aren't motivating", "Community provides value"],
-    unknowns: ["What motivates posting vs lurking", "Which incentives sustain participation", "What triggers referrals"]
-  }
+	{
+		goal: "Boost engagement with weekly newsletter",
+		orgs: ["Newsletter publishers", "Content creators", "Media companies"],
+		roles: ["Content Manager", "Marketing Director", "Editor", "Growth Manager"],
+		assumptions: [
+			"Users want more engaging content",
+			"Current topics may not resonate",
+			"Email format affects engagement",
+		],
+		unknowns: [
+			"Which content topics drive highest clicks",
+			"What format performs better",
+			"Which segments engage most",
+		],
+	},
+	{
+		goal: "Validate product–market fit for task automation app",
+		orgs: ["SaaS companies", "Productivity tool users", "Small businesses"],
+		roles: ["Product Manager", "Founder", "Operations Manager", "Developer"],
+		assumptions: [
+			"Users struggle with repetitive tasks",
+			"Automation saves valuable time",
+			"People will pay for time savings",
+		],
+		unknowns: ["What tasks frustrate users most", "Which segments convert best", "What outcomes justify payment"],
+	},
+	{
+		goal: "Explore viability of subscription meal-kit for athletes",
+		orgs: ["Fitness brands", "Athletic organizations", "Health-focused companies"],
+		roles: ["Product Manager", "Marketing Manager", "Nutritionist", "Athlete"],
+		assumptions: [
+			"Athletes prioritize nutrition",
+			"Convenience matters for busy training",
+			"Premium pricing is acceptable",
+		],
+		unknowns: [
+			"How much athletes spend on meals",
+			"Which features matter most",
+			"What service aspects are frustrating",
+		],
+	},
+	{
+		goal: "Grow active participation in online founder community",
+		orgs: ["Online communities", "SaaS platforms", "Membership sites"],
+		roles: ["Community Manager", "Product Manager", "Founder", "Growth Manager"],
+		assumptions: ["Members want to contribute", "Current incentives aren't motivating", "Community provides value"],
+		unknowns: [
+			"What motivates posting vs lurking",
+			"Which incentives sustain participation",
+			"What triggers referrals",
+		],
+	},
 ]
 
 // Zod schema for validation
@@ -47,7 +72,8 @@ const projectGoalsSchema = z.object({
 	target_orgs: z.array(z.string()).min(1, "At least one target organization is required"),
 	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
 	research_goal: z.string().min(1, "Research goal is required"),
-	research_goal_details: z.string().min(1, "Research goal details are required"),
+	research_goal_details: z.string().optional(),
+	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
 	assumptions: z.array(z.string()),
 	unknowns: z.array(z.string()),
 	custom_instructions: z.string().optional(),
@@ -56,75 +82,76 @@ const projectGoalsSchema = z.object({
 type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
 // Sample suggestions extracted from data
-const sampleGoals = sampleData.map(item => item.goal)
+const sampleGoals = sampleData.map((item) => item.goal)
 
 // Context-aware suggestions based on research goal
 const getContextualSuggestions = (goal: string) => {
-  // Find matching sample based on goal keywords
-  const sample = sampleData.find(item => {
-    const goalLower = goal.toLowerCase()
-    const sampleGoalLower = item.goal.toLowerCase()
-    return goalLower.length > 3 && (
-      sampleGoalLower.includes(goalLower) || 
-      goalLower.includes("newsletter") && sampleGoalLower.includes("newsletter") ||
-      goalLower.includes("automation") && sampleGoalLower.includes("automation") ||
-      goalLower.includes("meal") && sampleGoalLower.includes("meal") ||
-      goalLower.includes("community") && sampleGoalLower.includes("community")
-    )
-  })
-  
-  if (sample) {
-    return {
-      orgs: sample.orgs,
-      roles: sample.roles, 
-      assumptions: sample.assumptions,
-      unknowns: sample.unknowns
-    }
-  }
-  
-  // Default suggestions when no match found
-  return {
-    orgs: ["Startups", "SaaS companies", "E-commerce retailers", "Digital agencies"],
-    roles: ["Product Manager", "Marketing Manager", "Founder", "Growth Manager"],
-    assumptions: ["Users want better solutions", "Market timing is good", "Current approach needs improvement"],
-    unknowns: ["What features drive adoption", "Which segments convert best", "How much users will pay"]
-  }
+	// Find matching sample based on goal keywords
+	const sample = sampleData.find((item) => {
+		const goalLower = goal.toLowerCase()
+		const sampleGoalLower = item.goal.toLowerCase()
+		return (
+			goalLower.length > 3 &&
+			(sampleGoalLower.includes(goalLower) ||
+				(goalLower.includes("newsletter") && sampleGoalLower.includes("newsletter")) ||
+				(goalLower.includes("automation") && sampleGoalLower.includes("automation")) ||
+				(goalLower.includes("meal") && sampleGoalLower.includes("meal")) ||
+				(goalLower.includes("community") && sampleGoalLower.includes("community")))
+		)
+	})
+
+	if (sample) {
+		return {
+			orgs: sample.orgs,
+			roles: sample.roles,
+			assumptions: sample.assumptions,
+			unknowns: sample.unknowns,
+		}
+	}
+
+	// Default suggestions when no match found
+	return {
+		orgs: ["Startups", "SaaS companies", "E-commerce retailers", "Digital agencies"],
+		roles: ["Product Manager", "Marketing Manager", "Founder", "Growth Manager"],
+		assumptions: ["Users want better solutions", "Market timing is good", "Current approach needs improvement"],
+		unknowns: ["What features drive adoption", "Which segments convert best", "How much users will pay"],
+	}
 }
 
 // Suggestion badge component
 interface SuggestionBadgesProps {
-  suggestions: string[]
-  onSuggestionClick: (suggestion: string) => void
-  show: boolean
-  color?: "blue" | "green" | "purple" | "amber"
+	suggestions: string[]
+	onSuggestionClick: (suggestion: string) => void
+	show: boolean
+	color?: "blue" | "green" | "purple" | "amber"
 }
 
 function SuggestionBadges({ suggestions, onSuggestionClick, show, color = "blue" }: SuggestionBadgesProps) {
-  if (!show || suggestions.length === 0) return null
-  
-  const colorClasses = {
-    blue: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200",
-    green: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200", 
-    purple: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200",
-    amber: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200"
-  }
-  
-  return (
-    <div className="mb-4 mt-3 flex flex-wrap gap-2">
-      {suggestions.slice(0, 4).map((suggestion, index) => (
-        <button
-          key={index}
-          onMouseDown={(e) => {
-            e.preventDefault()
-            onSuggestionClick(suggestion)
-          }}
-          className={`cursor-pointer rounded-full border px-3 py-1.5 text-xs font-medium transition-all hover:scale-105 ${colorClasses[color]}`}
-        >
-          + {suggestion}
-        </button>
-      ))}
-    </div>
-  )
+	if (!show || suggestions.length === 0) return null
+
+	const colorClasses = {
+		blue: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200",
+		green: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
+		purple: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200",
+		amber: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200",
+	}
+
+	return (
+		<div className="mt-3 mb-4 flex flex-wrap gap-2">
+			{suggestions.slice(0, 4).map((suggestion, index) => (
+				<button
+					key={index}
+					onMouseDown={(e) => {
+						e.preventDefault()
+						onSuggestionClick(suggestion)
+					}}
+					className={`cursor-pointer rounded-full border px-2.5 py-1 font-medium text-xs transition-all hover:scale-105 ${colorClasses[color]}`}
+				>
+					+ {suggestion}
+				</button>
+			))}
+		</div>
+	)
 }
 
 interface ProjectGoalsScreenProps {
@@ -133,9 +160,11 @@ interface ProjectGoalsScreenProps {
 		target_roles: string[]
 		research_goal: string
 		research_goal_details: string
+		decision_questions: string[]
 		assumptions: string[]
 		unknowns: string[]
 		custom_instructions?: string
+		projectId?: string
 	}) => void
 	project?: Project
 	projectId?: string
@@ -422,7 +451,7 @@ export default function ProjectGoalsScreen({
 	}
 
 	const handleNext = () => {
-		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && research_goal_details.trim()) {
+		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
 			// Ensure goal + details are persisted even if textarea didn't blur
 			saveResearchGoal(research_goal, research_goal_details, false)
 			// Pass snake_case data to next step
@@ -431,6 +460,7 @@ export default function ProjectGoalsScreen({
 				target_roles,
 				research_goal,
 				research_goal_details,
+				decision_questions,
 				assumptions,
 				unknowns,
 				custom_instructions: custom_instructions || undefined,
@@ -446,7 +476,6 @@ export default function ProjectGoalsScreen({
 		saveResearchGoal(research_goal, research_goal_details, false)
 	}
 
-
 	const handleCustomInstructionsBlur = () => {
 		if (custom_instructions.trim()) {
 			saveCustomInstructions(custom_instructions)
@@ -459,7 +488,7 @@ export default function ProjectGoalsScreen({
 	// Custom instructions: blur-only save to reduce chatter
 
 	const isValid =
-		target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && research_goal_details.trim()
+		target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0
 
 	const onboardingSteps = [
 		{ id: "goals", title: "Project Goals" },
@@ -519,7 +548,7 @@ export default function ProjectGoalsScreen({
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
 							<div>
-								<label className="mb-2 block text-foreground">Our objective</label>
+								<label className="mb-2 block font-semibold text-foreground">Our objective</label>
 								<Input
 									placeholder="e.g., Understanding price sensitivity for our new pricing tier"
 									value={research_goal}
@@ -543,7 +572,7 @@ export default function ProjectGoalsScreen({
 							</div>
 
 							<div>
-								<label className="mb-2 block text-foreground">Key decision questions</label>
+								<label className="mb-2 block font-semibold text-foreground">Key decision questions</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder="What specific decisions need to be made?"
@@ -562,7 +591,12 @@ export default function ProjectGoalsScreen({
 									</Button>
 								</div>
 								<SuggestionBadges
-									suggestions={["Which pricing tier drives highest conversion", "What content format engages users most", "Which features justify premium pricing", "What onboarding flow reduces churn"]}
+									suggestions={[
+										"Which pricing tier drives highest conversion",
+										"What content format engages users most",
+										"Which features justify premium pricing",
+										"What onboarding flow reduces churn",
+									]}
 									onSuggestionClick={(suggestion) => {
 										setNewDecisionQuestion(suggestion)
 										setShowDecisionQuestionSuggestions(false)
@@ -574,9 +608,9 @@ export default function ProjectGoalsScreen({
 									{decision_questions.map((question, index) => (
 										<div
 											key={`decision-${index}-${question.slice(0, 10)}`}
-											className="group flex items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 shadow-sm transition-all duration-200 hover:shadow-md"
+											className="group flex w-fit items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
-											<div className="mt-1 flex-shrink-0">
+											<div className="mt-2 flex-shrink-0">
 												<div className="h-2 w-2 rounded-full bg-blue-500" />
 											</div>
 											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{question}</span>
@@ -592,7 +626,7 @@ export default function ProjectGoalsScreen({
 							</div>
 
 							<div>
-								<label className="mb-2 block text-foreground">What do we not know?</label>
+								<label className="mb-2 block font-semibold text-foreground">What do we not know?</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder="Add something you're unsure about..."
@@ -605,7 +639,7 @@ export default function ProjectGoalsScreen({
 									/>
 									<Button
 										onClick={addUnknown}
-										className="bg-amber-500 px-3 py-2 text-white transition-all duration-200 hover:bg-amber-600"
+										className="w-auto bg-amber-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-amber-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
@@ -623,7 +657,7 @@ export default function ProjectGoalsScreen({
 									{unknowns.map((unknown, index) => (
 										<div
 											key={`unknown-${index}-${unknown.slice(0, 10)}`}
-											className="group flex items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 shadow-sm transition-all duration-200 hover:shadow-md"
+											className="group flex w-fit items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
 											<div className="mt-0.5 flex-shrink-0">
 												<HelpCircle className="h-5 w-5 text-amber-600" />
@@ -641,7 +675,7 @@ export default function ProjectGoalsScreen({
 							</div>
 
 							<div>
-								<label className="mb-2 block text-foreground">What do we think we know?</label>
+								<label className="mb-2 block font-semibold text-foreground">What do we think we know?</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder="Add something you believe to be true..."
@@ -654,7 +688,7 @@ export default function ProjectGoalsScreen({
 									/>
 									<Button
 										onClick={addAssumption}
-										className="bg-blue-500 px-3 py-2 text-white transition-all duration-200 hover:bg-blue-600"
+										className="w-auto bg-blue-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-blue-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
@@ -672,9 +706,9 @@ export default function ProjectGoalsScreen({
 									{assumptions.map((assumption, index) => (
 										<div
 											key={`assumption-${index}-${assumption.slice(0, 10)}`}
-											className="group flex items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 shadow-sm transition-all duration-200 hover:shadow-md"
+											className="group flex w-fit items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
-											<div className="mt-1 flex-shrink-0">
+											<div className="mt-2 flex-shrink-0">
 												<div className="h-2 w-2 rounded-full bg-blue-500" />
 											</div>
 											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{assumption}</span>
@@ -701,7 +735,7 @@ export default function ProjectGoalsScreen({
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
 							<div>
-								<label className="mb-2 block text-foreground">Organizations</label>
+								<label className="mb-2 block font-semibold text-foreground">Organizations</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder="e.g., B2B SaaS companies, E-commerce retailers"
@@ -714,7 +748,7 @@ export default function ProjectGoalsScreen({
 									/>
 									<Button
 										onClick={addOrg}
-										className="bg-green-500 px-3 py-2 text-white transition-all duration-200 hover:bg-green-600"
+										className="w-auto bg-green-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-green-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
@@ -732,7 +766,7 @@ export default function ProjectGoalsScreen({
 									{target_orgs.map((org) => (
 										<div
 											key={org}
-											className="group flex items-center gap-2 rounded-full border border-green-300 bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-2 shadow-sm transition-all duration-200 hover:shadow-md"
+											className="group flex w-fit items-center gap-2 rounded-full border border-green-300 bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
 											<span className="font-medium text-green-800">{org}</span>
 											<button
@@ -747,7 +781,7 @@ export default function ProjectGoalsScreen({
 							</div>
 
 							<div>
-								<label className="mb-2 block text-foreground">People's Roles</label>
+								<label className="mb-2 block font-semibold text-foreground">People's Roles</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder="e.g., Product Manager, Marketing Director"
@@ -760,7 +794,7 @@ export default function ProjectGoalsScreen({
 									/>
 									<Button
 										onClick={addRole}
-										className="bg-purple-500 px-3 py-2 text-white transition-all duration-200 hover:bg-purple-600"
+										className="w-auto bg-purple-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-purple-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
@@ -778,7 +812,7 @@ export default function ProjectGoalsScreen({
 									{target_roles.map((role) => (
 										<div
 											key={role}
-											className="group flex items-center gap-2 rounded-full border border-purple-300 bg-gradient-to-r from-purple-100 to-violet-100 px-4 py-2 shadow-sm transition-all duration-200 hover:shadow-md"
+											className="group flex w-fit items-center gap-2 rounded-full border border-purple-300 bg-gradient-to-r from-purple-100 to-violet-100 px-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
 											<span className="font-medium text-purple-800">{role}</span>
 											<button

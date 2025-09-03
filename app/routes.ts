@@ -77,6 +77,7 @@ const routes = [
 	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 	route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
+	route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),
 	route("api/create-project", "./routes/api.create-project.tsx"),
 	route("api/save-project-goals", "./routes/api.save-project-goals.tsx"),
 	route("api/load-project-goals", "./routes/api.load-project-goals.tsx"),
@@ -101,6 +102,7 @@ const routes = [
 	route("team", "./features/accounts/pages/team.tsx"),
 	route("test_register", "./routes/(auth)+/test_register.tsx"),
 	route("test/upsight", "./routes/test.upsight.tsx"),
+	route("test/question-quality", "./routes/test.question-quality.tsx"),
 ] satisfies RouteConfig
 
 export default routes

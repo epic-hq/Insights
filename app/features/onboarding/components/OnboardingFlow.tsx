@@ -12,6 +12,7 @@ export interface OnboardingData {
 	target_roles: string[]
 	research_goal: string
 	research_goal_details: string
+	decision_questions: string[]
 	assumptions: string[]
 	unknowns: string[]
 	custom_instructions?: string
@@ -35,6 +36,7 @@ interface OnboardingFlowProps {
 		target_roles: string[]
 		research_goal: string
 		research_goal_details: string
+		decision_questions: string[]
 		assumptions: string[]
 		unknowns: string[]
 		custom_instructions?: string
@@ -59,6 +61,7 @@ export default function OnboardingFlow({
 		target_roles: existingProject?.target_roles || [],
 		research_goal: existingProject?.research_goal || "",
 		research_goal_details: existingProject?.research_goal_details || "",
+		decision_questions: existingProject?.decision_questions || [],
 		assumptions: existingProject?.assumptions || [],
 		unknowns: existingProject?.unknowns || [],
 		custom_instructions: existingProject?.custom_instructions,
@@ -71,6 +74,7 @@ export default function OnboardingFlow({
 		target_roles: string[]
 		research_goal: string
 		research_goal_details: string
+		decision_questions: string[]
 		assumptions: string[]
 		unknowns: string[]
 		custom_instructions?: string
@@ -107,6 +111,7 @@ export default function OnboardingFlow({
 					target_roles: data.target_roles,
 					research_goal: data.research_goal,
 					research_goal_details: data.research_goal_details,
+					decision_questions: data.decision_questions,
 					assumptions: data.assumptions,
 					unknowns: data.unknowns,
 					custom_instructions: data.custom_instructions,
@@ -187,6 +192,7 @@ export default function OnboardingFlow({
 					target_roles={data.target_roles}
 					research_goal={data.research_goal}
 					research_goal_details={data.research_goal_details}
+					decision_questions={data.decision_questions}
 					assumptions={data.assumptions}
 					unknowns={data.unknowns}
 					custom_instructions={data.custom_instructions}
@@ -211,7 +217,6 @@ export default function OnboardingFlow({
 			return (
 				<ProjectStatusScreen
 					projectName={getProjectName()}
-					target_orgs={data.target_orgs}
 					projectId={data.projectId}
 					accountId={accountId}
 				/>
