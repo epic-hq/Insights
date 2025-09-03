@@ -224,12 +224,12 @@ export default function ThemesIndex() {
 		return (
 			<div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
 				<div className="space-y-2 text-center">
-					<h2 className="font-semibold text-2xl text-gray-900">No themes found</h2>
+					<h2 className="font-semibold text-2xl text-gray-900">No themes found yet</h2>
 					<p className="max-w-md text-gray-600">
-						Generate themes automatically from your evidence to identify patterns and insights.
+						{/* Generate themes automatically from your evidence to identify patterns and insights. */}
 					</p>
 				</div>
-				<GenerateThemesButton />
+				{/* <GenerateThemesButton /> */}
 			</div>
 		)
 	}

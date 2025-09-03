@@ -91,5 +91,3 @@ create or replace view "public"."persona_distribution" as  WITH persona_intervie
      JOIN legacy_fallback_counts lfc ON ((pic.persona_id = lfc.persona_id)))
   ORDER BY pic.account_id, (pic.interview_count + lfc.legacy_interview_count) DESC;
 
-
-

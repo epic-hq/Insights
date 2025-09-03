@@ -190,5 +190,3 @@ using ((interview_id IN ( SELECT interviews.id
   WHERE (interviews.account_id = auth.uid()))));
 
 
-
-

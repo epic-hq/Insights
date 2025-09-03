@@ -1,4 +1,4 @@
-aicreate table "public"."project_answer_evidence" (
+create table "public"."project_answer_evidence" (
     "id" uuid not null default gen_random_uuid(),
     "project_id" uuid not null,
     "answer_id" uuid not null,

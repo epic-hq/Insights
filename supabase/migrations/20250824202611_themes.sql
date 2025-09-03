@@ -636,5 +636,3 @@ CREATE TRIGGER set_evidence_user_tracking BEFORE INSERT OR UPDATE ON public.evid
 CREATE TRIGGER set_themes_timestamp BEFORE INSERT OR UPDATE ON public.themes FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
 CREATE TRIGGER set_themes_user_tracking BEFORE INSERT OR UPDATE ON public.themes FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_user_tracking();
-
-

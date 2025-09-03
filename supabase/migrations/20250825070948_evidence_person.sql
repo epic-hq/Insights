@@ -244,5 +244,3 @@ using ((EXISTS ( SELECT 1
 CREATE TRIGGER set_evidence_people_timestamp BEFORE INSERT OR UPDATE ON public.evidence_people FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
 CREATE TRIGGER set_evidence_people_user_tracking BEFORE INSERT OR UPDATE ON public.evidence_people FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_user_tracking();
-
-

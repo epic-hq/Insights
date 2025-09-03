@@ -1,0 +1,27 @@
+// Tiny 2-word slug generator: adjective-noun
+// Keeps bundle small and avoids external deps
+
+const ADJECTIVES = [
+  "brave","calm","clever","crisp","daring","eager","fancy","gentle","grand","humble",
+  "jolly","kind","loud","merry","noble","plucky","proud","quick","quiet","rapid",
+  "shiny","smart","spry","steady","swift","tidy","vivid","witty","zesty","bright",
+  "bold","breezy","charming","cheerful","crafty","dazzling","elegant","fresh","glossy","neat"
+]
+
+const NOUNS = [
+  "bear","eagle","fox","lion","otter","panda","tiger","whale","wolf","yak",
+  "beacon","bridge","comet","falcon","harbor","haven","meadow","meteor","peak","river",
+  "sapphire","shadow","spruce","sunset","summit","thunder","valley","willow","ember","nova",
+  "aurora","breeze","cascade","canyon","cedar","drift","echo","forge","grove","harvest"
+]
+
+function pick<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)]
+}
+
+export function generateTwoWordSlug(separator = "-"): string {
+  const a = pick(ADJECTIVES)
+  const n = pick(NOUNS)
+  return `${a}${separator}${n}`.toLowerCase()
+}
+

@@ -260,9 +260,9 @@ Prioritize.
 
 ## 🔄 Architecture Cleanup
 
+- [x] **Remove account_settings table and migrate to user_settings** - Current architecture has duplicate user preferences between `account_settings.current_account_id/current_project_id` and `user_settings.last_used_account_id/last_used_project_id`. Consolidate all user preferences in user_settings for clarity and remove confusing duplication.
 - [ ] **Team collaboration access** - Allow team members to view interviews in shared projects
 - [ ] **Account/User ID consistency** - Resolve remaining confusion between personal and team accounts
-- [ ] **Remove account_settings table and migrate to user_settings** - Current architecture has duplicate user preferences between `account_settings.current_account_id/current_project_id` and `user_settings.last_used_account_id/last_used_project_id`. Consolidate all user preferences in user_settings for clarity and remove confusing duplication.
 
 ## 🌓 Backlog / Later
 

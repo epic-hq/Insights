@@ -223,7 +223,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			setup: () => `${base}/setup`,
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			// Deprecated old edit path; point to project-scoped settings
-			edit: (_id: string) => `${base}/settings`,
+			edit: (id: string) => `${projectPath}/settings`,
 			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,
 		},
 

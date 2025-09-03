@@ -19,11 +19,13 @@ const routes = [
 	// Public marketing landing page
 	...marketingRoutes,
 
+	// Signup chat (not protected, but requires auth)
+	...signupChatRoutes,
+
 	// Protected area
 	layout("./routes/_ProtectedLayout.tsx", [
 		// Home dashboard for logged-in users
 		...homeRoutes,
-		...signupChatRoutes,
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [

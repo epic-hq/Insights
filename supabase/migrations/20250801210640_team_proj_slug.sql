@@ -179,5 +179,3 @@ create or replace view "public"."persona_distribution" as  WITH persona_intervie
 
 
 CREATE TRIGGER projects_slugify_project_slug BEFORE INSERT OR UPDATE ON public.projects FOR EACH ROW EXECUTE FUNCTION slugify_project_name();
-
-

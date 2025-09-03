@@ -224,7 +224,6 @@ declare
     first_account_id    uuid;
     team_account_id     uuid;
     generated_user_name text;
-    new_project_id      uuid;
 begin
 
     -- first we setup the user profile
@@ -251,10 +250,8 @@ values (team_account_id, NEW.id, 'owner');
 
 -- select update_account_user_role(team_account_id, team_account_id, true);
 
-    -- create default project for team account
-    insert into projects(account_id, name) values (team_account_id, 'My First Project') RETURNING id INTO new_project_id;
-    -- create user's account_settings with default values for current_account_id and current_project_id
-    insert into account_settings(account_id, current_account_id, current_project_id) values (first_account_id, team_account_id, new_project_id);
+    -- Removed automatic project and account_settings creation on signup.
+    -- Project onboarding is now handled in-app on first visit to /home.
 
     return NEW;
 end;

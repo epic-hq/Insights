@@ -118,5 +118,3 @@ $function$
 ;
 
 drop schema if exists "pgmq_public";
-
-

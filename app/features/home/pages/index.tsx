@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Link, type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
+import { Link, redirect, type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"
@@ -39,6 +39,11 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		supabase,
 		accountId: account_id,
 	})
+
+	// If no projects exist, redirect to the new project flow
+	if (!projects || projects.length === 0) {
+		throw redirect(`/a/${account_id}/projects/new`)
+	}
 	// consola.log("projects:", projects)
 	// Get project sections for the current account
 	const { data: latest_sections } = await supabase
@@ -62,16 +67,12 @@ type LoaderData = {
 
 export default function Index() {
 	const { projects, latest_sections } = useLoaderData<typeof loader>()
-	const { account_settings } = useRouteLoaderData("routes/_ProtectedLayout") as {
-		account_settings: { current_account_id: string; current_project_id: string }
+	const { auth } = useRouteLoaderData("routes/_ProtectedLayout") as {
+		auth: { accountId: string }
 	}
 
-	const projectPath =
-		account_settings?.current_account_id && account_settings?.current_project_id
-			? `/a/${account_settings.current_account_id}/${account_settings.current_project_id}`
-			: ""
-
-	const routes = useProjectRoutes(projectPath)
+	// Build routes using accountId only; projectId is supplied per-link where needed
+	const routes = useProjectRoutes(`/a/${auth.accountId}/_`)
 
 	return (
 		<div className="mx-auto max-w-7xl ">
@@ -99,7 +100,7 @@ export default function Index() {
 									<ProjectCard
 										key={project.id}
 										project={project}
-										projectPath={routes.projects.dashboard(project.id)}
+										projectPath={routes.projects.detail(project.id)}
 										sections={projectSections}
 									/>
 								)

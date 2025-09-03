@@ -93,7 +93,7 @@ export async function loader({
 		let custom_instructions = ""
 		let questions: string[] = []
 
-		sections.forEach(section => {
+		sections.forEach((section) => {
 			const meta = section.meta || {}
 			if (section.kind === "target_market") {
 				target_orgs = meta.target_orgs || meta.icp ? [meta.icp] : []
@@ -112,7 +112,16 @@ export async function loader({
 			}
 		})
 
-		return { target_orgs, target_roles, research_goal, research_goal_details, assumptions, unknowns, custom_instructions, questions }
+		return {
+			target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+			custom_instructions,
+			questions,
+		}
 	}
 
 	const projectData = extractProjectData(sections ?? [])
@@ -217,7 +226,7 @@ export default function EditProject() {
 	const actionData = useActionData<typeof action>()
 
 	return (
-		<div className="mx-auto max-w-6xl px-4 py-6">
+		<div className="mx-auto flex max-w-3xl flex-col gap-8 px-4 py-6">
 			<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}>
 				<Card>
 					<CardHeader>
@@ -240,11 +249,23 @@ export default function EditProject() {
 								</div>
 								<div className="space-y-2">
 									<Label htmlFor="status">Status</Label>
-									<Input id="status" name="status" type="text" defaultValue={project.status || ""} placeholder="active | paused | archived" />
+									<Input
+										id="status"
+										name="status"
+										type="text"
+										defaultValue={project.status || ""}
+										placeholder="active | paused | archived"
+									/>
 								</div>
 								<div className="space-y-2">
 									<Label htmlFor="slug">Slug</Label>
-									<Input id="slug" name="slug" type="text" defaultValue={project.slug || ""} placeholder="auto-generated if blank" />
+									<Input
+										id="slug"
+										name="slug"
+										type="text"
+										defaultValue={project.slug || ""}
+										placeholder="auto-generated if blank"
+									/>
 								</div>
 							</div>
 							<Button type="submit" className="gap-2">
@@ -255,7 +276,7 @@ export default function EditProject() {
 					</CardContent>
 				</Card>
 
-				<Card className="border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
+				<Card className="mt-6 border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-950/20">
 					<CardHeader>
 						<CardTitle className="text-red-900 dark:text-red-300">Danger Zone</CardTitle>
 					</CardHeader>
@@ -279,7 +300,9 @@ export default function EditProject() {
 								</AlertDialogHeader>
 								<AlertDialogFooter>
 									<AlertDialogCancel>Cancel</AlertDialogCancel>
-									<AlertDialogAction onClick={() => (document.getElementById("delete-project") as HTMLFormElement)?.requestSubmit()}>
+									<AlertDialogAction
+										onClick={() => (document.getElementById("delete-project") as HTMLFormElement)?.requestSubmit()}
+									>
 										Yes, delete
 									</AlertDialogAction>
 								</AlertDialogFooter>

@@ -138,5 +138,3 @@ using ((account_id IN ( SELECT accounts.get_accounts_with_role() AS get_accounts
   to authenticated
 using ((account_id IN ( SELECT accounts.get_accounts_with_role('owner'::accounts.account_role) AS get_accounts_with_role)));
 
-
-

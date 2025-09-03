@@ -295,10 +295,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					id: resolvedIds[idx],
 					text: q.text || q.question || "",
 					categoryId: q.categoryId || q.category || "context",
-					scores: q.scores || {
-						importance: q.importance ?? 0.5,
-						goalMatch: q.goalMatch ?? 0.5,
-						novelty: q.novelty ?? 0.5,
+					scores: {
+						importance: q.scores?.importance ?? q.importance ?? 0.5,
+						goalMatch: q.scores?.goalMatch ?? q.goalMatch ?? 0.5,
+						novelty: q.scores?.novelty ?? q.novelty ?? 0.5,
 					},
 					rationale: q.rationale || "",
 					status: (q.status as Question["status"]) || "proposed",

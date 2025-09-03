@@ -44,6 +44,12 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				throw redirect("/login")
 			}
 
+			// Check if signup process is completed
+			const signupCompleted = user_settings?.signup_data?.completed === true
+			if (!signupCompleted) {
+				throw redirect("/signup-chat")
+			}
+
 			// Determine current account: use last_used_account_id from user_settings, validate it's available
 			let currentAccount = null
 			if (user_settings?.last_used_account_id && Array.isArray(accounts)) {
@@ -60,14 +66,6 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				throw redirect("/login")
 			}
 
-			// Get account settings using user's personal account (account_settings is per personal account, not team)
-			// Note: This should eventually be migrated to user_settings for clarity
-			const { data: accountSettings } = await supabase
-				.from("account_settings")
-				.select("*")
-				.eq("account_id", user.sub)
-				.maybeSingle()
-
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {
 				claims: user,
@@ -77,7 +75,6 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				headers: request.headers,
 				user_settings: user_settings || {},
 				accounts: accounts || [],
-				accountSettings: accountSettings || {},
 				currentAccount,
 			})
 			// consola.log("_ProtectedLayout Authentication middleware success\n")
@@ -101,7 +98,6 @@ export async function loader({ context }: Route.LoaderArgs) {
 				accountId: user.account_id,
 			},
 			accounts: user.accounts || [],
-			account_settings: user.accountSettings || {},
 			user_settings: user.user_settings || {},
 		}
 	} catch (error) {
@@ -111,7 +107,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 }
 
 export default function ProtectedLayout() {
-	const { auth, accounts, account_settings, user_settings } = useLoaderData<typeof loader>()
+	const { auth, accounts, user_settings } = useLoaderData<typeof loader>()
 	const { clientEnv } = useRouteLoaderData("root")
 	const params = useParams()
 	const navigation = useNavigation()
@@ -130,7 +126,6 @@ export default function ProtectedLayout() {
 		<AuthProvider
 			user={auth.user}
 			organizations={accounts}
-			account_settings={account_settings}
 			user_settings={user_settings}
 		>
 			<CurrentProjectProvider>

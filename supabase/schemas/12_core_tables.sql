@@ -119,7 +119,8 @@ create table if not exists personas (
   description text,
   image_url text, -- generate by AI caricature
   percentage numeric,
-  color text, -- renamed from color_hex
+  color text, -- canonical going forward
+  color_hex text, -- legacy compatibility; keep until full migration
   kind text check (kind in ('core', 'provisional', 'contrast')) default 'core',
   tags text[],
   -- PersonaCompareBoard fields

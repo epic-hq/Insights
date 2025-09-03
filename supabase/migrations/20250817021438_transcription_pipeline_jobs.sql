@@ -321,5 +321,3 @@ CREATE TRIGGER set_analysis_jobs_timestamp BEFORE INSERT OR UPDATE ON public.ana
 CREATE TRIGGER set_upload_jobs_timestamp BEFORE INSERT OR UPDATE ON public.upload_jobs FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
 CREATE TRIGGER upload_job_notify AFTER INSERT ON public.upload_jobs FOR EACH ROW EXECUTE FUNCTION notify_upload_job();
-
-
