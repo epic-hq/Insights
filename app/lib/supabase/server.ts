@@ -1,24 +1,23 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr"
 import type { Database } from "~/../supabase/types"
+import { getServerEnv } from "~/env.server"
 
-const SUPABASE_URL = process.env.SUPABASE_URL || "http://127.0.0.1:54321"
-const SUPABASE_ANON_KEY = process.env.SUPABASE_ANON_KEY ?? ""
-const _SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY ?? ""
+const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv()
 
 export const getServerClient = (request: Request) => {
-	const headers = new Headers()
-	const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-		cookies: {
-			getAll() {
-				return parseCookieHeader(request.headers.get("Cookie") ?? "") ?? {}
-			},
-			setAll(cookiesToSet) {
-				cookiesToSet.forEach(({ name, value, options }) =>
-					headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
-				)
-			},
-		},
-	})
+    const headers = new Headers()
+    const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+        cookies: {
+            getAll() {
+				return parseCookieHeader(request.headers.get("Cookie") ?? "") ?? []
+            },
+            setAll(cookiesToSet) {
+                cookiesToSet.forEach(({ name, value, options }) =>
+                    headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
+                )
+            },
+        },
+    })
 
 	return { client: supabase, headers: headers }
 }
@@ -44,11 +43,25 @@ export async function getAuthenticatedUser(request: Request) {
 	const supabase = getServerClient(request)
 
 	try {
+		// Prefer JWT claims when available
 		const { data: claims, error } = await supabase.client.auth.getClaims()
-		if (error || !claims) {
-			return null
+		if (claims?.claims && !error) {
+			return claims.claims as any
 		}
-		return claims.claims
+		// Fallback to user/session for broader compatibility
+		const { data: sessionData } = await supabase.client.auth.getSession()
+		if (sessionData?.session?.user) {
+			const u = sessionData.session.user
+			return {
+				sub: u.id,
+				email: u.email,
+				user_metadata: u.user_metadata,
+				app_metadata: u.app_metadata,
+				// not strictly claims, but useful in callers that look for tokens
+				access_token: sessionData.session.access_token,
+			}
+		}
+		return null
 	} catch {
 		return null
 	}

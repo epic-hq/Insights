@@ -42,12 +42,12 @@ export async function action({ request }: ActionFunctionArgs) {
 	runtimeContext.set("project_id", headerProjectId || "")
 
 	// Log the context for debugging
-	consola.log("CopilotKit received headers:", {
-		userId: headerUserId,
-		accountId: headerAccountId,
-		projectId: headerProjectId,
-		hasAuth: !!hdr.get("authorization"),
-	})
+	// consola.log("CopilotKit received headers:", {
+	// 	userId: headerUserId,
+	// 	accountId: headerAccountId,
+	// 	projectId: headerProjectId,
+	// 	hasAuth: !!hdr.get("authorization"),
+	// })
 
 	// Build Copilot runtime with Mastra agents and our signup action
 	const runtime = new CopilotRuntime({

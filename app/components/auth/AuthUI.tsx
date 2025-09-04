@@ -1,7 +1,7 @@
 import { Auth } from "@supabase/auth-ui-react"
 import { ThemeSupa, type ThemeVariables } from "@supabase/auth-ui-shared"
-import { createBrowserClient } from "@supabase/ssr"
 import consola from "consola"
+import { getSupabaseClient } from "~/lib/supabase/client"
 
 interface AuthUIProps {
 	/** Absolute or relative URL to redirect after successful auth */
@@ -15,11 +15,7 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 
 	consola.log("redirectTo", redirectTo)
 
-	const supabase = createBrowserClient(
-		"https://rbginqvgkonnoktrttqv.supabase.co",
-		"sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
-	)
-	// sup_supabasegetSupabaseClient()
+	const supabase = getSupabaseClient()
 	if (!supabase) {
 		return (
 			<div className="rounded-md border border-red-200 bg-red-50 p-4">
@@ -32,29 +28,129 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 		<Auth
 			supabaseClient={supabase}
 			appearance={{
-				// --- high‑contrast palette
 				theme: ThemeSupa,
 				variables: {
 					default: {
 						colors: {
-							brand: "#2563EB", // blue‑600
-							brandAccent: "#1D4ED8", // blue‑700 (hover)
-							brandButtonText: "#FFFFFF", // keep text white
+							brand: "#3B82F6", // blue-500
+							brandAccent: "#2563EB", // blue-600 (hover)
+							brandButtonText: "#FFFFFF",
+							defaultButtonBackground: "#F8FAFC", // slate-50
+							defaultButtonBackgroundHover: "#F1F5F9", // slate-100
+							defaultButtonBorder: "#E2E8F0", // slate-200
+							defaultButtonText: "#334155", // slate-700
+							dividerBackground: "#E2E8F0", // slate-200
+							inputBackground: "#FFFFFF",
+							inputBorder: "#E2E8F0", // slate-200
+							inputBorderHover: "#CBD5E1", // slate-300
+							inputBorderFocus: "#3B82F6", // blue-500
+							inputText: "#1E293B", // slate-800
+							inputLabelText: "#475569", // slate-600
+							inputPlaceholder: "#94A3B8", // slate-400
+							messageText: "#DC2626", // red-600 for errors
+							messageTextDanger: "#DC2626", // red-600
+							anchorTextColor: "#3B82F6", // blue-500
+							anchorTextHoverColor: "#2563EB", // blue-600
 						},
-					} as ThemeVariables,
+						space: {
+							spaceSmall: "8px",
+							spaceMedium: "16px",
+							spaceLarge: "24px",
+							labelBottomMargin: "8px",
+							anchorBottomMargin: "8px",
+							emailInputSpacing: "4px",
+							socialAuthSpacing: "12px",
+							buttonPadding: "12px 16px",
+							inputPadding: "12px 16px",
+						},
+						fontSizes: {
+							baseBodySize: "14px",
+							baseInputSize: "16px",
+							baseLabelSize: "14px",
+							baseButtonSize: "16px",
+						},
+						fonts: {
+							bodyFontFamily: `ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif`,
+							buttonFontFamily: `ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif`,
+							inputFontFamily: `ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif`,
+							labelFontFamily: `ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif`,
+						},
+						borderWidths: {
+							buttonBorderWidth: "1px",
+							inputBorderWidth: "1px",
+						},
+						radii: {
+							borderRadiusButton: "8px",
+							buttonBorderRadius: "8px",
+							inputBorderRadius: "8px",
+						},
+					},
+					// Dark mode support
+					dark: {
+						colors: {
+							brand: "#3B82F6", // blue-500
+							brandAccent: "#60A5FA", // blue-400 (hover in dark)
+							brandButtonText: "#FFFFFF",
+							defaultButtonBackground: "#1E293B", // slate-800
+							defaultButtonBackgroundHover: "#334155", // slate-700
+							defaultButtonBorder: "#475569", // slate-600
+							defaultButtonText: "#F1F5F9", // slate-100
+							dividerBackground: "#475569", // slate-600
+							inputBackground: "#1E293B", // slate-800
+							inputBorder: "#475569", // slate-600
+							inputBorderHover: "#64748B", // slate-500
+							inputBorderFocus: "#3B82F6", // blue-500
+							inputText: "#F1F5F9", // slate-100
+							inputLabelText: "#CBD5E1", // slate-300
+							inputPlaceholder: "#64748B", // slate-500
+							messageText: "#EF4444", // red-500 for errors
+							messageTextDanger: "#EF4444", // red-500
+							anchorTextColor: "#60A5FA", // blue-400
+							anchorTextHoverColor: "#93C5FD", // blue-300
+						},
+					},
 				},
-				// --- tighten Tailwind classes
 				className: {
+					container: "space-y-6",
+					divider: "relative my-6",
+					label: "block text-sm font-medium mb-2",
+					input:
+						"block w-full rounded-lg border px-4 py-3 text-sm transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500/20 disabled:cursor-not-allowed disabled:opacity-50",
 					button:
-						"bg-primary-600 hover:bg-primary-700 focus-visible:ring-2 focus-visible:ring-primary-400 text-white font-semibold rounded-md transition-colors",
-					anchor: "text-primary-600 hover:text-primary-700",
-					input: "rounded-md border-gray-300 focus:border-primary-600 focus:ring-primary-600",
-					label: "text-gray-700 font-medium",
+						"flex w-full items-center justify-center gap-2 rounded-lg px-4 py-3 text-sm font-semibold transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50",
+					anchor: "text-sm font-medium transition-colors underline-offset-4 hover:underline",
+					message: "text-sm rounded-lg px-3 py-2 mt-2",
 				},
 				...appearance,
 			}}
 			providers={["google"]}
 			redirectTo={redirectTo}
+			view="sign_in"
+			showLinks={true}
+			localization={{
+				variables: {
+					sign_in: {
+						email_label: "Email address",
+						password_label: "Password",
+						button_label: "Sign in",
+						loading_button_label: "Signing in...",
+						social_provider_text: "Sign in with {{provider}}",
+						link_text: "Already have an account? Sign in",
+						email_input_placeholder: "Your email address",
+						password_input_placeholder: "Your password",
+					},
+					sign_up: {
+						email_label: "Email address",
+						password_label: "Create password",
+						button_label: "Create account",
+						loading_button_label: "Creating account...",
+						social_provider_text: "Sign up with {{provider}}",
+						link_text: "Don't have an account? Sign up",
+						email_input_placeholder: "Your email address",
+						password_input_placeholder: "Create a secure password",
+					},
+				},
+			}}
 		/>
 	)
 }

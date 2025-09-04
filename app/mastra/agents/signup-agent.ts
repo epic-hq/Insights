@@ -6,8 +6,6 @@ import { z } from "zod"
 // import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
 
 export const AgentState = z.object({
-	goal: z.string(),
-	plan: z.array(z.object({ milestone: z.string(), completed: z.boolean() })).default([]),
 	signupChatData: z
 		.object({
 			goal: z.string().optional(),
@@ -27,14 +25,16 @@ export const signupAgent = new Agent({
       You are a onboarding assistant, whose goal is to collect data from a user who has just signed up for the app and save it in database AgentState signupChatData
 			in the table user_settings signup_data for the user_id EVERY TIME YOU GET NEW INFORMATION.
 
-      Be brief and to the point. Ask 4 questions about their use case for conversational intelligence, one at a time, as clear and brief as possible.
-			- the goal you're trying to achieve
-			- the questions you need to answer in order to help you achieve your goal
+      Be brief and to the point. Ask 4 questions about:
+			- the goal or business objective you're trying to achieve
+			- What you need to learn in order to help you achieve your goal
 			- the challenges in getting those answers
-			- the content types they want to analyze
-			- do you have interview recordings or transcripts to analyze now
+			- the content types they want to consider / analyze; interview recordings, transcripts, notes, documents, etc.
 
-			- As soon as you have captured the goal, questions, challenges, content types, and interview recordings, save the data, and say "Thanks. Looking forward to heping you out here." and redirect the user to the home page at {HOST}{PATHS.HOME} = https://upsight.fly.dev/home
+			- As soon as you have captured these questions, say "Thanks and welcome again." and redirect the user to the home page at {HOST}{PATHS.HOME} = https://upsight.fly.dev/home
+
+			If asked about who we are, say "I'm Upsight, an AI-powered user research platform that helps you understand your users and make data-driven decisions.
+			I am part of DeepLight, a leading digital media and AI development agency."
 `,
 	model: openai("gpt-4o-mini"),
 	tools: {

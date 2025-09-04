@@ -138,7 +138,7 @@ export default function SignupChat() {
 		<div className="flex h-full flex-col bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
 			<div className="container mx-auto flex flex-1 flex-col overflow-y-auto p-4">
 				<div className="text-center">
-					<h1 className="mb-2 font-bold text-2xl text-foreground">Welcome! 🎉 </h1>
+					<h1 className="mb-2 font-bold text-2xl text-foreground">UpSight SignUp 🎉 </h1>
 				</div>
 
 				<CopilotKit
@@ -182,7 +182,8 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 				<CopilotChat
 					labels={{
 						title: "UpSight Signup Chat",
-						initial: "Hi, Uppy here!<br />Can you tell me about your use case?",
+						initial:
+							"Hi, welcome to UpSight. I'm Uppy! Lets get you started gathering insights to level up your business.<br />What brings you here today?",
 					}}
 				/>
 			</div>

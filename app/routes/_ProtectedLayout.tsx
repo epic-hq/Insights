@@ -79,6 +79,10 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			})
 			// consola.log("_ProtectedLayout Authentication middleware success\n")
 		} catch (error) {
+			// Preserve intended redirects thrown above (e.g., to /signup-chat)
+			if (error instanceof Response) {
+				throw error
+			}
 			consola.error("_ProtectedLayout Authentication middleware error:", error)
 			throw redirect("/login")
 		}

@@ -19,9 +19,13 @@ export function createClient(): SupabaseClient<Database> {
 		throw new Error("createClient should only be called on the client side")
 	}
 
-	// Use correct environment values
-	const supabaseUrl = "https://rbginqvgkonnoktrttqv.supabase.co"
-	const supabaseAnonKey = "sb_publishable_Tkem8wKHHZSJqyZjMaLpCQ_S2io_bXY"
+	// Use environment values from window.env (set in root loader)
+	const supabaseUrl = window.env?.SUPABASE_URL
+	const supabaseAnonKey = window.env?.SUPABASE_ANON_KEY
+
+	if (!supabaseUrl || !supabaseAnonKey) {
+		throw new Error("Missing SUPABASE_URL or SUPABASE_ANON_KEY in client environment")
+	}
 
 	// Create the client with proper cookie handling for SSR
 	supabaseClient = createBrowserClient<Database>(supabaseUrl, supabaseAnonKey)

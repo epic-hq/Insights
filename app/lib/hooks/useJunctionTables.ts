@@ -5,7 +5,7 @@
 
 import { useCallback, useEffect, useState } from "react"
 import { createJunctionTableManager } from "~/lib/database/junction-helpers"
-import { createBrowserClient } from "~/lib/supabase/client"
+import { getSupabaseClient } from "~/lib/supabase/client"
 
 /**
  * Hook for managing insight tags
@@ -15,7 +15,7 @@ export function useInsightTags(insightId: string) {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const supabase = createBrowserClient()
+	const supabase = getSupabaseClient()
 	const junctionManager = createJunctionTableManager(supabase)
 
 	const loadTags = useCallback(async () => {
@@ -120,7 +120,7 @@ export function useOpportunityInsights(opportunityId: string) {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const supabase = createBrowserClient()
+	const supabase = getSupabaseClient()
 	const junctionManager = createJunctionTableManager(supabase)
 
 	const loadInsights = useCallback(async () => {
@@ -204,7 +204,7 @@ export function usePersonaInsights(personaId: string) {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const supabase = createBrowserClient()
+	const supabase = getSupabaseClient()
 	const junctionManager = createJunctionTableManager(supabase)
 
 	const loadInsights = useCallback(async () => {
@@ -266,7 +266,7 @@ export function useProjectPeople(projectId: string) {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const supabase = createBrowserClient()
+	const supabase = getSupabaseClient()
 	const junctionManager = createJunctionTableManager(supabase)
 
 	const loadPeople = useCallback(async () => {
@@ -328,7 +328,7 @@ export function useInterviewTags(interviewId: string) {
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
 
-	const supabase = createBrowserClient()
+	const supabase = getSupabaseClient()
 	const junctionManager = createJunctionTableManager(supabase)
 
 	const loadTags = useCallback(async () => {
@@ -386,7 +386,7 @@ export function useInterviewTags(interviewId: string) {
  * General purpose hook for junction table operations
  */
 export function useJunctionTables() {
-	const supabase = createBrowserClient()
+	const supabase = getSupabaseClient()
 	const junctionManager = createJunctionTableManager(supabase)
 
 	return {
