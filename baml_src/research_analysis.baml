@@ -259,7 +259,7 @@ function GenerateExecutiveSummary(
 
 // ---------- Core data classes ----------
 class Category {
-  id string @description("Stable string ID for the category (e.g., 'goals', 'pain'). Use lowercase kebab/camel; must be unique within this QuestionSet.")
+  id string @description("Stable string ID for the category (e.g., 'goals', 'pain', 'workflow', 'context', 'constraints', 'willingness-to-pay'). Use lowercase kebab/camel; must be unique within this QuestionSet.")
   label string @description("Human-readable category name shown in the UI (e.g., 'Goals & Outcomes').")
   weight float? @description("Optional multiplier (>=0.5 to <=1.5 typical) that boosts selection priority for this category. default = 1.0")
 }
@@ -307,7 +307,7 @@ class QuestionPolicy {
 class QuestionSet {
   sessionId string @description("Stable session identifier provided by the caller; reuse across rounds for the same user/research flow.")
   policy QuestionPolicy @description("Selection policy used by the app when choosing the next round.")
-  categories Category[] @description("The complete list of categories available for this session. Keep to 5–8.")
+  categories Category[] @description("The complete list of categories available for this session. Keep to < 8.")
   questions Question[] @description("Pool of proposed questions. Start all as 'proposed'. Do not include duplicates.")
   history HistoryItem[] @description("Past events for this session. If the caller provides prior history, do not alter it; only append in the app.")
   round int @description("Current round number (1-based). Echo back the caller-provided value.")
@@ -368,7 +368,7 @@ function GenerateQuestionSet(
 	- Consider follow-up discussion time in your estimate
 
 	Total available time: {{ inputs.interview_time_limit }} minutes.
-	Generate more questions than can fit to give the interviewer options and backups.
+	Generate 25% more questions than can fit to give the interviewer options and backups.
 
   BACKGROUND CONTEXT (use only if it aligns with custom instructions above):
   - Target Org: {{ inputs.target_org }}
@@ -462,9 +462,9 @@ test GenerateQuestionSet_Custom_Instructions2 {
     custom_instructions "Favor plain language for patients 8th-grade reading level; include at least 2 questions about accessibility and language.",
     session_id "proj_health_001",
     round 1,
-    total_per_round 25,
-    per_category_min 3,
-    per_category_max 5
+    total_per_round 8,
+    per_category_min 1,
+    per_category_max 4
 	}
   }
 }

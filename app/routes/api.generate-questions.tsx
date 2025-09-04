@@ -152,21 +152,87 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			custom_instructions,
 		})
 
-        const questionSet = await generateQuestionSetCanonical({
-            target_orgs,
-            target_roles,
-            research_goal,
-            research_goal_details,
-            assumptions,
-            unknowns,
-            custom_instructions,
-            session_id: `session_${Date.now()}`,
-            round: 1,
-            total_per_round: questionCount || 10,
-            per_category_min: 1,
-            per_category_max: 3,
-            interview_time_limit,
-        })
+        // Try canonical BAML QuestionSet generation; on validation failure, fall back.
+        let questionSet: any
+        const computedSessionId = `session_${Date.now()}`
+        try {
+            questionSet = await generateQuestionSetCanonical({
+                target_orgs,
+                target_roles,
+                research_goal,
+                research_goal_details,
+                assumptions,
+                unknowns,
+                custom_instructions,
+                session_id: computedSessionId,
+                round: 1,
+                total_per_round: questionCount || 10,
+                per_category_min: 1,
+                per_category_max: 3,
+                interview_time_limit,
+            })
+        } catch (e) {
+            consola.warn("[api.generate-questions] Canonical generation failed; using fallback shape.", e)
+            // Fallback: use legacy suggestions and adapt to QuestionSet shape expected by UI.
+            const { generateResearchQuestions } = await import("~/utils/research-analysis.server")
+            const suggestions = await generateResearchQuestions(
+                target_orgs,
+                target_roles,
+                research_goal,
+                research_goal_details,
+                assumptions,
+                unknowns,
+                custom_instructions,
+            )
+
+            const categories = [
+                { id: "core", label: "Core" },
+                { id: "behavior", label: "Behavior" },
+                { id: "pain", label: "Pain" },
+                { id: "solutions", label: "Solutions" },
+                { id: "context", label: "Context" },
+            ]
+
+            const toQuestion = (categoryId: string) => (q: any, idx: number) => ({
+                id: randomUUID(),
+                text: q.question,
+                categoryId,
+                rationale: q.rationale || undefined,
+                tags: [],
+                scores: {
+                    importance: q.priority === 1 ? 0.9 : q.priority === 2 ? 0.7 : 0.55,
+                    goalMatch: 0.65,
+                    novelty: 0.6,
+                },
+                estimatedMinutes: 4.5,
+                status: "proposed" as const,
+                source: "llm" as const,
+                displayOrder: idx + 1,
+            })
+
+            const questions = [
+                ...(suggestions.core_questions || []).map(toQuestion("core")),
+                ...(suggestions.behavioral_questions || []).map(toQuestion("behavior")),
+                ...(suggestions.pain_point_questions || []).map(toQuestion("pain")),
+                ...(suggestions.solution_questions || []).map(toQuestion("solutions")),
+                ...(suggestions.context_questions || []).map(toQuestion("context")),
+            ]
+
+            questionSet = {
+                sessionId: computedSessionId,
+                policy: {
+                    totalPerRound: questionCount || 10,
+                    perCategoryMin: 1,
+                    perCategoryMax: 3,
+                    dedupeWindowRounds: 2,
+                    balanceBy: ["category", "novelty"],
+                },
+                categories,
+                questions,
+                history: [],
+                round: 1,
+            }
+        }
 
 		consola.log("BAML questionSet result:", JSON.stringify(questionSet, null, 2))
 

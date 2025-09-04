@@ -5,6 +5,7 @@ import {
 	Check,
 	ChevronDown,
 	Clock,
+	Flag,
 	GripVertical,
 	MessageCircleQuestion,
 	MoreHorizontal,
@@ -159,7 +160,7 @@ const _questionCategoriesVariants = {
 // Quality flag component
 function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) {
 	if (!qualityFlag) return null
-	
+
 	const getColorClasses = (assessment: string) => {
 		switch (assessment) {
 			case "red":
@@ -177,14 +178,16 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
-					<div className={`inline-flex items-center rounded-full border px-2 py-1 text-xs font-medium ${getColorClasses(qualityFlag.assessment)}`}>
-						Q
+					<div
+						className={`inline-flex items-center rounded-full border px-2 py-1 font-medium text-xs ${getColorClasses(qualityFlag.assessment)}`}
+					>
+						<Flag className="h-4 w-4" />
 					</div>
 				</TooltipTrigger>
 				<TooltipContent>
 					<div className="max-w-xs">
 						<div className="font-semibold">Quality Assessment</div>
-						<div className="text-xs text-muted-foreground">
+						<div className="text-muted-foreground text-xs">
 							Score: {qualityFlag.score}/100 ({qualityFlag.assessment.toUpperCase()})
 						</div>
 						<div className="mt-1 text-xs">{qualityFlag.description}</div>
@@ -611,20 +614,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				toast.error("Question quality needs improvement", {
 					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
 					duration: 6000,
-					className: "text-red-600"
+					className: "text-red-600",
 				})
 				// Still add the question but warn the user
 			} else if (evaluation.overall_quality === "yellow") {
 				toast.warning("Question could be improved", {
 					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
 					duration: 5000,
-					className: "text-yellow-600"
+					className: "text-yellow-600",
 				})
 			} else {
 				toast.success("Great question!", {
 					description: `${qualityMessage}. ${evaluation.quick_feedback}`,
 					duration: 4000,
-					className: "text-green-600"
+					className: "text-green-600",
 				})
 			}
 
@@ -645,8 +648,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				qualityFlag: {
 					assessment: evaluation.overall_quality as "red" | "yellow" | "green",
 					score: evaluation.score,
-					description: evaluation.quick_feedback || "Quality assessment completed"
-				}
+					description: evaluation.quick_feedback || "Quality assessment completed",
+				},
 			}
 
 			const updatedQuestions = [...questions, customQuestion]
@@ -681,8 +684,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				qualityFlag: {
 					assessment: "yellow",
 					score: 50,
-					description: "Quality evaluation failed - added without assessment"
-				}
+					description: "Quality evaluation failed - added without assessment",
+				},
 			}
 
 			const updatedQuestions = [...questions, customQuestion]
@@ -704,7 +707,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 			toast.error("Question added without quality check", {
 				description: "Quality evaluation failed, but question was added anyway",
-				className: "text-red-600"
+				className: "text-red-600",
 			})
 		} finally {
 			setAddingCustomQuestion(false)
@@ -960,7 +963,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							/>
 						)}
 						<div className="flex gap-2">
-							<Button onClick={generateQuestions} disabled={generating} variant="outline" className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50">
+							<Button
+								onClick={generateQuestions}
+								disabled={generating}
+								variant="outline"
+								className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
+							>
 								{generating ? (
 									<>
 										<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" /> Generating
@@ -1039,7 +1047,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								</div>
 							</div>
 						) : (
-							<Button onClick={() => setShowAddCustomQuestion(true)} variant="outline" className="w-full border-blue-500 text-blue-600 hover:bg-blue-50">
+							<Button
+								onClick={() => setShowAddCustomQuestion(true)}
+								variant="outline"
+								className="w-full border-blue-500 text-blue-600 hover:bg-blue-50"
+							>
 								<MessageCircleQuestion className="mr-2 h-4 w-4" /> Add Custom Question
 							</Button>
 						)}
@@ -1199,9 +1211,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				)}
 																			</div>
 																			<div className="flex items-center gap-1">
-																				{question.qualityFlag && (
-																					<QualityFlag qualityFlag={question.qualityFlag} />
-																				)}
+																				{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
 																				<Button
 																					variant="ghost"
 																					size="sm"
@@ -1303,9 +1313,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																</p>
 															</div>
 															<div className="flex items-center gap-1">
-																{question.qualityFlag && (
-																	<QualityFlag qualityFlag={question.qualityFlag} />
-																)}
+																{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
 																<button
 																	onClick={() => rejectQuestion(question.id)}
 																	className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"

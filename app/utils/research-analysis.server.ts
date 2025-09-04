@@ -73,6 +73,11 @@ export async function generateQuestionSetCanonical(params: {
 
 	consola.log("[generateQuestionSetCanonical] Calling BAML GenerateQuestionSet with canonical params")
 
+	// Guardrails to force required fields the parser expects.
+	// We append these to any caller-provided instructions so the LLM reliably
+	// includes top-level sessionId, policy, and round with exact values.
+	const enforcedShapeNote = `\n\nSTRUCTURE REQUIREMENTS (non-negotiable):\n- Always return valid JSON matching QuestionSet.\n- You MUST include top-level keys: sessionId, policy, categories, questions, history, round.\n- Set sessionId exactly to: ${session_id || ""}\n- Set round exactly to: ${round ?? 1}\n- policy object MUST be present with EXACT keys and values:\n  {\n    "totalPerRound": ${total_per_round ?? 10},\n    "perCategoryMin": ${per_category_min ?? 1},\n    "perCategoryMax": ${per_category_max ?? 3},\n    "dedupeWindowRounds": 2,\n    "balanceBy": ["category","novelty"]\n  }\nReturn only the JSON object — no prose.`
+
 	const questionSet = await b.GenerateQuestionSet({
 		target_org: target_orgs,
 		target_roles,
@@ -80,7 +85,7 @@ export async function generateQuestionSetCanonical(params: {
 		research_goal_details,
 		assumptions,
 		unknowns,
-		custom_instructions: custom_instructions || "",
+		custom_instructions: [custom_instructions || "", enforcedShapeNote].filter(Boolean).join("\n\n"),
 		session_id: session_id || `session_${Date.now()}`,
 		round: round ?? 1,
 		total_per_round: total_per_round ?? 10,
