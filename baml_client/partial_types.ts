@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  Question,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchQuestion,  ResearchQuestionSuggestions,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  DecisionQuestionOut,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  Question,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionOut,  ResearchQuestionSuggestions,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -75,6 +75,13 @@ export namespace partial_types {
       end_ms?: number | null
       summary?: string | null
       title?: string | null
+    }
+    export interface DecisionQuestionOut {
+      id?: string | null
+      text?: string | null
+      rationale?: string | null
+      key_metrics: string[]
+      risks_if_wrong: string[]
     }
     export interface EvidenceLinkProposal {
       evidence_id?: string | null
@@ -185,6 +192,13 @@ export namespace partial_types {
       date?: string | null
       interviewer?: string | null
       durationMin?: number | null
+    }
+    export interface InterviewPromptOut {
+      id?: string | null
+      rq_ids: string[]
+      text?: string | null
+      followups: string[]
+      bias_checks: string[]
     }
     export interface Interviewee {
       name?: string | null
@@ -373,9 +387,24 @@ export namespace partial_types {
       role?: string | null
       questions: ResearchQuestion[]
     }
+    export interface ResearchPlanOut {
+      goal?: string | null
+      decision_questions: DecisionQuestionOut[]
+      research_questions: ResearchQuestionOut[]
+      interview_prompts: InterviewPromptOut[]
+      other_data_sources: string[]
+    }
     export interface ResearchQuestion {
       question?: string | null
       priority?: number | null
+    }
+    export interface ResearchQuestionOut {
+      id?: string | null
+      dq_id?: string | null
+      text?: string | null
+      rationale?: string | null
+      evidence_types: string[]
+      suggested_methods: string[]
     }
     export interface ResearchQuestionSuggestions {
       core_questions: SuggestedQuestion[]

@@ -164,13 +164,13 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 	const getColorClasses = (assessment: string) => {
 		switch (assessment) {
 			case "red":
-				return "bg-red-100 text-red-700 border-red-200"
+				return "bg-red-100 text-red-700 border-red-200 dark:text-red-200"
 			case "yellow":
-				return "bg-yellow-100 text-yellow-700 border-yellow-200"
+				return "bg-yellow-100 text-yellow-700 border-yellow-200 dark:text-yellow-200"
 			case "green":
-				return "bg-green-100 text-green-700 border-green-200"
+				return "bg-green-100 text-green-700 border-green-200 dark:text-green-200"
 			default:
-				return "bg-gray-100 text-gray-700 border-gray-200"
+				return "bg-gray-100 text-gray-700 border-gray-200 dark:text-gray-200"
 		}
 	}
 
@@ -181,7 +181,7 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 					<div
 						className={`inline-flex items-center rounded-full border px-2 py-1 font-medium text-xs ${getColorClasses(qualityFlag.assessment)}`}
 					>
-						<Flag className="h-4 w-4" />
+						<Flag className="h-4 w-4" strokeWidth={2.75} />
 					</div>
 				</TooltipTrigger>
 				<TooltipContent>

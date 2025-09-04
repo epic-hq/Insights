@@ -350,6 +350,15 @@ export interface Chapter {
   
 }
 
+export interface DecisionQuestionOut {
+  id: string
+  text: string
+  rationale: string
+  key_metrics: string[]
+  risks_if_wrong: string[]
+  
+}
+
 export interface EvidenceLinkProposal {
   evidence_id: string
   rationale: string
@@ -483,6 +492,15 @@ export interface InterviewMetadata {
   date?: string | null
   interviewer?: string | null
   durationMin?: number | null
+  
+}
+
+export interface InterviewPromptOut {
+  id: string
+  rq_ids: string[]
+  text: string
+  followups: string[]
+  bias_checks: string[]
   
 }
 
@@ -707,9 +725,28 @@ export interface ResearchGoal {
   
 }
 
+export interface ResearchPlanOut {
+  goal: string
+  decision_questions: DecisionQuestionOut[]
+  research_questions: ResearchQuestionOut[]
+  interview_prompts: InterviewPromptOut[]
+  other_data_sources: string[]
+  
+}
+
 export interface ResearchQuestion {
   question: string
   priority: number
+  
+}
+
+export interface ResearchQuestionOut {
+  id: string
+  dq_id: string
+  text: string
+  rationale: string
+  evidence_types: string[]
+  suggested_methods: string[]
   
 }
 

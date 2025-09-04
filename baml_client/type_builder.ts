@@ -41,6 +41,8 @@ export default class TypeBuilder {
     
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
     
+    DecisionQuestionOut: ClassViewer<'DecisionQuestionOut', "id" | "text" | "rationale" | "key_metrics" | "risks_if_wrong">;
+    
     EvidenceLinkProposal: ClassViewer<'EvidenceLinkProposal', "evidence_id" | "rationale" | "confidence">;
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
@@ -66,6 +68,8 @@ export default class TypeBuilder {
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
     InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
+    
+    InterviewPromptOut: ClassViewer<'InterviewPromptOut', "id" | "rq_ids" | "text" | "followups" | "bias_checks">;
     
     Interviewee: ClassViewer<'Interviewee', "name" | "persona" | "participantDescription" | "segment" | "contactInfo">;
     
@@ -101,7 +105,11 @@ export default class TypeBuilder {
     
     ResearchGoal: ClassViewer<'ResearchGoal', "goal" | "icp" | "role" | "questions">;
     
+    ResearchPlanOut: ClassViewer<'ResearchPlanOut', "goal" | "decision_questions" | "research_questions" | "interview_prompts" | "other_data_sources">;
+    
     ResearchQuestion: ClassViewer<'ResearchQuestion', "question" | "priority">;
+    
+    ResearchQuestionOut: ClassViewer<'ResearchQuestionOut', "id" | "dq_id" | "text" | "rationale" | "evidence_types" | "suggested_methods">;
     
     ResearchQuestionSuggestions: ClassViewer<'ResearchQuestionSuggestions', "core_questions" | "behavioral_questions" | "pain_point_questions" | "solution_questions" | "context_questions">;
     
@@ -128,7 +136,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchQuestion","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionOut","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -162,6 +170,10 @@ export default class TypeBuilder {
         
         this.Chapter = this.tb.classViewer("Chapter", [
           "start_ms","end_ms","summary","title",
+        ]);
+        
+        this.DecisionQuestionOut = this.tb.classViewer("DecisionQuestionOut", [
+          "id","text","rationale","key_metrics","risks_if_wrong",
         ]);
         
         this.EvidenceLinkProposal = this.tb.classViewer("EvidenceLinkProposal", [
@@ -214,6 +226,10 @@ export default class TypeBuilder {
         
         this.InterviewMetadata = this.tb.classViewer("InterviewMetadata", [
           "title","date","interviewer","durationMin",
+        ]);
+        
+        this.InterviewPromptOut = this.tb.classViewer("InterviewPromptOut", [
+          "id","rq_ids","text","followups","bias_checks",
         ]);
         
         this.Interviewee = this.tb.classViewer("Interviewee", [
@@ -284,8 +300,16 @@ export default class TypeBuilder {
           "goal","icp","role","questions",
         ]);
         
+        this.ResearchPlanOut = this.tb.classViewer("ResearchPlanOut", [
+          "goal","decision_questions","research_questions","interview_prompts","other_data_sources",
+        ]);
+        
         this.ResearchQuestion = this.tb.classViewer("ResearchQuestion", [
           "question","priority",
+        ]);
+        
+        this.ResearchQuestionOut = this.tb.classViewer("ResearchQuestionOut", [
+          "id","dq_id","text","rationale","evidence_types","suggested_methods",
         ]);
         
         this.ResearchQuestionSuggestions = this.tb.classViewer("ResearchQuestionSuggestions", [

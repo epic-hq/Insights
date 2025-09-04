@@ -301,7 +301,7 @@ class InterviewExtraction {
 	openQuestionsAndNextSteps string @description("What don't we know yet? What do we need to learn more about? What are the next steps we should take to validate our hypotheses or address our knowledge gaps? A bullet list of open questions and next steps in markdown format")
 }
 
-// Sets are used to group and add structure to unstructured content; e.g. what User Journey Stages we care about, Personas, types of User Segments, etc.
+
 class SetRecord {
 	term string @description("Short, descriptive name (1 - 5 words usually). These are usually tags or keywords, phases, stages, or themes.")
 	definition string @description("Succinct definition of the term.")
