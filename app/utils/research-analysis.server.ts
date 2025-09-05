@@ -79,19 +79,21 @@ export async function generateQuestionSetCanonical(params: {
 	const enforcedShapeNote = `\n\nSTRUCTURE REQUIREMENTS (non-negotiable):\n- Always return valid JSON matching QuestionSet.\n- You MUST include top-level keys: sessionId, policy, categories, questions, history, round.\n- Set sessionId exactly to: ${session_id || ""}\n- Set round exactly to: ${round ?? 1}\n- policy object MUST be present with EXACT keys and values:\n  {\n    "totalPerRound": ${total_per_round ?? 10},\n    "perCategoryMin": ${per_category_min ?? 1},\n    "perCategoryMax": ${per_category_max ?? 3},\n    "dedupeWindowRounds": 2,\n    "balanceBy": ["category","novelty"]\n  }\nReturn only the JSON object — no prose.`
 
 	const questionSet = await b.GenerateQuestionSet({
-		target_org: target_orgs,
-		target_roles,
-		research_goal,
-		research_goal_details,
-		assumptions,
-		unknowns,
-		custom_instructions: [custom_instructions || "", enforcedShapeNote].filter(Boolean).join("\n\n"),
-		session_id: session_id || `session_${Date.now()}`,
-		round: round ?? 1,
-		total_per_round: total_per_round ?? 10,
-		per_category_min: per_category_min ?? 1,
-		per_category_max: per_category_max ?? 3,
-		interview_time_limit: interview_time_limit ?? 60,
+		inputs: {
+			target_org: target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+			custom_instructions: [custom_instructions || "", enforcedShapeNote].filter(Boolean).join("\n\n"),
+			session_id: session_id || `session_${Date.now()}`,
+			round: round ?? 1,
+			total_per_round: total_per_round ?? 10,
+			per_category_min: per_category_min ?? 1,
+			per_category_max: per_category_max ?? 3,
+			interview_time_limit: interview_time_limit ?? 60,
+		}
 	})
 
 	return questionSet
@@ -256,18 +258,21 @@ export async function generateResearchQuestions(
 		})
 
 		const questionSet = await b.GenerateQuestionSet({
-			target_org: target_orgs,
-			target_roles,
-			research_goal,
-			research_goal_details,
-			assumptions,
-			unknowns,
-			custom_instructions,
-			session_id: `session_${Date.now()}`,
-			round: 1,
-			total_per_round: 10,
-			per_category_min: 1,
-			per_category_max: 3,
+			inputs: {
+				target_org: target_orgs,
+				target_roles,
+				research_goal,
+				research_goal_details,
+				assumptions,
+				unknowns,
+				custom_instructions,
+				session_id: `session_${Date.now()}`,
+				round: 1,
+				total_per_round: 10,
+				per_category_min: 1,
+				per_category_max: 3,
+				interview_time_limit: 60,
+			}
 		})
 
 		// Convert new QuestionSet format to legacy format for backward compatibility

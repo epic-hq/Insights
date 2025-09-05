@@ -16,13 +16,13 @@ export default function QuestionsIndex() {
 	}
 
 	return (
-		<div className="mx-auto max-w-7xl p-4 sm:p-8">
-			<div className="mb-6 sm:mb-8">
-				<h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
+		<div className="mx-auto max-w-7xl p-4 sm:p-6">
+			{/* <div className="mb-6 sm:mb-8">
+				 <h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
 					<MessageCircleQuestion className="h-8 w-8" />
 					Interview Questions
 				</h2>
-			</div>
+			</div> */}
 
 			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
 		</div>
