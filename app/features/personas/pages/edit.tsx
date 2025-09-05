@@ -106,7 +106,7 @@ export async function action({
 			return { error: `Failed to delete persona: ${error.message}` }
 		}
 
-		return redirect(`${routes.personas.index}`)
+		return redirect(routes.personas.index())
 	}
 
 	// Update persona
@@ -210,7 +210,7 @@ export async function action({
 		return { error: `Failed to update persona: ${error.message}` }
 	}
 
-	return redirect(`${routes.personas.detail(persona.id)}`)
+	return redirect(routes.personas.detail(persona.id))
 }
 
 export default function EditPersona() {

@@ -150,7 +150,7 @@ export async function action({
 	if (intent === "delete_project") {
 		const { error } = await supabase.from("projects").delete().eq("id", projectId)
 		if (error) return { error: `Failed to delete project: ${error.message}` }
-		return redirect(`${routes.projects.index}`)
+		return redirect(routes.projects.index())
 	}
 
 	// Update core project fields

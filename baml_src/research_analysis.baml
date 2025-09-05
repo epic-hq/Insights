@@ -449,6 +449,82 @@ function GenerateQuestionSet(
   "#
 }
 
+// Follow-up question generation for dive deeper functionality
+class FollowUpQuestionScores {
+  importance float @description("0.0-1.0 how important this follow-up is")
+  goalMatch float @description("0.0-1.0 how well it matches research goals")
+  novelty float @description("0.0-1.0 how novel/unique this angle is")
+}
+
+class FollowUpQuestion {
+  id string @description("Unique identifier for the follow-up question")
+  text string @description("The follow-up question text")
+  rationale string @description("Why this follow-up question is valuable")
+  estimatedMinutes int @description("Estimated time in minutes to ask this question")
+  categoryId string @description("Category like 'context', 'pain', 'workflow', etc.")
+  scores FollowUpQuestionScores @description("Scoring metrics for this question")
+}
+
+class FollowUpSet {
+  originalQuestion string @description("The question we're diving deeper on")
+  followUps FollowUpQuestion[] @description("2-4 follow-up questions")
+}
+
+function GenerateFollowUpQuestions(
+  original_question: string,
+  research_context: string,
+  target_roles: string,
+  custom_instructions: string
+) -> FollowUpSet {
+  client CustomGPT4oMini
+  prompt #"
+    You are an expert UX researcher generating follow-up questions to dive deeper into a specific topic.
+
+    ORIGINAL QUESTION: {{ original_question }}
+
+    RESEARCH CONTEXT: {{ research_context }}
+    TARGET ROLES: {{ target_roles }}
+
+    CUSTOM INSTRUCTIONS (follow these strictly):
+    {{ custom_instructions }}
+
+    TASK: Generate 2-4 thoughtful follow-up questions that dive deeper into the original question. These should:
+
+    1. Explore different angles of the original question
+    2. Uncover underlying motivations, pain points, or workflows
+    3. Ask for specific examples or stories
+    4. Probe for emotional responses or deeper context
+
+    QUALITY GUIDELINES:
+    - Make questions conversational and natural
+    - Avoid yes/no questions - prefer open-ended
+    - Ask for specific examples: "Can you walk me through..." or "Tell me about a time when..."
+    - Probe for emotions: "How did that make you feel?" or "What was most frustrating about..."
+    - Explore impact: "What would happen if..." or "How does this affect your..."
+    - Be specific to the target audience ({{ target_roles }})
+
+    CATEGORIES to use:
+    - context: Background and situational questions
+    - pain: Problems, frustrations, challenges
+    - workflow: Process, behavior, how things work
+    - goals: Motivations, desired outcomes
+    - constraints: Limitations, barriers
+    - willingness: Adoption, willingness to change
+
+    SCORING:
+    - importance: 0.7-1.0 (these are follow-ups to important questions)
+    - goalMatch: 0.6-0.9 (should align well with research goals)
+    - novelty: 0.4-0.8 (varies by how unique the angle is)
+
+    ESTIMATED TIME:
+    - Simple clarification: 2-3 minutes
+    - Story/example requests: 4-5 minutes
+    - Complex scenario discussion: 5-6 minutes
+
+    Return exactly {{ ctx.output_format }}
+  "#
+}
+
 test GenerateQuestionSet_Custom_Instructions2 {
   functions [GenerateQuestionSet]
   args {

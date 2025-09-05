@@ -242,6 +242,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [addingCustomQuestion, setAddingCustomQuestion] = useState(false)
 	const [showSettings, setShowSettings] = useState(false)
 	const [autoGenerateInitial, setAutoGenerateInitial] = useState(false)
+	const [generatingFollowUp, setGeneratingFollowUp] = useState<string | null>(null)
 
 	// Auto-generate questions on first load for new users
 	useEffect(() => {
@@ -772,6 +773,82 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		return "bg-transparent text-blue-600 dark:text-blue-400"
 	}
 
+	const generateFollowUpQuestions = async (questionId: string, originalQuestion: string) => {
+		if (generatingFollowUp) return
+		setGeneratingFollowUp(questionId)
+		
+		try {
+			const response = await fetch("/api/generate-followup-questions", {
+				method: "POST",
+				headers: { "Content-Type": "application/x-www-form-urlencoded" },
+				body: new URLSearchParams({
+					originalQuestion,
+					researchContext: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`,
+					targetRoles: target_roles?.join(", ") || "Various roles",
+					customInstructions: customInstructions || "Generate thoughtful, conversational follow-up questions that dive deeper into the topic."
+				})
+			})
+
+			if (!response.ok) {
+				throw new Error(`Server error: ${response.status}`)
+			}
+
+			const data = await response.json()
+			if (data.success && data.followUpSet?.followUps) {
+				// Convert follow-up questions to our Question format
+				const followUpQuestions: Question[] = data.followUpSet.followUps.map((q: any) => ({
+					id: q.id || crypto.randomUUID(),
+					text: q.text,
+					categoryId: q.categoryId,
+					scores: {
+						importance: q.scores.importance,
+						goalMatch: q.scores.goalMatch,
+						novelty: q.scores.novelty,
+					},
+					rationale: q.rationale,
+					status: "proposed" as const,
+					timesAnswered: 0,
+					source: "ai" as const,
+					isMustHave: false,
+				}))
+
+				// Find the index of the original question in selectedQuestionIds
+				const originalIndex = selectedQuestionIds.findIndex(id => id === questionId)
+				if (originalIndex >= 0) {
+					// Insert follow-up questions right after the original question
+					const updatedQuestions = [...questions, ...followUpQuestions]
+					setQuestions(updatedQuestions)
+					
+					const newSelectedIds = [
+						...selectedQuestionIds.slice(0, originalIndex + 1),
+						...followUpQuestions.map(q => q.id),
+						...selectedQuestionIds.slice(originalIndex + 1)
+					]
+					setSelectedQuestionIds(newSelectedIds)
+					
+					// Save to database
+					setSkipDebounce(true)
+					await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+					setTimeout(() => setSkipDebounce(false), 1500)
+
+					toast.success(`Added ${followUpQuestions.length} follow-up questions`, {
+						description: `Dive deeper questions inserted after "${originalQuestion.slice(0, 50)}${originalQuestion.length > 50 ? '...' : ''}"`,
+						duration: 4000,
+					})
+				}
+			} else {
+				throw new Error("No follow-up questions generated")
+			}
+		} catch (error) {
+			console.error("Follow-up generation error:", error)
+			toast.error("Failed to generate follow-up questions", {
+				description: error instanceof Error ? error.message : "An unexpected error occurred",
+			})
+		} finally {
+			setGeneratingFollowUp(null)
+		}
+	}
+
 	const generateQuestions = async () => {
 		if (generating) return
 		setGenerating(true)
@@ -1137,8 +1214,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</div>
 				</div>
 
-				<Card className="border border-gray-200">
-					<CardContent className="p-4">
+				<Card className="border-0 shadow-none sm:border sm:border-gray-200">
+					<CardContent className="p-2 sm:p-4">
 						<DragDropContext onDragEnd={onDragEnd}>
 							<Droppable droppableId="question-pack">
 								{(provided) => (
@@ -1296,9 +1373,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					variant="ghost"
 																					size="sm"
 																					title="Generate follow-up questions"
+																					onClick={() => generateFollowUpQuestions(question.id, question.text)}
+																					disabled={generatingFollowUp === question.id}
 																					className="text-blue-500 hover:text-blue-700"
 																				>
-																					<Zap className="h-4 w-4" />
+																					{generatingFollowUp === question.id ? (
+																						<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																					) : (
+																						<Zap className="h-4 w-4" />
+																					)}
 																				</Button>
 																				<Button
 																					variant="ghost"

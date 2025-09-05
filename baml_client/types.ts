@@ -429,6 +429,29 @@ export interface ExtractedInsight {
   [key: string]: any;
 }
 
+export interface FollowUpQuestion {
+  id: string
+  text: string
+  rationale: string
+  estimatedMinutes: number
+  categoryId: string
+  scores: FollowUpQuestionScores
+  
+}
+
+export interface FollowUpQuestionScores {
+  importance: number
+  goalMatch: number
+  novelty: number
+  
+}
+
+export interface FollowUpSet {
+  originalQuestion: string
+  followUps: FollowUpQuestion[]
+  
+}
+
 export interface GapAnalysis {
   unanswered_questions: string[]
   partially_answered_questions: string[]

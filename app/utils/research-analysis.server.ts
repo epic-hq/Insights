@@ -100,6 +100,33 @@ export async function generateQuestionSetCanonical(params: {
 }
 
 /**
+ * Generate follow-up questions for diving deeper into a specific question
+ */
+export async function generateFollowUpQuestions(
+	originalQuestion: string,
+	researchContext: string,
+	targetRoles: string,
+	customInstructions?: string
+) {
+	try {
+		consola.log("Generating follow-up questions for:", originalQuestion)
+		
+		const followUpSet = await b.GenerateFollowUpQuestions(
+			originalQuestion,
+			researchContext,
+			targetRoles,
+			customInstructions || "Generate thoughtful, conversational follow-up questions that dive deeper into the topic."
+		)
+		
+		consola.log("Follow-up questions generated:", followUpSet)
+		return followUpSet
+	} catch (error) {
+		consola.error("Failed to generate follow-up questions:", error)
+		throw error
+	}
+}
+
+/**
  * Generate comprehensive project analysis matching insights to research questions
  */
 export async function analyzeProjectInsights(

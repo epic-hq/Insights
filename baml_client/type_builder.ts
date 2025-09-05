@@ -55,6 +55,12 @@ export default class TypeBuilder {
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
+    FollowUpQuestion: ClassViewer<'FollowUpQuestion', "id" | "text" | "rationale" | "estimatedMinutes" | "categoryId" | "scores">;
+    
+    FollowUpQuestionScores: ClassViewer<'FollowUpQuestionScores', "importance" | "goalMatch" | "novelty">;
+    
+    FollowUpSet: ClassViewer<'FollowUpSet', "originalQuestion" | "followUps">;
+    
     GapAnalysis: ClassViewer<'GapAnalysis', "unanswered_questions" | "partially_answered_questions" | "follow_up_recommendations" | "suggested_interview_topics">;
     
     GenerateInputs: ClassViewer<'GenerateInputs', "target_org" | "target_roles" | "research_goal" | "research_goal_details" | "assumptions" | "unknowns" | "custom_instructions" | "session_id" | "round" | "total_per_round" | "per_category_min" | "per_category_max" | "interview_time_limit">;
@@ -136,7 +142,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionOut","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionOut","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -198,6 +204,18 @@ export default class TypeBuilder {
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
           "pain","name","details","evidence","desiredOutcome","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
+        ]);
+        
+        this.FollowUpQuestion = this.tb.classViewer("FollowUpQuestion", [
+          "id","text","rationale","estimatedMinutes","categoryId","scores",
+        ]);
+        
+        this.FollowUpQuestionScores = this.tb.classViewer("FollowUpQuestionScores", [
+          "importance","goalMatch","novelty",
+        ]);
+        
+        this.FollowUpSet = this.tb.classViewer("FollowUpSet", [
+          "originalQuestion","followUps",
         ]);
         
         this.GapAnalysis = this.tb.classViewer("GapAnalysis", [

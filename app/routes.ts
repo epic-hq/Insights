@@ -34,8 +34,8 @@ const routes = [
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
-            // Default index: show Project Status screen
-            index("./features/projects/pages/project-index.tsx"),
+				// Default index: show Project Status screen
+				index("./features/projects/pages/project-index.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
 				...interviewsRoutes,
@@ -51,15 +51,15 @@ const routes = [
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
 
-            // Project setup route
-            route("setup", "./features/projects/pages/setup.tsx"),
+				// Project setup route
+				route("setup", "./features/projects/pages/setup.tsx"),
 
-            // Project settings route (new, replacing deprecated /projects/:id/edit)
-            route("settings", "./features/projects/pages/edit.tsx"),
+				// Project settings route (new, replacing deprecated /projects/:id/edit)
+				route("settings", "./features/projects/pages/edit.tsx"),
 
 				// Annotations API routes (need project context)
 				...annotationsRoutes,
-        ]),
+			]),
 		]),
 	]),
 
@@ -95,6 +95,7 @@ const routes = [
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
 	route("api/test-generate-themes", "./routes/api/test-generate-themes.tsx"),
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
+	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),
