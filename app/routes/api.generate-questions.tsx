@@ -81,9 +81,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
                     const qs: any[] = Array.isArray(metaQ.questions) ? metaQ.questions : []
                     existingQuestions = qs.map((q: any) => (typeof q === "string" ? q : q?.text)).filter(Boolean)
                     if (existingQuestions.length > 0) {
-                        // Limit new generation to 3 once we already have initial questions
-                        questionCount = 3
-                        // Append a dedupe instruction to custom_instructions
+                        // Respect front-end provided questionCount; do not override here.
+                        // Append a dedupe instruction to custom_instructions regardless
                         const dedupeList = existingQuestions.slice(0, 25).join("; ")
                         const dedupeNote = `Avoid repeating or rephrasing these existing questions: ${dedupeList}. Generate complementary questions.`
                         custom_instructions = `${custom_instructions ? custom_instructions + "\n" : ""}${dedupeNote}`
@@ -171,6 +170,90 @@ export async function action({ request, context }: ActionFunctionArgs) {
                 per_category_max: 3,
                 interview_time_limit,
             })
+
+            // If canonical returns fewer than requested, top up via fallback suggestions
+            try {
+                const have = Array.isArray(questionSet?.questions) ? questionSet.questions.length : 0
+                const need = Math.max(0, (Number(questionCount) || 10) - have)
+                if (need > 0) {
+                    const { generateResearchQuestions } = await import("~/utils/research-analysis.server")
+                    const suggestions = await generateResearchQuestions(
+                        target_orgs,
+                        target_roles,
+                        research_goal,
+                        research_goal_details,
+                        assumptions,
+                        unknowns,
+                        custom_instructions,
+                    )
+
+                    const categories = [
+                        { id: "core", label: "Core" },
+                        { id: "behavior", label: "Behavior" },
+                        { id: "pain", label: "Pain" },
+                        { id: "solutions", label: "Solutions" },
+                        { id: "context", label: "Context" },
+                    ]
+
+                    const toQuestion = (categoryId: string) => (q: any, idx: number) => ({
+                        id: randomUUID(),
+                        text: q.question,
+                        categoryId,
+                        rationale: q.rationale || undefined,
+                        tags: [],
+                        scores: {
+                            importance: q.priority === 1 ? 0.9 : q.priority === 2 ? 0.7 : 0.55,
+                            goalMatch: 0.65,
+                            novelty: 0.6,
+                        },
+                        estimatedMinutes: 4.5,
+                        status: "proposed" as const,
+                        source: "llm" as const,
+                        displayOrder: idx + 1,
+                    })
+
+                    // Build per-category pools for balanced selection
+                    const corePool = (suggestions.core_questions || []).map(toQuestion("goals"))
+                    const behaviorPool = (suggestions.behavioral_questions || []).map(toQuestion("workflow"))
+                    const painPool = (suggestions.pain_point_questions || []).map(toQuestion("pain"))
+                    const solutionsPool = (suggestions.solution_questions || []).map(toQuestion("willingness"))
+                    const contextPool = (suggestions.context_questions || []).map(toQuestion("context"))
+
+                    const existingTexts = new Set(
+                        (questionSet?.questions || []).map((q: any) => String(q?.text || "").toLowerCase().trim())
+                    )
+                    const extras: any[] = []
+                    // Round-robin across categories to ensure spread
+                    const pickers = [corePool, painPool, behaviorPool, contextPool, solutionsPool]
+                    const perCategoryCap = 3
+                    const takenPerCat = new Map<string, number>()
+                    let idx = 0
+                    while (extras.length < need && pickers.some((p) => p.length > 0)) {
+                        const pool = pickers[idx % pickers.length]
+                        idx++
+                        if (pool.length === 0) continue
+                        const q = pool.shift() as any
+                        if (!q) continue
+                        const t = String(q.text || "").toLowerCase().trim()
+                        if (!t || existingTexts.has(t)) continue
+                        const cat = q.categoryId || "other"
+                        const used = takenPerCat.get(cat) || 0
+                        if (used >= perCategoryCap) continue
+                        takenPerCat.set(cat, used + 1)
+                        existingTexts.add(t)
+                        extras.push(q)
+                    }
+                    if (extras.length > 0) {
+                        questionSet = {
+                            ...(questionSet || {}),
+                            categories: questionSet?.categories || categories,
+                            questions: [...(questionSet?.questions || []), ...extras],
+                        }
+                    }
+                }
+            } catch (topUpErr) {
+                consola.warn("[api.generate-questions] Top-up via fallback failed", topUpErr)
+            }
         } catch (e) {
             consola.warn("[api.generate-questions] Canonical generation failed; using fallback shape.", e)
             // Fallback: use legacy suggestions and adapt to QuestionSet shape expected by UI.
@@ -210,13 +293,30 @@ export async function action({ request, context }: ActionFunctionArgs) {
                 displayOrder: idx + 1,
             })
 
-            const questions = [
-                ...(suggestions.core_questions || []).map(toQuestion("core")),
-                ...(suggestions.behavioral_questions || []).map(toQuestion("behavior")),
-                ...(suggestions.pain_point_questions || []).map(toQuestion("pain")),
-                ...(suggestions.solution_questions || []).map(toQuestion("solutions")),
-                ...(suggestions.context_questions || []).map(toQuestion("context")),
-            ]
+            // Build balanced pool then select up to requested count
+            const corePool = (suggestions.core_questions || []).map(toQuestion("goals"))
+            const behaviorPool = (suggestions.behavioral_questions || []).map(toQuestion("workflow"))
+            const painPool = (suggestions.pain_point_questions || []).map(toQuestion("pain"))
+            const solutionsPool = (suggestions.solution_questions || []).map(toQuestion("willingness"))
+            const contextPool = (suggestions.context_questions || []).map(toQuestion("context"))
+
+            const perCategoryCap = 3
+            const picks: any[] = []
+            const pickers = [corePool, painPool, behaviorPool, contextPool, solutionsPool]
+            const caps = new Map<string, number>()
+            let idx = 0
+            while (picks.length < (Number(questionCount) || 10) && pickers.some((p) => p.length > 0)) {
+                const pool = pickers[idx % pickers.length]
+                idx++
+                if (pool.length === 0) continue
+                const q = pool.shift() as any
+                if (!q) continue
+                const cat = q.categoryId || "other"
+                const used = caps.get(cat) || 0
+                if (used >= perCategoryCap) continue
+                caps.set(cat, used + 1)
+                picks.push(q)
+            }
 
             questionSet = {
                 sessionId: computedSessionId,
@@ -228,7 +328,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
                     balanceBy: ["category", "novelty"],
                 },
                 categories,
-                questions,
+                questions: picks,
                 history: [],
                 round: 1,
             }

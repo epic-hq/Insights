@@ -1,9 +1,13 @@
 import { BookOpen, MessageCircleQuestion } from "lucide-react"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
+import { useSearchParams } from "react-router-dom"
+import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
 import { useCurrentProject } from "~/contexts/current-project-context"
 
 export default function QuestionsIndex() {
-	const { projectId, projectPath } = useCurrentProject()
+    const { projectId, projectPath } = useCurrentProject()
+    const [params] = useSearchParams()
+    const isOnboarding = params.get("onboarding") === "1"
 
 	if (!projectId) {
 		return (
@@ -15,16 +19,22 @@ export default function QuestionsIndex() {
 		)
 	}
 
-	return (
-		<div className="mx-auto max-w-7xl p-4 sm:p-6">
-			{/* <div className="mb-6 sm:mb-8">
-				 <h2 className="mb-2 flex items-center gap-2 text-2xl sm:text-3xl">
-					<MessageCircleQuestion className="h-8 w-8" />
-					Interview Questions
-				</h2>
-			</div> */}
+    return (
+        <div className="mx-auto max-w-7xl p-4 sm:p-6">
+            {isOnboarding && (
+                <div className="mb-6">
+                    <OnboardingStepper
+                        steps={[
+                            { id: "goals", title: "Project Goals" },
+                            { id: "questions", title: "Questions" },
+                            { id: "upload", title: "Upload" },
+                        ]}
+                        currentStepId="questions"
+                    />
+                </div>
+            )}
 
-			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
-		</div>
-	)
+            <InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
+        </div>
+    )
 }

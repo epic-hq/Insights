@@ -10,59 +10,46 @@ import { getProjectContextGeneric } from "~/features/questions/db"
 import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
+type TemplatePrefill = {
+	template_key: string
+	target_orgs: string[]
+	target_roles: string[]
+	research_goal: string
+	research_goal_details: string
+	decision_questions: string[]
+	assumptions: string[]
+	unknowns: string[]
+	custom_instructions: string
+}
 
-// Sample data extracted from sampleResearchQuestions.json
+// Template-focused suggestions for "Understand Customer Needs"
 const sampleData = [
 	{
-		goal: "Boost engagement with weekly newsletter",
-		orgs: ["Newsletter publishers", "Content creators", "Media companies"],
-		roles: ["Content Manager", "Marketing Director", "Editor", "Growth Manager"],
+		goal: "Understand core customer outcomes for pricing & packaging",
+		orgs: ["Early-stage SaaS", "Mid-market B2B teams", "Ecommerce brands", "Digital services"],
+		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
 		assumptions: [
-			"Users want more engaging content",
-			"Current topics may not resonate",
-			"Email format affects engagement",
+			"Users buy to achieve outcome X, not feature Y",
+			"Clear onboarding reduces early churn",
+			"Price sensitivity drops when value is obvious",
 		],
 		unknowns: [
-			"Which content topics drive highest clicks",
-			"What format performs better",
-			"Which segments engage most",
+			"Which 1–2 outcomes matter most enough to switch",
+			"Where in the journey do users hit most friction",
+			"What alternatives are commonly compared and why",
 		],
 	},
 	{
-		goal: "Validate product–market fit for task automation app",
-		orgs: ["SaaS companies", "Productivity tool users", "Small businesses"],
-		roles: ["Product Manager", "Founder", "Operations Manager", "Developer"],
+		goal: "Map jobs-to-be-done for our new collaboration feature",
+		orgs: ["Product-led SaaS", "B2B platforms"],
+		roles: ["PM", "Design Lead", "Operations Manager", "Engineering Manager"],
 		assumptions: [
-			"Users struggle with repetitive tasks",
-			"Automation saves valuable time",
-			"People will pay for time savings",
-		],
-		unknowns: ["What tasks frustrate users most", "Which segments convert best", "What outcomes justify payment"],
-	},
-	{
-		goal: "Explore viability of subscription meal-kit for athletes",
-		orgs: ["Fitness brands", "Athletic organizations", "Health-focused companies"],
-		roles: ["Product Manager", "Marketing Manager", "Nutritionist", "Athlete"],
-		assumptions: [
-			"Athletes prioritize nutrition",
-			"Convenience matters for busy training",
-			"Premium pricing is acceptable",
+			"Teams care about speed over completeness",
+			"Adoption hinges on low setup cost",
 		],
 		unknowns: [
-			"How much athletes spend on meals",
-			"Which features matter most",
-			"What service aspects are frustrating",
-		],
-	},
-	{
-		goal: "Grow active participation in online founder community",
-		orgs: ["Online communities", "SaaS platforms", "Membership sites"],
-		roles: ["Community Manager", "Product Manager", "Founder", "Growth Manager"],
-		assumptions: ["Members want to contribute", "Current incentives aren't motivating", "Community provides value"],
-		unknowns: [
-			"What motivates posting vs lurking",
-			"Which incentives sustain participation",
-			"What triggers referrals",
+			"What triggers collaboration needs",
+			"What evaluation criteria decide team adoption",
 		],
 	},
 ]
@@ -109,12 +96,20 @@ const getContextualSuggestions = (goal: string) => {
 		}
 	}
 
-	// Default suggestions when no match found
+	// Default suggestions when no match found (Customer Needs template defaults)
 	return {
-		orgs: ["Startups", "SaaS companies", "E-commerce retailers", "Digital agencies"],
-		roles: ["Product Manager", "Marketing Manager", "Founder", "Growth Manager"],
-		assumptions: ["Users want better solutions", "Market timing is good", "Current approach needs improvement"],
-		unknowns: ["What features drive adoption", "Which segments convert best", "How much users will pay"],
+		orgs: ["Early-stage SaaS", "Mid-market B2B product teams", "Ecommerce brands", "Digital services"],
+		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
+		assumptions: [
+			"Users buy to achieve outcomes, not features",
+			"Onboarding clarity drives early retention",
+			"Pricing is justified when value is obvious",
+		],
+		unknowns: [
+			"Which outcomes have highest willingness-to-pay",
+			"Where the journey has most friction",
+			"Which alternatives users compare and why",
+		],
 	}
 }
 
@@ -126,32 +121,28 @@ interface SuggestionBadgesProps {
 	color?: "blue" | "green" | "purple" | "amber"
 }
 
-function SuggestionBadges({ suggestions, onSuggestionClick, show, color = "blue" }: SuggestionBadgesProps) {
-	if (!show || suggestions.length === 0) return null
+function SuggestionBadges({ suggestions, onSuggestionClick, show }: SuggestionBadgesProps) {
+    if (!show || suggestions.length === 0) return null
 
-	const colorClasses = {
-		blue: "bg-blue-50 text-blue-700 hover:bg-blue-100 border-blue-200",
-		green: "bg-green-50 text-green-700 hover:bg-green-100 border-green-200",
-		purple: "bg-purple-50 text-purple-700 hover:bg-purple-100 border-purple-200",
-		amber: "bg-amber-50 text-amber-700 hover:bg-amber-100 border-amber-200",
-	}
+    // Neutral styling for suggestion badges (less distracting)
+    const neutralClasses = "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
 
-	return (
-		<div className="mt-3 mb-4 flex flex-wrap gap-2">
-			{suggestions.slice(0, 4).map((suggestion, index) => (
-				<button
-					key={index}
-					onMouseDown={(e) => {
-						e.preventDefault()
-						onSuggestionClick(suggestion)
-					}}
-					className={`cursor-pointer rounded-full border px-2.5 py-1 font-medium text-xs transition-all hover:scale-105 ${colorClasses[color]}`}
-				>
-					+ {suggestion}
-				</button>
-			))}
-		</div>
-	)
+    return (
+        <div className="mt-3 mb-4 flex flex-wrap gap-2">
+            {suggestions.slice(0, 4).map((suggestion, index) => (
+                <button
+                    key={index}
+                    onMouseDown={(e) => {
+                        e.preventDefault()
+                        onSuggestionClick(suggestion)
+                    }}
+                    className={`cursor-pointer rounded-full px-2.5 py-1 font-medium text-xs transition-colors ${neutralClasses}`}
+                >
+                    + {suggestion}
+                </button>
+            ))}
+        </div>
+    )
 }
 
 interface ProjectGoalsScreenProps {
@@ -170,6 +161,8 @@ interface ProjectGoalsScreenProps {
 	projectId?: string
 	showStepper?: boolean
 	showNextButton?: boolean
+	templateKey?: string
+	prefill?: TemplatePrefill
 }
 
 export default function ProjectGoalsScreen({
@@ -178,6 +171,8 @@ export default function ProjectGoalsScreen({
 	projectId,
 	showStepper = true,
 	showNextButton = true,
+	templateKey,
+	prefill,
 }: ProjectGoalsScreenProps) {
 	const [target_orgs, setTargetOrgs] = useState<string[]>([])
 	const [target_roles, setTargetRoles] = useState<string[]>([])
@@ -345,11 +340,61 @@ export default function ProjectGoalsScreen({
 	}, [currentProjectId, supabase])
 
 	// Load existing data if projectId is provided
-	useEffect(() => {
-		if (currentProjectId) {
-			loadProjectData()
-		}
-	}, [currentProjectId, loadProjectData])
+    useEffect(() => {
+        if (currentProjectId) {
+            loadProjectData()
+        }
+    }, [currentProjectId, loadProjectData])
+
+    // Apply prefill if no data present after initial load
+    useEffect(() => {
+        if (!prefill) return
+        const noData =
+            target_orgs.length === 0 &&
+            target_roles.length === 0 &&
+            !research_goal &&
+            assumptions.length === 0 &&
+            unknowns.length === 0 &&
+            !custom_instructions
+
+        if (noData) {
+            setTargetOrgs(prefill.target_orgs || [])
+            setTargetRoles(prefill.target_roles || [])
+            setResearchGoal(prefill.research_goal || "")
+            setResearchGoalDetails(prefill.research_goal_details || "")
+            setAssumptions(prefill.assumptions || [])
+            setUnknowns(prefill.unknowns || [])
+            setCustomInstructions(prefill.custom_instructions || "")
+            if ((prefill.decision_questions || []).length > 0) {
+                setDecisionQuestions(prefill.decision_questions)
+            }
+
+            // Persist prefill immediately so sections are saved
+            if (currentProjectId) {
+                if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
+                if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
+                if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
+                if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
+                if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
+                if (prefill.custom_instructions) saveCustomInstructions(prefill.custom_instructions)
+            }
+        }
+    }, [
+        prefill,
+        target_orgs.length,
+        target_roles.length,
+        research_goal,
+        assumptions.length,
+        unknowns.length,
+        custom_instructions,
+        currentProjectId,
+        saveTargetOrgs,
+        saveTargetRoles,
+        saveResearchGoal,
+        saveAssumptions,
+        saveUnknowns,
+        saveCustomInstructions,
+    ])
 
 	const addOrg = async () => {
 		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
@@ -499,8 +544,8 @@ export default function ProjectGoalsScreen({
 	return (
 		<div className="mx-auto min-h-screen max-w-4xl bg-background p-4 text-foreground sm:p-4 md:p-6 lg:p-8">
 			{/* Stepper - only show in onboarding mode */}
-			{showStepper && (
-				<div className="mb-6">
+    {showStepper && (
+        <div className="mb-6">
 					<div className="flex items-start justify-center gap-4 sm:gap-6 md:gap-10">
 						{onboardingSteps.map((step, index) => (
 							<div key={step.id} className="flex items-center">
@@ -529,7 +574,10 @@ export default function ProjectGoalsScreen({
 				</div>
 			)}
 
-			<div className="text-semibold text-xl">Project: {project?.name}</div>
+    <div className="text-semibold text-xl">Project: {project?.name}</div>
+    {templateKey === "understand_customer_needs" && (
+        <div className="mt-1 text-sm text-muted-foreground">Intent: Understand Customer Needs</div>
+    )}
 			<div className="mb-8">
 				<div className="mb-4 flex items-center gap-3">
 					{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
@@ -543,14 +591,18 @@ export default function ProjectGoalsScreen({
 				{/* Research Goal - moved first */}
 				<div>
 					<div className="mb-4 flex items-center gap-2">
-						<Target className="h-5 w-5" /> Goal
+						<Target className="h-5 w-5" /> {templateKey === "understand_customer_needs" ? "Customer Needs Goal" : "Goal"}
 					</div>
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
 							<div>
-								<label className="mb-2 block font-semibold text-foreground">Our objective</label>
+								<label className="mb-2 block font-semibold text-foreground">Primary research goal</label>
 								<Input
-									placeholder="e.g., Understanding price sensitivity for our new pricing tier"
+									placeholder={
+										templateKey === "understand_customer_needs"
+											? "e.g., Understand the core jobs, outcomes, and pains for [target customers] when [situation]"
+											: "e.g., Understanding price sensitivity for our new pricing tier"
+									}
 									value={research_goal}
 									onChange={(e) => setResearchGoal(e.target.value)}
 									onFocus={() => setShowGoalSuggestions(true)}
@@ -560,22 +612,25 @@ export default function ProjectGoalsScreen({
 										setTimeout(() => setShowGoalSuggestions(false), 150)
 									}}
 								/>
-								<SuggestionBadges
-									suggestions={sampleGoals}
-									onSuggestionClick={(goal) => {
-										setResearchGoal(goal)
-										setShowGoalSuggestions(false)
-									}}
-									show={showGoalSuggestions}
-									color="blue"
-								/>
-							</div>
+                        <SuggestionBadges
+                            suggestions={sampleGoals}
+                            onSuggestionClick={(goal) => {
+                                setResearchGoal(goal)
+                                setShowGoalSuggestions(false)
+                            }}
+                            show={showGoalSuggestions}
+                        />
+                    </div>
 
-							<div>
-								<label className="mb-2 block font-semibold text-foreground">Key decision questions</label>
+                    <div>
+                        <label className="mb-2 block font-semibold text-foreground">Key decision questions</label>
 								<div className="mb-4 flex gap-3">
 									<Input
-										placeholder="What specific decisions need to be made?"
+										placeholder={
+											templateKey === "understand_customer_needs"
+												? "What do we need to decide to build the right thing?"
+												: "What specific decisions need to be made?"
+										}
 										value={newDecisionQuestion}
 										onChange={(e) => setNewDecisionQuestion(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addDecisionQuestion()}
@@ -590,21 +645,30 @@ export default function ProjectGoalsScreen({
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-								<SuggestionBadges
-									suggestions={[
-										"Which pricing tier drives highest conversion",
-										"What content format engages users most",
-										"Which features justify premium pricing",
-										"What onboarding flow reduces churn",
-									]}
-									onSuggestionClick={(suggestion) => {
-										setNewDecisionQuestion(suggestion)
-										setShowDecisionQuestionSuggestions(false)
-									}}
-									show={showDecisionQuestionSuggestions}
-									color="blue"
-								/>
-								<div className="space-y-2">
+                            <SuggestionBadges
+                                suggestions={
+                                    templateKey === "understand_customer_needs"
+                                        ? [
+                                              "Which outcomes do customers value most and why",
+                                              "What jobs-to-be-done trigger adoption",
+                                              "What pains and frictions block progress now",
+                                              "What evaluation criteria decide solution choice",
+                                              "What contexts and triggers drive usage",
+                                          ]
+                                        : [
+                                              "Which pricing tier drives highest conversion",
+                                              "What content format engages users most",
+                                              "Which features justify premium pricing",
+                                              "What onboarding flow reduces churn",
+                                          ]
+                                }
+                                onSuggestionClick={(suggestion) => {
+                                    setNewDecisionQuestion(suggestion)
+                                    setShowDecisionQuestionSuggestions(false)
+                                }}
+                                show={showDecisionQuestionSuggestions}
+                            />
+                        <div className="space-y-2">
 									{decision_questions.map((question, index) => (
 										<div
 											key={`decision-${index}-${question.slice(0, 10)}`}
@@ -625,54 +689,107 @@ export default function ProjectGoalsScreen({
 								</div>
 							</div>
 
-							<div>
-								<label className="mb-2 block font-semibold text-foreground">What do we not know?</label>
-								<div className="mb-4 flex gap-3">
-									<Input
-										placeholder="Add something you're unsure about..."
-										value={newUnknown}
-										onChange={(e) => setNewUnknown(e.target.value)}
-										onKeyPress={(e) => e.key === "Enter" && addUnknown()}
-										onFocus={() => setShowUnknownSuggestions(true)}
-										onBlur={() => setTimeout(() => setShowUnknownSuggestions(false), 150)}
-										className="flex-1"
-									/>
-									<Button
-										onClick={addUnknown}
-										className="w-auto bg-amber-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-amber-600"
-									>
-										<Plus className="h-4 w-4" />
-									</Button>
-								</div>
-								<SuggestionBadges
-									suggestions={contextualSuggestions.unknowns}
-									onSuggestionClick={(unknown) => {
-										setNewUnknown(unknown)
-										setShowUnknownSuggestions(false)
-									}}
-									show={showUnknownSuggestions}
-									color="amber"
-								/>
-								<div className="space-y-2">
-									{unknowns.map((unknown, index) => (
-										<div
-											key={`unknown-${index}-${unknown.slice(0, 10)}`}
-											className="group flex w-fit items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
-										>
-											<div className="mt-0.5 flex-shrink-0">
-												<HelpCircle className="h-5 w-5 text-amber-600" />
-											</div>
-											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{unknown}</span>
-											<button
-												onClick={() => removeUnknown(index)}
-												className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-amber-200 group-hover:opacity-100"
-											>
-												<X className="h-4 w-4 text-amber-700" />
-											</button>
-										</div>
-									))}
-								</div>
-							</div>
+                    {/* Assumptions (What we know) first */}
+                    <div>
+                        <label className="mb-2 block font-semibold text-foreground">What do we think we know?</label>
+                        <div className="mb-4 flex gap-3">
+                            <Input
+                                placeholder="Add something you believe to be true..."
+                                value={newAssumption}
+                                onChange={(e) => setNewAssumption(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && addAssumption()}
+                                onFocus={() => setShowAssumptionSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowAssumptionSuggestions(false), 150)}
+                                className="flex-1"
+                            />
+                            <Button
+                                onClick={addAssumption}
+                                className="w-auto bg-blue-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-blue-600"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <SuggestionBadges
+                            suggestions={contextualSuggestions.assumptions}
+                            onSuggestionClick={(assumption) => {
+                                setNewAssumption(assumption)
+                                setShowAssumptionSuggestions(false)
+                            }}
+                            show={showAssumptionSuggestions}
+                        />
+                        <div className="space-y-2">
+                            {assumptions.map((assumption, index) => (
+                                <div
+                                    key={`assumption-${index}-${assumption.slice(0, 10)}`}
+                                    className="group flex w-fit items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
+                                >
+                                    <div className="mt-2 flex-shrink-0">
+                                        <div className="h-2 w-2 rounded-full bg-blue-500" />
+                                    </div>
+                                    <span className="flex-1 font-medium text-gray-800 leading-relaxed">{assumption}</span>
+                                    <button
+                                        onClick={() => removeAssumption(index)}
+                                        className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-blue-200 group-hover:opacity-100"
+                                    >
+                                        <X className="h-4 w-4 text-blue-700" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+
+                    {/* Unknowns second */}
+                    <div>
+                        <label className="mb-2 block font-semibold text-foreground">What do we not know?</label>
+                        <div className="mb-4 flex gap-3">
+                            <Input
+                                placeholder={
+                                    templateKey === "understand_customer_needs"
+                                        ? "Add the biggest unknown that would change our direction..."
+                                        : "Add something you're unsure about..."
+                                }
+                                value={newUnknown}
+                                onChange={(e) => setNewUnknown(e.target.value)}
+                                onKeyPress={(e) => e.key === "Enter" && addUnknown()}
+                                onFocus={() => setShowUnknownSuggestions(true)}
+                                onBlur={() => setTimeout(() => setShowUnknownSuggestions(false), 150)}
+                                className="flex-1"
+                            />
+                            <Button
+                                onClick={addUnknown}
+                                className="w-auto bg-amber-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-amber-600"
+                            >
+                                <Plus className="h-4 w-4" />
+                            </Button>
+                        </div>
+                        <SuggestionBadges
+                            suggestions={contextualSuggestions.unknowns}
+                            onSuggestionClick={(unknown) => {
+                                setNewUnknown(unknown)
+                                setShowUnknownSuggestions(false)
+                            }}
+                            show={showUnknownSuggestions}
+                        />
+                        <div className="space-y-2">
+                            {unknowns.map((unknown, index) => (
+                                <div
+                                    key={`unknown-${index}-${unknown.slice(0, 10)}`}
+                                    className="group flex w-fit items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
+                                >
+                                    <div className="mt-0.5 flex-shrink-0">
+                                        <HelpCircle className="h-5 w-5 text-amber-600" />
+                                    </div>
+                                    <span className="flex-1 font-medium text-gray-800 leading-relaxed">{unknown}</span>
+                                    <button
+                                        onClick={() => removeUnknown(index)}
+                                        className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-amber-200 group-hover:opacity-100"
+                                    >
+                                        <X className="h-4 w-4 text-amber-700" />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
 
 							<div>
 								<label className="mb-2 block font-semibold text-foreground">What do we think we know?</label>
@@ -693,15 +810,14 @@ export default function ProjectGoalsScreen({
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-								<SuggestionBadges
-									suggestions={contextualSuggestions.assumptions}
-									onSuggestionClick={(assumption) => {
-										setNewAssumption(assumption)
-										setShowAssumptionSuggestions(false)
-									}}
-									show={showAssumptionSuggestions}
-									color="blue"
-								/>
+                        <SuggestionBadges
+                            suggestions={contextualSuggestions.assumptions}
+                            onSuggestionClick={(assumption) => {
+                                setNewAssumption(assumption)
+                                setShowAssumptionSuggestions(false)
+                            }}
+                            show={showAssumptionSuggestions}
+                        />
 								<div className="space-y-2">
 									{assumptions.map((assumption, index) => (
 										<div
@@ -738,7 +854,11 @@ export default function ProjectGoalsScreen({
 								<label className="mb-2 block font-semibold text-foreground">Organizations</label>
 								<div className="mb-4 flex gap-3">
 									<Input
-										placeholder="e.g., B2B SaaS companies, E-commerce retailers"
+										placeholder={
+											templateKey === "understand_customer_needs"
+												? "e.g., Early-stage SaaS, Mid-market B2B teams, Ecommerce brands"
+												: "e.g., B2B SaaS companies, E-commerce retailers"
+										}
 										value={newOrg}
 										onChange={(e) => setNewOrg(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addOrg()}
@@ -753,15 +873,14 @@ export default function ProjectGoalsScreen({
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-								<SuggestionBadges
-									suggestions={contextualSuggestions.orgs}
-									onSuggestionClick={(org) => {
-										setNewOrg(org)
-										setShowOrgSuggestions(false)
-									}}
-									show={showOrgSuggestions}
-									color="green"
-								/>
+                        <SuggestionBadges
+                            suggestions={contextualSuggestions.orgs}
+                            onSuggestionClick={(org) => {
+                                setNewOrg(org)
+                                setShowOrgSuggestions(false)
+                            }}
+                            show={showOrgSuggestions}
+                        />
 								<div className="flex flex-wrap gap-3">
 									{target_orgs.map((org) => (
 										<div
@@ -784,7 +903,11 @@ export default function ProjectGoalsScreen({
 								<label className="mb-2 block font-semibold text-foreground">People's Roles</label>
 								<div className="mb-4 flex gap-3">
 									<Input
-										placeholder="e.g., Product Manager, Marketing Director"
+										placeholder={
+											templateKey === "understand_customer_needs"
+												? "e.g., Product Manager, Head of Growth, UX Researcher, Customer Success Lead"
+												: "e.g., Product Manager, Marketing Director"
+										}
 										value={newRole}
 										onChange={(e) => setNewRole(e.target.value)}
 										onKeyPress={(e) => e.key === "Enter" && addRole()}
@@ -799,15 +922,14 @@ export default function ProjectGoalsScreen({
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-								<SuggestionBadges
-									suggestions={contextualSuggestions.roles}
-									onSuggestionClick={(role) => {
-										setNewRole(role)
-										setShowRoleSuggestions(false)
-									}}
-									show={showRoleSuggestions}
-									color="purple"
-								/>
+                        <SuggestionBadges
+                            suggestions={contextualSuggestions.roles}
+                            onSuggestionClick={(role) => {
+                                setNewRole(role)
+                                setShowRoleSuggestions(false)
+                            }}
+                            show={showRoleSuggestions}
+                        />
 								<div className="flex flex-wrap gap-3">
 									{target_roles.map((role) => (
 										<div

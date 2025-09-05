@@ -26,6 +26,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
@@ -240,9 +241,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [editingId, setEditingId] = useState<string | null>(null)
 	const [editingText, setEditingText] = useState("")
 	const [addingCustomQuestion, setAddingCustomQuestion] = useState(false)
-	const [showSettings, setShowSettings] = useState(false)
-	const [autoGenerateInitial, setAutoGenerateInitial] = useState(false)
-	const [generatingFollowUp, setGeneratingFollowUp] = useState<string | null>(null)
+    const [showSettings, setShowSettings] = useState(false)
+    const [autoGenerateInitial, setAutoGenerateInitial] = useState(false)
+    const [generatingFollowUp, setGeneratingFollowUp] = useState<string | null>(null)
+    const [mustHavesOnly, setMustHavesOnly] = useState(false)
+    const previousSelectionRef = React.useRef<string[] | null>(null)
 
 	// Auto-generate questions on first load for new users
 	useEffect(() => {
@@ -371,19 +374,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		return 0.5 * (s.importance || 0) + 0.35 * (s.goalMatch || 0) + 0.15 * (s.novelty || 0) * categoryWeight
 	}, [])
 
-	const questionPack = useMemo(() => {
-		const targetCounts: Record<number, { base: number; validation: number; cold: number }> = {
-			15: { base: 3, validation: +1, cold: -1 },
-			30: { base: 5, validation: +1, cold: -1 },
-			45: { base: 7, validation: +1, cold: -1 },
-			60: { base: 9, validation: +1, cold: -1 },
-		}
+    const questionPack = useMemo(() => {
+        const targetCounts: Record<number, { base: number; validation: number; cold: number }> = {
+            15: { base: 4, validation: +1, cold: 0 },
+            30: { base: 6, validation: +1, cold: 0 },
+            45: { base: 8, validation: +1, cold: 0 },
+            60: { base: 10, validation: +1, cold: 0 },
+        }
 
 		const tc = targetCounts[timeMinutes]
-		const targetCount = Math.max(
-			2,
-			tc.base + (purpose === "validation" ? tc.validation : 0) + (familiarity === "cold" ? tc.cold : 0)
-		)
+        const targetCount = Math.max(4, tc.base + (purpose === "validation" ? tc.validation : 0) + (familiarity === "cold" ? tc.cold : 0))
 
 		const allQuestionsWithScores = questions
 			.filter((q) => q.status === "proposed") // Only include proposed questions, exclude rejected
@@ -507,17 +507,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const saveQuestionsToDatabase = useCallback(
 		async (questionsToSave: Question[], selectedIds: string[]) => {
 			if (!projectId) return
-			try {
-				const withOrder = questionsToSave.map((q) => {
-					const selectedIndex = selectedIds.indexOf(q.id)
-					return {
-						...q,
-						status: "proposed",
-						selectedOrder: selectedIndex >= 0 ? selectedIndex : null,
-						isSelected: selectedIndex >= 0,
-						source: q.source || "ai", // Ensure source is preserved
-					}
-				})
+            try {
+                const withOrder = questionsToSave.map((q) => {
+                    const selectedIndex = selectedIds.indexOf(q.id)
+                    return {
+                        ...q,
+                        // Preserve existing status (e.g., 'rejected'); don't force 'proposed'
+                        status: q.status,
+                        selectedOrder: selectedIndex >= 0 ? selectedIndex : null,
+                        isSelected: selectedIndex >= 0,
+                        source: q.source || "ai", // Ensure source is preserved
+                    }
+                })
 				const { error } = await supabase.from("project_sections").upsert(
 					{
 						project_id: projectId,
@@ -849,16 +850,19 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}
 
-	const generateQuestions = async () => {
-		if (generating) return
-		setGenerating(true)
-		try {
-			// Create FormData for remix-style API
-			const formData = new FormData()
-			formData.append("project_id", projectId || "")
-			formData.append("custom_instructions", customInstructions || "")
-			formData.append("questionCount", "10")
-			formData.append("interview_time_limit", timeMinutes.toString())
+    const generateQuestions = async () => {
+        if (generating) return
+        setGenerating(true)
+        try {
+            // Create FormData for remix-style API
+            const formData = new FormData()
+            formData.append("project_id", projectId || "")
+            formData.append("custom_instructions", customInstructions || "")
+            // Determine question count from front-end (based on timeMinutes)
+            const countByTime: Record<number, number> = { 15: 4, 30: 6, 45: 8, 60: 10 }
+            const count = countByTime[timeMinutes] ?? 8
+            formData.append("questionCount", String(count))
+            formData.append("interview_time_limit", timeMinutes.toString())
 
 			// Add optional fields from props (for onboarding flow)
 			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
@@ -1190,27 +1194,40 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				<div className="flex items-center justify-between">
 					{/* <h2 className="font-semibold text-lg">Your Question Pack ({questionPack.questions.length})</h2> */}
 					<div className="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							title="Filter to must-have questions only"
-							onClick={() => {
-								// Filter selected questions to only show must-have questions
-								const filteredIds = selectedQuestionIds.filter((id) => {
-									const question = questions.find((q) => q.id === id)
-									return question?.isMustHave
-								})
-								if (filteredIds.length > 0) {
-									setSelectedQuestionIds(filteredIds)
-								} else {
-									// If no must-haves, show all questions again
-									const allIds = questionPack.questions.map((q) => q.id)
-									setSelectedQuestionIds(allIds)
-								}
-							}}
-						>
-							<TriangleAlert className="mr-1 h-4 w-4" /> Must-Haves
-						</Button>
+                    <Button
+                        variant="outline"
+                        size="sm"
+                        title="Filter to must-have questions only"
+                        onClick={() => {
+                            if (!mustHavesOnly) {
+                                // Save current selection (or default to all visible) before filtering
+                                previousSelectionRef.current = selectedQuestionIds.length > 0
+                                    ? [...selectedQuestionIds]
+                                    : questionPack.questions.map((q) => q.id)
+                                // Filter to must-haves
+                                const filteredIds = (previousSelectionRef.current || []).filter((id) => {
+                                    const q = questions.find((qq) => qq.id === id)
+                                    return q?.isMustHave
+                                })
+                                if (filteredIds.length > 0) {
+                                    setSelectedQuestionIds(filteredIds)
+                                    setMustHavesOnly(true)
+                                } else {
+                                    // No must-haves yet; keep selection and do not toggle
+                                    toast.info("No questions are marked as must‑have yet")
+                                }
+                            } else {
+                                // Restore prior selection or all
+                                const restore = previousSelectionRef.current && previousSelectionRef.current.length > 0
+                                    ? previousSelectionRef.current
+                                    : questionPack.questions.map((q) => q.id)
+                                setSelectedQuestionIds(restore)
+                                setMustHavesOnly(false)
+                            }
+                        }}
+                    >
+                        <TriangleAlert className="mr-1 h-4 w-4" /> Must-Haves
+                    </Button>
 					</div>
 				</div>
 
@@ -1349,60 +1366,62 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																			</div>
 																			<div className="flex items-center gap-1">
 																				{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
-																				<Button
-																					variant="ghost"
-																					size="sm"
-																					title="Mark as must-have question"
-																					onClick={async () => {
-																						const updated = questions.map((q) =>
-																							q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
-																						)
-																						setQuestions(updated)
-																						// Save to database
-																						setSkipDebounce(true)
-																						await saveQuestionsToDatabase(updated, selectedQuestionIds)
-																						setTimeout(() => setSkipDebounce(false), 1500)
-																					}}
-																					className={`${question.isMustHave ? "text-red-500 hover:text-red-700" : "text-gray-400 hover:text-red-500"}`}
-																				>
-																					<TriangleAlert
-																						className={`h-4 w-4 ${question.isMustHave ? "fill-current" : ""}`}
-																					/>
-																				</Button>
-																				<Button
-																					variant="ghost"
-																					size="sm"
-																					title="Generate follow-up questions"
-																					onClick={() => generateFollowUpQuestions(question.id, question.text)}
-																					disabled={generatingFollowUp === question.id}
-																					className="text-blue-500 hover:text-blue-700"
-																				>
-																					{generatingFollowUp === question.id ? (
-																						<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																					) : (
-																						<Zap className="h-4 w-4" />
-																					)}
-																				</Button>
-																				<Button
-																					variant="ghost"
-																					size="sm"
-																					onClick={() => {
-																						setEditingId(question.id)
-																						setEditingText(question.text)
-																					}}
-																					className="text-gray-500 hover:text-gray-700"
-																				>
-																					<Edit className="h-4 w-4" />
-																				</Button>
+																				<DropdownMenu>
+																					<DropdownMenuTrigger asChild>
+																						<Button
+																							variant="ghost"
+																							size="sm"
+																							className="h-8 w-8 p-0"
+																						>
+																							<MoreHorizontal className="h-4 w-4" />
+																						</Button>
+																					</DropdownMenuTrigger>
+																					<DropdownMenuContent align="end">
+																						<DropdownMenuItem
+																							onClick={async () => {
+																								const updated = questions.map((q) =>
+																									q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
+																								)
+																								setQuestions(updated)
+																								// Save to database
+																								setSkipDebounce(true)
+																								await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																								setTimeout(() => setSkipDebounce(false), 1500)
+																							}}
+																						>
+																							<TriangleAlert className="mr-2 h-4 w-4" />
+																							{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
+																						</DropdownMenuItem>
+																						<DropdownMenuItem
+																							onClick={() => generateFollowUpQuestions(question.id, question.text)}
+																							disabled={generatingFollowUp === question.id}
+																						>
+																							{generatingFollowUp === question.id ? (
+																								<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																							) : (
+																								<Zap className="mr-2 h-4 w-4" />
+																							)}
+																							Generate Follow-ups
+																						</DropdownMenuItem>
+																						<DropdownMenuItem
+																							onClick={() => {
+																								setEditingId(question.id)
+																								setEditingText(question.text)
+																							}}
+																						>
+																							<Edit className="mr-2 h-4 w-4" />
+																							Edit Question
+																						</DropdownMenuItem>
+																						<DropdownMenuItem
+																							onClick={() => removeQuestion(question.id)}
+																							className="text-red-600 focus:text-red-600"
+																						>
+																							<Trash2 className="mr-2 h-4 w-4" />
+																							Remove Question
+																						</DropdownMenuItem>
+																					</DropdownMenuContent>
+																				</DropdownMenu>
 																			</div>
-																			<Button
-																				variant="ghost"
-																				size="sm"
-																				onClick={() => removeQuestion(question.id)}
-																				className="text-red-500 hover:text-red-700"
-																			>
-																				<Trash2 className="h-4 w-4" />
-																			</Button>
 																		</div>
 																	</CardContent>
 																</Card>

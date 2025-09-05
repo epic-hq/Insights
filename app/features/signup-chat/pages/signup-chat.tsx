@@ -14,7 +14,7 @@ const progressStyles = `
 `
 
 import consola from "consola"
-import { ArrowRight, CheckCircle } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle, MessageSquare, Mic, User } from "lucide-react"
 import type { z } from "zod"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
@@ -98,62 +98,118 @@ export default function SignupChat() {
 		return (
 			<>
 				<style dangerouslySetInnerHTML={{ __html: progressStyles }} />
-				<div className="flex min-h-screen flex-col items-center justify-center gap-8 bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-					<div className="rounded-lg bg-white p-8 shadow-xl dark:bg-gray-800">
-						<div className="flex flex-col items-center gap-6 text-center">
-							<CheckCircle className="h-16 w-16 text-green-500" />
-							<h1 className="font-bold text-3xl text-gray-900 dark:text-white">Thanks for joining UpSight!</h1>
-							<p className="text-gray-600 text-lg dark:text-gray-300">
-								We've received your responses and will be in touch when you're activated.
-							</p>
-							<p className="text-gray-500 text-sm dark:text-gray-400">First month free - as promised!</p>
+				<div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+					{/* Header */}
+					<header className="border-gray-200 border-b bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
+						<div className="mx-auto flex max-w-2xl items-center justify-between">
+							<Link
+								to="/home"
+								className="flex items-center gap-2 text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+							>
+								<ArrowLeft className="h-5 w-5" />
+								Back
+							</Link>
+							<div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+								<CheckCircle className="h-4 w-4 text-green-500" />
+								<span className="text-gray-700 text-sm dark:text-gray-300">Complete</span>
+							</div>
+						</div>
+					</header>
+
+					{/* Progress Bar */}
+					{/* <div className="border-gray-200 border-b bg-white dark:border-gray-800 dark:bg-gray-900">
+						<div className="mx-auto max-w-2xl px-4">
+							<div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+								<div className="h-full w-full rounded-full bg-purple-500" />
+							</div>
+						</div>
+					</div> */}
+
+					{/* Main Content */}
+					<main className="flex flex-1 items-center justify-center px-4 py-16">
+						<div className="w-full max-w-lg text-center">
+							<div className="mb-8">
+								<CheckCircle className="mx-auto mb-6 h-16 w-16 text-green-500" />
+								<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-white">Welcome to UpSight!</h1>
+								<p className="mb-2 text-gray-600 text-lg leading-relaxed dark:text-gray-300">
+									OK, got what I need, Thanks! Let's get you going.
+								</p>
+								<p className="font-medium text-purple-600 text-sm dark:text-purple-400">
+									First month free - as promised! 🎉
+								</p>
+							</div>
 
 							{/* Auto-redirect indicator */}
-							<div className="flex flex-col items-center gap-3">
-								<p className="text-gray-400 text-sm">Redirecting to home in 3 seconds...</p>
-								<div className="h-1 w-32 overflow-hidden rounded-full bg-gray-200">
+							<div className="mb-8">
+								<p className="mb-3 text-gray-500 text-sm dark:text-gray-400">Redirecting to home in 3 seconds...</p>
+								<div className="mx-auto h-1 w-48 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
 									<div
-										className="h-full animate-pulse rounded-full bg-blue-500"
+										className="h-full rounded-full bg-purple-500"
 										style={{ animation: "progress 3s linear forwards" }}
 									/>
 								</div>
 							</div>
 
-							{/* Manual navigation option */}
+							{/* Action Button */}
 							<Link
 								to="/home"
-								className="mt-4 inline-flex items-center gap-2 rounded-lg bg-blue-600 px-6 py-3 font-medium text-white transition-colors hover:bg-blue-700"
+								className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-8 py-4 font-semibold text-white transition-all hover:bg-purple-700 hover:shadow-lg"
 							>
-								<ArrowRight className="h-4 w-4" />
-								Go to Home Now
+								<ArrowRight className="h-5 w-5" />
+								Get Started Now
 							</Link>
 						</div>
-					</div>
+					</main>
 				</div>
 			</>
 		)
 	}
 
 	return (
-		<div className="flex h-full flex-col bg-gradient-to-br from-blue-50 to-indigo-100 dark:from-gray-900 dark:to-gray-800">
-			<div className="container mx-auto flex flex-1 flex-col overflow-y-auto p-4">
-				<div className="text-center">
-					<h1 className="mb-2 font-bold text-2xl text-foreground">UpSight SignUp 🎉 </h1>
+		<div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+			{/* Header */}
+			<header className="border-gray-200 border-b bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
+				<div className="mx-auto flex max-w-2xl items-center justify-between">
+					<Link
+						to="/"
+						className="flex items-center gap-2 text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+					>
+						<ArrowLeft className="h-5 w-5" />
+						Back
+					</Link>
+					<div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+						<div className="h-2 w-2 animate-pulse rounded-full bg-purple-500" />
+						<span className="text-gray-700 text-sm dark:text-gray-300">Setup</span>
+					</div>
 				</div>
+			</header>
 
-				<CopilotKit
-					runtimeUrl={copilotRuntimeUrl}
-					agent="signupAgent"
-					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-				>
-					<ChatWithChecklist existingChatData={existingChatData} />
-				</CopilotKit>
-			</div>
+			{/* Progress Bar */}
+			{/* <div className="border-gray-200 border-b bg-white dark:border-gray-800 dark:bg-gray-900">
+				<div className="mx-auto max-w-2xl px-4">
+					<div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+						<div className="h-full w-1/3 rounded-full bg-gradient-to-r from-purple-500 to-purple-600" />
+					</div>
+				</div>
+			</div> */}
+
+			{/* Main Content */}
+			<main className="flex flex-1 flex-col">
+				<div className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
+					<CopilotKit
+						runtimeUrl={copilotRuntimeUrl}
+						agent="signupAgent"
+						publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
+					>
+						<ModernChatInterface existingChatData={existingChatData} />
+					</CopilotKit>
+				</div>
+			</main>
 		</div>
 	)
 }
 
-function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChatData }) {
+function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 	// Use the agent state inside the CopilotKit context (from @copilotkit/react-core)
 	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
@@ -162,22 +218,85 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 
 	consola.log("[signupAgent state]", state)
 
-	// useCopilotAction({
-	// 	name: "planTool",
-	// 	description: "Show the plan.",
-	// 	available: "frontend",
-	// 	parameters: [
-	// 		{ name: "goal", type: "string", required: true },
-	// 		{ name: "plan", type: "object[]", required: true },
-	// 	],
-	// 	render: ({ args }) => {
-	// 		return <PlanCard goal={args.goal} plan={args.plan} />
-	// 	},
-	// })
+	return (
+		<div className="flex flex-1 flex-col">
+			{/* Hero Section */}
+			<div className="mb-8 text-center">
+				<div className="mb-6 flex items-center justify-center">
+					<div className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20">
+						<User className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+					</div>
+				</div>
+
+				<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-white">Welcome to UpSight</h1>
+
+				<p className="mb-6 text-gray-600 text-lg leading-relaxed dark:text-gray-300">
+					Let's get you set up to gather powerful insights for your business. This quick 2-minute interactive chat will
+					help us understand your needs and get you started.
+				</p>
+			</div>
+
+			{/* Chat Interface */}
+			<div className="flex-1 rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
+				{/* AI Agent Header */}
+				<div className="border-gray-100 border-b p-4 dark:border-gray-700">
+					<div className="flex items-center gap-3">
+						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600">
+							<span className="font-bold text-sm text-white">🤖</span>
+						</div>
+						<div>
+							<h3 className="font-semibold text-gray-900 dark:text-white">UpSight Assistant</h3>
+							<p className="text-gray-500 text-sm dark:text-gray-400">powered by AI</p>
+						</div>
+					</div>
+				</div>
+
+				{/* CopilotChat with custom styling */}
+				<div className="h-[500px]">
+					<CopilotChat
+						labels={{
+							title: "",
+							initial: "Hey, welcome! What's your name, and how can I help today?",
+						}}
+						className="h-full"
+					/>
+				</div>
+			</div>
+
+			{/* Alternative Input Options */}
+			<div
+				className="mt-8 text-center"
+				onClick={() => {
+					alert("Coming soon")
+				}}
+			>
+				<div className="mb-4 flex items-center justify-center gap-4">
+					<button className="flex h-16 w-16 items-center justify-center rounded-full bg-purple-600 transition-all hover:bg-purple-700 hover:shadow-lg">
+						<Mic className="h-6 w-6 text-white" />
+					</button>
+				</div>
+				<p className="mb-3 text-gray-600 text-sm dark:text-gray-400">Start a voice conversation</p>
+			</div>
+
+			{/* Development Panel */}
+			{process.env.NODE_ENV === "development" && (
+				<div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+					<h4 className="mb-2 font-semibold text-gray-900 text-sm dark:text-white">Development Panel</h4>
+					<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
+				</div>
+			)}
+		</div>
+	)
+}
+
+function ChatWithChecklist({ existingChatData }: { existingChatData?: any }) {
+	// Legacy component - keeping for backwards compatibility
+	const { state } = useCoAgent<AgentState>({
+		name: "signupAgent",
+	})
 
 	return (
 		<div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-3">
-			{/* Chat Area */}
 			<div className="col-span-2 rounded-lg bg-white shadow-xl dark:bg-gray-800">
 				<CopilotChat
 					labels={{
@@ -190,7 +309,6 @@ function ChatWithChecklist({ existingChatData }: { existingChatData?: SignupChat
 			{process.env.NODE_ENV === "development" && (
 				<div className="col-span-1">
 					Development:
-					{/* <PlanCard goal={state?.goal} plan={state?.plan} /> */}
 					<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
 				</div>
 			)}

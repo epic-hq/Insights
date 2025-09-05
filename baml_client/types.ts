@@ -681,6 +681,19 @@ export interface ProjectAnalysis {
   
 }
 
+export interface ProjectTemplateOut {
+  template_key: string
+  target_orgs: string[]
+  target_roles: string[]
+  research_goal: string
+  research_goal_details: string
+  decision_questions: string[]
+  assumptions: string[]
+  unknowns: string[]
+  custom_instructions: string
+  
+}
+
 export interface Question {
   id: string
   text: string
