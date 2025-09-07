@@ -10,6 +10,8 @@ import {
 	Flag,
 	GripVertical,
 	MessageCircleQuestion,
+	Mic,
+	Mic2Icon,
 	MoreHorizontal,
 	Pencil,
 	Plus,
@@ -251,6 +253,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [autoGenerateInitial, setAutoGenerateInitial] = useState(false)
 	const [generatingFollowUp, setGeneratingFollowUp] = useState<string | null>(null)
 	const [mustHavesOnly, setMustHavesOnly] = useState(false)
+	// How many new questions to generate when user clicks "Generate More"
+	const [moreCount, setMoreCount] = useState<number>(3)
 	const previousSelectionRef = React.useRef<string[] | null>(null)
 
 	// Auto-generate questions on first load for new users
@@ -529,16 +533,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						source: q.source || "ai", // Ensure source is preserved
 					}
 				})
-                const { error } = await supabase.from("project_sections").upsert(
-                    {
-                        project_id: projectId,
-                        kind: "questions",
-                        position: 2,
-                        content_md: `# Questions\n\nManaged ${withOrder.length} questions for interview planning.`,
-                        meta: {
-                            questions: withOrder,
-                            settings: {
-                                timeMinutes,
+				const { error } = await supabase.from("project_sections").upsert(
+					{
+						project_id: projectId,
+						kind: "questions",
+						position: 2,
+						content_md: `# Questions\n\nManaged ${withOrder.length} questions for interview planning.`,
+						meta: {
+							questions: withOrder,
+							settings: {
+								timeMinutes,
 								purpose,
 								familiarity,
 								goDeepMode,
@@ -873,9 +877,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const formData = new FormData()
 			formData.append("project_id", projectId || "")
 			formData.append("custom_instructions", customInstructions || "")
-			// Determine question count from front-end (based on timeMinutes)
+			// Determine question count:
+			// - Initial generation: time-based target (4/6/8/10)
+			// - Subsequent generations: user-selected count (default 3)
 			const countByTime: Record<number, number> = { 15: 4, 30: 6, 45: 8, 60: 10 }
-			const count = countByTime[timeMinutes] ?? 8
+			const initialTarget = countByTime[timeMinutes] ?? 8
+			const count = autoGenerateInitial ? initialTarget : moreCount
 			formData.append("questionCount", String(count))
 			formData.append("interview_time_limit", timeMinutes.toString())
 
@@ -915,12 +922,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							{
 								project_id: projectId,
 								kind: "questions",
-                        position: 2,
-                        content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
-                        meta: { questions: allQuestions },
-                    },
-                    { onConflict: "project_id,kind", ignoreDuplicates: false }
-                )
+								position: 2,
+								content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
+								meta: { questions: allQuestions },
+							},
+							{ onConflict: "project_id,kind", ignoreDuplicates: false }
+						)
 					}
 
 					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => ({
@@ -1012,8 +1019,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</div>
 					<p className="mt-1 text-gray-600 text-sm">
 						Review, edit, and finalize your interview questions. Based on your{" "}
-						<Link 
-							to={routes.projects.setup()} 
+						<Link
+							to={routes.projects.setup()}
 							className="font-medium text-blue-600 underline underline-offset-2 transition-all duration-200 hover:text-blue-800 hover:underline-offset-4"
 						>
 							Project Goals
@@ -1117,13 +1124,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								</>
 							)}
 						</Button>
+
 						<Button
 							onClick={() => setShowCustomInstructions(!showCustomInstructions)}
 							variant="outline"
-							size="icon"
-							className="shrink-0"
-							title="Modify generation instructions"
+							size="sm"
+							className="shrink-0 gap-1"
+							title="Show options (count and instructions)"
 						>
+							<span>Options</span>
 							<ChevronDown className={`h-4 w-4 transition-transform ${showCustomInstructions ? "rotate-180" : ""}`} />
 						</Button>
 					</div>
@@ -1134,24 +1143,28 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					>
 						<Plus className="mr-2 h-4 w-4" /> Add Custom Question
 					</Button>
-					<Button
-						onClick={() => {
-							if (routes) {
-								window.location.href = routes.interviews.upload()
-							}
-						}}
-						variant="default"
-						disabled={questionPack.questions.length === 0}
-						className="bg-blue-600 hover:bg-blue-700"
-					>
-						Add Interview
-					</Button>
 				</div>
 
 				{/* Custom Instructions */}
 				{showCustomInstructions && (
 					<Card className="border-blue-100">
-						<CardContent className="p-4">
+						<CardContent className="space-y-3 p-4">
+							<div className="flex items-center gap-2">
+								<label className="text-muted-foreground text-xs">Add</label>
+								<Select value={String(moreCount)} onValueChange={(v) => setMoreCount(Number(v))}>
+									<SelectTrigger className="h-8 w-[84px]">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{[1, 2, 3, 4, 5, 6, 8, 10].map((n) => (
+											<SelectItem key={n} value={String(n)}>
+												{n}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+								<span className="text-muted-foreground text-xs">questions per click</span>
+							</div>
 							<Textarea
 								placeholder="Add specific instructions for question generation (e.g., 'Focus more on technical challenges', 'Include questions about team dynamics')..."
 								value={customInstructions}
@@ -1565,6 +1578,19 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						)}
 					</CardContent>
 				</Card>
+				<Button
+					onClick={() => {
+						if (routes) {
+							window.location.href = routes.interviews.upload()
+						}
+					}}
+					variant="default"
+					disabled={questionPack.questions.length === 0}
+					className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
+				>
+					<Mic className="mr-2 h-4 w-4" />
+					Add Interview
+				</Button>
 			</div>
 		</div>
 	)

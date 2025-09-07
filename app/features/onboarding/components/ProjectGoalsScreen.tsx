@@ -53,15 +53,15 @@ const sampleData = [
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
-  // Relaxed: allow no orgs; treat as "Any" downstream
-  target_orgs: z.array(z.string()).default([]),
-  target_roles: z.array(z.string()).min(1, "At least one target role is required"),
-  research_goal: z.string().min(1, "Research goal is required"),
-  research_goal_details: z.string().optional(),
-  decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
-  assumptions: z.array(z.string()),
-  unknowns: z.array(z.string()),
-  custom_instructions: z.string().optional(),
+	// Relaxed: allow no orgs; treat as "Any" downstream
+	target_orgs: z.array(z.string()).default([]),
+	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
+	research_goal: z.string().min(1, "Research goal is required"),
+	research_goal_details: z.string().optional(),
+	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
+	assumptions: z.array(z.string()),
+	unknowns: z.array(z.string()),
+	custom_instructions: z.string().optional(),
 })
 
 type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
@@ -188,6 +188,7 @@ export default function ProjectGoalsScreen({
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
 	const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
 	const [showDecisionQuestionSuggestions, setShowDecisionQuestionSuggestions] = useState(false)
+	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
 	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
@@ -484,7 +485,8 @@ export default function ProjectGoalsScreen({
 	}
 
 	const handleNext = () => {
-		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
+		// Align with isValid: do not require target_orgs to proceed
+		if (target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
 			saveResearchGoal(research_goal, research_goal_details, false)
 			onNext({
 				target_orgs,
@@ -599,23 +601,23 @@ export default function ProjectGoalsScreen({
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
 							<div>
-                        <label className="mb-2 block font-semibold text-foreground">Primary research goal</label>
-                        <Textarea
-                            placeholder={
-                                templateKey === "understand_customer_needs"
-                                    ? "e.g., Understand the core jobs, outcomes, and pains for [target customers] when [situation]"
-                                    : "e.g., Understanding price sensitivity for our new pricing tier"
-                            }
-                            value={research_goal}
-                            onChange={(e) => setResearchGoal(e.target.value)}
-                            onFocus={() => setShowGoalSuggestions(true)}
-                            onBlur={() => {
-                                handleResearchGoalBlur()
-                                setTimeout(() => setShowGoalSuggestions(false), 150)
-                            }}
-                            rows={2}
-                            className="min-h-[72px]"
-                        />
+								<label className="mb-2 block font-semibold text-foreground">Primary research goal</label>
+								<Textarea
+									placeholder={
+										templateKey === "understand_customer_needs"
+											? "e.g., Understand the core jobs, outcomes, and pains for [target customers] when [situation]"
+											: "e.g., Understanding price sensitivity for our new pricing tier"
+									}
+									value={research_goal}
+									onChange={(e) => setResearchGoal(e.target.value)}
+									onFocus={() => setShowGoalSuggestions(true)}
+									onBlur={() => {
+										handleResearchGoalBlur()
+										setTimeout(() => setShowGoalSuggestions(false), 150)
+									}}
+									rows={2}
+									className="min-h-[72px]"
+								/>
 								<SuggestionBadges
 									suggestions={sampleGoals}
 									onSuggestionClick={(goal) => {
@@ -627,14 +629,8 @@ export default function ProjectGoalsScreen({
 							</div>
 
 							<div>
-								<label className="mb-2 block font-semibold text-foreground">
-									What questions will this research answer?
-								</label>
-								<p className="mb-3 text-muted-foreground text-xs">
-									These questions will guide your research and help shape the interviews.
-								</p>
-
-								{/* Selected decision questions badges - closer to title */}
+								What questions will this research answer? ({decision_questions.length})
+								{/* Selected decision questions badges - always visible */}
 								<div className="mb-4 space-y-2">
 									{decision_questions.map((question, index) => (
 										<div
@@ -654,54 +650,63 @@ export default function ProjectGoalsScreen({
 										</div>
 									))}
 								</div>
+								{/* Collapsible input section */}
+								{true && (
+									<div className="mb-4 space-y-4">
+										<p className="text-muted-foreground text-xs">
+											These questions will guide your research and help shape the interviews.
+										</p>
 
-								{/* Input field below */}
-								<div className="mb-4 flex gap-3">
-									<Input
-										placeholder={
-											templateKey === "understand_customer_needs"
-												? "What specific questions will this research answer?"
-												: "What specific questions will this research answer?"
-										}
-										value={newDecisionQuestion}
-										onChange={(e) => setNewDecisionQuestion(e.target.value)}
-										onKeyPress={(e) => e.key === "Enter" && addDecisionQuestion()}
-										onFocus={() => setShowDecisionQuestionSuggestions(true)}
-										onBlur={() => setTimeout(() => setShowDecisionQuestionSuggestions(false), 150)}
-										className="flex-1"
-									/>
-									<Button
-										onClick={addDecisionQuestion}
-										variant="outline"
-										className="px-3 py-2"
-										disabled={!newDecisionQuestion.trim()}
-									>
-										<Plus className="h-4 w-4" />
-									</Button>
-								</div>
-								<SuggestionBadges
-									suggestions={
-										templateKey === "understand_customer_needs"
-											? [
-													"What specific outcomes make customers willing to pay more?",
-													"Which jobs-to-be-done trigger customers to switch solutions?",
-													"What friction points cause customers to abandon the process?",
-													"How do customers evaluate and compare different solutions?",
-													"What contexts make customers most likely to adopt our solution?",
-												]
-											: [
-													"Which pricing tier drives highest conversion rates?",
-													"What content format engages users and drives action?",
-													"Which features justify premium pricing in customer minds?",
-													"What onboarding changes would reduce early churn?",
-												]
-									}
-									onSuggestionClick={(suggestion) => {
-										setNewDecisionQuestion(suggestion)
-										setShowDecisionQuestionSuggestions(false)
-									}}
-									show={showDecisionQuestionSuggestions}
-								/>
+										{/* Input field */}
+										<div className="flex gap-3">
+											<Input
+												placeholder={
+													templateKey === "understand_customer_needs"
+														? "What specific questions will this research answer?"
+														: "What specific questions will this research answer?"
+												}
+												value={newDecisionQuestion}
+												onChange={(e) => setNewDecisionQuestion(e.target.value)}
+												onKeyPress={(e) => e.key === "Enter" && addDecisionQuestion()}
+												onFocus={() => setShowDecisionQuestionSuggestions(true)}
+												onBlur={() => setTimeout(() => setShowDecisionQuestionSuggestions(false), 150)}
+												className="flex-1"
+											/>
+											<Button
+												onClick={addDecisionQuestion}
+												variant="outline"
+												className="px-3 py-2"
+												disabled={!newDecisionQuestion.trim()}
+											>
+												<Plus className="h-4 w-4" />
+											</Button>
+										</div>
+
+										<SuggestionBadges
+											suggestions={
+												templateKey === "understand_customer_needs"
+													? [
+															"What specific outcomes make customers willing to pay more?",
+															"Which jobs-to-be-done trigger customers to switch solutions?",
+															"What friction points cause customers to abandon the process?",
+															"How do customers evaluate and compare different solutions?",
+															"What contexts make customers most likely to adopt our solution?",
+														]
+													: [
+															"Which pricing tier drives highest conversion rates?",
+															"What content format engages users and drives action?",
+															"Which features justify premium pricing in customer minds?",
+															"What onboarding changes would reduce early churn?",
+														]
+											}
+											onSuggestionClick={(suggestion) => {
+												setNewDecisionQuestion(suggestion)
+												setShowDecisionQuestionSuggestions(false)
+											}}
+											show={showDecisionQuestionSuggestions}
+										/>
+									</div>
+								)}
 							</div>
 
 							{/* Assumptions */}
@@ -956,18 +961,20 @@ export default function ProjectGoalsScreen({
 				</div>
 
 				{showNextButton && (
-					<div className="flex justify-between">
-						<div className="flex items-center">
-							{isSaving ? (
-								<StatusPill variant="active">
-									Saving <ProgressDots className="ml-1" />
-								</StatusPill>
-							) : null}
+					<div className="mt-8 border-border border-t pt-6">
+						<div className="flex items-center justify-between">
+							<div className="flex items-center">
+								{isSaving ? (
+									<StatusPill variant="active">
+										Saving <ProgressDots className="ml-1" />
+									</StatusPill>
+								) : null}
+							</div>
+							<Button onClick={handleNext} disabled={!isValid || isLoading} size="lg" className="px-6">
+								Generate Interview Questions
+								<ChevronRight className="ml-2 h-4 w-4" />
+							</Button>
 						</div>
-						<Button onClick={handleNext} disabled={!isValid || isLoading}>
-							Generate Interview Questions
-							<ChevronRight className="ml-2 h-4 w-4" />
-						</Button>
 					</div>
 				)}
 			</div>

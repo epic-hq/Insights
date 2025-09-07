@@ -155,15 +155,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
         let questionSet: any
         const computedSessionId = `session_${Date.now()}`
         try {
+            const ensure = (v: unknown, fallback = "unspecified") => {
+                const s = typeof v === "string" ? v : String(v ?? "")
+                return s.trim().length > 0 ? s : fallback
+            }
             questionSet = await generateQuestionSetCanonical({
-                target_orgs,
-                target_roles,
-                research_goal,
-                research_goal_details,
-                assumptions,
-                unknowns,
-                custom_instructions,
-                session_id: computedSessionId,
+                target_orgs: ensure(target_orgs),
+                target_roles: ensure(target_roles),
+                research_goal: ensure(research_goal, "General research goal"),
+                research_goal_details: ensure(research_goal_details, ""),
+                assumptions: ensure(assumptions, ""),
+                unknowns: ensure(unknowns, ""),
+                custom_instructions: ensure(custom_instructions, ""),
+                session_id: ensure(computedSessionId),
                 round: 1,
                 total_per_round: questionCount || 10,
                 per_category_min: 1,
