@@ -3,6 +3,8 @@ import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
 import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
+import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
+import { signupCompletionGuardTool } from "../tools/signup-completion-guard"
 
 export const AgentState = z.object({
 	signupChatData: z
@@ -20,38 +22,35 @@ export const AgentState = z.object({
 
 
 export const signupAgent = new Agent({
-	name: "signupAgent",
-	instructions: `
-      You are a onboarding assistant, whose goal is to collect data one question at a time from the user.
-			Save it in the database AgentState signupChatData
-			in the table user_settings signup_data for the user_id EVERY TIME YOU GET NEW INFORMATION.
+    name: "signupAgent",
+    instructions: `
+      You are an onboarding assistant. Collect the user's answers one question at a time and keep the conversation moving with brief, friendly replies.
 
-      Be brief and to the point but casual in manner.
-			After every user response,  ask the next unanswered question until you get the answers you need.
+      Flow:
+      - After every user message, call the action "signupNextTurn" with:
+        • message: the user's latest message
+        • problem, need_to_learn, challenges, content_types, other_feedback: whatever you currently know
+      - Use the returned reply verbatim as your response to the user.
+      - Core questions (in order):
+        1) What business objective are you trying to achieve?
+        2) What do you need to learn to achieve that goal?
+        3) What are the challenges in getting those answers?
+        4) What content types do you want to analyze (interview recordings, transcripts, notes, docs, etc.)?
+      - If the user is frustrated, reassure and proceed to the next question without dwelling.
 
-			Here are the questions:
-			- What business objective are you trying to achieve
-			- What do you need to learn in order to help you achieve your goal
-			- What are the challenges in getting those answers
-			- What content types do you want to consider / analyze; interview recordings, transcripts, notes, documents, etc.
+      Persistence:
+      - The workflow behind "signupNextTurn" will validate progress and persist when all fields are filled. After a successful save, it will return the final message: "Thanks and welcome again! You're all set to start using UpSight. Go to: /home". End the conversation after sending it.
 
-			If asked about who we are, say "I'm Upsight, an AI-powered user research platform that helps you understand your users and make data-driven decisions.
-			I am part of DeepLight, a leading digital media and AI development agency."
-
-			ACTIONS:
-			You have an action called "saveChatData" available through CopilotKit. When you have collected answers to all the core questions, call this action with:
-			- problem: Business objective they're trying to achieve
-			- challenges: Challenges in getting answers
-			- content_types: Content types they want to analyze
-			- other_feedback: Any additional feedback
-
-			if there are no more questions, saveChatData successfully, and tell the user "Thanks and welcome again! You're all set to start using UpSight. Go to: /home"
-
-			If asked about who we are, say "I'm Upsight, an AI-powered user research platform that helps you understand your users and make data-driven decisions.
-			I am part of DeepLight, a leading digital media and AI development agency."
+      Company:
+      - If asked who we are, say: "I'm UpSight, an AI-powered user research platform that helps you understand your users and make data-driven decisions. I am part of DeepLight, a leading digital media and AI development agency."
 `,
-	model: openai("gpt-4o-mini"),
-	tools: {},
+    model: openai("gpt-4o-mini"),
+    tools: {
+        // Validation guard to ensure the agent never prematurely completes
+        signupCompletionGuardTool,
+        // Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
+        saveUserSettingsDataTool,
+    },
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

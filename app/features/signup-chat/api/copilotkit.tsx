@@ -50,9 +50,52 @@ export async function action({ request }: ActionFunctionArgs) {
 	// })
 
 	// Build Copilot runtime with Mastra agents and our signup action
-	const runtime = new CopilotRuntime({
-		agents: mastraAgents,
-		actions: [
+  const runtime = new CopilotRuntime({
+    agents: mastraAgents,
+    actions: [
+      {
+        name: "signupNextTurn",
+        description: "Drive the signup onboarding conversation deterministically for the next turn.",
+        parameters: [
+          { name: "message", type: "string", description: "The user's latest message" },
+          { name: "problem", type: "string", required: false },
+          { name: "need_to_learn", type: "string", required: false },
+          { name: "challenges", type: "string", required: false },
+          { name: "content_types", type: "string", required: false },
+          { name: "other_feedback", type: "string", required: false },
+        ],
+        handler: async ({ message, problem, need_to_learn, challenges, content_types, other_feedback }) => {
+          try {
+            consola.log("➡️ signupNextTurn: starting workflow", { hasMessage: !!message })
+            const run = await mastra.getWorkflow("signupOnboardingWorkflow")?.createRunAsync()
+            const runtimeContext = new RuntimeContext()
+            runtimeContext.set("supabase", supabase)
+            const result = await run?.start({
+              inputData: {
+                message,
+                user_id: user.sub,
+                state: { problem, need_to_learn, challenges, content_types, other_feedback },
+              },
+              runtimeContext,
+            })
+
+            if (result?.status === "success") {
+              const out = result.result as any
+              consola.log("✅ signupNextTurn: workflow success", out)
+              return {
+                reply: out.reply,
+                state: out.state,
+                completed: out.completed,
+              }
+            }
+
+            return { reply: "Let's continue — what's your main objective?", state: { problem, need_to_learn, challenges, content_types, other_feedback }, completed: false }
+          } catch (e) {
+            consola.error("signupNextTurn error", e)
+            return { reply: "Sorry — hit a hiccup. What business objective are you trying to achieve?", state: { problem, need_to_learn, challenges, content_types, other_feedback }, completed: false }
+          }
+        },
+      },
 			{
 				name: "runDailyBrief",
 				description: "Run the daily brief workflow for the current project/account context",
@@ -106,8 +149,8 @@ export async function action({ request }: ActionFunctionArgs) {
 					}
 				},
 			},
-			{
-				name: "saveChatData",
+      {
+        name: "saveChatData",
 				description: "Save the collected signup chat responses to the database",
 				parameters: [
 					{

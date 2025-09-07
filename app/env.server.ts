@@ -15,6 +15,7 @@ const envSchema = z.object({
 	// PostHog runtime vars (used as fallback when VITE_ vars are not inlined)
 	POSTHOG_KEY: z.string().optional(),
 	POSTHOG_HOST: z.string().optional(),
+	SIGNUP_CHAT_REQUIRED: z.string().optional(),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>
@@ -64,6 +65,7 @@ export function getClientEnv() {
 		// PostHog (client-side consumption)
 		POSTHOG_KEY: serverEnv.POSTHOG_KEY,
 		POSTHOG_HOST: serverEnv.POSTHOG_HOST,
+		SIGNUP_CHAT_REQUIRED: serverEnv.SIGNUP_CHAT_REQUIRED,
 	}
 }
 

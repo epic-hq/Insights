@@ -56,8 +56,33 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 	const routes = useProjectRoutes(projectPath)
 	const byKind = groupLatestByKind(sections)
 
-	const order = ["goal", "questions", "findings", "background"]
-	const kinds = [...new Set([...order, ...Array.from(byKind.keys())])].filter((k) => byKind.has(k))
+    // Preferred display order; fall back to any others present
+    const preferredOrder = [
+        "research_goal",
+        "questions",
+        "target_orgs",
+        "target_roles",
+        "assumptions",
+        "unknowns",
+        "custom_instructions",
+    ]
+    // Build kinds, but exclude 'questions' from inline content since it has a dedicated editor
+    const kinds = [...new Set([...preferredOrder, ...Array.from(byKind.keys())])]
+        .filter((k) => byKind.has(k))
+        .filter((k) => k !== "questions")
+
+    const kindLabel: Record<string, string> = {
+        research_goal: "Research Goal",
+        questions: "Interview Questions",
+        target_orgs: "Target Organizations",
+        target_roles: "Target Roles",
+        assumptions: "Assumptions",
+        unknowns: "Unknowns",
+        custom_instructions: "Custom Instructions",
+        goal: "Goal",
+        findings: "Findings",
+        background: "Background",
+    }
 
 	const editBtn = (
 		<TooltipProvider>
@@ -88,8 +113,8 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 		>
 			<div className="h-1 w-full" style={{ backgroundColor: themeColor }} />
 
-			<div className="flex items-start gap-4 p-6">
-				<Avatar className="h-14 w-14 shrink-0 border-2" style={{ borderColor: themeColor }}>
+            <div className="flex items-start gap-4 p-6">
+                <Avatar className="h-14 w-14 shrink-0 border-2" style={{ borderColor: themeColor }}>
 					<AvatarFallback className="font-medium text-lg text-white" style={{ backgroundColor: themeColor }}>
 						{initials}
 					</AvatarFallback>
@@ -97,11 +122,11 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 
 				<div className="min-w-0 flex-1">
 					<div className="flex items-start justify-between gap-3">
-						<div className="min-w-0">
-							<h3 className="mb-1 flex items-center gap-2 truncate font-bold text-xl" style={{ color: themeColor }}>
-								<Link to={projectPath} className="hover:underline" onClick={(e) => e.stopPropagation()}>
-									{project.name}
-								</Link>
+                    <div className="min-w-0">
+                        <h3 className="mb-1 flex items-center gap-2 break-words font-bold text-xl" style={{ color: themeColor }}>
+                            <Link to={projectPath} className="hover:underline" onClick={(e) => e.stopPropagation()}>
+                                {project.name}
+                            </Link>
 								{project.status && (
 									<Badge variant="secondary" className="h-5 px-1.5 text-[10px] leading-none">
 										{project.status}
@@ -126,45 +151,66 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 
 			<Separator />
 
-			<div className="p-6">
-				<Accordion type="multiple" className="space-y-3">
-					{kinds.map((k) => {
-						const arr = byKind.get(k)!
-						const latest = arr[0]
-						return (
-							<AccordionItem key={k} value={k}>
-								<AccordionTrigger onClick={(e) => e.stopPropagation()}>
-									<div className="flex w-full items-center gap-2 text-left">
-										<div className="h-4 w-1.5 rounded-full" style={{ backgroundColor: themeColor }} />
-										<div className="flex-1">
-											<div className="font-semibold text-sm tracking-wide">{k}</div>
-											<div className="line-clamp-1 text-muted-foreground text-xs">
-												{preview(latest.content_md ?? "")}
-											</div>
-										</div>
-									</div>
-								</AccordionTrigger>
-								<AccordionContent>
-									<div className="space-y-4 text-sm leading-relaxed">
-										<div className="prose prose-sm dark:prose-invert max-w-none">
-											<ReactMarkdown>{latest.content_md ?? ""}</ReactMarkdown>
-										</div>
-										{arr.length > 1 && (
-											<div className="space-y-3">
-												{arr.slice(1, 5).map((s) => (
-													<div key={s.id} className="prose prose-sm dark:prose-invert max-w-none border-t pt-3">
-														<ReactMarkdown>{s.content_md ?? ""}</ReactMarkdown>
-													</div>
-												))}
-											</div>
-										)}
-									</div>
-								</AccordionContent>
-							</AccordionItem>
-						)
-					})}
-				</Accordion>
-			</div>
-		</motion.div>
-	)
+            <div className="p-6">
+                <div className="mb-3 flex items-center justify-between">
+                    <div className="font-semibold text-sm text-muted-foreground">Project Sections</div>
+                    <Link to={routes.questions.index()} onClick={(e) => e.stopPropagation()}>
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+                            Manage Questions
+                        </Button>
+                    </Link>
+                </div>
+                <Accordion type="multiple" className="space-y-3">
+                    {kinds.map((k) => {
+                        const arr = byKind.get(k)!
+                        const latest = arr[0]
+                        return (
+                            <AccordionItem key={k} value={k}>
+                                <AccordionTrigger onClick={(e) => e.stopPropagation()}>
+                                    <div className="flex w-full items-center gap-2 text-left">
+                                        <div className="h-4 w-1.5 rounded-full" style={{ backgroundColor: themeColor }} />
+                                        <div className="flex-1">
+                                            <div className="font-semibold text-sm tracking-wide">{kindLabel[k] || k}</div>
+                                            <div className="line-clamp-1 text-muted-foreground text-xs">
+                                                {preview(latest.content_md ?? "")}
+                                            </div>
+                                        </div>
+                                        {k === "research_goal" && (
+                                            <Link
+                                                to={routes.projects.setup()}
+                                                onClick={(e) => e.stopPropagation()}
+                                                className="ml-auto"
+                                                aria-label="Edit Goals"
+                                                title="Edit Goals"
+                                            >
+                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">
+                                                    Edit Goals
+                                                </Button>
+                                            </Link>
+                                        )}
+                                    </div>
+                                </AccordionTrigger>
+                                <AccordionContent>
+                                    <div className="space-y-4 text-sm leading-relaxed">
+                                        <div className="prose prose-sm dark:prose-invert max-w-none">
+                                            <ReactMarkdown>{latest.content_md ?? ""}</ReactMarkdown>
+                                        </div>
+                                        {arr.length > 1 && (
+                                            <div className="space-y-3">
+                                                {arr.slice(1, 5).map((s) => (
+                                                    <div key={s.id} className="prose prose-sm dark:prose-invert max-w-none border-t pt-3">
+                                                        <ReactMarkdown>{s.content_md ?? ""}</ReactMarkdown>
+                                                    </div>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </div>
+                                </AccordionContent>
+                            </AccordionItem>
+                        )
+                    })}
+                </Accordion>
+            </div>
+        </motion.div>
+    )
 }

@@ -9,6 +9,7 @@ import { mainAgent } from "./agents/main-agent"
 import { signupAgent } from "./agents/signup-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
+import { signupOnboardingWorkflow } from "./workflows/signup-onboarding"
 import { weatherWorkflow } from "./workflows/weather-workflow"
 
 // Create global SupabaseClient for workflows
@@ -23,7 +24,7 @@ export type UserContext = {
 }
 
 export const mastra = new Mastra({
-	workflows: { dailyBriefWorkflow, weatherWorkflow },
+	workflows: { dailyBriefWorkflow, weatherWorkflow, signupOnboardingWorkflow },
 	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent },
 	storage: new LibSQLStore({
 		// stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
@@ -43,10 +44,10 @@ export const mastra = new Mastra({
 				const jwt = c.req.header("authorization")?.replace("Bearer ", "") // Extract JWT from Authorization header
 
 				const runtimeContext = c.get("runtimeContext") as RuntimeContext<UserContext>
-				consola.log("mastra_user_id", user_id)
-				consola.log("mastra_account_id", account_id)
-				consola.log("mastra_project_id", project_id)
-				consola.log("mastra_jwt", jwt ? "present" : "missing")
+				consola.log("mastra_middleware")
+				// consola.log("mastra_account_id", account_id)
+				// consola.log("mastra_project_id", project_id)
+				// consola.log("mastra_jwt", jwt ? "present" : "missing")
 
 				runtimeContext.set("user_id", user_id || "FAKE_USER_ID")
 				runtimeContext.set("account_id", account_id || "")

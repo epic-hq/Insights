@@ -529,15 +529,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						source: q.source || "ai", // Ensure source is preserved
 					}
 				})
-				const { error } = await supabase.from("project_sections").upsert(
-					{
-						project_id: projectId,
-						kind: "questions",
-						content_md: `# Questions\n\nManaged ${withOrder.length} questions for interview planning.`,
-						meta: {
-							questions: withOrder,
-							settings: {
-								timeMinutes,
+                const { error } = await supabase.from("project_sections").upsert(
+                    {
+                        project_id: projectId,
+                        kind: "questions",
+                        position: 2,
+                        content_md: `# Questions\n\nManaged ${withOrder.length} questions for interview planning.`,
+                        meta: {
+                            questions: withOrder,
+                            settings: {
+                                timeMinutes,
 								purpose,
 								familiarity,
 								goDeepMode,
@@ -914,11 +915,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							{
 								project_id: projectId,
 								kind: "questions",
-								content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
-								meta: { questions: allQuestions },
-							},
-							{ onConflict: "project_id,kind", ignoreDuplicates: false }
-						)
+                        position: 2,
+                        content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
+                        meta: { questions: allQuestions },
+                    },
+                    { onConflict: "project_id,kind", ignoreDuplicates: false }
+                )
 					}
 
 					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => ({

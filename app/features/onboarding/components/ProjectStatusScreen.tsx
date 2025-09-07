@@ -622,7 +622,7 @@ export default function ProjectStatusScreen({
 
 											{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
 											<div>
-												<div className="mb-3 text-muted-foreground/50 text-sm">Key Decisions</div>
+												<div className="mb-3 text-foreground text-sm">Key Decisions</div>
 												<div className="space-y-3 border-gray-200 border-l-2 pl-4 dark:border-gray-700">
 													{(displayData.questionAnswers || []).slice(0, 3).map((qa: any, idx: number) => (
 														<DecisionRow key={`dq-${idx}`} qa={qa} />
@@ -1028,7 +1028,7 @@ export default function ProjectStatusScreen({
 											Get Started with Interviews
 										</div>
 										<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-											<CardContent className="py-8 p-3 sm:p-4 text-center">
+											<CardContent className="p-3 py-8 text-center sm:p-4">
 												<div className="space-y-4">
 													<div>
 														<MicIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
@@ -1081,7 +1081,7 @@ export default function ProjectStatusScreen({
 							<div className="space-y-6">
 								{/* Quick Actions */}
 								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-									<CardHeader className="pb-2 p-3 sm:p-4">
+									<CardHeader className="p-3 pb-2 sm:p-4">
 										<CardTitle>Quick Actions</CardTitle>
 									</CardHeader>
 									<CardContent className="space-y-3 p-3 sm:p-4">
@@ -1149,7 +1149,7 @@ export default function ProjectStatusScreen({
 								{/* Research Status */}
 								{statusData && displayData.completionScore > 0 && displayData.confidenceLevel && (
 									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardHeader className="pb-2 p-3 sm:p-4">
+										<CardHeader className="p-3 pb-2 sm:p-4">
 											<CardTitle>Research Status</CardTitle>
 										</CardHeader>
 										<CardContent className="p-3 sm:p-4">
