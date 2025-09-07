@@ -53,14 +53,15 @@ const sampleData = [
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
-	target_orgs: z.array(z.string()).min(1, "At least one target organization is required"),
-	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
-	research_goal: z.string().min(1, "Research goal is required"),
-	research_goal_details: z.string().optional(),
-	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
-	assumptions: z.array(z.string()),
-	unknowns: z.array(z.string()),
-	custom_instructions: z.string().optional(),
+  // Relaxed: allow no orgs; treat as "Any" downstream
+  target_orgs: z.array(z.string()).default([]),
+  target_roles: z.array(z.string()).min(1, "At least one target role is required"),
+  research_goal: z.string().min(1, "Research goal is required"),
+  research_goal_details: z.string().optional(),
+  decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
+  assumptions: z.array(z.string()),
+  unknowns: z.array(z.string()),
+  custom_instructions: z.string().optional(),
 })
 
 type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
@@ -223,7 +224,7 @@ export default function ProjectGoalsScreen({
 			formData.append(
 				"projectData",
 				JSON.stringify({
-					target_orgs: target_orgs.length > 0 ? target_orgs : ["New Organization"],
+					target_orgs: target_orgs.length > 0 ? target_orgs : ["Any"],
 					target_roles: target_roles.length > 0 ? target_roles : ["New Role"],
 					research_goal: research_goal || "New Research Project",
 					research_goal_details: research_goal_details || "",
@@ -514,8 +515,7 @@ export default function ProjectGoalsScreen({
 	const contextualSuggestions = getContextualSuggestions(research_goal)
 	// Prefill seeds up to 3, but users may add more as needed
 
-	const isValid =
-		target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0
+	const isValid = target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0
 
 	const onboardingSteps = [
 		{ id: "goals", title: "Project Goals" },
@@ -599,21 +599,23 @@ export default function ProjectGoalsScreen({
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
 							<div>
-								<label className="mb-2 block text-wrap font-semibold text-foreground">Primary research goal</label>
-								<Input
-									placeholder={
-										templateKey === "understand_customer_needs"
-											? "e.g., Understand the core jobs, outcomes, and pains for [target customers] when [situation]"
-											: "e.g., Understanding price sensitivity for our new pricing tier"
-									}
-									value={research_goal}
-									onChange={(e) => setResearchGoal(e.target.value)}
-									onFocus={() => setShowGoalSuggestions(true)}
-									onBlur={() => {
-										handleResearchGoalBlur()
-										setTimeout(() => setShowGoalSuggestions(false), 150)
-									}}
-								/>
+                        <label className="mb-2 block font-semibold text-foreground">Primary research goal</label>
+                        <Textarea
+                            placeholder={
+                                templateKey === "understand_customer_needs"
+                                    ? "e.g., Understand the core jobs, outcomes, and pains for [target customers] when [situation]"
+                                    : "e.g., Understanding price sensitivity for our new pricing tier"
+                            }
+                            value={research_goal}
+                            onChange={(e) => setResearchGoal(e.target.value)}
+                            onFocus={() => setShowGoalSuggestions(true)}
+                            onBlur={() => {
+                                handleResearchGoalBlur()
+                                setTimeout(() => setShowGoalSuggestions(false), 150)
+                            }}
+                            rows={2}
+                            className="min-h-[72px]"
+                        />
 								<SuggestionBadges
 									suggestions={sampleGoals}
 									onSuggestionClick={(goal) => {

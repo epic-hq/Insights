@@ -128,6 +128,9 @@ importers:
       '@react-router/node':
         specifier: 7.6.3
         version: 7.6.3(react-router@7.6.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(typescript@5.8.3)
+      '@sindresorhus/slugify':
+        specifier: 2.2.1
+        version: 2.2.1
       '@supabase/auth-ui-react':
         specifier: 0.4.7
         version: 0.4.7(@supabase/supabase-js@2.52.0)

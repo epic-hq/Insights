@@ -3,6 +3,7 @@ import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { createProject } from "~/features/projects/db"
+import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
@@ -108,9 +109,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		// 1. Use existing project or create new one if projectId not provided
 		let finalProjectId = projectId
 
-		if (!projectId) {
-			const baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
-			const projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
+        if (!projectId) {
+            // Prefer signup-data derived values
+            let baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
+            let projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
+            try {
+                const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
+                baseProjectName = derived.name || baseProjectName
+                projectDescription = derived.description || projectDescription
+            } catch {}
 
 			// Find available project name by checking for slug conflicts
 			let projectName = baseProjectName
@@ -119,12 +126,12 @@ export async function action({ request }: ActionFunctionArgs) {
 			let projectError = null
 
 			while (!project && attempt <= 10) {
-				const { data: createData, error: createError } = await createProject({
-					supabase,
-					data: {
-						name: projectName,
-						description: projectDescription,
-						status: "active",
+                const { data: createData, error: createError } = await createProject({
+                    supabase,
+                    data: {
+                        name: projectName,
+                        description: projectDescription,
+                        status: "active",
 						account_id: teamAccountId,
 					},
 				})

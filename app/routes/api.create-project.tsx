@@ -2,6 +2,7 @@ import type { UUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { createProject } from "~/features/projects/db"
+import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 
 interface CreateProjectData {
@@ -52,13 +53,20 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Missing project data" }, { status: 400 })
 		}
 
-		const projectData: CreateProjectData = JSON.parse(projectDataStr)
+        const projectData: CreateProjectData = JSON.parse(projectDataStr)
 
-		// Generate project name and description
-		const primaryOrg = projectData.target_orgs[0] || "Organization"
-		const primaryRole = projectData.target_roles[0] || "Role"
-		const baseProjectName = projectData.research_goal
-		const projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${projectData.research_goal}`
+        // Prefer signup-data derived name/description; fall back to legacy formula
+        let baseProjectName = projectData.research_goal
+        let projectDescription = ""
+        try {
+          const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
+          baseProjectName = derived.name || baseProjectName
+          projectDescription = derived.description
+        } catch {
+          const primaryOrg = projectData.target_orgs[0] || "Organization"
+          const primaryRole = projectData.target_roles[0] || "Role"
+          projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${projectData.research_goal}`
+        }
 
 		// Find available project name by checking for slug conflicts
 		let projectName = baseProjectName
@@ -68,14 +76,14 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		while (!project && attempt <= 10) {
 			try {
-				const { data: createdProject, error } = await createProject({
-					supabase,
-					data: {
-						name: projectName,
-						description: projectDescription,
-						account_id: teamAccountId,
-					},
-				})
+            const { data: createdProject, error } = await createProject({
+                supabase,
+                data: {
+                    name: projectName,
+                    description: projectDescription,
+                    account_id: teamAccountId,
+                },
+            })
 
 				if (error) {
 					projectError = error

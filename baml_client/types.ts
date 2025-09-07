@@ -681,6 +681,12 @@ export interface ProjectAnalysis {
   
 }
 
+export interface ProjectNameDescription {
+  name: string
+  description: string
+  
+}
+
 export interface ProjectTemplateOut {
   template_key: string
   target_orgs: string[]

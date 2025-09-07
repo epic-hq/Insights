@@ -1,8 +1,8 @@
 import { motion } from "framer-motion"
-import { Hash, Settings2 } from "lucide-react"
+import { Hash, MessageCircleQuestion, Pencil, Settings2 } from "lucide-react"
 import ReactMarkdown from "react-markdown"
 import { Link } from "react-router-dom"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
+// Flattened sections view (no accordion)
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -154,62 +154,54 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
             <div className="p-6">
                 <div className="mb-3 flex items-center justify-between">
                     <div className="font-semibold text-sm text-muted-foreground">Project Sections</div>
-                    <Link to={routes.questions.index()} onClick={(e) => e.stopPropagation()}>
-                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs">
+                    <Link to={routes.questions.index()} onClick={(e) => e.stopPropagation()} aria-label="Manage Questions">
+                        <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5">
+                            <MessageCircleQuestion className="h-3.5 w-3.5" />
                             Manage Questions
                         </Button>
                     </Link>
                 </div>
-                <Accordion type="multiple" className="space-y-3">
+                <div className="space-y-4">
                     {kinds.map((k) => {
                         const arr = byKind.get(k)!
                         const latest = arr[0]
                         return (
-                            <AccordionItem key={k} value={k}>
-                                <AccordionTrigger onClick={(e) => e.stopPropagation()}>
-                                    <div className="flex w-full items-center gap-2 text-left">
+                            <div key={k} className="rounded-md border p-4">
+                                <div className="mb-2 flex items-center justify-between gap-2">
+                                    <div className="flex items-center gap-2">
                                         <div className="h-4 w-1.5 rounded-full" style={{ backgroundColor: themeColor }} />
-                                        <div className="flex-1">
-                                            <div className="font-semibold text-sm tracking-wide">{kindLabel[k] || k}</div>
-                                            <div className="line-clamp-1 text-muted-foreground text-xs">
-                                                {preview(latest.content_md ?? "")}
-                                            </div>
-                                        </div>
-                                        {k === "research_goal" && (
-                                            <Link
-                                                to={routes.projects.setup()}
-                                                onClick={(e) => e.stopPropagation()}
-                                                className="ml-auto"
-                                                aria-label="Edit Goals"
-                                                title="Edit Goals"
-                                            >
-                                                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs">
-                                                    Edit Goals
-                                                </Button>
-                                            </Link>
-                                        )}
+                                        <div className="font-semibold text-sm tracking-wide">{kindLabel[k] || k}</div>
                                     </div>
-                                </AccordionTrigger>
-                                <AccordionContent>
-                                    <div className="space-y-4 text-sm leading-relaxed">
-                                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                                            <ReactMarkdown>{latest.content_md ?? ""}</ReactMarkdown>
-                                        </div>
-                                        {arr.length > 1 && (
-                                            <div className="space-y-3">
-                                                {arr.slice(1, 5).map((s) => (
-                                                    <div key={s.id} className="prose prose-sm dark:prose-invert max-w-none border-t pt-3">
-                                                        <ReactMarkdown>{s.content_md ?? ""}</ReactMarkdown>
-                                                    </div>
-                                                ))}
+                                    {k === "research_goal" && (
+                                        <Link
+                                            to={routes.projects.setup()}
+                                            onClick={(e) => e.stopPropagation()}
+                                            aria-label="Edit Goals"
+                                            title="Edit Goals"
+                                        >
+                                            <Button size="sm" variant="outline" className="h-7 px-2 text-xs gap-1.5">
+                                                <Pencil className="h-3.5 w-3.5" />
+                                                Edit Goals
+                                            </Button>
+                                        </Link>
+                                    )}
+                                </div>
+                                <div className="prose prose-sm dark:prose-invert max-w-none">
+                                    <ReactMarkdown>{latest.content_md ?? ""}</ReactMarkdown>
+                                </div>
+                                {arr.length > 1 && (
+                                    <div className="mt-3 space-y-3">
+                                        {arr.slice(1, 5).map((s) => (
+                                            <div key={s.id} className="prose prose-sm dark:prose-invert max-w-none border-t pt-3">
+                                                <ReactMarkdown>{s.content_md ?? ""}</ReactMarkdown>
                                             </div>
-                                        )}
+                                        ))}
                                     </div>
-                                </AccordionContent>
-                            </AccordionItem>
+                                )}
+                            </div>
                         )
                     })}
-                </Accordion>
+                </div>
             </div>
         </motion.div>
     )

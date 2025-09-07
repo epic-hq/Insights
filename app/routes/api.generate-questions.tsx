@@ -334,6 +334,62 @@ export async function action({ request, context }: ActionFunctionArgs) {
             }
         }
 
+        // Final guard: ensure we return at least the requested number of questions
+        try {
+            const desired = Number(questionCount) || 10
+            const have = Array.isArray(questionSet?.questions) ? questionSet.questions.length : 0
+            if (have < desired) {
+                const categories = [
+                    { id: "context", label: "Context" },
+                    { id: "goals", label: "Goals" },
+                    { id: "pain", label: "Pain" },
+                    { id: "workflow", label: "Workflow" },
+                    { id: "willingness", label: "Adoption" },
+                ]
+                const seeds = (
+                    Array.isArray(questionSet?.questions) ? questionSet.questions.map((q: any) => String(q.text || "")) : []
+                ) as string[]
+                const baseGoal = (research_goal || "your research goal").slice(0, 140)
+                const templates = [
+                    `What is the main problem you face when ${baseGoal.toLowerCase()}?`,
+                    `Can you walk me through your current process related to ${baseGoal.toLowerCase()}?`,
+                    `What outcomes define success for you regarding ${baseGoal.toLowerCase()}?`,
+                    `What alternatives have you tried and why?`,
+                    `Where do you encounter the most friction today?`,
+                    `How do you evaluate whether a solution is working?`,
+                    `What would make you switch from your current solution?`,
+                    `What constraints (time, budget, tools) shape your approach?`,
+                ]
+                const pool: any[] = []
+                let tIdx = 0
+                while (pool.length < desired - have) {
+                    const text = templates[tIdx % templates.length]
+                    tIdx++
+                    if (seeds.some((s) => s.toLowerCase().trim() === text.toLowerCase().trim())) continue
+                    const cat = categories[pool.length % categories.length]
+                    pool.push({
+                        id: randomUUID(),
+                        text,
+                        categoryId: cat.id,
+                        rationale: undefined,
+                        tags: [],
+                        scores: { importance: 0.65, goalMatch: 0.65, novelty: 0.55 },
+                        estimatedMinutes: 4.5,
+                        status: "proposed" as const,
+                        source: "heuristic" as const,
+                        displayOrder: have + pool.length + 1,
+                    })
+                }
+                questionSet = {
+                    ...(questionSet || {}),
+                    categories: questionSet?.categories || categories,
+                    questions: [...(questionSet?.questions || []), ...pool],
+                }
+            }
+        } catch (e) {
+            consola.warn("[api.generate-questions] Ensuring minimum count failed", e)
+        }
+
 		consola.log("BAML questionSet result:", JSON.stringify(questionSet, null, 2))
 
 		// Ensure all questions have unique, stable IDs

@@ -7,7 +7,14 @@ import { Card } from "~/components/ui/card"
 import { PATHS } from "~/paths"
 
 export const meta: MetaFunction = () => {
-	return [{ title: "Insights Platform" }, { name: "description", content: "Insights for conversations" }]
+	return [
+		{ title: "Customer Insights for PMF" },
+		{
+			name: "description",
+			content:
+				"Define your growth goal, explore strategies, and learn from customer feedback — all in one place. Customer interview strategies, question planning, interview execution and analysis.",
+		},
+	]
 }
 
 export default function LandingPage() {
