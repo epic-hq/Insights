@@ -48,8 +48,6 @@ function fallbackPrefill(templateKey: string, projectName: string, signup: any):
       "Which outcomes do customers care about most, and why?",
       "What jobs-to-be-done lead customers to hire our solution?",
       "Where are the biggest pains and frictions in their current workflow?",
-      "What triggers and contexts drive consideration and usage?",
-      "What evaluation criteria and tradeoffs matter in choosing a solution?",
     ],
     assumptions: [
       "Users buy primarily to achieve outcome X, not feature Y.",
@@ -115,7 +113,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			// Basic normalization/guards
 			prefill = {
 				template_key: filled.template_key || template_key,
-				target_orgs: (filled.target_orgs || []).slice(0, 6),
+				target_orgs: (filled.target_orgs || []).slice(0, 3),
 				target_roles: (filled.target_roles || []).slice(0, 8),
 				research_goal: filled.research_goal || prefill.research_goal,
 				research_goal_details: filled.research_goal_details || prefill.research_goal_details,

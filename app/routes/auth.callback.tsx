@@ -5,16 +5,23 @@ import { getServerClient } from "~/lib/supabase/server"
 export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
 	const code = requestUrl.searchParams.get("code")
+	const error = requestUrl.searchParams.get("error")
 	const _next = requestUrl.searchParams.get("next") || "/home"
-	// const headers = new Headers()
 
+	// Handle OAuth error from provider (e.g., user cancelled Google login)
+	if (error) {
+		consola.error("[AUTH CALLBACK] OAuth error:", error)
+		return redirect("/login_failure")
+	}
+
+	// Handle OAuth code exchange (for Google, etc.)
 	if (code) {
 		const { client: supabase, headers } = getServerClient(request)
-		consola.log("[AUTH CALLBACK] Exchanging code for session...")
-		const { data, error } = await supabase.auth.exchangeCodeForSession(code)
+		consola.log("[AUTH CALLBACK] Exchanging OAuth code for session...")
+		const { data, error: exchangeError } = await supabase.auth.exchangeCodeForSession(code)
 
-		if (error) {
-			consola.error("[AUTH CALLBACK] Exchange error:", error)
+		if (exchangeError) {
+			consola.error("[AUTH CALLBACK] Exchange error:", exchangeError)
 			return redirect("/login_failure")
 		}
 		const accountId = data?.user?.app_metadata?.claims?.sub || data?.user?.user_metadata?.account_id || data?.user?.id
@@ -22,7 +29,18 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const loginSuccessUrl = _next ? `/login_success?next=${encodeURIComponent(_next)}` : "/login_success"
 		return redirect(loginSuccessUrl, { headers })
 	}
-	consola.log("[AUTH CALLBACK] No code or error occurred, redirecting to login_failure")
+
+	// Check if user is already authenticated (for email/password direct login)
+	const { client: supabase, headers } = getServerClient(request)
+	const { data: { user } } = await supabase.auth.getUser()
+	
+	if (user) {
+		consola.log("[AUTH CALLBACK] User already authenticated, redirecting to success")
+		const loginSuccessUrl = _next ? `/login_success?next=${encodeURIComponent(_next)}` : "/login_success"
+		return redirect(loginSuccessUrl, { headers })
+	}
+
+	consola.log("[AUTH CALLBACK] No code, no error, no user - redirecting to login_failure")
 	return redirect("/login_failure")
 }
 

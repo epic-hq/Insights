@@ -16,7 +16,7 @@ import {
 	X,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
-import { type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
+import { redirect, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
 import { useNavigate, useParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
@@ -54,6 +54,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
+
+	// If setup hasn't been visited for this project, redirect to setup first
+	try {
+		const steps = (ctx.user_settings?.onboarding_steps || {}) as Record<string, any>
+		const setupByProject = (steps.project_setup || {}) as Record<string, any>
+		const visited = setupByProject?.[projectId]?.visited === true
+		if (!visited) {
+			throw redirect(`/a/${accountId}/${projectId}/setup`)
+		}
+	} catch (_) {
+		// Non-fatal
 	}
 
 	// TODO: use db calls instead unless exception

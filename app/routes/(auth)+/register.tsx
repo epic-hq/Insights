@@ -3,8 +3,8 @@ import { AuthUI } from "~/components/auth/AuthUI"
 import { PATHS } from "~/paths"
 
 export default function AuthPage() {
-	const origin = typeof window !== "undefined" ? window.location.origin : ""
-	consola.log(`register: redirectTo: ${origin}${PATHS.AUTH.CALLBACK}`)
+	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`
+	consola.log(`register redirectTo: ${redirectTo}`)
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
 			<div className="container relative flex min-h-screen flex-col items-center justify-center">
@@ -29,7 +29,7 @@ export default function AuthPage() {
 							<p className="mt-2 text-slate-600 text-sm dark:text-slate-400">Start your journey with UpSight today</p>
 						</div>
 
-						<AuthUI redirectTo={`${origin}${PATHS.AUTH.CALLBACK}`} />
+						<AuthUI redirectTo={redirectTo} view="sign_up" />
 					</div>
 
 					{/* Footer */}

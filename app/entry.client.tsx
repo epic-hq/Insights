@@ -39,11 +39,11 @@ async function hydrate() {
 			<I18nextProvider i18n={i18next}>
 				<StrictMode>
 					<PostHogProvider
-						apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
+						apiKey={window.env?.POSTHOG_KEY}
 						options={{
-							api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
+							api_host: window.env?.POSTHOG_HOST,
 							defaults: "2025-05-24",
-							capture_exceptions: true, // This enables capturing exceptions using Error Tracking, set to false if you don't want this
+							capture_exceptions: true,
 							// debug: import.meta.env.MODE === "development",
 						}}
 					>

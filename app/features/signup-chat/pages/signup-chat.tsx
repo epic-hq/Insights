@@ -17,6 +17,7 @@ import consola from "consola"
 import { ArrowLeft, ArrowRight, CheckCircle, MessageSquare, Mic, User } from "lucide-react"
 import type { z } from "zod"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
+import { createClient } from "~/lib/supabase/client"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
 
@@ -78,9 +79,10 @@ export async function action({ request }: ActionFunctionArgs) {
 }
 
 export default function SignupChat() {
-	const { existingChatData, copilotRuntimeUrl } = useLoaderData()
+	const { existingChatData, copilotRuntimeUrl, user } = useLoaderData() as any
 	const navigate = useNavigate()
 	const chatCompleted = Boolean(existingChatData?.completed || false)
+	const supabase = createClient()
 
 	// Redirect to /home after 3 seconds when chat is completed
 	useEffect(() => {
@@ -92,6 +94,27 @@ export default function SignupChat() {
 			return () => clearTimeout(timer)
 		}
 	}, [chatCompleted, navigate])
+
+	useEffect(() => {
+		if (!user?.sub) return
+		const channel = supabase
+			.channel("signup_data_watch")
+			.on(
+				"postgres_changes",
+				{ event: "UPDATE", schema: "public", table: "user_settings", filter: `user_id=eq.${user.sub}` },
+				(payload) => {
+					try {
+						const completed = (payload.new as any)?.signup_data?.completed === true
+						if (completed) navigate("/home")
+					} catch {}
+				}
+			)
+			.subscribe()
+
+		return () => {
+			supabase.removeChannel(channel)
+		}
+	}, [supabase, user?.sub, navigate])
 
 	// If chat is already completed, show completion message
 	if (chatCompleted) {
@@ -256,7 +279,7 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 					<CopilotChat
 						labels={{
 							title: "",
-							initial: "Hey, welcome! What's your name, and how can I help today?",
+							initial: "Hey, welcome! What's your name?",
 						}}
 						className="h-full"
 					/>

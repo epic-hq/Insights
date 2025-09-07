@@ -108,7 +108,8 @@ export default function MainNav() {
 
 						{/* Actions: show appropriate buttons based on auth state and page context */}
 						<div className="flex items-center space-x-2">
-							<ThemeToggle />
+							{/* Show theme toggle only for authenticated users */}
+							{user && <ThemeToggle />}
 							{user ? (
 								isHomePage || isAboutPage ? (
 									// Show Dashboard button on marketing pages for authenticated users

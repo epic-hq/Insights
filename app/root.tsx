@@ -66,36 +66,36 @@ export const handle = {
 }
 
 export default function App({ loaderData }: Route.ComponentProps) {
-	const { lang, clientEnv } = loaderData
-	useChangeLanguage(lang)
+    const { lang, clientEnv } = loaderData
+    useChangeLanguage(lang)
 
 	// Make clientEnv available globally on window.env for polyEnv pattern
 	if (typeof window !== "undefined") {
 		window.env = clientEnv
 	}
 
-	return (
-		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
-			{/* <AuthProvider initialAuth={auth}> */}
-			<ThemeProvider defaultTheme="light">
-				<PostHogProvider
-					apiKey={import.meta.env.VITE_PUBLIC_POSTHOG_KEY}
-					options={{
-						api_host: import.meta.env.VITE_PUBLIC_POSTHOG_HOST,
-						defaults: "2025-05-24",
-						capture_exceptions: true, // This enables capturing exceptions using Error Tracking, set to false if you don't want this
-						debug: import.meta.env.MODE === "development",
-					}}
-				>
-					<NotificationProvider>
-						<Outlet />
-						<Toaster />
-					</NotificationProvider>
-				</PostHogProvider>
-			</ThemeProvider>
-			{/* </AuthProvider> */}
-		</ClientOnly>
-	)
+    return (
+        <ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
+            {/* <AuthProvider initialAuth={auth}> */}
+            <ThemeProvider defaultTheme="light">
+                <PostHogProvider
+                    apiKey={clientEnv.POSTHOG_KEY}
+                    options={{
+                        api_host: clientEnv.POSTHOG_HOST,
+                        defaults: "2025-05-24",
+                        capture_exceptions: true,
+                        debug: import.meta.env.MODE === "development",
+                    }}
+                >
+                    <NotificationProvider>
+                        <Outlet />
+                        <Toaster />
+                    </NotificationProvider>
+                </PostHogProvider>
+            </ThemeProvider>
+            {/* </AuthProvider> */}
+        </ClientOnly>
+    )
 }
 
 export const Layout = ({ children }: { children: React.ReactNode }) => {

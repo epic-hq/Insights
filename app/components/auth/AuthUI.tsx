@@ -1,6 +1,8 @@
 import { Auth } from "@supabase/auth-ui-react"
 import { ThemeSupa, type ThemeVariables } from "@supabase/auth-ui-shared"
 import consola from "consola"
+import { useEffect, useRef } from "react"
+import { useNavigate } from "react-router"
 import { getSupabaseClient } from "~/lib/supabase/client"
 
 interface AuthUIProps {
@@ -8,12 +10,16 @@ interface AuthUIProps {
 	redirectTo?: string
 	/** Optional appearance overrides for Supabase Auth UI */
 	appearance?: Parameters<typeof Auth>[0]["appearance"]
+	/** Auth view - sign_in or sign_up */
+	view?: "sign_in" | "sign_up"
 }
 
-export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
+export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps) {
 	// const { clientEnv } = useRouteLoaderData("root") as { clientEnv: Env }
+	const navigate = useNavigate()
+	const isLoginAttempt = useRef(false)
 
-	consola.log("redirectTo", redirectTo)
+	consola.log("AuthUI props:", { redirectTo, view })
 
 	const supabase = getSupabaseClient()
 	if (!supabase) {
@@ -23,6 +29,69 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 			</div>
 		)
 	}
+
+	// Listen for auth state changes to handle successful login
+	useEffect(() => {
+		const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+			consola.log("[AUTH STATE CHANGE]", event, "isLoginAttempt:", isLoginAttempt.current)
+			
+			// Only redirect on SIGNED_IN if we're actively attempting to login
+			// This prevents auto-redirect when user lands on login page with existing session
+			if (event === 'SIGNED_IN' && isLoginAttempt.current) {
+				// Use secure getUser() instead of session data for security
+				const { data: { user }, error } = await supabase.auth.getUser()
+				
+				if (user && !error) {
+					const targetUrl = '/home'
+					consola.log("[AUTH] Login successful, user authenticated, redirecting to:", targetUrl)
+					isLoginAttempt.current = false // Reset the flag
+					navigate(targetUrl)
+				} else {
+					consola.error("[AUTH] User authentication failed:", error)
+					isLoginAttempt.current = false // Reset the flag
+				}
+			} else if (event === 'SIGNED_OUT') {
+				// Reset login attempt flag on sign out
+				isLoginAttempt.current = false
+			}
+		})
+
+		return () => {
+			subscription.unsubscribe()
+		}
+	}, [supabase, navigate, redirectTo])
+
+	// Handle clicks for both auth buttons and navigation links
+	useEffect(() => {
+		const handleClick = (e: MouseEvent) => {
+			const target = e.target as HTMLElement
+			const button = target.closest('button')
+			const anchor = target.closest('a')
+			
+			// Handle auth button clicks (Sign in / Create account)
+			if (button && button.type === 'submit') {
+				const buttonText = button.textContent
+				if (buttonText && (buttonText.includes('Sign in') || buttonText.includes('Create account'))) {
+					consola.log("[AUTH] User clicked auth button:", buttonText)
+					isLoginAttempt.current = true
+				}
+			}
+			
+			// Handle navigation link clicks
+			if (anchor && anchor.textContent) {
+				if (anchor.textContent.includes("Don't have an account") || anchor.textContent.includes("Sign up")) {
+					e.preventDefault()
+					navigate('/register')
+				} else if (anchor.textContent.includes("Already have an account") || anchor.textContent.includes("Sign in")) {
+					e.preventDefault()
+					navigate('/login')
+				}
+			}
+		}
+
+		document.addEventListener('click', handleClick)
+		return () => document.removeEventListener('click', handleClick)
+	}, [navigate])
 
 	return (
 		<Auth
@@ -124,8 +193,8 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 				...appearance,
 			}}
 			providers={["google"]}
-			redirectTo={redirectTo}
-			view="sign_in"
+			{...(redirectTo ? { redirectTo } : {})}
+			view={view}
 			showLinks={true}
 			localization={{
 				variables: {
@@ -135,7 +204,7 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 						button_label: "Sign in",
 						loading_button_label: "Signing in...",
 						social_provider_text: "Sign in with {{provider}}",
-						link_text: "Already have an account? Sign in",
+						link_text: "Don't have an account? Sign up",
 						email_input_placeholder: "Your email address",
 						password_input_placeholder: "Your password",
 					},
@@ -145,7 +214,7 @@ export function AuthUI({ redirectTo, appearance }: AuthUIProps) {
 						button_label: "Create account",
 						loading_button_label: "Creating account...",
 						social_provider_text: "Sign up with {{provider}}",
-						link_text: "Don't have an account? Sign up",
+						link_text: "Already have an account? Sign in",
 						email_input_placeholder: "Your email address",
 						password_input_placeholder: "Create a secure password",
 					},

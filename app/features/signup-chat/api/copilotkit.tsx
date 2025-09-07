@@ -169,7 +169,7 @@ export async function action({ request }: ActionFunctionArgs) {
 							throw new Error(`Database error: ${error.message}`)
 						}
 						// TODO: redirect to home. not working.
-						return redirect("/home")
+						return { success: true, message: "Saved" }
 					} catch (error) {
 						consola.error("Error in saveChatData handler:", error)
 						return {

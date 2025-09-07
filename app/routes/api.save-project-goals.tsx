@@ -107,6 +107,44 @@ async function saveSingleSection(
 	})
 }
 
+async function markProjectSetupVisited(
+  supabase: SupabaseClient,
+  userId: string,
+  projectId: string
+) {
+  try {
+    const { data: settings } = await supabase
+      .from("user_settings")
+      .select("onboarding_steps")
+      .eq("user_id", userId)
+      .single()
+
+    const steps = (settings?.onboarding_steps as Record<string, any>) || {}
+    const setupByProject = (steps.project_setup as Record<string, any>) || {}
+    const current = setupByProject[projectId] || {}
+
+    const nextSteps = {
+      ...steps,
+      project_setup: {
+        ...setupByProject,
+        [projectId]: {
+          ...current,
+          visited: true,
+          visited_at: new Date().toISOString(),
+        },
+      },
+    }
+
+    await supabase
+      .from("user_settings")
+      .update({ onboarding_steps: nextSteps as Database["public"]["Tables"]["user_settings"]["Update"]["onboarding_steps"] })
+      .eq("user_id", userId)
+  } catch (e) {
+    // Non-fatal: don't block saves if this fails
+    consola.warn("Failed to mark project setup visited:", e)
+  }
+}
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
@@ -135,9 +173,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.log(`  ${key}: ${typeof value === "string" ? value.substring(0, 100) : value}`)
 		}
 
-		if (!projectId) {
-			return Response.json({ error: "Project ID is required" }, { status: 400 })
-		}
+    if (!projectId) {
+      return Response.json({ error: "Project ID is required" }, { status: 400 })
+    }
 
 		consola.log(`Processing ${action || "save-project-goals"} for project ${projectId}`)
 
@@ -152,18 +190,21 @@ export async function action({ request }: ActionFunctionArgs) {
 				}
 
 				consola.log(`Saving single section: ${sectionKind}`)
-				const result = await saveSingleSection(supabase, projectId, sectionKind, sectionData)
+        const result = await saveSingleSection(supabase, projectId, sectionKind, sectionData)
 
-				if ("error" in result) {
-					const { error } = result as { error?: string | null }
-					if (error) {
-						return Response.json({ error }, { status: 400 })
-					}
-				}
+        if ("error" in result) {
+          const { error } = result as { error?: string | null }
+          if (error) {
+            return Response.json({ error }, { status: 400 })
+          }
+        }
 
-				return Response.json({ success: true, data: result })
-			}
-			default: {
+        // Mark that the user has visited project setup for this project (per-project flag)
+        await markProjectSetupVisited(supabase, user.id, projectId)
+
+        return Response.json({ success: true, data: result })
+      }
+      default: {
 				// Extract all form data dynamically with safe parsing
 				const safeParseArray = (value: string | null): string[] => {
 					if (!value) return []
@@ -227,13 +268,16 @@ export async function action({ request }: ActionFunctionArgs) {
 					}
 				}
 
-				consola.log(`Successfully saved ${results.length} project sections for project ${projectId}`)
+        consola.log(`Successfully saved ${results.length} project sections for project ${projectId}`)
 
-				return Response.json({
-					success: true,
-					sectionsCount: results.length,
-					projectId,
-				})
+        // Mark that the user has visited project setup for this project (per-project flag)
+        await markProjectSetupVisited(supabase, user.id, projectId)
+
+        return Response.json({
+          success: true,
+          sectionsCount: results.length,
+          projectId,
+        })
 			}
 		}
 	} catch (error) {

@@ -9,6 +9,12 @@ const envSchema = z.object({
 	SUPABASE_ANON_KEY: z.string(),
 	SUPABASE_SERVICE_ROLE_KEY: z.string().optional(), // TODO: remove
 	SUPABASE_FUNCTIONS_URL: z.string().optional(),
+	OPENAI_API_KEY: z.string().optional(),
+	ASSEMBLYAI_API_KEY: z.string().optional(),
+	ELEVEN_API_KEY: z.string().optional(),
+	// PostHog runtime vars (used as fallback when VITE_ vars are not inlined)
+	POSTHOG_KEY: z.string().optional(),
+	POSTHOG_HOST: z.string().optional(),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>
@@ -55,6 +61,9 @@ export function getClientEnv() {
 		DEV_FAKE_AUTH: serverEnv.DEV_FAKE_AUTH,
 		SUPABASE_URL: serverEnv.SUPABASE_URL,
 		SUPABASE_ANON_KEY: serverEnv.SUPABASE_ANON_KEY,
+		// PostHog (client-side consumption)
+		POSTHOG_KEY: serverEnv.POSTHOG_KEY,
+		POSTHOG_HOST: serverEnv.POSTHOG_HOST,
 	}
 }
 

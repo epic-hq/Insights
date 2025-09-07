@@ -23,7 +23,7 @@ export default function LandingPage() {
 								Understand your customers like never before
 							</h1>
 							<p className="mx-auto max-w-[700px] text-lg md:text-xl">
-								Transform Questions, Conversations and Observations into Actionable Intelligence
+								Expert guidance in creating, executing and analyzing customer interviews to get Actionable Intelligence.
 							</p>
 							<div className="space-x-4">
 								<Button asChild className="bg-white px-8 py-3 font-semibold text-blue-600 text-lg hover:bg-gray-100">
@@ -47,14 +47,14 @@ export default function LandingPage() {
 						<div className="flex flex-col items-center justify-center space-y-4 text-center">
 							<div className="space-y-2">
 								<div className="inline-block rounded-lg bg-blue-100 px-3 py-1 font-medium text-blue-700 text-sm">
-									Powerful Features
+									Looking for PMF?
 								</div>
 								<h2 className="font-bold text-3xl tracking-tighter sm:text-5xl">
-									Unlock Deeper Understanding with Guided AI
+									Unlock Deeper Understanding in Minutes
 								</h2>
 								<p className="max-w-[900px] text-gray-600 md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed">
-									Our platform combines advanced AI with intuitive visualizations to give you unparalleled insight into
-									your customer data.
+									Get the power of experienced UX Researchers with the clarity of a driven business executive in the
+									palm of your hand.
 								</p>
 							</div>
 						</div>

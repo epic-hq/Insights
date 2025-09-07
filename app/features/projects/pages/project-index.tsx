@@ -1,4 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
+import { redirect } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen"
 import { getProjectById } from "~/features/projects/db"
@@ -18,6 +19,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
   if (!accountId || !projectId) {
     throw new Response("Account ID and Project ID are required", { status: 400 })
+  }
+
+  // If the user hasn't visited the setup flow for this project yet, send them there first
+  try {
+    const steps = (ctx.user_settings?.onboarding_steps || {}) as Record<string, any>
+    const setupByProject = (steps.project_setup || {}) as Record<string, any>
+    const visited = setupByProject?.[projectId]?.visited === true
+    if (!visited) {
+      throw redirect(`/a/${accountId}/${projectId}/setup`)
+    }
+  } catch (_) {
+    // Non-fatal; if something goes wrong reading steps, fall through to dashboard
   }
 
   const { data: project } = await getProjectById({ supabase, id: projectId })

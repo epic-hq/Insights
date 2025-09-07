@@ -5,11 +5,14 @@ import { z } from "zod"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
+import { ProgressDots } from "~/components/ui/ProgressDots"
+import { StatusPill } from "~/components/ui/StatusPill"
 import { Textarea } from "~/components/ui/textarea"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
+
 type TemplatePrefill = {
 	template_key: string
 	target_orgs: string[]
@@ -43,14 +46,8 @@ const sampleData = [
 		goal: "Map jobs-to-be-done for our new collaboration feature",
 		orgs: ["Product-led SaaS", "B2B platforms"],
 		roles: ["PM", "Design Lead", "Operations Manager", "Engineering Manager"],
-		assumptions: [
-			"Teams care about speed over completeness",
-			"Adoption hinges on low setup cost",
-		],
-		unknowns: [
-			"What triggers collaboration needs",
-			"What evaluation criteria decide team adoption",
-		],
+		assumptions: ["Teams care about speed over completeness", "Adoption hinges on low setup cost"],
+		unknowns: ["What triggers collaboration needs", "What evaluation criteria decide team adoption"],
 	},
 ]
 
@@ -73,7 +70,6 @@ const sampleGoals = sampleData.map((item) => item.goal)
 
 // Context-aware suggestions based on research goal
 const getContextualSuggestions = (goal: string) => {
-	// Find matching sample based on goal keywords
 	const sample = sampleData.find((item) => {
 		const goalLower = goal.toLowerCase()
 		const sampleGoalLower = item.goal.toLowerCase()
@@ -96,7 +92,6 @@ const getContextualSuggestions = (goal: string) => {
 		}
 	}
 
-	// Default suggestions when no match found (Customer Needs template defaults)
 	return {
 		orgs: ["Early-stage SaaS", "Mid-market B2B product teams", "Ecommerce brands", "Digital services"],
 		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
@@ -122,27 +117,25 @@ interface SuggestionBadgesProps {
 }
 
 function SuggestionBadges({ suggestions, onSuggestionClick, show }: SuggestionBadgesProps) {
-    if (!show || suggestions.length === 0) return null
+	if (!show || suggestions.length === 0) return null
+	const neutralClasses = "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
 
-    // Neutral styling for suggestion badges (less distracting)
-    const neutralClasses = "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-
-    return (
-        <div className="mt-3 mb-4 flex flex-wrap gap-2">
-            {suggestions.slice(0, 4).map((suggestion, index) => (
-                <button
-                    key={index}
-                    onMouseDown={(e) => {
-                        e.preventDefault()
-                        onSuggestionClick(suggestion)
-                    }}
-                    className={`cursor-pointer rounded-full px-2.5 py-1 font-medium text-xs transition-colors ${neutralClasses}`}
-                >
-                    + {suggestion}
-                </button>
-            ))}
-        </div>
-    )
+	return (
+		<div className="mt-3 mb-4 flex flex-wrap gap-2">
+			{suggestions.slice(0, 4).map((suggestion, index) => (
+				<button
+					key={index}
+					onMouseDown={(e) => {
+						e.preventDefault()
+						onSuggestionClick(suggestion)
+					}}
+					className={`cursor-pointer rounded-full px-2.5 py-1 font-medium text-xs transition-colors ${neutralClasses}`}
+				>
+					+ {suggestion}
+				</button>
+			))}
+		</div>
+	)
 }
 
 interface ProjectGoalsScreenProps {
@@ -188,6 +181,7 @@ export default function ProjectGoalsScreen({
 	const [newUnknown, setNewUnknown] = useState("")
 	const [custom_instructions, setCustomInstructions] = useState("")
 	const [isLoading, setIsLoading] = useState(false)
+	const [contextLoaded, setContextLoaded] = useState(false)
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
 	const [isCreatingProject, setIsCreatingProject] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
@@ -199,7 +193,6 @@ export default function ProjectGoalsScreen({
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const supabase = createClient()
 
-	// Auto-save hook - always call but skip operations when no projectId
 	const {
 		saveTargetOrgs,
 		saveTargetRoles,
@@ -221,7 +214,6 @@ export default function ProjectGoalsScreen({
 		},
 	})
 
-	// Function to create project on first input
 	const createProjectIfNeeded = useCallback(async () => {
 		if (currentProjectId || isCreatingProject) return currentProjectId
 
@@ -255,9 +247,7 @@ export default function ProjectGoalsScreen({
 				setCurrentProjectId(newProjectId)
 				consola.log("🎯 Created project on first input:", newProjectId)
 
-				// Force update the auto-save hook with new projectId
 				setTimeout(() => {
-					// Save any pending data now that we have a projectId
 					if (assumptions.length > 0) saveAssumptions(assumptions)
 					if (unknowns.length > 0) saveUnknowns(unknowns)
 					if (research_goal.trim()) saveResearchGoal(research_goal, research_goal_details)
@@ -290,7 +280,6 @@ export default function ProjectGoalsScreen({
 		setIsLoading(true)
 
 		try {
-			// Prefer loading directly from project_sections via generic context merge
 			const ctx = await getProjectContextGeneric(supabase, currentProjectId)
 			let populatedFromContext = false
 			if (ctx?.merged) {
@@ -316,7 +305,6 @@ export default function ProjectGoalsScreen({
 				}
 			}
 
-			// Fallback to API if context empty or unavailable
 			if (!populatedFromContext) {
 				const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`)
 				const result = await response.json()
@@ -336,65 +324,65 @@ export default function ProjectGoalsScreen({
 			consola.error("Failed to load project data:", error)
 		} finally {
 			setIsLoading(false)
+			setContextLoaded(true)
 		}
 	}, [currentProjectId, supabase])
 
-	// Load existing data if projectId is provided
-    useEffect(() => {
-        if (currentProjectId) {
-            loadProjectData()
-        }
-    }, [currentProjectId, loadProjectData])
+	useEffect(() => {
+		if (currentProjectId) {
+			loadProjectData()
+		}
+	}, [currentProjectId, loadProjectData])
 
-    // Apply prefill if no data present after initial load
-    useEffect(() => {
-        if (!prefill) return
-        const noData =
-            target_orgs.length === 0 &&
-            target_roles.length === 0 &&
-            !research_goal &&
-            assumptions.length === 0 &&
-            unknowns.length === 0 &&
-            !custom_instructions
+	useEffect(() => {
+		if (!prefill) return
+		if (!contextLoaded) return
+		const noData =
+			target_orgs.length === 0 &&
+			target_roles.length === 0 &&
+			!research_goal &&
+			assumptions.length === 0 &&
+			unknowns.length === 0 &&
+			!custom_instructions
 
-        if (noData) {
-            setTargetOrgs(prefill.target_orgs || [])
-            setTargetRoles(prefill.target_roles || [])
-            setResearchGoal(prefill.research_goal || "")
-            setResearchGoalDetails(prefill.research_goal_details || "")
-            setAssumptions(prefill.assumptions || [])
-            setUnknowns(prefill.unknowns || [])
-            setCustomInstructions(prefill.custom_instructions || "")
-            if ((prefill.decision_questions || []).length > 0) {
-                setDecisionQuestions(prefill.decision_questions)
-            }
+		if (noData) {
+			setTargetOrgs(prefill.target_orgs || [])
+			setTargetRoles(prefill.target_roles || [])
+			setResearchGoal(prefill.research_goal || "")
+			setResearchGoalDetails(prefill.research_goal_details || "")
+			setAssumptions(prefill.assumptions || [])
+			setUnknowns(prefill.unknowns || [])
+			setCustomInstructions(prefill.custom_instructions || "")
+			if ((prefill.decision_questions || []).length > 0) {
+				setDecisionQuestions(prefill.decision_questions)
+			}
 
-            // Persist prefill immediately so sections are saved
-            if (currentProjectId) {
-                if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
-                if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
-                if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
-                if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
-                if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
-                if (prefill.custom_instructions) saveCustomInstructions(prefill.custom_instructions)
-            }
-        }
-    }, [
-        prefill,
-        target_orgs.length,
-        target_roles.length,
-        research_goal,
-        assumptions.length,
-        unknowns.length,
-        custom_instructions,
-        currentProjectId,
-        saveTargetOrgs,
-        saveTargetRoles,
-        saveResearchGoal,
-        saveAssumptions,
-        saveUnknowns,
-        saveCustomInstructions,
-    ])
+			if (currentProjectId) {
+				if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
+				if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
+				if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
+				if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
+				if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
+				if (prefill.custom_instructions) saveCustomInstructions(prefill.custom_instructions)
+			}
+		}
+	}, [
+		prefill,
+		contextLoaded,
+		target_orgs.length,
+		target_roles.length,
+		research_goal,
+		assumptions.length,
+		unknowns.length,
+		custom_instructions,
+		currentProjectId,
+		saveTargetOrgs,
+		saveTargetRoles,
+		saveResearchGoal,
+		saveAssumptions,
+		saveUnknowns,
+		saveCustomInstructions,
+	])
 
 	const addOrg = async () => {
 		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
@@ -429,7 +417,7 @@ export default function ProjectGoalsScreen({
 	}
 
 	const addDecisionQuestion = async () => {
-		if (newDecisionQuestion.trim() && !decision_questions.includes(newDecisionQuestion.trim())) {
+				if (newDecisionQuestion.trim() && !decision_questions.includes(newDecisionQuestion.trim())) {
 			if (!currentProjectId) {
 				await createProjectIfNeeded()
 				const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
@@ -454,7 +442,6 @@ export default function ProjectGoalsScreen({
 		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
 			if (!currentProjectId) {
 				await createProjectIfNeeded()
-				// Don't save here, wait for projectId to be set
 				const newAssumptions = [...assumptions, newAssumption.trim()]
 				setAssumptions(newAssumptions)
 				setNewAssumption("")
@@ -497,9 +484,7 @@ export default function ProjectGoalsScreen({
 
 	const handleNext = () => {
 		if (target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
-			// Ensure goal + details are persisted even if textarea didn't blur
 			saveResearchGoal(research_goal, research_goal_details, false)
-			// Pass snake_case data to next step
 			onNext({
 				target_orgs,
 				target_roles,
@@ -514,7 +499,6 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
-	// Auto-save handlers for blur (immediate save, non-debounced)
 	const handleResearchGoalBlur = async () => {
 		if (!research_goal.trim()) return
 		if (!currentProjectId) await createProjectIfNeeded()
@@ -527,10 +511,8 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
-	// Get contextual suggestions based on current research goal
 	const contextualSuggestions = getContextualSuggestions(research_goal)
-
-	// Custom instructions: blur-only save to reduce chatter
+	// Prefill seeds up to 3, but users may add more as needed
 
 	const isValid =
 		target_orgs.length > 0 && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0
@@ -541,11 +523,22 @@ export default function ProjectGoalsScreen({
 		{ id: "upload", title: "Upload" },
 	]
 
+	useEffect(() => {
+		if (!prefill) return
+		if (
+			decision_questions.length === 0 &&
+			Array.isArray(prefill.decision_questions) &&
+			prefill.decision_questions.length > 0
+		) {
+			setDecisionQuestions(prefill.decision_questions.slice(0, 3))
+		}
+	}, [prefill, decision_questions.length])
+
 	return (
 		<div className="mx-auto min-h-screen max-w-4xl bg-background p-4 text-foreground sm:p-4 md:p-6 lg:p-8">
 			{/* Stepper - only show in onboarding mode */}
-    {showStepper && (
-        <div className="mb-6">
+			{showStepper && (
+				<div className="mb-6">
 					<div className="flex items-start justify-center gap-4 sm:gap-6 md:gap-10">
 						{onboardingSteps.map((step, index) => (
 							<div key={step.id} className="flex items-center">
@@ -574,24 +567,27 @@ export default function ProjectGoalsScreen({
 				</div>
 			)}
 
-    <div className="text-semibold text-xl">Project: {project?.name}</div>
-    {templateKey === "understand_customer_needs" && (
-        <div className="mt-1 text-sm text-muted-foreground">Intent: Understand Customer Needs</div>
-    )}
+			<div className="text-semibold text-xl">Project: {project?.name}</div>
+			{templateKey === "understand_customer_needs" && (
+				<StatusPill variant="neutral">Intent: Understand Customer Needs</StatusPill>
+			)}
+
 			<div className="mb-8">
 				<div className="mb-4 flex items-center gap-3">
-					{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
+					{isSaving ? (
+						<StatusPill variant="active">
+							Saving <ProgressDots className="ml-1" />
+						</StatusPill>
+					) : null}
 				</div>
-				{/* <p className="text-muted-foreground sm:hidden l:visible">
-					Define your research goals and target audience to get started with evidence-based insights.
-				</p> */}
 			</div>
 
 			<div className="space-y-6">
-				{/* Research Goal - moved first */}
+				{/* Research Goal */}
 				<div>
 					<div className="mb-4 flex items-center gap-2">
-						<Target className="h-5 w-5" /> {templateKey === "understand_customer_needs" ? "Customer Needs Goal" : "Goal"}
+						<Target className="h-5 w-5" />{" "}
+						{templateKey === "understand_customer_needs" ? "Customer Needs Goal" : "Goal"}
 					</div>
 					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 						<CardContent className="space-y-3 p-3 sm:p-4">
@@ -608,22 +604,21 @@ export default function ProjectGoalsScreen({
 									onFocus={() => setShowGoalSuggestions(true)}
 									onBlur={() => {
 										handleResearchGoalBlur()
-										// Hide suggestions after a delay to allow clicks
 										setTimeout(() => setShowGoalSuggestions(false), 150)
 									}}
 								/>
-                        <SuggestionBadges
-                            suggestions={sampleGoals}
-                            onSuggestionClick={(goal) => {
-                                setResearchGoal(goal)
-                                setShowGoalSuggestions(false)
-                            }}
-                            show={showGoalSuggestions}
-                        />
-                    </div>
+								<SuggestionBadges
+									suggestions={sampleGoals}
+									onSuggestionClick={(goal) => {
+										setResearchGoal(goal)
+										setShowGoalSuggestions(false)
+									}}
+									show={showGoalSuggestions}
+								/>
+							</div>
 
-                    <div>
-                        <label className="mb-2 block font-semibold text-foreground">Key decision questions</label>
+							<div>
+								<label className="mb-2 block font-semibold text-foreground">Key decision questions</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder={
@@ -641,34 +636,35 @@ export default function ProjectGoalsScreen({
 									<Button
 										onClick={addDecisionQuestion}
 										className="bg-blue-500 px-3 py-2 text-white transition-all duration-200 hover:bg-blue-600"
+							disabled={!newDecisionQuestion.trim()}
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-                            <SuggestionBadges
-                                suggestions={
-                                    templateKey === "understand_customer_needs"
-                                        ? [
-                                              "Which outcomes do customers value most and why",
-                                              "What jobs-to-be-done trigger adoption",
-                                              "What pains and frictions block progress now",
-                                              "What evaluation criteria decide solution choice",
-                                              "What contexts and triggers drive usage",
-                                          ]
-                                        : [
-                                              "Which pricing tier drives highest conversion",
-                                              "What content format engages users most",
-                                              "Which features justify premium pricing",
-                                              "What onboarding flow reduces churn",
-                                          ]
-                                }
-                                onSuggestionClick={(suggestion) => {
-                                    setNewDecisionQuestion(suggestion)
-                                    setShowDecisionQuestionSuggestions(false)
-                                }}
-                                show={showDecisionQuestionSuggestions}
-                            />
-                        <div className="space-y-2">
+								<SuggestionBadges
+									suggestions={
+										templateKey === "understand_customer_needs"
+											? [
+													"Which outcomes do customers value most and why",
+													"What jobs-to-be-done trigger adoption",
+													"What pains and frictions block progress now",
+													"What evaluation criteria decide solution choice",
+													"What contexts and triggers drive usage",
+												]
+											: [
+													"Which pricing tier drives highest conversion",
+													"What content format engages users most",
+													"Which features justify premium pricing",
+													"What onboarding flow reduces churn",
+												]
+									}
+									onSuggestionClick={(suggestion) => {
+										setNewDecisionQuestion(suggestion)
+										setShowDecisionQuestionSuggestions(false)
+									}}
+									show={showDecisionQuestionSuggestions}
+								/>
+								<div className="space-y-2">
 									{decision_questions.map((question, index) => (
 										<div
 											key={`decision-${index}-${question.slice(0, 10)}`}
@@ -689,108 +685,7 @@ export default function ProjectGoalsScreen({
 								</div>
 							</div>
 
-                    {/* Assumptions (What we know) first */}
-                    <div>
-                        <label className="mb-2 block font-semibold text-foreground">What do we think we know?</label>
-                        <div className="mb-4 flex gap-3">
-                            <Input
-                                placeholder="Add something you believe to be true..."
-                                value={newAssumption}
-                                onChange={(e) => setNewAssumption(e.target.value)}
-                                onKeyPress={(e) => e.key === "Enter" && addAssumption()}
-                                onFocus={() => setShowAssumptionSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowAssumptionSuggestions(false), 150)}
-                                className="flex-1"
-                            />
-                            <Button
-                                onClick={addAssumption}
-                                className="w-auto bg-blue-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-blue-600"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <SuggestionBadges
-                            suggestions={contextualSuggestions.assumptions}
-                            onSuggestionClick={(assumption) => {
-                                setNewAssumption(assumption)
-                                setShowAssumptionSuggestions(false)
-                            }}
-                            show={showAssumptionSuggestions}
-                        />
-                        <div className="space-y-2">
-                            {assumptions.map((assumption, index) => (
-                                <div
-                                    key={`assumption-${index}-${assumption.slice(0, 10)}`}
-                                    className="group flex w-fit items-start gap-3 rounded-xl border border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
-                                >
-                                    <div className="mt-2 flex-shrink-0">
-                                        <div className="h-2 w-2 rounded-full bg-blue-500" />
-                                    </div>
-                                    <span className="flex-1 font-medium text-gray-800 leading-relaxed">{assumption}</span>
-                                    <button
-                                        onClick={() => removeAssumption(index)}
-                                        className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-blue-200 group-hover:opacity-100"
-                                    >
-                                        <X className="h-4 w-4 text-blue-700" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
-                    {/* Unknowns second */}
-                    <div>
-                        <label className="mb-2 block font-semibold text-foreground">What do we not know?</label>
-                        <div className="mb-4 flex gap-3">
-                            <Input
-                                placeholder={
-                                    templateKey === "understand_customer_needs"
-                                        ? "Add the biggest unknown that would change our direction..."
-                                        : "Add something you're unsure about..."
-                                }
-                                value={newUnknown}
-                                onChange={(e) => setNewUnknown(e.target.value)}
-                                onKeyPress={(e) => e.key === "Enter" && addUnknown()}
-                                onFocus={() => setShowUnknownSuggestions(true)}
-                                onBlur={() => setTimeout(() => setShowUnknownSuggestions(false), 150)}
-                                className="flex-1"
-                            />
-                            <Button
-                                onClick={addUnknown}
-                                className="w-auto bg-amber-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-amber-600"
-                            >
-                                <Plus className="h-4 w-4" />
-                            </Button>
-                        </div>
-                        <SuggestionBadges
-                            suggestions={contextualSuggestions.unknowns}
-                            onSuggestionClick={(unknown) => {
-                                setNewUnknown(unknown)
-                                setShowUnknownSuggestions(false)
-                            }}
-                            show={showUnknownSuggestions}
-                        />
-                        <div className="space-y-2">
-                            {unknowns.map((unknown, index) => (
-                                <div
-                                    key={`unknown-${index}-${unknown.slice(0, 10)}`}
-                                    className="group flex w-fit items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
-                                >
-                                    <div className="mt-0.5 flex-shrink-0">
-                                        <HelpCircle className="h-5 w-5 text-amber-600" />
-                                    </div>
-                                    <span className="flex-1 font-medium text-gray-800 leading-relaxed">{unknown}</span>
-                                    <button
-                                        onClick={() => removeUnknown(index)}
-                                        className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-amber-200 group-hover:opacity-100"
-                                    >
-                                        <X className="h-4 w-4 text-amber-700" />
-                                    </button>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-
+							{/* Assumptions */}
 							<div>
 								<label className="mb-2 block font-semibold text-foreground">What do we think we know?</label>
 								<div className="mb-4 flex gap-3">
@@ -810,14 +705,14 @@ export default function ProjectGoalsScreen({
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-                        <SuggestionBadges
-                            suggestions={contextualSuggestions.assumptions}
-                            onSuggestionClick={(assumption) => {
-                                setNewAssumption(assumption)
-                                setShowAssumptionSuggestions(false)
-                            }}
-                            show={showAssumptionSuggestions}
-                        />
+								<SuggestionBadges
+									suggestions={contextualSuggestions.assumptions}
+									onSuggestionClick={(assumption) => {
+										setNewAssumption(assumption)
+										setShowAssumptionSuggestions(false)
+									}}
+									show={showAssumptionSuggestions}
+								/>
 								<div className="space-y-2">
 									{assumptions.map((assumption, index) => (
 										<div
@@ -838,114 +733,167 @@ export default function ProjectGoalsScreen({
 									))}
 								</div>
 							</div>
-						</CardContent>
-					</Card>
-				</div>
 
-				{/* Target Audience - moved after Research Goal */}
-				<div>
-					<div className="mb-4 flex items-center gap-2">
-						<Users className="h-5 w-5" />
-						Your Market
-					</div>
-					<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-						<CardContent className="space-y-3 p-3 sm:p-4">
+							{/* Unknowns */}
 							<div>
-								<label className="mb-2 block font-semibold text-foreground">Organizations</label>
+								<label className="mb-2 block font-semibold text-foreground">What do we not know?</label>
 								<div className="mb-4 flex gap-3">
 									<Input
 										placeholder={
 											templateKey === "understand_customer_needs"
-												? "e.g., Early-stage SaaS, Mid-market B2B teams, Ecommerce brands"
-												: "e.g., B2B SaaS companies, E-commerce retailers"
+												? "Add the biggest unknown that would change our direction..."
+												: "Add something you're unsure about..."
 										}
-										value={newOrg}
-										onChange={(e) => setNewOrg(e.target.value)}
-										onKeyPress={(e) => e.key === "Enter" && addOrg()}
-										onFocus={() => setShowOrgSuggestions(true)}
-										onBlur={() => setTimeout(() => setShowOrgSuggestions(false), 150)}
+										value={newUnknown}
+										onChange={(e) => setNewUnknown(e.target.value)}
+										onKeyPress={(e) => e.key === "Enter" && addUnknown()}
+										onFocus={() => setShowUnknownSuggestions(true)}
+										onBlur={() => setTimeout(() => setShowUnknownSuggestions(false), 150)}
 										className="flex-1"
 									/>
 									<Button
-										onClick={addOrg}
-										className="w-auto bg-green-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-green-600"
+										onClick={addUnknown}
+										className="w-auto bg-amber-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-amber-600"
 									>
 										<Plus className="h-4 w-4" />
 									</Button>
 								</div>
-                        <SuggestionBadges
-                            suggestions={contextualSuggestions.orgs}
-                            onSuggestionClick={(org) => {
-                                setNewOrg(org)
-                                setShowOrgSuggestions(false)
-                            }}
-                            show={showOrgSuggestions}
-                        />
-								<div className="flex flex-wrap gap-3">
-									{target_orgs.map((org) => (
+								<SuggestionBadges
+									suggestions={contextualSuggestions.unknowns}
+									onSuggestionClick={(unknown) => {
+										setNewUnknown(unknown)
+										setShowUnknownSuggestions(false)
+									}}
+									show={showUnknownSuggestions}
+								/>
+								<div className="space-y-2">
+									{unknowns.map((unknown, index) => (
 										<div
-											key={org}
-											className="group flex w-fit items-center gap-2 rounded-full border border-green-300 bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
+											key={`unknown-${index}-${unknown.slice(0, 10)}`}
+											className="group flex w-fit items-start gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
 										>
-											<span className="font-medium text-green-800">{org}</span>
+											<div className="mt-0.5 flex-shrink-0">
+												<HelpCircle className="h-5 w-5 text-amber-600" />
+											</div>
+											<span className="flex-1 font-medium text-gray-800 leading-relaxed">{unknown}</span>
 											<button
-												onClick={() => removeOrg(org)}
-												className="rounded-full p-0.5 opacity-0 transition-opacity duration-200 hover:bg-green-200 group-hover:opacity-100"
+												onClick={() => removeUnknown(index)}
+												className="flex-shrink-0 rounded-full p-1 opacity-0 transition-opacity duration-200 hover:bg-amber-200 group-hover:opacity-100"
 											>
-												<X className="h-3 w-3 text-green-700" />
+												<X className="h-4 w-4 text-amber-700" />
 											</button>
 										</div>
 									))}
 								</div>
 							</div>
 
+							{/* Target Audience - moved after Research Goal */}
 							<div>
-								<label className="mb-2 block font-semibold text-foreground">People's Roles</label>
-								<div className="mb-4 flex gap-3">
-									<Input
-										placeholder={
-											templateKey === "understand_customer_needs"
-												? "e.g., Product Manager, Head of Growth, UX Researcher, Customer Success Lead"
-												: "e.g., Product Manager, Marketing Director"
-										}
-										value={newRole}
-										onChange={(e) => setNewRole(e.target.value)}
-										onKeyPress={(e) => e.key === "Enter" && addRole()}
-										onFocus={() => setShowRoleSuggestions(true)}
-										onBlur={() => setTimeout(() => setShowRoleSuggestions(false), 150)}
-										className="flex-1"
-									/>
-									<Button
-										onClick={addRole}
-										className="w-auto bg-purple-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-purple-600"
-									>
-										<Plus className="h-4 w-4" />
-									</Button>
+								<div className="mb-4 flex items-center gap-2">
+									<Users className="h-5 w-5" />
+									Your Market
 								</div>
-                        <SuggestionBadges
-                            suggestions={contextualSuggestions.roles}
-                            onSuggestionClick={(role) => {
-                                setNewRole(role)
-                                setShowRoleSuggestions(false)
-                            }}
-                            show={showRoleSuggestions}
-                        />
-								<div className="flex flex-wrap gap-3">
-									{target_roles.map((role) => (
-										<div
-											key={role}
-											className="group flex w-fit items-center gap-2 rounded-full border border-purple-300 bg-gradient-to-r from-purple-100 to-violet-100 px-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
-										>
-											<span className="font-medium text-purple-800">{role}</span>
-											<button
-												onClick={() => removeRole(role)}
-												className="rounded-full p-0.5 opacity-0 transition-opacity duration-200 hover:bg-purple-200 group-hover:opacity-100"
-											>
-												<X className="h-3 w-3 text-purple-700" />
-											</button>
+								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+									<CardContent className="space-y-3 p-3 sm:p-4">
+										<div>
+											<label className="mb-2 block font-semibold text-foreground">Organizations</label>
+											<div className="mb-4 flex gap-3">
+												<Input
+													placeholder={
+														templateKey === "understand_customer_needs"
+															? "e.g., Early-stage SaaS, Mid-market B2B teams, Ecommerce brands"
+															: "e.g., B2B SaaS companies, E-commerce retailers"
+													}
+													value={newOrg}
+													onChange={(e) => setNewOrg(e.target.value)}
+													onKeyPress={(e) => e.key === "Enter" && addOrg()}
+													onFocus={() => setShowOrgSuggestions(true)}
+													onBlur={() => setTimeout(() => setShowOrgSuggestions(false), 150)}
+													className="flex-1"
+												/>
+												<Button
+													onClick={addOrg}
+													className="w-auto bg-green-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-green-600"
+												>
+													<Plus className="h-4 w-4" />
+												</Button>
+											</div>
+											<SuggestionBadges
+												suggestions={contextualSuggestions.orgs}
+												onSuggestionClick={(org) => {
+													setNewOrg(org)
+													setShowOrgSuggestions(false)
+												}}
+												show={showOrgSuggestions}
+											/>
+											<div className="flex flex-wrap gap-3">
+												{target_orgs.map((org) => (
+													<div
+														key={org}
+														className="group flex w-fit items-center gap-2 rounded-full border border-green-300 bg-gradient-to-r from-green-100 to-emerald-100 px-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
+													>
+														<span className="font-medium text-green-800">{org}</span>
+														<button
+															onClick={() => removeOrg(org)}
+															className="rounded-full p-0.5 opacity-0 transition-opacity duration-200 hover:bg-green-200 group-hover:opacity-100"
+														>
+															<X className="h-3 w-3 text-green-700" />
+														</button>
+													</div>
+												))}
+											</div>
 										</div>
-									))}
-								</div>
+
+										<div>
+											<label className="mb-2 block font-semibold text-foreground">People's Roles</label>
+											<div className="mb-4 flex gap-3">
+												<Input
+													placeholder={
+														templateKey === "understand_customer_needs"
+															? "e.g., Product Manager, Head of Growth, UX Researcher, Customer Success Lead"
+															: "e.g., Product Manager, Marketing Director"
+													}
+													value={newRole}
+													onChange={(e) => setNewRole(e.target.value)}
+													onKeyPress={(e) => e.key === "Enter" && addRole()}
+													onFocus={() => setShowRoleSuggestions(true)}
+													onBlur={() => setTimeout(() => setShowRoleSuggestions(false), 150)}
+													className="flex-1"
+												/>
+												<Button
+													onClick={addRole}
+													className="w-auto bg-purple-500 px-2.5 py-1.5 text-white transition-all duration-200 hover:bg-purple-600"
+												>
+													<Plus className="h-4 w-4" />
+												</Button>
+											</div>
+											<SuggestionBadges
+												suggestions={contextualSuggestions.roles}
+												onSuggestionClick={(role) => {
+													setNewRole(role)
+													setShowRoleSuggestions(false)
+												}}
+												show={showRoleSuggestions}
+											/>
+											<div className="flex flex-wrap gap-3">
+												{target_roles.map((role) => (
+													<div
+														key={role}
+														className="group flex w-fit items-center gap-2 rounded-full border border-purple-300 bg-gradient-to-r from-purple-100 to-violet-100 px-4 py-1 shadow-sm transition-all duration-200 hover:shadow-md"
+													>
+														<span className="font-medium text-purple-800">{role}</span>
+														<button
+															onClick={() => removeRole(role)}
+															className="rounded-full p-0.5 opacity-0 transition-opacity duration-200 hover:bg-purple-200 group-hover:opacity-100"
+														>
+															<X className="h-3 w-3 text-purple-700" />
+														</button>
+													</div>
+												))}
+											</div>
+										</div>
+									</CardContent>
+								</Card>
 							</div>
 						</CardContent>
 					</Card>
@@ -975,10 +923,15 @@ export default function ProjectGoalsScreen({
 						</div>
 					)}
 				</div>
+
 				{showNextButton && (
 					<div className="flex justify-between">
 						<div className="flex items-center">
-							{isSaving && <div className="text-muted-foreground text-sm">Auto-saving...</div>}
+							{isSaving ? (
+								<StatusPill variant="active">
+									Saving <ProgressDots className="ml-1" />
+								</StatusPill>
+							) : null}
 						</div>
 						<Button onClick={handleNext} disabled={!isValid || isLoading}>
 							Generate Interview Questions
