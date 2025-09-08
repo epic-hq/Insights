@@ -32,8 +32,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	// Check if user is already authenticated (for email/password direct login)
 	const { client: supabase, headers } = getServerClient(request)
-	const { data: { user } } = await supabase.auth.getUser()
-	
+	const {
+		data: { user },
+	} = await supabase.auth.getUser()
+
 	if (user) {
 		consola.log("[AUTH CALLBACK] User already authenticated, redirecting to success")
 		const loginSuccessUrl = _next ? `/login_success?next=${encodeURIComponent(_next)}` : "/login_success"

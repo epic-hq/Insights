@@ -16,7 +16,7 @@ import {
 	X,
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
-import { redirect, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useRouteLoaderData } from "react-router"
+import { type LoaderFunctionArgs, type MetaFunction, redirect, useLoaderData, useRouteLoaderData } from "react-router"
 import { useNavigate, useParams } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"

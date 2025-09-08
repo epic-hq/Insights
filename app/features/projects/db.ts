@@ -4,13 +4,13 @@ import type { Database, Project_SectionInsert, Project_SectionUpdate, ProjectIns
 
 // Default ordering for sections if no explicit position is provided
 const DEFAULT_SECTION_POSITION: Record<string, number> = {
-    research_goal: 1,
-    questions: 2,
-    target_orgs: 3,
-    target_roles: 4,
-    assumptions: 5,
-    unknowns: 6,
-    custom_instructions: 7,
+	research_goal: 1,
+	questions: 2,
+	target_orgs: 3,
+	target_roles: 4,
+	assumptions: 5,
+	unknowns: 6,
+	custom_instructions: 7,
 }
 
 export const getProjects = async ({
@@ -127,19 +127,15 @@ export const updateProjectSection = async ({
 }
 
 export const upsertProjectSection = async ({
-    supabase,
-    data,
+	supabase,
+	data,
 }: {
-    supabase: SupabaseClient<Database>
-    data: Project_SectionInsert & { id?: string }
+	supabase: SupabaseClient<Database>
+	data: Project_SectionInsert & { id?: string }
 }) => {
-    const position = data.position ?? DEFAULT_SECTION_POSITION[(data as { kind?: string }).kind ?? ""]
-    const payload = position ? { ...data, position } : data
-    return await supabase
-        .from("project_sections")
-        .upsert(payload, { onConflict: "project_id,kind" })
-        .select()
-        .single()
+	const position = data.position ?? DEFAULT_SECTION_POSITION[(data as { kind?: string }).kind ?? ""]
+	const payload = position ? { ...data, position } : data
+	return await supabase.from("project_sections").upsert(payload, { onConflict: "project_id,kind" }).select().single()
 }
 
 export const deleteProjectSection = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {

@@ -3,9 +3,9 @@ import { AuthUI } from "~/components/auth/AuthUI"
 import { PATHS } from "~/paths"
 
 export default function AuthPage() {
-    const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`
-    consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`)
-    return (
+	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`
+	consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`)
+	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
 			<div className="container relative flex min-h-screen flex-col items-center justify-center">
 				{/* Logo/Branding */}
@@ -29,8 +29,8 @@ export default function AuthPage() {
 							<p className="mt-2 text-slate-600 text-sm dark:text-slate-400">Sign in to your UpSight account</p>
 						</div>
 
-                        <AuthUI view="sign_in" redirectTo={redirectTo} />
-                    </div>
+						<AuthUI view="sign_in" redirectTo={redirectTo} />
+					</div>
 
 					{/* Footer */}
 					<div className="mt-8 text-center text-slate-500 text-xs dark:text-slate-400">

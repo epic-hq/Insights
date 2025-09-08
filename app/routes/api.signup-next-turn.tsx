@@ -1,64 +1,63 @@
+import { RuntimeContext } from "@mastra/core/di"
+import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { mastra } from "~/mastra"
-import { RuntimeContext } from "@mastra/core/di"
-import consola from "consola"
 
 export async function action({ request }: ActionFunctionArgs) {
-  if (request.method !== "POST") return { error: "Method Not Allowed" }
+	if (request.method !== "POST") return { error: "Method Not Allowed" }
 
-  const user = await getAuthenticatedUser(request)
-  if (!user) return { error: "Unauthorized" }
+	const user = await getAuthenticatedUser(request)
+	if (!user) return { error: "Unauthorized" }
 
-  const { client: supabase } = getServerClient(request)
+	const { client: supabase } = getServerClient(request)
 
-  try {
-    const body = await request.json()
-    const { message, state } = body ?? {}
+	try {
+		const body = await request.json()
+		const { message, state } = body ?? {}
 
-    const run = await mastra.getWorkflow("signupOnboardingWorkflow")?.createRunAsync()
-    const runtimeContext = new RuntimeContext()
-    runtimeContext.set("supabase", supabase)
+		const run = await mastra.getWorkflow("signupOnboardingWorkflow")?.createRunAsync()
+		const runtimeContext = new RuntimeContext()
+		runtimeContext.set("supabase", supabase)
 
-    consola.log("➡️ api.signup-next-turn: running workflow", {
-      hasMessage: !!message,
-      hasState: !!state,
-    })
+		consola.log("➡️ api.signup-next-turn: running workflow", {
+			hasMessage: !!message,
+			hasState: !!state,
+		})
 
-    const result = await run?.start({
-      inputData: {
-        message: typeof message === "string" ? message : "",
-        user_id: user.sub,
-        state: state ?? {},
-      },
-      runtimeContext,
-    })
+		const result = await run?.start({
+			inputData: {
+				message: typeof message === "string" ? message : "",
+				user_id: user.sub,
+				state: state ?? {},
+			},
+			runtimeContext,
+		})
 
-    if (result?.status === "success") {
-      const out = result.result as any
-      consola.log("✅ api.signup-next-turn: success", out)
-      return {
-        reply: out.reply,
-        state: out.state,
-        completed: out.completed,
-      }
-    }
+		if (result?.status === "success") {
+			const out = result.result as any
+			consola.log("✅ api.signup-next-turn: success", out)
+			return {
+				reply: out.reply,
+				state: out.state,
+				completed: out.completed,
+			}
+		}
 
-    return {
-      reply: "Let's continue — what business objective are you trying to achieve?",
-      state: state ?? {},
-      completed: false,
-    }
-  } catch (error) {
-    consola.error("💥 api.signup-next-turn error", error)
-    return {
-      error: "Failed to run signup workflow",
-      reply: "Sorry — hit a hiccup. What business objective are you trying to achieve?",
-      state: {},
-      completed: false,
-    }
-  }
+		return {
+			reply: "Let's continue — what business objective are you trying to achieve?",
+			state: state ?? {},
+			completed: false,
+		}
+	} catch (error) {
+		consola.error("💥 api.signup-next-turn error", error)
+		return {
+			error: "Failed to run signup workflow",
+			reply: "Sorry — hit a hiccup. What business objective are you trying to achieve?",
+			state: {},
+			completed: false,
+		}
+	}
 }
 
 export const loader = () => ({ error: "Method Not Allowed" })
-

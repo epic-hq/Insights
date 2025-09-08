@@ -4,8 +4,8 @@ import { useEffect, useState } from "react"
 import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
 // GeneratePersonasButton component
 import { Link, useFetcher } from "react-router-dom"
-import { Button } from "~/components/ui/button"
 import NavPageLayout from "~/components/layout/NavPageLayout"
+import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
 import PersonaCompareBoard from "~/features/personas/components/PersonaCompareBoard"
@@ -62,10 +62,10 @@ export default function Personas() {
 	}
 
 	// Transform personas data for PersonaCompareBoard
-	const transformedPersonas = personas.map(persona => ({
+	const transformedPersonas = personas.map((persona) => ({
 		id: persona.id,
 		name: persona.name,
-		kind: persona.kind || "core" as const,
+		kind: persona.kind || ("core" as const),
 		avatarUrl: persona.image_url,
 		color: persona.color,
 		tags: persona.tags || [],
@@ -88,9 +88,7 @@ export default function Personas() {
 			showSubnav={true}
 			subnav={<PersonaPeopleSubnav />}
 			itemCount={personas.length}
-			actionButtons={[
-				<GeneratePersonasButton key="generate" />,
-			]}
+			actionButtons={[<GeneratePersonasButton key="generate" />]}
 			primaryAction={
 				<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
 					<Link to={routes.personas.new()}>Add Persona</Link>
@@ -124,10 +122,7 @@ export default function Personas() {
 					))}
 				</div>
 			) : (
-				<PersonaCompareBoard 
-					personas={transformedPersonas}
-					visibleFields={["goals", "pains", "differentiators"]}
-				/>
+				<PersonaCompareBoard personas={transformedPersonas} visibleFields={["goals", "pains", "differentiators"]} />
 			)}
 		</NavPageLayout>
 	)
@@ -153,12 +148,7 @@ function GeneratePersonasButton() {
 	}
 
 	return (
-		<Button 
-			onClick={handleGenerate} 
-			variant="secondary" 
-			disabled={isGenerating}
-			type="button"
-		>
+		<Button onClick={handleGenerate} variant="secondary" disabled={isGenerating} type="button">
 			<Sparkle className="mr-2 h-4 w-4" />
 			{isGenerating ? "Generating..." : "Generate Personas"}
 		</Button>

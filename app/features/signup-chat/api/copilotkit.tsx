@@ -29,17 +29,20 @@ export async function action({ request }: ActionFunctionArgs) {
 	// Use empty service adapter for multi-agent support (per CopilotKit + Mastra reference)
 	const serviceAdapter = new ExperimentalEmptyAdapter()
 
-	// Get Mastra agents for CopilotKit integration
-	// The agents will make requests to the Mastra server, and we need to ensure headers are passed
-	const mastraAgents = MastraAgent.getLocalAgents({
-		mastra,
-	})
-
-	// Manually inject context into runtime for agents
+	// Create a runtime context from incoming headers for ALL local agents
 	const runtimeContext = new RuntimeContext()
-	runtimeContext.set("user_id", headerUserId || "")
+	runtimeContext.set("user_id", headerUserId || user.sub || "")
 	runtimeContext.set("account_id", headerAccountId || "")
 	runtimeContext.set("project_id", headerProjectId || "")
+	const authHeader = hdr.get("authorization") || ""
+	runtimeContext.set("jwt", authHeader.replace("Bearer ", ""))
+
+	// Get Mastra agents for CopilotKit integration with global runtime context
+	const mastraAgents = MastraAgent.getLocalAgents({
+		mastra,
+		runtimeContext,
+		resourceId: headerUserId,
+	})
 
 	// Log the context for debugging
 	// consola.log("CopilotKit received headers:", {
@@ -50,52 +53,52 @@ export async function action({ request }: ActionFunctionArgs) {
 	// })
 
 	// Build Copilot runtime with Mastra agents and our signup action
-  const runtime = new CopilotRuntime({
-    agents: mastraAgents,
-    actions: [
-      {
-        name: "signupNextTurn",
-        description: "Drive the signup onboarding conversation deterministically for the next turn.",
-        parameters: [
-          { name: "message", type: "string", description: "The user's latest message" },
-          { name: "problem", type: "string", required: false },
-          { name: "need_to_learn", type: "string", required: false },
-          { name: "challenges", type: "string", required: false },
-          { name: "content_types", type: "string", required: false },
-          { name: "other_feedback", type: "string", required: false },
-        ],
-        handler: async ({ message, problem, need_to_learn, challenges, content_types, other_feedback }) => {
-          try {
-            consola.log("➡️ signupNextTurn: starting workflow", { hasMessage: !!message })
-            const run = await mastra.getWorkflow("signupOnboardingWorkflow")?.createRunAsync()
-            const runtimeContext = new RuntimeContext()
-            runtimeContext.set("supabase", supabase)
-            const result = await run?.start({
-              inputData: {
-                message,
-                user_id: user.sub,
-                state: { problem, need_to_learn, challenges, content_types, other_feedback },
-              },
-              runtimeContext,
-            })
+	const runtime = new CopilotRuntime({
+		agents: mastraAgents,
+		actions: [
+			// {
+			//   name: "signupNextTurn",
+			//   description: "Drive the signup onboarding conversation deterministically for the next turn.",
+			//   parameters: [
+			//     { name: "message", type: "string", description: "The user's latest message" },
+			//     { name: "problem", type: "string", required: false },
+			//     { name: "need_to_learn", type: "string", required: false },
+			//     { name: "challenges", type: "string", required: false },
+			//     { name: "content_types", type: "string", required: false },
+			//     { name: "other_feedback", type: "string", required: false },
+			//   ],
+			//   handler: async ({ message, problem, need_to_learn, challenges, content_types, other_feedback }) => {
+			//     try {
+			//       consola.log("➡️ signupNextTurn: starting workflow", { hasMessage: !!message })
+			//       const run = await mastra.getWorkflow("signupOnboardingWorkflow")?.createRunAsync()
+			//       const runtimeContext = new RuntimeContext()
+			//       runtimeContext.set("supabase", supabase)
+			//       const result = await run?.start({
+			//         inputData: {
+			//           message,
+			//           user_id: user.sub,
+			//           state: { problem, need_to_learn, challenges, content_types, other_feedback },
+			//         },
+			//         runtimeContext,
+			//       })
 
-            if (result?.status === "success") {
-              const out = result.result as any
-              consola.log("✅ signupNextTurn: workflow success", out)
-              return {
-                reply: out.reply,
-                state: out.state,
-                completed: out.completed,
-              }
-            }
+			//       if (result?.status === "success") {
+			//         const out = result.result as any
+			//         consola.log("✅ signupNextTurn: workflow success", out)
+			//         return {
+			//           reply: out.reply,
+			//           state: out.state,
+			//           completed: out.completed,
+			//         }
+			//       }
 
-            return { reply: "Let's continue — what's your main objective?", state: { problem, need_to_learn, challenges, content_types, other_feedback }, completed: false }
-          } catch (e) {
-            consola.error("signupNextTurn error", e)
-            return { reply: "Sorry — hit a hiccup. What business objective are you trying to achieve?", state: { problem, need_to_learn, challenges, content_types, other_feedback }, completed: false }
-          }
-        },
-      },
+			//       return { reply: "Let's continue — what's your main objective?", state: { problem, need_to_learn, challenges, content_types, other_feedback }, completed: false }
+			//     } catch (e) {
+			//       consola.error("signupNextTurn error", e)
+			//       return { reply: "Sorry — hit a hiccup. What business objective are you trying to achieve?", state: { problem, need_to_learn, challenges, content_types, other_feedback }, completed: false }
+			//     }
+			//   },
+			// },
 			{
 				name: "runDailyBrief",
 				description: "Run the daily brief workflow for the current project/account context",
@@ -149,86 +152,94 @@ export async function action({ request }: ActionFunctionArgs) {
 					}
 				},
 			},
-      {
-        name: "saveChatData",
-				description: "Save the collected signup chat responses to the database",
-				parameters: [
-					{
-						name: "problem",
-						type: "string",
-						description: "The core problem or use case the user wants to solve",
-						required: false,
-					},
-					{
-						name: "challenges",
-						type: "string",
-						description: "Current challenges and what's not working",
-						required: false,
-					},
-					{
-						name: "content_types",
-						type: "string",
-						description:
-							"Types of content they want to analyze; user interviews, focus groups, user testing, case studies, etc.",
-						required: false,
-					},
-					{
-						name: "other_feedback",
-						type: "string",
-						description: "Any other feedback or wishes",
-						required: false,
-					},
-				],
-				handler: async ({ problem, challenges, content_types, other_feedback }) => {
-					try {
-						const chatData = {
-							problem,
-							challenges,
-							content_types,
-							other_feedback,
-							completed: true,
-						}
+			// {
+			//   name: "saveChatData",
+			// 	description: "Save the collected signup chat responses to the database",
+			// 	parameters: [
+			// 		{
+			// 			name: "problem",
+			// 			type: "string",
+			// 			description: "The core problem or use case the user wants to solve",
+			// 			required: false,
+			// 		},
+			// 		{
+			// 			name: "challenges",
+			// 			type: "string",
+			// 			description: "Current challenges and what's not working",
+			// 			required: false,
+			// 		},
+			// 		{
+			// 			name: "content_types",
+			// 			type: "string",
+			// 			description:
+			// 				"Types of content they want to analyze; user interviews, focus groups, user testing, case studies, etc.",
+			// 			required: false,
+			// 		},
+			// 		{
+			// 			name: "other_feedback",
+			// 			type: "string",
+			// 			description: "Any other feedback or wishes",
+			// 			required: false,
+			// 		},
+			// 	],
+			// 	handler: async ({ problem, challenges, content_types, other_feedback }) => {
+			// 		try {
+			// 			const chatData = {
+			// 				problem,
+			// 				challenges,
+			// 				content_types,
+			// 				other_feedback,
+			// 				completed: true,
+			// 			}
 
-						// Get headers for context
-						const headerUserId = request.headers.get("X-UserId")
-						const headerAccountId = request.headers.get("X-AccountId")
-						const headerProjectId = request.headers.get("X-ProjectId")
+			// 			// Get headers for context
+			// 			const headerUserId = request.headers.get("X-UserId")
+			// 			const headerAccountId = request.headers.get("X-AccountId")
+			// 			const headerProjectId = request.headers.get("X-ProjectId")
 
-						consola.log("features/aichat/api/copilotkit agent saving chat data: ", {
-							chatData,
-							context: {
-								user_id: user.sub,
-								header_user_id: headerUserId,
-								account_id: headerAccountId,
-								project_id: headerProjectId,
-							},
-						})
-						const { error } = await supabase.rpc("upsert_signup_data", {
-							p_user_id: user.sub,
-							p_signup_data: chatData,
-						})
+			// 			consola.log("features/aichat/api/copilotkit agent saving chat data: ", {
+			// 				chatData,
+			// 				context: {
+			// 					user_id: user.sub,
+			// 					header_user_id: headerUserId,
+			// 					account_id: headerAccountId,
+			// 					project_id: headerProjectId,
+			// 				},
+			// 			})
+			// 			const { error } = await supabase.rpc("upsert_signup_data", {
+			// 				p_user_id: user.sub,
+			// 				p_signup_data: chatData,
+			// 			})
 
-						if (error) {
-							throw new Error(`Database error: ${error.message}`)
-						}
-						// TODO: redirect to home. not working.
-						return { success: true, message: "Saved" }
-					} catch (error) {
-						consola.error("Error in saveChatData handler:", error)
-						return {
-							success: false,
-							message: `Error saving responses: ${error instanceof Error ? error.message : "Unknown error"}`,
-						}
-					}
-				},
-			},
+			// 			if (error) {
+			// 				throw new Error(`Database error: ${error.message}`)
+			// 			}
+			// 			// TODO: redirect to home. not working.
+			// 			return { success: true, message: "Saved" }
+			// 		} catch (error) {
+			// 			consola.error("Error in saveChatData handler:", error)
+			// 			return {
+			// 				success: false,
+			// 				message: `Error saving responses: ${error instanceof Error ? error.message : "Unknown error"}`,
+			// 			}
+			// 		}
+			// 	},
+			// },
 		],
 	})
+	consola.log("features/aichat/api/copilotkit mastra-userid-header ", headerUserId)
 
 	const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
 		runtime,
 		serviceAdapter,
 		endpoint: "/api/copilotkit",
+		properties: {
+			// headers: {
+			"X-UserId": headerUserId || "",
+			"X-AccountId": headerAccountId || "",
+			"X-ProjectId": headerProjectId || "",
+			// },
+		},
 	})
 
 	return handleRequest(request)

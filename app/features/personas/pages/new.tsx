@@ -73,24 +73,24 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 
 export default function NewPersona() {
-    const actionData = useActionData<typeof action>()
-    const currentProjectContext = useCurrentProject()
-    const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
+	const actionData = useActionData<typeof action>()
+	const currentProjectContext = useCurrentProject()
+	const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
 
-    return (
-        <div className="mx-auto max-w-2xl px-3 py-6 sm:px-6">
-            <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
-                <Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-                    <CardHeader className="pb-2 sm:pb-4">
-                        <CardTitle className="text-2xl">Create New Persona</CardTitle>
-                    </CardHeader>
-                    <CardContent className="p-0 sm:p-4">
-                        <form method="post" className="space-y-6">
-                            {actionData?.error && (
-                                <div className="rounded-md bg-red-50 p-4">
-                                    <div className="text-red-700 text-sm">{actionData.error}</div>
-                                </div>
-                            )}
+	return (
+		<div className="mx-auto max-w-2xl px-3 py-6 sm:px-6">
+			<motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }}>
+				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+					<CardHeader className="pb-2 sm:pb-4">
+						<CardTitle className="text-2xl">Create New Persona</CardTitle>
+					</CardHeader>
+					<CardContent className="p-0 sm:p-4">
+						<form method="post" className="space-y-6">
+							{actionData?.error && (
+								<div className="rounded-md bg-red-50 p-4">
+									<div className="text-red-700 text-sm">{actionData.error}</div>
+								</div>
+							)}
 
 							<div className="space-y-2">
 								<Label htmlFor="name">Name *</Label>
@@ -137,18 +137,18 @@ export default function NewPersona() {
 								</div>
 							</div>
 
-                            <div className="flex gap-3 pt-2 sm:pt-4">
-                                <Button type="submit" className="flex-1">
-                                    Create Persona
-                                </Button>
-                                <Button type="button" variant="outline" asChild>
-                                    <a href={routes.personas.index()}>Cancel</a>
-                                </Button>
-                            </div>
-                        </form>
-                    </CardContent>
-                </Card>
-            </motion.div>
-        </div>
-    )
+							<div className="flex gap-3 pt-2 sm:pt-4">
+								<Button type="submit" className="flex-1">
+									Create Persona
+								</Button>
+								<Button type="button" variant="outline" asChild>
+									<a href={routes.personas.index()}>Cancel</a>
+								</Button>
+							</div>
+						</form>
+					</CardContent>
+				</Card>
+			</motion.div>
+		</div>
+	)
 }

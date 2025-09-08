@@ -31,11 +31,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		projectId,
 	})
 
-    // Extract questions from project sections (support both 'question' and 'questions')
-    const questions = (sectionsResult.data || [])
-        .filter((section) => section.kind === "goal" || section.kind === "question" || section.kind === "questions")
-        .map((section) => section.content_md)
-        .filter(Boolean)
+	// Extract questions from project sections (support both 'question' and 'questions')
+	const questions = (sectionsResult.data || [])
+		.filter((section) => section.kind === "goal" || section.kind === "question" || section.kind === "questions")
+		.map((section) => section.content_md)
+		.filter(Boolean)
 
 	return {
 		project,
@@ -65,23 +65,23 @@ export default function InterviewOnboardPage() {
 		navigate(routes.interviews.index())
 	}
 
-    return (
-        <OnboardingFlow
-            onComplete={handleOnboardingComplete}
-            onAddMoreInterviews={handleAddMoreInterviews}
-            onViewResults={handleViewResults}
-            projectId={projectId}
-            existingProject={{
-                name: project.name,
-                target_orgs: [],
-                target_roles: [],
-                research_goal: "",
-                research_goal_details: "",
-                assumptions: [],
-                unknowns: [],
-                custom_instructions: "",
-                questions: questions || [],
-            }}
-        />
-    )
+	return (
+		<OnboardingFlow
+			onComplete={handleOnboardingComplete}
+			onAddMoreInterviews={handleAddMoreInterviews}
+			onViewResults={handleViewResults}
+			projectId={projectId}
+			existingProject={{
+				name: project.name,
+				target_orgs: [],
+				target_roles: [],
+				research_goal: "",
+				research_goal_details: "",
+				assumptions: [],
+				unknowns: [],
+				custom_instructions: "",
+				questions: questions || [],
+			}}
+		/>
+	)
 }

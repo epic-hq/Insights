@@ -15,10 +15,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const customInstructions = formData.get("customInstructions") as string
 
 		if (!originalQuestion) {
-			return Response.json(
-				{ error: "Original question is required" },
-				{ status: 400 }
-			)
+			return Response.json({ error: "Original question is required" }, { status: 400 })
 		}
 
 		consola.log("Generating follow-up questions for:", originalQuestion)
@@ -26,7 +23,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const followUpSet = await generateFollowUpQuestions(
 			originalQuestion,
 			researchContext || "General user research",
-			targetRoles || "Various roles", 
+			targetRoles || "Various roles",
 			customInstructions
 		)
 

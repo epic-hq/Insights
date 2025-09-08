@@ -1,5 +1,5 @@
 import { CopilotKit, useCoAgent } from "@copilotkit/react-core"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { useEffect } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import "@copilotkit/react-ui/styles.css"
@@ -12,8 +12,9 @@ const progressStyles = `
 }
 `
 
+import { CopilotChat } from "@copilotkit/react-ui"
 import consola from "consola"
-import { ArrowLeft, ArrowRight, CheckCircle, Mic, Send, User } from "lucide-react"
+import { ArrowLeft, ArrowRight, CheckCircle, Mic } from "lucide-react"
 import type { z } from "zod"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
 import { createClient } from "~/lib/supabase/client"
@@ -228,9 +229,21 @@ export default function SignupChat() {
 
 			{/* Main Content */}
 			<main className="flex flex-1 flex-col">
-				<div className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-					<DeterministicSignupChat existingChatData={existingChatData} />
-				</div>
+				<CopilotKit
+					agent="signupAgent"
+					runtimeUrl={copilotRuntimeUrl}
+					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
+					showDevConsole={false}
+					headers={{
+						"X-UserId": String(user?.sub ?? ""),
+						"X-AccountId": String(""),
+						"X-ProjectId": String(""),
+					}}
+				>
+					<div className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
+						<ChatWithChecklist existingChatData={existingChatData} />
+					</div>
+				</CopilotKit>
 			</main>
 		</div>
 	)
@@ -304,166 +317,6 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 				<div className="mt-8 rounded-lg border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
 					<h4 className="mb-2 font-semibold text-gray-900 text-sm dark:text-white">Development Panel</h4>
 					<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
-				</div>
-			)}
-		</div>
-	)
-}
-
-// Deterministic client-driven chat that calls the workflow endpoint per turn
-function DeterministicSignupChat({ existingChatData }: { existingChatData?: any }) {
-	const [messages, setMessages] = useState<Array<{ role: "assistant" | "user"; text: string }>>([])
-	const [pending, setPending] = useState(false)
-	const [input, setInput] = useState("")
-	const [state, setState] = useState<any>(() => existingChatData ?? {})
-	const navigate = useNavigate()
-	const inputRef = useRef<HTMLInputElement>(null)
-	const listRef = useRef<HTMLDivElement>(null)
-
-	const initialState = useMemo(() => existingChatData ?? {}, [existingChatData])
-
-	useEffect(() => {
-		let cancelled = false
-		async function bootstrap() {
-			if ((initialState?.completed ?? false) === true) return
-			try {
-				const res = await fetch("/api/signup-next-turn", {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({ message: "", state: initialState }),
-				})
-				const data = await res.json()
-				if (cancelled) return
-				setState(data.state ?? {})
-				if (typeof data.reply === "string" && data.reply.trim().length > 0) {
-					setMessages([{ role: "assistant", text: data.reply }])
-				}
-			} catch {
-				setMessages([{ role: "assistant", text: "What business objective are you trying to achieve?" }])
-			}
-			inputRef.current?.focus()
-		}
-		bootstrap()
-		return () => {
-			cancelled = true
-		}
-	}, [initialState])
-
-	async function send() {
-		const content = input.trim()
-		if (!content || pending) return
-		setInput("")
-		setMessages((m) => [...m, { role: "user", text: content }])
-		setPending(true)
-		try {
-			const res = await fetch("/api/signup-next-turn", {
-				method: "POST",
-				headers: { "Content-Type": "application/json" },
-				body: JSON.stringify({ message: content, state }),
-			})
-			const data = await res.json()
-			setState(data.state ?? {})
-			if (typeof data.reply === "string") {
-				setMessages((m) => [...m, { role: "assistant", text: data.reply }])
-			}
-			if (data.completed === true) {
-				setPending(true)
-				setTimeout(() => navigate("/home"), 5000)
-			}
-		} catch {
-			setMessages((m) => [
-				...m,
-				{ role: "assistant", text: "Sorry — hit a hiccup. What business objective are you trying to achieve?" },
-			])
-		} finally {
-			setPending(false)
-			inputRef.current?.focus()
-		}
-	}
-
-	// Ensure input stays focused after bot replies
-	useEffect(() => {
-		if (messages.length && messages[messages.length - 1].role === "assistant") {
-			inputRef.current?.focus()
-		}
-	}, [messages])
-
-	function onKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
-		if (e.key === "Enter" && !e.shiftKey) {
-			e.preventDefault()
-			void send()
-		}
-	}
-
-	// Always scroll to bottom on new messages or pending
-	useEffect(() => {
-		const el = listRef.current
-		if (!el) return
-		el.scrollTo({ top: el.scrollHeight, behavior: "smooth" })
-	}, [messages, pending])
-
-	return (
-		<div className="flex flex-1 flex-col">
-			<div className="mb-4 text-center">
-				<h1 className="font-bold text-3xl text-gray-900 dark:text-white">Welcome to UpSight 🎉</h1>
-			</div>
-
-			<div className="flex-1 rounded-2xl border border-gray-200 bg-white shadow-lg dark:border-gray-700 dark:bg-gray-800">
-				<div className="border-gray-100 border-b p-4 dark:border-gray-700">
-					<div className="flex items-center gap-3">
-						<div className="flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-purple-500 to-purple-600">
-							<span className="font-bold text-3xl text-white">🤖</span>
-						</div>
-						<div>
-							<h3 className="font-semibold text-gray-900 dark:text-white">Uppy Assistant</h3>
-						</div>
-					</div>
-				</div>
-
-				<div className="flex h-[500px] flex-col p-4">
-					<div ref={listRef} className="flex-1 space-y-3 overflow-y-auto pr-2">
-						{messages.map((m, i) => (
-							<div key={i} className={m.role === "assistant" ? "text-gray-900 dark:text-white" : "text-right"}>
-								<div
-									className={
-										m.role === "assistant"
-											? "inline-block max-w-[80%] rounded-2xl bg-gray-100 px-4 py-2 text-sm dark:bg-gray-700"
-											: "inline-block max-w-[80%] rounded-2xl bg-purple-600 px-4 py-2 text-sm text-white"
-									}
-								>
-									{m.text}
-								</div>
-							</div>
-						))}
-						{pending && <div className="text-gray-500 text-sm">Thinking…</div>}
-					</div>
-
-					<div className="mt-3 flex items-center gap-2">
-						<input
-							ref={inputRef}
-							className="flex-1 rounded-xl border border-gray-300 px-4 py-3 text-sm outline-none focus:border-purple-500 dark:border-gray-600 dark:bg-gray-900 dark:text-white"
-							placeholder="Type your answer…"
-							value={input}
-							onChange={(e) => setInput(e.target.value)}
-							onKeyDown={onKeyDown}
-							disabled={pending}
-						/>
-						<button
-							onClick={() => void send()}
-							disabled={pending}
-							className="inline-flex items-center justify-center gap-2 rounded-xl bg-purple-600 px-4 py-3 text-white hover:bg-purple-700 disabled:opacity-60"
-							aria-label="Send"
-						>
-							<Send className="h-4 w-4" />
-						</button>
-					</div>
-				</div>
-			</div>
-
-			{process.env.NODE_ENV === "development" && (
-				<div className="mt-4 rounded-lg border border-gray-200 bg-gray-50 p-4 text-xs dark:border-gray-700 dark:bg-gray-800 dark:text-gray-200">
-					<h4 className="mb-2 font-semibold">Debug</h4>
-					<JsonDataCard title="State" jsonData={state} />
 				</div>
 			)}
 		</div>

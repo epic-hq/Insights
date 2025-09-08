@@ -97,7 +97,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			JSON.stringify(peopleRecords),
 			JSON.stringify(insightsRecords),
 			JSON.stringify(interviewsRecords),
-			JSON.stringify(evidenceRecords),
+			JSON.stringify(evidenceRecords)
 		)
 
 		consola.log("[Persona Insights API] BAML Result:", bamlResult)

@@ -5,19 +5,19 @@ import { getServerEnv } from "~/env.server"
 const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv()
 
 export const getServerClient = (request: Request) => {
-    const headers = new Headers()
-    const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-        cookies: {
-            getAll() {
+	const headers = new Headers()
+	const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+		cookies: {
+			getAll() {
 				return parseCookieHeader(request.headers.get("Cookie") ?? "") ?? []
-            },
-            setAll(cookiesToSet) {
-                cookiesToSet.forEach(({ name, value, options }) =>
-                    headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
-                )
-            },
-        },
-    })
+			},
+			setAll(cookiesToSet) {
+				cookiesToSet.forEach(({ name, value, options }) =>
+					headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
+				)
+			},
+		},
+	})
 
 	return { client: supabase, headers: headers }
 }

@@ -90,7 +90,7 @@ function FieldSelector({ value, onChange }: { value: FieldKey[]; onChange: (next
 						key={k}
 						onClick={() => toggle(k)}
 						className={clsx(
-							"rounded-full border px-3 py-1.5 text-xs font-medium transition-colors",
+							"rounded-full border px-3 py-1.5 font-medium text-xs transition-colors",
 							value.includes(k)
 								? "border-gray-900 bg-gray-900 text-white dark:border-white dark:bg-white dark:text-gray-900"
 								: "border-gray-300 bg-white text-gray-700 hover:bg-gray-50 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -102,7 +102,7 @@ function FieldSelector({ value, onChange }: { value: FieldKey[]; onChange: (next
 			</div>
 			<span className="text-gray-400">|</span>
 			<button
-				className="text-xs text-blue-600 underline underline-offset-2 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
+				className="text-blue-600 text-xs underline underline-offset-2 hover:text-blue-800 dark:text-blue-400 dark:hover:text-blue-300"
 				onClick={() => setAll(!allOn)}
 				title={allOn ? "Hide all" : "Show all"}
 			>
@@ -157,11 +157,13 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 		<div className="overflow-hidden rounded-lg border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-800">
 			<div className={`grid ${gridCols}`}>
 				{/* header row */}
-				<div className="hidden items-center bg-gray-50 px-4 py-3 text-sm font-medium text-gray-700 dark:bg-gray-700 dark:text-gray-200 sm:flex">Attribute</div>
+				<div className="hidden items-center bg-gray-50 px-4 py-3 font-medium text-gray-700 text-sm sm:flex dark:bg-gray-700 dark:text-gray-200">
+					Attribute
+				</div>
 				{personas.map((p, i) => (
 					<div
 						key={`h-${i}`}
-						className="bg-gray-50 px-4 py-3 font-medium text-sm text-gray-900 dark:bg-gray-700 dark:text-white"
+						className="bg-gray-50 px-4 py-3 font-medium text-gray-900 text-sm dark:bg-gray-700 dark:text-white"
 					>
 						{p.name}
 					</div>
@@ -170,13 +172,16 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 				{/* rows */}
 				{fields.map((field) => (
 					<React.Fragment key={field}>
-						<div className="hidden bg-gray-50 px-4 py-3 font-medium text-sm text-gray-700 dark:bg-gray-700 dark:text-gray-200 sm:block">
+						<div className="hidden bg-gray-50 px-4 py-3 font-medium text-gray-700 text-sm sm:block dark:bg-gray-700 dark:text-gray-200">
 							{FIELD_LABEL[field]}
 						</div>
 						{personas.map((p, personaIndex) => {
 							const items = (p as any)[field] as any[] | undefined
 							return (
-								<div key={`${p.id || personaIndex}-${field}`} className="border-gray-100 border-t bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-800">
+								<div
+									key={`${p.id || personaIndex}-${field}`}
+									className="border-gray-100 border-t bg-white px-4 py-3 dark:border-gray-600 dark:bg-gray-800"
+								>
 									{items?.length ? (
 										<div className="flex flex-wrap gap-2">
 											{items.slice(0, 8).map((item, i) => {
@@ -192,7 +197,7 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 														onClick={() => handleClick(token)}
 														onMouseEnter={() => handleEnter(token)}
 														onMouseLeave={handleLeave}
-														className={`rounded-md px-2 py-1 text-xs font-medium transition-colors ${
+														className={`rounded-md px-2 py-1 font-medium text-xs transition-colors ${
 															active
 																? "bg-blue-100 text-blue-800 ring-1 ring-blue-300 dark:bg-blue-900 dark:text-blue-200 dark:ring-blue-700"
 																: isGreyedOut
@@ -206,7 +211,7 @@ function MatrixView({ personas, fields, kindColors }: MatrixViewProps) {
 											})}
 										</div>
 									) : (
-										<div className="text-xs text-gray-400 dark:text-gray-500">—</div>
+										<div className="text-gray-400 text-xs dark:text-gray-500">—</div>
 									)}
 								</div>
 							)
@@ -225,7 +230,9 @@ function StripSpectrum({ personas, spectra }: { personas: Persona[]; spectra: Sp
 		return (
 			<div key={s.id} className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
 				<div className="mb-3 flex items-center justify-between">
-					<div className="font-medium text-sm text-gray-900 dark:text-white">{s.title ?? `${s.labelLeft} ↔ ${s.labelRight}`}</div>
+					<div className="font-medium text-gray-900 text-sm dark:text-white">
+						{s.title ?? `${s.labelLeft} ↔ ${s.labelRight}`}
+					</div>
 					<div className="text-gray-500 text-xs dark:text-gray-400">
 						{s.labelLeft} → {s.labelRight}
 					</div>
@@ -246,7 +253,11 @@ function StripSpectrum({ personas, spectra }: { personas: Persona[]; spectra: Sp
 						const v = p.spectra1d?.[s.id]
 						if (v == null) return null
 						const color =
-							p.kind === "contrast" ? "bg-emerald-500 ring-emerald-200 dark:ring-emerald-700" : p.kind === "provisional" ? "bg-indigo-500 ring-indigo-200 dark:ring-indigo-700" : "bg-blue-500 ring-blue-200 dark:ring-blue-700"
+							p.kind === "contrast"
+								? "bg-emerald-500 ring-emerald-200 dark:ring-emerald-700"
+								: p.kind === "provisional"
+									? "bg-indigo-500 ring-indigo-200 dark:ring-indigo-700"
+									: "bg-blue-500 ring-blue-200 dark:ring-blue-700"
 						return (
 							<div
 								key={p.id}
@@ -277,7 +288,9 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 	const [hoverId, setHoverId] = useState<string | null>(null)
 	return (
 		<div className="rounded-lg border border-gray-200 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-			<div className="mb-3 font-medium text-sm text-gray-900 dark:text-white">{spec.title ?? `${spec.xLabel} vs ${spec.yLabel}`}</div>
+			<div className="mb-3 font-medium text-gray-900 text-sm dark:text-white">
+				{spec.title ?? `${spec.xLabel} vs ${spec.yLabel}`}
+			</div>
 			<div className="relative aspect-[16/7] rounded bg-gray-50 dark:bg-gray-700">
 				{/* axes */}
 				<div className="absolute top-4 right-6 bottom-6 left-10">
@@ -285,8 +298,14 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 					{/* grid lines */}
 					{[0.25, 0.5, 0.75].map((g) => (
 						<React.Fragment key={g}>
-							<div className="absolute right-0 left-0 h-px bg-gray-200 dark:bg-gray-600" style={{ top: `${(1 - g) * 100}%` }} />
-							<div className="absolute top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-600" style={{ left: `${g * 100}%` }} />
+							<div
+								className="absolute right-0 left-0 h-px bg-gray-200 dark:bg-gray-600"
+								style={{ top: `${(1 - g) * 100}%` }}
+							/>
+							<div
+								className="absolute top-0 bottom-0 w-px bg-gray-200 dark:bg-gray-600"
+								style={{ left: `${g * 100}%` }}
+							/>
 						</React.Fragment>
 					))}
 					{/* points */}
@@ -315,7 +334,9 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 										<div className="text-gray-600 dark:text-gray-300">
 											{spec.xLabel}: <b>{Math.round(x * 100)}</b> · {spec.yLabel}: <b>{Math.round(y * 100)}</b>
 										</div>
-										{p.tags?.length ? <div className="mt-1 text-gray-500 dark:text-gray-400">{p.tags.slice(0, 3).join(" • ")}</div> : null}
+										{p.tags?.length ? (
+											<div className="mt-1 text-gray-500 dark:text-gray-400">{p.tags.slice(0, 3).join(" • ")}</div>
+										) : null}
 									</div>
 								)}
 							</div>
@@ -349,7 +370,6 @@ function ScatterSpectrum({ personas, spec }: { personas: Persona[]; spec: Spectr
 		</div>
 	)
 }
-
 
 /** ========== Top-level board component (render-only) ========== */
 
@@ -391,7 +411,7 @@ export default function PersonaCompareBoard({
 			{/* Spectra 1D */}
 			{spectra1d.length > 0 && (
 				<div className="space-y-3">
-					<div className="font-medium text-lg text-gray-900 dark:text-white">Behavioral Spectra</div>
+					<div className="font-medium text-gray-900 text-lg dark:text-white">Behavioral Spectra</div>
 					<StripSpectrum personas={personas} spectra={spectra1d} />
 				</div>
 			)}
@@ -399,7 +419,7 @@ export default function PersonaCompareBoard({
 			{/* Spectra 2D */}
 			{spectra2d.length > 0 && (
 				<div className="space-y-3">
-					<div className="font-medium text-lg text-gray-900 dark:text-white">Positioning Maps</div>
+					<div className="font-medium text-gray-900 text-lg dark:text-white">Positioning Maps</div>
 					<div className="grid gap-4 md:grid-cols-2">
 						{spectra2d.map((s) => (
 							<ScatterSpectrum key={s.id} personas={personas} spec={s} />

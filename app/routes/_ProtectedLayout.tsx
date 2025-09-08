@@ -127,11 +127,7 @@ export default function ProtectedLayout() {
 	}, [auth.user])
 
 	return (
-		<AuthProvider
-			user={auth.user}
-			organizations={accounts}
-			user_settings={user_settings}
-		>
+		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
 			<CurrentProjectProvider>
 				<CopilotKit
 					agent="mainAgent"

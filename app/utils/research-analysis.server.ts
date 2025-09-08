@@ -93,7 +93,7 @@ export async function generateQuestionSetCanonical(params: {
 			per_category_min: per_category_min ?? 1,
 			per_category_max: per_category_max ?? 3,
 			interview_time_limit: interview_time_limit ?? 60,
-		}
+		},
 	})
 
 	return questionSet
@@ -110,14 +110,14 @@ export async function generateFollowUpQuestions(
 ) {
 	try {
 		consola.log("Generating follow-up questions for:", originalQuestion)
-		
+
 		const followUpSet = await b.GenerateFollowUpQuestions(
 			originalQuestion,
 			researchContext,
 			targetRoles,
 			customInstructions || "Generate thoughtful, conversational follow-up questions that dive deeper into the topic."
 		)
-		
+
 		consola.log("Follow-up questions generated:", followUpSet)
 		return followUpSet
 	} catch (error) {
@@ -265,13 +265,13 @@ export async function getProjectAnalysisData(supabase: SupabaseClient, projectId
  * Generate smart research questions for onboarding
  */
 export async function generateResearchQuestions(
-    target_orgs: string,
-    target_roles: string,
-    research_goal: string,
-    research_goal_details: string,
-    assumptions: string,
-    unknowns: string,
-    custom_instructions: string
+	target_orgs: string,
+	target_roles: string,
+	research_goal: string,
+	research_goal_details: string,
+	assumptions: string,
+	unknowns: string,
+	custom_instructions: string
 ) {
 	try {
 		consola.log("Generating smart research questions for:", {
@@ -284,27 +284,27 @@ export async function generateResearchQuestions(
 			custom_instructions,
 		})
 
-        const ensure = (v: unknown, fallback = "unspecified") => {
-            const s = typeof v === "string" ? v : String(v ?? "")
-            return s.trim().length > 0 ? s : fallback
-        }
-        const questionSet = await b.GenerateQuestionSet({
-            inputs: {
-                target_org: ensure(target_orgs),
-                target_roles: ensure(target_roles),
-                research_goal: ensure(research_goal, "General research goal"),
-                research_goal_details: ensure(research_goal_details, ""),
-                assumptions: ensure(assumptions, ""),
-                unknowns: ensure(unknowns, ""),
-                custom_instructions: ensure(custom_instructions, ""),
-                session_id: `session_${Date.now()}`,
-                round: 1,
-                total_per_round: 10,
-                per_category_min: 1,
-                per_category_max: 3,
-                interview_time_limit: 60,
-            }
-        })
+		const ensure = (v: unknown, fallback = "unspecified") => {
+			const s = typeof v === "string" ? v : String(v ?? "")
+			return s.trim().length > 0 ? s : fallback
+		}
+		const questionSet = await b.GenerateQuestionSet({
+			inputs: {
+				target_org: ensure(target_orgs),
+				target_roles: ensure(target_roles),
+				research_goal: ensure(research_goal, "General research goal"),
+				research_goal_details: ensure(research_goal_details, ""),
+				assumptions: ensure(assumptions, ""),
+				unknowns: ensure(unknowns, ""),
+				custom_instructions: ensure(custom_instructions, ""),
+				session_id: `session_${Date.now()}`,
+				round: 1,
+				total_per_round: 10,
+				per_category_min: 1,
+				per_category_max: 3,
+				interview_time_limit: 60,
+			},
+		})
 
 		// Convert new QuestionSet format to legacy format for backward compatibility
 		const suggestions = {

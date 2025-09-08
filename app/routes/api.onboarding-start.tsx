@@ -2,32 +2,32 @@ import type { UUID } from "node:crypto"
 import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
-import { createProject } from "~/features/projects/db"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
+import { createProject } from "~/features/projects/db"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 
 // Accept both legacy (icp/role/goal) and new snake_case onboarding payloads
 type LegacyOnboardingData = {
-  icp: string
-  role: string
-  goal: string
-  customGoal?: string
-  questions: string[]
-  mediaType: string
+	icp: string
+	role: string
+	goal: string
+	customGoal?: string
+	questions: string[]
+	mediaType: string
 }
 
 type NewOnboardingData = {
-  target_orgs: string[]
-  target_roles: string[]
-  research_goal: string
-  research_goal_details?: string
-  assumptions?: string[]
-  unknowns?: string[]
-  custom_instructions?: string
-  questions: string[]
-  mediaType: string
+	target_orgs: string[]
+	target_roles: string[]
+	research_goal: string
+	research_goal_details?: string
+	assumptions?: string[]
+	unknowns?: string[]
+	custom_instructions?: string
+	questions: string[]
+	mediaType: string
 }
 
 type OnboardingData = LegacyOnboardingData | NewOnboardingData
@@ -95,29 +95,34 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.log("Starting onboarding for account:", teamAccountId, "project:", projectId)
 
 		// Normalize fields across legacy and new shapes
-		const primaryOrg = ("target_orgs" in onboardingData && onboardingData.target_orgs?.[0]) ||
+		const primaryOrg =
+			("target_orgs" in onboardingData && onboardingData.target_orgs?.[0]) ||
 			("icp" in onboardingData ? onboardingData.icp : "")
-		const primaryRole = ("target_roles" in onboardingData && onboardingData.target_roles?.[0]) ||
+		const primaryRole =
+			("target_roles" in onboardingData && onboardingData.target_roles?.[0]) ||
 			("role" in onboardingData ? onboardingData.role : "")
-		const researchGoal = ("research_goal" in onboardingData && onboardingData.research_goal) ||
+		const researchGoal =
+			("research_goal" in onboardingData && onboardingData.research_goal) ||
 			("goal" in onboardingData ? onboardingData.goal : "")
-		const researchGoalDetails = "research_goal_details" in onboardingData ? onboardingData.research_goal_details ?? "" : ""
-		const customInstructionsInput = "custom_instructions" in onboardingData ? onboardingData.custom_instructions : undefined
+		const researchGoalDetails =
+			"research_goal_details" in onboardingData ? (onboardingData.research_goal_details ?? "") : ""
+		const customInstructionsInput =
+			"custom_instructions" in onboardingData ? onboardingData.custom_instructions : undefined
 		const questionsInput = onboardingData.questions || []
 		const mediaTypeInput = onboardingData.mediaType
 
 		// 1. Use existing project or create new one if projectId not provided
 		let finalProjectId = projectId
 
-        if (!projectId) {
-            // Prefer signup-data derived values
-            let baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
-            let projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
-            try {
-                const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
-                baseProjectName = derived.name || baseProjectName
-                projectDescription = derived.description || projectDescription
-            } catch {}
+		if (!projectId) {
+			// Prefer signup-data derived values
+			let baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
+			let projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
+			try {
+				const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
+				baseProjectName = derived.name || baseProjectName
+				projectDescription = derived.description || projectDescription
+			} catch {}
 
 			// Find available project name by checking for slug conflicts
 			let projectName = baseProjectName
@@ -126,12 +131,12 @@ export async function action({ request }: ActionFunctionArgs) {
 			let projectError = null
 
 			while (!project && attempt <= 10) {
-                const { data: createData, error: createError } = await createProject({
-                    supabase,
-                    data: {
-                        name: projectName,
-                        description: projectDescription,
-                        status: "active",
+				const { data: createData, error: createError } = await createProject({
+					supabase,
+					data: {
+						name: projectName,
+						description: projectDescription,
+						status: "active",
 						account_id: teamAccountId,
 					},
 				})

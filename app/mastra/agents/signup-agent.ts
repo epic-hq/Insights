@@ -20,10 +20,9 @@ export const AgentState = z.object({
 		.optional(),
 })
 
-
 export const signupAgent = new Agent({
-    name: "signupAgent",
-    instructions: `
+	name: "signupAgent",
+	instructions: `
       You are an onboarding assistant. Collect the user's answers one question at a time and keep the conversation moving with brief, friendly replies.
 
       Flow:
@@ -44,13 +43,13 @@ export const signupAgent = new Agent({
       Company:
       - If asked who we are, say: "I'm UpSight, an AI-powered user research platform that helps you understand your users and make data-driven decisions. I am part of DeepLight, a leading digital media and AI development agency."
 `,
-    model: openai("gpt-4o-mini"),
-    tools: {
-        // Validation guard to ensure the agent never prematurely completes
-        signupCompletionGuardTool,
-        // Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
-        saveUserSettingsDataTool,
-    },
+	model: openai("gpt-4o-mini"),
+	tools: {
+		// Validation guard to ensure the agent never prematurely completes
+		signupCompletionGuardTool,
+		// Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
+		saveUserSettingsDataTool,
+	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

@@ -8,13 +8,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 // Default component for cases where loader doesn't redirect immediately
 export default function LoginFailure() {
-    return (
-        <div className="flex h-screen items-center justify-center">
-            <div className="text-center">
-                <h2 className="font-semibold text-lg">Login failed...</h2>
-                <p className="text-gray-600">Please try again.</p>
+	return (
+		<div className="flex h-screen items-center justify-center">
+			<div className="text-center">
+				<h2 className="font-semibold text-lg">Login failed...</h2>
+				<p className="text-gray-600">Please try again.</p>
 				<Link to={"/login"}>Login</Link>
-            </div>
-        </div>
-    )
+			</div>
+		</div>
+	)
 }

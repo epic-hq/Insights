@@ -9,12 +9,12 @@ export function getSharedPostgresStore(): PostgresStore {
 		if (!connectionString) {
 			throw new Error("SUPABASE_DB_URL environment variable is required for PostgresStore")
 		}
-		
+
 		postgresStoreInstance = new PostgresStore({
 			connectionString,
 		})
 	}
-	
+
 	return postgresStoreInstance
 }
 

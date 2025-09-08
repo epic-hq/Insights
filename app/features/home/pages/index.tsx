@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Link, redirect, type LoaderFunctionArgs, useLoaderData, useRouteLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import { ProjectCard } from "~/features/projects/components/ProjectCard"
 import { getProjects } from "~/features/projects/db"

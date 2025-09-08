@@ -22,7 +22,7 @@ interface AISuggestion {
 }
 
 export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotProps) {
-	const [selectedQuestions, setSelectedQuestions] = useState<{id: string, text: string}[]>([])
+	const [selectedQuestions, setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
 	const [isRecording, setIsRecording] = useState(false)
 	const [captions, setCaptions] = useState<string[]>([])
 	const [currentCaption, setCurrentCaption] = useState("")
@@ -36,15 +36,15 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			if (!interviewId || !notes.trim()) return
 			try {
 				const { error } = await supabase
-					.from('interviews')
+					.from("interviews")
 					.update({ observations_and_notes: notes })
-					.eq('id', interviewId)
-				
+					.eq("id", interviewId)
+
 				if (error) {
-					consola.error('Error saving interview notes:', error)
+					consola.error("Error saving interview notes:", error)
 				}
 			} catch (error) {
-				consola.error('Error saving interview notes:', error)
+				consola.error("Error saving interview notes:", error)
 			}
 		},
 		[interviewId, supabase]
@@ -55,30 +55,28 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		async (suggestion: AISuggestion) => {
 			if (!interviewId) return
 			try {
-				const { error } = await supabase
-					.from('annotations')
-					.insert({
-						entity_type: 'interview',
-						entity_id: interviewId,
-						project_id: projectId,
-						annotation_type: 'ai_suggestion',
-						content: suggestion.text,
-						metadata: {
-							suggestion_type: suggestion.type,
-							confidence: suggestion.confidence,
-							timestamp: suggestion.timestamp.toISOString(),
-						},
-						created_by_ai: true,
-						ai_model: 'copilot',
-						status: 'active',
-						visibility: 'team'
-					})
-				
+				const { error } = await supabase.from("annotations").insert({
+					entity_type: "interview",
+					entity_id: interviewId,
+					project_id: projectId,
+					annotation_type: "ai_suggestion",
+					content: suggestion.text,
+					metadata: {
+						suggestion_type: suggestion.type,
+						confidence: suggestion.confidence,
+						timestamp: suggestion.timestamp.toISOString(),
+					},
+					created_by_ai: true,
+					ai_model: "copilot",
+					status: "active",
+					visibility: "team",
+				})
+
 				if (error) {
-					consola.error('Error saving AI suggestion:', error)
+					consola.error("Error saving AI suggestion:", error)
 				}
 			} catch (error) {
-				consola.error('Error saving AI suggestion:', error)
+				consola.error("Error saving AI suggestion:", error)
 			}
 		},
 		[interviewId, projectId, supabase]
@@ -90,24 +88,24 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			if (!interviewId) return
 			try {
 				const { data, error } = await supabase
-					.from('interviews')
-					.select('observations_and_notes')
-					.eq('id', interviewId)
+					.from("interviews")
+					.select("observations_and_notes")
+					.eq("id", interviewId)
 					.single()
-				
+
 				if (error) {
-					consola.error('Error loading interview notes:', error)
+					consola.error("Error loading interview notes:", error)
 					return
 				}
-				
+
 				if (data?.observations_and_notes) {
 					setInterviewNotes(data.observations_and_notes)
 				}
 			} catch (error) {
-				consola.error('Error loading interview notes:', error)
+				consola.error("Error loading interview notes:", error)
 			}
 		}
-		
+
 		loadInterviewNotes()
 	}, [interviewId, supabase])
 
@@ -118,7 +116,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				saveInterviewNotes(interviewNotes)
 			}
 		}, 1000) // Save after 1 second of inactivity
-		
+
 		return () => clearTimeout(timeoutId)
 	}, [interviewNotes, saveInterviewNotes])
 
@@ -132,22 +130,25 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		unknowns: ["What tools are most effective?", "How do different team sizes affect leadership?"],
 	})
 
-	const handleQuestionStatusChange = useCallback(async (_questionId: string, status: "proposed" | "asked" | "answered" | "skipped") => {
-		// Generate AI suggestion based on status
-		if (status === "answered") {
-			const suggestion: AISuggestion = {
-				id: `suggestion_${Date.now()}`,
-				type: "follow_up",
-				text: "Great answer! Consider asking: 'Can you give me a specific example of when this happened?'",
-				confidence: 0.85,
-				timestamp: new Date(),
+	const handleQuestionStatusChange = useCallback(
+		async (_questionId: string, status: "proposed" | "asked" | "answered" | "skipped") => {
+			// Generate AI suggestion based on status
+			if (status === "answered") {
+				const suggestion: AISuggestion = {
+					id: `suggestion_${Date.now()}`,
+					type: "follow_up",
+					text: "Great answer! Consider asking: 'Can you give me a specific example of when this happened?'",
+					confidence: 0.85,
+					timestamp: new Date(),
+				}
+				setAiSuggestions((prev) => [suggestion, ...prev.slice(0, 4)]) // Keep last 5
+
+				// Save AI suggestion as annotation
+				await saveAISuggestionAsAnnotation(suggestion)
 			}
-			setAiSuggestions((prev) => [suggestion, ...prev.slice(0, 4)]) // Keep last 5
-			
-			// Save AI suggestion as annotation
-			await saveAISuggestionAsAnnotation(suggestion)
-		}
-	}, [saveAISuggestionAsAnnotation])
+		},
+		[saveAISuggestionAsAnnotation]
+	)
 
 	const toggleRecording = useCallback(() => {
 		setIsRecording((prev) => !prev)
@@ -205,7 +206,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 
 		setAiSuggestions((prev) => [newSuggestion, ...prev.slice(0, 4)])
-		
+
 		// Save AI suggestion as annotation
 		await saveAISuggestionAsAnnotation(newSuggestion)
 	}, [saveAISuggestionAsAnnotation])

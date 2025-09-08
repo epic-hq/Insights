@@ -125,7 +125,6 @@ export async function getAnnotationsForEntity({
 	annotationType?: AnnotationType
 	includeThreads?: boolean
 }) {
-
 	try {
 		let query = supabase
 			.from("annotations")

@@ -31,20 +31,23 @@ export const mastra = new Mastra({
 		url: ":memory:",
 	}),
 	logger: new PinoLogger({
-		name: "Mastra",
+		name: "mastra",
 		level: "info",
 	}),
 	server: {
 		port: 4111,
 		middleware: [
 			async (c, next) => {
+				// Use lowercase header names (case-insensitive per spec; some adapters normalize to lowercase)
 				const user_id = c.req.header("x-userid")
+				consola.log("mastra_middleware user_id", user_id)
+				// consola.log("mastra_middleware headers	", c.req.raw)
+				consola.log("mastra_middleware body", await c.req.json())
 				const account_id = c.req.header("x-accountid")
 				const project_id = c.req.header("x-projectid")
 				const jwt = c.req.header("authorization")?.replace("Bearer ", "") // Extract JWT from Authorization header
 
 				const runtimeContext = c.get("runtimeContext") as RuntimeContext<UserContext>
-				consola.log("mastra_middleware")
 				// consola.log("mastra_account_id", account_id)
 				// consola.log("mastra_project_id", project_id)
 				// consola.log("mastra_jwt", jwt ? "present" : "missing")
@@ -53,6 +56,8 @@ export const mastra = new Mastra({
 				runtimeContext.set("account_id", account_id || "")
 				runtimeContext.set("project_id", project_id || "")
 				runtimeContext.set("jwt", jwt || "") // Add JWT to runtime context
+				consola.log("mastra_runtimeContext", runtimeContext.get("user_id"))
+
 				await next()
 			},
 		],

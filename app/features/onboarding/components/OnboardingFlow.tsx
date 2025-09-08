@@ -214,13 +214,7 @@ export default function OnboardingFlow({
 			)
 
 		case "complete":
-			return (
-				<ProjectStatusScreen
-					projectName={getProjectName()}
-					projectId={data.projectId}
-					accountId={accountId}
-				/>
-			)
+			return <ProjectStatusScreen projectName={getProjectName()} projectId={data.projectId} accountId={accountId} />
 
 		default:
 			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />

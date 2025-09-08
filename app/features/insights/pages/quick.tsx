@@ -51,7 +51,7 @@ export default function QuickInsights() {
 	)
 
 	return (
-		<div className="min-h-screen bg-background p-3 sm:p-4 text-foreground">
+		<div className="min-h-screen bg-background p-3 text-foreground sm:p-4">
 			<div className="mb-4 flex items-center">
 				<Search className="mr-2 h-5 w-5 text-muted-foreground" />
 				<Input placeholder="Search insights…" value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} />

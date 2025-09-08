@@ -32,17 +32,22 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 
 	// Listen for auth state changes to handle successful login
 	useEffect(() => {
-		const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
+		const {
+			data: { subscription },
+		} = supabase.auth.onAuthStateChange(async (event, session) => {
 			consola.log("[AUTH STATE CHANGE]", event, "isLoginAttempt:", isLoginAttempt.current)
-			
+
 			// Only redirect on SIGNED_IN if we're actively attempting to login
 			// This prevents auto-redirect when user lands on login page with existing session
-			if (event === 'SIGNED_IN' && isLoginAttempt.current) {
+			if (event === "SIGNED_IN" && isLoginAttempt.current) {
 				// Use secure getUser() instead of session data for security
-				const { data: { user }, error } = await supabase.auth.getUser()
-				
+				const {
+					data: { user },
+					error,
+				} = await supabase.auth.getUser()
+
 				if (user && !error) {
-					const targetUrl = '/home'
+					const targetUrl = "/home"
 					consola.log("[AUTH] Login successful, user authenticated, redirecting to:", targetUrl)
 					isLoginAttempt.current = false // Reset the flag
 					navigate(targetUrl)
@@ -50,7 +55,7 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 					consola.error("[AUTH] User authentication failed:", error)
 					isLoginAttempt.current = false // Reset the flag
 				}
-			} else if (event === 'SIGNED_OUT') {
+			} else if (event === "SIGNED_OUT") {
 				// Reset login attempt flag on sign out
 				isLoginAttempt.current = false
 			}
@@ -65,32 +70,32 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 	useEffect(() => {
 		const handleClick = (e: MouseEvent) => {
 			const target = e.target as HTMLElement
-			const button = target.closest('button')
-			const anchor = target.closest('a')
-			
+			const button = target.closest("button")
+			const anchor = target.closest("a")
+
 			// Handle auth button clicks (Sign in / Create account)
-			if (button && button.type === 'submit') {
+			if (button && button.type === "submit") {
 				const buttonText = button.textContent
-				if (buttonText && (buttonText.includes('Sign in') || buttonText.includes('Create account'))) {
+				if (buttonText && (buttonText.includes("Sign in") || buttonText.includes("Create account"))) {
 					consola.log("[AUTH] User clicked auth button:", buttonText)
 					isLoginAttempt.current = true
 				}
 			}
-			
+
 			// Handle navigation link clicks
 			if (anchor && anchor.textContent) {
 				if (anchor.textContent.includes("Don't have an account") || anchor.textContent.includes("Sign up")) {
 					e.preventDefault()
-					navigate('/register')
+					navigate("/register")
 				} else if (anchor.textContent.includes("Already have an account") || anchor.textContent.includes("Sign in")) {
 					e.preventDefault()
-					navigate('/login')
+					navigate("/login")
 				}
 			}
 		}
 
-		document.addEventListener('click', handleClick)
-		return () => document.removeEventListener('click', handleClick)
+		document.addEventListener("click", handleClick)
+		return () => document.removeEventListener("click", handleClick)
 	}, [navigate])
 
 	return (
