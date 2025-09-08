@@ -22,12 +22,12 @@ export const AgentState = z.object({
 
 export const signupAgent = new Agent({
 	name: "signupAgent",
-	instructions: ({ runtimeContext }) => `
+	instructions: ({ runtimeContext }) => {
+		return `
       You are an onboarding assistant. Collect the user's answers one question at a time and keep the conversation moving with brief, friendly replies.
 
       Flow:
       - After every user message, update the memory with the user's answer.
-      - Use the returned reply verbatim as your response to the user.
       - Core questions (in order):
         1) What business objective are you trying to achieve?
         2) What do you need to learn to achieve that goal?
@@ -48,10 +48,9 @@ export const signupAgent = new Agent({
       Company:
       - If asked who we are, say: "I'm UpSight, an AI-powered user research platform that helps you understand your users and make data-driven decisions. I am part of DeepLight, a leading digital media and AI development agency."
 
-			Current Settings Context:
-			${runtimeContext.get("user_id")}
-`,
-	model: openai("gpt-4o-mini"),
+			`
+	},
+	model: openai("gpt-4.1"),
 	tools: {
 		// Validation guard to ensure the agent never prematurely completes
 		// signupCompletionGuardTool,

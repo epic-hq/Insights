@@ -1,5 +1,5 @@
 import { CopilotKit, useCoAgent } from "@copilotkit/react-core"
-import { useEffect } from "react"
+import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import "@copilotkit/react-ui/styles.css"
@@ -25,6 +25,7 @@ import { createClient } from "~/lib/supabase/client"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
 import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
+import { cn } from "~/lib/utils"
 
 const memory = new Memory({
 	storage: getSharedPostgresStore(),
@@ -148,17 +149,22 @@ export default function SignupChat() {
 		mastraUrl,
 	} = useLoaderData() as any
 	const navigate = useNavigate()
-	const chatCompleted = Boolean(existingChatData?.completed || false)
+	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
+	const [onboardingData, setOnboardingData] = useState(existingChatData)
 	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
 	const supabase = createClient()
 
 	// If signup chat is not required, or it's already completed, send users home immediately.
 	useEffect(() => {
-		if (chatCompleted || !chatRequired) {
-			console.log("Redirecting to /home")
-			navigate("/home")
+		// if (!chatRequired) {
+		// 	navigate("/home")
+		// } else if (chatCompleted) {
+		// 	navigate("/signup-chat/completed")
+		// }
+		if (chatCompleted) {
+			navigate("/signup-chat/completed")
 		}
-	}, [chatCompleted, chatRequired, navigate])
+	}, [chatCompleted, navigate])
 
 	useEffect(() => {
 		if (!user?.sub) return
@@ -171,8 +177,11 @@ export default function SignupChat() {
 				(payload) => {
 					console.log("payload", payload)
 					try {
+						setOnboardingData((payload.new as any)?.signup_data)
 						const completed = (payload.new as any)?.signup_data?.completed === true
-						if (completed) navigate("/home")
+						if (completed) {
+							setChatCompleted(true)
+						}
 					} catch {}
 				}
 			)
@@ -184,76 +193,77 @@ export default function SignupChat() {
 	}, [supabase, user?.sub, navigate])
 
 	// If chat is already completed, show completion message
-	if (chatCompleted) {
-		return (
-			<>
-				<style dangerouslySetInnerHTML={{ __html: progressStyles }} />
-				<div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
-					{/* Header */}
-					<header className="border-gray-200 border-b bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
-						<div className="mx-auto flex max-w-2xl items-center justify-between">
-							<Link
-								to="/home"
-								className="flex items-center gap-2 text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
-							>
-								<ArrowLeft className="h-5 w-5" />
-								Back
-							</Link>
-							<div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
-								<CheckCircle className="h-4 w-4 text-green-500" />
-								<span className="text-gray-700 text-sm dark:text-gray-300">Complete</span>
-							</div>
-						</div>
-					</header>
+	// Moved to chat-completed.tsx
+	// if (chatCompleted) {
+	// 	return (
+	// 		<>
+	// 			<style dangerouslySetInnerHTML={{ __html: progressStyles }} />
+	// 			<div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
+	// 				{/* Header */}
+	// 				<header className="border-gray-200 border-b bg-white px-4 py-4 dark:border-gray-800 dark:bg-gray-900">
+	// 					<div className="mx-auto flex max-w-2xl items-center justify-between">
+	// 						<Link
+	// 							to="/home"
+	// 							className="flex items-center gap-2 text-gray-600 transition-colors hover:text-gray-900 dark:text-gray-400 dark:hover:text-gray-100"
+	// 						>
+	// 							<ArrowLeft className="h-5 w-5" />
+	// 							Back
+	// 						</Link>
+	// 						<div className="flex items-center gap-2 rounded-full bg-gray-100 px-3 py-1 dark:bg-gray-800">
+	// 							<CheckCircle className="h-4 w-4 text-green-500" />
+	// 							<span className="text-gray-700 text-sm dark:text-gray-300">Complete</span>
+	// 						</div>
+	// 					</div>
+	// 				</header>
 
-					{/* Progress Bar */}
-					{/* <div className="border-gray-200 border-b bg-white dark:border-gray-800 dark:bg-gray-900">
-						<div className="mx-auto max-w-2xl px-4">
-							<div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-								<div className="h-full w-full rounded-full bg-purple-500" />
-							</div>
-						</div>
-					</div> */}
+	// 				{/* Progress Bar */}
+	// 				{/* <div className="border-gray-200 border-b bg-white dark:border-gray-800 dark:bg-gray-900">
+	// 					<div className="mx-auto max-w-2xl px-4">
+	// 						<div className="h-2 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+	// 							<div className="h-full w-full rounded-full bg-purple-500" />
+	// 						</div>
+	// 					</div>
+	// 				</div> */}
 
-					{/* Main Content */}
-					<main className="flex flex-1 items-center justify-center px-4 py-16">
-						<div className="w-full max-w-lg text-center">
-							<div className="mb-8">
-								<CheckCircle className="mx-auto mb-6 h-16 w-16 text-green-500" />
-								<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-white">Welcome to UpSight!</h1>
-								<p className="mb-2 text-gray-600 text-lg leading-relaxed dark:text-gray-300">Let's go!</p>
-							</div>
+	// 				{/* Main Content */}
+	// 				<main className="flex flex-1 items-center justify-center px-4 py-16">
+	// 					<div className="w-full max-w-lg text-center">
+	// 						<div className="mb-8">
+	// 							<CheckCircle className="mx-auto mb-6 h-16 w-16 text-green-500" />
+	// 							<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-white">Welcome to UpSight!</h1>
+	// 							<p className="mb-2 text-gray-600 text-lg leading-relaxed dark:text-gray-300">Let's go!</p>
+	// 						</div>
 
-							{/* Auto-redirect indicator */}
-							<div className="mb-8">
-								<p className="mb-3 text-gray-500 text-sm dark:text-gray-400">Redirecting to home in 3 seconds...</p>
-								<div className="mx-auto h-1 w-48 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
-									<div
-										className="h-full rounded-full bg-purple-500"
-										style={{ animation: "progress 3s linear forwards" }}
-									/>
-								</div>
-							</div>
+	// 						{/* Auto-redirect indicator */}
+	// 						<div className="mb-8">
+	// 							<p className="mb-3 text-gray-500 text-sm dark:text-gray-400">Redirecting to home in 3 seconds...</p>
+	// 							<div className="mx-auto h-1 w-48 overflow-hidden rounded-full bg-gray-200 dark:bg-gray-700">
+	// 								<div
+	// 									className="h-full rounded-full bg-purple-500"
+	// 									style={{ animation: "progress 3s linear forwards" }}
+	// 								/>
+	// 							</div>
+	// 						</div>
 
-							{/* Action Button */}
-							<Link
-								to="/home"
-								className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-8 py-4 font-semibold text-white transition-all hover:bg-purple-700 hover:shadow-lg"
-							>
-								<ArrowRight className="h-5 w-5" />
-								Get Started Now
-							</Link>
-							<div className="mt-3">
-								<Link to="/signup-chat?restart=1" className="text-gray-500 text-xs underline">
-									Start over (capture fresh answers)
-								</Link>
-							</div>
-						</div>
-					</main>
-				</div>
-			</>
-		)
-	}
+	// 						{/* Action Button */}
+	// 						<Link
+	// 							to="/home"
+	// 							className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-8 py-4 font-semibold text-white transition-all hover:bg-purple-700 hover:shadow-lg"
+	// 						>
+	// 							<ArrowRight className="h-5 w-5" />
+	// 							Get Started Now
+	// 						</Link>
+	// 						<div className="mt-3">
+	// 							<Link to="/signup-chat?restart=1" className="text-gray-500 text-xs underline">
+	// 								Start over (capture fresh answers)
+	// 							</Link>
+	// 						</div>
+	// 					</div>
+	// 				</main>
+	// 			</div>
+	// 		</>
+	// 	)
+	// }
 
 	return (
 		<div className="flex min-h-screen flex-col bg-gray-50 dark:bg-gray-900">
@@ -284,13 +294,13 @@ export default function SignupChat() {
 			</div> */}
 
 			{/* Main Content */}
-			<main className="flex flex-1 flex-col">
+			<main className="flex flex-1 flex-col min-h-0">
 				{/* <AiSdkChat /> */}
 				<CopilotKit
 					agent="signupAgent"
 					threadId={threadId}
-					runtimeUrl={mastraUrl}
-					// runtimeUrl={`http://localhost:4111/copilotkit/signup`}
+					// runtimeUrl={mastraUrl}
+					runtimeUrl={`http://0.0.0.0:4111/copilotkit/signup`}
 					// runtimeUrl={copilotRuntimeUrl}
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
 					showDevConsole={false}
@@ -300,8 +310,8 @@ export default function SignupChat() {
 						"X-ProjectId": String(""),
 					}}
 				>
-					<div className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-						<ChatWithChecklist existingChatData={existingChatData} messages={loaderMessages} />
+					<div className="w-full h-full flex-1 min-h-0 p-0">
+						<ChatWithChecklist existingChatData={onboardingData} messages={loaderMessages} />
 					</div>
 				</CopilotKit>
 			</main>
@@ -410,13 +420,6 @@ function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: 
 	// Legacy component - keeping for backwards compatibility
 	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
-		config: {
-			headers: {
-				"X-UserId": String("test-user-id"),
-				"X-AccountId": String("test-account-id"),
-				"X-ProjectId": String("test-project-id"),
-			},
-		},
 	})
 	const { messages: copilotMessages, setMessages } = useCopilotMessagesContext()
 	console.log("messages", messages)
@@ -426,9 +429,10 @@ function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: 
 	// }, [messages])
 
 	return (
-		<div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-3">
-			<div className="col-span-2 rounded-lg bg-white shadow-xl dark:bg-gray-800">
+		<div className="flex flex-1 flex-col w-full h-full min-h-0">
+			<div className={cn("rounded-lg bg-white shadow-xl dark:bg-gray-800 w-full h-full flex-1 min-h-0")}>
 				<CopilotChat
+					className="w-full h-full min-h-0"
 					labels={{
 						title: "UpSight Signup Chat",
 						initial:
@@ -437,9 +441,9 @@ function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: 
 				/>
 			</div>
 			{process.env.NODE_ENV === "development" && (
-				<div className="col-span-1">
-					Development:
-					<JsonDataCard title="Signup Data" jsonData={state?.signupChatData} />
+				<div className="">
+					{/* Development: */}
+					<JsonDataCard title="Signup Data" jsonData={existingChatData} />
 				</div>
 			)}
 		</div>
