@@ -148,6 +148,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			custom_instructions,
 		})
 
+		// Helper: sanitize square‑bracket placeholders that sometimes slip through LLMs
+		const sanitizeQuestion = (text: string): string => {
+			let t = String(text || "")
+			// Replace any [placeholder] with a neutral pronoun
+			t = t.replace(/\[[^\]]+\]/g, "this")
+			// Normalize multiple spaces and spaces before punctuation
+			t = t.replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim()
+			return t
+		}
+
 		// Try canonical BAML QuestionSet generation; on validation failure, fall back.
 		let questionSet: any
 		const computedSessionId = `session_${Date.now()}`
@@ -171,6 +181,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				per_category_max: 3,
 				interview_time_limit,
 			})
+
+			// Sanitize canonical output to remove any placeholders
+			if (Array.isArray(questionSet?.questions)) {
+				questionSet.questions = questionSet.questions.map((q: any) => ({
+					...q,
+					text: sanitizeQuestion(q.text),
+				}))
+			}
 
 			// If canonical returns fewer than requested, top up via fallback suggestions
 			try {
@@ -198,7 +216,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 					const toQuestion = (categoryId: string) => (q: any, idx: number) => ({
 						id: randomUUID(),
-						text: q.question,
+						text: sanitizeQuestion(q.question),
 						categoryId,
 						rationale: q.rationale || undefined,
 						tags: [],
@@ -285,7 +303,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 			const toQuestion = (categoryId: string) => (q: any, idx: number) => ({
 				id: randomUUID(),
-				text: q.question,
+				text: sanitizeQuestion(q.question),
 				categoryId,
 				rationale: q.rationale || undefined,
 				tags: [],

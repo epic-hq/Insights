@@ -15,6 +15,44 @@ test GenerateQuestionSet_Pizza_Needs {
 		per_category_max 3
 		interview_time_limit 30
   }
+} 
+
+test GenerateQuestionSet_Salon_Scheduling {
+  functions [GenerateQuestionSet]
+  args { inputs {
+    target_org "Independent salons and neighborhood barbershops"
+    target_roles "Salon owners, Barbers, Front-desk staff"
+    research_goal "Improve appointment scheduling and reduce no‑shows"
+    research_goal_details "Explore booking flow, reminders, walk‑ins vs. appointments, and peak‑time bottlenecks"
+    assumptions "SMS reminders reduce no‑shows; most rescheduling happens within 24 hours"
+    unknowns "Where do booking mistakes happen? Which reminders actually get noticed? How do walk‑ins impact schedule?"
+    custom_instructions "Avoid placeholders; keep questions conversational and specific to salons and barbers."
+    session_id "test_salon_sched_001"
+    round 1
+    total_per_round 8
+    per_category_min 1
+    per_category_max 3
+    interview_time_limit 30
+  } }
+}
+
+test GenerateQuestionSet_Journaling_Moms {
+  functions [GenerateQuestionSet]
+  args { inputs {
+    target_org "Consumer mobile apps (wellness & journaling)"
+    target_roles "Moms of young kids, Caregivers"
+    research_goal "Understand journaling habits, constraints, and motivations for busy moms"
+    research_goal_details "When/where they journal, prompts that help, barriers (time/energy), privacy needs, notifications"
+    assumptions "Short prompts lower friction; voice capture helps when hands are busy"
+    unknowns "Which moments are most journal‑worthy? What keeps streaks going? What feels intrusive?"
+    custom_instructions "Friendly tone. No template brackets. Prefer ‘Tell me about…’ and ‘Walk me through…’ when helpful."
+    session_id "test_journaling_moms_001"
+    round 1
+    total_per_round 10
+    per_category_min 1
+    per_category_max 3
+    interview_time_limit 45
+  } }
 }
 
 test GenerateQuestionSet_SaaS_Willingness {

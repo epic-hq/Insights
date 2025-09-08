@@ -419,6 +419,7 @@ function GenerateQuestionSet(
     8) New questions must have status 'proposed'.
     9) Use unique string IDs for questions (uuid/ulid-like).
     10) Sound like a human talking to another human, not a researcher conducting an interview.
+    11) Do NOT use placeholders or template tokens like [relevant process], <thing>, {something}. If specifics are missing, write a complete, neutral phrase without brackets. The final question text must not contain '[' or ']'.
 
   OUTPUT SHAPE
   Return only valid JSON matching QuestionSet:
@@ -443,6 +444,9 @@ function GenerateQuestionSet(
   - policy.perCategoryMax = {{ inputs.per_category_max }}
   - policy.dedupeWindowRounds = 2
   - policy.balanceBy = ["category","novelty"]
+
+  HARD CONSTRAINTS
+  - No placeholders or bracketed variables in any question text.
 
   Return JSON only:
   {{ ctx.output_format }}

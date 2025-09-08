@@ -96,11 +96,14 @@ const routes = [
 	route("api/test-generate-themes", "./routes/api/test-generate-themes.tsx"),
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
-
+	route("api/improve-question", "./routes/api.improve-question.tsx"),
+	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("healthcheck", "./routes/healthcheck.ts"),
+	route("apple-touch-icon.png", "./routes/apple-touch-icon[.]png.ts"),
+	route("apple-touch-icon-precomposed.png", "./routes/apple-touch-icon-precomposed[.]png.ts"),
 
 	// Test routes
 	route("team", "./features/accounts/pages/team.tsx"),

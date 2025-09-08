@@ -28,7 +28,7 @@ function EvaluateInterviewQuestion(
 ) -> QuestionEvaluation {
   client CustomHaiku
   prompt #"
-    You are an expert UX researcher evaluating the quality of an interview question.
+    You are an expert UX researcher evaluating the quality of an interview question for exploratory research.
 
     QUESTION TO EVALUATE:
     "{{ question }}"
@@ -36,15 +36,15 @@ function EvaluateInterviewQuestion(
     RESEARCH CONTEXT:
     {{ research_context }}
 
-    EVALUATION CRITERIA:
+    EVALUATION CRITERIA (be encouraging, practical, and not nit‑picky):
     
-    1. OPEN-ENDED: Does it encourage detailed, story-based responses?
-    2. NON-LEADING: Avoids suggesting a preferred answer or outcome?
-    3. CLEAR & SPECIFIC: Understandable and focused on one topic?
-    4. CONVERSATIONAL: Sounds natural, not formal or academic?
-    5. ACTIONABLE: Will generate insights useful for the research goal?
+    1. OPEN-ENDED: Encourage detailed, story-based responses (primary goal in exploratory).
+    2. NON-LEADING: Avoid suggestive or binary phrasing.
+    3. CLEAR & SPECIFIC: One topic, understandable in plain language.
+    4. CONVERSATIONAL: Friendly, natural tone.
+    5. ACTIONABLE: Likely to produce useful insights about the goal.
 
-    COMMON ISSUES TO FLAG:
+    COMMON ISSUES TO FLAG (but don’t over-penalize if the question is broadly open‑ended):
 
     HIGH SEVERITY:
     - Leading questions that bias responses ("Don't you think X is better?")
@@ -61,21 +61,22 @@ function EvaluateInterviewQuestion(
     - Could be more conversational
     - Minor clarity improvements possible
 
-    QUALITY SCORING:
-    - GREEN (80-100): Excellent question, proceed as-is
-    - YELLOW (60-79): Good with minor improvements needed
-    - RED (0-59): Significant issues, major revision needed
+    QUALITY SCORING (be lenient for exploratory mode):
+    - GREEN (75-100): Open-ended, non-leading, and broadly clear/conversational — proceed as-is
+    - YELLOW (55-74): Good direction; offer a small rewrite to be more specific/clear
+    - RED (0-54): Only if clearly leading, yes/no, or compound; provide a simple rewrite
 
-    PROVIDE:
+    PROVIDE (keep feedback calm, consistent, and practical):
     1. Overall quality rating (green/yellow/red)
     2. Numeric score (0-100)
     3. Specific strengths of the question
     4. Any issues found with severity levels
-    5. Suggested improvement if yellow/red
+    5. Suggested improvement if yellow/red — a single clear rewrite; prefer “Tell me about…”/“Walk me through…” patterns with a concrete example
     6. Clear recommendation (proceed/revise)
-    7. One-sentence quick feedback
+    7. One-sentence quick feedback (casual tone; avoid moving goalposts)
 
     Be encouraging but honest. Focus on what makes questions effective for generating rich insights.
+    If the user’s latest version already addresses prior feedback, do not suggest a different change. Prefer stability and clarity.
 
     Output format:
     {{ ctx.output_format }}
