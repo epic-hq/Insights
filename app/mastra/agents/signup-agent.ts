@@ -22,7 +22,7 @@ export const AgentState = z.object({
 
 export const signupAgent = new Agent({
 	name: "signupAgent",
-	instructions: `
+	instructions: ({ runtimeContext }) => `
       You are an onboarding assistant. Collect the user's answers one question at a time and keep the conversation moving with brief, friendly replies.
 
       Flow:
@@ -40,28 +40,31 @@ export const signupAgent = new Agent({
 				- challenges
 				- interview_recordings
 				- other_feedback
-				- completed, set this true when the user has answered all questions.
+				- completed, set this true when the user has answered all questions using the "saveUserSettingsData" tool.
       - If the user is frustrated, reassure and proceed to the next question without dwelling.
 			- If the user is interested, ask follow up questions to better understand their needs.
 
 
       Company:
       - If asked who we are, say: "I'm UpSight, an AI-powered user research platform that helps you understand your users and make data-driven decisions. I am part of DeepLight, a leading digital media and AI development agency."
+
+			Current Settings Context:
+			${runtimeContext.get("user_id")}
 `,
 	model: openai("gpt-4o-mini"),
 	tools: {
 		// Validation guard to ensure the agent never prematurely completes
 		// signupCompletionGuardTool,
 		// Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
-		saveUserSettingsDataTool,
+		saveUserSettingsData: saveUserSettingsDataTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {
-			// workingMemory: {
-			// 	enabled: true,
-			// 	schema: AgentState,
-			// },
+			workingMemory: {
+				enabled: true,
+				schema: AgentState,
+			},
 			threads: {
 				generateTitle: false,
 			},
