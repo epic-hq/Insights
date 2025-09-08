@@ -41,6 +41,7 @@ export const mastra = new Mastra({
 				// Use lowercase header names (case-insensitive per spec; some adapters normalize to lowercase)
 				const user_id = c.req.header("x-userid")
 				consola.log("mastra_middleware user_id", user_id)
+				consola.log("mastra_middleware headers", c.req.header())
 				// consola.log("mastra_middleware headers	", c.req.raw)
 				consola.log("mastra_middleware body", await c.req.json())
 				const account_id = c.req.header("x-accountid")
