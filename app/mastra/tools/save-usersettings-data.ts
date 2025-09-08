@@ -1,12 +1,13 @@
 import { createTool } from "@mastra/core/tools"
 import { createClient } from "@supabase/supabase-js"
+import consola from "consola"
 import { z } from "zod"
 
 export const saveUserSettingsDataTool = createTool({
 	id: "save-user-settings-data",
 	description: "Save user signup chat data to user_settings",
 	inputSchema: z.object({
-		user_id: z.string().describe("User ID").optional(),
+		// user_id: z.string().describe("User ID").optional(),
 		problem: z.string().describe("Business objective or problem to solve"),
 		challenges: z.string().describe("Challenges in getting answers"),
 		content_types: z.string().describe("Content types to analyze"),
@@ -26,9 +27,12 @@ export const saveUserSettingsDataTool = createTool({
 			})
 			.optional(),
 	}),
-	execute: async ({ context }) => {
+	execute: async ({ context, runtimeContext }) => {
 		try {
-			const { user_id, problem, challenges, content_types, other_feedback, completed } = context
+			consola.log("runtimeContext", runtimeContext)
+			consola.log("runtimeContext user_id", runtimeContext.get("user_id"))
+			const user_id = runtimeContext.get("user_id")
+			const { problem, challenges, content_types, other_feedback, completed } = context
 
 			if (!user_id) {
 				return {

@@ -45,5 +45,8 @@
 		"editor.defaultFormatter": "biomejs.biome"
 	},
 	"deno.enable": false,
-	"scm.countBadge": "all"
+	"scm.countBadge": "all",
+	"[typescript]": {
+		"editor.defaultFormatter": "vscode.typescript-language-features"
+	}
 }

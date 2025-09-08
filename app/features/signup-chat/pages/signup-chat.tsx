@@ -3,6 +3,8 @@ import { useEffect } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import "@copilotkit/react-ui/styles.css"
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport } from "ai"
 
 // Add custom CSS for progress animation
 const progressStyles = `
@@ -12,7 +14,9 @@ const progressStyles = `
 }
 `
 
+import { useCopilotMessagesContext } from "@copilotkit/react-core"
 import { CopilotChat } from "@copilotkit/react-ui"
+import { Memory } from "@mastra/memory"
 import consola from "consola"
 import { ArrowLeft, ArrowRight, CheckCircle, Mic } from "lucide-react"
 import type { z } from "zod"
@@ -20,6 +24,11 @@ import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
 import { createClient } from "~/lib/supabase/client"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
+import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
+
+const memory = new Memory({
+	storage: getSharedPostgresStore(),
+})
 
 type AgentState = z.infer<typeof SignupAgentState>
 
@@ -50,10 +59,50 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
 	const existingChatData = userSettings?.signup_data as AgentState
 
+	// Basic usage with default parameters
+	const result = await memory.getThreadsByResourceIdPaginated({
+		resourceId: `signupAgent-${user.sub}`,
+		orderBy: "createdAt",
+		sortDirection: "DESC",
+		page: 0,
+		perPage: 100,
+	})
+
+	consola.log("Result: ", result)
+	let threadId = ""
+
+	if (!(result?.total > 0)) {
+		const newThread = await memory.createThread({
+			resourceId: `signupAgent-${user.sub}`,
+			title: "Signup Chat",
+			metadata: {
+				user_id: user.sub,
+			},
+		})
+		consola.log("New thread created: ", newThread)
+		threadId = newThread.id
+	} else {
+		threadId = result.threads[0].id
+	}
+
+	// Get messages in the V2 format (roughly equivalent to AI SDK's UIMessage format)
+	// const messagesV2 = await mastra.getStorage()?.getMessages({ threadId: threadId, resourceId: `signupAgent-${user.sub}`, format: 'v2' });
+	const { messages, uiMessages, messagesV2 } = await memory.query({
+		threadId: threadId,
+		selectBy: {
+			last: 50,
+		},
+	})
+	consola.log("Messages: ", messages)
+
 	return data({
 		user,
 		existingChatData,
 		copilotRuntimeUrl: "/api/copilotkit",
+		mastraUrl: `${process.env.MASTRA_URL}/copilotkit/signup`,
+		result,
+		messages: messagesV2,
+		threadId,
 	})
 }
 
@@ -90,13 +139,18 @@ export async function action({ request }: ActionFunctionArgs) {
 
 export default function SignupChat() {
 	const { clientEnv } = useRouteLoaderData("root")
-	const { existingChatData, copilotRuntimeUrl, user } = useLoaderData() as any
+	const {
+		existingChatData,
+		copilotRuntimeUrl,
+		user,
+		threadId,
+		messages: loaderMessages,
+		mastraUrl,
+	} = useLoaderData() as any
 	const navigate = useNavigate()
 	const chatCompleted = Boolean(existingChatData?.completed || false)
 	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
 	const supabase = createClient()
-
-	console.log("ClientEnv: ", clientEnv, chatCompleted, chatRequired)
 
 	// If signup chat is not required, or it's already completed, send users home immediately.
 	useEffect(() => {
@@ -108,12 +162,14 @@ export default function SignupChat() {
 
 	useEffect(() => {
 		if (!user?.sub) return
+		console.log("attempting supabase connect for user", user)
 		const channel = supabase
 			.channel("signup_data_watch")
 			.on(
 				"postgres_changes",
 				{ event: "UPDATE", schema: "public", table: "user_settings", filter: `user_id=eq.${user.sub}` },
 				(payload) => {
+					console.log("payload", payload)
 					try {
 						const completed = (payload.new as any)?.signup_data?.completed === true
 						if (completed) navigate("/home")
@@ -229,9 +285,13 @@ export default function SignupChat() {
 
 			{/* Main Content */}
 			<main className="flex flex-1 flex-col">
+				{/* <AiSdkChat /> */}
 				<CopilotKit
 					agent="signupAgent"
-					runtimeUrl={copilotRuntimeUrl}
+					threadId={threadId}
+					runtimeUrl={mastraUrl}
+					// runtimeUrl={`http://localhost:4111/copilotkit/signup`}
+					// runtimeUrl={copilotRuntimeUrl}
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
 					showDevConsole={false}
 					headers={{
@@ -241,7 +301,7 @@ export default function SignupChat() {
 					}}
 				>
 					<div className="mx-auto w-full max-w-2xl flex-1 px-4 py-8">
-						<ChatWithChecklist existingChatData={existingChatData} />
+						<ChatWithChecklist existingChatData={existingChatData} messages={loaderMessages} />
 					</div>
 				</CopilotKit>
 			</main>
@@ -253,7 +313,7 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 	// Use the agent state inside the CopilotKit context (from @copilotkit/react-core)
 	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
-		// initialState: existingChatData,
+		initialState: existingChatData,
 	})
 
 	useEffect(() => {
@@ -323,11 +383,47 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 	)
 }
 
-function ChatWithChecklist({ existingChatData }: { existingChatData?: any }) {
+function AiSdkChat() {
+	const { error, status, sendMessage, messages, regenerate, stop } = useChat({
+		transport: new DefaultChatTransport({
+			api: "http://localhost:4111/chat/signup",
+		}),
+	})
+
+	return (
+		<div>
+			<button onClick={() => sendMessage({ text: "Hello" })}>Send</button>
+			<div>{status}</div>
+			{messages.map((message) => {
+				switch (message.role) {
+					case "user":
+						return <div key={message.id}>{message.parts.map((part) => part).join("")}</div>
+					case "assistant":
+						return <div key={message.id}>{message.parts.map((part) => part).join("")}</div>
+				}
+			})}
+		</div>
+	)
+}
+
+function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: any; messages?: any }) {
 	// Legacy component - keeping for backwards compatibility
 	const { state } = useCoAgent<AgentState>({
 		name: "signupAgent",
+		config: {
+			headers: {
+				"X-UserId": String("test-user-id"),
+				"X-AccountId": String("test-account-id"),
+				"X-ProjectId": String("test-project-id"),
+			},
+		},
 	})
+	const { messages: copilotMessages, setMessages } = useCopilotMessagesContext()
+	console.log("messages", messages)
+
+	// useEffect(() => {
+	// 	setMessages(messages)
+	// }, [messages])
 
 	return (
 		<div className="grid flex-1 grid-cols-1 gap-4 md:grid-cols-3">
