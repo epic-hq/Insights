@@ -69,6 +69,20 @@ export default function App({ loaderData }: Route.ComponentProps) {
 	const { lang, clientEnv } = loaderData
 	useChangeLanguage(lang)
 
+	// Normalize PostHog api_host to a fully-qualified URL
+	const normalizeHost = (host?: string) => {
+		if (!host) return undefined
+		let h = host.trim()
+		// Support protocol-relative and path-like inputs
+		if (h.startsWith("//")) h = `https:${h}`
+		if (!/^https?:\/\//i.test(h)) {
+			// remove any leading slashes and default to https
+			h = `https://${h.replace(/^\/+/, "")}`
+		}
+		// remove trailing slashes
+		return h.replace(/\/+$/, "")
+	}
+
 	// Make clientEnv available globally on window.env for polyEnv pattern
 	if (typeof window !== "undefined") {
 		window.env = clientEnv
@@ -78,15 +92,17 @@ export default function App({ loaderData }: Route.ComponentProps) {
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}
 			<ThemeProvider defaultTheme="light">
-				<PostHogProvider
-					apiKey={clientEnv.POSTHOG_KEY}
-					options={{
-						api_host: clientEnv.POSTHOG_HOST,
-						defaults: "2025-05-24",
-						capture_exceptions: true,
-						debug: import.meta.env.MODE === "development",
-					}}
-				>
+					<PostHogProvider
+						apiKey={clientEnv.POSTHOG_KEY}
+						options={{
+							api_host: normalizeHost(clientEnv.POSTHOG_HOST),
+							ui_host: "https://us.posthog.com",
+							defaults: "2025-05-24",
+							capture_exceptions: true,
+							debug: import.meta.env.MODE === "development",
+						}}
+					>
+
 					<NotificationProvider>
 						<Outlet />
 						<Toaster />

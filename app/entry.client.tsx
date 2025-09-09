@@ -1,7 +1,6 @@
 import i18next from "i18next"
 import LanguageDetector from "i18next-browser-languagedetector"
 import Backend from "i18next-http-backend"
-import { PostHogProvider } from "posthog-js/react"
 import { StrictMode, startTransition } from "react"
 import { hydrateRoot } from "react-dom/client"
 import { I18nextProvider, initReactI18next } from "react-i18next"
@@ -38,17 +37,9 @@ async function hydrate() {
 			document,
 			<I18nextProvider i18n={i18next}>
 				<StrictMode>
-					<PostHogProvider
-						apiKey={window.env?.POSTHOG_KEY}
-						options={{
-							api_host: window.env?.POSTHOG_HOST,
-							defaults: "2025-05-24",
-							capture_exceptions: true,
-							// debug: import.meta.env.MODE === "development",
-						}}
-					>
-						<HydratedRouter />
-					</PostHogProvider>
+
+					<HydratedRouter />
+
 				</StrictMode>
 			</I18nextProvider>
 		)
