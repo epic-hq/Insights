@@ -42,30 +42,14 @@ client<llm> CustomGPT5Mini {
   }
 }
 
-client<llm> CustomSonnet {
-  provider anthropic
-  options {
-    model "claude-3-5-sonnet-20241022"
-    api_key env.ANTHROPIC_API_KEY
-  }
-}
-
-
-client<llm> CustomHaiku {
-  provider anthropic
-  retry_policy Constant
-  options {
-    model "claude-3-haiku-20240307"
-    api_key env.ANTHROPIC_API_KEY
-  }
-}
+ 
 
 // https://docs.boundaryml.com/docs/snippets/clients/round-robin
 client<llm> CustomFast {
   provider round-robin
   options {
-    // This will alternate between the two clients
-    strategy [CustomGPT4oMini, CustomHaiku]
+    // This will alternate between openai clients only
+    strategy [CustomGPT4oMini, CustomGPT4oMini]
   }
 }
 

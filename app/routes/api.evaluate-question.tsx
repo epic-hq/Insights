@@ -1,22 +1,29 @@
 import type { ActionFunctionArgs } from "react-router"
 import { b } from "../../baml_client"
+import { getLangfuseClient } from "~/lib/langfuse"
 
 export const action = async ({ request }: ActionFunctionArgs) => {
-	try {
-		const { question, research_context } = await request.json()
+  const langfuse = getLangfuseClient()
+  const lfTrace = (langfuse as any).trace?.({ name: "api.evaluate-question" })
+  try {
+    const { question, research_context } = await request.json()
 
-		if (!question || typeof question !== "string") {
-			return Response.json({ error: "Question is required" }, { status: 400 })
-		}
+    if (!question || typeof question !== "string") {
+      return Response.json({ error: "Question is required" }, { status: 400 })
+    }
 
-		const evaluation = await b.EvaluateInterviewQuestion(
-			question.trim(),
-			research_context || "General user research interview"
-		)
-
-		return Response.json(evaluation)
-	} catch (error) {
-		console.error("Question evaluation error:", error)
-		return Response.json({ error: "Failed to evaluate question" }, { status: 500 })
-	}
+    const gen = lfTrace?.generation?.({ name: "baml.EvaluateInterviewQuestion" })
+    const evaluation = await b.EvaluateInterviewQuestion(
+      question.trim(),
+      research_context || "General user research interview",
+    )
+    gen?.update?.({ input: { question: question.trim(), research_context }, output: evaluation })
+    gen?.end?.()
+    return Response.json(evaluation)
+  } catch (error) {
+    console.error("Question evaluation error:", error)
+    return Response.json({ error: "Failed to evaluate question" }, { status: 500 })
+  } finally {
+    lfTrace?.end?.()
+  }
 }

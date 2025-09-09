@@ -2,11 +2,14 @@ import type { ActionFunctionArgs } from "react-router"
 import { b } from "baml_client"
 import { getServerClient } from "~/lib/supabase/server"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { getLangfuseClient } from "~/lib/langfuse"
 
 export async function action({ request }: ActionFunctionArgs) {
   if (request.method !== "POST") {
     return Response.json({ error: "Method not allowed" }, { status: 405 })
   }
+  const langfuse = getLangfuseClient()
+  const lfTrace = (langfuse as any).trace?.({ name: "api.improve-question" })
   try {
     const { question, project_id } = await request.json()
     if (!question || typeof question !== "string") {
@@ -31,12 +34,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
     // Prefer GPT‑4o‑mini for rewrite variety (friendlier + examples)
     let primary: string | null = null
+    const gen1 = lfTrace?.generation?.({ name: "baml.EvaluateQuestionSet" })
     try {
       const batch = await b.EvaluateQuestionSet([question], research_context)
+      gen1?.update?.({ input: { question, research_context }, output: batch })
       primary = batch?.evaluations?.[0]?.improvement?.suggested_rewrite || null
     } catch {
-      const evalResult = await b.EvaluateInterviewQuestion(question, research_context)
-      primary = evalResult?.improvement?.suggested_rewrite || null
+      gen1?.end?.({ level: "ERROR", statusMessage: "EvaluateQuestionSet failed" })
+      const gen2 = lfTrace?.generation?.({ name: "baml.EvaluateInterviewQuestion" })
+      try {
+        const evalResult = await b.EvaluateInterviewQuestion(question, research_context)
+        gen2?.update?.({ input: { question, research_context }, output: evalResult })
+        primary = evalResult?.improvement?.suggested_rewrite || null
+      } finally {
+        gen2?.end?.()
+      }
+    } finally {
+      gen1?.end?.()
     }
 
     // Provide up to 3 options (primary + open‑ended variants with context)
@@ -52,6 +66,8 @@ export async function action({ request }: ActionFunctionArgs) {
     return Response.json({ success: true, options: unique })
   } catch (error) {
     return Response.json({ error: "Failed to improve question" }, { status: 500 })
+  } finally {
+    lfTrace?.end?.()
   }
 }
 

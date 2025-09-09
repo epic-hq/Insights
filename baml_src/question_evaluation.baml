@@ -26,7 +26,7 @@ function EvaluateInterviewQuestion(
   question: string,
   research_context: string
 ) -> QuestionEvaluation {
-  client CustomHaiku
+  client CustomGPT4oMini
   prompt #"
     You are an expert UX researcher evaluating the quality of an interview question for exploratory research.
 
