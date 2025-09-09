@@ -10,7 +10,7 @@
     "execute": "tsx",
     "clean": "git clean -fdX --exclude=\"!.env\"",
     "script": "tsx scripts/setup.ts",
-    "build": "pnpm run baml-generate && react-router build",
+    "build": "export NODE_OPTIONS=--max-old-space-size=4096; pnpm run baml-generate && react-router build",
     "dev:vite": "PORT=4280 dotenvx run -- react-router dev",
     "dev": "concurrently -n \"Vite,Mastra\" --c green,cyan \"pnpm run dev:vite\" \"pnpm run dev:mastra\"",
     "dev:mastra": "dotenvx run -- npx mastra dev --dir app/mastra",

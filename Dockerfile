@@ -18,6 +18,7 @@ FROM base AS build
 # OS build deps only here (kept out of final image)
 RUN apt-get update && apt-get install -y --no-install-recommends python3 make g++ \
   && rm -rf /var/lib/apt/lists/*
+ENV NODE_OPTIONS=--max-old-space-size=4096
 COPY package.json pnpm-lock.yaml ./
 # Install all deps (including dev deps for build)
 RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \

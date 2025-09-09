@@ -3,10 +3,9 @@ import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { getInsights } from "~/features/insights/db"
+import { getLangfuseClient } from "~/lib/langfuse"
 import type { SupabaseClient } from "~/types"
 import { llmAgent } from "../agents/llmAgent"
-import { getLangfuseClient } from "~/lib/langfuse"
-import { getLangfuseClient } from "~/lib/langfuse"
 
 // FLOW: get insights, analyze, recommend & get user choice
 
@@ -98,9 +97,9 @@ const BriefingSummaryStep = createStep({
 			})
 			.join("\n")
 		consola.log("wf-daily: insights text", insightsText?.length)
-        try {
-          // Use Mastra agent to summarize insights
-          const prompt = `You are a user research analyst. Summarize these insights into a concise daily brief that highlights key patterns, pain points, and actionable recommendations:
+		try {
+			// Use Mastra agent to summarize insights
+			const prompt = `You are a user research analyst. Summarize these insights into a concise daily brief that highlights key patterns, pain points, and actionable recommendations:
           ${insightsText}
           ----------------------------
           Format your response as a professional daily brief with:
@@ -110,15 +109,15 @@ const BriefingSummaryStep = createStep({
 
           Keep it concise but actionable.`
 
-          const langfuse = getLangfuseClient()
-          const trace = (langfuse as any).trace?.({ name: "llm.daily-brief" })
-          const gen = trace?.generation?.({ name: "llm.daily-brief" })
-          const { text } = await llmAgent.generate([{ role: "user", content: prompt }])
-          gen?.update?.({ input: { insights_count: value.length, prompt_len: prompt.length }, output: { text } })
-          gen?.end?.()
-          consola.log("LLM summary:", text)
-          return { value: text }
-        } catch (error) {
+			const langfuse = getLangfuseClient()
+			const trace = (langfuse as any).trace?.({ name: "llm.daily-brief" })
+			const gen = trace?.generation?.({ name: "llm.daily-brief" })
+			const { text } = await llmAgent.generate([{ role: "user", content: prompt }])
+			gen?.update?.({ input: { insights_count: value.length, prompt_len: prompt.length }, output: { text } })
+			gen?.end?.()
+			consola.log("LLM summary:", text)
+			return { value: text }
+		} catch (error) {
 			consola.error("Error generating LLM summary:", error)
 			// Fallback to simple summary
 			const fallbackSummary = `Daily Brief: Found ${value.length} insights and encountered an error.`

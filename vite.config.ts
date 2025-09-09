@@ -29,6 +29,12 @@ export default defineConfig({
 			"@aws-sdk/credential-provider-sso",
 			"@aws-sdk/token-providers",
 			"@langchain/aws",
+			// Ensure unused heavy libs are not bundled into SSR
+			"mermaid",
+			"@mermaid-js/parser",
+			"cytoscape",
+			"cytoscape-fcose",
+			"cytoscape-cose-bilkent",
 		],
 	},
 	plugins: [
@@ -62,6 +68,35 @@ export default defineConfig({
 		}),
 		devtoolsJson(),
 	],
+	build: {
+		sourcemap: false,
+		chunkSizeWarningLimit: 1500,
+		rollupOptions: {
+			output: {
+				manualChunks(id) {
+					if (!id.includes("node_modules")) return
+					// React core
+					if (/node_modules\/(react|react-dom)\//.test(id)) return "react"
+					// Router
+					if (/node_modules\/(@react-router|react-router|react-router-dom)\//.test(id)) return "router"
+					// UI libs
+					if (/node_modules\/(@radix-ui)\//.test(id)) return "radix"
+					// Charts and vis
+					if (/node_modules\/(recharts|cytoscape|mermaid)\//.test(id)) return "viz"
+					// Editors/syntax highlighting
+					if (/node_modules\/(react-syntax-highlighter|katex|remark-gfm)\//.test(id)) return "md"
+					// Data/services
+					if (/node_modules\/(@supabase)\//.test(id)) return "supabase"
+					if (/node_modules\/(openai|@ai-sdk|ai\/)\//.test(id)) return "ai-sdk"
+					if (/node_modules\/(@boundaryml)\//.test(id)) return "baml"
+					if (/node_modules\/(langfuse)\//.test(id)) return "langfuse"
+					// Mastra and friends
+					if (/node_modules\/(mastra|@mastra)\//.test(id)) return "mastra"
+					return "vendor"
+				},
+			},
+		},
+	},
 	server: {
 		open: true,
 		port: Number(process.env.PORT || 4280),
