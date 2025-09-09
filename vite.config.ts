@@ -22,7 +22,7 @@ export default defineConfig({
 		],
 	},
 	ssr: {
-		noExternal: [],
+		noExternal: ["katex", "streamdown", "react-syntax-highlighter"],
 		external: [
 			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",

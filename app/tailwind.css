@@ -19,6 +19,9 @@
 	}
 }
 /*---break--- */
+/* For ai-sdk streamdown https://ai-sdk.dev/elements/components/response */
+/* @source "../node_modules/streamdown/dist/index.js"; */
+
 /* biome-ignore lint/nursery/noUnknownAtRule: Tailwind CSS theme directive */
 @theme inline {
 	--radius-sm: calc(var(--radius) - 4px);

@@ -97,6 +97,7 @@ const routes = [
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 
+
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("healthcheck", "./routes/healthcheck.ts"),
