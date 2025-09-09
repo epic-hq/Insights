@@ -1,18 +1,14 @@
-
-
-import { AssistantRuntimeProvider } from "@assistant-ui/react";
-import {
-	useChatRuntime,
-	AssistantChatTransport,
-} from "@assistant-ui/react-ai-sdk";
-import { Thread } from "~/components/assistant-ui/thread";
+import { AssistantRuntimeProvider } from "@assistant-ui/react"
+import { AssistantChatTransport, useChatRuntime } from "@assistant-ui/react-ai-sdk"
 // import {
 //   SidebarInset,
 //   SidebarProvider,
 //   SidebarTrigger,
 // } from "~/components/ui/sidebar";
 // import { ThreadListSidebar } from "~/components/assistant-ui/threadlist-sidebar";
-import { Separator } from "@/components/ui/separator";
+import { Separator } from "@/components/ui/separator"
+import { Thread } from "~/components/assistant-ui/thread"
+
 // import {
 //   Breadcrumb,
 //   BreadcrumbItem,
@@ -22,38 +18,22 @@ import { Separator } from "@/components/ui/separator";
 //   BreadcrumbSeparator,
 // } from "~/components/ui/breadcrumb";
 
-import { DefaultChatTransport } from 'ai';
-import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-
-import {
-	Conversation,
-	ConversationContent,
-	ConversationScrollButton,
-} from '~/components/ai-elements/conversation';
-import { Message, MessageContent } from '~/components/ai-elements/message';
-import { Input } from '~/components/ui/input';
-import {
-	PromptInputTextarea,
-	PromptInputSubmit,
-	PromptInput,
-} from '~/components/ai-elements/prompt-input';
-import {
-	Tool,
-	ToolContent,
-	ToolHeader,
-	ToolOutput,
-	ToolInput,
-} from '~/components/ai-elements/tool';
-import { Response as AiResponse } from '~/components/ai-elements/response';
+import { useChat } from "@ai-sdk/react"
+import { convertMessages } from "@mastra/core/agent"
+import { DefaultChatTransport } from "ai"
+import consola from "consola"
+import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
-import { memory } from '~/mastra/memory';
-import consola from "consola"
+import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
+import { Message, MessageContent } from "~/components/ai-elements/message"
+import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
+import { Response as AiResponse } from "~/components/ai-elements/response"
+import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "~/components/ai-elements/tool"
+import { Input } from "~/components/ui/input"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
-import { convertMessages } from '@mastra/core/agent';
-import type { Route } from "./+types/assistant-ui-chat";
-
+import { memory } from "~/mastra/memory"
+import type { Route } from "./+types/assistant-ui-chat"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -90,14 +70,17 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
 	// Get messages in the V2 format (roughly equivalent to AI SDK's UIMessage format)
 	// const messagesV2 = await mastra.getStorage()?.getMessages({ threadId: threadId, resourceId: `signupAgent-${user.sub}`, format: 'v2' });
-	const { messages: messagesV1, uiMessages, messagesV2 } = await memory.query({
+	const {
+		messages: messagesV1,
+		uiMessages,
+		messagesV2,
+	} = await memory.query({
 		threadId: threadId,
 		selectBy: {
 			last: 50,
 		},
 	})
-	const aiv5Messages = convertMessages(messagesV2).to('AIV5.UI');
-
+	const aiv5Messages = convertMessages(messagesV2).to("AIV5.UI")
 
 	return data({
 		messages: aiv5Messages,
@@ -111,7 +94,7 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 			api: "/api/chat/signup",
 		}),
 		messages,
-	});
+	})
 
 	return (
 		<AssistantRuntimeProvider runtime={runtime}>
@@ -121,5 +104,5 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 				<Thread />
 			</div>
 		</AssistantRuntimeProvider>
-	);
-};
+	)
+}

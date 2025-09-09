@@ -154,7 +154,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			// Replace any [placeholder] with a neutral pronoun
 			t = t.replace(/\[[^\]]+\]/g, "this")
 			// Normalize multiple spaces and spaces before punctuation
-			t = t.replace(/\s{2,}/g, " ").replace(/\s+([,.;:!?])/g, "$1").trim()
+			t = t
+				.replace(/\s{2,}/g, " ")
+				.replace(/\s+([,.;:!?])/g, "$1")
+				.trim()
 			return t
 		}
 

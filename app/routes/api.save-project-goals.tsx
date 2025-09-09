@@ -37,12 +37,19 @@ const sectionFormatters = {
 
 // Data-independent section processor
 function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "project_id"> | null {
+	consola.log(`🔍 processSection: kind=${kind}, data=`, data, `type=${typeof data}, isArray=${Array.isArray(data)}`)
+	
 	switch (kind) {
 		case "target_orgs":
 		case "target_roles":
-			if (Array.isArray(data) && data.length > 0) {
+		case "decision_questions":
+			if (Array.isArray(data)) {
+				// Always save arrays, including empty ones to handle deletions
 				const formatted = sectionFormatters.array_numbered(data, kind)
+				consola.log(`✅ Array section formatted:`, formatted)
 				return { kind, ...formatted }
+			} else {
+				consola.log(`❌ Expected array for ${kind}, got ${typeof data}:`, data)
 			}
 			break
 
@@ -61,9 +68,13 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "
 
 		case "assumptions":
 		case "unknowns":
-			if (Array.isArray(data) && data.length > 0) {
+			if (Array.isArray(data)) {
+				// Always save arrays, including empty ones to handle deletions
 				const formatted = sectionFormatters.array_spaced(data, kind)
+				consola.log(`✅ Spaced array section formatted:`, formatted)
 				return { kind, ...formatted }
+			} else {
+				consola.log(`❌ Expected array for ${kind}, got ${typeof data}:`, data)
 			}
 			break
 
@@ -72,6 +83,11 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "
 				const formatted = sectionFormatters.plain_text(data, kind)
 				return { kind, ...formatted }
 			}
+			break
+
+		default:
+			// Log unknown section types for debugging
+			console.log(`Unknown section type: ${kind}, data:`, data)
 			break
 	}
 
@@ -85,19 +101,28 @@ async function saveSingleSection(
 	sectionKind: string,
 	sectionData: string
 ) {
+	consola.log(`📝 saveSingleSection called:`, { projectId, sectionKind, sectionData })
+	
 	let parsedData: unknown
 	try {
 		parsedData = JSON.parse(sectionData)
-	} catch {
+		consola.log(`✅ JSON parsing successful:`, parsedData)
+	} catch (error) {
+		consola.log(`❌ JSON parsing failed, using raw data:`, error)
 		parsedData = sectionData
 	}
 
+	consola.log(`🔄 Calling processSection with:`, { sectionKind, parsedData, dataType: typeof parsedData, isArray: Array.isArray(parsedData) })
 	const processedSection = processSection(sectionKind, parsedData)
+	
 	if (!processedSection) {
-		return { error: `No valid data for section: ${sectionKind}` }
+		consola.error(`❌ processSection returned null for ${sectionKind}, data:`, parsedData)
+		return { error: `No valid data for section: ${sectionKind}. Data type: ${typeof parsedData}, isArray: ${Array.isArray(parsedData)}` }
 	}
 
-	return await upsertProjectSection({
+	consola.log(`✅ processSection success:`, processedSection)
+
+	const result = await upsertProjectSection({
 		supabase,
 		data: {
 			project_id: projectId,
@@ -105,6 +130,9 @@ async function saveSingleSection(
 			meta: processedSection.meta as Database["public"]["Tables"]["project_sections"]["Insert"]["meta"],
 		},
 	})
+
+	consola.log(`💾 upsertProjectSection result:`, result)
+	return result
 }
 
 async function markProjectSetupVisited(supabase: SupabaseClient, userId: string, projectId: string) {
@@ -182,6 +210,14 @@ export async function action({ request }: ActionFunctionArgs) {
 			case "save-section": {
 				const sectionKind = formData.get("sectionKind") as string
 				const sectionData = formData.get("sectionData") as string
+
+				consola.log(`🔽 Received save-section request:`, {
+					sectionKind,
+					sectionData,
+					projectId,
+					sectionDataType: typeof sectionData,
+					sectionDataLength: sectionData?.length
+				})
 
 				if (!sectionKind || sectionData === null) {
 					return Response.json({ error: "Missing section kind or data" }, { status: 400 })

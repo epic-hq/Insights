@@ -92,17 +92,16 @@ export default function App({ loaderData }: Route.ComponentProps) {
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}
 			<ThemeProvider defaultTheme="light">
-					<PostHogProvider
-						apiKey={clientEnv.POSTHOG_KEY}
-						options={{
-							api_host: normalizeHost(clientEnv.POSTHOG_HOST),
-							ui_host: "https://us.posthog.com",
-							defaults: "2025-05-24",
-							capture_exceptions: true,
-							debug: import.meta.env.MODE === "development",
-						}}
-					>
-
+				<PostHogProvider
+					apiKey={clientEnv.POSTHOG_KEY}
+					options={{
+						api_host: normalizeHost(clientEnv.POSTHOG_HOST),
+						ui_host: "https://us.posthog.com",
+						defaults: "2025-05-24",
+						capture_exceptions: true,
+						debug: false // import.meta.env.MODE === "development",
+					}}
+				>
 					<NotificationProvider>
 						<Outlet />
 						<Toaster />

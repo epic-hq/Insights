@@ -1,0 +1,1211 @@
+import consola from "consola"
+import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, Users, X } from "lucide-react"
+import { useCallback, useEffect, useRef, useState } from "react"
+import { z } from "zod"
+import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader } from "~/components/ui/card"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
+import { Input } from "~/components/ui/input"
+import { ProgressDots } from "~/components/ui/ProgressDots"
+import { StatusPill } from "~/components/ui/StatusPill"
+import { Textarea } from "~/components/ui/textarea"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import { getProjectContextGeneric } from "~/features/questions/db"
+import { createClient } from "~/lib/supabase/client"
+import type { Project } from "~/types"
+import { useAutoSave } from "../hooks/useAutoSave"
+import ContextualSuggestions from "./ContextualSuggestions"
+
+type TemplatePrefill = {
+	template_key: string
+	target_orgs: string[]
+	target_roles: string[]
+	research_goal: string
+	research_goal_details: string
+	decision_questions: string[]
+	assumptions: string[]
+	unknowns: string[]
+	custom_instructions: string
+}
+
+// Template-focused suggestions for "Understand Customer Needs"
+const sampleData = [
+	{
+		goal: "Understand core customer outcomes for pricing & packaging",
+		orgs: ["Early-stage SaaS", "Mid-market B2B teams", "Ecommerce brands", "Digital services"],
+		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
+		assumptions: [
+			"Users buy to achieve outcome X, not feature Y",
+			"Clear onboarding reduces early churn",
+			"Price sensitivity drops when value is obvious",
+		],
+		unknowns: [
+			"Which 1–2 outcomes matter most enough to switch",
+			"Where in the journey do users hit most friction",
+			"What alternatives are commonly compared and why",
+		],
+	},
+	{
+		goal: "Map jobs-to-be-done for our new collaboration feature",
+		orgs: ["Product-led SaaS", "B2B platforms"],
+		roles: ["PM", "Design Lead", "Operations Manager", "Engineering Manager"],
+		assumptions: ["Teams care about speed over completeness", "Adoption hinges on low setup cost"],
+		unknowns: ["What triggers collaboration needs", "What evaluation criteria decide team adoption"],
+	},
+]
+
+// Zod schema for validation
+const projectGoalsSchema = z.object({
+	// Relaxed: allow no orgs; treat as "Any" downstream
+	target_orgs: z.array(z.string()).default([]),
+	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
+	research_goal: z.string().min(1, "Research goal is required"),
+	research_goal_details: z.string().optional(),
+	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
+	assumptions: z.array(z.string()),
+	unknowns: z.array(z.string()),
+	custom_instructions: z.string().optional(),
+})
+
+type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
+
+// Sample suggestions extracted from data
+const sampleGoals = sampleData.map((item) => item.goal)
+
+// Context-aware suggestions based on research goal
+const getContextualSuggestions = (goal: string) => {
+	const sample = sampleData.find((item) => {
+		const goalLower = goal.toLowerCase()
+		const sampleGoalLower = item.goal.toLowerCase()
+		return (
+			goalLower.length > 3 &&
+			(sampleGoalLower.includes(goalLower) ||
+				(goalLower.includes("newsletter") && sampleGoalLower.includes("newsletter")) ||
+				(goalLower.includes("automation") && sampleGoalLower.includes("automation")) ||
+				(goalLower.includes("meal") && sampleGoalLower.includes("meal")) ||
+				(goalLower.includes("community") && sampleGoalLower.includes("community")))
+		)
+	})
+
+	if (sample) {
+		return {
+			orgs: sample.orgs,
+			roles: sample.roles,
+			assumptions: sample.assumptions,
+			unknowns: sample.unknowns,
+		}
+	}
+
+	return {
+		orgs: ["Early-stage SaaS", "Mid-market B2B product teams", "Ecommerce brands", "Digital services"],
+		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
+		assumptions: [
+			"Users buy to achieve outcomes, not features",
+			"Onboarding clarity drives early retention",
+			"Pricing is justified when value is obvious",
+		],
+		unknowns: [
+			"Which outcomes have highest willingness-to-pay",
+			"Where the journey has most friction",
+			"Which alternatives users compare and why",
+		],
+	}
+}
+
+// Suggestion badge component
+interface SuggestionBadgesProps {
+	suggestions: string[]
+	onSuggestionClick: (suggestion: string) => void
+	show: boolean
+	color?: "blue" | "green" | "purple" | "amber"
+}
+
+function SuggestionBadges({ suggestions, onSuggestionClick, show }: SuggestionBadgesProps) {
+	if (!show || suggestions.length === 0) return null
+	const neutralClasses = "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
+
+	return (
+		<div className="mt-3 mb-4 flex flex-wrap gap-2">
+			{suggestions.slice(0, 4).map((suggestion, index) => (
+				<button
+					key={index}
+					onMouseDown={(e) => {
+						e.preventDefault()
+						onSuggestionClick(suggestion)
+					}}
+					className={`cursor-pointer rounded-full px-2.5 py-1 font-medium text-xs transition-colors ${neutralClasses}`}
+				>
+					+ {suggestion}
+				</button>
+			))}
+		</div>
+	)
+}
+
+interface ProjectGoalsScreenProps {
+	onNext: (data: {
+		target_orgs: string[]
+		target_roles: string[]
+		research_goal: string
+		research_goal_details: string
+		decision_questions: string[]
+		assumptions: string[]
+		unknowns: string[]
+		custom_instructions?: string
+		projectId?: string
+	}) => void
+	project?: Project
+	projectId?: string
+	accountId?: string
+	showStepper?: boolean
+	showNextButton?: boolean
+	templateKey?: string
+	prefill?: TemplatePrefill
+}
+
+export default function ProjectGoalsScreen({
+	onNext,
+	project,
+	projectId,
+	accountId,
+	showStepper = true,
+	showNextButton = true,
+	templateKey,
+	prefill,
+}: ProjectGoalsScreenProps) {
+	const [target_orgs, setTargetOrgs] = useState<string[]>([])
+	const [target_roles, setTargetRoles] = useState<string[]>([])
+	const [newOrg, setNewOrg] = useState("")
+	const [newRole, setNewRole] = useState("")
+	const [research_goal, setResearchGoal] = useState("")
+	const [research_goal_details, setResearchGoalDetails] = useState("")
+	const [decision_questions, setDecisionQuestions] = useState<string[]>([])
+	const [newDecisionQuestion, setNewDecisionQuestion] = useState("")
+	const [assumptions, setAssumptions] = useState<string[]>([])
+	const [unknowns, setUnknowns] = useState<string[]>([])
+	const [newAssumption, setNewAssumption] = useState("")
+	const [newUnknown, setNewUnknown] = useState("")
+	const [custom_instructions, setCustomInstructions] = useState("")
+	const [isLoading, setIsLoading] = useState(false)
+	const [contextLoaded, setContextLoaded] = useState(false)
+	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
+	const [isCreatingProject, setIsCreatingProject] = useState(false)
+	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+	const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
+	const [showDecisionQuestionSuggestions, setShowDecisionQuestionSuggestions] = useState(false)
+	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
+	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
+	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
+	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
+	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
+	const supabase = createClient()
+
+	// Accordion state - only one section can be open at a time
+	const [openAccordion, setOpenAccordion] = useState<string | null>("research-goal")
+
+	// Refs for input fields to handle focus after suggestion selection
+	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
+	const orgInputRef = useRef<HTMLTextAreaElement>(null)
+	const roleInputRef = useRef<HTMLTextAreaElement>(null)
+	const assumptionInputRef = useRef<HTMLTextAreaElement>(null)
+	const unknownInputRef = useRef<HTMLTextAreaElement>(null)
+
+	// Construct the protected API path
+	const apiPath =
+		accountId && currentProjectId
+			? `/a/${accountId}/${currentProjectId}/api/contextual-suggestions`
+			: "/api/contextual-suggestions" // fallback
+
+	// Helper function to focus input and set cursor at end
+	const focusInputAtEnd = (inputRef: React.RefObject<HTMLTextAreaElement | null>) => {
+		setTimeout(() => {
+			if (inputRef.current) {
+				inputRef.current.focus()
+				const length = inputRef.current.value.length
+				inputRef.current.setSelectionRange(length, length)
+			}
+		}, 0)
+	}
+
+	const {
+		saveTargetOrgs,
+		saveTargetRoles,
+		saveResearchGoal,
+		saveAssumptions,
+		saveUnknowns,
+		saveDecisionQuestions,
+		saveCustomInstructions,
+		isSaving,
+	} = useAutoSave({
+		projectId: currentProjectId || "",
+		onSaveStart: () => {
+			consola.log("🔄 Auto-save started", { projectId: currentProjectId })
+		},
+		onSaveComplete: () => {
+			consola.log("✅ Auto-save completed", { projectId: currentProjectId })
+		},
+		onSaveError: (error) => {
+			consola.error("❌ Auto-save error:", error, { projectId: currentProjectId })
+		},
+	})
+
+	const createProjectIfNeeded = useCallback(async () => {
+		if (currentProjectId || isCreatingProject) return currentProjectId
+
+		setIsCreatingProject(true)
+		try {
+			const formData = new FormData()
+			formData.append(
+				"projectData",
+				JSON.stringify({
+					target_orgs: target_orgs.length > 0 ? target_orgs : ["Any"],
+					target_roles: target_roles.length > 0 ? target_roles : ["New Role"],
+					research_goal: research_goal || "New Research Project",
+					research_goal_details: research_goal_details || "",
+				})
+			)
+
+			const response = await fetch("/api/create-project", {
+				method: "POST",
+				body: formData,
+				credentials: "include",
+			})
+
+			if (!response.ok) {
+				throw new Error("Project creation failed")
+			}
+
+			const result = await response.json()
+			const newProjectId = result.project?.id
+
+			if (newProjectId) {
+				setCurrentProjectId(newProjectId)
+				consola.log("🎯 Created project on first input:", newProjectId)
+
+				setTimeout(() => {
+					if (assumptions.length > 0) saveAssumptions(assumptions)
+					if (unknowns.length > 0) saveUnknowns(unknowns)
+					if (research_goal.trim()) saveResearchGoal(research_goal, research_goal_details)
+				}, 200)
+
+				return newProjectId
+			}
+		} catch (error) {
+			consola.error("Failed to create project:", error)
+		} finally {
+			setIsCreatingProject(false)
+		}
+		return currentProjectId
+	}, [
+		currentProjectId,
+		isCreatingProject,
+		target_orgs,
+		target_roles,
+		research_goal,
+		research_goal_details,
+		assumptions,
+		unknowns,
+		saveAssumptions,
+		saveUnknowns,
+		saveResearchGoal,
+	])
+
+	const loadProjectData = useCallback(async () => {
+		if (!currentProjectId) return
+		setIsLoading(true)
+
+		try {
+			const ctx = await getProjectContextGeneric(supabase, currentProjectId)
+			let populatedFromContext = false
+			if (ctx?.merged) {
+				const m = ctx.merged as Record<string, unknown>
+				const hasAny =
+					(Array.isArray(m.target_orgs) && (m.target_orgs as unknown[]).length > 0) ||
+					(Array.isArray(m.target_roles) && (m.target_roles as unknown[]).length > 0) ||
+					(typeof m.research_goal === "string" && (m.research_goal as string).length > 0) ||
+					(Array.isArray(m.decision_questions) && (m.decision_questions as unknown[]).length > 0) ||
+					(Array.isArray(m.assumptions) && (m.assumptions as unknown[]).length > 0) ||
+					(Array.isArray(m.unknowns) && (m.unknowns as unknown[]).length > 0) ||
+					(typeof m.custom_instructions === "string" && (m.custom_instructions as string).length > 0)
+
+				if (hasAny) {
+					setTargetOrgs((m.target_orgs as string[]) ?? [])
+					setTargetRoles((m.target_roles as string[]) ?? [])
+					setResearchGoal((m.research_goal as string) ?? "")
+					setResearchGoalDetails((m.research_goal_details as string) ?? "")
+					setAssumptions((m.assumptions as string[]) ?? [])
+					setDecisionQuestions((m.decision_questions as string[]) ?? [])
+					setUnknowns((m.unknowns as string[]) ?? [])
+					setCustomInstructions((m.custom_instructions as string) ?? "")
+					populatedFromContext = true
+					consola.log("Loaded project context from project_sections (merged)")
+				}
+			}
+
+			if (!populatedFromContext) {
+				const response = await fetch(`/api/load-project-goals?projectId=${currentProjectId}`)
+				const result = await response.json()
+				if (result.success && result.data) {
+					const data = result.data
+					setTargetOrgs(data.target_orgs || [])
+					setTargetRoles(data.target_roles || [])
+					setResearchGoal(data.research_goal || "")
+					setResearchGoalDetails(data.research_goal_details || "")
+					setAssumptions(data.assumptions || [])
+					setDecisionQuestions(data.decision_questions || [])
+					setUnknowns(data.unknowns || [])
+					setCustomInstructions(data.custom_instructions || "")
+					consola.log("Loaded project goals via API fallback")
+				}
+			}
+		} catch (error) {
+			consola.error("Failed to load project data:", error)
+		} finally {
+			setIsLoading(false)
+			setContextLoaded(true)
+		}
+	}, [currentProjectId, supabase])
+
+	useEffect(() => {
+		if (currentProjectId) {
+			loadProjectData()
+		}
+	}, [currentProjectId, loadProjectData])
+
+	useEffect(() => {
+		if (!prefill) return
+		if (!contextLoaded) return
+		const noData =
+			target_orgs.length === 0 &&
+			target_roles.length === 0 &&
+			!research_goal &&
+			assumptions.length === 0 &&
+			unknowns.length === 0 &&
+			!custom_instructions
+
+		if (noData) {
+			setTargetOrgs(prefill.target_orgs || [])
+			setTargetRoles(prefill.target_roles || [])
+			setResearchGoal(prefill.research_goal || "")
+			setResearchGoalDetails(prefill.research_goal_details || "")
+			setAssumptions(prefill.assumptions || [])
+			setUnknowns(prefill.unknowns || [])
+			setCustomInstructions(prefill.custom_instructions || "")
+			if ((prefill.decision_questions || []).length > 0) {
+				setDecisionQuestions(prefill.decision_questions)
+			}
+
+			if (currentProjectId) {
+				if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
+				if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
+				if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
+				if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
+				if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
+				if (prefill.custom_instructions) saveCustomInstructions(prefill.custom_instructions)
+			}
+		}
+	}, [
+		prefill,
+		contextLoaded,
+		target_orgs.length,
+		target_roles.length,
+		research_goal,
+		assumptions.length,
+		unknowns.length,
+		custom_instructions,
+		currentProjectId,
+		saveTargetOrgs,
+		saveTargetRoles,
+		saveResearchGoal,
+		saveAssumptions,
+		saveUnknowns,
+		saveCustomInstructions,
+	])
+
+	const addOrg = async () => {
+		if (newOrg.trim() && !target_orgs.includes(newOrg.trim())) {
+			await createProjectIfNeeded()
+			const newOrgs = [...target_orgs, newOrg.trim()]
+			setTargetOrgs(newOrgs)
+			setNewOrg("")
+			saveTargetOrgs(newOrgs)
+		}
+	}
+
+	const removeOrg = (org: string) => {
+		const newOrgs = target_orgs.filter((o) => o !== org)
+		setTargetOrgs(newOrgs)
+		saveTargetOrgs(newOrgs)
+	}
+
+	const addRole = async () => {
+		if (newRole.trim() && !target_roles.includes(newRole.trim())) {
+			await createProjectIfNeeded()
+			const newRoles = [...target_roles, newRole.trim()]
+			setTargetRoles(newRoles)
+			setNewRole("")
+			saveTargetRoles(newRoles)
+		}
+	}
+
+	const removeRole = (role: string) => {
+		const newRoles = target_roles.filter((r) => r !== role)
+		setTargetRoles(newRoles)
+		saveTargetRoles(newRoles)
+	}
+
+	const addDecisionQuestion = async () => {
+		if (newDecisionQuestion.trim() && !decision_questions.includes(newDecisionQuestion.trim())) {
+			await createProjectIfNeeded()
+			const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
+			setDecisionQuestions(newQuestions)
+			setNewDecisionQuestion("")
+			saveDecisionQuestions(newQuestions)
+		}
+	}
+
+	const removeDecisionQuestion = (index: number) => {
+		const newQuestions = decision_questions.filter((_, i) => i !== index)
+		setDecisionQuestions(newQuestions)
+		saveDecisionQuestions(newQuestions)
+	}
+
+	const addAssumption = async () => {
+		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
+			await createProjectIfNeeded()
+			const newAssumptions = [...assumptions, newAssumption.trim()]
+			setAssumptions(newAssumptions)
+			setNewAssumption("")
+			saveAssumptions(newAssumptions)
+		}
+	}
+
+	const addUnknown = async () => {
+		if (newUnknown.trim()) {
+			await createProjectIfNeeded()
+			const newUnknowns = [...unknowns, newUnknown.trim()]
+			setUnknowns(newUnknowns)
+			setNewUnknown("")
+			saveUnknowns(newUnknowns)
+		}
+	}
+
+	const removeAssumption = (index: number) => {
+		const newAssumptions = assumptions.filter((_, i) => i !== index)
+		setAssumptions(newAssumptions)
+		saveAssumptions(newAssumptions)
+	}
+
+	const removeUnknown = (index: number) => {
+		const newUnknowns = unknowns.filter((_, i) => i !== index)
+		setUnknowns(newUnknowns)
+		saveUnknowns(newUnknowns)
+	}
+
+	const handleNext = () => {
+		// Align with isValid: do not require target_orgs to proceed
+		if (target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
+			saveResearchGoal(research_goal, research_goal_details, false)
+			onNext({
+				target_orgs,
+				target_roles,
+				research_goal,
+				research_goal_details,
+				decision_questions,
+				assumptions,
+				unknowns,
+				custom_instructions: custom_instructions || undefined,
+				projectId: currentProjectId,
+			})
+		}
+	}
+
+	const handleResearchGoalBlur = async () => {
+		if (!research_goal.trim()) return
+		if (!currentProjectId) await createProjectIfNeeded()
+		saveResearchGoal(research_goal, research_goal_details, false)
+	}
+
+	const handleCustomInstructionsBlur = () => {
+		if (custom_instructions.trim()) {
+			saveCustomInstructions(custom_instructions)
+		}
+	}
+
+	const contextualSuggestions = getContextualSuggestions(research_goal)
+	// Prefill seeds up to 3, but users may add more as needed
+
+	const isValid = target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0
+
+	const onboardingSteps = [
+		{ id: "goals", title: "Project Goals" },
+		{ id: "questions", title: "Questions" },
+		{ id: "upload", title: "Upload" },
+	]
+
+	// Removed auto-population logic - rely on contextual AI suggestions instead
+
+	return (
+		<TooltipProvider>
+			<div className="mx-auto min-h-screen max-w-7xl bg-background px-2 py-4 text-foreground sm:p-4 md:p-6 lg:p-8">
+				{/* Stepper - only show in onboarding mode */}
+				{showStepper && (
+					<div className="mb-6">
+						<div className="flex items-start justify-center gap-4 sm:gap-6 md:gap-10">
+							{onboardingSteps.map((step, index) => (
+								<div key={step.id} className="flex items-center">
+									<div className="flex flex-col items-center">
+										<div
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
+										>
+											{index + 1}
+										</div>
+										<span
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
+										>
+											{step.title}
+										</span>
+									</div>
+									{index < onboardingSteps.length - 1 && (
+										<div className="mx-3 hidden h-px w-10 bg-border sm:block md:w-16" />
+									)}
+								</div>
+							))}
+						</div>
+					</div>
+				)}
+
+				{/* Header */}
+				<div className="mb-8">
+					<div className="flex items-center justify-between">
+						<div>
+							<h1 className="font-semibold text-2xl text-gray-900">{project?.name}</h1>
+							{templateKey === "understand_customer_needs" && (
+								<StatusPill variant="neutral" className="mt-2">
+									Intent: Understand Customer Needs
+								</StatusPill>
+							)}
+						</div>
+						<div className="text-right">
+							{isSaving ? (
+								<StatusPill variant="active">
+									Saving <ProgressDots className="ml-1" />
+								</StatusPill>
+							) : null}
+						</div>
+					</div>
+				</div>
+
+				{/* Main Content - Single Column Accordion Layout */}
+				<div className="mx-auto max-w-4xl space-y-4">
+					{/* Research Goal Accordion */}
+					<Collapsible
+						open={openAccordion === "research-goal"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "research-goal" ? null : "research-goal")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Target className="h-5 w-5 text-blue-600" />
+											<h2 className="font-semibold text-lg">
+												{templateKey === "understand_customer_needs" ? "Business Goal" : "Primary Goal"}
+											</h2>
+											<Tooltip>
+												<TooltipTrigger>
+													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>
+														Define what you want to understand about your customers. This will guide your research and
+														interview questions.
+													</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "research-goal" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									<Textarea
+										placeholder={
+											templateKey === "understand_customer_needs"
+												? "e.g., Understand the core jobs, outcomes, and pains for SaaS product managers when evaluating new tools"
+												: "e.g., Understanding price sensitivity for our new pricing tier"
+										}
+										value={research_goal}
+										onChange={(e) => setResearchGoal(e.target.value)}
+										onFocus={() => setShowGoalSuggestions(true)}
+										onBlur={() => {
+											handleResearchGoalBlur()
+											setTimeout(() => setShowGoalSuggestions(false), 150)
+										}}
+										rows={2}
+										className="min-h-[72px]"
+									/>
+									<SuggestionBadges
+										suggestions={sampleGoals}
+										onSuggestionClick={(goal) => {
+											setResearchGoal(goal)
+											setShowGoalSuggestions(false)
+										}}
+										show={showGoalSuggestions}
+									/>
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+
+					{/* Key Questions Accordion */}
+					<Collapsible
+						open={openAccordion === "key-questions"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "key-questions" ? null : "key-questions")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<HelpCircle className="h-5 w-5 text-green-600" />
+											<h2 className="font-semibold text-lg">Key Questions</h2>
+											<span className="rounded-full px-2 py-1 font-medium text-foreground/75 text-xs">
+												{" "}
+												{decision_questions.length}
+											</span>
+											<Tooltip>
+												<TooltipTrigger>
+													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>These questions will guide your research and help shape the interviews.</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "key-questions" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									{/* Question List */}
+									<div className="mb-4 space-y-2">
+										{decision_questions.map((question, index) => (
+											<div
+												key={`decision-${index}-${question.slice(0, 10)}`}
+												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100"
+											>
+												<div className="mt-1 flex-shrink-0">
+													<div className="h-2 w-2 rounded-full bg-green-500" />
+												</div>
+												<span className="flex-1 text-gray-800 text-sm leading-relaxed">{question}</span>
+												<button
+													onClick={() => removeDecisionQuestion(index)}
+													className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
+												>
+													<X className="h-3 w-3 text-green-700" />
+												</button>
+											</div>
+										))}
+									</div>
+
+									{/* Add Question UI */}
+									{!showDecisionQuestionInput ? (
+										<Button
+											onClick={() => setShowDecisionQuestionInput(true)}
+											variant="outline"
+											size="sm"
+											className="w-full justify-center border-dashed"
+										>
+											<Plus className="mr-2 h-4 w-4" />
+											Add research question
+										</Button>
+									) : (
+										<div className="space-y-3">
+											<div className="flex gap-2">
+												<Textarea
+													ref={decisionQuestionInputRef}
+													placeholder="What specific questions will this research answer?"
+													value={newDecisionQuestion}
+													onChange={(e) => setNewDecisionQuestion(e.target.value)}
+													onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addDecisionQuestion()}
+													className="flex-1 resize-none"
+													rows={2}
+													autoFocus
+												/>
+												<Button
+													onClick={addDecisionQuestion}
+													variant="outline"
+													size="sm"
+													disabled={!newDecisionQuestion.trim()}
+												>
+													<Plus className="h-4 w-4" />
+												</Button>
+												<Button
+													onClick={() => {
+														setShowDecisionQuestionInput(false)
+														setNewDecisionQuestion("")
+													}}
+													variant="ghost"
+													size="sm"
+												>
+													<X className="h-4 w-4" />
+												</Button>
+											</div>
+
+											{/* Contextual Suggestions */}
+											<ContextualSuggestions
+												suggestionType="decision_questions"
+												currentInput={newDecisionQuestion}
+												researchGoal={research_goal}
+												existingItems={decision_questions}
+												apiPath={apiPath}
+												onSuggestionClick={(suggestion) => {
+													setNewDecisionQuestion(suggestion)
+													focusInputAtEnd(decisionQuestionInputRef)
+												}}
+											/>
+										</div>
+									)}
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+
+					{/* Target Market Accordion */}
+					<Collapsible
+						open={openAccordion === "target-market"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "target-market" ? null : "target-market")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Users className="h-5 w-5 text-purple-600" />
+											<h2 className="font-semibold text-lg">Target Market</h2>
+											<span className="rounded-full px-2 py-1 font-medium text-foreground/75 text-xs">
+												{target_roles.length}
+											</span>
+											<Tooltip>
+												<TooltipTrigger>
+													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>
+														Define the types of organizations and roles you want to research. This helps target the
+														right interview participants.
+													</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "target-market" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									{/* Organizations */}
+									<div className="mb-6">
+										<label className="mb-3 block font-medium text-gray-900 text-sm">Organizations</label>
+										<div className="mb-3 flex flex-wrap gap-2">
+											{target_orgs.map((org) => (
+												<div
+													key={org}
+													className="group flex items-center gap-2 rounded-full border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200"
+												>
+													<span className="font-medium text-green-800">{org}</span>
+													<button
+														onClick={() => removeOrg(org)}
+														className="rounded-full p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100"
+													>
+														<X className="h-3 w-3 text-green-700" />
+													</button>
+												</div>
+											))}
+										</div>
+										{!showOrgSuggestions ? (
+											<Button
+												onClick={() => setShowOrgSuggestions(true)}
+												variant="outline"
+												size="sm"
+												className="w-full justify-center border-dashed"
+											>
+												<Plus className="mr-2 h-4 w-4" />
+												Add organization type
+											</Button>
+										) : (
+											<div className="space-y-3">
+												<div className="flex gap-2">
+													<Textarea
+														ref={orgInputRef}
+														placeholder="e.g., Early-stage SaaS, E-commerce brands"
+														value={newOrg}
+														onChange={(e) => setNewOrg(e.target.value)}
+														onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addOrg()}
+														className="flex-1 resize-none"
+														rows={2}
+														autoFocus
+													/>
+													<Button onClick={addOrg} variant="outline" size="sm">
+														<Plus className="h-4 w-4" />
+													</Button>
+													<Button
+														onClick={() => {
+															setShowOrgSuggestions(false)
+															setNewOrg("")
+														}}
+														variant="ghost"
+														size="sm"
+													>
+														<X className="h-4 w-4" />
+													</Button>
+												</div>
+
+												<ContextualSuggestions
+													suggestionType="organizations"
+													currentInput={newOrg}
+													researchGoal={research_goal}
+													existingItems={target_orgs}
+													apiPath={apiPath}
+													onSuggestionClick={(suggestion) => {
+														setNewOrg(suggestion)
+														focusInputAtEnd(orgInputRef)
+													}}
+												/>
+											</div>
+										)}
+									</div>
+
+									{/* Roles */}
+									<div>
+										<label className="mb-3 block font-medium text-gray-900 text-sm">People's Roles</label>
+										<div className="mb-3 flex flex-wrap gap-2">
+											{target_roles.map((role) => (
+												<div
+													key={role}
+													className="group flex items-center gap-2 rounded-full border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200"
+												>
+													<span className="font-medium text-purple-800">{role}</span>
+													<button
+														onClick={() => removeRole(role)}
+														className="rounded-full p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100"
+													>
+														<X className="h-3 w-3 text-purple-700" />
+													</button>
+												</div>
+											))}
+										</div>
+										{!showRoleSuggestions ? (
+											<Button
+												onClick={() => setShowRoleSuggestions(true)}
+												variant="outline"
+												size="sm"
+												className="w-full justify-center border-dashed"
+											>
+												<Plus className="mr-2 h-4 w-4" />
+												Add target role
+											</Button>
+										) : (
+											<div className="space-y-3">
+												<div className="flex gap-2">
+													<Textarea
+														ref={roleInputRef}
+														placeholder="e.g., Product Manager, Head of Growth"
+														value={newRole}
+														onChange={(e) => setNewRole(e.target.value)}
+														onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addRole()}
+														className="flex-1 resize-none"
+														rows={2}
+														autoFocus
+													/>
+													<Button onClick={addRole} variant="outline" size="sm">
+														<Plus className="h-4 w-4" />
+													</Button>
+													<Button
+														onClick={() => {
+															setShowRoleSuggestions(false)
+															setNewRole("")
+														}}
+														variant="ghost"
+														size="sm"
+													>
+														<X className="h-4 w-4" />
+													</Button>
+												</div>
+
+												<ContextualSuggestions
+													suggestionType="roles"
+													currentInput={newRole}
+													researchGoal={research_goal}
+													existingItems={target_roles}
+													apiPath={apiPath}
+													onSuggestionClick={(suggestion) => {
+														setNewRole(suggestion)
+														focusInputAtEnd(roleInputRef)
+													}}
+												/>
+											</div>
+										)}
+									</div>
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+
+					{/* Research Context Accordion */}
+					<Collapsible
+						open={openAccordion === "research-context"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "research-context" ? null : "research-context")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Target className="h-5 w-5 text-blue-600" />
+											<h2 className="font-semibold text-lg">Research Context</h2>
+											<Tooltip>
+												<TooltipTrigger>
+													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>
+														Define what you believe (assumptions) and what you're unsure about (unknowns) to guide your
+														research.
+													</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "research-context" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									<div className="mb-6">
+										{/* Assumptions */}
+										<div className="mb-6">
+											<label className="mb-3 block font-medium text-gray-900 text-sm">Assumptions</label>
+											<div className="mb-3 space-y-2">
+												{assumptions.map((assumption, index) => (
+													<div
+														key={`assumption-${index}-${assumption.slice(0, 10)}`}
+														className="group flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-all hover:bg-blue-100"
+													>
+														<div className="mt-1 flex-shrink-0">
+															<div className="h-2 w-2 rounded-full bg-blue-500" />
+														</div>
+														<span className="flex-1 text-gray-800 text-sm leading-relaxed">{assumption}</span>
+														<button
+															onClick={() => removeAssumption(index)}
+															className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100"
+														>
+															<X className="h-3 w-3 text-blue-700" />
+														</button>
+													</div>
+												))}
+											</div>
+											{!showAssumptionSuggestions ? (
+												<Button
+													onClick={() => setShowAssumptionSuggestions(true)}
+													variant="outline"
+													size="sm"
+													className="w-full justify-center border-dashed"
+												>
+													<Plus className="mr-2 h-4 w-4" />
+													Add assumption
+												</Button>
+											) : (
+												<div className="space-y-3">
+													<div className="flex gap-2">
+														<Textarea
+															ref={assumptionInputRef}
+															placeholder="Add something you believe to be true..."
+															value={newAssumption}
+															onChange={(e) => setNewAssumption(e.target.value)}
+															onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addAssumption()}
+															className="flex-1 resize-none"
+															rows={2}
+															autoFocus
+														/>
+														<Button onClick={addAssumption} variant="outline" size="sm">
+															<Plus className="h-4 w-4" />
+														</Button>
+														<Button
+															onClick={() => {
+																setShowAssumptionSuggestions(false)
+																setNewAssumption("")
+															}}
+															variant="ghost"
+															size="sm"
+														>
+															<X className="h-4 w-4" />
+														</Button>
+													</div>
+
+													<ContextualSuggestions
+														suggestionType="assumptions"
+														currentInput={newAssumption}
+														researchGoal={research_goal}
+														existingItems={assumptions}
+														apiPath={apiPath}
+														onSuggestionClick={(suggestion) => {
+															setNewAssumption(suggestion)
+															focusInputAtEnd(assumptionInputRef)
+														}}
+													/>
+												</div>
+											)}
+										</div>
+
+										{/* Unknowns */}
+										<div>
+											<label className="mb-3 block font-medium text-gray-900 text-sm">Key Unknowns</label>
+											<div className="mb-3 space-y-2">
+												{unknowns.map((unknown, index) => (
+													<div
+														key={`unknown-${index}-${unknown.slice(0, 10)}`}
+														className="group flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 transition-all hover:bg-amber-100"
+													>
+														<div className="mt-0.5 flex-shrink-0">
+															<HelpCircle className="h-4 w-4 text-amber-600" />
+														</div>
+														<span className="flex-1 text-gray-800 text-sm leading-relaxed">{unknown}</span>
+														<button
+															onClick={() => removeUnknown(index)}
+															className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100"
+														>
+															<X className="h-3 w-3 text-amber-700" />
+														</button>
+													</div>
+												))}
+											</div>
+											{!showUnknownSuggestions ? (
+												<Button
+													onClick={() => setShowUnknownSuggestions(true)}
+													variant="outline"
+													size="sm"
+													className="w-full justify-center border-dashed"
+												>
+													<Plus className="mr-2 h-4 w-4" />
+													Add key unknown
+												</Button>
+											) : (
+												<div className="space-y-3">
+													<div className="flex gap-2">
+														<Textarea
+															ref={unknownInputRef}
+															placeholder="Add something you're unsure about..."
+															value={newUnknown}
+															onChange={(e) => setNewUnknown(e.target.value)}
+															onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addUnknown()}
+															className="flex-1 resize-none"
+															rows={2}
+															autoFocus
+														/>
+														<Button onClick={addUnknown} variant="outline" size="sm">
+															<Plus className="h-4 w-4" />
+														</Button>
+														<Button
+															onClick={() => {
+																setShowUnknownSuggestions(false)
+																setNewUnknown("")
+															}}
+															variant="ghost"
+															size="sm"
+														>
+															<X className="h-4 w-4" />
+														</Button>
+													</div>
+
+													<ContextualSuggestions
+														suggestionType="unknowns"
+														currentInput={newUnknown}
+														researchGoal={research_goal}
+														existingItems={unknowns}
+														apiPath={apiPath}
+														onSuggestionClick={(suggestion) => {
+															setNewUnknown(suggestion)
+															focusInputAtEnd(unknownInputRef)
+														}}
+													/>
+												</div>
+											)}
+										</div>
+									</div>
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+				</div>
+
+				{/* Custom Instructions Collapsible Section */}
+				<div className="mb-8">
+					<Button
+						variant="ghost"
+						onClick={() => setShowCustomInstructions(!showCustomInstructions)}
+						className="flex items-center gap-2 p-0 text-gray-600 text-sm hover:text-gray-900"
+					>
+						{showCustomInstructions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+						Custom Instructions
+						<Tooltip>
+							<TooltipTrigger>
+								<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs">
+								<p>Add specific instructions for AI analysis or interview generation (optional).</p>
+							</TooltipContent>
+						</Tooltip>
+					</Button>
+
+					{showCustomInstructions && (
+						<Card className="mt-4">
+							<CardContent className="p-4">
+								<Textarea
+									placeholder="Any specific instructions for the AI analysis or interview generation..."
+									value={custom_instructions}
+									onChange={(e) => setCustomInstructions(e.target.value)}
+									onBlur={handleCustomInstructionsBlur}
+									rows={3}
+									className="resize-none"
+								/>
+							</CardContent>
+						</Card>
+					)}
+				</div>
+
+				{showNextButton && (
+					<div className="mt-8 border-gray-200 border-t pt-8">
+						<div className="flex items-center justify-center">
+							<Button onClick={handleNext} disabled={!isValid || isLoading} size="lg" className="px-8 py-3">
+								Generate Interview Questions
+								<ChevronRight className="ml-2 h-4 w-4" />
+							</Button>
+						</div>
+					</div>
+				)}
+			</div>
+		</TooltipProvider>
+	)
+}

@@ -36,6 +36,7 @@ export function useAutoSave({
 			}
 			try {
 				consola.log(`🔄 Starting auto-save for ${sectionKind} with data:`, sectionData)
+				consola.log(`📋 Data type: ${typeof sectionData}, isArray: ${Array.isArray(sectionData)}, JSON:`, JSON.stringify(sectionData))
 				setIsSaving(true)
 				onSaveStart?.()
 
@@ -44,6 +45,13 @@ export function useAutoSave({
 				formData.append("projectId", latestProjectId)
 				formData.append("sectionKind", sectionKind)
 				formData.append("sectionData", JSON.stringify(sectionData))
+				
+				consola.log(`📤 FormData being sent:`, {
+					action: "save-section",
+					projectId: latestProjectId,
+					sectionKind: sectionKind,
+					sectionData: JSON.stringify(sectionData)
+				})
 
 				consola.log(`📤 Sending request to /api/save-project-goals for ${sectionKind}`)
 				const response = await fetch("/api/save-project-goals", {
@@ -61,6 +69,7 @@ export function useAutoSave({
 					onSaveComplete?.()
 					consola.log(`✅ Auto-saved ${sectionKind} section successfully`)
 				} else {
+					consola.error(`❌ Auto-save failed for ${sectionKind}:`, result)
 					throw new Error(result.error || "Save failed")
 				}
 			} catch (error) {
@@ -101,18 +110,16 @@ export function useAutoSave({
 
 	const saveTargetOrgs = useCallback(
 		(target_orgs: string[]) => {
-			if (target_orgs.length > 0) {
-				saveSectionWithLatest("target_orgs", target_orgs)
-			}
+			// Always save, including empty arrays to properly handle deletions
+			saveSectionWithLatest("target_orgs", target_orgs)
 		},
 		[saveSectionWithLatest]
 	)
 
 	const saveTargetRoles = useCallback(
 		(target_roles: string[]) => {
-			if (target_roles.length > 0) {
-				saveSectionWithLatest("target_roles", target_roles)
-			}
+			// Always save, including empty arrays to properly handle deletions
+			saveSectionWithLatest("target_roles", target_roles)
 		},
 		[saveSectionWithLatest]
 	)
@@ -140,18 +147,24 @@ export function useAutoSave({
 
 	const saveAssumptions = useCallback(
 		(assumptions: string[]) => {
-			if (assumptions.length > 0) {
-				saveProjectSection("assumptions", assumptions)
-			}
+			// Always save, including empty arrays to properly handle deletions
+			saveProjectSection("assumptions", assumptions)
 		},
 		[saveProjectSection]
 	)
 
 	const saveUnknowns = useCallback(
 		(unknowns: string[]) => {
-			if (unknowns.length > 0) {
-				saveProjectSection("unknowns", unknowns)
-			}
+			// Always save, including empty arrays to properly handle deletions
+			saveProjectSection("unknowns", unknowns)
+		},
+		[saveProjectSection]
+	)
+
+	const saveDecisionQuestions = useCallback(
+		(decision_questions: string[]) => {
+			// Always save, including empty arrays to properly handle deletions
+			saveProjectSection("decision_questions", decision_questions)
 		},
 		[saveProjectSection]
 	)
@@ -171,6 +184,7 @@ export function useAutoSave({
 		saveResearchGoal,
 		saveAssumptions,
 		saveUnknowns,
+		saveDecisionQuestions,
 		saveCustomInstructions,
 		saveProjectSection,
 		isSaving,

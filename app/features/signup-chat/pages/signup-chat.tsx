@@ -23,9 +23,9 @@ import type { z } from "zod"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
 import { createClient } from "~/lib/supabase/client"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { cn } from "~/lib/utils"
 import type { SignupAgentState } from "~/mastra/agents"
 import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
-import { cn } from "~/lib/utils"
 
 const memory = new Memory({
 	storage: getSharedPostgresStore(),
@@ -294,13 +294,13 @@ export default function SignupChat() {
 			</div> */}
 
 			{/* Main Content */}
-			<main className="flex flex-1 flex-col min-h-0">
+			<main className="flex min-h-0 flex-1 flex-col">
 				{/* <AiSdkChat /> */}
 				<CopilotKit
 					agent="signupAgent"
 					threadId={threadId}
 					// runtimeUrl={mastraUrl}
-					runtimeUrl={`http://0.0.0.0:4111/copilotkit/signup`}
+					runtimeUrl={"http://0.0.0.0:4111/copilotkit/signup"}
 					// runtimeUrl={copilotRuntimeUrl}
 					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
 					showDevConsole={false}
@@ -310,7 +310,7 @@ export default function SignupChat() {
 						"X-ProjectId": String(""),
 					}}
 				>
-					<div className="w-full h-full flex-1 min-h-0 p-0">
+					<div className="h-full min-h-0 w-full flex-1 p-0">
 						<ChatWithChecklist existingChatData={onboardingData} messages={loaderMessages} />
 					</div>
 				</CopilotKit>
@@ -429,10 +429,10 @@ function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: 
 	// }, [messages])
 
 	return (
-		<div className="flex flex-1 flex-col w-full h-full min-h-0">
-			<div className={cn("rounded-lg bg-white shadow-xl dark:bg-gray-800 w-full h-full flex-1 min-h-0")}>
+		<div className="flex h-full min-h-0 w-full flex-1 flex-col">
+			<div className={cn("h-full min-h-0 w-full flex-1 rounded-lg bg-white shadow-xl dark:bg-gray-800")}>
 				<CopilotChat
-					className="w-full h-full min-h-0"
+					className="h-full min-h-0 w-full"
 					labels={{
 						title: "UpSight Signup Chat",
 						initial:

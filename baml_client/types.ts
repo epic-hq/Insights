@@ -350,6 +350,15 @@ export interface Chapter {
   
 }
 
+export interface ContextualSuggestions {
+  decision_questions: string[]
+  assumptions: string[]
+  unknowns: string[]
+  organizations: string[]
+  roles: string[]
+  
+}
+
 export interface DecisionQuestionOut {
   id: string
   text: string

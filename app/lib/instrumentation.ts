@@ -3,6 +3,7 @@
 ;(globalThis as any).___MASTRA_TELEMETRY___ = true
 
 import { getLangfuseClient } from "~/lib/langfuse"
+
 getLangfuseClient()
 
 // Optional: to also use the Langfuse client programmatically, import on-demand:

@@ -41,6 +41,8 @@ export default class TypeBuilder {
     
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
     
+    ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles">;
+    
     DecisionQuestionOut: ClassViewer<'DecisionQuestionOut', "id" | "text" | "rationale" | "key_metrics" | "risks_if_wrong">;
     
     EvidenceLinkProposal: ClassViewer<'EvidenceLinkProposal', "evidence_id" | "rationale" | "confidence">;
@@ -146,7 +148,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionOut","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionOut","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -180,6 +182,10 @@ export default class TypeBuilder {
         
         this.Chapter = this.tb.classViewer("Chapter", [
           "start_ms","end_ms","summary","title",
+        ]);
+        
+        this.ContextualSuggestions = this.tb.classViewer("ContextualSuggestions", [
+          "decision_questions","assumptions","unknowns","organizations","roles",
         ]);
         
         this.DecisionQuestionOut = this.tb.classViewer("DecisionQuestionOut", [

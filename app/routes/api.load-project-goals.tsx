@@ -18,6 +18,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			"target_orgs",
 			"target_roles",
 			"research_goal",
+			"decision_questions",
 			"assumptions",
 			"unknowns",
 			"custom_instructions",
@@ -48,6 +49,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			target_roles: [] as string[],
 			research_goal: "",
 			research_goal_details: "",
+			decision_questions: [] as string[],
 			assumptions: [] as string[],
 			unknowns: [] as string[],
 			custom_instructions: "",
@@ -70,6 +72,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			const meta = sectionsData.research_goal.meta || {}
 			result.research_goal = meta.research_goal || ""
 			result.research_goal_details = meta.research_goal_details || ""
+		}
+
+		// Parse decision questions data
+		if (sectionsData.decision_questions) {
+			const meta = sectionsData.decision_questions.meta || {}
+			result.decision_questions = meta.decision_questions || []
 		}
 
 		// Parse assumptions data

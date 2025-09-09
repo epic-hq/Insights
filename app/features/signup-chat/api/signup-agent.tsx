@@ -1,9 +1,9 @@
-import { ActionFunctionArgs } from "react-router";
-import { mastra } from "~/mastra";
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server";
 import { Memory } from "@mastra/memory"
+import consola from "consola"
+import type { ActionFunctionArgs } from "react-router"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { mastra } from "~/mastra"
 import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
-import consola from "consola";
 
 const memory = new Memory({
 	storage: getSharedPostgresStore(),
@@ -48,17 +48,17 @@ export async function action({ request }: ActionFunctionArgs) {
 		threadId = threads.threads[0].id
 	}
 
-	 // Get the chefAgent instance from Mastra
-	 const agent = mastra.getAgent("signupAgent");
-	 // Stream the response using the agent
-	 //  NOTE: ON AI SDK V5
-	 //  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
-	 const result = await agent.streamVNext(messages, {
-		format: 'aisdk',
+	// Get the chefAgent instance from Mastra
+	const agent = mastra.getAgent("signupAgent")
+	// Stream the response using the agent
+	//  NOTE: ON AI SDK V5
+	//  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
+	const result = await agent.streamVNext(messages, {
+		format: "aisdk",
 		resourceId: `signupAgent-${user.sub}`,
 		threadId: threadId,
-	 });
+	})
 
-	 // Return the result as a data stream response
-	 return result.toUIMessageStreamResponse();
+	// Return the result as a data stream response
+	return result.toUIMessageStreamResponse()
 }

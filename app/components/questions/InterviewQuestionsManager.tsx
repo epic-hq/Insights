@@ -28,14 +28,13 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
-import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
 import QuestionCard from "~/components/questions/QuestionCard"
+import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
-import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import { ProgressDots } from "~/components/ui/ProgressDots"
 import { StatusPill } from "~/components/ui/StatusPill"
@@ -43,6 +42,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import projects from "~/routes/_protected/projects"
@@ -204,7 +204,9 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 				<TooltipContent>
 					<div className="max-w-xs">
 						<div className="font-semibold">Quality Check</div>
-						<div className="text-xs">Score: {qualityFlag.score}/100 ({qualityFlag.assessment.toUpperCase()})</div>
+						<div className="text-xs">
+							Score: {qualityFlag.score}/100 ({qualityFlag.assessment.toUpperCase()})
+						</div>
 						<div className="mt-1 text-xs">
 							{qualityFlag.description || "We can be more clear and specific. Try adding a concrete example."}
 						</div>
@@ -655,26 +657,26 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const evaluation = await response.json()
 
 			// Show quality feedback
-            const qualityMessage = `Score: ${evaluation.score}/100 (${String(evaluation.overall_quality).toUpperCase()})`
-            const suggestion = evaluation?.improvement?.suggested_rewrite
+			const qualityMessage = `Score: ${evaluation.score}/100 (${String(evaluation.overall_quality).toUpperCase()})`
+			const suggestion = evaluation?.improvement?.suggested_rewrite
 
-            if (evaluation.overall_quality === "red") {
-                toast.error("Quality Check", {
-                    description: `${qualityMessage}\nWe can be more clear and specific.${suggestion ? `\nRevise to: “${suggestion}”.` : ""}`,
-                    duration: 6000,
-                })
-                // Still add the question but warn the user
-            } else if (evaluation.overall_quality === "yellow") {
-                toast.warning("Quality Check", {
-                    description: `${qualityMessage}\nWe can be more clear and specific.${suggestion ? `\nTry: “${suggestion}”.` : ""}`,
-                    duration: 5000,
-                })
-            } else {
-                toast.success("Looks good", {
-                    description: `${qualityMessage}`,
-                    duration: 4000,
-                })
-            }
+			if (evaluation.overall_quality === "red") {
+				toast.error("Quality Check", {
+					description: `${qualityMessage}\nWe can be more clear and specific.${suggestion ? `\nRevise to: “${suggestion}”.` : ""}`,
+					duration: 6000,
+				})
+				// Still add the question but warn the user
+			} else if (evaluation.overall_quality === "yellow") {
+				toast.warning("Quality Check", {
+					description: `${qualityMessage}\nWe can be more clear and specific.${suggestion ? `\nTry: “${suggestion}”.` : ""}`,
+					duration: 5000,
+				})
+			} else {
+				toast.success("Looks good", {
+					description: `${qualityMessage}`,
+					duration: 4000,
+				})
+			}
 
 			// Add the question regardless of quality (with user awareness)
 			const customQuestion: Question = {
@@ -766,42 +768,42 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		selectedQuestionIds,
 		saveQuestionsToDatabase,
 		research_goal,
-			target_roles,
+		target_roles,
 	])
 
 	// Auto-evaluate question quality when text changes are saved
-    const evaluateQuestionQuality = useCallback(
-        async (text: string) => {
-            try {
-                const response = await fetch("/api/evaluate-question", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({
-                        question: text,
-                        research_context: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`,
-                    }),
-                })
-                if (!response.ok) return null
-                const evaln = await response.json()
-                const assessment = String(evaln.overall_quality || "").toLowerCase()
-                if (assessment === "yellow" || assessment === "red") {
-                    const suggestion = evaln?.improvement?.suggested_rewrite
-                    const tip = suggestion
-                        ? `We can be more clear and specific. Revise to: “${suggestion}”.`
-                        : (evaln.quick_feedback || "We can be more clear and specific. Try adding a concrete example.")
-                    return {
-                        assessment: assessment as "yellow" | "red",
-                        score: Number(evaln.score || 0),
-                        description: tip,
-                    }
-                }
-                return null
-            } catch {
-                return null
-            }
-        },
-        [research_goal, target_roles]
-    )
+	const evaluateQuestionQuality = useCallback(
+		async (text: string) => {
+			try {
+				const response = await fetch("/api/evaluate-question", {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({
+						question: text,
+						research_context: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`,
+					}),
+				})
+				if (!response.ok) return null
+				const evaln = await response.json()
+				const assessment = String(evaln.overall_quality || "").toLowerCase()
+				if (assessment === "yellow" || assessment === "red") {
+					const suggestion = evaln?.improvement?.suggested_rewrite
+					const tip = suggestion
+						? `We can be more clear and specific. Revise to: “${suggestion}”.`
+						: evaln.quick_feedback || "We can be more clear and specific. Try adding a concrete example."
+					return {
+						assessment: assessment as "yellow" | "red",
+						score: Number(evaln.score || 0),
+						description: tip,
+					}
+				}
+				return null
+			} catch {
+				return null
+			}
+		},
+		[research_goal, target_roles]
+	)
 
 	const rejectQuestion = useCallback(
 		async (questionId: string) => {
@@ -1189,7 +1191,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							<ChevronDown className={`h-4 w-4 transition-transform ${showCustomInstructions ? "rotate-180" : ""}`} />
 						</Button>
 
-                    {/* Help moved next to Project Goals link above */}
+						{/* Help moved next to Project Goals link above */}
 					</div>
 					<Button
 						onClick={() => setShowAddCustomQuestion(true)}
@@ -1230,8 +1232,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</Card>
 				)}
 
-			{/* Help Dialog */}
-			<InterviewQuestionHelp open={showHelp} onOpenChange={setShowHelp} />
+				{/* Help Dialog */}
+				<InterviewQuestionHelp open={showHelp} onOpenChange={setShowHelp} />
 
 				{/* Improve Question Dialog */}
 				<Dialog open={!!improvingId} onOpenChange={(o) => !o && setImprovingId(null)}>
@@ -1249,23 +1251,21 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 											key={idx}
 											variant="outline"
 											className="w-full justify-start"
-                                            onClick={async () => {
-                                                if (!improvingId) return
-                                                setEvaluatingId(improvingId)
-                                                const quality = await evaluateQuestionQuality(opt)
-                                                const updated = questions.map((q) =>
-                                                    q.id === improvingId
-                                                        ? { ...q, text: opt, qualityFlag: quality ?? undefined }
-                                                        : q
-                                                )
-                                                setQuestions(updated)
-                                                setSkipDebounce(true)
-                                                await saveQuestionsToDatabase(updated, selectedQuestionIds)
-                                                setTimeout(() => setSkipDebounce(false), 1500)
-                                                setEvaluatingId(null)
-                                                setImprovingId(null)
-                                                setImproveOptions([])
-                                            }}
+											onClick={async () => {
+												if (!improvingId) return
+												setEvaluatingId(improvingId)
+												const quality = await evaluateQuestionQuality(opt)
+												const updated = questions.map((q) =>
+													q.id === improvingId ? { ...q, text: opt, qualityFlag: quality ?? undefined } : q
+												)
+												setQuestions(updated)
+												setSkipDebounce(true)
+												await saveQuestionsToDatabase(updated, selectedQuestionIds)
+												setTimeout(() => setSkipDebounce(false), 1500)
+												setEvaluatingId(null)
+												setImprovingId(null)
+												setImproveOptions([])
+											}}
 										>
 											{opt}
 										</Button>
@@ -1440,9 +1440,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																									.replace(/\b\w/g, (m) => m.toUpperCase()) ||
 																								"Other"}
 																						</Badge>
-                                                    <Badge variant="outline" className="text-muted-foreground text-xs">
-                                                        ~{Math.round(question.estimatedMinutes)}m
-                                                    </Badge>
+																						<Badge variant="outline" className="text-muted-foreground text-xs">
+																							~{Math.round(question.estimatedMinutes)}m
+																						</Badge>
 																						{question.source === "user" && (
 																							<Badge
 																								variant="outline"
@@ -1471,41 +1471,41 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						)}
 																					</div>
 																					{editingId === question.id ? (
-                                                    <div className="mb-2 flex items-center gap-2">
-                                                        <Textarea
-                                                            value={editingText}
-                                                            onChange={(e) => setEditingText(e.target.value)}
-                                                            autoFocus
-                                                            rows={2}
-                                                            className="resize-none"
-                                                        />
-                                                        <Button
-                                                            variant="ghost"
-                                                            size="icon"
-                                                            onClick={async () => {
-                                                                setEvaluatingId(question.id)
-                                                                const quality = await evaluateQuestionQuality(editingText)
-                                                                const updated = questions.map((q) =>
-                                                                    q.id === question.id
-                                                                        ? { ...q, text: editingText, qualityFlag: quality ?? undefined }
-                                                                        : q
-                                                                )
-                                                                setQuestions(updated)
-                                                                setSkipDebounce(true)
-                                                                await saveQuestionsToDatabase(updated, selectedQuestionIds)
-                                                                setTimeout(() => setSkipDebounce(false), 1500)
-                                                                setEditingId(null)
-                                                                setEditingText("")
-                                                                setEvaluatingId(null)
-                                                            }}
-                                                            className="text-green-600"
-                                                        >
-                                                            {evaluatingId === question.id ? (
-                                                                <div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-                                                            ) : (
-                                                                <Check className="h-4 w-4" />
-                                                            )}
-                                                        </Button>
+																						<div className="mb-2 flex items-center gap-2">
+																							<Textarea
+																								value={editingText}
+																								onChange={(e) => setEditingText(e.target.value)}
+																								autoFocus
+																								rows={2}
+																								className="resize-none"
+																							/>
+																							<Button
+																								variant="ghost"
+																								size="icon"
+																								onClick={async () => {
+																									setEvaluatingId(question.id)
+																									const quality = await evaluateQuestionQuality(editingText)
+																									const updated = questions.map((q) =>
+																										q.id === question.id
+																											? { ...q, text: editingText, qualityFlag: quality ?? undefined }
+																											: q
+																									)
+																									setQuestions(updated)
+																									setSkipDebounce(true)
+																									await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																									setTimeout(() => setSkipDebounce(false), 1500)
+																									setEditingId(null)
+																									setEditingText("")
+																									setEvaluatingId(null)
+																								}}
+																								className="text-green-600"
+																							>
+																								{evaluatingId === question.id ? (
+																									<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																								) : (
+																									<Check className="h-4 w-4" />
+																								)}
+																							</Button>
 																							<Button
 																								variant="ghost"
 																								size="icon"
@@ -1527,9 +1527,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						</p>
 																					)}
 																				</div>
-                                            <div className="flex items-center gap-1">
-                                                {question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
-                                                <DropdownMenu>
+																				<div className="flex items-center gap-1">
+																					{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
+																					<DropdownMenu>
 																						<TooltipProvider>
 																							<Tooltip>
 																								<TooltipTrigger asChild>

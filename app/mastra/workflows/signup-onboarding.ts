@@ -1,7 +1,7 @@
 import { createStep, createWorkflow } from "@mastra/core/workflows"
-import { getLangfuseClient } from "~/lib/langfuse"
 import { createClient } from "@supabase/supabase-js"
 import { z } from "zod"
+import { getLangfuseClient } from "~/lib/langfuse"
 import { llmAgent } from "../agents/llmAgent"
 
 const StateSchema = z.object({
@@ -121,26 +121,26 @@ const NormalizeAssignedStep = createStep({
 		message: z.string(),
 		user_id: z.string().optional(),
 	}),
-    execute: async ({ inputData }) => {
-      const { state, assigned, assigned_key, message, user_id } = inputData
-      if (!assigned || !assigned_key || assigned_key === "name") return inputData
-      try {
-        const prompt = `Rewrite the user's input succinctly as a clean value for the field "${assigned_key}".
+	execute: async ({ inputData }) => {
+		const { state, assigned, assigned_key, message, user_id } = inputData
+		if (!assigned || !assigned_key || assigned_key === "name") return inputData
+		try {
+			const prompt = `Rewrite the user's input succinctly as a clean value for the field "${assigned_key}".
 Fix spelling and grammar. Keep it short (max ~12 words). Do not add new facts.
 User input: "${message}"`
-        const langfuse = getLangfuseClient()
-        const trace = (langfuse as any).trace?.({ name: "llm.normalize-assigned" })
-        const gen = trace?.generation?.({ name: "llm.normalize-assigned" })
-        const { text } = await llmAgent.generate([{ role: "user", content: prompt }])
-        gen?.update?.({ input: { assigned_key, promptLen: prompt.length }, output: { text } })
-        gen?.end?.()
-        const cleaned = (text || state[assigned_key] || "").toString().trim()
-        const newState = { ...state, [assigned_key]: cleaned }
-        return { state: newState, assigned, assigned_key, message, user_id }
-      } catch {
-        return inputData
-      }
-    },
+			const langfuse = getLangfuseClient()
+			const trace = (langfuse as any).trace?.({ name: "llm.normalize-assigned" })
+			const gen = trace?.generation?.({ name: "llm.normalize-assigned" })
+			const { text } = await llmAgent.generate([{ role: "user", content: prompt }])
+			gen?.update?.({ input: { assigned_key, promptLen: prompt.length }, output: { text } })
+			gen?.end?.()
+			const cleaned = (text || state[assigned_key] || "").toString().trim()
+			const newState = { ...state, [assigned_key]: cleaned }
+			return { state: newState, assigned, assigned_key, message, user_id }
+		} catch {
+			return inputData
+		}
+	},
 })
 
 const BuildReplyStep = createStep({
