@@ -6,46 +6,7 @@ import {
 	AssistantChatTransport,
 } from "@assistant-ui/react-ai-sdk";
 import { Thread } from "~/components/assistant-ui/thread";
-// import {
-//   SidebarInset,
-//   SidebarProvider,
-//   SidebarTrigger,
-// } from "~/components/ui/sidebar";
-// import { ThreadListSidebar } from "~/components/assistant-ui/threadlist-sidebar";
-import { Separator } from "@/components/ui/separator";
-// import {
-//   Breadcrumb,
-//   BreadcrumbItem,
-//   BreadcrumbLink,
-//   BreadcrumbList,
-//   BreadcrumbPage,
-//   BreadcrumbSeparator,
-// } from "~/components/ui/breadcrumb";
-
-import { DefaultChatTransport } from 'ai';
-import { useState } from 'react';
-import { useChat } from '@ai-sdk/react';
-
-import {
-	Conversation,
-	ConversationContent,
-	ConversationScrollButton,
-} from '~/components/ai-elements/conversation';
-import { Message, MessageContent } from '~/components/ai-elements/message';
-import { Input } from '~/components/ui/input';
-import {
-	PromptInputTextarea,
-	PromptInputSubmit,
-	PromptInput,
-} from '~/components/ai-elements/prompt-input';
-import {
-	Tool,
-	ToolContent,
-	ToolHeader,
-	ToolOutput,
-	ToolInput,
-} from '~/components/ai-elements/tool';
-import { Response as AiResponse } from '~/components/ai-elements/response';
+import { useAssistantInstructions } from "@assistant-ui/react";
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import { memory } from '~/mastra/memory';
@@ -53,6 +14,12 @@ import consola from "consola"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { convertMessages } from '@mastra/core/agent';
 import type { Route } from "./+types/assistant-ui-chat";
+import { makeAssistantVisible } from "@assistant-ui/react";
+import { Button } from "~/components/ui/button";
+// Via makeAssistantVisible's clickable option
+const ClickableButton = makeAssistantVisible(Button, {
+	clickable: true, // Provides a click tool
+});
 
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
@@ -98,14 +65,27 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 	})
 	const aiv5Messages = convertMessages(messagesV2).to('AIV5.UI');
 
+	// Get existing chat data from user_settings
+	const { data: userSettings } = await supabase
+		.from("user_settings")
+		.select("signup_data")
+		.eq("user_id", user.sub)
+		.single()
+
+	const existingChatData = userSettings?.signup_data
+
 
 	return data({
 		messages: aiv5Messages,
+		existingChatData,
+		user,
 	})
 }
 
 export default function Assistant({ loaderData }: Route.ComponentProps) {
-	const { messages } = loaderData
+	const { messages, existingChatData, user } = loaderData
+	const [onboardingData, setOnboardingData] = useState(existingChatData)
+	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
 	const runtime = useChatRuntime({
 		transport: new AssistantChatTransport({
 			api: "/api/chat/signup",
@@ -113,13 +93,70 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 		messages,
 	});
 
+
 	return (
 		<AssistantRuntimeProvider runtime={runtime}>
-			<div className="grid h-dvh grid-cols-[1fr] gap-x-2 px-4 py-4">
-				{/* <div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-4"> */}
+			{/* <NavigateTool /> */}
+			{/* <AddInstructions />
+			<AddInstructions2 /> */}
+			{/* <ClickableButton onClick={() => consola.log("button clicked")}>Click me</ClickableButton> */}
+			{/* <div className="grid h-dvh grid-cols-[1fr] gap-x-2 px-4 py-4"> */}
+			<div className="grid h-dvh grid-cols-[200px_1fr] lg:grid-cols-[400px_1fr] gap-x-2 px-4 py-4">
+				<SignupDataWatcher
+					userId={user?.sub}
+					data={existingChatData}
+					onDataUpdate={(data) => {
+						consola.log("onDataUpdate", data)
+						setOnboardingData(data)
+					}}
+					onCompleted={() => setChatCompleted(true)}
+				/>
 				{/* <ThreadList /> */}
-				<Thread />
+				<Thread className="max-h-[95dvh]" />
 			</div>
 		</AssistantRuntimeProvider>
 	);
 };
+
+function AddInstructions() {
+	useAssistantInstructions({
+		instruction: "This is a test",
+		disabled: false,
+	})
+	return (
+		null
+	)
+}
+
+function AddInstructions2() {
+	useAssistantInstructions({
+		instruction: "This is a test 2",
+		disabled: false,
+	})
+	return (
+		null
+	)
+}
+
+import { makeAssistantTool, tool } from "@assistant-ui/react";
+import { z } from "zod";
+import { SignupDataWatcher } from "../components/SignupDataWatcher";
+import { useState } from "react";
+
+// Define the tool using the tool() helper
+const submitForm = tool({
+	parameters: z.object({
+		path: z.string(),
+	}),
+	execute: async ({ path }) => {
+		// Implementation
+		consola.log("path", path)
+		return { success: true };
+	},
+});
+
+// Create a tool component
+const NavigateTool = makeAssistantTool({
+	...submitForm,
+	toolName: "navigate",
+});

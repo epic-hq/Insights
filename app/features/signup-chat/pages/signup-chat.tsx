@@ -21,7 +21,7 @@ import consola from "consola"
 import { ArrowLeft, ArrowRight, CheckCircle, Mic } from "lucide-react"
 import type { z } from "zod"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
-import { createClient } from "~/lib/supabase/client"
+import { SignupDataWatcher } from "~/features/signup-chat/components/SignupDataWatcher"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { SignupAgentState } from "~/mastra/agents"
 import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
@@ -94,7 +94,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 			last: 50,
 		},
 	})
-	consola.log("Messages: ", messages)
+
 
 	return data({
 		user,
@@ -152,7 +152,6 @@ export default function SignupChat() {
 	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
 	const [onboardingData, setOnboardingData] = useState(existingChatData)
 	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
-	const supabase = createClient()
 
 	// If signup chat is not required, or it's already completed, send users home immediately.
 	useEffect(() => {
@@ -166,31 +165,7 @@ export default function SignupChat() {
 		}
 	}, [chatCompleted, navigate])
 
-	useEffect(() => {
-		if (!user?.sub) return
-		console.log("attempting supabase connect for user", user)
-		const channel = supabase
-			.channel("signup_data_watch")
-			.on(
-				"postgres_changes",
-				{ event: "UPDATE", schema: "public", table: "user_settings", filter: `user_id=eq.${user.sub}` },
-				(payload) => {
-					console.log("payload", payload)
-					try {
-						setOnboardingData((payload.new as any)?.signup_data)
-						const completed = (payload.new as any)?.signup_data?.completed === true
-						if (completed) {
-							setChatCompleted(true)
-						}
-					} catch {}
-				}
-			)
-			.subscribe()
-
-		return () => {
-			supabase.removeChannel(channel)
-		}
-	}, [supabase, user?.sub, navigate])
+	// Subscription moved into SignupDataWatcher component
 
 	// If chat is already completed, show completion message
 	// Moved to chat-completed.tsx
@@ -312,6 +287,14 @@ export default function SignupChat() {
 				>
 					<div className="w-full h-full flex-1 min-h-0 p-0">
 						<ChatWithChecklist existingChatData={onboardingData} messages={loaderMessages} />
+						{/* Hidden watcher subscribes to updates and signals completion */}
+						<SignupDataWatcher
+							userId={user?.sub}
+							data={onboardingData}
+							onDataUpdate={setOnboardingData}
+							onCompleted={() => setChatCompleted(true)}
+							showCard={false}
+						/>
 					</div>
 				</CopilotKit>
 			</main>
@@ -443,7 +426,7 @@ function ChatWithChecklist({ existingChatData, messages }: { existingChatData?: 
 			{process.env.NODE_ENV === "development" && (
 				<div className="">
 					{/* Development: */}
-					<JsonDataCard title="Signup Data" jsonData={existingChatData} />
+					<SignupDataWatcher title="Signup Data" data={existingChatData} subscribe={false} />
 				</div>
 			)}
 		</div>

@@ -31,17 +31,17 @@ import { TooltipIconButton } from "~/components/assistant-ui/tooltip-icon-button
 import { Button } from "~/components/ui/button"
 import { cn } from "~/lib/utils"
 
-export const Thread: FC = () => {
+export const Thread: FC<{ className?: string }> = ({ className }) => {
 	return (
 		<LazyMotion features={domAnimation}>
 			<MotionConfig reducedMotion="user">
 				<ThreadPrimitive.Root
-					className="aui-root aui-thread-root @container flex h-full flex-col bg-background"
+					className={"aui-root aui-thread-root @container flex h-full flex-col bg-background"}
 					style={{
 						["--thread-max-width" as string]: "44rem",
 					}}
 				>
-					<ThreadPrimitive.Viewport className="aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4">
+					<ThreadPrimitive.Viewport className={cn("aui-thread-viewport relative flex flex-1 flex-col overflow-x-auto overflow-y-scroll px-4", className)}>
 						<ThreadWelcome />
 
 						<ThreadPrimitive.Messages

@@ -16,6 +16,9 @@ const envSchema = z.object({
 	POSTHOG_KEY: z.string().optional(),
 	POSTHOG_HOST: z.string().optional(),
 	SIGNUP_CHAT_REQUIRED: z.string().optional(),
+	LANGFUSE_PUBLIC_KEY: z.string().optional(),
+	LANGFUSE_SECRET_KEY: z.string().optional(),
+	LANGFUSE_HOST: z.string().optional(),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>

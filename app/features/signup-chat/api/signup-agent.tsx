@@ -3,6 +3,11 @@ import { mastra } from "~/mastra";
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server";
 import { Memory } from "@mastra/memory"
 import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
+import { frontendTools } from "@assistant-ui/react-ai-sdk";
+import { ModelMessage } from "ai";
+import { getLangfuseClient } from "~/lib/langfuse"
+import { RuntimeContext } from "@mastra/core/di"
+
 import consola from "consola";
 
 const memory = new Memory({
@@ -21,7 +26,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 	const { client: supabase } = getServerClient(request)
 
-	const { messages } = await request.json()
+	const { messages, tools, system } = await request.json()
 	// Basic usage with default parameters
 	const threads = await memory.getThreadsByResourceIdPaginated({
 		resourceId: `signupAgent-${user.sub}`,
@@ -48,17 +53,44 @@ export async function action({ request }: ActionFunctionArgs) {
 		threadId = threads.threads[0].id
 	}
 
-	 // Get the chefAgent instance from Mastra
-	 const agent = mastra.getAgent("signupAgent");
-	 // Stream the response using the agent
-	 //  NOTE: ON AI SDK V5
-	 //  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
-	 const result = await agent.streamVNext(messages, {
+	const runtimeContext = new RuntimeContext()
+	runtimeContext.set("user_id", user.sub)
+
+	// Get the chefAgent instance from Mastra
+	const agent = mastra.getAgent("signupAgent");
+	// Stream the response using the agent
+	//  NOTE: ON AI SDK V5
+	//  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
+	const result = await agent.streamVNext(messages, {
 		format: 'aisdk',
 		resourceId: `signupAgent-${user.sub}`,
 		threadId: threadId,
-	 });
+		runtimeContext,
+		// @ts-expect-error
+		clientTools: !!tools ? frontendTools(tools) : undefined, // assistant-ui serializes tools and sends them body param "tools"
+		// assistant-ui sends additional prompt from frontend in the "system" body param when using `useAssistantInstructions`, adding it here as context
+		//
+		context: !!system ? [
+			{
+				role: "system",
+				content: `## Context from the client's UI:\n${system}`,
+			},
+		] : undefined,
+	});
 
-	 // Return the result as a data stream response
-	 return result.toUIMessageStreamResponse();
+	const langfuse = getLangfuseClient()
+
+	// kick off background completion work
+	void result
+		.getFullOutput()
+		.then((full) => {
+			consola.log("Full output:", full);
+			const lfTrace = langfuse.trace?.({ name: "api.signup-agent" })
+			const gen = lfTrace?.generation?.({ name: "api.signup-agent", input: messages, output: full?.content })
+			gen?.end?.()
+		})
+		.catch((err) => consola.error("getFullOutput failed:", err));
+
+	// Return the result as a data stream response
+	return result.toUIMessageStreamResponse();
 }
