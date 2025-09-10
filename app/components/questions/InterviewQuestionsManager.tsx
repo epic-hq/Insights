@@ -268,7 +268,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [improving, setImproving] = useState(false)
 	const [evaluatingId, setEvaluatingId] = useState<string | null>(null)
 	// How many new questions to generate when user clicks "Generate More"
-	const [moreCount, setMoreCount] = useState<number>(3)
+	// Default "Generate More" count to 8 instead of 3
+	const [moreCount, setMoreCount] = useState<number>(8)
 	const previousSelectionRef = React.useRef<string[] | null>(null)
 
 	// Auto-generate questions on first load for new users

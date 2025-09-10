@@ -617,8 +617,10 @@ export default function ProjectGoalsScreen({
 												{templateKey === "understand_customer_needs" ? "Business Goal" : "Primary Goal"}
 											</h2>
 											<Tooltip>
-												<TooltipTrigger>
-													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
 													<p>
@@ -684,8 +686,10 @@ export default function ProjectGoalsScreen({
 												{decision_questions.length}
 											</span>
 											<Tooltip>
-												<TooltipTrigger>
-													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
 													<p>These questions will guide your research and help shape the interviews.</p>
@@ -802,8 +806,10 @@ export default function ProjectGoalsScreen({
 												{target_roles.length}
 											</span>
 											<Tooltip>
-												<TooltipTrigger>
-													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
 													<p>
@@ -984,8 +990,10 @@ export default function ProjectGoalsScreen({
 											<Target className="h-5 w-5 text-blue-600" />
 											<h2 className="font-semibold text-lg">Research Context</h2>
 											<Tooltip>
-												<TooltipTrigger>
-													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
 													<p>
@@ -1171,14 +1179,16 @@ export default function ProjectGoalsScreen({
 					>
 						{showCustomInstructions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 						Custom Instructions
-						<Tooltip>
-							<TooltipTrigger>
-								<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-							</TooltipTrigger>
-							<TooltipContent className="max-w-xs">
-								<p>Add specific instructions for AI analysis or interview generation (optional).</p>
-							</TooltipContent>
-						</Tooltip>
+										<Tooltip>
+											<TooltipTrigger asChild>
+												<span className="inline-flex">
+													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												</span>
+											</TooltipTrigger>
+											<TooltipContent className="max-w-xs">
+												<p>Add specific instructions for AI analysis or interview generation (optional).</p>
+											</TooltipContent>
+										</Tooltip>
 					</Button>
 
 					{showCustomInstructions && (
