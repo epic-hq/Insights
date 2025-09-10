@@ -343,7 +343,7 @@ class GenerateInputs {
   total_per_round int? @description("Default 25: number of questions to show per round.")
   per_category_min int? @description("Default 3: minimum per category.")
   per_category_max int? @description("Default 5: maximum per category.")
-	interview_time_limit int? @description("Default 60: Expected interview time in minutes, use this to guide the selection of must ask questions.")
+  interview_time_limit int? @description("Default 30: Expected interview time in minutes, use this to guide the selection of must ask questions.")
 }
 
 // ---------- Main generation function ----------
@@ -421,6 +421,13 @@ function GenerateQuestionSet(
     10) Sound like a human talking to another human, not a researcher conducting an interview.
     11) Do NOT use placeholders or template tokens like [relevant process], <thing>, {something}. If specifics are missing, write a complete, neutral phrase without brackets. The final question text must not contain '[' or ']'.
 
+  LENGTH & CLARITY CONSTRAINTS (strict):
+  - Keep each question short and crisp: 8–18 words (target ~12–16 words), max 140 characters.
+  - Do NOT list or restate roles/organizations in the question text; address the interviewee as "you".
+  - No long enumerations, comma chains, or multiple clauses; one clear idea per question.
+  - Avoid jargon and qualifiers; prefer simple, conversational phrasing.
+  - Never stitch together multiple audiences (e.g., "Special Education Teacher, CIO, Clinical Psychologist..."). Pick a single perspective implicitly via "you".
+
   OUTPUT SHAPE
   Return only valid JSON matching QuestionSet:
   {
@@ -447,6 +454,7 @@ function GenerateQuestionSet(
 
   HARD CONSTRAINTS
   - No placeholders or bracketed variables in any question text.
+  - Max 140 characters per question. If longer, rewrite to fit while preserving meaning.
 
   Return JSON only:
   {{ ctx.output_format }}
@@ -524,6 +532,10 @@ function GenerateFollowUpQuestions(
     - Simple clarification: 2-3 minutes
     - Story/example requests: 4-5 minutes
     - Complex scenario discussion: 5-6 minutes
+
+    KEEP THEM BRIEF:
+    - 6–16 words (max 120 characters) per follow-up.
+    - No role/organization lists; address the person as "you".
 
     Return exactly {{ ctx.output_format }}
   "#

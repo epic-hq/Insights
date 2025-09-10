@@ -52,19 +52,19 @@ export async function action({ request }: ActionFunctionArgs) {
 	// 	consola.error("MASTRA_URL is not set")
 	// 	return new Response("MASTRA_URL is not set", { status: 500 })
 	// }
-	const runtime = new CopilotRuntime({
-		agents: await MastraAgent.getRemoteAgents({
-			mastraClient: new MastraClient({
-				baseUrl: process.env.MASTRA_URL!,
-				headers: {
-					"x-user-id": headerUserId || user.sub || "",
-					"x-account-id": headerAccountId || "",
-					"x-project-id": headerProjectId || "",
-					authorization: authHeader,
-				},
-			}),
-		}),
-	})
+    const runtime = new CopilotRuntime({
+        agents: await MastraAgent.getRemoteAgents({
+            mastraClient: new MastraClient({
+                baseUrl: (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, ""),
+                headers: {
+                    "x-user-id": headerUserId || user.sub || "",
+                    "x-account-id": headerAccountId || "",
+                    "x-project-id": headerProjectId || "",
+                    authorization: authHeader,
+                },
+            }),
+        }),
+    })
 
 	// Log the context for debugging
 	// consola.log("CopilotKit received headers:", {

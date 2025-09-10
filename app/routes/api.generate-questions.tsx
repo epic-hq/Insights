@@ -31,8 +31,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		let assumptions = formData.get("assumptions") as string
 		let unknowns = formData.get("unknowns") as string
 		let custom_instructions = ((formData.get("custom_instructions") as string) || "").trim()
-		const questionCount = Number(formData.get("questionCount") ?? 10)
-		const interview_time_limit = Number(formData.get("interview_time_limit") ?? 60)
+		// Determine questionCount later once we know if this is a first-time generation
+		const questionCountRaw = formData.get("questionCount")
+		let questionCount: number | null = null
+		const interview_time_limit = Number(formData.get("interview_time_limit") ?? 30)
 		let existingQuestions: string[] = []
 
 		// If project_id is provided, load project context from database
@@ -93,6 +95,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			} catch (error) {
 				consola.warn("Could not load project context from database:", error)
 			}
+		}
+
+		// Decide on questionCount default now that we know if this is first-time
+		// Priority: explicit request value > inferred default (8 if first-time else 10)
+		if (typeof questionCountRaw === "string" && questionCountRaw.trim().length > 0) {
+			const parsed = Number(questionCountRaw)
+			questionCount = Number.isFinite(parsed) && parsed > 0 ? parsed : null
+		}
+		if (!questionCount) {
+			const firstTime = existingQuestions.length === 0
+			questionCount = firstTime ? 8 : 10
 		}
 
 		// Validate required fields (only when not loading from database)
@@ -179,7 +192,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				custom_instructions: ensure(custom_instructions, ""),
 				session_id: ensure(computedSessionId),
 				round: 1,
-				total_per_round: questionCount || 10,
+					total_per_round: questionCount || 10,
 				per_category_min: 1,
 				per_category_max: 3,
 				interview_time_limit,
@@ -420,11 +433,30 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		consola.log("BAML questionSet result:", JSON.stringify(questionSet, null, 2))
 
-		// Ensure all questions have unique, stable IDs
+		// Ensure all questions have unique, stable IDs and sanitize text length/format
+		const sanitizeText = (text: string): string => {
+			try {
+				let t = String(text || "").replace(/\s+/g, " ").trim()
+				// Remove any bracketed placeholders that may slip through
+				t = t.replace(/\[[^\]]*\]/g, "").replace(/\{[^}]*\}/g, "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+				const MAX = 140
+				if (t.length <= MAX) return t
+				// Prefer cutting at a natural boundary before MAX
+				const cut = t.slice(0, MAX)
+				const lastPunct = Math.max(cut.lastIndexOf("?"), cut.lastIndexOf("."), cut.lastIndexOf("!"))
+				const lastSpace = cut.lastIndexOf(" ")
+				const end = lastPunct >= 40 ? lastPunct + 1 : lastSpace >= 40 ? lastSpace : MAX
+				return cut.slice(0, end).trim().replace(/[,:;\-]$/, "") + (end < t.length ? "…" : "")
+			} catch {
+				return String(text || "").slice(0, 140)
+			}
+		}
+
 		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
 			questionSet.questions = questionSet.questions.map((question: any) => ({
 				...question,
 				id: question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID(),
+				text: sanitizeText(question.text),
 			}))
 		}
 

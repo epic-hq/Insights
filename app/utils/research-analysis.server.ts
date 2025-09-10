@@ -92,9 +92,9 @@ export async function generateQuestionSetCanonical(params: {
 			total_per_round: total_per_round ?? 10,
 			per_category_min: per_category_min ?? 1,
 			per_category_max: per_category_max ?? 3,
-			interview_time_limit: interview_time_limit ?? 60,
-		},
-	})
+    interview_time_limit: interview_time_limit ?? 30,
+  },
+})
 
 	return questionSet
 }

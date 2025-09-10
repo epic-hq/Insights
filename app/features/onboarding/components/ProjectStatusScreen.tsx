@@ -22,7 +22,7 @@ import {
 	Zap,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import ReactMarkdown from "react-markdown"
+import { MarkdownText } from "~/components/assistant-ui/markdown-text"
 import { useRevalidator } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -749,7 +749,7 @@ export default function ProjectStatusScreen({
 																{!meta?.target_orgs && !meta?.target_roles && (
 																	<div className="rounded-lg bg-muted/50 p-2">
 																		<div className="prose prose-sm max-w-none text-foreground text-sm">
-																			<ReactMarkdown>{section.content_md}</ReactMarkdown>
+                                            <MarkdownText>{section.content_md}</MarkdownText>
 																		</div>
 																	</div>
 																)}

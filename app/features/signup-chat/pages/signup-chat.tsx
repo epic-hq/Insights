@@ -95,15 +95,16 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		},
 	})
 
-	return data({
-		user,
-		existingChatData,
-		copilotRuntimeUrl: "/api/copilotkit",
-		mastraUrl: `${process.env.MASTRA_URL}/copilotkit/signup`,
-		result,
-		messages: messagesV2,
-		threadId,
-	})
+    const mastraBase = (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, "")
+    return data({
+        user,
+        existingChatData,
+        copilotRuntimeUrl: "/api/copilotkit",
+        mastraUrl: `${mastraBase}/copilotkit/signup`,
+        result,
+        messages: messagesV2,
+        threadId,
+    })
 }
 
 export async function action({ request }: ActionFunctionArgs) {

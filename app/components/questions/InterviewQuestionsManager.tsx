@@ -227,7 +227,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		research_goal_details,
 		assumptions,
 		unknowns,
-		defaultTimeMinutes = 60,
+		defaultTimeMinutes = 30,
 		defaultPurpose = "exploratory",
 		defaultFamiliarity = "cold",
 		defaultGoDeep = false,
@@ -926,7 +926,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			// Determine question count:
 			// - Initial generation: time-based target (4/6/8/10)
 			// - Subsequent generations: user-selected count (default 3)
-			const countByTime: Record<number, number> = { 15: 4, 30: 6, 45: 8, 60: 10 }
+			// First-time generation target by time; default 30m should produce 8
+			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
 			const initialTarget = countByTime[timeMinutes] ?? 8
 			const count = autoGenerateInitial ? initialTarget : moreCount
 			formData.append("questionCount", String(count))
@@ -1030,6 +1031,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			})
 		} finally {
 			setGenerating(false)
+			// Ensure spinner resets even if initial auto-generate failed
+			setAutoGenerateInitial(false)
 		}
 	}
 

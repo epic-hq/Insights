@@ -13,6 +13,8 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { Route } from "./+types/assistant-ui-chat"
+import consola from "consola"
+import { memory } from "~/mastra/memory"
 
 // Via makeAssistantVisible's clickable option
 const ClickableButton = makeAssistantVisible(Button, {

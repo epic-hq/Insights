@@ -3,7 +3,6 @@ import { RuntimeContext } from "@mastra/core/di"
 import { Memory } from "@mastra/memory"
 import { ModelMessage } from "ai"
 import consola from "consola"
-import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
@@ -72,11 +71,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		//
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 	})
 

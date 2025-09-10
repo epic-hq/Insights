@@ -5,7 +5,7 @@
 import { Pencil } from "lucide-react"
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
-import ReactMarkdown from "react-markdown"
+import { MarkdownText } from "~/components/assistant-ui/markdown-text"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
@@ -159,10 +159,10 @@ export default function InlineEdit({
 				showEditButton ? "flex justify-between" : "block"
 			)}
 		>
-			{markdown ? (
-				<ReactMarkdown>{value || placeholder}</ReactMarkdown>
-			) : (
-				<TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
+            {markdown ? (
+                <MarkdownText>{value || placeholder}</MarkdownText>
+            ) : (
+                <TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{multiline ? (
 						value ? (
 							value.split("\n").map((line, i) => (

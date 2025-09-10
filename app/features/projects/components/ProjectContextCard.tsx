@@ -1,6 +1,6 @@
 import { motion } from "framer-motion"
 import { Hash, Settings2 } from "lucide-react"
-import ReactMarkdown from "react-markdown"
+import { MarkdownText } from "~/components/assistant-ui/markdown-text"
 import { Link } from "react-router-dom"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 
@@ -41,13 +41,13 @@ function isPlainObject(v: any): v is Record<string, any> {
 // Renders arbitrary JSON to readable UI. Strings use markdown.
 function RenderJson({ value }: { value: Jsonish }) {
 	if (value == null || value === "") return <span className="text-muted-foreground">—</span>
-	if (typeof value === "string") {
-		return (
-			<div className="prose prose-sm dark:prose-invert max-w-none">
-				<ReactMarkdown>{value}</ReactMarkdown>
-			</div>
-		)
-	}
+    if (typeof value === "string") {
+        return (
+            <div className="prose prose-sm dark:prose-invert max-w-none">
+                <MarkdownText>{value}</MarkdownText>
+            </div>
+        )
+    }
 	if (Array.isArray(value)) {
 		return (
 			<ul className="list-disc space-y-1 pl-5">
