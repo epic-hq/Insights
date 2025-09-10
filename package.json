@@ -106,6 +106,7 @@
     "i18next-http-backend": "3.0.2",
     "isbot": "5.1.28",
     "langfuse": "3.38.5",
+    "langfuse-vercel": "3.38.5",
     "lucide-react": "0.525.0",
     "motion": "12.23.12",
     "openai": "5.12.2",

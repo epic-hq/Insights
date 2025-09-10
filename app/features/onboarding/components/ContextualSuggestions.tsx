@@ -1,6 +1,6 @@
-import { useEffect, useState } from "react"
-import { RefreshCw } from "lucide-react"
 import consola from "consola"
+import { RefreshCw } from "lucide-react"
+import { useEffect, useState } from "react"
 
 interface ContextualSuggestionsProps {
 	suggestionType: "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles"
@@ -70,18 +70,12 @@ export default function ContextualSuggestions({
 
 	return (
 		<div className="space-y-2">
-			{isLoading && (
-				<div className="text-gray-500 text-xs">
-					💭 Generating contextual suggestions...
-				</div>
-			)}
-			
+			{isLoading && <div className="text-gray-500 text-xs">💭 Generating contextual suggestions...</div>}
+
 			{suggestions.length > 0 && !isLoading && (
 				<div>
 					<div className="mb-2 flex items-center justify-between">
-						<div className="text-gray-600 text-xs">
-							💡 Contextual suggestions:
-						</div>
+						<div className="text-gray-600 text-xs">💡 Contextual suggestions:</div>
 						<button
 							onClick={() => {
 								setHasGenerated(false)
@@ -106,7 +100,7 @@ export default function ContextualSuggestions({
 					</div>
 				</div>
 			)}
-			
+
 			{!isLoading && !hasGenerated && (
 				<button
 					onClick={generateSuggestions}

@@ -99,7 +99,7 @@ export default function App({ loaderData }: Route.ComponentProps) {
 						ui_host: "https://us.posthog.com",
 						defaults: "2025-05-24",
 						capture_exceptions: true,
-						debug: false // import.meta.env.MODE === "development",
+						debug: false, // import.meta.env.MODE === "development",
 					}}
 				>
 					<NotificationProvider>

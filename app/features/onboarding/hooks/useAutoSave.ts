@@ -36,7 +36,10 @@ export function useAutoSave({
 			}
 			try {
 				consola.log(`🔄 Starting auto-save for ${sectionKind} with data:`, sectionData)
-				consola.log(`📋 Data type: ${typeof sectionData}, isArray: ${Array.isArray(sectionData)}, JSON:`, JSON.stringify(sectionData))
+				consola.log(
+					`📋 Data type: ${typeof sectionData}, isArray: ${Array.isArray(sectionData)}, JSON:`,
+					JSON.stringify(sectionData)
+				)
 				setIsSaving(true)
 				onSaveStart?.()
 
@@ -45,12 +48,12 @@ export function useAutoSave({
 				formData.append("projectId", latestProjectId)
 				formData.append("sectionKind", sectionKind)
 				formData.append("sectionData", JSON.stringify(sectionData))
-				
-				consola.log(`📤 FormData being sent:`, {
+
+				consola.log("📤 FormData being sent:", {
 					action: "save-section",
 					projectId: latestProjectId,
 					sectionKind: sectionKind,
-					sectionData: JSON.stringify(sectionData)
+					sectionData: JSON.stringify(sectionData),
 				})
 
 				consola.log(`📤 Sending request to /api/save-project-goals for ${sectionKind}`)

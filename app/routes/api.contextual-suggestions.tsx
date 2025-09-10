@@ -71,7 +71,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		console.log("Generated suggestions:", suggestions)
 		gen?.update?.({
-			input: { suggestions: suggestions, research_goal, current_input, suggestion_type, existing_items, project_context },
+			input: {
+				suggestions: suggestions,
+				research_goal,
+				current_input,
+				suggestion_type,
+				existing_items,
+				project_context,
+			},
 			output: suggestions,
 		})
 		gen?.end?.()

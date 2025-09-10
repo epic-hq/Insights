@@ -136,17 +136,21 @@ export const upsertProjectSection = async ({
 }) => {
 	const position = data.position ?? DEFAULT_SECTION_POSITION[(data as { kind?: string }).kind ?? ""]
 	const payload = position ? { ...data, position } : data
-	
-	consola.log(`🗄️ upsertProjectSection:`, {
+
+	consola.log("🗄️ upsertProjectSection:", {
 		kind: data.kind,
 		project_id: data.project_id,
 		position,
 		payload,
-		payloadMeta: payload.meta
+		payloadMeta: payload.meta,
 	})
-	
-	const result = await supabase.from("project_sections").upsert(payload, { onConflict: "project_id,kind" }).select().single()
-	consola.log(`🗄️ upsert result:`, result)
+
+	const result = await supabase
+		.from("project_sections")
+		.upsert(payload, { onConflict: "project_id,kind" })
+		.select()
+		.single()
+	consola.log("🗄️ upsert result:", result)
 	return result
 }
 

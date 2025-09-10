@@ -102,17 +102,17 @@ export const ConversationDemo = () => {
 															{/* <ToolInput input={part.input} /> */}
 															<ToolOutput
 																errorText={part.errorText}
-															// output={
-															// 	<div>
-															// 		{Object.entries(part.output?.data as Record<string, unknown>).map(
-															// 			([key, value]) => (
-															// 				<div key={key} className="flex flex-rowl gap-2">
-															// 					<span className="font-bold">{key}</span>: <span>{value}</span>
-															// 				</div>
-															// 			)
-															// 		)}
-															// 	</div>
-															// }
+																// output={
+																// 	<div>
+																// 		{Object.entries(part.output?.data as Record<string, unknown>).map(
+																// 			([key, value]) => (
+																// 				<div key={key} className="flex flex-rowl gap-2">
+																// 					<span className="font-bold">{key}</span>: <span>{value}</span>
+																// 				</div>
+																// 			)
+																// 		)}
+																// 	</div>
+																// }
 															/>
 														</ToolContent>
 													</Tool>

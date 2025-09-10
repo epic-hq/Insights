@@ -53,7 +53,7 @@ const routes = [
 
 				// Project setup route
 				route("setup", "./features/projects/pages/setup.tsx"),
-				
+
 				// Preview redesigned setup route
 				route("setup-preview", "./routes/preview.setup.tsx"),
 
@@ -62,7 +62,7 @@ const routes = [
 
 				// Annotations API routes (need project context)
 				...annotationsRoutes,
-				
+
 				// Contextual suggestions API (needs project context)
 				route("api/contextual-suggestions", "./routes/api.contextual-suggestions.tsx"),
 			]),

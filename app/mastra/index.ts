@@ -8,6 +8,7 @@ import { LibSQLStore } from "@mastra/libsql"
 import { PinoLogger } from "@mastra/loggers"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
+import { LangfuseExporter } from "langfuse-vercel"
 import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
 import { signupAgent } from "./agents/signup-agent"
@@ -15,6 +16,7 @@ import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { signupOnboardingWorkflow } from "./workflows/signup-onboarding"
 import { weatherWorkflow } from "./workflows/weather-workflow"
+// import { getServerEnv } from "~/env.server"
 
 // Create global SupabaseClient for workflows
 export const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
@@ -38,6 +40,27 @@ export const mastra = new Mastra({
 		name: "mastra",
 		level: "info",
 	}),
+	telemetry: {
+		enabled: true,
+		// Works but doesn't have generations?
+		// serviceName: "mastra",
+		// export: {
+		// 	type: 'otlp',
+		// 	endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT, // or your preferred endpoint
+		// 	headers: {
+		// 		Authorization: `Basic ${process.env.LANGFUSE_AUTH_STRING}`, // Your base64-encoded auth string
+		// 	},
+		// },
+		serviceName: "ai",
+		export: {
+			type: "custom",
+			exporter: new LangfuseExporter({
+				publicKey: process.env.LANGFUSE_PUBLIC_KEY,
+				secretKey: process.env.LANGFUSE_SECRET_KEY,
+				baseUrl: process.env.LANGFUSE_HOST,
+			}),
+		},
+	},
 	server: {
 		cors: {
 			origin: "*",
@@ -81,7 +104,6 @@ export const mastra = new Mastra({
 					consola.log("existing runtimeContext", runtimeContext.get("user_id"))
 					consola.log("mastra_copilotkit headers", c.req.header())
 					runtimeContext.set("user_id", c.req.header("x-userid") || "anonymous")
-					runtimeContext.set("userId", c.req.header("x-userid") || "anonymous")
 					runtimeContext.set("account_id", c.req.header("x-accountid") || "anonymous")
 					runtimeContext.set("project_id", c.req.header("x-projectid") || "anonymous")
 					runtimeContext.set("jwt", c.req.header("Authorization") || "anonymous")

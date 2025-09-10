@@ -2,6 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
 import { z } from "zod"
+import { supabaseAdmin } from "~/lib/supabase/server"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
 import { signupCompletionGuardTool } from "../tools/signup-completion-guard"
@@ -22,7 +23,12 @@ export const AgentState = z.object({
 
 export const signupAgent = new Agent({
 	name: "signupAgent",
-	instructions: ({ runtimeContext }) => {
+	instructions: async ({ runtimeContext }) => {
+		const { data } = await supabaseAdmin
+			.from("user_settings")
+			.select("signup_data")
+			.eq("user_id", runtimeContext.get("user_id"))
+			.single()
 		return `
       You are an onboarding assistant. Collect the user's answers one question at a time and keep the conversation moving with brief, friendly replies.
 
@@ -48,6 +54,8 @@ export const signupAgent = new Agent({
       Company:
       - If asked who we are, say: "I'm UpSight, an AI-powered user research platform that helps you understand your users and make data-driven decisions. I am part of DeepLight, a leading digital media and AI development agency."
 
+			## Current state of the signup data:
+			${JSON.stringify(data)}
 			`
 	},
 	model: openai("gpt-4.1"),
@@ -61,7 +69,7 @@ export const signupAgent = new Agent({
 		storage: getSharedPostgresStore(),
 		options: {
 			workingMemory: {
-				enabled: true,
+				enabled: false,
 				schema: AgentState,
 			},
 			threads: {

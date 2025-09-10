@@ -36,7 +36,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	runtimeContext.set("account_id", headerAccountId || "")
 	runtimeContext.set("project_id", headerProjectId || "")
 	const authHeader = hdr.get("authorization") || ""
-	runtimeContext.set("jwt", authHeader.replace("Bearer ", ""))
+	// runtimeContext.set("jwt", authHeader?.replace("Bearer ", ""))
 
 	consola.log("/api/copilotkit runtimeContext user_id", runtimeContext.get("user_id"))
 
