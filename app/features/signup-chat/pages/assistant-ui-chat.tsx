@@ -85,10 +85,10 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 }
 
 export default function Assistant({ loaderData }: Route.ComponentProps) {
-	const { messages, existingChatData, user } = loaderData
-	const [onboardingData, setOnboardingData] = useState(existingChatData)
-	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
-	const navigate = useNavigate()
+    const { messages, existingChatData, user } = loaderData
+    const [onboardingData, setOnboardingData] = useState(existingChatData)
+    const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
+    const navigate = useNavigate()
 	const runtime = useChatRuntime({
 		transport: new AssistantChatTransport({
 			api: "/api/chat/signup",
@@ -107,28 +107,51 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 		}
 	}, [chatCompleted, navigate])
 
-	return (
-		<AssistantRuntimeProvider runtime={runtime}>
-			{/* <NavigateTool /> */}
+    // Mini progress for signup prescreen (4 core fields)
+    const totalSteps = 4
+    const completedSteps = [
+        Boolean(onboardingData?.problem),
+        Boolean(onboardingData?.need_to_learn || onboardingData?.other_feedback),
+        Boolean(onboardingData?.content_types),
+        Boolean(onboardingData?.challenges),
+    ].filter(Boolean).length
+
+    return (
+        <AssistantRuntimeProvider runtime={runtime}>
+            {/* <NavigateTool /> */}
 			{/* <AddInstructions />
 			<AddInstructions2 /> */}
 			{/* <ClickableButton onClick={() => consola.log("button clicked")}>Click me</ClickableButton> */}
 			{/* <div className="grid h-dvh grid-cols-[1fr] gap-x-2 px-4 py-4"> */}
-			<div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:grid-cols-[200px_1fr] md:pt-4 lg:grid-cols-[400px_1fr]">
-				<SignupDataWatcher
-					userId={user?.sub}
-					data={existingChatData}
-					onDataUpdate={(data) => {
-						consola.log("onDataUpdate", data)
-						setOnboardingData(data)
-					}}
-					onCompleted={() => setChatCompleted(true)}
-				/>
-				{/* <ThreadList /> */}
-				<Thread className="max-h-[95dvh]" />
-			</div>
-		</AssistantRuntimeProvider>
-	)
+            <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:grid-cols-[200px_1fr] md:pt-4 lg:grid-cols-[400px_1fr]">
+                <SignupDataWatcher
+                    userId={user?.sub}
+                    data={existingChatData}
+                    onDataUpdate={(data) => {
+                        consola.log("onDataUpdate", data)
+                        setOnboardingData(data)
+                    }}
+                    onCompleted={() => setChatCompleted(true)}
+                />
+                {/* <ThreadList /> */}
+                <div className="max-h-[95dvh]">
+                    {/* Header with mini progress */}
+                    <div className="mx-auto mb-2 w-full max-w-[var(--thread-max-width,44rem)]">
+                        <div className="flex items-center justify-between rounded-xl border bg-white/70 px-3 py-2 shadow-sm backdrop-blur dark:bg-neutral-900/70">
+                            <div className="flex items-center gap-2">
+                                <span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-200 ring-inset dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800">
+                                    Signup Chat
+                                </span>
+                                <span className="text-muted-foreground text-xs">Prescreen: 4 quick answers</span>
+                            </div>
+                            <MiniDotsProgress completed={completedSteps} total={totalSteps} />
+                        </div>
+                    </div>
+                    <Thread className="max-h-[90dvh]" />
+                </div>
+            </div>
+        </AssistantRuntimeProvider>
+    )
 }
 
 function AddInstructions() {
@@ -166,6 +189,22 @@ const submitForm = tool({
 
 // Create a tool component
 const NavigateTool = makeAssistantTool({
-	...submitForm,
-	toolName: "navigate",
+    ...submitForm,
+    toolName: "navigate",
 })
+
+function MiniDotsProgress({ completed, total }: { completed: number; total: number }) {
+    const dots = Array.from({ length: total })
+    return (
+        <div className="flex items-center gap-1.5" aria-label={`Progress ${completed} of ${total}`}>
+            {dots.map((_, i) => (
+                <span
+                    key={i}
+                    className={
+                        "h-2 w-2 rounded-full " + (i < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700")
+                    }
+                />
+            ))}
+        </div>
+    )
+}

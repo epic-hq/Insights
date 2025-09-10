@@ -221,6 +221,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `/a/${extractAccountId(projectPath)}/projects/new`,
 			// Setup should be project-scoped; keep within current `${base}` context
 			setup: () => `${base}/setup`,
+			projectChat: () => `${base}/project-chat`,
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			// Deprecated old edit path; point to project-scoped settings
 			edit: (id: string) => `${projectPath}/settings`,

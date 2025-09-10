@@ -4,12 +4,11 @@ This document explains the current signup chat flow, the files added/changed, kn
 
 ## Overview
 
-- Client runs a deterministic chat UI that calls a server endpoint on every turn.
-- The server endpoint runs a Mastra workflow that:
-  - Assigns the user’s latest message to the next missing field.
-  - Optionally normalizes the answer with an LLM (spelling/clarity).
-  - Returns a short, context-aware next question or a completion message.
-- Progress is saved to `user_settings.signup_data` on every meaningful turn; completion sets `completed: true` and the UI redirects to `/home` (after a short pause).
+- Two modes are supported:
+  - Deterministic workflow (default UI): client calls a server endpoint on each turn; server deterministically advances fields.
+  - Agent variant (legacy/optional): Assistant UI streams to a Mastra agent; still persists to the same store.
+- Prescreen focus: collects minimal info to triage fit and start a project later.
+- Progress saves to `user_settings.signup_data`; completion sets `completed: true` and the UI redirects to `/home`.
 
 ## Files and Responsibilities
 
@@ -36,8 +35,13 @@ This document explains the current signup chat flow, the files added/changed, kn
     5) `save-if-complete`: Sets `completed: true` in `user_settings.signup_data`.
   - The workflow is registered in `app/mastra/index.ts` and invoked from the new API route.
 
-- (Legacy) `app/features/signup-chat/api/copilotkit.tsx`, `app/mastra/agents/signup-agent.ts`
-  - Still available, but the deterministic chat UI no longer depends on agent tool-calling. This avoids stalls when models ignore instructions.
+- Agent variant: `app/features/signup-chat/api/signup-agent.tsx`, `app/mastra/agents/signup-agent.ts`
+  - The agent now asks prescreen questions:
+    1) Business goal that could benefit from customer intelligence → `problem`
+    2) Learnings that would move the needle → `need_to_learn` (stored inside `other_feedback` when saving)
+    3) Data sources already available → `content_types`
+    4) What’s blocking you today → `challenges`
+  - Saves via `saveUserSettingsData` tool to `user_settings.signup_data`.
 
 ## Why These Changes
 
@@ -55,8 +59,9 @@ This document explains the current signup chat flow, the files added/changed, kn
 
 ## Data Model and Persistence
 
-- Answers are saved in `user_settings.signup_data` via the `upsert_signup_data` RPC on each meaningful assignment.
-- The workflow avoids tenant/account filters; RLS enforces scoping using the authenticated user.
+- Answers are saved in `user_settings.signup_data` via the `upsert_signup_data` RPC.
+- Fields: `problem`, `need_to_learn` (captured under `other_feedback` by the agent tool), `challenges`, `content_types`, `other_feedback`, and `completed`.
+- RLS: enforced by authenticated user context.
 
 ## Project Prefill (Recommended Next)
 
@@ -73,8 +78,12 @@ Suggested design:
    - Optional: LLM polish for name/description when available (keep short; fallback to deterministic text).
 
 2) Wire util into:
-   - `app/routes/api.create-project.tsx`: Before calling `createProject`, prefer util’s name/description/slug.
-   - `app/routes/api.onboarding-start.tsx`: When creating a project on-the-fly, reuse the same util; also seed `project_sections` from `signup_data` where appropriate (e.g., `research_goal`, `questions`).
+  - `app/routes/api.create-project.tsx`: Before calling `createProject`, prefer util’s name/description/slug.
+  - `app/routes/api.onboarding-start.tsx`: When creating a project on-the-fly, reuse the same util; also seed `project_sections` from `signup_data` where appropriate (e.g., `research_goal`, `questions`).
+
+## Related: Project Chat (Project Setup)
+
+- See `docs/features/project-chat.md` for the project-scoped chat that writes directly to `project_sections` (same store as the Project Goals form).
 
 Benefits:
 - Keeps logic server-first and testable.
@@ -100,4 +109,3 @@ Benefits:
 - Deterministic flow reliability: 92–95%.
 - Short, targeted replies: ~90% (LLM normalization is optional; replies themselves are deterministic).
 - Redirect timing and UX polish: 99%.
-

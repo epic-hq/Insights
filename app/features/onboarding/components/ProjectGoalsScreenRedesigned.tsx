@@ -3,6 +3,7 @@ import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, Users, X } f
 import { useCallback, useEffect, useRef, useState } from "react"
 import { z } from "zod"
 import { Button } from "~/components/ui/button"
+import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
 import { Input } from "~/components/ui/input"
@@ -590,7 +591,12 @@ export default function ProjectGoalsScreen({
 								</StatusPill>
 							)}
 						</div>
-						<div className="text-right">
+						<div className="flex items-center gap-2 text-right">
+							{accountId && currentProjectId ? (
+								<Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
+									<Button variant="outline" size="sm">Use Chat Setup</Button>
+								</Link>
+							) : null}
 							{isSaving ? (
 								<StatusPill variant="active">
 									Saving <ProgressDots className="ml-1" />

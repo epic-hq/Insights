@@ -12,6 +12,7 @@ import { LangfuseExporter } from "langfuse-vercel"
 import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
 import { signupAgent } from "./agents/signup-agent"
+import { projectSetupAgent } from "./agents/project-setup-agent"
 import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { signupOnboardingWorkflow } from "./workflows/signup-onboarding"
@@ -31,7 +32,7 @@ export type UserContext = {
 
 export const mastra = new Mastra({
 	workflows: { dailyBriefWorkflow, weatherWorkflow, signupOnboardingWorkflow },
-	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent },
+  agents: { mainAgent, weatherAgent, insightsAgent, signupAgent, projectSetupAgent },
 	storage: new LibSQLStore({
 		// stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
 		url: ":memory:",
@@ -92,11 +93,15 @@ export const mastra = new Mastra({
 				await next()
 			},
 		],
-		apiRoutes: [
-			chatRoute({
-				path: "/chat/signup",
-				agent: "signupAgent",
-			}),
+      apiRoutes: [
+        chatRoute({
+          path: "/chat/signup",
+          agent: "signupAgent",
+        }),
+        chatRoute({
+          path: "/chat/project-setup",
+          agent: "projectSetupAgent",
+        }),
 			registerCopilotKit<UserContext>({
 				path: "/copilotkit",
 				resourceId: "signupAgent",

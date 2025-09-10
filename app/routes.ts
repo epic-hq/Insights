@@ -13,6 +13,7 @@ import personasRoutes from "./features/personas/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
+import projectChatRoutes from "./features/project-chat/routes"
 import themesRoutes from "./features/themes/routes"
 
 const routes = [
@@ -47,6 +48,7 @@ const routes = [
 				...themesRoutes,
 				...mobileRoutes,
 				...questionsRoutes,
+                ...projectChatRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
@@ -65,6 +67,9 @@ const routes = [
 
 				// Contextual suggestions API (needs project context)
 				route("api/contextual-suggestions", "./routes/api.contextual-suggestions.tsx"),
+
+				// Project-setup agent chat API (project-scoped)
+				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
 			]),
 		]),
 	]),

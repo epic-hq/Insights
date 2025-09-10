@@ -2,7 +2,7 @@
 import { b } from "baml_client"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate } from "react-router-dom"
-import ProjectGoalsScreen from "~/features/onboarding/components/ProjectGoalsScreen"
+import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
@@ -139,7 +139,7 @@ export default function ProjectSetupPage() {
 	return (
 		<div className="min-h-screen bg-gray-50">
 			<div className="mx-auto max-w-4xl px-4 py-8">
-				<ProjectGoalsScreen
+				<ProjectGoalsScreenRedesigned
 					onNext={handleNext}
 					project={project}
 					projectId={projectId}

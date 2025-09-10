@@ -305,6 +305,18 @@ export default function ProjectStatusScreen({
 							<Workflow className="w-4 h-4 mr-2" />
 							{showFlowView ? "Dashboard View" : "Research Flow"}
 						</Button> */}
+						<Button
+							variant="outline"
+							size="sm"
+							onClick={() => {
+								if (routes) {
+									window.location.href = (routes as any).projects.projectChat()
+								}
+							}}
+							className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
+						>
+							<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
+						</Button>
 						<ProjectEditButton project={{ id: projectId }} />
 					</div>
 				</div>
