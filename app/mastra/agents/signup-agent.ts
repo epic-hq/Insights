@@ -8,6 +8,7 @@ import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
 import { signupCompletionGuardTool } from "../tools/signup-completion-guard"
+import { navigateToPageTool } from "../tools/navigate-to-page"
 
 export const AgentState = z.object({
   signupChatData: z
@@ -20,18 +21,6 @@ export const AgentState = z.object({
       completed: z.boolean().optional(),
     })
     .optional(),
-})
-
-// Test tool for client side tool calls with vanilla sdk
-// See this page of documentation for flow of client side tools: https://ai-sdk.dev/docs/ai-sdk-ui/chatbot-tool-usage
-// Client side execution happens in onToolCall, executing the required function, adding the result, and sends back to
-// the agent (by leverageing sendAutomaticallyWhen with lastAssistantMessageIsCompleteWithToolCalls)
-export const navigateToPageTool = createTool({
-	id: "navigate-to-page",
-	description: "Navigate to a specific page. \n Projects: /projects \n Home: /home \n Signup Chat: /signup-chat",
-	inputSchema: z.object({
-		path: z.string().describe("Path to navigate to"),
-	}),
 })
 
 export const signupAgent = new Agent({

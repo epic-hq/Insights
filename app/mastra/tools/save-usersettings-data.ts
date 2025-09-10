@@ -37,7 +37,7 @@ export const saveUserSettingsDataTool = createTool({
 			if (!user_id) {
 				return {
 					success: false,
-					message: "Missing user_id for save-user-settings-data; use the saveChatData action instead.",
+					message: "Missing user_id for save-user-settings-data",
 				}
 			}
 
