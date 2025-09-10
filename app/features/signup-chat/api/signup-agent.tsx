@@ -72,12 +72,15 @@ export async function action({ request }: ActionFunctionArgs) {
 		//
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
+		onFinish: (data) => {
+			consola.log("onFinish", data)
+		},
 	})
 
 	const langfuse = getLangfuseClient()

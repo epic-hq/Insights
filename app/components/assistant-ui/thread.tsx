@@ -175,7 +175,9 @@ const Composer: FC = () => {
 const ComposerAction: FC = () => {
 	return (
 		<div className="aui-composer-action-wrapper relative mx-1 mt-2 mb-2 flex items-center justify-between">
-			<ComposerAddAttachment />
+			{/* <ComposerAddAttachment /> */}
+			{/* Empty div for spacing */}
+			<div></div>
 
 			<ThreadPrimitive.If running={false}>
 				<ComposerPrimitive.Send asChild>

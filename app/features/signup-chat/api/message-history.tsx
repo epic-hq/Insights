@@ -18,5 +18,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		perPage: 100,
 	})
 
-	const messages =
+	// Optionally transform thread messages if needed in the future
+	// const messages = threads?.items?.flatMap((t: any) => t?.messages ?? []) ?? []
+
+	return new Response(JSON.stringify({ threads }), {
+		headers: { "Content-Type": "application/json" },
+	})
 }

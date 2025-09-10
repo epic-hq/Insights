@@ -86,12 +86,25 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 	const { messages, existingChatData, user } = loaderData
 	const [onboardingData, setOnboardingData] = useState(existingChatData)
 	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
+	const navigate = useNavigate()
 	const runtime = useChatRuntime({
 		transport: new AssistantChatTransport({
 			api: "/api/chat/signup",
 		}),
 		messages,
-	})
+	});
+
+	const { clientEnv } = useRouteLoaderData("root")
+	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
+	// If signup chat is not required, or it's already completed, send users home immediately.
+	useEffect(() => {
+		if (!chatRequired) {
+			navigate("/home")
+		} else if (chatCompleted) {
+			navigate("/signup-chat/completed")
+		}
+	}, [chatCompleted, navigate])
+
 
 	return (
 		<AssistantRuntimeProvider runtime={runtime}>
@@ -100,7 +113,7 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 			<AddInstructions2 /> */}
 			{/* <ClickableButton onClick={() => consola.log("button clicked")}>Click me</ClickableButton> */}
 			{/* <div className="grid h-dvh grid-cols-[1fr] gap-x-2 px-4 py-4"> */}
-			<div className="grid h-dvh grid-cols-[200px_1fr] gap-x-2 px-4 py-4 lg:grid-cols-[400px_1fr]">
+			<div className="grid h-dvh grid-cols-1 md:grid-cols-[200px_1fr] lg:grid-cols-[400px_1fr] gap-x-2 px-4 pt-16 md:pt-4 pb-4">
 				<SignupDataWatcher
 					userId={user?.sub}
 					data={existingChatData}
@@ -133,10 +146,10 @@ function AddInstructions2() {
 	return null
 }
 
-import { makeAssistantTool, tool } from "@assistant-ui/react"
-import { useState } from "react"
-import { z } from "zod"
-import { SignupDataWatcher } from "../components/SignupDataWatcher"
+import { makeAssistantTool, tool } from "@assistant-ui/react";
+import { z } from "zod";
+import { SignupDataWatcher } from "../components/SignupDataWatcher";
+import { useEffect, useState } from "react";
 
 // Define the tool using the tool() helper
 const submitForm = tool({
