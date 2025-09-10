@@ -13,6 +13,8 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import type { Route } from "./+types/assistant-ui-chat"
+import consola from "consola"
+import { memory } from "~/mastra/memory"
 
 // Via makeAssistantVisible's clickable option
 const ClickableButton = makeAssistantVisible(Button, {
@@ -92,7 +94,7 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 			api: "/api/chat/signup",
 		}),
 		messages,
-	});
+	})
 
 	const { clientEnv } = useRouteLoaderData("root")
 	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
@@ -105,7 +107,6 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 		}
 	}, [chatCompleted, navigate])
 
-
 	return (
 		<AssistantRuntimeProvider runtime={runtime}>
 			{/* <NavigateTool /> */}
@@ -113,7 +114,7 @@ export default function Assistant({ loaderData }: Route.ComponentProps) {
 			<AddInstructions2 /> */}
 			{/* <ClickableButton onClick={() => consola.log("button clicked")}>Click me</ClickableButton> */}
 			{/* <div className="grid h-dvh grid-cols-[1fr] gap-x-2 px-4 py-4"> */}
-			<div className="grid h-dvh grid-cols-1 md:grid-cols-[200px_1fr] lg:grid-cols-[400px_1fr] gap-x-2 px-4 pt-16 md:pt-4 pb-4">
+			<div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:grid-cols-[200px_1fr] md:pt-4 lg:grid-cols-[400px_1fr]">
 				<SignupDataWatcher
 					userId={user?.sub}
 					data={existingChatData}
@@ -146,10 +147,10 @@ function AddInstructions2() {
 	return null
 }
 
-import { makeAssistantTool, tool } from "@assistant-ui/react";
-import { z } from "zod";
-import { SignupDataWatcher } from "../components/SignupDataWatcher";
-import { useEffect, useState } from "react";
+import { makeAssistantTool, tool } from "@assistant-ui/react"
+import { useEffect, useState } from "react"
+import { z } from "zod"
+import { SignupDataWatcher } from "../components/SignupDataWatcher"
 
 // Define the tool using the tool() helper
 const submitForm = tool({

@@ -1,7 +1,7 @@
-import { convertMessages } from '@mastra/core/agent';
-import type { LoaderFunctionArgs } from 'react-router';
-import { getAuthenticatedUser } from '~/lib/supabase/server';
-import { memory } from '~/mastra/memory';
+import { convertMessages } from "@mastra/core/agent"
+import type { LoaderFunctionArgs } from "react-router"
+import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { memory } from "~/mastra/memory"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
