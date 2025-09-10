@@ -15,6 +15,7 @@ import questionsRoutes from "./features/questions/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
 import projectChatRoutes from "./features/project-chat/routes"
 import themesRoutes from "./features/themes/routes"
+import voiceRoutes from "./features/voice/routes"
 
 const routes = [
 	// Public marketing landing page
@@ -109,6 +110,7 @@ const routes = [
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
+	...voiceRoutes,
 
 	// Resource routes
 	route("/resource/locales", "./routes/resource.locales.ts"),

@@ -17,6 +17,7 @@ import { weatherAgent } from "./agents/weather-agent"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { signupOnboardingWorkflow } from "./workflows/signup-onboarding"
 import { weatherWorkflow } from "./workflows/weather-workflow"
+import { getSharedPostgresStore } from "./storage/postgres-singleton"
 // import { getServerEnv } from "~/env.server"
 
 // Create global SupabaseClient for workflows
@@ -32,11 +33,8 @@ export type UserContext = {
 
 export const mastra = new Mastra({
 	workflows: { dailyBriefWorkflow, weatherWorkflow, signupOnboardingWorkflow },
-  agents: { mainAgent, weatherAgent, insightsAgent, signupAgent, projectSetupAgent },
-	storage: new LibSQLStore({
-		// stores telemetry, evals, ... into memory storage, if it needs to persist, change to file:../mastra.db
-		url: ":memory:",
-	}),
+	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent, projectSetupAgent },
+	storage: getSharedPostgresStore(),
 	logger: new PinoLogger({
 		name: "mastra",
 		level: "info",
@@ -93,15 +91,15 @@ export const mastra = new Mastra({
 				await next()
 			},
 		],
-      apiRoutes: [
-        chatRoute({
-          path: "/chat/signup",
-          agent: "signupAgent",
-        }),
-        chatRoute({
-          path: "/chat/project-setup",
-          agent: "projectSetupAgent",
-        }),
+		apiRoutes: [
+			chatRoute({
+				path: "/chat/signup",
+				agent: "signupAgent",
+			}),
+			chatRoute({
+				path: "/chat/project-setup",
+				agent: "projectSetupAgent",
+			}),
 			registerCopilotKit<UserContext>({
 				path: "/copilotkit",
 				resourceId: "signupAgent",

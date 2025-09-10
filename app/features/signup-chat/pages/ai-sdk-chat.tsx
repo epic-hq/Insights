@@ -22,6 +22,9 @@ import { Route } from "./+types/ai-sdk-chat"
 import { SignupDataWatcher } from "../components/SignupDataWatcher"
 import { TextShimmer } from "~/components/ui/text-shimmer"
 import { cn } from "~/lib/utils"
+import { Button } from "~/components/ui/button"
+import { AudioRecorder } from "~/features/voice/audio-recorder"
+
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -144,7 +147,10 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 			setInput("")
 		}
 	}
-	console.log("Prompts: ", prompts)
+
+	const handleMicrophoneClick = () => {
+
+	}
 
 	return (
 		<div className="relative mx-auto size-full h-dvh max-w-6xl rounded-lg px-2 md:px-4 flex flex-col md:flex-row">
@@ -233,11 +239,19 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 					<ConversationScrollButton />
 				</Conversation>
 
-				<TextShimmer className={cn('font-mono text-sm mt-1 hidden', status === 'streaming' || status === 'submitted' && 'block')} duration={3}>
-					Thinking...
-				</TextShimmer>
-				<div className={cn('font-mono text-sm mt-1 hidden text-destructive', status === 'error' && 'block')}>
-					Error
+				<div className="flex flex-row gap-2 justify-between">
+					<AudioRecorder onAfterTranscription={(transcription) => {
+						console.log("transcription", transcription)
+						setInput((prev) => prev?.trim() ? prev + "\n" + transcription : transcription)
+					}} />
+					<span>
+						<TextShimmer className={cn('font-mono text-sm mt-1 hidden', status === 'streaming' || status === 'submitted' && 'block')} duration={3}>
+							Thinking...
+						</TextShimmer>
+						<div className={cn('font-mono text-sm mt-1 hidden text-destructive', status === 'error' && 'block')}>
+							Error
+						</div>
+					</span>
 				</div>
 				<PromptInput onSubmit={handleSubmit} className="relative mx-auto mt-1 w-full max-w-2xl mb-6">
 					<PromptInputTextarea

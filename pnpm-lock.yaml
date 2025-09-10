@@ -10,7 +10,10 @@ importers:
     dependencies:
       '@ag-ui/mastra':
         specifier: 0.0.10
-        version: 0.0.10(@copilotkit/runtime@1.10.3(4b69e43e0c86fbd6eff4a1c1e1b2738c))(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+        version: 0.0.10(@copilotkit/runtime@1.10.3(4b69e43e0c86fbd6eff4a1c1e1b2738c))(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@ai-sdk/assemblyai':
+        specifier: 1.0.8
+        version: 1.0.8(zod@4.1.5)
       '@ai-sdk/openai':
         specifier: 2.0.27
         version: 2.0.27(zod@4.1.5)
@@ -70,28 +73,31 @@ importers:
         version: 4.0.0(@opentelemetry/api@1.9.0)
       '@mastra/ai-sdk':
         specifier: 0.0.2
-        version: 0.0.2(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
+        version: 0.0.2(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
       '@mastra/client-js':
         specifier: 0.12.0
         version: 0.12.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@mastra/core':
-        specifier: 0.16.0
-        version: 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+        specifier: 0.16.2
+        version: 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@mastra/libsql':
         specifier: 0.14.0
-        version: 0.14.0(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))
+        version: 0.14.0(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))
       '@mastra/loggers':
         specifier: 0.10.11
-        version: 0.10.11(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))
+        version: 0.10.11(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))
       '@mastra/mcp':
         specifier: 0.11.4
-        version: 0.11.4(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
+        version: 0.11.4(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
       '@mastra/memory':
         specifier: 0.14.4
-        version: 0.14.4(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(react@19.1.0)(zod@4.1.5)
+        version: 0.14.4(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(react@19.1.0)(zod@4.1.5)
       '@mastra/pg':
         specifier: 0.15.0
-        version: 0.15.0(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(pg-query-stream@4.10.3(pg@8.16.3))
+        version: 0.15.0(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(pg-query-stream@4.10.3(pg@8.16.3))
+      '@mastra/voice-openai':
+        specifier: 0.11.4
+        version: 0.11.4(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(ws@8.18.3)(zod@4.1.5)
       '@opentelemetry/api':
         specifier: 1.9.0
         version: 1.9.0
@@ -365,7 +371,7 @@ importers:
         version: 1.11.16
       mastra:
         specifier: 0.10.21
-        version: 0.10.21(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(@opentelemetry/api@1.9.0)(react@19.1.0)(typescript@5.8.3)
+        version: 0.10.21(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(@opentelemetry/api@1.9.0)(react@19.1.0)(typescript@5.8.3)
       memlab:
         specifier: 1.1.59
         version: 1.1.59(typescript@5.8.3)
@@ -479,6 +485,12 @@ packages:
   '@ag-ui/proto@0.0.36':
     resolution: {integrity: sha512-yaWLwJQmBaCtFstSoZEALztVckCYv+RD8guU91kL5AvywRXvZPP5mjiN+bEwvtw8VU3idXoee1ZbJGpSlSAQ8A==}
 
+  '@ai-sdk/assemblyai@1.0.8':
+    resolution: {integrity: sha512-H6p7Xb0FAQRbHvvnsvwKHhA04GYSb4hLiJLdqf/wPaw7K49D/ybUtQ6T5G0M2W6l0Eg1DMl++uNvz2bMloAR9g==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4
+
   '@ai-sdk/gateway@1.0.15':
     resolution: {integrity: sha512-xySXoQ29+KbGuGfmDnABx+O6vc7Gj7qugmj1kGpn0rW0rQNn6UKUuvscKMzWyv1Uv05GyC1vqHq8ZhEOLfXscQ==}
     engines: {node: '>=18'}
@@ -505,6 +517,12 @@ packages:
 
   '@ai-sdk/provider-utils@3.0.3':
     resolution: {integrity: sha512-kAxIw1nYmFW1g5TvE54ZB3eNtgZna0RnLjPUp1ltz1+t9xkXJIuDT4atrwfau9IbS0BOef38wqrI8CjFfQrxhw==}
+    engines: {node: '>=18'}
+    peerDependencies:
+      zod: ^3.25.76 || ^4
+
+  '@ai-sdk/provider-utils@3.0.5':
+    resolution: {integrity: sha512-HliwB/yzufw3iwczbFVE2Fiwf1XqROB/I6ng8EKUsPM5+2wnIa8f4VbljZcDx+grhFrPV+PnRZH7zBqi8WZM7Q==}
     engines: {node: '>=18'}
     peerDependencies:
       zod: ^3.25.76 || ^4
@@ -2487,6 +2505,12 @@ packages:
     peerDependencies:
       zod: ^3.25.0 || ^4.0.0
 
+  '@mastra/core@0.16.2':
+    resolution: {integrity: sha512-9s2vn1QNHJhQI4DmJYBAfAtFN4O2IKMkG/vjWemQxTCnrNmPO+OvXqCqJSvUxcgLgchNk8I26riZdBe0C7nMNg==}
+    engines: {node: '>=20'}
+    peerDependencies:
+      zod: ^3.25.0 || ^4.0.0
+
   '@mastra/deployer@0.13.2':
     resolution: {integrity: sha512-BmIqnWN25hjBtQ8AvTQDC0PMettTDfc5uFpjbdX5HiW0Fg3495ijJ7JHd+MEekgbJJhENF8UeFd9dL4tqrkwAg==}
     peerDependencies:
@@ -2542,6 +2566,12 @@ packages:
     peerDependencies:
       '@mastra/core': '>=0.13.0-0 <0.14.0-0'
       zod: ^3.0.0
+
+  '@mastra/voice-openai@0.11.4':
+    resolution: {integrity: sha512-p/yTfGVg0GAvkuYinU5RghwlR2abGmJC/EkoCA5u31yaRLJYBkexuWSCxgU9UDYstG6h06JKtGPUwEdmuLL6WQ==}
+    peerDependencies:
+      '@mastra/core': '>=0.15.3-0 <0.17.0-0'
+      zod: ^3.25.0 || ^4.0.0
 
   '@memlab/api@1.0.41':
     resolution: {integrity: sha512-cb3t1l5MFPBTDbsvXq0ph++N47Sza6IRFOdgUmqQedNiedDeNWzEEcUvzhOMM9gKlTlLDJ5vVRJn+oBjhWC6rQ==}
@@ -11022,13 +11052,13 @@ snapshots:
       - react
       - react-dom
 
-  '@ag-ui/mastra@0.0.10(@copilotkit/runtime@1.10.3(4b69e43e0c86fbd6eff4a1c1e1b2738c))(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)':
+  '@ag-ui/mastra@0.0.10(@copilotkit/runtime@1.10.3(4b69e43e0c86fbd6eff4a1c1e1b2738c))(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)':
     dependencies:
       '@ag-ui/client': 0.0.36
       '@ai-sdk/ui-utils': 1.2.11(zod@4.1.5)
       '@copilotkit/runtime': 1.10.3(4b69e43e0c86fbd6eff4a1c1e1b2738c)
       '@mastra/client-js': 0.10.21(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       rxjs: 7.8.1
       zod: 4.1.5
     transitivePeerDependencies:
@@ -11059,6 +11089,12 @@ snapshots:
       '@bufbuild/protobuf': 2.6.3
       '@protobuf-ts/protoc': 2.11.1
 
+  '@ai-sdk/assemblyai@1.0.8(zod@4.1.5)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@ai-sdk/provider-utils': 3.0.8(zod@4.1.5)
+      zod: 4.1.5
+
   '@ai-sdk/gateway@1.0.15(zod@4.1.5)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
@@ -11085,6 +11121,14 @@ snapshots:
       zod: 4.1.5
 
   '@ai-sdk/provider-utils@3.0.3(zod@4.1.5)':
+    dependencies:
+      '@ai-sdk/provider': 2.0.0
+      '@standard-schema/spec': 1.0.0
+      eventsource-parser: 3.0.6
+      zod: 4.1.5
+      zod-to-json-schema: 3.24.6(zod@4.1.5)
+
+  '@ai-sdk/provider-utils@3.0.5(zod@4.1.5)':
     dependencies:
       '@ai-sdk/provider': 2.0.0
       '@standard-schema/spec': 1.0.0
@@ -13435,9 +13479,9 @@ snapshots:
     dependencies:
       '@lukeed/csprng': 1.1.0
 
-  '@mastra/ai-sdk@0.0.2(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)':
+  '@mastra/ai-sdk@0.0.2(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)':
     dependencies:
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       zod: 4.1.5
 
   '@mastra/client-js@0.10.21(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)':
@@ -13501,17 +13545,17 @@ snapshots:
       '@ai-sdk/ui-utils': 1.2.11(zod@4.1.5)
       '@mastra/schema-compat': 0.10.7(ai@4.3.19(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
       '@opentelemetry/api': 1.9.0
-      '@opentelemetry/auto-instrumentations-node': 0.62.1(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.0.1(@opentelemetry/api@1.9.0))
-      '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/auto-instrumentations-node': 0.62.1(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))
+      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-grpc': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/otlp-exporter-base': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/otlp-transformer': 0.203.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-metrics': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-metrics': 2.1.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-node': 0.203.0(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-base': 2.0.1(@opentelemetry/api@1.9.0)
-      '@opentelemetry/sdk-trace-node': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node': 2.1.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.36.0
       '@sindresorhus/slugify': 2.2.1
       ai: 4.3.19(react@19.1.0)(zod@4.1.5)
@@ -13602,12 +13646,69 @@ snapshots:
       - valibot
       - zod-openapi
 
-  '@mastra/deployer@0.13.2(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(typescript@5.8.3)':
+  '@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)':
+    dependencies:
+      '@a2a-js/sdk': 0.2.5
+      '@ai-sdk/provider': 1.1.3
+      '@ai-sdk/provider-utils': 2.2.8(zod@4.1.5)
+      '@ai-sdk/provider-utils-v5': '@ai-sdk/provider-utils@3.0.5(zod@4.1.5)'
+      '@ai-sdk/provider-v5': '@ai-sdk/provider@2.0.0'
+      '@ai-sdk/ui-utils': 1.2.11(zod@4.1.5)
+      '@mastra/schema-compat': 0.11.2(ai@4.3.19(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/auto-instrumentations-node': 0.62.1(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))
+      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-grpc': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/otlp-exporter-base': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/otlp-transformer': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-metrics': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-node': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node': 2.1.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/semantic-conventions': 1.36.0
+      '@sindresorhus/slugify': 2.2.1
+      ai: 4.3.19(react@19.1.0)(zod@4.1.5)
+      ai-v5: ai@5.0.28(zod@4.1.5)
+      date-fns: 3.6.0
+      dotenv: 16.6.1
+      hono: 4.9.2
+      hono-openapi: 0.4.8(hono@4.9.2)(openapi-types@12.1.3)(zod@4.1.5)
+      js-tiktoken: 1.0.21
+      json-schema: 0.4.0
+      json-schema-to-zod: 2.6.1
+      p-map: 7.0.3
+      pino: 9.9.0
+      pino-pretty: 13.1.1
+      radash: 12.1.1
+      sift: 17.1.3
+      xstate: 5.20.2
+      zod: 4.1.5
+      zod-to-json-schema: 3.24.6(zod@4.1.5)
+    transitivePeerDependencies:
+      - '@hono/arktype-validator'
+      - '@hono/effect-validator'
+      - '@hono/typebox-validator'
+      - '@hono/valibot-validator'
+      - '@hono/zod-validator'
+      - '@sinclair/typebox'
+      - '@valibot/to-json-schema'
+      - arktype
+      - effect
+      - encoding
+      - openapi-types
+      - react
+      - supports-color
+      - valibot
+      - zod-openapi
+
+  '@mastra/deployer@0.13.2(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(typescript@5.8.3)':
     dependencies:
       '@babel/core': 7.28.3
       '@babel/helper-module-imports': 7.27.1
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
-      '@mastra/server': 0.13.2(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/server': 0.13.2(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)
       '@neon-rs/load': 0.1.82
       '@optimize-lodash/rollup-plugin': 5.0.2(rollup@4.46.2)
       '@rollup/plugin-alias': 5.1.1(rollup@4.46.2)
@@ -13635,24 +13736,24 @@ snapshots:
       - supports-color
       - typescript
 
-  '@mastra/libsql@0.14.0(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))':
+  '@mastra/libsql@0.14.0(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))':
     dependencies:
       '@libsql/client': 0.15.15
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@mastra/loggers@0.10.11(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))':
+  '@mastra/loggers@0.10.11(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))':
     dependencies:
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       pino: 9.9.0
       pino-pretty: 13.1.1
 
-  '@mastra/mcp@0.10.11(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)':
+  '@mastra/mcp@0.10.11(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)':
     dependencies:
       '@apidevtools/json-schema-ref-parser': 14.1.1
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@modelcontextprotocol/sdk': 1.17.3
       date-fns: 4.1.0
       exit-hook: 4.0.0
@@ -13663,10 +13764,10 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mastra/mcp@0.11.4(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)':
+  '@mastra/mcp@0.11.4(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@4.1.5)':
     dependencies:
       '@apidevtools/json-schema-ref-parser': 14.1.1
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@modelcontextprotocol/sdk': 1.17.3
       date-fns: 4.1.0
       exit-hook: 4.0.0
@@ -13678,9 +13779,9 @@ snapshots:
     transitivePeerDependencies:
       - supports-color
 
-  '@mastra/memory@0.14.4(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(react@19.1.0)(zod@4.1.5)':
+  '@mastra/memory@0.14.4(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(react@19.1.0)(zod@4.1.5)':
     dependencies:
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@mastra/schema-compat': 0.11.2(ai@4.3.19(react@19.1.0)(zod@4.1.5))(zod@4.1.5)
       '@upstash/redis': 1.35.3
       ai: 4.3.19(react@19.1.0)(zod@4.1.5)
@@ -13699,9 +13800,9 @@ snapshots:
       - pg-native
       - react
 
-  '@mastra/pg@0.15.0(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(pg-query-stream@4.10.3(pg@8.16.3))':
+  '@mastra/pg@0.15.0(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(pg-query-stream@4.10.3(pg@8.16.3))':
     dependencies:
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       async-mutex: 0.5.0
       pg: 8.16.3
       pg-promise: 11.15.0(pg-query-stream@4.10.3(pg@8.16.3))
@@ -13727,10 +13828,18 @@ snapshots:
       zod-from-json-schema-v3: zod-from-json-schema@0.0.5
       zod-to-json-schema: 3.24.6(zod@4.1.5)
 
-  '@mastra/server@0.13.2(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)':
+  '@mastra/server@0.13.2(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)':
     dependencies:
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       zod: 3.25.74
+
+  '@mastra/voice-openai@0.11.4(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(ws@8.18.3)(zod@4.1.5)':
+    dependencies:
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      openai: 5.12.2(ws@8.18.3)(zod@4.1.5)
+      zod: 4.1.5
+    transitivePeerDependencies:
+      - ws
 
   '@memlab/api@1.0.41(typescript@5.8.3)':
     dependencies:
@@ -14042,6 +14151,62 @@ snapshots:
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-amqplib': 0.50.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-aws-lambda': 0.54.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-aws-sdk': 0.57.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-bunyan': 0.49.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-cassandra-driver': 0.49.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-connect': 0.47.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-cucumber': 0.18.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-dataloader': 0.21.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-dns': 0.47.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-express': 0.52.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-fastify': 0.48.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-fs': 0.23.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-generic-pool': 0.47.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-graphql': 0.51.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-grpc': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-hapi': 0.50.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-ioredis': 0.51.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-kafkajs': 0.13.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-knex': 0.48.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-koa': 0.51.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-lru-memoizer': 0.48.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-memcached': 0.47.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-mongodb': 0.56.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-mongoose': 0.50.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-mysql': 0.49.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-mysql2': 0.50.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-nestjs-core': 0.49.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-net': 0.47.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-oracledb': 0.29.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-pg': 0.56.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-pino': 0.50.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-redis': 0.51.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-restify': 0.49.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-router': 0.48.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-runtime-node': 0.17.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-socket.io': 0.50.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-tedious': 0.22.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-undici': 0.14.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation-winston': 0.48.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resource-detector-alibaba-cloud': 0.31.3(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resource-detector-aws': 2.3.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resource-detector-azure': 0.10.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resource-detector-container': 0.7.3(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resource-detector-gcp': 0.37.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-node': 0.203.0(@opentelemetry/api@1.9.0)
+    transitivePeerDependencies:
+      - encoding
+      - supports-color
+
+  '@opentelemetry/auto-instrumentations-node@0.62.1(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.1.0(@opentelemetry/api@1.9.0))':
+    dependencies:
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/core': 2.1.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation': 0.203.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation-amqplib': 0.50.0(@opentelemetry/api@1.9.0)
       '@opentelemetry/instrumentation-aws-lambda': 0.54.0(@opentelemetry/api@1.9.0)
@@ -20173,14 +20338,14 @@ snapshots:
 
   marked@16.2.1: {}
 
-  mastra@0.10.21(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(@opentelemetry/api@1.9.0)(react@19.1.0)(typescript@5.8.3):
+  mastra@0.10.21(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(@opentelemetry/api@1.9.0)(react@19.1.0)(typescript@5.8.3):
     dependencies:
       '@clack/prompts': 0.11.0
       '@lukeed/uuid': 2.0.1
-      '@mastra/core': 0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
-      '@mastra/deployer': 0.13.2(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(typescript@5.8.3)
-      '@mastra/loggers': 0.10.11(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))
-      '@mastra/mcp': 0.10.11(@mastra/core@0.16.0(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)
+      '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+      '@mastra/deployer': 0.13.2(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(typescript@5.8.3)
+      '@mastra/loggers': 0.10.11(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))
+      '@mastra/mcp': 0.10.11(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(zod@3.25.74)
       '@opentelemetry/auto-instrumentations-node': 0.62.1(@opentelemetry/api@1.9.0)(@opentelemetry/core@2.0.1(@opentelemetry/api@1.9.0))
       '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/exporter-trace-otlp-grpc': 0.203.0(@opentelemetry/api@1.9.0)
