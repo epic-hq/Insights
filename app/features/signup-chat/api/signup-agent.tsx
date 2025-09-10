@@ -77,6 +77,9 @@ export async function action({ request }: ActionFunctionArgs) {
 				},
 			]
 			: undefined,
+		onFinish: (data) => {
+			consola.log("onFinish", data)
+		},
 	})
 
 	const langfuse = getLangfuseClient()

@@ -1,7 +1,8 @@
 import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
-import { DefaultChatTransport } from "ai"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
+import { Check, Loader } from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
@@ -10,6 +11,7 @@ import { Message, MessageContent } from "~/components/ai-elements/message"
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Tool, ToolContent, ToolHeader, ToolInput, ToolOutput } from "~/components/ai-elements/tool"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { memory } from "~/mastra/memory"
@@ -69,11 +71,32 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 export const ConversationDemo = () => {
 	const [input, setInput] = useState("")
 	const { messages: initialMessages } = useLoaderData()
-	const { messages, sendMessage, status } = useChat({
+	const navigate = useNavigate()
+	const { messages, sendMessage, status, addToolResult } = useChat({
 		transport: new DefaultChatTransport({
 			api: "/api/chat/signup",
 		}),
 		messages: initialMessages,
+		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+
+		// run client-side tools that are automatically executed:
+		async onToolCall({ toolCall }) {
+			// Check if it's a dynamic tool first for proper type narrowing
+			if (toolCall.dynamic) {
+				return
+			}
+
+			if (toolCall.toolName === "navigateToPage") {
+				consola.log("Navigating to page: ", toolCall.input)
+				navigate(toolCall?.input?.path)
+				// No await - avoids potential deadlocks
+				addToolResult({
+					tool: "navigateToPage",
+					toolCallId: toolCall.toolCallId,
+					output: true,
+				})
+			}
+		},
 	})
 
 	const handleSubmit = (e: React.FormEvent) => {
@@ -94,6 +117,39 @@ export const ConversationDemo = () => {
 								<MessageContent>
 									{message?.parts?.map((part, i) => {
 										switch (part.type) {
+											case "tool-displayUserQuestions":
+												switch (part.state) {
+													case "input-streaming":
+														return <Loader />
+													case "input-available":
+														return (
+															<Card>
+																<CardHeader>
+																	<CardTitle>Research Questions</CardTitle>
+																</CardHeader>
+																<CardContent>
+																	{part.output?.data?.questions?.map((question, i) => (
+																		<div key={i}>{question}</div>
+																	))}
+																</CardContent>
+															</Card>
+														)
+													case "output-available":
+														return (
+															<Card>
+																<CardHeader>
+																	<CardTitle className="flex items-center gap-2">
+																		<Check /> Research Questions
+																	</CardTitle>
+																</CardHeader>
+																<CardContent>
+																	{part.output?.data?.questions?.map((question, i) => (
+																		<div key={i}>{question}</div>
+																	))}
+																</CardContent>
+															</Card>
+														)
+												}
 											case "tool-saveUserSettingsData":
 												return (
 													<Tool>

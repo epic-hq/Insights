@@ -18,26 +18,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		perPage: 100,
 	})
 
-	let threadId: string
-	if (!(threads?.total > 0)) {
-		const newThread = await memory.createThread({
-			resourceId: `signupAgent-${user.sub}`,
-			title: "Signup Chat",
-			metadata: { user_id: user.sub },
-		})
-		threadId = newThread.id
-	} else {
-		threadId = threads.threads[0].id
-	}
+	// Optionally transform thread messages if needed in the future
+	// const messages = threads?.items?.flatMap((t: any) => t?.messages ?? []) ?? []
 
-	const { messagesV2 } = await memory.query({
-		threadId,
-		selectBy: { last: 50 },
-	})
-	const uiMessages = convertMessages(messagesV2).to("AIV5.UI")
-
-	return new Response(JSON.stringify({ messages: uiMessages }), {
-		status: 200,
+	return new Response(JSON.stringify({ threads }), {
 		headers: { "Content-Type": "application/json" },
 	})
 }
