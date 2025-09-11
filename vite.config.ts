@@ -19,7 +19,7 @@ export default defineConfig({
 		],
 	},
 	ssr: {
-		noExternal: ["katex", "streamdown", "react-syntax-highlighter"],
+		noExternal: ["katex", "streamdown"],
 		external: [
 			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",
@@ -29,6 +29,7 @@ export default defineConfig({
 			// Ensure unused heavy libs are not bundled into SSR
 			"mermaid",
 			"@mermaid-js/parser",
+			"react-syntax-highlighter",
 		],
 	},
 	plugins: [
@@ -63,32 +64,32 @@ export default defineConfig({
 		devtoolsJson(),
 	],
 	build: {
-		minify: true,
+		minify: false,
 		sourcemap: false,
 		chunkSizeWarningLimit: 1500,
 		rollupOptions: {
 			output: {
-				manualChunks(id) {
-					if (!id.includes("node_modules")) return
-					// React core
-					if (/node_modules\/(react|react-dom)\//.test(id)) return "react"
-					// Router
-					if (/node_modules\/(@react-router|react-router|react-router-dom)\//.test(id)) return "router"
-					// UI libs
-					if (/node_modules\/(@radix-ui)\//.test(id)) return "radix"
-					// Charts and vis
-					if (/node_modules\/(recharts|cytoscape|mermaid)\//.test(id)) return "viz"
-					// Editors/syntax highlighting
-					if (/node_modules\/(react-syntax-highlighter|katex|remark-gfm)\//.test(id)) return "md"
-					// Data/services
-					if (/node_modules\/(@supabase)\//.test(id)) return "supabase"
-					if (/node_modules\/(openai|@ai-sdk|ai\/)\//.test(id)) return "ai-sdk"
-					if (/node_modules\/(@boundaryml)\//.test(id)) return "baml"
-					if (/node_modules\/(langfuse)\//.test(id)) return "langfuse"
-					// Mastra and friends
-					if (/node_modules\/(mastra|@mastra)\//.test(id)) return "mastra"
-					return "vendor"
-				},
+				// manualChunks(id) {
+				// 	if (!id.includes("node_modules")) return
+				// 	// React core
+				// 	if (/node_modules\/(react|react-dom)\//.test(id)) return "react"
+				// 	// Router
+				// 	if (/node_modules\/(@react-router|react-router|react-router-dom)\//.test(id)) return "router"
+				// 	// UI libs
+				// 	if (/node_modules\/(@radix-ui)\//.test(id)) return "radix"
+				// 	// Charts and vis
+				// 	if (/node_modules\/(recharts|cytoscape|mermaid)\//.test(id)) return "viz"
+				// 	// Editors/syntax highlighting
+				// 	if (/node_modules\/(remark-gfm)\//.test(id)) return "md"
+				// 	// Data/services
+				// 	if (/node_modules\/(@supabase)\//.test(id)) return "supabase"
+				// 	if (/node_modules\/(openai|@ai-sdk|ai\/)\//.test(id)) return "ai-sdk"
+				// 	if (/node_modules\/(@boundaryml)\//.test(id)) return "baml"
+				// 	if (/node_modules\/(langfuse)\//.test(id)) return "langfuse"
+				// 	// Mastra and friends
+				// 	if (/node_modules\/(mastra|@mastra)\//.test(id)) return "mastra"
+				// 	return "vendor"
+				// },
 			},
 		},
 	},

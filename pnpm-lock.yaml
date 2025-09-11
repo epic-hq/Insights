@@ -21,8 +21,8 @@ importers:
         specifier: 2.0.37
         version: 2.0.37(react@19.1.0)(zod@4.1.5)
       '@boundaryml/baml':
-        specifier: ^0.207.0
-        version: 0.207.0
+        specifier: ^0.206.1
+        version: 0.206.1
       '@conform-to/react':
         specifier: 1.8.2
         version: 1.8.2(react@19.1.0)
@@ -257,9 +257,6 @@ importers:
       react-router-hono-server:
         specifier: 2.16.0
         version: 2.16.0(@react-router/dev@7.6.3(@types/node@24.0.10)(babel-plugin-macros@3.1.0)(jiti@2.4.2)(lightningcss@1.30.1)(react-router@7.6.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(tsx@4.20.3)(typescript@5.8.3)(vite@7.0.2(@types/node@24.0.10)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.1))(yaml@2.8.1))(@types/react@19.1.8)(react-router@7.6.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0))(vite@7.0.2(@types/node@24.0.10)(jiti@2.4.2)(lightningcss@1.30.1)(tsx@4.20.3)(yaml@2.8.1))
-      react-syntax-highlighter:
-        specifier: 15.6.6
-        version: 15.6.6(react@19.1.0)
       recharts:
         specifier: 3.1.0
         version: 3.1.0(@types/react@19.1.8)(react-dom@19.1.0(react@19.1.0))(react-is@19.1.1)(react@19.1.0)(redux@5.0.1)
@@ -983,50 +980,50 @@ packages:
       react: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
       react-dom: ^15.0.0 || ^16.0.0 || ^17.0.0 || ^18.0.0 || ^19.0.0
 
-  '@boundaryml/baml-darwin-arm64@0.207.0':
-    resolution: {integrity: sha512-aq+cIzyKhOq93Ms1v9ZymbFHXtnjFCmJXEIp9LrKYhx2XdUG/tLLcg8/QP6Opca+AUHkJ6lnGrx3gohbU1jXrA==}
+  '@boundaryml/baml-darwin-arm64@0.206.1':
+    resolution: {integrity: sha512-2BZ0sDtZKBgRwi+Qg/sCSEYr/0pOZatY7EwG1r8pwVNtGXdagnE7Vsr619QGYzrO9NmyazD/67GPrOZa+Vj31w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [darwin]
 
-  '@boundaryml/baml-darwin-x64@0.207.0':
-    resolution: {integrity: sha512-GM+2hbaFSyH3KIOhPGmchQEc30CMPbeIGKXOjUzFfyPCSR0azFiFg219EIPb956/niHCpQgAhBp0rESJ3NUb+Q==}
+  '@boundaryml/baml-darwin-x64@0.206.1':
+    resolution: {integrity: sha512-TENXu52b1Po/wRozlEW6gIPsTAgJW67WiglOjmsDzNQdFsuTiQHcHtrVFpI/DUPcaZ/5/FxIzLfZIyLHNx1MFw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [darwin]
 
-  '@boundaryml/baml-linux-arm64-gnu@0.207.0':
-    resolution: {integrity: sha512-EoyvsOi034ASPbkpGl4i/ld/AGVKkYUWvGEuZiF49qA1sk0zT2so9OK/VdMeLojjwdlgzKHavnI61kwj5NKrDw==}
+  '@boundaryml/baml-linux-arm64-gnu@0.206.1':
+    resolution: {integrity: sha512-A4EW6uJcv9YBAy7z5liPm2KD5vOSxdBEgpNEEPIHxLTM2ylCg46DR5SxRLmHP+g6Hja+boiAlREEkQaXz/uBkw==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@boundaryml/baml-linux-arm64-musl@0.207.0':
-    resolution: {integrity: sha512-uQrFntB/GjiFXsNmqES5LVbBvSOX+wX8/ZfG5pgmXu8i0JVqnfb1ADLZx+QfhtvHMFvrTzh/9klD1ZORpSaPLg==}
+  '@boundaryml/baml-linux-arm64-musl@0.206.1':
+    resolution: {integrity: sha512-aSN7efZC0dgdiA0UO7LVoM+HAxX7b8U4irFnTJE0oPNK5QbAI0A+a+R9P3O0MzWOJbn/acbFBLuqurypJgYG0w==}
     engines: {node: '>= 10'}
     cpu: [arm64]
     os: [linux]
 
-  '@boundaryml/baml-linux-x64-gnu@0.207.0':
-    resolution: {integrity: sha512-myq2fovwagxDn6Ul32gHWr7vFJJrI0SUagimuSM4Hfo4mvpLHh3KPyl435TeLnuh7hKstCTN+iL/CstJDUhskQ==}
+  '@boundaryml/baml-linux-x64-gnu@0.206.1':
+    resolution: {integrity: sha512-qCgj/Xou4aAHdH8nu1QGuZ0U5eERxUm/GVha3ViboYtDw7VQAUJgKXZnMHxAk2kc30WDIoMEmo8hpw4XdoXRpw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@boundaryml/baml-linux-x64-musl@0.207.0':
-    resolution: {integrity: sha512-l4WHDo+ap9tZyfqozlwpo+DA0v8hHrT0JzKBtcTyWjt6YDwZEoGiRp2x79qCjanT5Xh0EpUr+YuyxUtIfuu3tg==}
+  '@boundaryml/baml-linux-x64-musl@0.206.1':
+    resolution: {integrity: sha512-Z20G9N+iytOj2P/cUBA/1KU8CQnCSN2GBHo0G3bqe2IGmT2MqYkI9fAPLTNrngEdChsS5BnDYDF7PTsyDsPhpw==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [linux]
 
-  '@boundaryml/baml-win32-x64-msvc@0.207.0':
-    resolution: {integrity: sha512-YbmdPJtvacV8qnvbmL3ZyZEeEJbKCViWAPm+LmOMemm47Gr6bgsY2o6TeN/Y8jtMF4MDati71iJsjl9QYew/fg==}
+  '@boundaryml/baml-win32-x64-msvc@0.206.1':
+    resolution: {integrity: sha512-yBCLAe6XcveuyIkMoPnjaerw7f1uMx5C0nrCezMMdfrcP1WQTj9FkOOuE7pStE6oKkXBh0uWjoMgrlHFpOzPOA==}
     engines: {node: '>= 10'}
     cpu: [x64]
     os: [win32]
 
-  '@boundaryml/baml@0.207.0':
-    resolution: {integrity: sha512-wrmxK4N/+8zM7lQKP2t3CCT0Es3+RaWAvwaO4e4xEir12n9uUyY4yrcxLL+QscK9PK3aikmJXh2a3WFur2OzJw==}
+  '@boundaryml/baml@0.206.1':
+    resolution: {integrity: sha512-pRYCy0bjBVHm+QQdyLkqYnZO7DMXD4Ri2UsJdAjcYDEfOJqlEtb4c/87SjyKDrhdMAI5UD+Kyn4z+lAeaD2vUg==}
     engines: {node: '>= 10'}
     hasBin: true
 
@@ -11970,38 +11967,38 @@ snapshots:
       react-lifecycles-compat: 3.0.4
       warning: 3.0.0
 
-  '@boundaryml/baml-darwin-arm64@0.207.0':
+  '@boundaryml/baml-darwin-arm64@0.206.1':
     optional: true
 
-  '@boundaryml/baml-darwin-x64@0.207.0':
+  '@boundaryml/baml-darwin-x64@0.206.1':
     optional: true
 
-  '@boundaryml/baml-linux-arm64-gnu@0.207.0':
+  '@boundaryml/baml-linux-arm64-gnu@0.206.1':
     optional: true
 
-  '@boundaryml/baml-linux-arm64-musl@0.207.0':
+  '@boundaryml/baml-linux-arm64-musl@0.206.1':
     optional: true
 
-  '@boundaryml/baml-linux-x64-gnu@0.207.0':
+  '@boundaryml/baml-linux-x64-gnu@0.206.1':
     optional: true
 
-  '@boundaryml/baml-linux-x64-musl@0.207.0':
+  '@boundaryml/baml-linux-x64-musl@0.206.1':
     optional: true
 
-  '@boundaryml/baml-win32-x64-msvc@0.207.0':
+  '@boundaryml/baml-win32-x64-msvc@0.206.1':
     optional: true
 
-  '@boundaryml/baml@0.207.0':
+  '@boundaryml/baml@0.206.1':
     dependencies:
       '@scarf/scarf': 1.4.0
     optionalDependencies:
-      '@boundaryml/baml-darwin-arm64': 0.207.0
-      '@boundaryml/baml-darwin-x64': 0.207.0
-      '@boundaryml/baml-linux-arm64-gnu': 0.207.0
-      '@boundaryml/baml-linux-arm64-musl': 0.207.0
-      '@boundaryml/baml-linux-x64-gnu': 0.207.0
-      '@boundaryml/baml-linux-x64-musl': 0.207.0
-      '@boundaryml/baml-win32-x64-msvc': 0.207.0
+      '@boundaryml/baml-darwin-arm64': 0.206.1
+      '@boundaryml/baml-darwin-x64': 0.206.1
+      '@boundaryml/baml-linux-arm64-gnu': 0.206.1
+      '@boundaryml/baml-linux-arm64-musl': 0.206.1
+      '@boundaryml/baml-linux-x64-gnu': 0.206.1
+      '@boundaryml/baml-linux-x64-musl': 0.206.1
+      '@boundaryml/baml-win32-x64-msvc': 0.206.1
 
   '@braintree/sanitize-url@7.1.1': {}
 
