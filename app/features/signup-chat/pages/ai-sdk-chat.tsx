@@ -2,7 +2,7 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { Brain, Check, Loader, Pencil } from "lucide-react"
+import { Brain, Check, Loader, Pencil, X } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
@@ -86,6 +86,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		messages: aiv5Messages,
 		existingChatData,
 		user,
+		threadId,
 	})
 }
 
@@ -148,10 +149,6 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 		}
 	}
 
-	const handleMicrophoneClick = () => {
-
-	}
-
 	return (
 		<div className="relative mx-auto size-full h-dvh max-w-6xl rounded-lg px-2 md:px-4 flex flex-col md:flex-row">
 			{/* <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:grid-cols-[200px_1fr] md:pt-4 lg:grid-cols-[400px_1fr]"> */}
@@ -202,7 +199,7 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 														)
 													case "output-available":
 														return (
-															<Card>
+															<Card>z
 																<CardHeader>
 																	<CardTitle className="flex items-center gap-2">
 																		<Check /> Research Questions
@@ -218,11 +215,25 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 												}
 											case "tool-saveUserSettingsData":
 												return (
-													<Task>
-														<TaskTrigger title="Save details" icon={<Pencil className="size-4" />} />
+													<Task className="border rounded-lg p-4">
+														<TaskTrigger title="Saved details" icon={<Pencil className="size-4" />} />
+														<TaskContent>
+															{/* {part?.output?.message} */}
+															{part?.output?.data?.challenges && <div><span className="font-bold">Challenges:</span> {part?.output?.data?.challenges}</div>}
+															{part?.output?.data?.content_types && <div><span className="font-bold">Content Types:</span> {part?.output?.data?.content_types}</div>}
+															{part?.output?.data?.goal && <div><span className="font-bold">Goal:</span> {part?.output?.data?.goal}</div>}
+															{part?.output?.data?.other_feedback && <div><span className="font-bold">Other Feedback:</span> {part?.output?.data?.other_feedback}</div>}
+															{part?.output?.data?.completed && <div className="flex items-center gap-2"><span className="font-bold">Completed:</span> {part?.output?.data?.completed ? <Check className="size-4 text-emerald-500" /> : <X className="size-4" />}</div>}
+															{/* {process.env.NODE_ENV === "development" && JSON.stringify(part?.output?.data)} */}
+														</TaskContent>
+													</Task>
+												)
+											case "tool-saveProjectSectionsData":
+												return (
+													<Task className="border rounded-lg p-4">
+														<TaskTrigger title="Save sections" icon={<Pencil className="size-4" />} />
 														<TaskContent>
 															{part?.output?.message}
-															{process.env.NODE_ENV === "development" && JSON.stringify(part?.output?.data)}
 														</TaskContent>
 													</Task>
 												)
@@ -242,7 +253,11 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 				<div className="flex flex-row gap-2 justify-between">
 					<AudioRecorder onAfterTranscription={(transcription) => {
 						console.log("transcription", transcription)
-						setInput((prev) => prev?.trim() ? prev + "\n" + transcription : transcription)
+						// setInput((prev) => prev?.trim() ? prev + "\n" + transcription : transcription)
+						if (transcription.trim()) {
+							sendMessage({ text: transcription })
+							// setInput("")
+						}
 					}} />
 					<span>
 						<TextShimmer className={cn('font-mono text-sm mt-1 hidden', status === 'streaming' || status === 'submitted' && 'block')} duration={3}>

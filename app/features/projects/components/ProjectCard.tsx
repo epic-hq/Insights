@@ -1,7 +1,7 @@
 import { motion } from "framer-motion"
 import { Hash, MessageCircleQuestion, Pencil, Settings2 } from "lucide-react"
-import { MarkdownText } from "~/components/assistant-ui/markdown-text"
 import { Link } from "react-router-dom"
+import { Streamdown } from "streamdown"
 // Flattened sections view (no accordion)
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
@@ -186,15 +186,15 @@ export function ProjectCard({ project, sections, className, projectPath }: Proje
 										</Link>
 									)}
 								</div>
-                            <div className="prose prose-sm dark:prose-invert max-w-none">
-                                <MarkdownText>{latest.content_md ?? ""}</MarkdownText>
-                            </div>
+								<div className="prose prose-sm dark:prose-invert max-w-none">
+									<Streamdown>{latest.content_md ?? ""}</Streamdown>
+								</div>
 								{arr.length > 1 && (
 									<div className="mt-3 space-y-3">
 										{arr.slice(1, 5).map((s) => (
-                                        <div key={s.id} className="prose prose-sm dark:prose-invert max-w-none border-t pt-3">
-                                            <MarkdownText>{s.content_md ?? ""}</MarkdownText>
-                                        </div>
+											<div key={s.id} className="prose prose-sm dark:prose-invert max-w-none border-t pt-3">
+												<Streamdown>{s.content_md ?? ""}</Streamdown>
+											</div>
 										))}
 									</div>
 								)}

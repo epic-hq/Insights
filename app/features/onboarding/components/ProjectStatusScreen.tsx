@@ -22,8 +22,8 @@ import {
 	Zap,
 } from "lucide-react"
 import { useEffect, useState } from "react"
-import { MarkdownText } from "~/components/assistant-ui/markdown-text"
 import { useRevalidator } from "react-router-dom"
+import { Streamdown } from "streamdown"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -761,7 +761,7 @@ export default function ProjectStatusScreen({
 																{!meta?.target_orgs && !meta?.target_roles && (
 																	<div className="rounded-lg bg-muted/50 p-2">
 																		<div className="prose prose-sm max-w-none text-foreground text-sm">
-                                            <MarkdownText>{section.content_md}</MarkdownText>
+																			<Streamdown>{section.content_md}</Streamdown>
 																		</div>
 																	</div>
 																)}
@@ -909,11 +909,10 @@ export default function ProjectStatusScreen({
 																			return (
 																				<div
 																					key={`question-${question.id || index}`}
-																					className={`rounded-lg border p-3 ${
-																						questionStatus.status === "answered"
+																					className={`rounded-lg border p-3 ${questionStatus.status === "answered"
 																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
 																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-																					}`}
+																						}`}
 																				>
 																					<div className="flex items-start gap-2">
 																						{questionStatus.status === "answered" ? (

@@ -16,9 +16,6 @@ export default defineConfig({
 		exclude: [
 			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",
-			"@aws-sdk/credential-provider-sso",
-			"@aws-sdk/token-providers",
-			"@langchain/aws",
 		],
 	},
 	ssr: {
@@ -32,9 +29,6 @@ export default defineConfig({
 			// Ensure unused heavy libs are not bundled into SSR
 			"mermaid",
 			"@mermaid-js/parser",
-			"cytoscape",
-			"cytoscape-fcose",
-			"cytoscape-cose-bilkent",
 		],
 	},
 	plugins: [
@@ -69,6 +63,7 @@ export default defineConfig({
 		devtoolsJson(),
 	],
 	build: {
+		minify: true,
 		sourcemap: false,
 		chunkSizeWarningLimit: 1500,
 		rollupOptions: {

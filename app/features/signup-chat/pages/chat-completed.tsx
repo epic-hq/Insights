@@ -28,10 +28,11 @@ export default function ChatCompleted() {
 						<CheckCircle className="mx-auto mb-6 h-16 w-16 text-green-500" />
 						<h1 className="mb-4 font-bold text-3xl text-gray-900 dark:text-white">Welcome to UpSight!</h1>
 						<p className="mb-2 text-gray-600 text-lg leading-relaxed dark:text-gray-300">Let&apos;s go!</p>
+						<p>We'll keep you to update.</p>
 					</div>
 
 					{/* Action Button */}
-					<Link
+					{/* <Link
 						to="/home"
 						className="inline-flex items-center gap-2 rounded-xl bg-purple-600 px-8 py-4 font-semibold text-white transition-all hover:bg-purple-700 hover:shadow-lg"
 					>
@@ -43,7 +44,7 @@ export default function ChatCompleted() {
 						<Link to="/signup-chat?restart=1" className="text-gray-500 text-xs underline">
 							Start over (capture fresh answers)
 						</Link>
-					</div>
+					</div> */}
 				</div>
 			</main>
 		</div>

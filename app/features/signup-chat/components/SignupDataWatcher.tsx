@@ -1,3 +1,4 @@
+import consola from "consola"
 import {
 	AlertTriangle,
 	CheckCircle2,
@@ -63,6 +64,7 @@ export function SignupDataWatcher({
 						}
 					} catch (err) {
 						// no-op
+						consola.error(err)
 					}
 				}
 			)

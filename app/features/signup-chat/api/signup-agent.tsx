@@ -1,4 +1,3 @@
-import { frontendTools } from "@assistant-ui/react-ai-sdk"
 import { RuntimeContext } from "@mastra/core/di"
 import { Memory } from "@mastra/memory"
 import { ModelMessage } from "ai"
@@ -69,7 +68,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		},
 		runtimeContext,
 		// @ts-expect-error
-		clientTools: tools ? frontendTools(tools) : undefined, // assistant-ui serializes tools and sends them body param "tools"
+		// clientTools: tools ? frontendTools(tools) : undefined, // assistant-ui serializes tools and sends them body param "tools" // TODO:
 		// assistant-ui sends additional prompt from frontend in the "system" body param when using `useAssistantInstructions`, adding it here as context
 		// NOTE: Not sure that this is working. Agent does not seem to be picking it up.
 		context: system
