@@ -27,8 +27,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	const headerAccountId = hdr.get("X-AccountId") || undefined
 	const headerProjectId = hdr.get("X-ProjectId") || undefined
 
-	// Use empty service adapter for multi-agent support (per CopilotKit + Mastra reference)
-	const serviceAdapter = new ExperimentalEmptyAdapter()
+	// CopilotKit adapter removed
 
 	// Create a runtime context from incoming headers for ALL local agents
 	const runtimeContext = new RuntimeContext<UserContext>()
@@ -240,11 +239,8 @@ export async function action({ request }: ActionFunctionArgs) {
 	// })
 	consola.log("features/aichat/api/copilotkit mastra-userid-header ", headerUserId)
 
-	const { handleRequest } = copilotRuntimeNextJSAppRouterEndpoint({
-		runtime,
-		serviceAdapter,
-		endpoint: "/api/copilotkit",
+	return new Response(JSON.stringify({ error: "Copilot runtime removed" }), {
+		status: 410,
+		headers: { "Content-Type": "application/json" },
 	})
-
-	return handleRequest(request)
 }

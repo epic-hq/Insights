@@ -93,7 +93,7 @@ const routes = [
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
-	route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
+	// route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),
 	route("api/create-project", "./routes/api.create-project.tsx"),

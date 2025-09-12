@@ -46,7 +46,7 @@ export default function QuestionsScreen({
 	}
 
 	return (
-		<div className="mx-auto max-w-7xl p-4 sm:p-8">
+		<div className="mx-auto max-w-7xl p-4 sm:p-2">
 			{/* Onboarding Progress Header */}
 			{showStepper && <OnboardingStepper currentStep="questions" />}
 

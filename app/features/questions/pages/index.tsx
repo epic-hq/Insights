@@ -20,9 +20,9 @@ export default function QuestionsIndex() {
 	}
 
 	return (
-		<div className="mx-auto max-w-7xl p-4 sm:p-6">
+		<div className="mx-auto max-w-6xl px-4 py-6">
 			{isOnboarding && (
-				<div className="mb-6">
+				<div className="mb-8">
 					<OnboardingStepper
 						steps={[
 							{ id: "goals", title: "Project Goals" },

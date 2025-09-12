@@ -5,18 +5,15 @@ import {
 	BriefcaseBusiness,
 	Check,
 	ChevronDown,
-	ChevronLeft,
-	ChevronRight,
 	Clock,
 	Edit,
+	Filter,
 	Flag,
 	GripVertical,
 	HelpCircle,
 	MessageCircleQuestion,
 	Mic,
-	Mic2Icon,
 	MoreHorizontal,
-	Pencil,
 	Plus,
 	Settings,
 	Trash2,
@@ -28,9 +25,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
-import QuestionCard from "~/components/questions/QuestionCard"
 import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
-import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -45,7 +40,6 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/comp
 import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
-import projects from "~/routes/_protected/projects"
 import type { QuestionInput } from "~/types"
 
 export type Purpose = "exploratory" | "validation" | "followup"
@@ -129,51 +123,6 @@ const questionCategories = [
 	},
 ]
 
-const _questionCategoriesVariants = {
-	context: {
-		id: "context",
-		name: "Context & Background",
-		color: "border-blue-100 text-blue-800 dark:border-blue-900 dark:text-blue-200",
-		colorVariant: "blue",
-	},
-	goals: {
-		id: "goals",
-		name: "Goals & Outcomes",
-		color: "border-green-100 text-green-800 dark:border-green-900 dark:text-green-200",
-		colorVariant: "green",
-	},
-	pain: {
-		id: "pain",
-		name: "Pain Points",
-		color: "border-red-100 text-red-800 dark:border-red-900 dark:text-red-200",
-		colorVariant: "red",
-	},
-	workflow: {
-		id: "workflow",
-		name: "Workflow & Process",
-		color: "border-purple-100 text-purple-800 dark:border-purple-900 dark:text-purple-200",
-		colorVariant: "purple",
-	},
-	motivation: {
-		id: "motivation",
-		name: "Motivation & Drivers",
-		color: "border-yellow-100 text-yellow-800 dark:border-yellow-900 dark:text-yellow-200",
-		colorVariant: "yellow",
-	},
-	constraints: {
-		id: "constraints",
-		name: "Constraints & Barriers",
-		color: "border-orange-100 text-orange-800 dark:border-orange-900 dark:text-orange-200",
-		colorVariant: "orange",
-	},
-	willingness: {
-		id: "willingness",
-		name: "Willingness & Adoption",
-		color: "border-indigo-100 text-indigo-800 dark:border-indigo-900 dark:text-indigo-200",
-		colorVariant: "indigo",
-	},
-} as const
-
 // Quality flag component
 function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) {
 	if (!qualityFlag) return null
@@ -249,7 +198,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [hasInitialized, setHasInitialized] = useState(false)
 	const [skipDebounce, setSkipDebounce] = useState(false)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
-	const [isDesktopSettingsOpen, setIsDesktopSettingsOpen] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
 	const [showAddCustomQuestion, setShowAddCustomQuestion] = useState(false)
 	const [newQuestionText, setNewQuestionText] = useState("")
@@ -262,15 +210,134 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [generatingFollowUp, setGeneratingFollowUp] = useState<string | null>(null)
 	const [mustHavesOnly, setMustHavesOnly] = useState(false)
 	const [showHelp, setShowHelp] = useState(false)
-	const [helpIndex, setHelpIndex] = useState(0)
 	const [improvingId, setImprovingId] = useState<string | null>(null)
 	const [improveOptions, setImproveOptions] = useState<string[]>([])
-	const [improving, setImproving] = useState(false)
 	const [evaluatingId, setEvaluatingId] = useState<string | null>(null)
 	// How many new questions to generate when user clicks "Generate More"
 	// Default "Generate More" count to 8 instead of 3
 	const [moreCount, setMoreCount] = useState<number>(8)
 	const previousSelectionRef = React.useRef<string[] | null>(null)
+
+	const generateQuestions = async () => {
+		if (generating) return
+		setGenerating(true)
+		try {
+			// Create FormData for remix-style API
+			const formData = new FormData()
+			formData.append("project_id", projectId || "")
+			formData.append("custom_instructions", customInstructions || "")
+			// Determine question count:
+			// - Initial generation: time-based target (4/6/8/10)
+			// - Subsequent generations: user-selected count (default 3)
+			// First-time generation target by time; default 30m should produce 8
+			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
+			const initialTarget = countByTime[timeMinutes] ?? 8
+			const count = autoGenerateInitial ? initialTarget : moreCount
+			formData.append("questionCount", String(count))
+			formData.append("interview_time_limit", timeMinutes.toString())
+
+			// Add optional fields from props (for onboarding flow)
+			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
+			if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
+			if (research_goal) formData.append("research_goal", research_goal)
+			if (research_goal_details) formData.append("research_goal_details", research_goal_details)
+			if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
+			if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
+
+			const response = await fetch("/api/generate-questions", {
+				method: "POST",
+				body: formData,
+			})
+
+			if (response.ok) {
+				const data = await response.json()
+				if (data.success && data.questionSet?.questions) {
+					const newQuestions = data.questionSet.questions as QuestionInput[]
+					if (projectId) {
+						const existingQuestions = questions.map((q) => {
+							const idx = selectedQuestionIds.indexOf(q.id)
+							return {
+								id: q.id,
+								text: q.text,
+								categoryId: q.categoryId,
+								scores: q.scores,
+								rationale: q.rationale,
+								status: "proposed",
+								selectedOrder: idx >= 0 ? idx : null,
+								isSelected: idx >= 0,
+							}
+						})
+						const allQuestions = [...existingQuestions, ...newQuestions]
+						await supabase.from("project_sections").upsert(
+							{
+								project_id: projectId,
+								kind: "questions",
+								position: 2,
+								content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
+								meta: { questions: allQuestions },
+							},
+							{ onConflict: "project_id,kind", ignoreDuplicates: false }
+						)
+					}
+
+					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => ({
+						id: q.id || crypto.randomUUID(),
+						text: q.text || "",
+						categoryId: q.categoryId || "context",
+						scores: {
+							importance: (q.scores?.importance ?? 0.5) as number,
+							goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
+							novelty: (q.scores?.novelty ?? 0.5) as number,
+						},
+						rationale: q.rationale || "",
+						status: "proposed" as const,
+						timesAnswered: 0,
+						source: "ai" as const,
+						isMustHave: false,
+					}))
+					setQuestions((prev) => [...prev, ...formattedNewQuestions])
+
+					if (autoGenerateInitial) {
+						setAutoGenerateInitial(false)
+						toast.success(`Generated ${formattedNewQuestions.length} initial questions for your interview`, {
+							description: "Review and edit them below, then click 'Add Interview' when ready",
+							duration: 5000,
+						})
+					} else {
+						toast.success(`Added ${formattedNewQuestions.length} new questions to the bottom of your available list`, {
+							description: "You can now select them to add to your question pack",
+							duration: 4000,
+						})
+					}
+				} else {
+					toast.error("Failed to generate questions", {
+						description: "The response was successful but contained no questions",
+					})
+				}
+			} else {
+				// Handle API error response
+				try {
+					const errorData = await response.json()
+					toast.error("Failed to generate questions", {
+						description: errorData.error || `Server error: ${response.status}`,
+					})
+				} catch {
+					toast.error("Failed to generate questions", {
+						description: `Server error: ${response.status}`,
+					})
+				}
+			}
+		} catch (e) {
+			consola.error("Error generating questions:", e)
+			toast.error("Failed to generate questions", {
+				description: "An unexpected error occurred. Please try again.",
+			})
+		} finally {
+			setGenerating(false)
+			// Ensure spinner resets even if initial auto-generate failed
+			setAutoGenerateInitial(false)
+		}
+	}
 
 	// Auto-generate questions on first load for new users
 	useEffect(() => {
@@ -826,11 +893,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[questions, selectedQuestionIds, saveQuestionsToDatabase]
 	)
 
-	const getCategoryColor = (categoryId: string) => {
-		const category = questionCategories.find((c) => c.id === categoryId)
-		return category?.color || "border-border text-foreground"
-	}
-
 	const getAnsweredCountColor = (count: number) => {
 		if (count === 0) return "bg-transparent text-muted-foreground"
 		if (count <= 3) return "bg-transparent text-yellow-600 dark:text-yellow-400"
@@ -880,7 +942,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				}))
 
 				// Find the index of the original question in selectedQuestionIds
-				const originalIndex = selectedQuestionIds.findIndex((id) => id === questionId)
+				const originalIndex = selectedQuestionIds.indexOf(questionId)
 				if (originalIndex >= 0) {
 					// Insert follow-up questions right after the original question
 					const updatedQuestions = [...questions, ...followUpQuestions]
@@ -916,126 +978,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}
 
-	const generateQuestions = async () => {
-		if (generating) return
-		setGenerating(true)
-		try {
-			// Create FormData for remix-style API
-			const formData = new FormData()
-			formData.append("project_id", projectId || "")
-			formData.append("custom_instructions", customInstructions || "")
-			// Determine question count:
-			// - Initial generation: time-based target (4/6/8/10)
-			// - Subsequent generations: user-selected count (default 3)
-			// First-time generation target by time; default 30m should produce 8
-			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
-			const initialTarget = countByTime[timeMinutes] ?? 8
-			const count = autoGenerateInitial ? initialTarget : moreCount
-			formData.append("questionCount", String(count))
-			formData.append("interview_time_limit", timeMinutes.toString())
 
-			// Add optional fields from props (for onboarding flow)
-			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
-			if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
-			if (research_goal) formData.append("research_goal", research_goal)
-			if (research_goal_details) formData.append("research_goal_details", research_goal_details)
-			if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
-			if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
-
-			const response = await fetch("/api/generate-questions", {
-				method: "POST",
-				body: formData,
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				if (data.success && data.questionSet?.questions) {
-					const newQuestions = data.questionSet.questions as QuestionInput[]
-					if (projectId) {
-						const existingQuestions = questions.map((q) => {
-							const idx = selectedQuestionIds.indexOf(q.id)
-							return {
-								id: q.id,
-								text: q.text,
-								categoryId: q.categoryId,
-								scores: q.scores,
-								rationale: q.rationale,
-								status: "proposed",
-								selectedOrder: idx >= 0 ? idx : null,
-								isSelected: idx >= 0,
-							}
-						})
-						const allQuestions = [...existingQuestions, ...newQuestions]
-						await supabase.from("project_sections").upsert(
-							{
-								project_id: projectId,
-								kind: "questions",
-								position: 2,
-								content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
-								meta: { questions: allQuestions },
-							},
-							{ onConflict: "project_id,kind", ignoreDuplicates: false }
-						)
-					}
-
-					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => ({
-						id: q.id || crypto.randomUUID(),
-						text: q.text || "",
-						categoryId: q.categoryId || "context",
-						scores: {
-							importance: (q.scores?.importance ?? 0.5) as number,
-							goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
-							novelty: (q.scores?.novelty ?? 0.5) as number,
-						},
-						rationale: q.rationale || "",
-						status: "proposed" as const,
-						timesAnswered: 0,
-						source: "ai" as const,
-						isMustHave: false,
-					}))
-					setQuestions((prev) => [...prev, ...formattedNewQuestions])
-
-					if (autoGenerateInitial) {
-						setAutoGenerateInitial(false)
-						toast.success(`Generated ${formattedNewQuestions.length} initial questions for your interview`, {
-							description: "Review and edit them below, then click 'Add Interview' when ready",
-							duration: 5000,
-						})
-					} else {
-						toast.success(`Added ${formattedNewQuestions.length} new questions to the bottom of your available list`, {
-							description: "You can now select them to add to your question pack",
-							duration: 4000,
-						})
-					}
-				} else {
-					toast.error("Failed to generate questions", {
-						description: "The response was successful but contained no questions",
-					})
-				}
-			} else {
-				// Handle API error response
-				try {
-					const errorData = await response.json()
-					toast.error("Failed to generate questions", {
-						description: errorData.error || `Server error: ${response.status}`,
-					})
-				} catch {
-					toast.error("Failed to generate questions", {
-						description: `Server error: ${response.status}`,
-					})
-				}
-			}
-		} catch (e) {
-			consola.error("Error generating questions:", e)
-			toast.error("Failed to generate questions", {
-				description: "An unexpected error occurred. Please try again.",
-			})
-		} finally {
-			setGenerating(false)
-			// Ensure spinner resets even if initial auto-generate failed
-			setAutoGenerateInitial(false)
-		}
-	}
 
 	if (loading) {
 		return (
@@ -1059,41 +1002,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	}
 
 	return (
-		<div className="mx-auto max-w-5xl space-y-6 p-4 sm:p-4">
-			{/* Header with Title and Interactive Time Settings */}
-			<div className="flex items-start justify-between">
-				<div>
-					<div className="flex items-center gap-2 font-bold text-2xl text-foreground">
-						<MessageCircleQuestion />
-						Interview Questions
+		<div className="w-full space-y-2">
+			{/* Header Section */}
+			<div className="space-y-4">
+				{/* Title Row - Prevent wrapping */}
+				<div className="flex items-center justify-between">
+					<div className="flex min-w-0 items-center gap-3">
+						<MessageCircleQuestion className="h-6 w-6 shrink-0" />
+						<h1 className="whitespace-nowrap font-bold text-2xl text-foreground">Interview Questions</h1>
 					</div>
-					<p className="mt-1 text-muted-foreground text-sm">
-						Review, edit, and finalize your interview questions. Based on your{" "}
-						<Link
-							to={routes.projects.setup()}
-							className="font-medium text-blue-600 underline underline-offset-2 transition-all duration-200 hover:text-blue-800 hover:underline-offset-4"
-						>
-							Project Goals
-						</Link>{" "}
-						<Button
-							variant="ghost"
-							size="sm"
-							onClick={() => setShowHelp(true)}
-							className="ml-2 inline-flex items-center gap-1 px-2 py-0 text-blue-700 hover:text-blue-800"
-							title="Interview planning tips"
-						>
-							<HelpCircle className="h-4 w-4" /> Helpful Tips
-						</Button>
-					</p>
-				</div>
-				<div className="flex items-center gap-3">
-					{/* Interactive Settings Button */}
-					<Button variant="outline" onClick={() => setShowSettings(!showSettings)} className="flex items-center gap-2">
-						<Settings className="h-4 w-4" />
-						{purpose.charAt(0).toUpperCase() + purpose.slice(1)} • {timeMinutes}m
-					</Button>
-					{/* Simplified Time Display */}
-					<div className="flex items-center gap-2">
+					<div className="flex shrink-0 items-center gap-2">
 						{generating ? (
 							<StatusPill variant="active">
 								Generating <ProgressDots className="ml-1" />
@@ -1104,6 +1022,38 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							</StatusPill>
 						) : null}
 					</div>
+				</div>
+
+				{/* Description Row */}
+				<p className="text-muted-foreground text-sm">
+					Review, edit, and finalize your interview questions. Based on your{" "}
+					<Link
+						to={routes.projects.setup()}
+						className="font-medium text-blue-600 underline underline-offset-2 transition-all duration-200 hover:text-blue-800 hover:underline-offset-4"
+					>
+						Project Goals
+					</Link>{" "}
+					<Button
+						variant="ghost"
+						size="sm"
+						onClick={() => setShowHelp(true)}
+						className="mt-1 ml-2 inline-flex items-center gap-1 px-2 text-blue-700 hover:text-blue-800"
+						title="Interview planning tips"
+					>
+						<HelpCircle className="h-4 w-4" />
+					</Button>
+				</p>
+
+				{/* Settings Button Row - Moved down */}
+				<div className="flex items-center justify-between">
+					<Button
+						variant="outline"
+						onClick={() => setShowSettings(!showSettings)}
+						className="flex items-center gap-2 whitespace-nowrap"
+					>
+						<Settings className="h-4 w-4" />
+						{purpose.charAt(0).toUpperCase() + purpose.slice(1)} • {timeMinutes}m
+					</Button>
 				</div>
 			</div>
 
@@ -1163,47 +1113,114 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 			{/* Main Question List Section */}
 			<div className="space-y-4">
-				{/* Action Buttons */}
-				<div className="flex flex-col gap-3 sm:flex-row">
-					<div className="flex flex-1 gap-2">
-						<Button
-							onClick={generateQuestions}
-							disabled={generating || autoGenerateInitial}
-							variant="outline"
-							className="flex-1 border-blue-500 text-blue-600 hover:bg-blue-50"
-						>
-							{generating || autoGenerateInitial ? (
-								<>
-									<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-									{autoGenerateInitial ? "Generating Initial Questions..." : "Generating More Questions..."}
-								</>
-							) : (
-								<>
-									<Brain className="mr-2 h-4 w-4" /> Generate More Questions
-								</>
-							)}
-						</Button>
+				{/* Action Buttons - Reorganized with functional grouping */}
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						{/* Primary Action Group */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button
+									variant="outline"
+									className="border-blue-500 text-blue-600 hover:bg-blue-50"
+									disabled={generating || autoGenerateInitial}
+								>
+									{generating || autoGenerateInitial ? (
+										<>
+											<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+											Generating...
+										</>
+									) : (
+										<>
+											<Brain className="mr-2 h-4 w-4" />
+											Add Questions
+											<ChevronDown className="ml-1 h-4 w-4" />
+										</>
+									)}
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start">
+								<DropdownMenuItem onClick={generateQuestions} disabled={generating || autoGenerateInitial}>
+									<Brain className="mr-2 h-4 w-4" />
+									Generate {moreCount} AI Questions
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setShowAddCustomQuestion(true)}>
+									<Plus className="mr-2 h-4 w-4" />
+									Write Custom Question
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 
-						<Button
-							onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-							variant="outline"
-							size="sm"
-							className="shrink-0 gap-1"
-							title="Show options (count and instructions)"
-						>
-							<span>Options</span>
-							<ChevronDown className={`h-4 w-4 transition-transform ${showCustomInstructions ? "rotate-180" : ""}`} />
-						</Button>
-
-						{/* Help moved next to Project Goals link above */}
+						{/* Settings Group */}
+						<DropdownMenu>
+							<DropdownMenuTrigger asChild>
+								<Button variant="outline" size="sm">
+									<Settings className="mr-1 h-4 w-4" />
+									<span className="hidden md:inline">Options</span>
+									<ChevronDown className="ml-1 h-4 w-4" />
+								</Button>
+							</DropdownMenuTrigger>
+							<DropdownMenuContent align="start">
+								<DropdownMenuItem onClick={() => setShowCustomInstructions(!showCustomInstructions)}>
+									<Edit className="mr-2 h-4 w-4" />
+									AI Instructions & Count
+								</DropdownMenuItem>
+								<DropdownMenuItem onClick={() => setShowSettings(!showSettings)}>
+									<Settings className="mr-2 h-4 w-4" />
+									Interview Settings
+								</DropdownMenuItem>
+							</DropdownMenuContent>
+						</DropdownMenu>
 					</div>
-					<Button
-						onClick={() => setShowAddCustomQuestion(true)}
-						variant="outline"
-						className="border-blue-500 text-blue-600 hover:bg-blue-50"
-					>
-						<Plus className="mr-2 h-4 w-4" /> Add Custom Question
-					</Button>
+
+					{/* Filter Group */}
+					<TooltipProvider>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button
+									variant="outline"
+									size="sm"
+									onClick={() => {
+										if (!mustHavesOnly) {
+											// Save current selection (or default to all visible) before filtering
+											previousSelectionRef.current =
+												selectedQuestionIds.length > 0
+													? [...selectedQuestionIds]
+													: questionPack.questions.map((q) => q.id)
+											// Filter to must-haves
+											const filteredIds = (previousSelectionRef.current || []).filter((id) => {
+												const q = questions.find((qq) => qq.id === id)
+												return q?.isMustHave
+											})
+											if (filteredIds.length > 0) {
+												setSelectedQuestionIds(filteredIds)
+												setMustHavesOnly(true)
+											} else {
+												// No must-haves yet; keep selection and do not toggle
+												toast.info("No questions are marked as must‑have yet")
+											}
+										} else {
+											// Restore prior selection or all
+											const restore =
+												previousSelectionRef.current && previousSelectionRef.current.length > 0
+													? previousSelectionRef.current
+													: questionPack.questions.map((q) => q.id)
+											setSelectedQuestionIds(restore)
+											setMustHavesOnly(false)
+										}
+									}}
+								>
+									<Filter className="mr-1 h-4 w-4" />
+									<span className="hidden md:inline">Must-Haves</span>
+									{mustHavesOnly && (
+										<span className="ml-2 rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-blue-700 text-xs">
+											on
+										</span>
+									)}
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent>Filter Must-Have Questions</TooltipContent>
+						</Tooltip>
+					</TooltipProvider>
 				</div>
 
 				{/* Custom Instructions */}
@@ -1246,7 +1263,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							<DialogTitle>Improve question</DialogTitle>
 						</DialogHeader>
 						<div className="space-y-3">
-							{improving ? (
+							{improvingId ? (
 								<div className="text-muted-foreground text-sm">Generating suggestions…</div>
 							) : improveOptions.length > 0 ? (
 								<div className="space-y-2">
@@ -1338,383 +1355,340 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</Card>
 				)}
 
-				{/* Question List Header */}
-				<div className="flex items-center justify-between">
-					{/* <h2 className="font-semibold text-lg">Your Question Pack ({questionPack.questions.length})</h2> */}
-					<div className="flex gap-2">
-						<Button
-							variant="outline"
-							size="sm"
-							title="Filter to must-have questions only"
-							onClick={() => {
-								if (!mustHavesOnly) {
-									// Save current selection (or default to all visible) before filtering
-									previousSelectionRef.current =
-										selectedQuestionIds.length > 0 ? [...selectedQuestionIds] : questionPack.questions.map((q) => q.id)
-									// Filter to must-haves
-									const filteredIds = (previousSelectionRef.current || []).filter((id) => {
-										const q = questions.find((qq) => qq.id === id)
-										return q?.isMustHave
-									})
-									if (filteredIds.length > 0) {
-										setSelectedQuestionIds(filteredIds)
-										setMustHavesOnly(true)
-									} else {
-										// No must-haves yet; keep selection and do not toggle
-										toast.info("No questions are marked as must‑have yet")
-									}
-								} else {
-									// Restore prior selection or all
-									const restore =
-										previousSelectionRef.current && previousSelectionRef.current.length > 0
-											? previousSelectionRef.current
-											: questionPack.questions.map((q) => q.id)
-									setSelectedQuestionIds(restore)
-									setMustHavesOnly(false)
-								}
-							}}
-						>
-							<TriangleAlert className="mr-1 h-4 w-4" /> Must-Haves
-						</Button>
-						{mustHavesOnly && (
-							<span className="rounded-md border border-blue-200 bg-blue-50 px-2 py-0.5 text-blue-700 text-xs">
-								filter on
-							</span>
-						)}
-					</div>
-				</div>
+				<div className="space-y-2">
+					<DragDropContext onDragEnd={onDragEnd}>
+						<Droppable droppableId="question-pack">
+							{(provided) => (
+								<div className="space-y-3" {...provided.droppableProps} ref={provided.innerRef}>
+									{questionPack.questions.map((question, index) => {
+										const isFirstOverflow = index === questionPack.overflowIndex
+										const runningTime = questionPack.questions
+											.slice(0, index + 1)
+											.reduce((sum, q) => sum + q.estimatedMinutes, 0)
+										const fitsInTime = runningTime <= timeMinutes
 
-				<Card className="border-0 shadow-none">
-					<CardContent className="p-1 sm:p-4">
-						<DragDropContext onDragEnd={onDragEnd}>
-							<Droppable droppableId="question-pack">
-								{(provided) => (
-									<div className="space-y-4" {...provided.droppableProps} ref={provided.innerRef}>
-										{questionPack.questions.map((question, index) => {
-											const isFirstOverflow = index === questionPack.overflowIndex
-											const runningTime = questionPack.questions
-												.slice(0, index + 1)
-												.reduce((sum, q) => sum + q.estimatedMinutes, 0)
-											const fitsInTime = runningTime <= timeMinutes
-
-											return (
-												<React.Fragment key={question.id}>
-													{isFirstOverflow && (
-														<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
-															<div className="mb-4 flex items-center gap-2">
-																<Clock className="h-4 w-4 text-orange-600" />
-																<span className="font-medium text-orange-600 text-sm">
-																	Questions below may not fit in your {timeMinutes}-minute time limit (
-																	{questionPack.belowCount} below)
-																</span>
-															</div>
+										return (
+											<React.Fragment key={question.id}>
+												{isFirstOverflow && (
+													<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
+														<div className="mb-4 flex items-center gap-2">
+															<Clock className="h-4 w-4 text-orange-600" />
+															<span className="font-medium text-orange-600 text-sm">
+																Questions below may not fit in your {timeMinutes}-minute time limit (
+																{questionPack.belowCount} below)
+															</span>
+														</div>
+													</div>
+												)}
+												<Draggable draggableId={question.id} index={index}>
+													{(provided, snapshot) => (
+														<div
+															ref={provided.innerRef}
+															{...provided.draggableProps}
+															className={`${snapshot.isDragging ? "opacity-50" : ""}`}
+														>
+															<AnimatedBorderCard active={fitsInTime}>
+																<TooltipProvider>
+																	<Tooltip>
+																		<TooltipTrigger asChild>
+																			<Card
+																				className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${fitsInTime
+																						? "sm:border-l-blue-500"
+																						: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
+																					}`}
+																			>
+																				<CardContent className="p-2">
+																					<div className="flex items-start gap-3">
+																						<div className="mt-0.5 flex items-center gap-2">
+																							<div {...provided.dragHandleProps}>
+																								<GripVertical className="h-4 w-4 cursor-grab text-gray-400 active:cursor-grabbing" />
+																							</div>
+																							<div className="min-w-[1.5rem] font-medium text-foreground/60 text-sm">
+																								{index + 1}
+																							</div>
+																						</div>
+																						<div className="min-w-0 flex-1">
+																							<div className="flex flex-wrap items-center gap-2">
+																								{question.source === "user" && (
+																									<Badge
+																										variant="outline"
+																										className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+																									>
+																										<User className="mr-1 h-3 w-3" />
+																										Custom
+																									</Badge>
+																								)}
+																								{question.timesAnswered > 0 && (
+																									<Badge
+																										className={getAnsweredCountColor(question.timesAnswered)}
+																										variant="outline"
+																									>
+																										{question.timesAnswered}
+																									</Badge>
+																								)}
+																								{question.isMustHave && (
+																									<Badge
+																										variant="outline"
+																										className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
+																									>
+																										<TriangleAlert className="mr-1 h-3 w-3 fill-current" />
+																										Must-Have
+																									</Badge>
+																								)}
+																							</div>
+																							{editingId === question.id ? (
+																								<div className="mb-2 flex items-center gap-2">
+																									<Textarea
+																										value={editingText}
+																										onChange={(e) => setEditingText(e.target.value)}
+																										autoFocus
+																										rows={2}
+																										className="resize-none"
+																									/>
+																									<Button
+																										variant="ghost"
+																										size="icon"
+																										onClick={async () => {
+																											setEvaluatingId(question.id)
+																											const quality = await evaluateQuestionQuality(editingText)
+																											const updated = questions.map((q) =>
+																												q.id === question.id
+																													? {
+																														...q,
+																														text: editingText,
+																														qualityFlag: quality ?? undefined,
+																													}
+																													: q
+																											)
+																											setQuestions(updated)
+																											setSkipDebounce(true)
+																											await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																											setTimeout(() => setSkipDebounce(false), 1500)
+																											setEditingId(null)
+																											setEditingText("")
+																											setEvaluatingId(null)
+																										}}
+																										className="text-green-600"
+																									>
+																										{evaluatingId === question.id ? (
+																											<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																										) : (
+																											<Check className="h-4 w-4" />
+																										)}
+																									</Button>
+																									<Button
+																										variant="ghost"
+																										size="icon"
+																										onClick={() => {
+																											setEditingId(null)
+																											setEditingText("")
+																										}}
+																										className="text-gray-500"
+																									>
+																										<X className="h-4 w-4" />
+																									</Button>
+																								</div>
+																							) : (
+																								<p
+																									className="mb-2 font-medium text-sm leading-relaxed"
+																									title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																								>
+																									{question.text}
+																								</p>
+																							)}
+																						</div>
+																						<div className="flex items-center gap-1">
+																							{question.qualityFlag && (
+																								<QualityFlag qualityFlag={question.qualityFlag} />
+																							)}
+																							<DropdownMenu>
+																								<TooltipProvider>
+																									<Tooltip>
+																										<TooltipTrigger asChild>
+																											<DropdownMenuTrigger asChild>
+																												<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+																													<MoreHorizontal className="h-4 w-4" />
+																												</Button>
+																											</DropdownMenuTrigger>
+																										</TooltipTrigger>
+																										<TooltipContent>Refine & Manage questions</TooltipContent>
+																									</Tooltip>
+																								</TooltipProvider>
+																								<DropdownMenuContent align="end">
+																									<DropdownMenuItem
+																										onClick={async () => {
+																											const updated = questions.map((q) =>
+																												q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
+																											)
+																											setQuestions(updated)
+																											// Save to database
+																											setSkipDebounce(true)
+																											await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																											setTimeout(() => setSkipDebounce(false), 1500)
+																										}}
+																									>
+																										<TriangleAlert className="mr-2 h-4 w-4" />
+																										{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
+																									</DropdownMenuItem>
+																									<DropdownMenuItem
+																										onClick={() =>
+																											generateFollowUpQuestions(question.id, question.text)
+																										}
+																										disabled={generatingFollowUp === question.id}
+																									>
+																										{generatingFollowUp === question.id ? (
+																											<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																										) : (
+																											<Zap className="mr-2 h-4 w-4" />
+																										)}
+																										Generate Follow-ups
+																									</DropdownMenuItem>
+																									<DropdownMenuItem
+																										onClick={() => {
+																											setEditingId(question.id)
+																											setEditingText(question.text)
+																										}}
+																									>
+																										<Edit className="mr-2 h-4 w-4" />
+																										Edit Question
+																									</DropdownMenuItem>
+																									<DropdownMenuItem
+																										onClick={() => removeQuestion(question.id)}
+																										className="text-red-600 focus:text-red-600"
+																									>
+																										<Trash2 className="mr-2 h-4 w-4" />
+																										Remove Question
+																									</DropdownMenuItem>
+																								</DropdownMenuContent>
+																							</DropdownMenu>
+																						</div>
+																					</div>
+																				</CardContent>
+																			</Card>
+																		</TooltipTrigger>
+																		<TooltipContent>
+																			{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"} •
+																			~{Math.round(question.estimatedMinutes)}min
+																		</TooltipContent>
+																	</Tooltip>
+																</TooltipProvider>
+															</AnimatedBorderCard>
 														</div>
 													)}
-													<Draggable draggableId={question.id} index={index}>
-														{(provided, snapshot) => (
-															<div
-																ref={provided.innerRef}
-																{...provided.draggableProps}
-																className={`${snapshot.isDragging ? "opacity-50" : ""}`}
-															>
-																<AnimatedBorderCard active={fitsInTime}>
-																	<Card
-																		className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${
-																			fitsInTime
-																				? "sm:border-l-blue-500"
-																				: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
-																		}`}
-																	>
-																		<CardContent className="p-2 sm:p-2">
-																			<div className="flex items-start gap-3">
-																				<div className="mt-0.5 flex items-center gap-3">
-																					<div {...provided.dragHandleProps}>
-																						<GripVertical className="h-4 w-4 cursor-grab text-gray-400 active:cursor-grabbing" />
-																					</div>
-																					<div className="min-w-[1.5rem] font-medium text-foreground/60 text-sm">
-																						{index + 1}
-																					</div>
-																				</div>
-																				<div className="min-w-0 flex-1">
-																					<div className="flex flex-wrap items-center gap-2">
-																						<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
-																							{questionCategories.find((c) => c.id === question.categoryId)?.name ||
-																								question.categoryId
-																									?.replace(/[-_]/g, " ")
-																									.replace(/\b\w/g, (m) => m.toUpperCase()) ||
-																								"Other"}
-																						</Badge>
-																						<Badge variant="outline" className="text-muted-foreground text-xs">
-																							~{Math.round(question.estimatedMinutes)}m
-																						</Badge>
-																						{question.source === "user" && (
-																							<Badge
-																								variant="outline"
-																								className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
-																							>
-																								<User className="mr-1 h-3 w-3" />
-																								Custom
-																							</Badge>
-																						)}
-																						{question.timesAnswered > 0 && (
-																							<Badge
-																								className={getAnsweredCountColor(question.timesAnswered)}
-																								variant="outline"
-																							>
-																								{question.timesAnswered}
-																							</Badge>
-																						)}
-																						{question.isMustHave && (
-																							<Badge
-																								variant="outline"
-																								className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
-																							>
-																								<TriangleAlert className="mr-1 h-3 w-3 fill-current" />
-																								Must-Have
-																							</Badge>
-																						)}
-																					</div>
-																					{editingId === question.id ? (
-																						<div className="mb-2 flex items-center gap-2">
-																							<Textarea
-																								value={editingText}
-																								onChange={(e) => setEditingText(e.target.value)}
-																								autoFocus
-																								rows={2}
-																								className="resize-none"
-																							/>
-																							<Button
-																								variant="ghost"
-																								size="icon"
-																								onClick={async () => {
-																									setEvaluatingId(question.id)
-																									const quality = await evaluateQuestionQuality(editingText)
-																									const updated = questions.map((q) =>
-																										q.id === question.id
-																											? { ...q, text: editingText, qualityFlag: quality ?? undefined }
-																											: q
-																									)
-																									setQuestions(updated)
-																									setSkipDebounce(true)
-																									await saveQuestionsToDatabase(updated, selectedQuestionIds)
-																									setTimeout(() => setSkipDebounce(false), 1500)
-																									setEditingId(null)
-																									setEditingText("")
-																									setEvaluatingId(null)
-																								}}
-																								className="text-green-600"
-																							>
-																								{evaluatingId === question.id ? (
-																									<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																								) : (
-																									<Check className="h-4 w-4" />
-																								)}
-																							</Button>
-																							<Button
-																								variant="ghost"
-																								size="icon"
-																								onClick={() => {
-																									setEditingId(null)
-																									setEditingText("")
-																								}}
-																								className="text-gray-500"
-																							>
-																								<X className="h-4 w-4" />
-																							</Button>
-																						</div>
-																					) : (
-																						<p
-																							className="mb-2 font-medium text-sm leading-relaxed"
-																							title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																						>
-																							{question.text}
-																						</p>
-																					)}
-																				</div>
-																				<div className="flex items-center gap-1">
-																					{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
-																					<DropdownMenu>
-																						<TooltipProvider>
-																							<Tooltip>
-																								<TooltipTrigger asChild>
-																									<DropdownMenuTrigger asChild>
-																										<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-																											<MoreHorizontal className="h-4 w-4" />
-																										</Button>
-																									</DropdownMenuTrigger>
-																								</TooltipTrigger>
-																								<TooltipContent>Refine & Manage questions</TooltipContent>
-																							</Tooltip>
-																						</TooltipProvider>
-																						<DropdownMenuContent align="end">
-																							<DropdownMenuItem
-																								onClick={async () => {
-																									const updated = questions.map((q) =>
-																										q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
-																									)
-																									setQuestions(updated)
-																									// Save to database
-																									setSkipDebounce(true)
-																									await saveQuestionsToDatabase(updated, selectedQuestionIds)
-																									setTimeout(() => setSkipDebounce(false), 1500)
-																								}}
-																							>
-																								<TriangleAlert className="mr-2 h-4 w-4" />
-																								{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
-																							</DropdownMenuItem>
-																							<DropdownMenuItem
-																								onClick={() => generateFollowUpQuestions(question.id, question.text)}
-																								disabled={generatingFollowUp === question.id}
-																							>
-																								{generatingFollowUp === question.id ? (
-																									<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																								) : (
-																									<Zap className="mr-2 h-4 w-4" />
-																								)}
-																								Generate Follow-ups
-																							</DropdownMenuItem>
-																							<DropdownMenuItem
-																								onClick={() => {
-																									setEditingId(question.id)
-																									setEditingText(question.text)
-																								}}
-																							>
-																								<Edit className="mr-2 h-4 w-4" />
-																								Edit Question
-																							</DropdownMenuItem>
-																							<DropdownMenuItem
-																								onClick={() => removeQuestion(question.id)}
-																								className="text-red-600 focus:text-red-600"
-																							>
-																								<Trash2 className="mr-2 h-4 w-4" />
-																								Remove Question
-																							</DropdownMenuItem>
-																						</DropdownMenuContent>
-																					</DropdownMenu>
-																				</div>
-																			</div>
-																		</CardContent>
-																	</Card>
-																</AnimatedBorderCard>
-															</div>
-														)}
-													</Draggable>
-												</React.Fragment>
-											)
-										})}
-										{provided.placeholder}
-									</div>
-								)}
-							</Droppable>
-						</DragDropContext>
+												</Draggable>
+											</React.Fragment>
+										)
+									})}
+									{provided.placeholder}
+								</div>
+							)}
+						</Droppable>
+					</DragDropContext>
 
-						{questionPack.remainingQuestions.length > 0 && (
-							<div className="mt-6">
-								<div className="border-t pt-4">
-									{/* <MarqueeTips
+					{questionPack.remainingQuestions.length > 0 && (
+						<div className="mt-6">
+							<div className="border-t pt-4">
+								{/* <MarqueeTips
 										tips={["Click + to add a backup question", "Toggle Must‑Haves to focus", "Drag handle to reorder"]}
 										className="mb-3"
 									/> */}
-									<Button
-										variant="outline"
-										onClick={() => setShowAllQuestions(!showAllQuestions)}
-										className="mb-4 w-full"
-									>
-										<BriefcaseBusiness className="mr-2 h-4 w-4" /> {showAllQuestions ? "Hide" : "Show"} Backup Questions
-										({questionPack.remainingQuestions.length})
-									</Button>
+								<Button
+									variant="outline"
+									onClick={() => setShowAllQuestions(!showAllQuestions)}
+									className="mb-4 w-full"
+								>
+									<BriefcaseBusiness className="mr-2 h-4 w-4" /> {showAllQuestions ? "Hide" : "Show"} Backup Questions (
+									{questionPack.remainingQuestions.length})
+								</Button>
 
-									{showAllQuestions && (
-										<div className="mt-4 space-y-3">
-											<p className="text-gray-600 text-sm">
-												Additional questions below the line - click to include in your list:
-											</p>
-											{questionPack.remainingQuestions.map((question) => (
-												<Card
-													key={question.id}
-													className="border-none py-2 shadow-none sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm"
-												>
-													<CardContent className="p-2 sm:p-2">
-														<div className="flex items-start gap-3">
-															<button
-																onClick={() => addQuestionFromReserve(question)}
-																className="mt-1 flex items-center gap-2 rounded p-1 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900"
-																title="Add question to your pack"
-															>
-																<GripVertical className="h-4 w-4 text-gray-400" />
-																<Plus className="h-4 w-4 text-blue-500" />
-															</button>
-															<div className="min-w-0 flex-1">
-																<div className="mb-2 flex flex-wrap items-center gap-2">
-																	<Badge variant="outline" className={getCategoryColor(question.categoryId)}>
-																		{questionCategories.find((c) => c.id === question.categoryId)?.name ||
-																			question.categoryId
-																				?.replace(/[-_]/g, " ")
-																				.replace(/\b\w/g, (m) => m.toUpperCase()) ||
-																			"Other"}
-																	</Badge>
-																	<Badge variant="outline" className="text-muted-foreground text-xs">
-																		~
-																		{Math.round((question as unknown as { estimatedMinutes: number }).estimatedMinutes)}
-																		m
-																	</Badge>
-																	{question.source === "user" && (
-																		<Badge
-																			variant="outline"
-																			className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+								{showAllQuestions && (
+									<div className="mt-4 space-y-3">
+										<p className="text-gray-600 text-sm">
+											Additional questions below the line - click to include in your list:
+										</p>
+										{questionPack.remainingQuestions.map((question) => (
+											<TooltipProvider key={question.id}>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<Card className="border-none py-2 shadow-none sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm">
+															<CardContent className="p-2 sm:p-2">
+																<div className="flex items-start gap-3">
+																	<button
+																		onClick={() => addQuestionFromReserve(question)}
+																		className="mt-1 flex items-center gap-2 rounded p-1 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900"
+																		title="Add question to your pack"
+																	>
+																		<GripVertical className="h-4 w-4 text-gray-400" />
+																		<Plus className="h-4 w-4 text-blue-500" />
+																	</button>
+																	<div className="min-w-0 flex-1">
+																		<div className="mb-2 flex flex-wrap items-center gap-2">
+																			{question.source === "user" && (
+																				<Badge
+																					variant="outline"
+																					className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+																				>
+																					<User className="mr-1 h-3 w-3" />
+																					Custom
+																				</Badge>
+																			)}
+																			{question.timesAnswered > 0 && (
+																				<Badge
+																					className={getAnsweredCountColor(question.timesAnswered)}
+																					variant="outline"
+																				>
+																					{question.timesAnswered}
+																				</Badge>
+																			)}
+																		</div>
+																		<p
+																			className="text-sm leading-relaxed"
+																			title={question.rationale ? `Why: ${question.rationale}` : undefined}
 																		>
-																			<User className="mr-1 h-3 w-3" />
-																			Custom
-																		</Badge>
-																	)}
-																	{question.timesAnswered > 0 && (
-																		<Badge className={getAnsweredCountColor(question.timesAnswered)} variant="outline">
-																			{question.timesAnswered}
-																		</Badge>
-																	)}
+																			{question.text}
+																		</p>
+																	</div>
+																	<div className="flex items-center gap-1">
+																		{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
+																		<button
+																			onClick={() => rejectQuestion(question.id)}
+																			className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
+																			title="Reject this question (won't appear in future generations)"
+																		>
+																			<X className="h-4 w-4" />
+																		</button>
+																	</div>
 																</div>
-																<p
-																	className="text-sm leading-relaxed"
-																	title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																>
-																	{question.text}
-																</p>
-															</div>
-															<div className="flex items-center gap-1">
-																{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
-																<button
-																	onClick={() => rejectQuestion(question.id)}
-																	className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
-																	title="Reject this question (won't appear in future generations)"
-																>
-																	<X className="h-4 w-4" />
-																</button>
-															</div>
-														</div>
-													</CardContent>
-												</Card>
-											))}
-										</div>
-									)}
-								</div>
+															</CardContent>
+														</Card>
+													</TooltipTrigger>
+													<TooltipContent>
+														{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"} • ~
+														{Math.round((question as unknown as { estimatedMinutes: number }).estimatedMinutes)}min
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
+										))}
+									</div>
+								)}
 							</div>
-						)}
-					</CardContent>
-				</Card>
-				<div className="flex justify-center">
-					<Button
-						onClick={() => {
-							if (routes) {
-								window.location.href = routes.interviews.upload()
-							}
-						}}
-						variant="default"
-						disabled={questionPack.questions.length === 0}
-						className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
-					>
-						<Mic className="mr-2 h-4 w-4" />
-						Add Interview
-					</Button>
+						</div>
+					)}
+					<div className="flex justify-center">
+						<Button
+							onClick={() => {
+								if (routes) {
+									window.location.href = routes.interviews.upload()
+								}
+							}}
+							variant="default"
+							disabled={questionPack.questions.length === 0}
+							className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
+						>
+							<Mic className="mr-2 h-4 w-4" />
+							Add Interview
+						</Button>
+					</div>
 				</div>
 			</div>
 		</div>

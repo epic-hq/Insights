@@ -1,5 +1,4 @@
-import { MastraAgent, registerCopilotKit } from "@ag-ui/mastra"
-import { CopilotRuntime, copilotRuntimeNodeHttpEndpoint, ExperimentalEmptyAdapter } from "@copilotkit/runtime"
+import { MastraAgent } from "@ag-ui/mastra"
 import { chatRoute } from "@mastra/ai-sdk"
 import { RuntimeContext } from "@mastra/core/di"
 import { Mastra } from "@mastra/core/mastra"
@@ -100,54 +99,7 @@ export const mastra = new Mastra({
 				path: "/chat/project-setup",
 				agent: "projectSetupAgent",
 			}),
-			registerCopilotKit<UserContext>({
-				path: "/copilotkit",
-				resourceId: "signupAgent",
-				setContext: (c, runtimeContext) => {
-					consola.log("existing runtimeContext", runtimeContext.get("user_id"))
-					consola.log("mastra_copilotkit headers", c.req.header())
-					runtimeContext.set("user_id", c.req.header("x-userid") || "anonymous")
-					runtimeContext.set("account_id", c.req.header("x-accountid") || "anonymous")
-					runtimeContext.set("project_id", c.req.header("x-projectid") || "anonymous")
-					runtimeContext.set("jwt", c.req.header("Authorization") || "anonymous")
-					consola.log("mastra_copilotkit_runtimeContext", runtimeContext.get("user_id"))
-					// runtimeContext.set("temperature-scale", "celsius");
-				},
-			}),
-			registerApiRoute("/copilotkit/signup", {
-				method: "ALL",
-				handler: async (c) => {
-					const mastra = c.get("mastra")
-
-					const runtimeContext = new RuntimeContext<any>()
-
-					// const user = c.get('user');
-					const user = c.req.header("x-userid") || "anonymous"
-					consola.log("mastra_manual user", user)
-					if (!user) throw new Error("No user in context")
-					runtimeContext.set("user_id", user)
-
-					const resourceId = `signupAgent-${user}`
-
-					const aguiAgents = MastraAgent.getLocalAgents({
-						resourceId,
-						mastra,
-						runtimeContext,
-					})
-
-					const runtime = new CopilotRuntime({
-						agents: aguiAgents,
-					})
-
-					const handler = copilotRuntimeNodeHttpEndpoint({
-						endpoint: "/copilotkit/signup",
-						runtime,
-						serviceAdapter: new ExperimentalEmptyAdapter(),
-					})
-
-					return handler.handle(c.req.raw, {})
-				},
-			}),
+			// CopilotKit routes removed
 		],
 	},
 })
