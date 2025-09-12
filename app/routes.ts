@@ -75,7 +75,11 @@ const routes = [
 
 				// Project-setup agent chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
+
 			]),
+
+			// Account-scoped quick record API: creates project + interview
+			route("api/interviews/record-now", "./routes/api.interviews.record-now.tsx"),
 		]),
 	]),
 

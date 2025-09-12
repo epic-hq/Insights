@@ -1,5 +1,6 @@
 import { CheckCircle, ChevronLeft, File, Mic, Upload, Video } from "lucide-react"
 import { useRef, useState } from "react"
+import { useNavigate, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import { OnboardingStepper } from "./OnboardingStepper"
 
@@ -49,8 +50,44 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 		fileInputRef.current?.click()
 	}
 
-	const handleRecordNow = () => {
-		alert("Coming soon")
+	const navigate = useNavigate()
+	const { auth } = (useRouteLoaderData("routes/_ProtectedLayout") || { auth: { accountId: "" } }) as {
+		auth: { accountId: string }
+	}
+	const [recordingStart, setRecordingStart] = useState(false)
+
+	const handleRecordNow = async () => {
+		try {
+			setRecordingStart(true)
+			// If we have a projectId, create an interview in that project; else create project+interview
+			if (projectId) {
+				const res = await fetch(`/a/${auth.accountId}/${projectId}/api/interviews/realtime-start`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({}),
+				})
+				const data = await res.json()
+				if (!res.ok) throw new Error(data?.error || "Failed to start interview")
+				navigate(`/a/${auth.accountId}/${projectId}/interviews/${data.interviewId}/realtime`)
+				return
+			}
+
+			const res = await fetch(`/a/${auth.accountId}/api/interviews/record-now`, { method: "POST" })
+			const data = await res.json()
+			if (!res.ok) throw new Error(data?.error || "Failed to start quick recording")
+			const { projectId: newProjectId, interviewId } = data
+			if (newProjectId && interviewId) {
+				navigate(`/a/${auth.accountId}/${newProjectId}/interviews/${interviewId}/realtime`)
+				return
+			}
+			throw new Error("Invalid response from Record Now API")
+		} catch (e: any) {
+			// Fallback: go to create project if we couldn't start
+			console.error("Record Now error:", e?.message || e)
+			navigate(`/a/${auth.accountId}/projects/new?from=record`)
+		} finally {
+			setRecordingStart(false)
+		}
 	}
 
 	const handleNext = () => {
@@ -95,17 +132,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 				<OnboardingStepper steps={onboardingSteps} currentStepId="upload" className="text-foreground" />
 			</div>
 
-			{/* Header */}
-			<div className="border-gray-800 bg-background p-2">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<Button variant="ghost" onClick={onBack} className="h-8 w-8 text-foreground">
-							<ChevronLeft className="h-4 w-4" />
-							Back
-						</Button>
-					</div>
-				</div>
-			</div>
+
 
 			{/* Main Content */}
 			<div className="mx-auto max-w-xl">
@@ -124,11 +151,12 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Primary Record Action */}
 					<div className="text-center">
-						<Button
-							onClick={handleRecordNow}
-							size="lg"
-							className="m-0 h-15 w-15 rounded-full bg-red-600 p-0 text-foreground hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
-						>
+					<Button
+						onClick={handleRecordNow}
+						size="lg"
+						disabled={recordingStart}
+						className="m-0 h-15 w-15 rounded-full bg-red-600 p-0 text-foreground hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
+					>
 							<Mic className="h-20 w-20" />
 						</Button>
 						<p className="mt-3 font-medium text-foreground">Record Now</p>
@@ -136,18 +164,18 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Divider */}
 					<div className="flex items-center gap-4">
-						<div className="h-px flex-1 bg-gray-700" />
-						<span className="text-gray-400 text-sm">or</span>
-						<div className="h-px flex-1 bg-gray-700" />
+						<div className="h-px flex-1 bg-border" />
+						<span className="text-muted-foreground text-sm">or</span>
+						<div className="h-px flex-1 bg-border" />
 					</div>
 
 					{/* Upload Area */}
 					<div
 						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${isDragOver
-								? "border-blue-500 bg-blue-500/10"
-								: selectedFile
-									? "border-green-500 bg-green-500/5"
-									: "border-gray-600 bg-gray-900/50"
+							? "border-blue-500 bg-blue-500/10"
+							: selectedFile
+								? "border-green-500 bg-green-500/10"
+								: "border-muted bg-muted/50 hover:bg-muted/80"
 							}`}
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
@@ -161,22 +189,22 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								</div>
 								<div className="min-w-0 flex-1">
 									<h3 className="truncate font-medium text-foreground text-sm">{selectedFile.name}</h3>
-									<p className="text-gray-400 text-xs">{formatFileSize(selectedFile.size)}</p>
+									<p className="text-muted-foreground text-xs">{formatFileSize(selectedFile.size)}</p>
 								</div>
 								<CheckCircle className="h-5 w-5 flex-shrink-0 text-green-400" />
 							</div>
 						) : (
 							/* Upload Prompt */
 							<div className="text-center">
-								<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-800">
-									<Upload className="h-6 w-6 text-gray-400" />
+								<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
+									<Upload className="h-6 w-6 text-muted-foreground" />
 								</div>
-								<p className="mb-3 text-gray-300 text-sm">Drop your Video, Audio, or Text/MD file</p>
+								<p className="mb-3 text-foreground text-sm">Drop your Video, Audio, or Text/MD file</p>
 								<Button
 									onClick={triggerFileInput}
 									variant="outline"
 									size="sm"
-									className="border-gray-600 bg-transparent text-foreground hover:bg-gray-800"
+									className="border-border bg-transparent text-foreground hover:bg-accent hover:text-accent-foreground"
 								>
 									<File className="mr-2 h-4 w-4" />
 									Browse Files
@@ -187,15 +215,15 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Content Type Selection */}
 					<div className="space-y-3">
-						<label className="font-medium text-foreground text-sm">Conversation Context</label>
+						<label className="font-medium text-foreground text-sm">Context</label>
 						<div className="grid grid-cols-2 gap-2">
 							<Button
 								variant={mediaType === "interview" ? "default" : "outline"}
 								onClick={() => setMediaType("interview")}
 								size="sm"
 								className={`h-10 text-xs ${mediaType === "interview"
-										? "bg-blue-600 text-foreground hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 									}`}
 							>
 								User Interview
@@ -205,8 +233,8 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								onClick={() => setMediaType("focus-group")}
 								size="sm"
 								className={`h-10 text-xs ${mediaType === "focus-group"
-										? "bg-blue-600 text-foreground hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 									}`}
 							>
 								Focus Group
@@ -216,8 +244,8 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								onClick={() => setMediaType("customer-call")}
 								size="sm"
 								className={`h-10 text-xs ${mediaType === "customer-call"
-										? "bg-blue-600 text-foreground hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 									}`}
 							>
 								Customer Call
@@ -227,11 +255,22 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								onClick={() => setMediaType("user-testing")}
 								size="sm"
 								className={`h-10 text-xs ${mediaType === "user-testing"
-										? "bg-blue-600 text-foreground hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
 									}`}
 							>
 								User Testing
+							</Button>
+							<Button
+								variant={mediaType === "document" ? "default" : "outline"}
+								onClick={() => setMediaType("document")}
+								size="sm"
+								className={`h-10 text-xs ${mediaType === "document"
+									? "bg-primary text-primary-foreground hover:bg-primary/90"
+									: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+									}`}
+							>
+								Background Document
 							</Button>
 						</div>
 					</div>
@@ -239,18 +278,31 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			</div>
 
 			{/* Bottom Action */}
-			<div className="mx-auto mt-8 mb-20 max-w-xl border-gray-800 border-t bg-background p-4">
+			<div className="mx-auto mt-8 mb-20 max-w-xl border-border border-t bg-background p-4">
 				<Button
 					onClick={handleNext}
 					disabled={!selectedFile}
-					className="h-12 w-full bg-blue-600 font-medium text-foreground hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-400"
+					className="h-12 w-full bg-primary font-medium text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
 				>
 					{selectedFile ? "Start Analysis" : "Select a file to continue"}
 				</Button>
 				{selectedFile && (
-					<p className="mt-2 text-center text-gray-400 text-xs">Ready to process: {selectedFile.name}</p>
+					<p className="mt-2 text-center text-muted-foreground text-xs">Ready to process: {selectedFile.name}</p>
 				)}
 			</div>
+
+			{/* Header */}
+			<div className="border-border bg-background p-2">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<Button variant="ghost" onClick={onBack} className="h-8 w-8 text-foreground">
+							<ChevronLeft className="h-4 w-4" />
+							Back
+						</Button>
+					</div>
+				</div>
+			</div>
+
 		</div>
 	)
 }

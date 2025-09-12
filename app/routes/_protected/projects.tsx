@@ -3,7 +3,7 @@
  * Ensures only authenticated users can access project-specific resources and provides project data to child routes.
  */
 import consola from "consola"
-import { Outlet, redirect } from "react-router-dom"
+import { Outlet, redirect } from "react-router"
 import { z } from "zod"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjectById } from "~/features/projects/db"

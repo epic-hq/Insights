@@ -1,6 +1,6 @@
 import { RuntimeContext } from "@mastra/core/di"
 import { Memory } from "@mastra/memory"
-import { ModelMessage } from "ai"
+import { convertToModelMessages, ModelMessage } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse"
@@ -60,7 +60,8 @@ export async function action({ request }: ActionFunctionArgs) {
 	//  NOTE: ON AI SDK V5
 	//  https://mastra.ai/en/docs/frameworks/agentic-uis/ai-sdk#vercel-ai-sdk-v5
 	consola.log("System prompt from frontend: ", system)
-	const result = await agent.streamVNext(messages, {
+	const last_message = convertToModelMessages(messages)?.[-1]
+	const result = await agent.streamVNext(last_message, {
 		format: "aisdk",
 		memory: {
 			thread: threadId,

@@ -1,6 +1,7 @@
 import consola from "consola"
+import { useState } from "react"
 import { ArrowRight, Hash, House, Mic, Target } from "lucide-react"
-import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useRouteLoaderData, useNavigate } from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -153,7 +154,32 @@ export default function Index() {
 
 	const accountBase = `/a/${auth.accountId}`
 	const projectBase = selectedProjectId ? `${accountBase}/${selectedProjectId}` : null
-	const routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
+    const routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
+
+    const navigate = useNavigate()
+    const [creating, setCreating] = useState(false)
+
+    async function handleRecordNow() {
+        try {
+            setCreating(true)
+            const res = await fetch(`${accountBase}/api/interviews/record-now`, { method: "POST" })
+            const data = await res.json()
+            if (!res.ok) {
+                consola.error("Record Now failed:", data?.error)
+                return navigate(`${accountBase}/projects/new?from=record`)
+            }
+            const { projectId, interviewId } = data
+            if (projectId && interviewId) {
+                return navigate(`/a/${auth.accountId}/${projectId}/interviews/${interviewId}/realtime`)
+            }
+            navigate(`${accountBase}/projects/new?from=record`)
+        } catch (e) {
+            consola.error("Record Now error:", e)
+            navigate(`${accountBase}/projects/new?from=record`)
+        } finally {
+            setCreating(false)
+        }
+    }
 
 	return (
 		<div className="mx-auto max-w-6xl px-6 py-8">
@@ -198,12 +224,10 @@ export default function Index() {
 						<CardDescription className="text-base">Record Live Now and get Instant Insights.</CardDescription>
 					</CardHeader>
 					<CardContent className="pt-0">
-						<Button asChild size="lg" className="w-full bg-green-600 hover:bg-green-700 group-hover:bg-green-700">
-							<Link to={projectBase ? `${projectBase}/interviews/quick` : `${accountBase}/projects/new?from=record`}>
-								Record Now
-								<Mic className="ml-2 h-5 w-5" />
-							</Link>
-						</Button>
+                    <Button size="lg" className="w-full bg-green-600 hover:bg-green-700 group-hover:bg-green-700" onClick={handleRecordNow} disabled={creating}>
+                        {creating ? "Starting…" : "Record Now"}
+                        <Mic className="ml-2 h-5 w-5" />
+                    </Button>
 					</CardContent>
 				</Card>
 			</div>

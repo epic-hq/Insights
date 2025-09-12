@@ -1,12 +1,14 @@
 import consola from "consola"
 import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, Users } from "lucide-react"
-import { useCallback, useEffect, useState } from "react"
+import { useCallback, useEffect, useRef, useState } from "react"
 import { InterviewQuestionsManager } from "~/components/questions/InterviewQuestionsManager"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
 import { createClient } from "~/lib/supabase/client"
+import { useNavigate } from "react-router"
+import { useCurrentProject } from "~/contexts/current-project-context"
 
 interface InterviewCopilotProps {
 	projectId: string
@@ -29,6 +31,42 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
 	const supabase = createClient()
+  const navigate = useNavigate()
+  const { accountId } = useCurrentProject()
+  const basePath = `/a/${accountId}/${projectId}`
+
+  // Realtime streaming state
+  const [streamStatus, setStreamStatus] = useState<"idle" | "connecting" | "streaming" | "stopped" | "error">("idle")
+  const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId)
+  const wsRef = useRef<WebSocket | null>(null)
+  const ctxRef = useRef<AudioContext | null>(null)
+  const nodeRef = useRef<AudioWorkletNode | null>(null)
+  const bufferRef = useRef<Float32Array[]>([])
+  const timerRef = useRef<number | null>(null)
+  const recRef = useRef<MediaRecorder | null>(null)
+  const recChunksRef = useRef<BlobPart[]>([])
+  const insufficientRef = useRef(false)
+  const firstSendRef = useRef(true)
+
+  const TARGET_SAMPLE_RATE = 16000
+  const CHUNK_MS = 100
+  const MIN_OUT_MS = 60
+
+  type TurnMsg = {
+    type: "Turn"
+    transcript: string
+    end_of_turn: boolean
+    turn_is_formatted: boolean
+    words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
+  }
+
+  // When route unmounts, ensure cleanup
+  useEffect(() => {
+    return () => {
+      stopStreaming()
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
 	// Save interview notes to database (debounced)
 	const saveInterviewNotes = useCallback(
@@ -120,6 +158,196 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		return () => clearTimeout(timeoutId)
 	}, [interviewNotes, saveInterviewNotes])
 
+  // ========= Realtime streaming logic =========
+  const startStreaming = useCallback(async () => {
+    try {
+      setStreamStatus("connecting")
+
+      // Ensure interview ID exists; create if missing
+      let useInterviewId = assignedInterviewId
+      if (!useInterviewId) {
+        const startRes = await fetch(`${basePath}/api/interviews/realtime-start`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        })
+        const startData = await startRes.json()
+        if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview")
+        useInterviewId = startData.interviewId
+        setAssignedInterviewId(useInterviewId)
+      }
+
+      // Connect to server WS proxy
+      const scheme = window.location.protocol === "https:" ? "wss" : "ws"
+      const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`
+      const ws = new WebSocket(url, ["binary"]) // we send binary PCM frames
+      ws.binaryType = "arraybuffer"
+      wsRef.current = ws
+
+      ws.onopen = async () => {
+        setStreamStatus("streaming")
+        // Audio capture via AudioWorklet
+        const ctx = new AudioContext({ sampleRate: 48000 })
+        ctxRef.current = ctx
+        await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+          video: false,
+        })
+        const src = ctx.createMediaStreamSource(stream)
+        const node = new AudioWorkletNode(ctx, "pcm-processor")
+        nodeRef.current = node
+        src.connect(node)
+
+        // Start in-browser recording for upload
+        try {
+          const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" })
+          recRef.current = rec
+          recChunksRef.current = []
+          rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) recChunksRef.current.push(e.data) }
+          rec.start(500)
+        } catch {
+          consola.warn("MediaRecorder unsupported; audio won't be saved")
+        }
+
+        node.port.onmessage = (e) => {
+          bufferRef.current.push(e.data as Float32Array)
+        }
+
+        const sendChunk = () => {
+          const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
+          const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
+          const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+          if (available < minInputSamples) {
+            insufficientRef.current = true
+            return
+          }
+          const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
+          let floats = drainForSamples(Math.max(minInputSamples, inputAim))
+          if (!floats || floats.length === 0) return
+          let pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
+          if (!pcm16) return
+          if (pcm16.length < minOutSamples) {
+            insufficientRef.current = true
+            return
+          }
+          insufficientRef.current = false
+          if (ws.readyState === WebSocket.OPEN) {
+            ws.send(pcm16.buffer)
+            firstSendRef.current = false
+          }
+        }
+
+        timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
+      }
+
+      ws.onmessage = async (evt) => {
+        try {
+          let text: string | null = null
+          if (typeof evt.data === "string") text = evt.data
+          else if (evt.data instanceof Blob) text = await evt.data.text()
+          else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data)
+          if (!text) return
+          const msg = JSON.parse(text) as { type: string }
+          if ((msg as any).type === "Turn") {
+            const t = msg as any as TurnMsg
+            if (t.end_of_turn) {
+              // push final caption and clear current
+              setCaptions((prev) => [t.transcript, ...prev.slice(0, 9)])
+              setCurrentCaption("")
+            } else {
+              // show draft
+              setCurrentCaption(t.transcript)
+            }
+          } else if ((msg as any).type === "Begin") {
+            setCaptions([])
+            setCurrentCaption("")
+          }
+        } catch {
+          // ignore non-JSON
+        }
+      }
+
+      ws.onerror = () => {
+        setStreamStatus("error")
+        setIsRecording(false)
+      }
+      ws.onclose = () => {
+        setStreamStatus("stopped")
+        setIsRecording(false)
+      }
+    } catch (e) {
+      consola.error("startStreaming error", e)
+      setStreamStatus("error")
+      setIsRecording(false)
+      stopStreaming()
+    }
+  }, [assignedInterviewId, basePath])
+
+  const stopStreaming = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    if (wsRef.current) {
+      try { wsRef.current.close() } catch {}
+    }
+    wsRef.current = null
+    try {
+      nodeRef.current?.disconnect()
+      ctxRef.current?.close()
+    } catch {}
+    nodeRef.current = null
+    ctxRef.current = null
+    bufferRef.current = []
+    setCurrentCaption("")
+    setStreamStatus("stopped")
+
+    // finalize recording and save transcript (captions joined)
+    void (async () => {
+      try {
+        const rec = recRef.current
+        if (rec && rec.state !== "inactive") {
+          const stopped = new Promise<Blob>((resolve) => {
+            rec.onstop = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
+          })
+          rec.stop()
+          const blob = await stopped
+          let mediaUrl: string | undefined
+          const id = assignedInterviewId
+          if (blob.size > 0 && id) {
+            const filename = `interviews/${projectId}/${id}-${Date.now()}.webm`
+            const { error } = await supabase.storage.from("interview-recordings").upload(filename, blob, { upsert: true })
+            if (!error) {
+              const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
+              mediaUrl = data.publicUrl
+            } else {
+              consola.warn("Audio upload failed:", error.message)
+            }
+          }
+
+          if (id) {
+            const transcript = [currentCaption, ...captions].reverse().join(" ").trim()
+            await fetch(`${basePath}/api/interviews/realtime-finalize`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                interviewId: id,
+                transcript,
+                transcriptFormatted: undefined,
+                mediaUrl,
+              }),
+            })
+            // Navigate to interview detail
+            navigate(`${basePath}/interviews/${id}`)
+          }
+        }
+      } catch (e) {
+        consola.warn("Finalize error", e)
+      }
+    })()
+  }, [assignedInterviewId, basePath, captions, currentCaption, navigate, projectId, supabase])
+
 	// Mock project data - in real app, fetch from project
 	const [projectData, _setProjectData] = useState({
 		target_orgs: ["Tech Startups", "SaaS Companies"],
@@ -150,34 +378,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		[saveAISuggestionAsAnnotation]
 	)
 
-	const toggleRecording = useCallback(() => {
-		setIsRecording((prev) => !prev)
-		if (!isRecording) {
-			// Start recording simulation
-			const interval = setInterval(() => {
-				const mockCaptions = [
-					"So in our team, we've been struggling with...",
-					"The main challenge is that people feel disconnected...",
-					"We tried using Slack but it's not the same as being in person...",
-					"I think the biggest issue is trust and accountability...",
-				]
-				const randomCaption = mockCaptions[Math.floor(Math.random() * mockCaptions.length)]
-				setCurrentCaption(randomCaption)
 
-				// Add to captions history
-				setCaptions((prev) => [randomCaption, ...prev.slice(0, 9)]) // Keep last 10
-			}, 3000)
-
-			// Store interval ID for cleanup
-			;(window as any).recordingInterval = interval
-		} else {
-			// Stop recording
-			if ((window as any).recordingInterval) {
-				clearInterval((window as any).recordingInterval)
-			}
-			setCurrentCaption("")
-		}
-	}, [isRecording])
 
 	const generateAISuggestion = useCallback(async () => {
 		const suggestions = [
@@ -210,6 +411,64 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		// Save AI suggestion as annotation
 		await saveAISuggestionAsAnnotation(newSuggestion)
 	}, [saveAISuggestionAsAnnotation])
+
+  // Toggle recording using realtime streaming
+  const toggleRecording = useCallback(() => {
+    setIsRecording((prev) => !prev)
+    if (!isRecording) {
+      startStreaming()
+    } else {
+      stopStreaming()
+    }
+  }, [isRecording, startStreaming, stopStreaming])
+
+  // Helpers for audio processing
+  function drainForSamples(samplesNeeded: number): Float32Array | null {
+    let have = 0
+    const chunks: Float32Array[] = []
+    while (bufferRef.current.length && have < samplesNeeded) {
+      const c = bufferRef.current.shift()!
+      chunks.push(c)
+      have += c.length
+    }
+    if (!chunks.length) return null
+    const out = new Float32Array(have)
+    let offset = 0
+    for (const c of chunks) {
+      out.set(c, offset)
+      offset += c.length
+    }
+    return out
+  }
+
+  function downsampleTo16kPCM16(input: Float32Array, inputRate: number, targetRate: number): Int16Array | null {
+    if (inputRate === targetRate) return floatTo16(input)
+    const ratio = inputRate / targetRate
+    const outLen = Math.floor(input.length / ratio)
+    const out = new Int16Array(outLen)
+    let idx = 0
+    let i = 0
+    while (idx < outLen) {
+      const next = Math.floor((idx + 1) * ratio)
+      let sum = 0
+      let count = 0
+      for (; i < next && i < input.length; i++) {
+        sum += input[i]
+        count++
+      }
+      const sample = sum / (count || 1)
+      out[idx++] = Math.max(-1, Math.min(1, sample)) * 0x7fff
+    }
+    return out
+  }
+
+  function floatTo16(f32: Float32Array): Int16Array {
+    const out = new Int16Array(f32.length)
+    for (let i = 0; i < f32.length; i++) {
+      out[i] = Math.max(-1, Math.min(1, f32[i])) * 0x7fff
+    }
+    return out
+  }
 
 	const getSuggestionIcon = (type: AISuggestion["type"]) => {
 		switch (type) {
@@ -269,7 +528,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
-						<Button onClick={toggleRecording} variant={isRecording ? "destructive" : "default"} className="w-full">
+						<Button onClick={toggleRecording} variant={isRecording ? "destructive" : "default"} className="w-full" disabled={streamStatus === "connecting"}>
 							{isRecording ? (
 								<>
 									<Pause className="mr-2 h-4 w-4" />
@@ -278,7 +537,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							) : (
 								<>
 									<Play className="mr-2 h-4 w-4" />
-									Start Recording
+									{streamStatus === "connecting" ? "Connecting…" : "Start Recording"}
 								</>
 							)}
 						</Button>

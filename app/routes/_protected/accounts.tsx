@@ -6,7 +6,7 @@
  */
 
 import consola from "consola"
-import { Outlet, redirect } from "react-router-dom"
+import { Outlet, redirect } from "react-router"
 import { z } from "zod"
 import { CurrentAccountProvider } from "~/contexts/current-account-context"
 import { currentAccountContext } from "~/server/current-account-context"

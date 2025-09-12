@@ -150,7 +150,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (id: string) => `${base}/interviews/${id}`,
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
 			realtime: (id: string) => `${base}/interviews/${id}/realtime`,
-			quick: () => `${base}/interviews/quick`
+			// Quick route deprecated; redirect helper to index to avoid 404
+			quick: () => `${base}/interviews`
 		},
 
 		// Evidence

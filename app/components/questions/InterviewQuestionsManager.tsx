@@ -1393,8 +1393,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																		<TooltipTrigger asChild>
 																			<Card
 																				className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${fitsInTime
-																						? "sm:border-l-blue-500"
-																						: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
+																					? "sm:border-l-blue-500"
+																					: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
 																					}`}
 																			>
 																				<CardContent className="p-2">
@@ -1674,21 +1674,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							</div>
 						</div>
 					)}
-					<div className="flex justify-center">
-						<Button
-							onClick={() => {
-								if (routes) {
-									window.location.href = routes.interviews.upload()
-								}
-							}}
-							variant="default"
-							disabled={questionPack.questions.length === 0}
-							className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
-						>
-							<Mic className="mr-2 h-4 w-4" />
-							Add Interview
-						</Button>
-					</div>
+
 				</div>
 			</div>
 		</div>

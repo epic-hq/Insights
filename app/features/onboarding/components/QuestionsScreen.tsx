@@ -1,8 +1,9 @@
-import { BookOpen, ChevronLeft, ChevronRight, MessageCircleQuestionMark } from "lucide-react"
+import { BookOpen, ChevronLeft, ChevronRight, MessageCircleQuestionMark, Mic } from "lucide-react"
 import { useState } from "react"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"
 import { OnboardingStepper } from "~/components/ui/onboarding-stepper"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
 interface QuestionsScreenProps {
 	target_orgs: string[]
@@ -39,6 +40,7 @@ export default function QuestionsScreen({
 }: QuestionsScreenProps) {
 	// Collect the current selection from the shared manager to pass on Next
 	const [selectedForNext, setSelectedForNext] = useState<{ id: string; text: string }[]>([])
+	const routes = useProjectRoutes(projectPath)
 
 	const handleNext = () => {
 		const questionTexts = selectedForNext.map((q) => q.text)
@@ -73,6 +75,21 @@ export default function QuestionsScreen({
 					unknowns={unknowns}
 					onSelectedQuestionsChange={(list) => setSelectedForNext(list)}
 				/>
+				<div className="flex justify-center">
+					<Button
+						onClick={() => {
+							if (routes) {
+								window.location.href = routes.interviews.upload()
+							}
+						}}
+						variant="default"
+						// disabled={questionPack.questions.length === 0}
+						className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
+					>
+						<Mic className="mr-2 h-4 w-4" />
+						Add Interview
+					</Button>
+				</div>
 			</div>
 
 			{/* Navigation */}

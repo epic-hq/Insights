@@ -1,6 +1,5 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { redirect } from "react-router"
-import { useLoaderData } from "react-router-dom"
+import { redirect, useLoaderData } from "react-router"
 import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen"
 import { getProjectById } from "~/features/projects/db"
 import { getProjectContextGeneric } from "~/features/questions/db"
