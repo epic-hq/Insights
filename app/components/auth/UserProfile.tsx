@@ -10,6 +10,7 @@ import {
 	DropdownMenuSeparator,
 	DropdownMenuTrigger,
 } from "~/components/ui/dropdown-menu"
+import { ThemeToggle } from "~/components/ui/theme-toggle"
 import { useAuth } from "~/contexts/AuthContext"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -98,6 +99,7 @@ export function UserProfile() {
 				>
 					<Link to={PATHS.PROFILE}>Profile</Link>
 				</DropdownMenuItem>
+				<DropdownMenuItem>Theme <ThemeToggle /></DropdownMenuItem>
 				<DropdownMenuItem
 					onClick={handleSignOut}
 					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"

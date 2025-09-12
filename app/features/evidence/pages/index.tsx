@@ -97,50 +97,56 @@ export default function EvidenceIndex() {
 			<h1 className="font-semibold text-xl">Evidence</h1>
 			<ul className="divide-y divide-gray-200">
 				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-					{evidence.map((e) => (
-						<Link key={e.id} to={e.id} className="text-primary-600 text-sm hover:underline">
-							<Card key={e.id} className="flex items-start justify-between gap-4 p-3">
-								<div>
-									<div className="line-clamp-2 text-foreground text-md">“{e.verbatim}”</div>
-									{/* People + metadata */}
-									<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
-										{e.people && e.people.length > 0 ? (
-											<div className="truncate">
-												{e.people.map((p) => `${p.name ?? "Unknown"}${p.role ? ` (${p.role})` : ""}`).join(", ")}
-											</div>
-										) : (
-											<span className="truncate">Unknown speaker</span>
-										)}
+					{evidence?.length > 0 ? (
+						<div>
+							{evidence.map((e) => (
+								<Link key={e.id} to={e.id} className="text-primary-600 text-sm hover:underline">
+									<Card key={e.id} className="flex items-start justify-between gap-4 p-3">
+										<div>
+											<div className="line-clamp-2 text-foreground text-md">“{e.verbatim}”</div>
+											{/* People + metadata */}
+											<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
+												{e.people && e.people.length > 0 ? (
+													<div className="truncate">
+														{e.people.map((p) => `${p.name ?? "Unknown"}${p.role ? ` (${p.role})` : ""}`).join(", ")}
+													</div>
+												) : (
+													<span className="truncate">Unknown speaker</span>
+												)}
 
-										{/* Personas */}
-										{e.people?.some((p) => p.personas && p.personas.length > 0) && (
-											<>
+												{/* Personas */}
+												{e.people?.some((p) => p.personas && p.personas.length > 0) && (
+													<>
+														<span>•</span>
+														<div className="flex flex-wrap gap-1">
+															{e.people
+																.flatMap((p) => p.personas || [])
+																.map((persona, i) => (
+																	<Badge
+																		key={i}
+																		variant="outline"
+																		className="border-green-200 bg-green-50 text-green-800 text-xs"
+																	>
+																		{persona.name}
+																	</Badge>
+																))}
+														</div>
+													</>
+												)}
+
 												<span>•</span>
-												<div className="flex flex-wrap gap-1">
-													{e.people
-														.flatMap((p) => p.personas || [])
-														.map((persona, i) => (
-															<Badge
-																key={i}
-																variant="outline"
-																className="border-green-200 bg-green-50 text-green-800 text-xs"
-															>
-																{persona.name}
-															</Badge>
-														))}
-												</div>
-											</>
-										)}
-
-										<span>•</span>
-										<span>
-											{e.support} • {e.confidence} • {new Date(e.created_at).toLocaleString()}
-										</span>
-									</div>
-								</div>
-							</Card>
-						</Link>
-					))}
+												<span>
+													{e.support} • {e.confidence} • {new Date(e.created_at).toLocaleString()}
+												</span>
+											</div>
+										</div>
+									</Card>
+								</Link>
+							))}
+						</div>
+					) : (
+						<div className="px-4 text-foreground/80">No Evidence yet.</div>
+					)}
 				</div>
 			</ul>
 		</div>

@@ -1,4 +1,4 @@
-import { CopilotSidebar } from "@copilotkit/react-ui"
+// CopilotKit removed
 
 interface DailyBriefChatProps {
 	expandedSection: string | null

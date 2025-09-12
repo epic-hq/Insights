@@ -1,10 +1,7 @@
-import { CopilotKit } from "@copilotkit/react-core"
-import { useEffect } from "react"
-import "@copilotkit/react-ui/styles.css"
-import "~/styles/copilot-overrides.css"
 import consola from "consola"
 import posthog from "posthog-js"
-import { redirect, useLoaderData, useNavigation, useParams, useRouteLoaderData } from "react-router"
+import { useEffect } from "react"
+import { redirect, useLoaderData, useLocation, useNavigation, useParams, useRouteLoaderData } from "react-router"
 import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
@@ -95,7 +92,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				const pathname = url.pathname
 
 				// Don't redirect if already in onboarding or project creation
-				if (!pathname.includes('/projects/new') && !pathname.includes('onboarding=true')) {
+				if (!pathname.includes("/projects/new") && !pathname.includes("onboarding=true")) {
 					consola.log("No projects found. SKIPPING: Redirecting to project creation with onboarding. going /home")
 					// throw redirect("/projects/new?onboarding=true")
 					// throw redirect("/home")
@@ -141,8 +138,14 @@ export default function ProtectedLayout() {
 	const { clientEnv } = useRouteLoaderData("root")
 	const params = useParams()
 	const navigation = useNavigation()
+	const location = useLocation()
 
 	const isLoading = navigation.state === "loading"
+
+	// Don't show JourneyNav on home route
+	const isHomePage = location.pathname === "/home"
+	const isProjectNew = location.pathname.includes("/projects/new")
+	const showJourneyNav = !isHomePage && !isProjectNew
 
 	useEffect(() => {
 		posthog.identify(auth.user.sub, {
@@ -155,32 +158,18 @@ export default function ProtectedLayout() {
 	return (
 		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
 			<CurrentProjectProvider>
-				<CopilotKit
-					agent="mainAgent"
-					runtimeUrl="/api/copilotkit"
-					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-					showDevConsole={false} // {clientEnv?.NODE_ENV === "development"}
-					headers={{
-						"X-UserId": String(auth?.user?.sub ?? ""),
-						"X-AccountId": String(params.accountId ?? auth?.accountId ?? ""),
-						"X-ProjectId": String(params.projectId ?? ""),
-					}}
-				>
-					<div className="min-h-screen bg-background">
-						{/* Global Loading Indicator */}
-						{isLoading && (
-							<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
-								<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
-									<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
-								</div>
+				<div className="min-h-screen bg-background">
+					{/* Global Loading Indicator */}
+					{isLoading && (
+						<div className="fixed top-0 right-0 left-0 z-50 h-1 bg-gray-200">
+							<div className="h-full animate-pulse bg-blue-600" style={{ width: "30%" }}>
+								<div className="h-full animate-[loading_2s_ease-in-out_infinite] bg-gradient-to-r from-blue-600 to-blue-400" />
 							</div>
-						)}
+						</div>
+					)}
 
-						<AppLayout showJourneyNav={true} />
-					</div>
-
-					{/* Persistent AI Chat Button */}
-				</CopilotKit>
+					<AppLayout showJourneyNav={showJourneyNav} />
+				</div>
 			</CurrentProjectProvider>
 		</AuthProvider>
 	)

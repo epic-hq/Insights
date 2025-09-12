@@ -1,3 +1,4 @@
+import consola from "consola"
 import { motion } from "framer-motion"
 import {
 	ArrowRight,
@@ -31,6 +32,7 @@ import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import type { Project_Section } from "~/types"
@@ -111,6 +113,9 @@ export default function ProjectStatusScreen({
 	const routes = useProjectRoutes(projectPath)
 	const supabase = createClient()
 
+	// Feature flag for chat setup button
+	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat")
+
 	// Fetch project sections client-side only if not provided by loader
 	useEffect(() => {
 		if (initialSections && initialSections.length >= 0) {
@@ -132,7 +137,7 @@ export default function ProjectStatusScreen({
 			}
 		}
 		fetchProjectSections()
-	}, [projectId, supabase, initialSections])
+	}, [projectId, supabase, initialSections, isSetupChatEnabled])
 
 	// Helper functions to organize project sections and match with analysis
 	const getGoalSections = () =>
@@ -305,18 +310,20 @@ export default function ProjectStatusScreen({
 							<Workflow className="w-4 h-4 mr-2" />
 							{showFlowView ? "Dashboard View" : "Research Flow"}
 						</Button> */}
-						<Button
-							variant="outline"
-							size="sm"
-							onClick={() => {
-								if (routes) {
-									window.location.href = (routes as any).projects.projectChat()
-								}
-							}}
-							className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
-						>
-							<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
-						</Button>
+						{isSetupChatEnabled && (
+							<Button
+								variant="outline"
+								size="sm"
+								onClick={() => {
+									if (routes) {
+										window.location.href = (routes as any).projects.projectChat()
+									}
+								}}
+								className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
+							>
+								<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
+							</Button>
+						)}
 						<ProjectEditButton project={{ id: projectId }} />
 					</div>
 				</div>
@@ -534,7 +541,6 @@ export default function ProjectStatusScreen({
 											<Target className="h-5 w-5 text-blue-600" />
 											Goal
 											{/* Progress indicator moved here */}
-
 										</div>
 										<div className="ml-4 flex flex-row gap-2">
 											<Button
@@ -1140,7 +1146,7 @@ export default function ProjectStatusScreen({
 											onClick={() => routes && (window.location.href = routes.interviews.index())}
 										>
 											<Mic2Icon className="mr-2 h-4 w-4" />
-											Interviews
+											Interviews ({statusData?.totalInterviews})
 										</Button>
 									</CardContent>
 								</Card>

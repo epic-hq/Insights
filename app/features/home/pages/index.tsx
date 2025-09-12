@@ -216,12 +216,14 @@ export default function Index() {
 							<h2 className="font-semibold text-2xl">Your Existing Projects</h2>
 							<p className="text-muted-foreground text-sm">Continue working on your research projects</p>
 						</div>
-						<Button variant="outline" asChild>
-							<Link to={`${accountBase}/projects`}>
-								View All
-								<ArrowRight className="ml-2 h-4 w-4" />
-							</Link>
-						</Button>
+						{projects.length > 4 && (
+							<Button variant="outline" asChild>
+								<Link to={`${accountBase}/projects`}>
+									View All
+									<ArrowRight className="ml-2 h-4 w-4" />
+								</Link>
+							</Button>
+						)}
 					</div>
 					<div className="grid gap-4 lg:grid-cols-2">
 						{projects.slice(0, 4).map((project) => {

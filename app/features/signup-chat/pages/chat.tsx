@@ -1,8 +1,7 @@
-import { useCoAgent, useCopilotAction } from "@copilotkit/react-core"
-import { CopilotChat, CopilotSidebar } from "@copilotkit/react-ui"
+// CopilotKit removed
 import type { z } from "zod"
 import type { AgentState as AgentStateSchema } from "@/mastra/agents"
-import "@copilotkit/react-ui/styles.css"
+// CopilotKit UI removed
 import {
 	ChevronDown,
 	ChevronUp,

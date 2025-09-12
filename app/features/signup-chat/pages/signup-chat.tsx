@@ -1,8 +1,8 @@
-import { CopilotKit, useCoAgent } from "@copilotkit/react-core"
+// CopilotKit removed
 import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
-import "@copilotkit/react-ui/styles.css"
+// CopilotKit UI removed
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
 
@@ -14,8 +14,7 @@ const progressStyles = `
 }
 `
 
-import { useCopilotMessagesContext } from "@copilotkit/react-core"
-import { CopilotChat } from "@copilotkit/react-ui"
+// CopilotKit hooks removed
 import { Memory } from "@mastra/memory"
 import consola from "consola"
 import { ArrowLeft, ArrowRight, CheckCircle, Mic } from "lucide-react"
@@ -271,43 +270,26 @@ export default function SignupChat() {
 			{/* Main Content */}
 			<main className="flex min-h-0 flex-1 flex-col">
 				{/* <AiSdkChat /> */}
-				<CopilotKit
-					agent="signupAgent"
-					threadId={threadId}
-					// runtimeUrl={mastraUrl}
-					runtimeUrl={"http://0.0.0.0:4111/copilotkit/signup"}
-					// runtimeUrl={copilotRuntimeUrl}
-					publicApiKey="ck_pub_ee4a155857823bf6b0a4f146c6c9a72f"
-					showDevConsole={false}
-					headers={{
-						"X-UserId": String(user?.sub ?? ""),
-						"X-AccountId": String(""),
-						"X-ProjectId": String(""),
-					}}
-				>
-					<div className="h-full min-h-0 w-full flex-1 p-0">
-						<ChatWithChecklist existingChatData={onboardingData} messages={loaderMessages} />
-						{/* Hidden watcher subscribes to updates and signals completion */}
-						<SignupDataWatcher
-							userId={user?.sub}
-							data={onboardingData}
-							onDataUpdate={setOnboardingData}
-							onCompleted={() => setChatCompleted(true)}
-							showCard={false}
-						/>
-					</div>
-				</CopilotKit>
+				<div className="h-full min-h-0 w-full flex-1 p-0">
+					{/* Replace with ai-sdk chat when ready */}
+					<ChatWithChecklist existingChatData={onboardingData} messages={loaderMessages} />
+					{/* Hidden watcher subscribes to updates and signals completion */}
+					<SignupDataWatcher
+						userId={user?.sub}
+						data={onboardingData}
+						onDataUpdate={setOnboardingData}
+						onCompleted={() => setChatCompleted(true)}
+						showCard={false}
+					/>
+				</div>
 			</main>
 		</div>
 	)
 }
 
 function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
-	// Use the agent state inside the CopilotKit context (from @copilotkit/react-core)
-	const { state } = useCoAgent<AgentState>({
-		name: "signupAgent",
-		initialState: existingChatData,
-	})
+	// Placeholder now that CopilotKit is removed
+	const state = existingChatData
 
 	useEffect(() => {
 		consola.log("[signupAgent state]", state)
@@ -336,15 +318,9 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 					</div>
 				</div>
 
-				{/* CopilotChat with custom styling */}
-				<div className="h-[500px]">
-					<CopilotChat
-						labels={{
-							title: "",
-							initial: "What business objective are you trying to achieve?",
-						}}
-						className="h-full"
-					/>
+				{/* Chat UI removed */}
+				<div className="h-[500px] flex items-center justify-center text-muted-foreground text-sm">
+					Chat UI disabled (CopilotKit removed)
 				</div>
 			</div>
 

@@ -1,4 +1,4 @@
-import { ChevronRight, Lightbulb, Search, TrendingUp, Users } from "lucide-react"
+import { ChevronRight, Command, Lightbulb, Search, TrendingUp, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -22,7 +22,7 @@ export const journeySteps: JourneyStep[] = [
 		key: "research",
 		title: "Research",
 		description: "Define goals & get evidence",
-		icon: Search,
+		icon: Command,
 		routes: ["/dashboard", "/interviews"],
 		subItems: [
 			{ label: "Status", route: "/dashboard", description: "Project overview & recommendations" },
@@ -32,7 +32,7 @@ export const journeySteps: JourneyStep[] = [
 	},
 	{
 		key: "personas",
-		title: "Personas & People",
+		title: "People",
 		description: "Analyze who we're hearing from",
 		icon: Users,
 		routes: ["/personas", "/people"],
@@ -44,7 +44,7 @@ export const journeySteps: JourneyStep[] = [
 	},
 	{
 		key: "patterns",
-		title: "Patterns",
+		title: "Themes",
 		description: "See signals, strength & resonance",
 		icon: TrendingUp,
 		routes: ["/themes"],
@@ -55,7 +55,7 @@ export const journeySteps: JourneyStep[] = [
 	},
 	{
 		key: "insights",
-		title: "Insights & Opps",
+		title: "Insights",
 		description: "Explore insights & 'How Might We' next steps",
 		icon: Lightbulb,
 		routes: ["/insights", "/opportunities"],

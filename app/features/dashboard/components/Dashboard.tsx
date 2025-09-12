@@ -1,6 +1,7 @@
 import { Settings2 } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
+import type { TreeNode } from "~/components/charts/TreeMap"
 // import type { TreeNode } from "~/components/charts/TreeMap"
 // import TreeMap from "~/components/charts/TreeMap"
 import TagCountSelector from "~/components/TagCountSelector"

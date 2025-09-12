@@ -1,6 +1,4 @@
-import { useCoAgent } from "@copilotkit/react-core"
-import { CopilotSidebar as BaseCopilotSidebar } from "@copilotkit/react-ui"
-import "@copilotkit/react-ui/styles.css"
+// CopilotKit removed
 import { X } from "lucide-react"
 import { useEffect } from "react"
 import { Button } from "~/components/ui/button"
@@ -21,26 +19,22 @@ interface CopilotSidebarProps {
 }
 
 export function CopilotSidebar({ expandedSection, onClose, className, projectData }: CopilotSidebarProps) {
-	// Connect to the mainAgent from Mastra with enhanced state
-	const { state, setState } = useCoAgent({
-		name: "mainAgent",
-		initialState: {
-			plan: [],
-			projectStatus: {
-				keyFindings: [],
-				nextSteps: [],
-				totalInsights: 0,
-				totalInterviews: 0,
-				totalOpportunities: 0,
-				totalPeople: 0,
-				totalPersonas: 0,
-				projectName: undefined,
-				currentPhase: undefined,
-				progressPercent: 0,
-				must_do: undefined,
-			},
+	// Placeholder now that CopilotKit is removed
+	const state = {
+		projectStatus: {
+			keyFindings: [],
+			nextSteps: [],
+			totalInsights: projectData?.insights?.length ?? 0,
+			totalInterviews: projectData?.interviews?.length ?? 0,
+			totalOpportunities: projectData?.opportunities?.length ?? 0,
+			totalPeople: projectData?.people?.length ?? 0,
+			totalPersonas: projectData?.personas?.length ?? 0,
+			projectName: projectData?.projectName,
+			currentPhase: projectData?.projectStatusData?.currentPhase ?? "Research",
+			progressPercent: projectData?.projectStatusData?.progressPercent ?? 0,
+			must_do: undefined as string | undefined,
 		},
-	})
+	}
 
 	// Update agent state when project data changes
 	useEffect(() => {
@@ -127,7 +121,8 @@ When the user asks about their project, use your tools to gather comprehensive d
 					</Button>
 				</div>
 			)}
-			<BaseCopilotSidebar instructions={instructions} className="h-full" defaultOpen={true} />
+			{/* Sidebar UI removed */}
+			<div className="hidden" />
 		</div>
 	)
 }

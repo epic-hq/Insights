@@ -1,6 +1,6 @@
 import consola from "consola"
 import { createContext, useContext, useMemo } from "react"
-import { useParams } from "react-router"
+import { useParams, useRouteLoaderData } from "react-router"
 
 interface CurrentProjectContextType {
 	accountId: string
@@ -30,23 +30,22 @@ interface CurrentProjectProviderProps {
 
 export function CurrentProjectProvider({ children }: CurrentProjectProviderProps) {
 	const params = useParams()
+  const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as
+    | { auth: { accountId: string }; user_settings?: any }
+    | undefined
 
 	// Get accountId from organizations prop (top account) or fallback to URL params
 	const accountId = useMemo(() => {
-		// Fallback to URL params
-		if (params.accountId) {
-			return params.accountId
-		}
-		consola.error("No accountId available from organizations prop or URL params")
+		if (params.accountId) return params.accountId
+		if (protectedData?.auth?.accountId) return protectedData.auth.accountId
+		// Avoid noisy errors in routes that are not account-scoped
+		consola.debug("[CurrentProject] No accountId in params; non-account route")
 		return ""
-	}, [params.accountId])
+	}, [params.accountId, protectedData?.auth?.accountId])
 
 	// Get projectId from top account's first project or fallback to URL params
 	const projectId = useMemo(() => {
-		// Fallback to URL params
-		if (params.projectId) {
-			return params.projectId
-		}
+		if (params.projectId) return params.projectId
 		return ""
 	}, [params.projectId])
 

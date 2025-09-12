@@ -1,5 +1,5 @@
 import { MastraAgent } from "@ag-ui/mastra"
-import { CopilotRuntime, copilotRuntimeNextJSAppRouterEndpoint, ExperimentalEmptyAdapter } from "@copilotkit/runtime"
+// CopilotKit runtime removed
 import { MastraClient } from "@mastra/client-js"
 import { RuntimeContext } from "@mastra/core/di"
 import consola from "consola"
@@ -52,19 +52,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	// 	consola.error("MASTRA_URL is not set")
 	// 	return new Response("MASTRA_URL is not set", { status: 500 })
 	// }
-    const runtime = new CopilotRuntime({
-        agents: await MastraAgent.getRemoteAgents({
-            mastraClient: new MastraClient({
-                baseUrl: (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, ""),
-                headers: {
-                    "x-user-id": headerUserId || user.sub || "",
-                    "x-account-id": headerAccountId || "",
-                    "x-project-id": headerProjectId || "",
-                    authorization: authHeader,
-                },
-            }),
-        }),
-    })
+    // Removed Copilot runtime wiring
 
 	// Log the context for debugging
 	// consola.log("CopilotKit received headers:", {

@@ -1,5 +1,5 @@
 import { BookOpen, MessageCircleQuestion } from "lucide-react"
-import { useSearchParams } from "react-router-dom"
+import { useSearchParams } from "react-router"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"

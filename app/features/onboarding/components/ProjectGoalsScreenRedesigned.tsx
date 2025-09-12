@@ -1,8 +1,9 @@
 import consola from "consola"
 import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { Link } from "react-router-dom"
+import { Link } from "react-router"
 import { z } from "zod"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
@@ -200,6 +201,9 @@ export default function ProjectGoalsScreen({
 	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const supabase = createClient()
+
+	// Feature flag for chat setup button
+	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag('ffSetupChat')
 
 	// Accordion state - only one section can be open at a time
 	const [openAccordion, setOpenAccordion] = useState<string | null>("research-goal")
@@ -590,11 +594,10 @@ export default function ProjectGoalsScreen({
 							)}
 						</div>
 						<div className="flex items-center gap-2 text-right">
-							{accountId && currentProjectId ? (
-								<span />
-								// <Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
-								// 	<Button variant="outline" size="sm">Use Chat Setup</Button>
-								// </Link>
+							{accountId && currentProjectId && isSetupChatEnabled && !isFeatureFlagLoading ? (
+								<Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
+									<Button variant="outline" size="sm">Use Chat Setup</Button>
+								</Link>
 							) : null}
 							{isSaving ? (
 								<StatusPill variant="active">
