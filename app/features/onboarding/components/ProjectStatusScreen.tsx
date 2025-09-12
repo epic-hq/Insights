@@ -534,28 +534,27 @@ export default function ProjectStatusScreen({
 											<Target className="h-5 w-5 text-blue-600" />
 											Goal
 											{/* Progress indicator moved here */}
-											{statusData && displayData.completionScore > 0 && (
-												<div className="mt-2 flex items-center gap-2">
-													<div className="h-2 w-24 rounded-full bg-white/20">
-														<div
-															className="h-2 rounded-full bg-gradient-to-r from-green-400 to-blue-400 transition-all"
-															style={{ width: `${displayData.completionScore}%` }}
-														/>
-													</div>
-													<span className="font-medium text-blue-700 text-sm dark:text-blue-300">
-														{displayData.completionScore}% complete
-													</span>
-												</div>
-											)}
+
 										</div>
 										<div className="ml-4 flex flex-row gap-2">
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => {
+													if (routes) {
+														window.location.href = routes.projects.setup()
+													}
+												}}
+											>
+												Edit
+											</Button>{" "}
 											<TooltipProvider>
 												<Tooltip>
 													<TooltipTrigger asChild>
 														<Button
 															variant="outline"
 															onClick={() => setShowCustomAnalysis(true)}
-															disabled={isAnalyzing}
+															disabled={true || isAnalyzing}
 															className="hover:bg-blue-700 hover:text-background"
 															size="sm"
 														>
@@ -572,17 +571,6 @@ export default function ProjectStatusScreen({
 													</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => {
-													if (routes) {
-														window.location.href = routes.projects.setup()
-													}
-												}}
-											>
-												Edit
-											</Button>{" "}
 										</div>
 									</div>
 									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
@@ -908,10 +896,10 @@ export default function ProjectStatusScreen({
 																			const questionStatus = getQuestionStatus(question.text)
 																			return (
 																				<div
-																					key={`question-${question.id || index}`}
+																					key={`question-${section.id}-${question.id ?? index}`}
 																					className={`rounded-lg border p-3 ${questionStatus.status === "answered"
-																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+																						? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+																						: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
 																						}`}
 																				>
 																					<div className="flex items-start gap-2">

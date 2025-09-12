@@ -12,18 +12,17 @@ import { Message, MessageContent } from "~/components/ai-elements/message"
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Task, TaskContent, TaskTrigger } from "~/components/ai-elements/task"
+import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
-import { memory } from "~/mastra/memory"
-import { UpsightMessage } from "~/mastra/message-types"
-import { Route } from "./+types/ai-sdk-chat"
-import { SignupDataWatcher } from "../components/SignupDataWatcher"
 import { TextShimmer } from "~/components/ui/text-shimmer"
-import { cn } from "~/lib/utils"
-import { Button } from "~/components/ui/button"
 import { AudioRecorder } from "~/features/voice/audio-recorder"
-
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { cn } from "~/lib/utils"
+import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
+import { SignupDataWatcher } from "../components/SignupDataWatcher"
+import type { Route } from "./+types/ai-sdk-chat"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -149,7 +148,7 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 	}
 
 	return (
-		<div className="relative mx-auto size-full h-dvh max-w-6xl rounded-lg px-2 md:px-4 flex flex-col md:flex-row">
+		<div className="relative mx-auto flex size-full h-dvh max-w-6xl flex-col rounded-lg px-2 md:flex-row md:px-4">
 			{/* <div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:grid-cols-[200px_1fr] md:pt-4 lg:grid-cols-[400px_1fr]"> */}
 			<div className="w-full md:w-1/3">
 				<SignupDataWatcher
@@ -162,7 +161,7 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 					onCompleted={() => setChatCompleted(true)}
 				/>
 			</div>
-			<div className="flex h-full flex-col w-full md:w-2/3">
+			<div className="flex h-full w-full flex-col md:w-2/3">
 				<Conversation>
 					<ConversationContent>
 						{messages?.map((message) => (
@@ -172,13 +171,17 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 										switch (part.type) {
 											// @ts-expect-error - this is mastra built in tool
 											case "tool-updateWorkingMemory":
-												return <Task>
-													<TaskTrigger title="Update Working Memory" icon={<Brain className="size-4" />} />
-													<TaskContent>
-														{/* @ts-expect-error - this is mastra built in tool */}
-														<Streamdown className="bg-white rounded-2xl p-2">{part?.input?.memory as string || ""}</Streamdown>
-													</TaskContent>
-												</Task>
+												return (
+													<Task key={i}>
+														<TaskTrigger title="Update Working Memory" icon={<Brain className="size-4" />} />
+														<TaskContent>
+															{/* @ts-expect-error - this is mastra built in tool */}
+															<Streamdown className="rounded-2xl bg-white p-2">
+																{(part?.input?.memory as string) || ""}
+															</Streamdown>
+														</TaskContent>
+													</Task>
+												)
 											case "tool-displayUserQuestions":
 												switch (part.state) {
 													case "input-streaming":
@@ -198,7 +201,8 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 														)
 													case "output-available":
 														return (
-															<Card>z
+															<Card>
+																z
 																<CardHeader>
 																	<CardTitle className="flex items-center gap-2">
 																		<Check /> Research Questions
@@ -214,26 +218,50 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 												}
 											case "tool-saveUserSettingsData":
 												return (
-													<Task className="border rounded-lg p-4">
+													<Task className="rounded-lg border p-4">
 														<TaskTrigger title="Saved details" icon={<Pencil className="size-4" />} />
 														<TaskContent>
 															{/* {part?.output?.message} */}
-															{part?.output?.data?.challenges && <div><span className="font-bold">Challenges:</span> {part?.output?.data?.challenges}</div>}
-															{part?.output?.data?.content_types && <div><span className="font-bold">Content Types:</span> {part?.output?.data?.content_types}</div>}
-															{part?.output?.data?.goal && <div><span className="font-bold">Goal:</span> {part?.output?.data?.goal}</div>}
-															{part?.output?.data?.other_feedback && <div><span className="font-bold">Other Feedback:</span> {part?.output?.data?.other_feedback}</div>}
-															{part?.output?.data?.completed && <div className="flex items-center gap-2"><span className="font-bold">Completed:</span> {part?.output?.data?.completed ? <Check className="size-4 text-emerald-500" /> : <X className="size-4" />}</div>}
+															{part?.output?.data?.challenges && (
+																<div>
+																	<span className="font-bold">Challenges:</span> {part?.output?.data?.challenges}
+																</div>
+															)}
+															{part?.output?.data?.content_types && (
+																<div>
+																	<span className="font-bold">Content Types:</span> {part?.output?.data?.content_types}
+																</div>
+															)}
+															{part?.output?.data?.goal && (
+																<div>
+																	<span className="font-bold">Goal:</span> {part?.output?.data?.goal}
+																</div>
+															)}
+															{part?.output?.data?.other_feedback && (
+																<div>
+																	<span className="font-bold">Other Feedback:</span>{" "}
+																	{part?.output?.data?.other_feedback}
+																</div>
+															)}
+															{part?.output?.data?.completed && (
+																<div className="flex items-center gap-2">
+																	<span className="font-bold">Completed:</span>{" "}
+																	{part?.output?.data?.completed ? (
+																		<Check className="size-4 text-emerald-500" />
+																	) : (
+																		<X className="size-4" />
+																	)}
+																</div>
+															)}
 															{/* {process.env.NODE_ENV === "development" && JSON.stringify(part?.output?.data)} */}
 														</TaskContent>
 													</Task>
 												)
 											case "tool-saveProjectSectionsData":
 												return (
-													<Task className="border rounded-lg p-4">
+													<Task className="rounded-lg border p-4">
 														<TaskTrigger title="Save sections" icon={<Pencil className="size-4" />} />
-														<TaskContent>
-															{part?.output?.message}
-														</TaskContent>
+														<TaskContent>{part?.output?.message}</TaskContent>
 													</Task>
 												)
 											case "text": // we don't use any reasoning or tool calls in this example
@@ -249,25 +277,33 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 					<ConversationScrollButton />
 				</Conversation>
 
-				<div className="flex flex-row gap-2 justify-between">
-					<AudioRecorder onAfterTranscription={(transcription) => {
-						console.log("transcription", transcription)
-						// setInput((prev) => prev?.trim() ? prev + "\n" + transcription : transcription)
-						if (transcription.trim()) {
-							sendMessage({ text: transcription })
-							// setInput("")
-						}
-					}} />
+				<div className="flex flex-row justify-between gap-2">
+					<AudioRecorder
+						onAfterTranscription={(transcription) => {
+							console.log("transcription", transcription)
+							// setInput((prev) => prev?.trim() ? prev + "\n" + transcription : transcription)
+							if (transcription.trim()) {
+								sendMessage({ text: transcription })
+								// setInput("")
+							}
+						}}
+					/>
 					<span>
-						<TextShimmer className={cn('font-mono text-sm mt-1 hidden', status === 'streaming' || status === 'submitted' && 'block')} duration={3}>
+						<TextShimmer
+							className={cn(
+								"mt-1 hidden font-mono text-sm",
+								status === "streaming" || (status === "submitted" && "block")
+							)}
+							duration={3}
+						>
 							Thinking...
 						</TextShimmer>
-						<div className={cn('font-mono text-sm mt-1 hidden text-destructive', status === 'error' && 'block')}>
+						<div className={cn("mt-1 hidden font-mono text-destructive text-sm", status === "error" && "block")}>
 							Error
 						</div>
 					</span>
 				</div>
-				<PromptInput onSubmit={handleSubmit} className="relative mx-auto mt-1 w-full max-w-2xl mb-6">
+				<PromptInput onSubmit={handleSubmit} className="relative mx-auto mt-1 mb-6 w-full max-w-2xl">
 					<PromptInputTextarea
 						value={input}
 						placeholder="Say something..."

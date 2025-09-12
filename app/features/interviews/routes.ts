@@ -8,5 +8,6 @@ export default [
 		route("/:interviewId", "./features/interviews/pages/detail.tsx"),
 		route("/:interviewId/edit", "./features/interviews/pages/edit.tsx"),
 		route("/:interviewId/realtime", "./features/interviews/pages/realtime.tsx"),
+		route("quick", "./features/realtime/pages/quick.tsx")
 	]),
 ] satisfies RouteConfig

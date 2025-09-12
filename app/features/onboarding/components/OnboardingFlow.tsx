@@ -1,4 +1,6 @@
 import { useState } from "react"
+import { useSearchParams, useNavigate } from "react-router"
+import { Button } from "~/components/ui/button"
 import ProcessingScreen from "./ProcessingScreen"
 import ProjectGoalsScreen from "./ProjectGoalsScreen"
 import ProjectStatusScreen from "./ProjectStatusScreen"
@@ -53,6 +55,10 @@ export default function OnboardingFlow({
 	accountId,
 	existingProject,
 }: OnboardingFlowProps) {
+	const [searchParams] = useSearchParams()
+	const navigate = useNavigate()
+	const isOnboarding = searchParams.get('onboarding') === 'true'
+	
 	// Start at upload step if we have existing project context
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
 	// TODO: use form library to parse form data, and loader to fetch data
@@ -178,45 +184,83 @@ export default function OnboardingFlow({
 		return `${data.target_orgs[0]} Research`
 	}
 
+	// Handle exit from onboarding
+	const handleExit = () => {
+		if (isOnboarding) {
+			// Exit onboarding and go to home - remove onboarding param
+			navigate('/home')
+		} else {
+			// Regular navigation behavior
+			navigate(-1)
+		}
+	}
+
 	// Use the most current projectId - either from data (newly created) or props (existing)
 	const currentProjectId = data.projectId || projectId
 
-	switch (currentStep) {
-		case "welcome":
-			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
-
-		case "questions":
-			return (
-				<QuestionsScreen
-					target_orgs={data.target_orgs}
-					target_roles={data.target_roles}
-					research_goal={data.research_goal}
-					research_goal_details={data.research_goal_details}
-					decision_questions={data.decision_questions}
-					assumptions={data.assumptions}
-					unknowns={data.unknowns}
-					custom_instructions={data.custom_instructions}
-					onNext={handleQuestionsNext}
-					onBack={handleBack}
-				/>
-			)
-
-		case "upload":
-			return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} />
-
-		case "processing":
-			return (
-				<ProcessingScreen
-					fileName={data.file?.name || "Unknown file"}
-					onComplete={handleProcessingComplete}
-					interviewId={data.interviewId}
-				/>
-			)
-
-		case "complete":
-			return <ProjectStatusScreen projectName={getProjectName()} projectId={data.projectId} accountId={accountId} />
-
-		default:
-			return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
+	// Render navigation controls for onboarding mode
+	const renderOnboardingHeader = () => {
+		if (!isOnboarding) return null
+		
+		return (
+			<div className="flex items-center justify-between p-4 border-b">
+				<div className="flex items-center gap-4">
+					<Button variant="ghost" size="sm" onClick={handleExit}>
+						← Exit Onboarding
+					</Button>
+					<div className="text-sm text-muted-foreground">
+						Step {currentStep === "welcome" ? 1 : currentStep === "questions" ? 2 : currentStep === "upload" ? 3 : 4} of 4
+					</div>
+				</div>
+			</div>
+		)
 	}
+
+	const stepContent = () => {
+		switch (currentStep) {
+			case "welcome":
+				return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
+
+			case "questions":
+				return (
+					<QuestionsScreen
+						target_orgs={data.target_orgs}
+						target_roles={data.target_roles}
+						research_goal={data.research_goal}
+						research_goal_details={data.research_goal_details}
+						decision_questions={data.decision_questions}
+						assumptions={data.assumptions}
+						unknowns={data.unknowns}
+						custom_instructions={data.custom_instructions}
+						onNext={handleQuestionsNext}
+						onBack={handleBack}
+					/>
+				)
+
+			case "upload":
+				return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} />
+
+			case "processing":
+				return (
+					<ProcessingScreen
+						fileName={data.file?.name || "Unknown file"}
+						onComplete={handleProcessingComplete}
+						interviewId={data.interviewId}
+					/>
+				)
+
+			case "complete":
+				return <ProjectStatusScreen projectName={getProjectName()} projectId={data.projectId} accountId={accountId} />
+
+			default:
+				return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
+		}
+	}
+
+	return (
+		<div className="min-h-screen bg-background">
+			{renderOnboardingHeader()}
+			{stepContent()}
+		</div>
+	)
 }

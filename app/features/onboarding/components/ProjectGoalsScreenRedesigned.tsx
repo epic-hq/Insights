@@ -1,9 +1,9 @@
 import consola from "consola"
 import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
+import { Link } from "react-router-dom"
 import { z } from "zod"
 import { Button } from "~/components/ui/button"
-import { Link } from "react-router-dom"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
 import { Input } from "~/components/ui/input"
@@ -557,16 +557,14 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-											}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-											}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
 										>
 											{step.title}
 										</span>
@@ -593,9 +591,10 @@ export default function ProjectGoalsScreen({
 						</div>
 						<div className="flex items-center gap-2 text-right">
 							{accountId && currentProjectId ? (
-								<Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
-									<Button variant="outline" size="sm">Use Chat Setup</Button>
-								</Link>
+								<span />
+								// <Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
+								// 	<Button variant="outline" size="sm">Use Chat Setup</Button>
+								// </Link>
 							) : null}
 							{isSaving ? (
 								<StatusPill variant="active">
@@ -1185,16 +1184,16 @@ export default function ProjectGoalsScreen({
 					>
 						{showCustomInstructions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 						Custom Instructions
-										<Tooltip>
-											<TooltipTrigger asChild>
-												<span className="inline-flex">
-													<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-												</span>
-											</TooltipTrigger>
-											<TooltipContent className="max-w-xs">
-												<p>Add specific instructions for AI analysis or interview generation (optional).</p>
-											</TooltipContent>
-										</Tooltip>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<span className="inline-flex">
+									<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+								</span>
+							</TooltipTrigger>
+							<TooltipContent className="max-w-xs">
+								<p>Add specific instructions for AI analysis or interview generation (optional).</p>
+							</TooltipContent>
+						</Tooltip>
 					</Button>
 
 					{showCustomInstructions && (

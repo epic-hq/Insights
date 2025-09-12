@@ -1,5 +1,6 @@
 import { PostHogProvider } from "posthog-js/react"
 import { useTranslation } from "react-i18next"
+import type { LoaderFunctionArgs } from "react-router"
 import {
 	isRouteErrorResponse,
 	Links,
@@ -18,12 +19,18 @@ import ErrorBoundaryComponent from "~/components/ErrorBoundary"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import { ThemeProvider } from "~/contexts/ThemeContext"
 import { loadContext } from "~/server/load-context"
-import type { Route } from "./+types/root"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
 
-export async function loader({ context, request }: Route.LoaderArgs) {
-	const loadCtx = context.get(loadContext)
+export async function loader({ context, request }: LoaderFunctionArgs) {
+  // Get the load context with proper typing
+  const loadCtx = context.get(loadContext) as {
+    lang: string
+    clientEnv: Record<string, unknown>
+    env: { APP_ENV: string }
+    isProductionDeployment: boolean
+    t: (key: string) => string
+  }
 	const hints = getHints(request)
 
 	return {
@@ -69,10 +76,10 @@ export default function App({ loaderData }: Route.ComponentProps) {
 	const { lang, clientEnv } = loaderData
 	useChangeLanguage(lang)
 
-    // Minimal PostHog host normalization: add https:// if missing and trim trailing slash
-    const apiHost = clientEnv.POSTHOG_HOST
-        ? ((clientEnv.POSTHOG_HOST.startsWith("http") ? clientEnv.POSTHOG_HOST : `https://${clientEnv.POSTHOG_HOST}`) as string).replace(/\/+$/, "")
-        : undefined
+	// Minimal PostHog host normalization: add https:// if missing and trim trailing slash
+	const apiHost = clientEnv.POSTHOG_HOST
+		? ((clientEnv.POSTHOG_HOST.startsWith("http") ? clientEnv.POSTHOG_HOST : `https://${clientEnv.POSTHOG_HOST}`) as string).replace(/\/+$/, "")
+		: undefined
 
 	// Make clientEnv available globally on window.env for polyEnv pattern
 	if (typeof window !== "undefined") {
@@ -83,16 +90,16 @@ export default function App({ loaderData }: Route.ComponentProps) {
 		<ClientOnly fallback={<div className="flex h-screen w-screen items-center justify-center">Loading...</div>}>
 			{/* <AuthProvider initialAuth={auth}> */}
 			<ThemeProvider defaultTheme="light">
-                <PostHogProvider
-                    apiKey={clientEnv.POSTHOG_KEY}
-                    options={{
-                        api_host: apiHost,
-                        ui_host: "https://us.posthog.com",
-                        defaults: "2025-05-24",
-                        capture_exceptions: true,
-                        debug: false, // import.meta.env.MODE === "development",
-                    }}
-                >
+				<PostHogProvider
+					apiKey={clientEnv.POSTHOG_KEY}
+					options={{
+						api_host: apiHost,
+						ui_host: "https://us.posthog.com",
+						defaults: "2025-05-24",
+						capture_exceptions: true,
+						debug: false, // import.meta.env.MODE === "development",
+					}}
+				>
 					<NotificationProvider>
 						<Outlet />
 						<Toaster />

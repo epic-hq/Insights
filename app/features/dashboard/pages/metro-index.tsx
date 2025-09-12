@@ -17,7 +17,7 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, redirect, useLoaderData, useRouteLoaderData } from "react-router"
-import { useNavigate, useParams } from "react-router-dom"
+import { useNavigate, useParams } from "react-router"
 import type { Database } from "~/../supabase/types"
 import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
 import { Logo, LogoBrand } from "~/components/branding"

@@ -10,10 +10,10 @@ import mobileRoutes from "./features/mobile/insights/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
+import projectChatRoutes from "./features/project-chat/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
-import projectChatRoutes from "./features/project-chat/routes"
 import themesRoutes from "./features/themes/routes"
 import voiceRoutes from "./features/voice/routes"
 
@@ -49,7 +49,7 @@ const routes = [
 				...themesRoutes,
 				...mobileRoutes,
 				...questionsRoutes,
-                ...projectChatRoutes,
+				...projectChatRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
@@ -68,6 +68,10 @@ const routes = [
 
 				// Contextual suggestions API (needs project context)
 				route("api/contextual-suggestions", "./routes/api.contextual-suggestions.tsx"),
+
+				// Realtime interviews APIs (project-scoped)
+				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),
+				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
 				// Project-setup agent chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
@@ -110,6 +114,7 @@ const routes = [
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
+	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	...voiceRoutes,
 
 	// Resource routes
@@ -123,6 +128,7 @@ const routes = [
 	route("test_register", "./routes/(auth)+/test_register.tsx"),
 	route("test/upsight", "./routes/test.upsight.tsx"),
 	route("test/question-quality", "./routes/test.question-quality.tsx"),
+	// route("realtime/quick", "./features/realtime/pages/quick.tsx"),
 ] satisfies RouteConfig
 
 export default routes

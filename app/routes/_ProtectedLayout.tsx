@@ -8,6 +8,7 @@ import { redirect, useLoaderData, useNavigation, useParams, useRouteLoaderData }
 import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
+import { getProjects } from "~/features/projects/db"
 import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
@@ -44,12 +45,6 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				throw redirect("/login")
 			}
 
-			// Check if signup process is completed
-			const signupCompleted = user_settings?.signup_data?.completed === true
-			if (!signupCompleted) {
-				throw redirect("/signup-chat")
-			}
-
 			// Determine current account: use last_used_account_id from user_settings, validate it's available
 			let currentAccount = null
 			if (user_settings?.last_used_account_id && Array.isArray(accounts)) {
@@ -78,6 +73,37 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				currentAccount,
 			})
 			// consola.log("_ProtectedLayout Authentication middleware success\n")
+
+			// Check if signup process is completed
+			const signupCompleted = user_settings?.signup_data?.completed === true
+			const signupChatRequired = process.env.SIGNUP_CHAT_REQUIRED === "true"
+			if (signupChatRequired && !signupCompleted) {
+				consola.log("Signup not completed. Redirecting to signup-chat.", { signupCompleted, signupChatRequired })
+				throw redirect("/signup-chat")
+			}
+
+			// Check if user has any projects, if not redirect to onboarding
+			const projectsResult = await getProjects({
+				supabase,
+				accountId: currentAccount.account_id,
+			})
+
+			const userProjects = projectsResult.data || []
+			if (userProjects.length === 0) {
+				// Check current path to avoid redirect loops
+				const url = new URL(request.url)
+				const pathname = url.pathname
+
+				// Don't redirect if already in onboarding or project creation
+				if (!pathname.includes('/projects/new') && !pathname.includes('onboarding=true')) {
+					consola.log("No projects found. SKIPPING: Redirecting to project creation with onboarding. going /home")
+					// throw redirect("/projects/new?onboarding=true")
+					// throw redirect("/home")
+				}
+			}
+
+			consola.log("User authenticated and has projects.")
+			// Continue without redirect for normal flow
 		} catch (error) {
 			// Preserve intended redirects thrown above (e.g., to /signup-chat)
 			if (error instanceof Response) {
@@ -150,7 +176,7 @@ export default function ProtectedLayout() {
 							</div>
 						)}
 
-						<AppLayout showJourneyNav={true} showStepper={true} />
+						<AppLayout showJourneyNav={true} />
 					</div>
 
 					{/* Persistent AI Chat Button */}

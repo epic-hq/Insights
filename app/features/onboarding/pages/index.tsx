@@ -1,5 +1,5 @@
 import consola from "consola"
-import { useNavigate } from "react-router-dom"
+import { useNavigate } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { OnboardingData } from "../components/OnboardingFlow"

@@ -187,7 +187,7 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 			case "green":
 				return "bg-green-100 text-green-700 border-green-200 dark:text-green-200"
 			default:
-				return "bg-gray-100 text-gray-700 border-gray-200 dark:text-gray-200"
+				return "bg-muted text-muted-foreground border-border"
 		}
 	}
 
@@ -828,11 +828,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 	const getCategoryColor = (categoryId: string) => {
 		const category = questionCategories.find((c) => c.id === categoryId)
-		return category?.color || "border-gray-100 text-gray-800 dark:border-gray-900 dark:text-gray-200"
+		return category?.color || "border-border text-foreground"
 	}
 
 	const getAnsweredCountColor = (count: number) => {
-		if (count === 0) return "bg-transparent text-gray-600 dark:text-gray-400"
+		if (count === 0) return "bg-transparent text-muted-foreground"
 		if (count <= 3) return "bg-transparent text-yellow-600 dark:text-yellow-400"
 		if (count <= 10) return "bg-transparent text-green-600 dark:text-green-400"
 		return "bg-transparent text-blue-600 dark:text-blue-400"
@@ -1063,11 +1063,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			{/* Header with Title and Interactive Time Settings */}
 			<div className="flex items-start justify-between">
 				<div>
-					<div className="flex items-center gap-2 font-bold text-2xl text-gray-900">
+					<div className="flex items-center gap-2 font-bold text-2xl text-foreground">
 						<MessageCircleQuestion />
 						Interview Questions
 					</div>
-					<p className="mt-1 text-gray-600 text-sm">
+					<p className="mt-1 text-muted-foreground text-sm">
 						Review, edit, and finalize your interview questions. Based on your{" "}
 						<Link
 							to={routes.projects.setup()}
@@ -1122,7 +1122,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 									step={15}
 									className="w-full"
 								/>
-								<div className="mt-1 flex justify-between text-gray-500 text-xs">
+								<div className="mt-1 flex justify-between text-muted-foreground text-xs">
 									<span>15m</span>
 									<span>30m</span>
 									<span>45m</span>

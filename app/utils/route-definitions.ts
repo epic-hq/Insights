@@ -26,6 +26,7 @@ export interface RouteDefinitions {
 		detail: (id: string) => string
 		edit: (id: string) => string
 		realtime: (id: string) => string
+		quick: () => string
 	}
 
 	// Evidence
@@ -149,6 +150,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (id: string) => `${base}/interviews/${id}`,
 			edit: (id: string) => `${base}/interviews/${id}/edit`,
 			realtime: (id: string) => `${base}/interviews/${id}/realtime`,
+			quick: () => `${base}/interviews/quick`
 		},
 
 		// Evidence

@@ -16,7 +16,7 @@ export const meta: MetaFunction = () => {
 }
 
 // Auto-create on GET when coming from home with no projects
-export async function loader({ context, params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 	const user = ctx.claims
@@ -67,6 +67,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("user_id", user.sub)
 
 	const projectRoutes = createProjectRoutes(accountId, created.id)
+	const from = new URL(request.url).searchParams.get("from")
+	// If coming from quick record CTA, go straight to recorder
+	if (from === "record") {
+		throw redirect(projectRoutes.interviews.quick())
+	}
 	throw redirect(projectRoutes.projects.setup())
 }
 

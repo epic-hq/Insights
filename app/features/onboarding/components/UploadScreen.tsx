@@ -80,7 +80,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 	]
 
 	return (
-		<div className="relative min-h-screen bg-black p-4 text-white sm:p-4 md:p-6 lg:p-8">
+		<div className="relative min-h-screen bg-background p-4 text-foreground sm:p-4 md:p-6 lg:p-8">
 			{/* Hidden file input */}
 			<input
 				ref={fileInputRef}
@@ -91,16 +91,17 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			/>
 
 			{/* Stepper */}
-			<div className="bg-black p-4 pb-8">
-				<OnboardingStepper steps={onboardingSteps} currentStepId="upload" className="text-white" />
+			<div className="bg-background p-4 pb-8">
+				<OnboardingStepper steps={onboardingSteps} currentStepId="upload" className="text-foreground" />
 			</div>
 
 			{/* Header */}
-			<div className="border-gray-800 border-b bg-black p-4">
+			<div className="border-gray-800 bg-background p-2">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
-						<Button variant="ghost" size="icon" onClick={onBack} className="h-8 w-8 text-white hover:bg-gray-800">
+						<Button variant="ghost" onClick={onBack} className="h-8 w-8 text-foreground">
 							<ChevronLeft className="h-4 w-4" />
+							Back
 						</Button>
 					</div>
 				</div>
@@ -115,7 +116,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 							<Upload className="h-5 w-5" />
 							<span className="font-medium text-sm">Media Upload</span>
 						</div> */}
-					{/* <h2 className="font-bold text-2xl text-white">Add your first interview</h2> */}
+					{/* <h2 className="font-bold text-2xl text-foreground">Add your first interview</h2> */}
 					{/* <p className="text-gray-300 text-sm leading-relaxed">
 							Upload an audio, video or transcript from a conversation or interview.
 						</p>
@@ -126,12 +127,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						<Button
 							onClick={handleRecordNow}
 							size="lg"
-							className="h-20 w-20 rounded-full bg-red-600 p-0 text-white hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
+							className="m-0 h-15 w-15 rounded-full bg-red-600 p-0 text-foreground hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
 						>
-							<Mic className="h-8 w-8" />
+							<Mic className="h-20 w-20" />
 						</Button>
-						<p className="mt-3 font-medium text-white">Record Now</p>
-						<p className="text-gray-400 text-sm">Start recording your interview</p>
+						<p className="mt-3 font-medium text-foreground">Record Now</p>
 					</div>
 
 					{/* Divider */}
@@ -143,13 +143,12 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Upload Area */}
 					<div
-						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${
-							isDragOver
+						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${isDragOver
 								? "border-blue-500 bg-blue-500/10"
 								: selectedFile
 									? "border-green-500 bg-green-500/5"
 									: "border-gray-600 bg-gray-900/50"
-						}`}
+							}`}
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
@@ -157,11 +156,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						{selectedFile ? (
 							/* Selected File Display */
 							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-600 text-white">
+								<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-600 text-foreground">
 									{getFileIcon(selectedFile)}
 								</div>
 								<div className="min-w-0 flex-1">
-									<h3 className="truncate font-medium text-sm text-white">{selectedFile.name}</h3>
+									<h3 className="truncate font-medium text-foreground text-sm">{selectedFile.name}</h3>
 									<p className="text-gray-400 text-xs">{formatFileSize(selectedFile.size)}</p>
 								</div>
 								<CheckCircle className="h-5 w-5 flex-shrink-0 text-green-400" />
@@ -172,12 +171,12 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-gray-800">
 									<Upload className="h-6 w-6 text-gray-400" />
 								</div>
-								<p className="mb-3 text-gray-300 text-sm">Drop your file here or</p>
+								<p className="mb-3 text-gray-300 text-sm">Drop your Video, Audio, or Text/MD file</p>
 								<Button
 									onClick={triggerFileInput}
 									variant="outline"
 									size="sm"
-									className="border-gray-600 bg-transparent text-white hover:bg-gray-800"
+									className="border-gray-600 bg-transparent text-foreground hover:bg-gray-800"
 								>
 									<File className="mr-2 h-4 w-4" />
 									Browse Files
@@ -188,17 +187,16 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Content Type Selection */}
 					<div className="space-y-3">
-						<label className="font-medium text-sm text-white">Type of content</label>
+						<label className="font-medium text-foreground text-sm">Conversation Context</label>
 						<div className="grid grid-cols-2 gap-2">
 							<Button
 								variant={mediaType === "interview" ? "default" : "outline"}
 								onClick={() => setMediaType("interview")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "interview"
-										? "bg-blue-600 text-white hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
-								}`}
+								className={`h-10 text-xs ${mediaType === "interview"
+										? "bg-blue-600 text-foreground hover:bg-blue-700"
+										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									}`}
 							>
 								User Interview
 							</Button>
@@ -206,11 +204,10 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "focus-group" ? "default" : "outline"}
 								onClick={() => setMediaType("focus-group")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "focus-group"
-										? "bg-blue-600 text-white hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
-								}`}
+								className={`h-10 text-xs ${mediaType === "focus-group"
+										? "bg-blue-600 text-foreground hover:bg-blue-700"
+										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									}`}
 							>
 								Focus Group
 							</Button>
@@ -218,11 +215,10 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "customer-call" ? "default" : "outline"}
 								onClick={() => setMediaType("customer-call")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "customer-call"
-										? "bg-blue-600 text-white hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
-								}`}
+								className={`h-10 text-xs ${mediaType === "customer-call"
+										? "bg-blue-600 text-foreground hover:bg-blue-700"
+										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									}`}
 							>
 								Customer Call
 							</Button>
@@ -230,33 +226,24 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "user-testing" ? "default" : "outline"}
 								onClick={() => setMediaType("user-testing")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "user-testing"
-										? "bg-blue-600 text-white hover:bg-blue-700"
-										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-white"
-								}`}
+								className={`h-10 text-xs ${mediaType === "user-testing"
+										? "bg-blue-600 text-foreground hover:bg-blue-700"
+										: "border-gray-600 bg-transparent text-gray-300 hover:bg-gray-800 hover:text-foreground"
+									}`}
 							>
 								User Testing
 							</Button>
 						</div>
 					</div>
-
-					{/* File Requirements - Compact */}
-					<div className="rounded-lg bg-gray-900/50 p-3">
-						<p className="mb-2 font-medium text-gray-300 text-xs">
-							Supported: MP3, MP4, WAV, M4A, MOV, AVI, TXT, MD (max 500MB)
-						</p>
-						<p className="text-gray-400 text-xs">💡 Clear audio works best</p>
-					</div>
 				</div>
 			</div>
 
 			{/* Bottom Action */}
-			<div className="mx-auto mt-8 mb-20 max-w-xl border-gray-800 border-t bg-black p-4">
+			<div className="mx-auto mt-8 mb-20 max-w-xl border-gray-800 border-t bg-background p-4">
 				<Button
 					onClick={handleNext}
 					disabled={!selectedFile}
-					className="h-12 w-full bg-blue-600 font-medium text-white hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-400"
+					className="h-12 w-full bg-blue-600 font-medium text-foreground hover:bg-blue-700 disabled:bg-gray-800 disabled:text-gray-400"
 				>
 					{selectedFile ? "Start Analysis" : "Select a file to continue"}
 				</Button>
