@@ -481,7 +481,7 @@ export default function ProjectStatusScreen({
 										<Zap className="h-6 w-6 text-yellow-600" />
 										Quick Actions
 									</h3>
-									<div className="space-y-3">
+									<div className="w-32 space-y-3">
 										<Button
 											variant="outline"
 											className="h-12 w-full justify-start text-base"
@@ -904,8 +904,8 @@ export default function ProjectStatusScreen({
 																				<div
 																					key={`question-${section.id}-${question.id ?? index}`}
 																					className={`rounded-lg border p-3 ${questionStatus.status === "answered"
-																						? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-																						: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
 																						}`}
 																				>
 																					<div className="flex items-start gap-2">

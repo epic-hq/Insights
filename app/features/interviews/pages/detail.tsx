@@ -3,8 +3,10 @@ import consola from "consola"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
+import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
+import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { EvidenceCard } from "~/features/evidence/components/EvidenceCard"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
@@ -30,11 +32,20 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 	const interviewId = params.interviewId
 
+	consola.info("🔍 Interview Detail Loader Started:", {
+		accountId,
+		projectId,
+		interviewId,
+		params
+	})
+
 	if (!accountId || !projectId || !interviewId) {
+		consola.error("❌ Missing required parameters:", { accountId, projectId, interviewId })
 		throw new Response("Account ID, Project ID, and Interview ID are required", { status: 400 })
 	}
 
 	try {
+		consola.info("📊 Fetching interview data...")
 		// Fetch interview data from database (simple query first to avoid junction table issues)
 		const { data: interviewData, error: interviewError } = await getInterviewById({
 			supabase,
@@ -44,12 +55,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 
 		if (interviewError) {
+			consola.error("❌ Error fetching interview:", interviewError)
 			throw new Response(`Error fetching interview: ${interviewError.message}`, { status: 500 })
 		}
 
 		if (!interviewData) {
+			consola.error("❌ Interview not found:", { interviewId, projectId, accountId })
 			throw new Response("Interview not found", { status: 404 })
 		}
+
+		consola.info("✅ Interview data fetched successfully:", {
+			interviewId: interviewData.id,
+			title: interviewData.title
+		})
 
 		// Fetch participant data separately to avoid junction table query issues
 		let participants: any[] = []
@@ -120,12 +138,23 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			consola.warn("Could not fetch evidence:", evidenceError.message)
 		}
 
-		return {
+		const loaderResult = {
+			accountId,
+			projectId,
 			interview,
 			insights,
 			evidence: evidence || [],
-			interviewerData: null,
 		}
+		
+		consola.info("✅ Loader completed successfully:", {
+			accountId,
+			projectId,
+			interviewId: interview.id,
+			insightsCount: insights?.length || 0,
+			evidenceCount: evidence?.length || 0
+		})
+		
+		return loaderResult
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error)
 		throw new Response(`Failed to load interview: ${msg}`, { status: 500 })
@@ -133,10 +162,35 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { interview, insights, evidence, interviewerData } = useLoaderData<typeof loader>()
+	consola.info("🎯 InterviewDetail Component Rendering...")
+	
+	const { accountId, projectId, interview, insights, evidence } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
-	const { accountId, projectId, projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
+	
+	let projectPath = ""
+	let routes = null
+	
+	try {
+		const currentProject = useCurrentProject()
+		projectPath = currentProject.projectPath
+		routes = useProjectRoutes(projectPath)
+		consola.info("✅ Current project context loaded:", currentProject)
+	} catch (error) {
+		consola.error("❌ Error loading current project context:", error)
+		// Fallback route construction
+		projectPath = `/a/${accountId}/${projectId}`
+		routes = useProjectRoutes(projectPath)
+		consola.info("🔄 Using fallback project path:", projectPath)
+	}
+
+	consola.info("📋 Component Data Loaded:", {
+		interviewId: interview.id,
+		accountId,
+		projectId,
+		projectPath,
+		insightsCount: insights?.length || 0,
+		evidenceCount: evidence?.length || 0
+	})
 
 	const participants = interview.participants || []
 	const primaryParticipant = participants[0]?.people
@@ -169,6 +223,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	return (
 		<div className="mx-auto max-w-6xl">
+			<div className="mb-6">
+				<BackButton to={routes.interviews.index()} label="Back to Interviews" position="relative" />
+			</div>
 			<div className="grid gap-8 lg:grid-cols-3" />
 			<Separator />
 			<div className="mx-auto mt-8 w-full max-w-7xl px-4 lg:flex lg:space-x-8">
@@ -253,11 +310,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Interviewer info */}
 					{/* TODO: Interviewer info */}
-					{interviewerData?.name && (
+					{/* {interviewerData?.name && (
 						<div className="mb-2 text-foreground/50 text-sm">
 							Interviewer: <span className="font-medium text-foreground/50">{interviewerData.name}</span>
 						</div>
-					)}
+					)} */}
 
 					<div>
 						<label className="mb-1 block font-bold text-foreground text-lg">Observations & Notes</label>
@@ -402,6 +459,20 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Transcript Section */}
 					<div>
+						<div className="mb-4 flex items-center justify-between">
+							<h3 className="font-semibold text-gray-900 text-lg">Transcript</h3>
+							{interview.media_url && (
+								<MediaPlayer
+									mediaUrl={interview.media_url}
+									title="Play Recording"
+									size="sm"
+									interviewId={interview.id}
+									accountId={accountId}
+									projectId={projectId}
+									existingDuration={interview.duration_min || undefined}
+								/>
+							)}
+						</div>
 						<LazyTranscriptResults
 							interviewId={interview.id}
 							hasTranscript={interview.hasTranscript}

@@ -54,6 +54,8 @@ export interface InterviewQuestionsManagerProps {
 	research_goal_details?: string
 	assumptions?: string[]
 	unknowns?: string[]
+	// When true (default), auto-generates an initial question set for empty projects
+	autoGenerateOnEmpty?: boolean
 	defaultTimeMinutes?: 15 | 30 | 45 | 60
 	defaultPurpose?: Purpose
 	defaultFamiliarity?: Familiarity
@@ -176,6 +178,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		research_goal_details,
 		assumptions,
 		unknowns,
+		autoGenerateOnEmpty = true,
 		defaultTimeMinutes = 30,
 		defaultPurpose = "exploratory",
 		defaultFamiliarity = "cold",
@@ -339,13 +342,14 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}
 
-	// Auto-generate questions on first load for new users
+	// Auto-generate questions on first load (optional)
 	useEffect(() => {
+		if (!autoGenerateOnEmpty) return
 		if (!loading && !hasInitialized && questions.length === 0 && projectId) {
 			setAutoGenerateInitial(true)
 			generateQuestions()
 		}
-	}, [loading, hasInitialized, questions.length, projectId])
+	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId])
 
 	const supabase = createClient()
 

@@ -89,7 +89,7 @@ export function OnboardingStepper({ steps, currentStepId, className, onStepClick
 								)}
 								{index < steps.length - 1 && (
 									<div
-										className={cn("ml-4 h-0.5 w-8 hidden md:block md:ml-8 md:w-16", {
+										className={cn("ml-4 h-0.5 w-8 hidden md:ml-8 md:block md:w-16", {
 											"bg-primary": index < currentIndex,
 											"bg-muted-foreground": index >= currentIndex,
 										})}

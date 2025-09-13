@@ -2,10 +2,13 @@ import consola from "consola"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
+import { BackButton } from "~/components/ui/BackButton"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
+import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Textarea } from "~/components/ui/textarea"
 import { deleteInterview, getInterviewById, updateInterview } from "~/features/interviews/db"
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
 
@@ -52,7 +55,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			hasFormattedTranscript: !!transcript_formatted,
 		}
 
-		return { interview }
+		return { accountId, projectId, interview }
 	} catch (_error) {
 		throw new Response("Failed to load interview", { status: 500 })
 	}
@@ -150,13 +153,22 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function EditInterview() {
-	const { interview } = useLoaderData<typeof loader>()
+	const { accountId, projectId, interview } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const routes = useProjectRoutesFromIds(accountId, projectId)
 
 	return (
 		<div className="mx-auto max-w-2xl">
-			<div className="mb-8">
-				<h1 className="font-bold text-3xl text-gray-900">Edit Interview</h1>
+			<div className="mb-6">
+				<BackButton 
+					to={routes.interviews.detail(interview.id)} 
+					label="Back to Interview"
+					position="relative"
+					className="mb-4"
+				/>
+				<div className="flex items-center justify-between gap-4 mb-2">
+					<h1 className="font-bold text-3xl text-gray-900">Edit Interview</h1>
+				</div>
 				<p className="mt-2 text-gray-600">Update interview details</p>
 			</div>
 
@@ -222,7 +234,20 @@ export default function EditInterview() {
 				</div>
 
 				<div>
-					<Label htmlFor="media_url">Media URL</Label>
+					<div className="flex items-center justify-between gap-2 mb-1">
+						<Label htmlFor="media_url">Media URL</Label>
+						{interview.media_url && (
+							<MediaPlayer 
+								mediaUrl={interview.media_url}
+								title="Play"
+								size="sm"
+								interviewId={interview.id}
+								accountId={accountId}
+								projectId={projectId}
+								existingDuration={interview.duration_min || undefined}
+							/>
+						)}
+					</div>
 					<Input
 						id="media_url"
 						name="media_url"

@@ -9,6 +9,7 @@ import { Textarea } from "~/components/ui/textarea"
 import { createClient } from "~/lib/supabase/client"
 import { useNavigate } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import posthog from 'posthog-js'
 
 interface InterviewCopilotProps {
 	projectId: string
@@ -59,6 +60,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
     turn_is_formatted: boolean
     words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
   }
+  // Track keys for final turns to avoid duplicates
+  const finalKeysRef = useRef<string[]>([])
 
   // When route unmounts, ensure cleanup
   useEffect(() => {
@@ -252,12 +255,17 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
           if ((msg as any).type === "Turn") {
             const t = msg as any as TurnMsg
             if (t.end_of_turn) {
-              // push final caption and clear current
-              setCaptions((prev) => [t.transcript, ...prev.slice(0, 9)])
+              // Only keep final captions; de-dupe by timing window
+              const key = computeTurnKey(t)
+              setCaptions((prev) => {
+                if (finalKeysRef.current.includes(key)) return prev
+                finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 9)]
+                return [t.transcript, ...prev.slice(0, 9)]
+              })
               setCurrentCaption("")
             } else {
-              // show draft
-              setCurrentCaption(t.transcript)
+              // Ignore drafts to avoid duplicate visuals; show only finals
+              // setCurrentCaption(t.transcript)
             }
           } else if ((msg as any).type === "Begin") {
             setCaptions([])
@@ -348,15 +356,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
     })()
   }, [assignedInterviewId, basePath, captions, currentCaption, navigate, projectId, supabase])
 
-	// Mock project data - in real app, fetch from project
-	const [projectData, _setProjectData] = useState({
-		target_orgs: ["Tech Startups", "SaaS Companies"],
-		target_roles: ["Product Managers", "Engineering Leaders"],
-		research_goal: "Understand leadership challenges in remote teams",
-		research_goal_details: "How do leaders maintain team cohesion and productivity in distributed environments?",
-		assumptions: ["Remote work creates communication gaps", "Leaders struggle with visibility"],
-		unknowns: ["What tools are most effective?", "How do different team sizes affect leadership?"],
-	})
+  // In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 
 	const handleQuestionStatusChange = useCallback(
 		async (_questionId: string, status: "proposed" | "asked" | "answered" | "skipped") => {
@@ -470,6 +470,16 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
     return out
   }
 
+  // Compute a stable key for a turn from its word timing window
+  function computeTurnKey(t: TurnMsg): string {
+    if (t.words && t.words.length > 0) {
+      const start = t.words[0]?.start ?? 0
+      const end = t.words[t.words.length - 1]?.end ?? 0
+      return `${start}-${end}`
+    }
+    return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
+  }
+
 	const getSuggestionIcon = (type: AISuggestion["type"]) => {
 		switch (type) {
 			case "follow_up":
@@ -502,12 +512,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			<div className="space-y-4 overflow-y-auto">
 				<InterviewQuestionsManager
 					projectId={projectId}
-					target_orgs={projectData.target_orgs}
-					target_roles={projectData.target_roles}
-					research_goal={projectData.research_goal}
-					research_goal_details={projectData.research_goal_details}
-					assumptions={projectData.assumptions}
-					unknowns={projectData.unknowns}
+					autoGenerateOnEmpty={false}
 					onSelectedQuestionsChange={setSelectedQuestions}
 				/>
 			</div>
@@ -550,11 +555,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						<CardTitle>Live Captions</CardTitle>
 					</CardHeader>
 					<CardContent>
-						{currentCaption && (
-							<div className="mb-3 rounded-lg border-blue-400 border-l-4 bg-blue-50 p-3">
-								<p className="font-medium text-blue-900 text-sm">{currentCaption}</p>
-							</div>
-						)}
+						{/* Show only final captions */}
 						<div className="max-h-32 space-y-2 overflow-y-auto">
 							{captions.map((caption, index) => (
 								<p key={index} className="rounded bg-gray-50 p-2 text-muted-foreground text-xs">
@@ -579,29 +580,33 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{aiSuggestions.map((suggestion) => (
-							<Card key={suggestion.id} className="border-l-4 border-l-blue-400">
-								<CardContent className="p-3">
-									<div className="mb-2 flex items-start gap-2">
-										{getSuggestionIcon(suggestion.type)}
-										<Badge variant="outline" className={getSuggestionColor(suggestion.type)}>
-											{suggestion.type.replace("_", " ")}
-										</Badge>
-										<Badge variant="secondary" className="ml-auto text-xs">
-											{Math.round(suggestion.confidence * 100)}%
-										</Badge>
-									</div>
-									<p className="text-sm">{suggestion.text}</p>
-									<p className="mt-1 text-muted-foreground text-xs">{suggestion.timestamp.toLocaleTimeString()}</p>
-								</CardContent>
-							</Card>
-						))}
+						{posthog.isFeatureEnabled('ffRealTime') && (
+							<>
+								{aiSuggestions.map((suggestion) => (
+									<Card key={suggestion.id} className="border-l-4 border-l-blue-400">
+										<CardContent className="p-3">
+											<div className="mb-2 flex items-start gap-2">
+												{getSuggestionIcon(suggestion.type)}
+												<Badge variant="outline" className={getSuggestionColor(suggestion.type)}>
+													{suggestion.type.replace("_", " ")}
+												</Badge>
+												<Badge variant="secondary" className="ml-auto text-xs">
+													{Math.round(suggestion.confidence * 100)}%
+												</Badge>
+											</div>
+											<p className="text-sm">{suggestion.text}</p>
+											<p className="mt-1 text-muted-foreground text-xs">{suggestion.timestamp.toLocaleTimeString()}</p>
+										</CardContent>
+									</Card>
+								))}
 
-						{aiSuggestions.length === 0 && (
-							<div className="py-4 text-center text-muted-foreground">
-								<Lightbulb className="mx-auto mb-2 h-6 w-6 opacity-50" />
-								<p className="text-sm">AI suggestions will appear here during the interview</p>
-							</div>
+								{aiSuggestions.length === 0 && (
+									<div className="py-4 text-center text-muted-foreground">
+										<Lightbulb className="mx-auto mb-2 h-6 w-6 opacity-50" />
+										<p className="text-sm">AI suggestions will appear here during the interview</p>
+									</div>
+								)}
+							</>
 						)}
 					</CardContent>
 				</Card>

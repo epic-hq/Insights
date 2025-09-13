@@ -33,7 +33,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		}
 
 		// 2) Create interview in transcribing state for this project
-		const title = `Realtime Interview ${now.toLocaleTimeString()}`
+		const title = `${now.toLocaleDateString("en-US", { month: "short", day: "numeric" })
+			.replace(/ /g, "-")}-${now.toLocaleTimeString()}`
 		const { data: interview, error: interviewError } = await supabase
 			.from("interviews")
 			.insert({

@@ -7,6 +7,7 @@ import { Link, useLoaderData } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { Button } from "~/components/ui/button"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
 import { getInterviews } from "~/features/interviews/db"
@@ -68,11 +69,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+		; (rows || []).forEach((interview) => {
+			const primaryParticipant = interview.interview_people?.[0]
+			const segment = primaryParticipant?.people?.segment || "Unknown"
+			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+		})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -119,31 +120,33 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				<div className="mx-auto max-w-6xl">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<h1 className="font-light text-3xl text-gray-900 tracking-tight dark:text-white">Sources</h1>
-							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400">
-								Conversations, interviews, and transcripts
-							</p>
-						</div>
-						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-							{/* View Toggle */}
-							<div className="flex rounded-lg border border-gray-300 dark:border-gray-600">
-								<Button
-									variant={viewMode === "cards" ? "default" : "ghost"}
+							<h1 className="text-3xl text-foreground dark:text-foreground">Content</h1>
+							<div className="flex-row flex justify-between">
+								<div className="mt-2 text-gray-600 text-lg dark:text-gray-400 mr-5">
+									Recordings & Docs
+								</div>
+								{/* View Toggle */}
+
+								<ToggleGroup
+									type="single"
+									value={viewMode}
+									onValueChange={(v) => v && setViewMode(v)}
 									size="sm"
-									onClick={() => setViewMode("cards")}
-									className="rounded-r-none"
+									className="shrink-0"
 								>
-									<Grid className="h-4 w-4" />
-								</Button>
-								<Button
-									variant={viewMode === "table" ? "default" : "ghost"}
-									size="sm"
-									onClick={() => setViewMode("table")}
-									className="rounded-l-none"
-								>
-									<List className="h-4 w-4" />
-								</Button>
+									<ToggleGroupItem value="cards" aria-label="Cards">
+										<Grid className="h-4 w-4" />
+									</ToggleGroupItem>
+									<ToggleGroupItem value="table" aria-label="Table">
+										<List className="h-4 w-4" />
+									</ToggleGroupItem>
+								</ToggleGroup>
 							</div>
+						</div>
+
+						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+
+							{/* Actions */}
 							<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
 								<Button asChild variant="default" className="gap-2">
 									<Link to={routes.interviews.upload()}>
@@ -151,11 +154,10 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 										Add Interview
 									</Link>
 								</Button>
-								<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-									<Link to={routes.themes.index()}>View Themes</Link>
-								</Button>
+
 							</div>
 						</div>
+
 					</div>
 				</div>
 			</div>
@@ -270,13 +272,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-														interview.status === "ready"
-															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-															: interview.status === "transcribed"
-																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-													}`}
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
+														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+														: interview.status === "transcribed"
+															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+															: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+														}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>
