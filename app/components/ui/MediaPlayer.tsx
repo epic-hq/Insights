@@ -12,6 +12,17 @@ interface MediaPlayerProps {
 	duration_sec?: number // existing duration in seconds from database
 }
 
+// Helper function to format seconds as MM:SS with safe fallbacks
+function formatDuration(seconds: number | null | undefined): string {
+	if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds <= 0) {
+		return "00:00"
+	}
+	const whole = Math.floor(seconds)
+	const minutes = Math.floor(whole / 60)
+	const remainingSeconds = whole % 60
+	return `${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`
+}
+
 export function MediaPlayer({
 	mediaUrl,
 	title = "Play Media",
@@ -21,9 +32,12 @@ export function MediaPlayer({
 }: MediaPlayerProps) {
 	const [isPlaying, setIsPlaying] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
-	const [duration, setDuration] = useState<number | null>(duration_sec || 0)
+	const [duration, setDuration] = useState<number | null>(
+		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0
+			? Math.floor(duration_sec)
+			: 0
+	)
 	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
-
 
 	if (!mediaUrl) return null
 
@@ -66,21 +80,10 @@ export function MediaPlayer({
 	}
 
 	const handleLoadedMetadata = () => {
-		if (mediaRef.current?.duration && !duration) {
-			const mediaDuration = Math.floor(mediaRef.current.duration)
-			setDuration(mediaDuration)
+		const d = mediaRef.current?.duration
+		if (typeof d === "number" && Number.isFinite(d) && d > 0) {
+			setDuration(Math.floor(d))
 		}
-	}
-
-	const formatDuration = (seconds: number): string => {
-		const hours = Math.floor(seconds / 3600)
-		const minutes = Math.floor((seconds % 3600) / 60)
-		const remainingSeconds = seconds % 60
-
-		if (hours > 0) {
-			return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`
-		}
-		return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
 	}
 
 	return (
@@ -101,7 +104,7 @@ export function MediaPlayer({
 				)}
 				<span className="flex items-center gap-1">
 					{title}
-					{duration ? <span className="text-blue-500 text-xs">({formatDuration(duration)})</span> : null}
+					<span className="text-blue-500 text-xs">({formatDuration(duration)})</span>
 				</span>
 			</Button>
 

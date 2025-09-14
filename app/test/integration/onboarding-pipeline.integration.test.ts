@@ -162,7 +162,7 @@ describe("Onboarding Pipeline Integration", () => {
 
 			expect(finalInterview?.status).toBe("ready")
 			expect(finalInterview?.transcript).toBe("This is a test transcript about user research and insights.")
-			expect(finalInterview?.duration_min).toBe(3) // 180 seconds = 3 minutes
+			expect(finalInterview?.duration_sec).toBe(180) // 180 seconds = 3 minutes
 
 			const { data: finalUploadJob } = await testDb
 				.from("upload_jobs")

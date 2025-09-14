@@ -29,10 +29,12 @@ create table if not exists interviews (
 	high_impact_themes text[],
 	open_questions_and_next_steps text,
 	observations_and_notes text,
-  duration_min int,
+  duration_sec int,
   status interview_status not null default 'draft',
   created_at timestamptz not null default now(),
-	updated_at timestamptz not null default now()
+	updated_at timestamptz not null default now(),
+	created_by uuid references auth.users (id),
+	updated_by uuid references auth.users (id)
 );
 
 -- Indexes for performance based on common queries

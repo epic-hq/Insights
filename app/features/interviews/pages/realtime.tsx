@@ -1,6 +1,6 @@
+import { ChevronLeft } from "lucide-react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
-import { ChevronLeft } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -38,17 +38,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export default function InterviewRealtimePage() {
 	const { accountId, projectId, interviewId } = useLoaderData<typeof loader>()
 	const routes = useProjectRoutesFromIds(accountId, projectId)
-	
+
 	return (
-		<div className="relative h-screen bg-gray-50">
+		<div className="bg-background">
 			{/* Back button */}
-			<div className="absolute top-4 left-4 z-10">
+			<div className="top-4 left-4 z-10">
 				<Link to={routes.interviews.index()}>
-					<Button
-						variant="outline"
-						size="sm"
-						className="flex items-center gap-2 bg-background/80 backdrop-blur-sm"
-					>
+					<Button variant="outline" size="sm" className="flex items-center gap-2 bg-background/80 backdrop-blur-sm">
 						<ChevronLeft className="h-4 w-4" />
 						Back to Interviews
 					</Button>

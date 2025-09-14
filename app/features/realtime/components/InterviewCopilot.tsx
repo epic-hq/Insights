@@ -1,15 +1,16 @@
 import consola from "consola"
-import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, Square, RotateCcw, Users } from "lucide-react"
+import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Square, Users } from "lucide-react"
+import posthog from "posthog-js"
 import { useCallback, useEffect, useRef, useState } from "react"
-import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
+import { useNavigate } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
-import { createClient } from "~/lib/supabase/client"
-import { useNavigate } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import posthog from 'posthog-js'
+import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { createClient } from "~/lib/supabase/client"
 
 interface InterviewCopilotProps {
 	projectId: string
@@ -34,50 +35,76 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
 	const supabase = createClient()
-  const navigate = useNavigate()
-  const { accountId } = useCurrentProject()
-  const basePath = `/a/${accountId}/${projectId}`
+	const navigate = useNavigate()
+	const { accountId, projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
-  // Realtime streaming state
-  const [streamStatus, setStreamStatus] = useState<
-    "idle" | "connecting" | "streaming" | "paused" | "stopped" | "error"
-  >("idle")
-  // Visible text for "Replay last 15s"
-  const [replayText, setReplayText] = useState<string>("")
-  const replayTimerRef = useRef<number | null>(null)
-  const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId)
-  const [isFinishing, setIsFinishing] = useState(false)
-  const wsRef = useRef<WebSocket | null>(null)
-  const ctxRef = useRef<AudioContext | null>(null)
-  const nodeRef = useRef<AudioWorkletNode | null>(null)
-  const bufferRef = useRef<Float32Array[]>([])
-  const timerRef = useRef<number | null>(null)
-  const recRef = useRef<MediaRecorder | null>(null)
-  const recChunksRef = useRef<BlobPart[]>([])
-  const insufficientRef = useRef(false)
-  const firstSendRef = useRef(true)
+	// Realtime streaming state
+	const [streamStatus, setStreamStatus] = useState<
+		"idle" | "connecting" | "streaming" | "paused" | "stopped" | "error"
+	>("idle")
+	// Visible text for "Replay last 15s"
+	const [replayText, setReplayText] = useState<string>("")
+	const replayTimerRef = useRef<number | null>(null)
+	const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId)
+	const [isFinishing, setIsFinishing] = useState(false)
+	const wsRef = useRef<WebSocket | null>(null)
+	const ctxRef = useRef<AudioContext | null>(null)
+	const nodeRef = useRef<AudioWorkletNode | null>(null)
+	const bufferRef = useRef<Float32Array[]>([])
+	const timerRef = useRef<number | null>(null)
+	const recRef = useRef<MediaRecorder | null>(null)
+	const recChunksRef = useRef<BlobPart[]>([])
+	const insufficientRef = useRef(false)
+	const firstSendRef = useRef(true)
+	// Approximate timeline in seconds when word timings are unavailable
+	const approxTimeRef = useRef(0)
+	// Track recording elapsed time for duration fallback and full transcript
+	const recordStartRef = useRef<number | null>(null)
+	const elapsedMsRef = useRef(0)
+	const allFinalTranscriptsRef = useRef<string[]>([])
 
-  const TARGET_SAMPLE_RATE = 16000
-  const CHUNK_MS = 100
-  const MIN_OUT_MS = 60
+	const TARGET_SAMPLE_RATE = 16000
+	const CHUNK_MS = 100
+	const MIN_OUT_MS = 60
 
-  type TurnMsg = {
-    type: "Turn"
-    transcript: string
-    end_of_turn: boolean
-    turn_is_formatted: boolean
-    words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
-  }
-  // Track keys for final turns to avoid duplicates
-  const finalKeysRef = useRef<string[]>([])
+	// Helper function to extract duration from audio blob
+	const getAudioDuration = async (blob: Blob): Promise<number> => {
+		return new Promise((resolve, reject) => {
+			const audio = new Audio()
+			const url = URL.createObjectURL(blob)
 
-  // When route unmounts, ensure cleanup
-  useEffect(() => {
-    return () => {
-      stopStreaming()
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [])
+			audio.addEventListener("loadedmetadata", () => {
+				URL.revokeObjectURL(url)
+				resolve(Math.floor(audio.duration))
+			})
+
+			audio.addEventListener("error", (e) => {
+				URL.revokeObjectURL(url)
+				reject(new Error(`Failed to load audio: ${e}`))
+			})
+
+			audio.src = url
+		})
+	}
+
+	type TurnMsg = {
+		type: "Turn"
+		transcript: string
+		end_of_turn: boolean
+		turn_is_formatted: boolean
+		words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
+	}
+	// Track keys for final turns to avoid duplicates
+	const finalKeysRef = useRef<string[]>([])
+
+	// When route unmounts, ensure cleanup
+	useEffect(() => {
+		return () => {
+			stopStreaming()
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
 
 	// Save interview notes to database (debounced)
 	const saveInterviewNotes = useCallback(
@@ -169,286 +196,356 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		return () => clearTimeout(timeoutId)
 	}, [interviewNotes, saveInterviewNotes])
 
-  // ========= Realtime streaming logic =========
-  const startStreaming = useCallback(async () => {
-    try {
-      setStreamStatus("connecting")
+	// ========= Realtime streaming logic =========
+	const startStreaming = useCallback(async () => {
+		try {
+			setStreamStatus("connecting")
 
-      // Ensure interview ID exists; create if missing
-      let useInterviewId = assignedInterviewId
-      if (!useInterviewId) {
-        const startRes = await fetch(`${basePath}/api/interviews/realtime-start`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({}),
-        })
-        const startData = await startRes.json()
-        if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview")
-        useInterviewId = startData.interviewId
-        setAssignedInterviewId(useInterviewId)
-      }
+			// Ensure interview ID exists; create if missing
+			let useInterviewId = assignedInterviewId
+			if (!useInterviewId) {
+				const startRes = await fetch(`${projectPath}/api/interviews/realtime-start`, {
+					method: "POST",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({}),
+				})
+				const startData = await startRes.json()
+				if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview")
+				useInterviewId = startData.interviewId
+				setAssignedInterviewId(useInterviewId)
+			}
 
-      // Connect to server WS proxy
-      const scheme = window.location.protocol === "https:" ? "wss" : "ws"
-      const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`
-      const ws = new WebSocket(url, ["binary"]) // we send binary PCM frames
-      ws.binaryType = "arraybuffer"
-      wsRef.current = ws
+			// Connect to server WS proxy
+			const scheme = window.location.protocol === "https:" ? "wss" : "ws"
+			const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`
+			const ws = new WebSocket(url, ["binary"]) // we send binary PCM frames
+			ws.binaryType = "arraybuffer"
+			wsRef.current = ws
 
-      ws.onopen = async () => {
-        setStreamStatus("streaming")
-        // Audio capture via AudioWorklet
-        const ctx = new AudioContext({ sampleRate: 48000 })
-        ctxRef.current = ctx
-        await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
-          video: false,
-        })
-        const src = ctx.createMediaStreamSource(stream)
-        const node = new AudioWorkletNode(ctx, "pcm-processor")
-        nodeRef.current = node
-        src.connect(node)
+			ws.onopen = async () => {
+				setStreamStatus("streaming")
+				// Start wall-clock timer for duration fallback
+				recordStartRef.current = performance.now()
+				// Audio capture via AudioWorklet
+				const ctx = new AudioContext({ sampleRate: 48000 })
+				ctxRef.current = ctx
+				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
+				const stream = await navigator.mediaDevices.getUserMedia({
+					audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+					video: false,
+				})
+				const src = ctx.createMediaStreamSource(stream)
+				const node = new AudioWorkletNode(ctx, "pcm-processor")
+				nodeRef.current = node
+				src.connect(node)
 
-        // Start in-browser recording for upload
-        try {
-          const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" })
-          recRef.current = rec
-          recChunksRef.current = []
-          rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) recChunksRef.current.push(e.data) }
-          rec.start(500)
-        } catch {
-          consola.warn("MediaRecorder unsupported; audio won't be saved")
-        }
+				// Start in-browser recording for upload
+				try {
+					const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" })
+					recRef.current = rec
+					recChunksRef.current = []
+					rec.ondataavailable = (e) => {
+						if (e.data && e.data.size > 0) recChunksRef.current.push(e.data)
+					}
+					rec.start(500)
+				} catch {
+					consola.warn("MediaRecorder unsupported; audio won't be saved")
+				}
 
-        node.port.onmessage = (e) => {
-          bufferRef.current.push(e.data as Float32Array)
-        }
+				node.port.onmessage = (e) => {
+					bufferRef.current.push(e.data as Float32Array)
+				}
 
-        const sendChunk = () => {
-          const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
-          const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
-          const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
-          if (available < minInputSamples) {
-            insufficientRef.current = true
-            return
-          }
-          const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
-          let floats = drainForSamples(Math.max(minInputSamples, inputAim))
-          if (!floats || floats.length === 0) return
-          let pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
-          if (!pcm16) return
-          if (pcm16.length < minOutSamples) {
-            insufficientRef.current = true
-            return
-          }
-          insufficientRef.current = false
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(pcm16.buffer)
-            firstSendRef.current = false
-          }
-        }
+				const sendChunk = () => {
+					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
+					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
+					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+					if (available < minInputSamples) {
+						insufficientRef.current = true
+						return
+					}
+					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
+					const floats = drainForSamples(Math.max(minInputSamples, inputAim))
+					if (!floats || floats.length === 0) return
+					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
+					if (!pcm16) return
+					if (pcm16.length < minOutSamples) {
+						insufficientRef.current = true
+						return
+					}
+					insufficientRef.current = false
+					if (ws.readyState === WebSocket.OPEN) {
+						ws.send(pcm16.buffer)
+						firstSendRef.current = false
+					}
+				}
 
-        timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
-      }
+				timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
+			}
 
-      ws.onmessage = async (evt) => {
-        try {
-          let text: string | null = null
-          if (typeof evt.data === "string") text = evt.data
-          else if (evt.data instanceof Blob) text = await evt.data.text()
-          else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data)
-          if (!text) return
-          const msg = JSON.parse(text) as { type: string }
-          if ((msg as any).type === "Turn") {
-            const t = msg as any as TurnMsg
-            if (t.end_of_turn) {
-              // Only keep final captions; de-dupe by timing window
-              const key = computeTurnKey(t)
-              setCaptions((prev) => {
-                if (finalKeysRef.current.includes(key)) return prev
-                finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 9)]
-                return [t.transcript, ...prev.slice(0, 9)]
-              })
-              // Track turns with timestamps for replay
-              if (t.words && t.words.length) {
-                const start = t.words[0]?.start ?? 0
-                const end = t.words[t.words.length - 1]?.end ?? 0
-                setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
-              }
-              setCurrentCaption("")
-            } else {
-              // Keep draft transcript internally (not shown live) to support Replay
-              setCurrentCaption(t.transcript)
-            }
-          } else if ((msg as any).type === "Begin") {
-            setCaptions([])
-            setTurns([])
-            setCurrentCaption("")
-          }
-        } catch {
-          // ignore non-JSON
-        }
-      }
+			ws.onmessage = async (evt) => {
+				try {
+					let text: string | null = null
+					if (typeof evt.data === "string") text = evt.data
+					else if (evt.data instanceof Blob) text = await evt.data.text()
+					else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data)
+					if (!text) return
+					const msg = JSON.parse(text) as { type: string }
+					if ((msg as any).type === "Turn") {
+						const t = msg as any as TurnMsg
+						if (t.end_of_turn) {
+							// Only keep final captions; de-dupe by timing window
+							const key = computeTurnKey(t)
+							const isNew = !finalKeysRef.current.includes(key)
+							// Accumulate full transcript before mutating the key set
+							if (isNew) {
+								allFinalTranscriptsRef.current.push(t.transcript)
+							}
+							setCaptions((prev) => {
+								if (!isNew) return prev
+								finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 9)]
+								return [t.transcript, ...prev.slice(0, 9)]
+							})
+							// Track turns with timestamps for replay (fallback if no word timings)
+							if (t.words && t.words.length) {
+								const start = t.words[0]?.start ?? approxTimeRef.current
+								const end = t.words[t.words.length - 1]?.end ?? start
+								approxTimeRef.current = end
+								setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+							} else {
+								const start = approxTimeRef.current
+								// Roughly estimate 4s per short turn when timings missing
+								const estimated = Math.max(2, Math.min(10, Math.ceil((t.transcript?.length || 20) / 40)))
+								const end = start + estimated
+								approxTimeRef.current = end
+								setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+							}
+							setCurrentCaption("")
+						} else {
+							// Keep draft transcript internally (not shown live) to support Replay
+							setCurrentCaption(t.transcript)
+						}
+					} else if ((msg as any).type === "Begin") {
+						setCaptions([])
+						setTurns([])
+						setCurrentCaption("")
+						allFinalTranscriptsRef.current = []
+						approxTimeRef.current = 0
+					}
+				} catch {
+					// ignore non-JSON
+				}
+			}
 
-      ws.onerror = () => {
-        setStreamStatus("error")
-        setIsRecording(false)
-      }
-      ws.onclose = () => {
-        setStreamStatus("stopped")
-        setIsRecording(false)
-      }
-    } catch (e) {
-      consola.error("startStreaming error", e)
-      setStreamStatus("error")
-      setIsRecording(false)
-      stopStreaming()
-    }
-  }, [assignedInterviewId, basePath])
+			ws.onerror = () => {
+				setStreamStatus("error")
+				setIsRecording(false)
+			}
+			ws.onclose = () => {
+				setStreamStatus("stopped")
+				setIsRecording(false)
+			}
+		} catch (e) {
+			consola.error("startStreaming error", e)
+			setStreamStatus("error")
+			setIsRecording(false)
+			stopStreaming()
+		}
+	}, [assignedInterviewId])
 
-  // Pause without finalizing; keeps WS alive if possible
-  const pauseStreaming = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-      timerRef.current = null
-    }
-    try {
-      nodeRef.current?.disconnect()
-      ctxRef.current?.suspend?.()
-      const rec = recRef.current
-      if (rec && rec.state === "recording" && typeof rec.pause === "function") {
-        try { rec.pause() } catch {}
-      }
-    } catch {}
-    setStreamStatus("paused")
-  }, [])
+	// Pause without finalizing; keeps WS alive if possible
+	const pauseStreaming = useCallback(() => {
+		if (timerRef.current) {
+			clearInterval(timerRef.current)
+			timerRef.current = null
+		}
+		try {
+			nodeRef.current?.disconnect()
+			ctxRef.current?.suspend?.()
+			const rec = recRef.current
+			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
+				try {
+					rec.pause()
+				} catch { }
+			}
+		} catch { }
+		// Accumulate elapsed time until now
+		try {
+			if (recordStartRef.current != null) {
+				elapsedMsRef.current += performance.now() - recordStartRef.current
+				recordStartRef.current = null
+			}
+		} catch { }
+		setStreamStatus("paused")
+	}, [])
 
-  // Resume after pause; reuse existing WS if open
-  const resumeStreaming = useCallback(async () => {
-    try {
-      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-        setStreamStatus("streaming")
-        const ctx = new AudioContext({ sampleRate: 48000 })
-        ctxRef.current = ctx
-        await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
-        const stream = await navigator.mediaDevices.getUserMedia({
-          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
-          video: false,
-        })
-        const src = ctx.createMediaStreamSource(stream)
-        const node = new AudioWorkletNode(ctx, "pcm-processor")
-        nodeRef.current = node
-        src.connect(node)
+	// Resume after pause; reuse existing WS if open
+	const resumeStreaming = useCallback(async () => {
+		try {
+			if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+				setStreamStatus("streaming")
+				// Resume wall-clock timer
+				recordStartRef.current = performance.now()
+				const ctx = new AudioContext({ sampleRate: 48000 })
+				ctxRef.current = ctx
+				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
+				const stream = await navigator.mediaDevices.getUserMedia({
+					audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+					video: false,
+				})
+				const src = ctx.createMediaStreamSource(stream)
+				const node = new AudioWorkletNode(ctx, "pcm-processor")
+				nodeRef.current = node
+				src.connect(node)
 
-        try {
-          const rec = recRef.current
-          if (rec && rec.state === "paused" && typeof rec.resume === "function") {
-            rec.resume()
-          }
-        } catch {}
+				try {
+					const rec = recRef.current
+					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
+						rec.resume()
+					}
+				} catch { }
 
-        node.port.onmessage = (e) => {
-          bufferRef.current.push(e.data as Float32Array)
-        }
+				node.port.onmessage = (e) => {
+					bufferRef.current.push(e.data as Float32Array)
+				}
 
-        const sendChunk = () => {
-          const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
-          const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
-          const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
-          if (available < minInputSamples) {
-            insufficientRef.current = true
-            return
-          }
-          const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
-          let floats = drainForSamples(Math.max(minInputSamples, inputAim))
-          if (!floats || floats.length === 0) return
-          let pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
-          if (!pcm16) return
-          if (pcm16.length < minOutSamples) {
-            insufficientRef.current = true
-            return
-          }
-          insufficientRef.current = false
-          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
-            wsRef.current.send(pcm16.buffer)
-            firstSendRef.current = false
-          }
-        }
-        timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
-      } else {
-        await startStreaming()
-      }
-    } catch (e) {
-      consola.warn("resumeStreaming error", e)
-    }
-  }, [startStreaming])
+				const sendChunk = () => {
+					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
+					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
+					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+					if (available < minInputSamples) {
+						insufficientRef.current = true
+						return
+					}
+					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
+					const floats = drainForSamples(Math.max(minInputSamples, inputAim))
+					if (!floats || floats.length === 0) return
+					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
+					if (!pcm16) return
+					if (pcm16.length < minOutSamples) {
+						insufficientRef.current = true
+						return
+					}
+					insufficientRef.current = false
+					if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+						wsRef.current.send(pcm16.buffer)
+						firstSendRef.current = false
+					}
+				}
+				timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
+			} else {
+				await startStreaming()
+			}
+		} catch (e) {
+			consola.warn("resumeStreaming error", e)
+		}
+	}, [startStreaming])
 
-  const stopStreaming = useCallback(() => {
-    if (timerRef.current) {
-      clearInterval(timerRef.current)
-      timerRef.current = null
-    }
-    if (wsRef.current) {
-      try { wsRef.current.close() } catch {}
-    }
-    wsRef.current = null
-    try {
-      nodeRef.current?.disconnect()
-      ctxRef.current?.close()
-    } catch {}
-    nodeRef.current = null
-    ctxRef.current = null
-    bufferRef.current = []
-    setCurrentCaption("")
-    setStreamStatus("stopped")
+	const stopStreaming = useCallback(async () => {
+		if (timerRef.current) {
+			clearInterval(timerRef.current)
+			timerRef.current = null
+		}
+		if (wsRef.current) {
+			try {
+				// Signal end of stream to upstream to flush final results
+				if (wsRef.current.readyState === WebSocket.OPEN) {
+					try { wsRef.current.send("__end__") } catch {}
+					// Give a brief moment for any final Turn events to arrive
+					await new Promise((r) => setTimeout(r, 300))
+				}
+				wsRef.current.close()
+			} catch { }
+		}
+		wsRef.current = null
+		try {
+			nodeRef.current?.disconnect()
+			ctxRef.current?.close()
+		} catch { }
+		nodeRef.current = null
+		ctxRef.current = null
+		bufferRef.current = []
+		setCurrentCaption("")
+		setStreamStatus("stopped")
 
-    // finalize recording and save transcript (captions joined)
-    void (async () => {
-      try {
-        const rec = recRef.current
-        if (rec && rec.state !== "inactive") {
-          const stopped = new Promise<Blob>((resolve) => {
-            rec.onstop = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
-          })
-          rec.stop()
-          const blob = await stopped
-          let mediaUrl: string | undefined
-          const id = assignedInterviewId
-          if (blob.size > 0 && id) {
-            const filename = `interviews/${projectId}/${id}-${Date.now()}.webm`
-            const { error } = await supabase.storage.from("interview-recordings").upload(filename, blob, { upsert: true })
-            if (!error) {
-              const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
-              mediaUrl = data.publicUrl
-            } else {
-              consola.warn("Audio upload failed:", error.message)
-            }
-          }
+		// Stop wall-clock timer and accumulate
+		try {
+			if (recordStartRef.current != null) {
+				elapsedMsRef.current += performance.now() - recordStartRef.current
+				recordStartRef.current = null
+			}
+		} catch { }
 
-          if (id) {
-            const transcript = [currentCaption, ...captions].reverse().join(" ").trim()
-            await fetch(`${basePath}/api/interviews/realtime-finalize`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                interviewId: id,
-                transcript,
-                transcriptFormatted: undefined,
-                mediaUrl,
-              }),
-            })
-            // Navigate to interview detail
-            navigate(`${basePath}/interviews/${id}`)
-          }
-        }
-      } catch (e) {
-        consola.warn("Finalize error", e)
-      }
-    })()
-  }, [assignedInterviewId, basePath, captions, currentCaption, navigate, projectId, supabase])
+		// finalize recording and save transcript (captions joined)
+		void (async () => {
+			try {
+				const rec = recRef.current
+				if (rec && rec.state !== "inactive") {
+					const stopped = new Promise<Blob>((resolve) => {
+						rec.onstop = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
+					})
+					rec.stop()
+					const blob = await stopped
+					let mediaUrl: string | undefined
+					const id = assignedInterviewId
+					if (blob.size > 0 && id) {
+						const filename = `interviews/${projectId}/${id}-${Date.now()}.webm`
+						const { error } = await supabase.storage
+							.from("interview-recordings")
+							.upload(filename, blob, { upsert: true })
+						if (!error) {
+							const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
+							mediaUrl = data.publicUrl
+						} else {
+							consola.warn("Audio upload failed:", error.message)
+						}
+					}
 
-  // In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
+					if (id) {
+						const full = allFinalTranscriptsRef.current.join(" ")
+						const draft = (currentCaption || "").trim()
+						const transcript = [full, draft].filter(Boolean).join(" ").replace(/\s+/g, " ").trim()
+
+						// Extract audio duration from the blob
+						let audioDuration: number | undefined
+						try {
+							if (blob.size > 0) {
+								audioDuration = await getAudioDuration(blob)
+								consola.log("Extracted audio duration:", audioDuration)
+							}
+						} catch (e) {
+							consola.warn("Failed to extract audio duration:", e)
+						}
+
+						// Fallback to wall-clock elapsed if metadata unavailable
+						if (!audioDuration || !Number.isFinite(audioDuration) || audioDuration <= 0) {
+							const fallback = Math.max(1, Math.round(elapsedMsRef.current / 1000))
+							consola.log("Using fallback audio duration:", fallback)
+							audioDuration = fallback
+						}
+
+						await fetch(`${projectPath}/api/interviews/realtime-finalize`, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								interviewId: id,
+								transcript,
+								transcriptFormatted: undefined,
+								mediaUrl,
+								audioDuration,
+							}),
+						})
+						// Navigate to interview detail
+						navigate(routes.interviews.detail(id))
+					}
+				}
+			} catch (e) {
+				consola.warn("Finalize error", e)
+			}
+		})()
+	}, [assignedInterviewId, currentCaption, navigate, projectId, supabase])
+
+	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 
 	const handleQuestionStatusChange = useCallback(
 		async (_questionId: string, status: "proposed" | "asked" | "answered" | "skipped") => {
@@ -469,8 +566,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		},
 		[saveAISuggestionAsAnnotation]
 	)
-
-
 
 	const generateAISuggestion = useCallback(async () => {
 		const suggestions = [
@@ -504,106 +599,106 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		await saveAISuggestionAsAnnotation(newSuggestion)
 	}, [saveAISuggestionAsAnnotation])
 
-  // Toggle recording using realtime streaming
-  const toggleRecording = useCallback(() => {
-    setIsRecording((prev) => !prev)
-    if (!isRecording) {
-      if (streamStatus === "paused") {
-        void resumeStreaming()
-      } else {
-        startStreaming()
-      }
-    } else {
-      pauseStreaming()
-    }
-  }, [isRecording, pauseStreaming, resumeStreaming, startStreaming, streamStatus])
+	// Toggle recording using realtime streaming
+	const toggleRecording = useCallback(() => {
+		setIsRecording((prev) => !prev)
+		if (!isRecording) {
+			if (streamStatus === "paused") {
+				void resumeStreaming()
+			} else {
+				startStreaming()
+			}
+		} else {
+			pauseStreaming()
+		}
+	}, [isRecording, pauseStreaming, resumeStreaming, startStreaming, streamStatus])
 
-  const handleStop = useCallback(() => {
-    setIsFinishing(true)
-    // Explicit stop finalizes and navigates
-    stopStreaming()
-  }, [stopStreaming])
+	const handleStop = useCallback(() => {
+		setIsFinishing(true)
+		// Explicit stop finalizes and navigates
+		stopStreaming()
+	}, [stopStreaming])
 
-  // Replay: show last 15 seconds of transcript for 15s
-  const replayLast15s = useCallback(() => {
-    if (!turns.length) return
-    const lastEnd = turns[0]?.end ?? 0
-    // Treat current time as lastEnd; append currentCaption to reach "present"
-    const cutoff = Math.max(0, lastEnd - 30)
-    const historical = turns
-      .filter((t) => t.end >= cutoff)
-      .sort((a, b) => a.start - b.start)
-      .map((t) => t.transcript)
-    const historicalStr = historical.join(" ").replace(/\s+/g, " ").trim()
-    const lastTurnText = historical.length ? historical[historical.length - 1] : ""
-    const draft = (currentCaption || "").replace(/\s+/g, " ").trim()
-    const shouldAppendDraft = !!draft && draft !== lastTurnText && !historicalStr.endsWith(draft)
-    const combined = (shouldAppendDraft ? `${historicalStr} ${draft}` : historicalStr).replace(/\s+/g, " ").trim()
-    if (!combined) return
-    setReplayText(combined)
-    if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current)
-    replayTimerRef.current = window.setTimeout(() => {
-      setReplayText("")
-    }, 15000)
-  }, [currentCaption, turns])
+	// Replay: show last 15 seconds of transcript for 15s
+	const replayLast30s = useCallback(() => {
+		if (!turns.length) return
+		const lastEnd = turns[0]?.end ?? 0
+		// Treat current time as lastEnd; append currentCaption to reach "present"
+		const cutoff = Math.max(0, lastEnd - 30)
+		const historical = turns
+			.filter((t) => t.end >= cutoff)
+			.sort((a, b) => a.start - b.start)
+			.map((t) => t.transcript)
+		const historicalStr = historical.join(" ").replace(/\s+/g, " ").trim()
+		const lastTurnText = historical.length ? historical[historical.length - 1] : ""
+		const draft = (currentCaption || "").replace(/\s+/g, " ").trim()
+		const shouldAppendDraft = !!draft && draft !== lastTurnText && !historicalStr.endsWith(draft)
+		const combined = (shouldAppendDraft ? `${historicalStr} ${draft}` : historicalStr).replace(/\s+/g, " ").trim()
+		if (!combined) return
+		setReplayText(combined)
+		if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current)
+		replayTimerRef.current = window.setTimeout(() => {
+			setReplayText("")
+		}, 15000)
+	}, [currentCaption, turns])
 
-  // Helpers for audio processing
-  function drainForSamples(samplesNeeded: number): Float32Array | null {
-    let have = 0
-    const chunks: Float32Array[] = []
-    while (bufferRef.current.length && have < samplesNeeded) {
-      const c = bufferRef.current.shift()!
-      chunks.push(c)
-      have += c.length
-    }
-    if (!chunks.length) return null
-    const out = new Float32Array(have)
-    let offset = 0
-    for (const c of chunks) {
-      out.set(c, offset)
-      offset += c.length
-    }
-    return out
-  }
+	// Helpers for audio processing
+	function drainForSamples(samplesNeeded: number): Float32Array | null {
+		let have = 0
+		const chunks: Float32Array[] = []
+		while (bufferRef.current.length && have < samplesNeeded) {
+			const c = bufferRef.current.shift()!
+			chunks.push(c)
+			have += c.length
+		}
+		if (!chunks.length) return null
+		const out = new Float32Array(have)
+		let offset = 0
+		for (const c of chunks) {
+			out.set(c, offset)
+			offset += c.length
+		}
+		return out
+	}
 
-  function downsampleTo16kPCM16(input: Float32Array, inputRate: number, targetRate: number): Int16Array | null {
-    if (inputRate === targetRate) return floatTo16(input)
-    const ratio = inputRate / targetRate
-    const outLen = Math.floor(input.length / ratio)
-    const out = new Int16Array(outLen)
-    let idx = 0
-    let i = 0
-    while (idx < outLen) {
-      const next = Math.floor((idx + 1) * ratio)
-      let sum = 0
-      let count = 0
-      for (; i < next && i < input.length; i++) {
-        sum += input[i]
-        count++
-      }
-      const sample = sum / (count || 1)
-      out[idx++] = Math.max(-1, Math.min(1, sample)) * 0x7fff
-    }
-    return out
-  }
+	function downsampleTo16kPCM16(input: Float32Array, inputRate: number, targetRate: number): Int16Array | null {
+		if (inputRate === targetRate) return floatTo16(input)
+		const ratio = inputRate / targetRate
+		const outLen = Math.floor(input.length / ratio)
+		const out = new Int16Array(outLen)
+		let idx = 0
+		let i = 0
+		while (idx < outLen) {
+			const next = Math.floor((idx + 1) * ratio)
+			let sum = 0
+			let count = 0
+			for (; i < next && i < input.length; i++) {
+				sum += input[i]
+				count++
+			}
+			const sample = sum / (count || 1)
+			out[idx++] = Math.max(-1, Math.min(1, sample)) * 0x7fff
+		}
+		return out
+	}
 
-  function floatTo16(f32: Float32Array): Int16Array {
-    const out = new Int16Array(f32.length)
-    for (let i = 0; i < f32.length; i++) {
-      out[i] = Math.max(-1, Math.min(1, f32[i])) * 0x7fff
-    }
-    return out
-  }
+	function floatTo16(f32: Float32Array): Int16Array {
+		const out = new Int16Array(f32.length)
+		for (let i = 0; i < f32.length; i++) {
+			out[i] = Math.max(-1, Math.min(1, f32[i])) * 0x7fff
+		}
+		return out
+	}
 
-  // Compute a stable key for a turn from its word timing window
-  function computeTurnKey(t: TurnMsg): string {
-    if (t.words && t.words.length > 0) {
-      const start = t.words[0]?.start ?? 0
-      const end = t.words[t.words.length - 1]?.end ?? 0
-      return `${start}-${end}`
-    }
-    return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
-  }
+	// Compute a stable key for a turn from its word timing window
+	function computeTurnKey(t: TurnMsg): string {
+		if (t.words && t.words.length > 0) {
+			const start = t.words[0]?.start ?? 0
+			const end = t.words[t.words.length - 1]?.end ?? 0
+			return `${start}-${end}`
+		}
+		return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
+	}
 
 	const getSuggestionIcon = (type: AISuggestion["type"]) => {
 		switch (type) {
@@ -632,14 +727,14 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	}
 
 	return (
-		<div className="grid h-screen grid-cols-1 gap-6 p-6 lg:grid-cols-2">
+		<div className="grid h-[calc(100dvh-5rem)] grid-cols-1 gap-6 p-6 md:h-dvh lg:grid-cols-2">
 			{/* Left Side - Minimal Questions */}
-			<div className="space-y-4 overflow-y-auto">
+			<div className="min-h-0 space-y-4 overflow-y-auto">
 				<MinimalQuestionView projectId={projectId} />
 			</div>
 
 			{/* Right Side - Controls & Notes */}
-			<div className="space-y-4 overflow-y-auto">
+			<div className="min-h-0 space-y-4 overflow-y-auto">
 				{/* Recording Controls */}
 				<Card>
 					<CardHeader>
@@ -651,46 +746,52 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							)}
 							Interview Recording
 							{isRecording && streamStatus === "streaming" && (
-								<Badge variant="destructive" className="ml-auto animate-pulse">LIVE</Badge>
+								<Badge variant="destructive" className="ml-auto animate-pulse">
+									LIVE
+								</Badge>
 							)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-          <div className="flex items-center gap-2 flex-wrap">
-            <Button
-              onClick={toggleRecording}
-              size="sm"
-              className="flex-1 min-w-0 bg-red-600 hover:bg-red-700 text-white"
-              disabled={streamStatus === "connecting" || isFinishing}
-            >
-              {streamStatus === "streaming" && isRecording ? (
-                <>
-                  <Pause className="mr-2 h-4 w-4" /> Pause
-                </>
-              ) : (
-                <>
-                  <Play className="mr-2 h-4 w-4" />
-                  {streamStatus === "connecting" ? "Connecting…" : streamStatus === "paused" ? "Resume" : "Record"}
-                </>
-              )}
-            </Button>
-            <Button onClick={handleStop} size="sm" className="flex-1 min-w-0 border-red-600 text-red-700 hover:bg-red-50" variant="outline" disabled={isFinishing}>
-                <Square className="mr-2 h-4 w-4" /> {isFinishing ? 'Finishing & Analyzing' : 'Finish'}
-            </Button>
-          </div>
-						<div className="text-muted-foreground text-xs">
-							Summary compiles at end after you press Stop. You can pause/resume anytime.
+						<div className="flex flex-wrap items-center gap-2">
+							<Button
+								onClick={toggleRecording}
+								size="sm"
+								className="min-w-0 flex-1 bg-red-600 text-white hover:bg-red-700"
+								disabled={streamStatus === "connecting" || isFinishing}
+							>
+								{streamStatus === "streaming" && isRecording ? (
+									<>
+										<Pause className="mr-2 h-4 w-4" /> Pause
+									</>
+								) : (
+									<>
+										<Play className="mr-2 h-4 w-4" />
+										{streamStatus === "connecting" ? "Connecting…" : streamStatus === "paused" ? "Resume" : "Record"}
+									</>
+								)}
+							</Button>
+							<Button
+								onClick={handleStop}
+								size="sm"
+								className="min-w-0 flex-1 border-red-600 text-red-700 hover:bg-red-50"
+								variant="outline"
+								disabled={isFinishing || streamStatus !== "streaming"}
+							>
+								<Square className="mr-2 h-4 w-4" /> {isFinishing ? "Finishing & Analyzing" : "Finish"}
+							</Button>
+						</div>
+						<div className="text-foreground/75 text-sm">
+							Finish will generate Insights Summary
 						</div>
 						<div className="flex items-center gap-2">
-            <Button onClick={replayLast15s} variant="secondary" className="w-full">
-                <RotateCcw className="mr-2 h-4 w-4" /> Replay last 15s
-            </Button>
-          </div>
-          {replayText && (
-            <div className="rounded-md border p-3 text-foreground text-base md:text-lg">
-              {replayText}
-            </div>
-          )}
+							<Button onClick={replayLast30s} variant="secondary" className="w-full">
+								<RotateCcw className="mr-2 h-4 w-4" /> Replay last 30s
+							</Button>
+						</div>
+						{replayText && (
+							<div className="rounded-md border p-3 text-base text-foreground md:text-lg">{replayText}</div>
+						)}
 					</CardContent>
 				</Card>
 

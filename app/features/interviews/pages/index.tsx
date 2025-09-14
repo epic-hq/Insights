@@ -14,6 +14,7 @@ import { getInterviews } from "~/features/interviews/db"
 import InlinePersonaBadge from "~/features/personas/components/InlinePersonaBadge"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
+import type Interview from "~/types"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
@@ -31,7 +32,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
-	const { data: rows, error } = await getInterviews({
+	const { data: rows, error }: { data: Interview[] | null; error: any } = await getInterviews({
 		supabase,
 		accountId,
 		projectId,
@@ -93,7 +94,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			role: primaryParticipant?.role || "participant",
 			persona: participant?.segment || "No segment",
 			date: interview.interview_date || interview.created_at || "",
-			duration: interview.duration_min ? `${interview.duration_min} min` : "Unknown",
+			duration: interview.duration_sec ? `${Math.round(interview.duration_sec / 60, 1)} min` : "Unknown",
 			insightCount: insightCountMap.get(interview.id) || 0,
 		}
 	})
@@ -121,10 +122,8 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h1 className="text-3xl text-foreground dark:text-foreground">Content</h1>
-							<div className="flex-row flex justify-between">
-								<div className="mt-2 text-gray-600 text-lg dark:text-gray-400 mr-5">
-									Recordings & Docs
-								</div>
+							<div className="flex flex-row justify-between">
+								<div className="mt-2 mr-5 text-gray-600 text-lg dark:text-gray-400">Recordings & Docs</div>
 								{/* View Toggle */}
 
 								<ToggleGroup
@@ -145,7 +144,6 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 						</div>
 
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-
 							{/* Actions */}
 							<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
 								<Button asChild variant="default" className="gap-2">
@@ -154,10 +152,8 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 										Add Interview
 									</Link>
 								</Button>
-
 							</div>
 						</div>
-
 					</div>
 				</div>
 			</div>

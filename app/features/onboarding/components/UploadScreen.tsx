@@ -151,12 +151,12 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Primary Record Action */}
 					<div className="text-center">
-					<Button
-						onClick={handleRecordNow}
-						size="lg"
-						disabled={recordingStart}
-						className="m-0 h-15 w-15 rounded-full bg-red-600 p-0 text-foreground hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
-					>
+						<Button
+							onClick={handleRecordNow}
+							size="lg"
+							disabled={recordingStart}
+							className="m-0 h-15 w-15 rounded-full bg-red-600 p-0 text-foreground hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
+						>
 							<Mic className="h-20 w-20" />
 						</Button>
 						<p className="mt-3 font-medium text-foreground">Record Now</p>
@@ -199,7 +199,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
 									<Upload className="h-6 w-6 text-muted-foreground" />
 								</div>
-								<p className="mb-3 text-foreground text-sm">Drop your Video, Audio, or Text/MD file</p>
+								<p className="mb-3 text-foreground text-sm">Drop your Video, Audio, or Text/MD file (45MB Limit)</p>
 								<Button
 									onClick={triggerFileInput}
 									variant="outline"

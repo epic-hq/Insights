@@ -162,6 +162,7 @@ async function processInterviewTranscriptWithClient({
 	// 1. Ensure we have an interview record to attach artifacts to
 	const fullTranscript = transcriptData.full_transcript as string
 	let interviewRecord: Interview
+	consola.log("assembly audio_duration ", (transcriptData as any).audio_duration)
 	if (existingInterviewId) {
 		// Update existing interview and reuse it
 		const { data: existing, error: fetchErr } = await db
@@ -178,9 +179,7 @@ async function processInterviewTranscriptWithClient({
 				status: "processing",
 				transcript: fullTranscript,
 				transcript_formatted: transcriptData as unknown as Json,
-				duration_min: (transcriptData as any).audio_duration
-					? Math.round(((transcriptData as any).audio_duration as number) / 60)
-					: (existing.duration_min ?? null),
+				duration_sec: (transcriptData as any).audio_duration
 			})
 			.eq("id", existingInterviewId)
 			.select("*")
@@ -201,9 +200,7 @@ async function processInterviewTranscriptWithClient({
 			media_url: mediaUrl || null,
 			transcript: fullTranscript,
 			transcript_formatted: transcriptData as unknown as Json,
-			duration_min: (transcriptData as any).audio_duration
-				? Math.round(((transcriptData as any).audio_duration as number) / 60)
-				: null,
+			duration_sec: (transcriptData as any).audio_duration,
 			status: "processing" as const,
 		} as InterviewInsert
 
@@ -232,6 +229,8 @@ async function processInterviewTranscriptWithClient({
 			((transcriptData as Record<string, unknown>).segments as RawChapter[] | undefined) ||
 			[]
 		if (Array.isArray(rawChapters)) {
+			consola.log("rawChapters: ", JSON.stringify(rawChapters))
+
 			chapters = rawChapters
 				.map((c: RawChapter) => ({
 					start_ms: typeof c.start_ms === "number" ? c.start_ms : typeof c.start === "number" ? c.start : 0,
@@ -267,8 +266,8 @@ async function processInterviewTranscriptWithClient({
 					const kind_tags = Array.isArray(ev.kind_tags)
 						? (ev.kind_tags as string[])
 						: Object.values(ev.kind_tags ?? {})
-								.flat()
-								.filter((x): x is string => typeof x === "string")
+							.flat()
+							.filter((x): x is string => typeof x === "string")
 					const row: EvidenceInsert = {
 						account_id: metadata.accountId,
 						project_id: (metadata.projectId ?? null) as any,
@@ -305,14 +304,14 @@ async function processInterviewTranscriptWithClient({
 				// Stash IDs for later linking to people
 				try {
 					insertedEvidenceIds = (insertedEvidence as Array<{ id: string }>).map((e) => e.id)
-				} catch {}
+				} catch { }
 				// Optionally upsert tags from kind_tags and link via evidence_tag
 				try {
 					// Build unique tag list
 					const tagsSet = new Set<string>()
 					const insertedEvidenceTyped = insertedEvidence as Array<{ id: string; kind_tags: string[] | null }>
 					insertedEvidenceTyped.forEach((ev) => {
-						;(ev.kind_tags || []).forEach((t) => {
+						; (ev.kind_tags || []).forEach((t) => {
 							if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
 						})
 					})
@@ -394,7 +393,7 @@ async function processInterviewTranscriptWithClient({
 	let response: ExtractInsightsResponse
 	try {
 		response = await extractInsightsWithRetry(fullTranscript, userCustomInstructions || "")
-		consola.log("BAML response:", response)
+		consola.log("BAML extractInsights response:", response)
 	} catch (err) {
 		// Let the caller (webhook/action) handle marking analysis_jobs/interviews as error
 		const errMsg = err instanceof Error ? err.message : String(err)

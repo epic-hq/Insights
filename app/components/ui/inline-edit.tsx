@@ -88,10 +88,16 @@ export default function InlineEdit({
 	}
 
 	const handleKeyDown = (e: React.KeyboardEvent) => {
+		// For multiline, Enter should insert a newline (no submit)
 		if (e.key === "Enter") {
+			if (multiline) {
+				return
+			}
 			setIsEditing(false)
 			onSubmit?.(value)
-		} else if (e.key === "Escape") {
+			return
+		}
+		if (e.key === "Escape") {
 			handleCancel()
 		}
 	}

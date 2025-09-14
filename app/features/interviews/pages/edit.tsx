@@ -1,8 +1,10 @@
 import consola from "consola"
+import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { Streamdown } from "streamdown"
 import { BackButton } from "~/components/ui/BackButton"
+import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
@@ -157,16 +159,35 @@ export default function EditInterview() {
 	const actionData = useActionData<typeof action>()
 	const routes = useProjectRoutesFromIds(accountId, projectId)
 
+	// Normalize any legacy array/JSON-string values to plaintext for editing, and
+	// keep controlled state so we can render Markdown previews live.
+	const normalize = (v: unknown): string => {
+		try {
+			if (Array.isArray(v)) return v.filter((s) => typeof s === "string" && s.trim()).join("\n")
+			if (typeof v === "string") {
+				const parsed = JSON.parse(v)
+				if (Array.isArray(parsed)) return parsed.filter((s) => typeof s === "string" && s.trim()).join("\n")
+				return v
+			}
+			return ""
+		} catch {
+			return typeof v === "string" ? v : ""
+		}
+	}
+
+	const [oqns, setOqns] = useState<string>(normalize(interview.open_questions_and_next_steps))
+	const [notes, setNotes] = useState<string>(normalize(interview.observations_and_notes))
+
 	return (
 		<div className="mx-auto max-w-2xl">
 			<div className="mb-6">
-				<BackButton 
-					to={routes.interviews.detail(interview.id)} 
+				<BackButton
+					to={routes.interviews.detail(interview.id)}
 					label="Back to Interview"
 					position="relative"
 					className="mb-4"
 				/>
-				<div className="flex items-center justify-between gap-4 mb-2">
+				<div className="mb-2 flex items-center justify-between gap-4">
 					<h1 className="font-bold text-3xl text-gray-900">Edit Interview</h1>
 				</div>
 				<p className="mt-2 text-gray-600">Update interview details</p>
@@ -214,11 +235,16 @@ export default function EditInterview() {
 					<Textarea
 						id="open_questions_and_next_steps"
 						name="open_questions_and_next_steps"
-						defaultValue={interview.open_questions_and_next_steps || ""}
-						placeholder="Enter open questions and next steps"
+						value={oqns}
+						onChange={(e) => setOqns(e.target.value)}
+						placeholder="Enter open questions and next steps (Markdown supported)"
 						className="mt-1"
-						rows={4}
+						rows={6}
 					/>
+					<div className="mt-2 rounded-md border bg-background p-3">
+						<div className="mb-1 font-medium text-foreground/60 text-xs">Preview</div>
+						<Streamdown>{oqns || "_Nothing to preview_"}</Streamdown>
+					</div>
 				</div>
 
 				<div>
@@ -226,22 +252,27 @@ export default function EditInterview() {
 					<Textarea
 						id="observations_and_notes"
 						name="observations_and_notes"
-						defaultValue={interview.observations_and_notes || ""}
-						placeholder="Enter observations and notes"
+						value={notes}
+						onChange={(e) => setNotes(e.target.value)}
+						placeholder="Enter observations and notes (Markdown supported)"
 						className="mt-1"
-						rows={4}
+						rows={6}
 					/>
+					<div className="mt-2 rounded-md border bg-background p-3">
+						<div className="mb-1 font-medium text-foreground/60 text-xs">Preview</div>
+						<Streamdown>{notes || "_Nothing to preview_"}</Streamdown>
+					</div>
 				</div>
 
 				<div>
-					<div className="flex items-center justify-between gap-2 mb-1">
+					<div className="mb-1 flex items-center justify-between gap-2">
 						<Label htmlFor="media_url">Media URL</Label>
 						{interview.media_url && (
-							<MediaPlayer 
+							<MediaPlayer
 								mediaUrl={interview.media_url}
 								title="Play"
 								size="sm"
-								duration_sec={interview.duration_min ? interview.duration_min * 60 : undefined}
+								duration_sec={interview.duration_sec || undefined}
 							/>
 						)}
 					</div>

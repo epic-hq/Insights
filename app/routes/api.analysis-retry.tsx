@@ -69,7 +69,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			interviewTitle: interview.title || undefined,
 			interviewDate: interview.interview_date || undefined,
 			participantName: interview.participant_pseudonym || undefined,
-			durationMin: interview.duration_min || undefined,
+			duration_sec: interview.duration_sec || undefined,
 			fileName: (formattedTranscriptData as { original_filename?: string }).original_filename || undefined,
 		}
 

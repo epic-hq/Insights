@@ -904,8 +904,8 @@ export default function ProjectStatusScreen({
 																				<div
 																					key={`question-${section.id}-${question.id ?? index}`}
 																					className={`rounded-lg border p-3 ${questionStatus.status === "answered"
-																							? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-																							: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
+																						? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
+																						: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
 																						}`}
 																				>
 																					<div className="flex items-start gap-2">
@@ -1089,7 +1089,7 @@ export default function ProjectStatusScreen({
 									<CardHeader className="p-3 pb-2 sm:p-4">
 										<CardTitle>Quick Actions</CardTitle>
 									</CardHeader>
-									<CardContent className="space-y-3 p-3 sm:p-4">
+									<CardContent className="flex w-full max-w-sm flex-col gap-2 p-3 lg:max-w-md">
 										<Button
 											// TODO: Temporarily just go to upload instead of naming the interview. it's quicker and we have a small DB insert blocker.
 											onClick={() => {
@@ -1098,7 +1098,7 @@ export default function ProjectStatusScreen({
 												}
 											}}
 											// onClick={() => routes && (window.location.href = routes.interviews.new())}
-											className="w-full justify-start border-green-600 bg-green-600 text-white hover:bg-green-700"
+											className="flex max-w-64 justify-start border-green-600 bg-green-600 text-white hover:bg-green-700"
 											variant="default"
 										>
 											<PlusCircle className="mr-2 h-4 w-4" />
@@ -1111,7 +1111,7 @@ export default function ProjectStatusScreen({
 														window.location.href = routes.interviews.new()
 													}
 												}}
-												className="w-full justify-start"
+												className="max-w-64 justify-start"
 												variant="default"
 											>
 												<Target className="mr-2 h-4 w-4" />
@@ -1126,7 +1126,7 @@ export default function ProjectStatusScreen({
 													window.location.href = routes.questions.index()
 												}
 											}}
-											className="w-full justify-start"
+											className="flex max-w-64 justify-start"
 											variant="outline"
 										>
 											<BookOpen className="mr-2 h-4 w-4" />
@@ -1136,6 +1136,7 @@ export default function ProjectStatusScreen({
 										<Button
 											onClick={() => routes && (window.location.href = routes.evidence.index())}
 											variant="outline"
+											className="flex max-w-64 justify-start"
 										>
 											<Eye className="mr-2 h-4 w-4" />
 											Explore All Evidence
@@ -1144,6 +1145,7 @@ export default function ProjectStatusScreen({
 										<Button
 											variant="outline"
 											onClick={() => routes && (window.location.href = routes.interviews.index())}
+											className="flex max-w-64 justify-start"
 										>
 											<Mic2Icon className="mr-2 h-4 w-4" />
 											Interviews ({statusData?.totalInterviews})

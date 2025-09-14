@@ -7,6 +7,7 @@ import { createProject } from "~/features/projects/db"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
+import { storeAudioFile } from "~/utils/storeAudioFile.server"
 
 // Accept both legacy (icp/role/goal) and new snake_case onboarding payloads
 type LegacyOnboardingData = {
@@ -44,7 +45,9 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "User not authenticated" }, { status: 401 })
 		}
 
-		const { client: supabase } = getServerClient(request)
+    const { client: supabase } = getServerClient(request)
+    // Single admin client for RLS-bypassing operations in this action
+    const supabaseAdmin = createSupabaseAdminClient()
 
 		// Get team account from user context (set by middleware)
 		// For API routes, we should get this from user context or use RPC to get current account
@@ -122,7 +125,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
 				baseProjectName = derived.name || baseProjectName
 				projectDescription = derived.description || projectDescription
-			} catch {}
+			} catch { }
 
 			// Find available project name by checking for slug conflicts
 			let projectName = baseProjectName
@@ -222,7 +225,7 @@ Please extract insights that specifically address these research questions and h
 			media_type: mediaTypeInput, // Store the selected media type
 			transcript: null, // Will be set by transcription
 			transcript_formatted: null,
-			duration_min: null,
+			duration_sec: null,
 			status: "uploaded", // Starting status for pipeline
 		} as InterviewInsert
 
@@ -263,8 +266,7 @@ Please extract insights that specifically address these research questions and h
 				original_filename: file.name,
 			}
 
-			// Skip upload queue, go directly to analysis - use admin client to bypass RLS
-			const supabaseAdmin = createSupabaseAdminClient()
+            // Skip upload queue, go directly to analysis - use admin client to bypass RLS
 			const { error: analysisJobError } = await supabaseAdmin.from("analysis_jobs").insert({
 				interview_id: interview.id,
 				transcript_data: transcriptData,
@@ -287,11 +289,31 @@ Please extract insights that specifically address these research questions and h
 				})
 				.eq("id", interview.id)
 		} else {
-			// Handle audio/video files - upload to AssemblyAI with webhook
+			// Handle audio/video files - store file first, then upload to AssemblyAI with webhook
 			const apiKey = process.env.ASSEMBLYAI_API_KEY
 			if (!apiKey) {
 				return Response.json({ error: "AssemblyAI API key not configured" }, { status: 500 })
 			}
+
+			// Store audio file in Supabase Storage first using shared utility
+            consola.log("Storing audio file in Supabase Storage...")
+			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile(
+				supabaseAdmin,
+				finalProjectId,
+				interview.id,
+				file,
+				file.name
+			)
+
+			if (storageError || !storedMediaUrl) {
+				consola.error("Audio storage failed:", storageError)
+				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
+			}
+
+			consola.log("Audio file stored successfully:", storedMediaUrl)
+
+			// Update interview with media URL
+			await supabase.from("interviews").update({ media_url: storedMediaUrl }).eq("id", interview.id)
 
 			// Upload to AssemblyAI
 			const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
@@ -317,10 +339,10 @@ Please extract insights that specifically address these research questions and h
 				process.env.NODE_ENV === "production"
 					? PRODUCTION_HOST
 					: (() => {
-							const tunnel = process.env.PUBLIC_TUNNEL_URL
-							if (!tunnel) return PRODUCTION_HOST
-							return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
-						})()
+						const tunnel = process.env.PUBLIC_TUNNEL_URL
+						if (!tunnel) return PRODUCTION_HOST
+						return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
+					})()
 			const webhookUrl = `${host}/api/assemblyai-webhook`
 
 			consola.log("AssemblyAI Webhook: Starting transcription with webhook URL:", webhookUrl)
@@ -356,8 +378,7 @@ Please extract insights that specifically address these research questions and h
 
 			const { id: assemblyai_id } = (await transcriptResp.json()) as { id: string }
 
-			// Create upload job record for tracking - use admin client to bypass RLS
-			const supabaseAdmin = createSupabaseAdminClient()
+            // Create upload job record for tracking - use admin client to bypass RLS
 			const { error: uploadJobError } = await supabaseAdmin.from("upload_jobs").insert({
 				interview_id: interview.id,
 				file_name: file.name,
@@ -377,8 +398,7 @@ Please extract insights that specifically address these research questions and h
 			consola.log("Transcription started with ID:", assemblyai_id)
 		}
 
-		// Mark onboarding completed when first interview is uploaded
-		const supabaseAdmin = createSupabaseAdminClient()
+        // Mark onboarding completed when first interview is uploaded
 		await supabaseAdmin.from("user_settings").upsert(
 			{
 				user_id: user.sub,

@@ -310,7 +310,7 @@ API endpoints are defined in [`app/routes.ts`](app/routes.ts:1) and sub-feature 
 ### Additional Notes
 
 - Junction table helpers and patterns are in [`app/lib/database/junction-helpers.ts`](app/lib/database/junction-helpers.ts:1).
-- All DB types are defined in [`app/lib/supabase/types.ts`](app/lib/supabase/types.ts:1).
+- All DB types are defined in [`app/supabase/types.ts`](app/supabase/types.ts:1).
 - For multi-tenancy and account/project scoping, see RPCs and filtering patterns in feature DB files.
 
 ---

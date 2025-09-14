@@ -57,7 +57,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const _description = formData.get("description") as string
 	const participantPseudonym = formData.get("participant_pseudonym") as string
 	const segment = formData.get("segment") as string
-	const durationMin = formData.get("duration_min") as string
+	const duration_sec = Number(formData.get("duration_sec") as string)
 	const selectedPeople = formData.getAll("selected_people") as string[]
 	const newPeopleData = formData.get("new_people_data") as string
 
@@ -83,7 +83,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				interview_date: interviewDate || null,
 				participant_pseudonym: participantPseudonym?.trim() || null,
 				segment: segment?.trim() || null,
-				duration_min: durationMin ? Number.parseInt(durationMin, 10) : null,
+				duration_sec: duration_sec,
 				account_id: accountId,
 				project_id: projectId,
 			},
@@ -213,14 +213,14 @@ export default function NewInterview() {
 							</div>
 
 							<div>
-								<Label htmlFor="duration_min">Duration (minutes)</Label>
+								<Label htmlFor="duration_sec">Duration (sec)</Label>
 								<Input
-									id="duration_min"
-									name="duration_min"
+									id="duration_sec"
+									name="duration_sec"
 									type="number"
 									placeholder="30"
 									min="1"
-									max="480"
+									max="10000"
 									className="mt-1"
 								/>
 							</div>

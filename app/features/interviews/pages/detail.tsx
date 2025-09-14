@@ -16,6 +16,27 @@ import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
+// Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
+function normalizeMultilineText(value: unknown): string {
+	try {
+		if (Array.isArray(value)) {
+			return value.filter((v) => typeof v === "string" && v.trim()).join("\n")
+		}
+		if (typeof value === "string") {
+			// Try to parse stringified JSON arrays: "[\"a\",\"b\"]"
+			const parsed = JSON.parse(value)
+			if (Array.isArray(parsed)) {
+				return parsed.filter((v) => typeof v === "string" && v.trim()).join("\n")
+			}
+			return value
+		}
+		return ""
+	} catch {
+		// If JSON.parse fails, treat it as plain text
+		return typeof value === "string" ? value : ""
+	}
+}
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.interview?.title || "Interview"} | Insights` },
@@ -330,12 +351,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<label className="mb-1 block font-bold text-foreground text-lg">Observations & Notes</label>
 						<InlineEdit
 							textClassName="text-foreground"
-							value={
-								Array.isArray(interview.observations_and_notes)
-									? interview.observations_and_notes.join("\n")
-									: (interview.observations_and_notes ?? "")
-							}
+							value={normalizeMultilineText(interview.observations_and_notes)}
 							multiline
+							markdown
 							placeholder="Observations & Notes"
 							onSubmit={(value) => {
 								try {
@@ -413,12 +431,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							<label className="mb-1 block font-bold text-lg">Open Questions & Next Steps</label>
 							<InlineEdit
 								textClassName="text-foreground"
-								value={
-									Array.isArray(interview.open_questions_and_next_steps)
-										? interview.open_questions_and_next_steps.join("\n")
-										: (interview.open_questions_and_next_steps ?? "")
-								}
+								value={normalizeMultilineText(interview.open_questions_and_next_steps)}
 								multiline
+								markdown
 								placeholder="Open Questions & Next Steps"
 								onSubmit={(value) => {
 									try {
@@ -429,12 +444,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											valueLength: value?.length,
 										})
 
-										// Convert newline-separated text to JSON array for storage
-										const arrayValue = value ? value.split("\n").filter((item) => item.trim()) : []
-										const jsonValue = JSON.stringify(arrayValue)
-
-										consola.info("🔄 Converted to JSON:", { arrayValue, jsonValue })
-
 										fetcher.submit(
 											{
 												entity: "interview",
@@ -442,7 +451,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												accountId,
 												projectId,
 												fieldName: "open_questions_and_next_steps",
-												fieldValue: jsonValue,
+												fieldValue: value,
 											},
 											{ method: "post", action: "/api/update-field" }
 										)
@@ -458,11 +467,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{/* Evidence Section */}
 					{evidence.length > 0 && (
 						<div className="space-y-4">
-							<h2 className="font-semibold text-foreground text-lg">Evidence</h2>
+							<h2 className="font-semibold text-foreground text-lg">Evidence ({evidence.length})</h2>
 							<div className="space-y-4">
-								{evidence.map((evidenceItem) => (
-									<EvidenceCard key={evidenceItem.id} evidence={evidenceItem} />
-								))}
+									{evidence.map((evidenceItem) => (
+										<EvidenceCard
+											key={evidenceItem.id}
+											evidence={evidenceItem}
+											showInterviewLink={true}
+											projectPath={projectPath}
+											interviewTitle={interview.title}
+										/>
+									))}
 							</div>
 						</div>
 					)}
@@ -476,7 +491,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									mediaUrl={interview.media_url}
 									title="Play Recording"
 									size="sm"
-									duration_sec={interview.duration_min ? interview.duration_min * 60 : undefined}
+									duration_sec={interview.duration_sec}
 								/>
 							)}
 						</div>

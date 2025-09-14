@@ -135,9 +135,9 @@ export default function PersonDetail() {
 												{new Date(interviewPerson.interviews.interview_date).toLocaleDateString()}
 											</div>
 										)}
-										{interviewPerson.interviews.duration_min && (
+										{interviewPerson.interviews.duration_sec && (
 											<div className="text-muted-foreground text-sm">
-												Duration: {interviewPerson.interviews.duration_min} minutes
+												Duration: {interviewPerson.interviews.duration_sec / 60} minutes
 											</div>
 										)}
 									</motion.div>

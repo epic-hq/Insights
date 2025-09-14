@@ -2,15 +2,21 @@ import type { UUID } from "node:crypto"
 import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
+import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
+import { storeAudioFile } from "~/utils/storeAudioFile.server"
 
 // Remix action to handle multipart/form-data file uploads, stream the file to
 // AssemblyAI's /upload endpoint, then run the existing transcript->insights pipeline.
-export async function action({ request }: ActionFunctionArgs) {
+export async function action({ request, context }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
+
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
+	const accountId = ctx.account_id
 
 	const formData = await request.formData()
 	const file = formData.get("file") as File | null
@@ -18,7 +24,6 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "No file uploaded" }, { status: 400 })
 	}
 	// const body = formData.get("body") as string | null
-	const accountId = formData.get("accountId") as UUID
 	const projectId = formData.get("projectId") as UUID
 	consola.log(`api.upload-file accountId: ${accountId}, projectId: ${projectId}`)
 
@@ -46,21 +51,6 @@ export async function action({ request }: ActionFunctionArgs) {
 				return Response.json({ error: "Text file is empty or could not be read" }, { status: 400 })
 			}
 
-			// Create interview record with initial status
-			const { data: interview, error: insertError } = await supabase
-				.from("interviews")
-				.insert({
-					account_id: accountId,
-					project_id: projectId,
-					name: file.name,
-					file_url: "",
-					file_type: "text",
-					status: "uploading",
-					original_filename: file.name,
-				})
-				.select()
-				.single()
-
 			// Create transcript data object matching expected format
 			transcriptData = {
 				full_transcript: textContent.trim(),
@@ -75,7 +65,42 @@ export async function action({ request }: ActionFunctionArgs) {
 				`${textContent.length} characters\n${textContent.slice(0, 500)}${textContent.length > 500 ? "..." : ""}`
 			)
 		} else {
-			// Handle audio/video files - use existing AssemblyAI flow
+			// Handle audio/video files - store file and transcribe
+			
+			// First create interview record to get ID for storage
+			const { data: interview, error: insertError } = await supabase
+				.from("interviews")
+				.insert({
+					account_id: accountId,
+					project_id: projectId,
+					title: `Interview - ${format(new Date(), "yyyy-MM-dd")}`,
+					status: "uploading",
+					original_filename: file.name,
+				})
+				.select()
+				.single()
+
+			if (insertError || !interview) {
+				return Response.json({ error: "Failed to create interview record" }, { status: 500 })
+			}
+
+			// Store audio file in Supabase Storage
+			consola.log("Storing audio file in Supabase Storage...")
+			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile(
+				supabase,
+				projectId,
+				interview.id,
+				file,
+				file.name
+			)
+
+			if (storageError || !storedMediaUrl) {
+				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
+			}
+
+			mediaUrl = storedMediaUrl
+
+			// Upload to AssemblyAI for transcription
 			const apiKey = process.env.ASSEMBLYAI_API_KEY
 			if (!apiKey) throw new Error("ASSEMBLYAI_API_KEY env var not set")
 
@@ -83,7 +108,6 @@ export async function action({ request }: ActionFunctionArgs) {
 				method: "POST",
 				headers: { Authorization: apiKey },
 				body: file.stream(), // pass-through readable stream from the browser upload
-				// @ts-expect-error  Node fetch (undici) needs duplex when body is a stream
 				duplex: "half",
 			} as any)
 
@@ -93,13 +117,13 @@ export async function action({ request }: ActionFunctionArgs) {
 			}
 
 			const { upload_url } = (await uploadResp.json()) as { upload_url: string }
-			mediaUrl = upload_url
 
-			// Transcribe the uploaded media
+			// Transcribe using AssemblyAI URL (but keep our stored URL as mediaUrl)
 			consola.log("Starting transcription for uploaded file")
 			transcriptData = await transcribeAudioFromUrl(upload_url)
 			consola.log(
 				"Transcription result:",
+				transcriptData.audio_duration,
 				transcriptData
 					? `${(transcriptData.full_transcript as string).length} characters\n${(transcriptData.full_transcript as string).slice(0, 500)}`
 					: "null/empty"
@@ -108,6 +132,12 @@ export async function action({ request }: ActionFunctionArgs) {
 			if (!transcriptData || !(transcriptData.full_transcript as string)?.trim().length) {
 				return Response.json({ error: "Transcription failed or returned empty result" }, { status: 400 })
 			}
+
+			// Update interview with media URL
+			await supabase
+				.from("interviews")
+				.update({ media_url: mediaUrl, status: "transcribed" })
+				.eq("id", interview.id)
 		}
 
 		const metadata = {
