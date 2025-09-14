@@ -1,6 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import type { Database } from "~/types"
+import type { Database, InterviewWithPeople } from "~/types"
 
 export const getInterviews = async ({
 	supabase,
@@ -10,7 +10,7 @@ export const getInterviews = async ({
 	supabase: SupabaseClient<Database>
 	accountId?: string
 	projectId: string
-}) => {
+}): Promise<{ data: InterviewWithPeople[] | null; error: any }> => {
 	return await supabase
 		.from("interviews")
 		.select(`

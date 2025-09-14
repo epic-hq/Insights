@@ -1,47 +1,37 @@
 import consola from "consola"
-import { Play, Pause } from "lucide-react"
+import { Pause, Play } from "lucide-react"
 import { useRef, useState } from "react"
-import { useFetcher } from "react-router"
-import { Button } from "./button"
 import { cn } from "~/lib/utils"
+import { Button } from "./button"
 
 interface MediaPlayerProps {
 	mediaUrl: string
 	title?: string
 	className?: string
 	size?: "sm" | "default" | "lg"
-	interviewId?: string
-	accountId?: string
-	projectId?: string
-	existingDuration?: number // existing duration in minutes from database
-	onDurationDetected?: (duration: number) => void
+	duration_sec?: number // existing duration in seconds from database
 }
 
-export function MediaPlayer({ 
-	mediaUrl, 
-	title = "Play Media", 
-	className, 
+export function MediaPlayer({
+	mediaUrl,
+	title = "Play Media",
+	className,
 	size = "default",
-	interviewId,
-	accountId,
-	projectId,
-	existingDuration,
-	onDurationDetected 
+	duration_sec,
 }: MediaPlayerProps) {
 	const [isPlaying, setIsPlaying] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
-	const [duration, setDuration] = useState<number | null>(existingDuration ? existingDuration * 60 : null) // convert minutes to seconds
+	const [duration, setDuration] = useState<number | null>(duration_sec || 0)
 	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
-	const fetcher = useFetcher()
+
 
 	if (!mediaUrl) return null
 
 	// Better media type detection
 	const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(mediaUrl) || /video\//i.test(mediaUrl)
-	const isAudio = /\.(mp3|wav|m4a|aac|ogg|flac)$/i.test(mediaUrl) || /audio\//i.test(mediaUrl)
-	
-	// If it's neither clearly video nor audio, assume it's audio (most common for interviews)
-	const mediaType = isVideo ? 'video' : 'audio'
+
+	// If it's not clearly video, assume it's audio (most common for interviews)
+	const mediaType = isVideo ? "video" : "audio"
 
 	const handlePlayPause = async () => {
 		if (!mediaRef.current) return
@@ -56,8 +46,8 @@ export function MediaPlayer({
 				setIsPlaying(true)
 			}
 		} catch (error) {
-			consola.error('Error playing media:', error)
-			alert('Unable to play media. Please check the file format and try again.')
+			consola.error("Error playing media:", error)
+			alert("Unable to play media. Please check the file format and try again.")
 		} finally {
 			setIsLoading(false)
 		}
@@ -76,26 +66,9 @@ export function MediaPlayer({
 	}
 
 	const handleLoadedMetadata = () => {
-		if (mediaRef.current && mediaRef.current.duration) {
+		if (mediaRef.current?.duration && !duration) {
 			const mediaDuration = Math.floor(mediaRef.current.duration)
 			setDuration(mediaDuration)
-			
-			// Save duration to database if we don't already have it and have the required IDs
-			if (interviewId && accountId && projectId && mediaDuration > 0 && !existingDuration) {
-				fetcher.submit(
-					{ duration_seconds: mediaDuration },
-					{
-						method: "POST",
-						action: `/a/${accountId}/${projectId}/interviews/${interviewId}/api/update-duration`,
-						encType: "application/json"
-					}
-				)
-			}
-			
-			// Call callback if provided 
-			if (onDurationDetected && mediaDuration > 0) {
-				onDurationDetected(mediaDuration)
-			}
 		}
 	}
 
@@ -105,9 +78,9 @@ export function MediaPlayer({
 		const remainingSeconds = seconds % 60
 
 		if (hours > 0) {
-			return `${hours}:${minutes.toString().padStart(2, '0')}:${remainingSeconds.toString().padStart(2, '0')}`
+			return `${hours}:${minutes.toString().padStart(2, "0")}:${remainingSeconds.toString().padStart(2, "0")}`
 		}
-		return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`
+		return `${minutes}:${remainingSeconds.toString().padStart(2, "0")}`
 	}
 
 	return (
@@ -117,7 +90,7 @@ export function MediaPlayer({
 				size={size}
 				variant="outline"
 				disabled={isLoading}
-				className="flex items-center gap-2 border-blue-500 text-blue-600 hover:bg-blue-50 hover:border-blue-600"
+				className="flex items-center gap-2 border-blue-500 text-blue-600 hover:border-blue-600 hover:bg-blue-50"
 			>
 				{isLoading ? (
 					<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
@@ -128,13 +101,11 @@ export function MediaPlayer({
 				)}
 				<span className="flex items-center gap-1">
 					{title}
-					{duration && (
-						<span className="text-blue-500 text-xs">({formatDuration(duration)})</span>
-					)}
+					{duration ? <span className="text-blue-500 text-xs">({formatDuration(duration)})</span> : null}
 				</span>
 			</Button>
 
-			{mediaType === 'video' ? (
+			{mediaType === "video" ? (
 				<video
 					ref={mediaRef as React.RefObject<HTMLVideoElement>}
 					src={mediaUrl}

@@ -98,6 +98,21 @@ export type AnnotationUpdate = TablesUpdate<"annotations">
 export type EntityFlagInsert = TablesInsert<"entity_flags">
 export type EntityFlagUpdate = TablesUpdate<"entity_flags">
 
+// 4. Extended types for complex queries
+// -------------------------------------
+// These represent the results of complex Supabase queries with joins/relations
+export type InterviewWithPeople = Interview & {
+	interview_people: Array<{
+		role: string
+		people: Person & {
+			people_personas: Array<{
+				persona_id: string
+				personas: Pick<Persona, "id" | "name" | "color_hex">
+			}>
+		}
+	}>
+}
+
 // Convenience UI-facing narrows (kept minimal, align with DB rows)
 export type UserFlag = Pick<EntityFlag, "flag_type" | "flag_value">
 
@@ -160,7 +175,6 @@ export interface OpportunityView extends Opportunity {
 	name?: string | null
 	confidence?: number | null
 	priority?: string | null
-	updated_at?: Date | null | undefined
 	tags?: string[] | null
 	insights?: string[] | null
 	assignee?: string | null

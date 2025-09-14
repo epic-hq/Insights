@@ -2,7 +2,7 @@ import { Separator } from "@radix-ui/react-separator"
 import consola from "consola"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useRouteLoaderData } from "react-router-dom"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
@@ -145,7 +145,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			insights,
 			evidence: evidence || [],
 		}
-		
+
 		consola.info("✅ Loader completed successfully:", {
 			accountId,
 			projectId,
@@ -153,53 +153,35 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			insightsCount: insights?.length || 0,
 			evidenceCount: evidence?.length || 0
 		})
-		
+
 		return loaderResult
 	} catch (error) {
 		const msg = error instanceof Error ? error.message : String(error)
+		consola.error("❌ Loader caught error:", error)
+		consola.error("Error details:", {
+			message: msg,
+			accountId,
+			projectId,
+			interviewId
+		})
 		throw new Response(`Failed to load interview: ${msg}`, { status: 500 })
 	}
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	consola.info("🎯 InterviewDetail Component Rendering...")
-	
 	const { accountId, projectId, interview, insights, evidence } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
-	
-	let projectPath = ""
-	let routes = null
-	
-	try {
-		const currentProject = useCurrentProject()
-		projectPath = currentProject.projectPath
-		routes = useProjectRoutes(projectPath)
-		consola.info("✅ Current project context loaded:", currentProject)
-	} catch (error) {
-		consola.error("❌ Error loading current project context:", error)
-		// Fallback route construction
-		projectPath = `/a/${accountId}/${projectId}`
-		routes = useProjectRoutes(projectPath)
-		consola.info("🔄 Using fallback project path:", projectPath)
-	}
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as any
 
-	consola.info("📋 Component Data Loaded:", {
-		interviewId: interview.id,
-		accountId,
-		projectId,
-		projectPath,
-		insightsCount: insights?.length || 0,
-		evidenceCount: evidence?.length || 0
-	})
-
-	const participants = interview.participants || []
-	const primaryParticipant = participants[0]?.people
-	consola.log("InterviewDetail participants: ", participants)
-	consola.log("InterviewDetail insights: ", insights)
-
+	// Always call hooks at the top level
+	const currentProject = useCurrentProject()
+	const projectPath = currentProject.projectPath || `/a/${accountId}/${projectId}`
+	const routes = useProjectRoutes(projectPath)
 	const [isProcessing, setIsProcessing] = useState(false)
 
 	useEffect(() => {
+		if (!interview?.id) return
+
 		// Subscribe to analysis_jobs updates for this interview to reflect processing state
 		const supabase = getSupabaseClient()
 		const channel = supabase
@@ -220,6 +202,34 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			supabase.removeChannel(channel)
 		}
 	}, [interview.id])
+
+	// Early validation without logging in render
+	if (!interview || !accountId || !projectId) {
+		return <div>Error: Missing interview data</div>
+	}
+
+	const participants = interview.participants || []
+	const primaryParticipant = participants[0]?.people
+
+	function formatReadable(dateString: string) {
+		const d = new Date(dateString)
+		const parts = d.toLocaleString("en-US", {
+			month: "short",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: true,
+		})
+		// Make AM/PM lower-case and use dash after month
+		const lower = parts.replace(/AM|PM/, (m) => m.toLowerCase())
+		return lower.replace(/^(\w{3}) (\d{2}), /, "$1-$2 ")
+	}
+
+	function renderCreatedBy(createdBy?: string | null, user?: any) {
+		if (!createdBy) return "Unknown"
+		if (user?.sub === createdBy) return user?.user_metadata?.full_name || user?.email || "You"
+		return createdBy
+	}
 
 	return (
 		<div className="mx-auto max-w-6xl">
@@ -466,10 +476,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									mediaUrl={interview.media_url}
 									title="Play Recording"
 									size="sm"
-									interviewId={interview.id}
-									accountId={accountId}
-									projectId={projectId}
-									existingDuration={interview.duration_min || undefined}
+									duration_sec={interview.duration_min ? interview.duration_min * 60 : undefined}
 								/>
 							)}
 						</div>
@@ -533,38 +540,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							</div>
 						)}
 
-						{/* Metadata */}
-						<div className="rounded-lg border bg-background p-6">
-							<h3 className="mb-4 font-semibold text-foreground">Metadata</h3>
-							<div className="space-y-3">
-								{interview.interview_date && (
-									<div>
-										<label className="font-medium text-gray-500 text-sm">Interview Date</label>
-										<div className="mt-1 text-foreground/50 text-sm">
-											{new Date(interview.interview_date).toLocaleDateString()}
-										</div>
-									</div>
-								)}
-								{interview.duration_min && (
-									<div>
-										<label className="font-medium text-gray-500 text-sm">Duration</label>
-										<div className="mt-1 text-foreground/50 text-sm">{interview.duration_min} minutes</div>
-									</div>
-								)}
-
+						{/* Metadata (compact) */}
+						<div className="rounded-md border bg-background p-4">
+							<h3 className="mb-2 font-semibold text-foreground text-sm uppercase tracking-wide">Metadata</h3>
+							<div className="space-y-1 text-sm">
 								<div>
-									<label className="font-medium text-gray-500 text-sm">Created</label>
-									<div className="mt-1 text-foreground/50 text-sm">
-										{new Date(interview.created_at).toLocaleDateString()}
-									</div>
+									<span className="text-gray-500">Created:</span>{" "}
+									<span className="text-foreground/70">{formatReadable(interview.created_at)}</span>
 								</div>
-
+								<div>
+									<span className="text-gray-500">Created By:</span>{" "}
+									<span className="text-foreground/70">{renderCreatedBy(interview.created_by, protectedData?.auth?.user)}</span>
+								</div>
 								{interview.updated_at && (
 									<div>
-										<label className="font-medium text-gray-500 text-sm">Last Updated</label>
-										<div className="mt-1 text-foreground/50 text-sm">
-											{new Date(interview.updated_at).toLocaleDateString()}
-										</div>
+										<span className="text-gray-500">Last Updated:</span>{" "}
+										<span className="text-foreground/70">{formatReadable(interview.updated_at)}</span>
 									</div>
 								)}
 							</div>

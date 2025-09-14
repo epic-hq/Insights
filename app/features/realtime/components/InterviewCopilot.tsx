@@ -1,7 +1,7 @@
 import consola from "consola"
-import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, Users } from "lucide-react"
+import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, Square, RotateCcw, Users } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
-import { InterviewQuestionsManager } from "~/components/questions/InterviewQuestionsManager"
+import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -27,7 +27,9 @@ interface AISuggestion {
 export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotProps) {
 	const [selectedQuestions, setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
 	const [isRecording, setIsRecording] = useState(false)
-	const [captions, setCaptions] = useState<string[]>([])
+	// Store finalized turns with timing to support 15s replay
+	const [turns, setTurns] = useState<{ transcript: string; start: number; end: number }[]>([])
+	const [captions, setCaptions] = useState<string[]>([]) // kept for finalize consistency
 	const [currentCaption, setCurrentCaption] = useState("")
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
@@ -37,8 +39,14 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
   const basePath = `/a/${accountId}/${projectId}`
 
   // Realtime streaming state
-  const [streamStatus, setStreamStatus] = useState<"idle" | "connecting" | "streaming" | "stopped" | "error">("idle")
+  const [streamStatus, setStreamStatus] = useState<
+    "idle" | "connecting" | "streaming" | "paused" | "stopped" | "error"
+  >("idle")
+  // Visible text for "Replay last 15s"
+  const [replayText, setReplayText] = useState<string>("")
+  const replayTimerRef = useRef<number | null>(null)
   const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId)
+  const [isFinishing, setIsFinishing] = useState(false)
   const wsRef = useRef<WebSocket | null>(null)
   const ctxRef = useRef<AudioContext | null>(null)
   const nodeRef = useRef<AudioWorkletNode | null>(null)
@@ -262,13 +270,20 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
                 finalKeysRef.current = [key, ...finalKeysRef.current.slice(0, 9)]
                 return [t.transcript, ...prev.slice(0, 9)]
               })
+              // Track turns with timestamps for replay
+              if (t.words && t.words.length) {
+                const start = t.words[0]?.start ?? 0
+                const end = t.words[t.words.length - 1]?.end ?? 0
+                setTurns((prev) => [{ transcript: t.transcript, start, end }, ...prev].slice(0, 100))
+              }
               setCurrentCaption("")
             } else {
-              // Ignore drafts to avoid duplicate visuals; show only finals
-              // setCurrentCaption(t.transcript)
+              // Keep draft transcript internally (not shown live) to support Replay
+              setCurrentCaption(t.transcript)
             }
           } else if ((msg as any).type === "Begin") {
             setCaptions([])
+            setTurns([])
             setCurrentCaption("")
           }
         } catch {
@@ -291,6 +306,83 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
       stopStreaming()
     }
   }, [assignedInterviewId, basePath])
+
+  // Pause without finalizing; keeps WS alive if possible
+  const pauseStreaming = useCallback(() => {
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+    try {
+      nodeRef.current?.disconnect()
+      ctxRef.current?.suspend?.()
+      const rec = recRef.current
+      if (rec && rec.state === "recording" && typeof rec.pause === "function") {
+        try { rec.pause() } catch {}
+      }
+    } catch {}
+    setStreamStatus("paused")
+  }, [])
+
+  // Resume after pause; reuse existing WS if open
+  const resumeStreaming = useCallback(async () => {
+    try {
+      if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+        setStreamStatus("streaming")
+        const ctx = new AudioContext({ sampleRate: 48000 })
+        ctxRef.current = ctx
+        await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
+          video: false,
+        })
+        const src = ctx.createMediaStreamSource(stream)
+        const node = new AudioWorkletNode(ctx, "pcm-processor")
+        nodeRef.current = node
+        src.connect(node)
+
+        try {
+          const rec = recRef.current
+          if (rec && rec.state === "paused" && typeof rec.resume === "function") {
+            rec.resume()
+          }
+        } catch {}
+
+        node.port.onmessage = (e) => {
+          bufferRef.current.push(e.data as Float32Array)
+        }
+
+        const sendChunk = () => {
+          const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000)
+          const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000)
+          const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+          if (available < minInputSamples) {
+            insufficientRef.current = true
+            return
+          }
+          const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
+          let floats = drainForSamples(Math.max(minInputSamples, inputAim))
+          if (!floats || floats.length === 0) return
+          let pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
+          if (!pcm16) return
+          if (pcm16.length < minOutSamples) {
+            insufficientRef.current = true
+            return
+          }
+          insufficientRef.current = false
+          if (wsRef.current && wsRef.current.readyState === WebSocket.OPEN) {
+            wsRef.current.send(pcm16.buffer)
+            firstSendRef.current = false
+          }
+        }
+        timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
+      } else {
+        await startStreaming()
+      }
+    } catch (e) {
+      consola.warn("resumeStreaming error", e)
+    }
+  }, [startStreaming])
 
   const stopStreaming = useCallback(() => {
     if (timerRef.current) {
@@ -416,11 +508,44 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
   const toggleRecording = useCallback(() => {
     setIsRecording((prev) => !prev)
     if (!isRecording) {
-      startStreaming()
+      if (streamStatus === "paused") {
+        void resumeStreaming()
+      } else {
+        startStreaming()
+      }
     } else {
-      stopStreaming()
+      pauseStreaming()
     }
-  }, [isRecording, startStreaming, stopStreaming])
+  }, [isRecording, pauseStreaming, resumeStreaming, startStreaming, streamStatus])
+
+  const handleStop = useCallback(() => {
+    setIsFinishing(true)
+    // Explicit stop finalizes and navigates
+    stopStreaming()
+  }, [stopStreaming])
+
+  // Replay: show last 15 seconds of transcript for 15s
+  const replayLast15s = useCallback(() => {
+    if (!turns.length) return
+    const lastEnd = turns[0]?.end ?? 0
+    // Treat current time as lastEnd; append currentCaption to reach "present"
+    const cutoff = Math.max(0, lastEnd - 30)
+    const historical = turns
+      .filter((t) => t.end >= cutoff)
+      .sort((a, b) => a.start - b.start)
+      .map((t) => t.transcript)
+    const historicalStr = historical.join(" ").replace(/\s+/g, " ").trim()
+    const lastTurnText = historical.length ? historical[historical.length - 1] : ""
+    const draft = (currentCaption || "").replace(/\s+/g, " ").trim()
+    const shouldAppendDraft = !!draft && draft !== lastTurnText && !historicalStr.endsWith(draft)
+    const combined = (shouldAppendDraft ? `${historicalStr} ${draft}` : historicalStr).replace(/\s+/g, " ").trim()
+    if (!combined) return
+    setReplayText(combined)
+    if (replayTimerRef.current) window.clearTimeout(replayTimerRef.current)
+    replayTimerRef.current = window.setTimeout(() => {
+      setReplayText("")
+    }, 15000)
+  }, [currentCaption, turns])
 
   // Helpers for audio processing
   function drainForSamples(samplesNeeded: number): Float32Array | null {
@@ -508,106 +633,64 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 	return (
 		<div className="grid h-screen grid-cols-1 gap-6 p-6 lg:grid-cols-2">
-			{/* Left Side - Questions */}
+			{/* Left Side - Minimal Questions */}
 			<div className="space-y-4 overflow-y-auto">
-				<InterviewQuestionsManager
-					projectId={projectId}
-					autoGenerateOnEmpty={false}
-					onSelectedQuestionsChange={setSelectedQuestions}
-				/>
+				<MinimalQuestionView projectId={projectId} />
 			</div>
 
-			{/* Right Side - AI Suggestions & Captions */}
+			{/* Right Side - Controls & Notes */}
 			<div className="space-y-4 overflow-y-auto">
 				{/* Recording Controls */}
 				<Card>
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							{isRecording ? <Mic className="h-5 w-5 text-red-500" /> : <MicOff className="h-5 w-5" />}
-							Interview Recording
-							{isRecording && (
-								<Badge variant="destructive" className="ml-auto animate-pulse">
-									LIVE
-								</Badge>
-							)}
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<Button onClick={toggleRecording} variant={isRecording ? "destructive" : "default"} className="w-full" disabled={streamStatus === "connecting"}>
-							{isRecording ? (
-								<>
-									<Pause className="mr-2 h-4 w-4" />
-									Stop Recording
-								</>
+							{isRecording || streamStatus === "paused" ? (
+								<Mic className="h-5 w-5 text-red-600" />
 							) : (
-								<>
-									<Play className="mr-2 h-4 w-4" />
-									{streamStatus === "connecting" ? "Connecting…" : "Start Recording"}
-								</>
+								<MicOff className="h-5 w-5" />
 							)}
-						</Button>
-					</CardContent>
-				</Card>
-
-				{/* Live Captions */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Live Captions</CardTitle>
-					</CardHeader>
-					<CardContent>
-						{/* Show only final captions */}
-						<div className="max-h-32 space-y-2 overflow-y-auto">
-							{captions.map((caption, index) => (
-								<p key={index} className="rounded bg-gray-50 p-2 text-muted-foreground text-xs">
-									{caption}
-								</p>
-							))}
-						</div>
-					</CardContent>
-				</Card>
-
-				{/* AI Suggestions */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center justify-between">
-							<span className="flex items-center gap-2">
-								<Lightbulb className="h-5 w-5" />
-								AI Suggestions
-							</span>
-							<Button onClick={generateAISuggestion} variant="outline" size="sm">
-								Refresh
-							</Button>
+							Interview Recording
+							{isRecording && streamStatus === "streaming" && (
+								<Badge variant="destructive" className="ml-auto animate-pulse">LIVE</Badge>
+							)}
 						</CardTitle>
 					</CardHeader>
 					<CardContent className="space-y-3">
-						{posthog.isFeatureEnabled('ffRealTime') && (
-							<>
-								{aiSuggestions.map((suggestion) => (
-									<Card key={suggestion.id} className="border-l-4 border-l-blue-400">
-										<CardContent className="p-3">
-											<div className="mb-2 flex items-start gap-2">
-												{getSuggestionIcon(suggestion.type)}
-												<Badge variant="outline" className={getSuggestionColor(suggestion.type)}>
-													{suggestion.type.replace("_", " ")}
-												</Badge>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{Math.round(suggestion.confidence * 100)}%
-												</Badge>
-											</div>
-											<p className="text-sm">{suggestion.text}</p>
-											<p className="mt-1 text-muted-foreground text-xs">{suggestion.timestamp.toLocaleTimeString()}</p>
-										</CardContent>
-									</Card>
-								))}
-
-								{aiSuggestions.length === 0 && (
-									<div className="py-4 text-center text-muted-foreground">
-										<Lightbulb className="mx-auto mb-2 h-6 w-6 opacity-50" />
-										<p className="text-sm">AI suggestions will appear here during the interview</p>
-									</div>
-								)}
-							</>
-						)}
+          <div className="flex items-center gap-2 flex-wrap">
+            <Button
+              onClick={toggleRecording}
+              size="sm"
+              className="flex-1 min-w-0 bg-red-600 hover:bg-red-700 text-white"
+              disabled={streamStatus === "connecting" || isFinishing}
+            >
+              {streamStatus === "streaming" && isRecording ? (
+                <>
+                  <Pause className="mr-2 h-4 w-4" /> Pause
+                </>
+              ) : (
+                <>
+                  <Play className="mr-2 h-4 w-4" />
+                  {streamStatus === "connecting" ? "Connecting…" : streamStatus === "paused" ? "Resume" : "Record"}
+                </>
+              )}
+            </Button>
+            <Button onClick={handleStop} size="sm" className="flex-1 min-w-0 border-red-600 text-red-700 hover:bg-red-50" variant="outline" disabled={isFinishing}>
+                <Square className="mr-2 h-4 w-4" /> {isFinishing ? 'Finishing & Analyzing' : 'Finish'}
+            </Button>
+          </div>
+						<div className="text-muted-foreground text-xs">
+							Summary compiles at end after you press Stop. You can pause/resume anytime.
+						</div>
+						<div className="flex items-center gap-2">
+            <Button onClick={replayLast15s} variant="secondary" className="w-full">
+                <RotateCcw className="mr-2 h-4 w-4" /> Replay last 15s
+            </Button>
+          </div>
+          {replayText && (
+            <div className="rounded-md border p-3 text-foreground text-base md:text-lg">
+              {replayText}
+            </div>
+          )}
 					</CardContent>
 				</Card>
 

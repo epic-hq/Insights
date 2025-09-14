@@ -213,18 +213,18 @@ export default function Index() {
 				</Card>
 
 				{/* Record Now */}
-				<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
+				<Card className="group relative overflow-hidden border-2 transition-all hover:border-red-500 hover:shadow-lg">
 					<CardHeader className="pb-6">
 						<CardTitle className="flex flex-row text-2xl">
-							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/20">
-								<Mic className="h-8 w-8 text-green-600 dark:text-green-400" />
+							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/20">
+								<Mic className="h-8 w-8 text-red-600 dark:text-red-400" />
 							</div>
 							<div className="px-2 pt-3">Record Now</div>
 						</CardTitle>
 						<CardDescription className="text-base">Record Live Now and get Instant Insights.</CardDescription>
 					</CardHeader>
 					<CardContent className="pt-0">
-                    <Button size="lg" className="w-full bg-green-600 hover:bg-green-700 group-hover:bg-green-700" onClick={handleRecordNow} disabled={creating}>
+                    <Button size="lg" className="w-full bg-red-600 hover:bg-red-700 group-hover:bg-red-700" onClick={handleRecordNow} disabled={creating}>
                         {creating ? "Starting…" : "Record Now"}
                         <Mic className="ml-2 h-5 w-5" />
                     </Button>

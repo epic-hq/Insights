@@ -241,10 +241,7 @@ export default function EditInterview() {
 								mediaUrl={interview.media_url}
 								title="Play"
 								size="sm"
-								interviewId={interview.id}
-								accountId={accountId}
-								projectId={projectId}
-								existingDuration={interview.duration_min || undefined}
+								duration_sec={interview.duration_min ? interview.duration_min * 60 : undefined}
 							/>
 						)}
 					</div>
