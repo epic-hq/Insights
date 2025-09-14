@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Lightbulb, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Square, Users } from "lucide-react"
+import { Lightbulb, Loader2, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Square, Users } from "lucide-react"
 import posthog from "posthog-js"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
@@ -735,6 +735,23 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 			{/* Right Side - Controls & Notes */}
 			<div className="min-h-0 space-y-4 overflow-y-auto">
+				{/* Processing Notification */}
+				{isFinishing && (
+					<Card className="border-blue-200 bg-blue-50">
+						<CardContent className="p-4">
+							<div className="flex items-center gap-3">
+								<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+								<div>
+									<p className="font-medium text-blue-900">Processing your recording...</p>
+									<p className="text-sm text-blue-700">
+										We're storing your audio file, generating insights, and preparing your interview summary.
+									</p>
+								</div>
+							</div>
+						</CardContent>
+					</Card>
+				)}
+
 				{/* Recording Controls */}
 				<Card>
 					<CardHeader>
@@ -778,7 +795,15 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								variant="outline"
 								disabled={isFinishing || streamStatus !== "streaming"}
 							>
-								<Square className="mr-2 h-4 w-4" /> {isFinishing ? "Finishing & Analyzing" : "Finish"}
+								{isFinishing ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
+									</>
+								) : (
+									<>
+										<Square className="mr-2 h-4 w-4" /> Finish
+									</>
+								)}
 							</Button>
 						</div>
 						<div className="text-foreground/75 text-sm">
