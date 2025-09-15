@@ -29,7 +29,7 @@ export default class TypeBuilder {
     
     ActionButton: ClassViewer<'ActionButton', "label" | "action_type" | "parameters" | "priority">;
     
-    Anchor: ClassViewer<'Anchor', "type" | "target" | "start" | "end">;
+    Anchor: ClassViewer<'Anchor', "type" | "target" | "start" | "end" | "speaker" | "chapter_title">;
     
     AutoGroupThemesResponse: ClassViewer<'AutoGroupThemesResponse', "themes">;
     
@@ -49,7 +49,7 @@ export default class TypeBuilder {
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
-    EvidenceUnit: ClassViewer<'EvidenceUnit', "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence">;
+    EvidenceUnit: ClassViewer<'EvidenceUnit', "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
@@ -161,7 +161,7 @@ export default class TypeBuilder {
         ]);
         
         this.Anchor = this.tb.classViewer("Anchor", [
-          "type","target","start","end",
+          "type","target","start","end","speaker","chapter_title",
         ]);
         
         this.AutoGroupThemesResponse = this.tb.classViewer("AutoGroupThemesResponse", [
@@ -201,7 +201,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
-          "verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence",
+          "verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key",
         ]);
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [

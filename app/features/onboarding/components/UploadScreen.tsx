@@ -1,5 +1,6 @@
+import consola from "consola"
 import { CheckCircle, ChevronLeft, File, Mic, Upload, Video } from "lucide-react"
-import { useRef, useState } from "react"
+import { useCallback, useMemo, useRef, useState } from "react"
 import { useNavigate, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import { OnboardingStepper } from "./OnboardingStepper"
@@ -51,12 +52,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 	}
 
 	const navigate = useNavigate()
-	const { auth } = (useRouteLoaderData("routes/_ProtectedLayout") || { auth: { accountId: "" } }) as {
-		auth: { accountId: string }
-	}
+	const routeData = useRouteLoaderData("routes/_ProtectedLayout") as { auth: { accountId: string } } | null
+	const auth = useMemo(() => routeData?.auth || { accountId: "" }, [routeData])
 	const [recordingStart, setRecordingStart] = useState(false)
 
-	const handleRecordNow = async () => {
+	const handleRecordNow = useCallback(async () => {
 		try {
 			setRecordingStart(true)
 			// If we have a projectId, create an interview in that project; else create project+interview
@@ -83,18 +83,18 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			throw new Error("Invalid response from Record Now API")
 		} catch (e: any) {
 			// Fallback: go to create project if we couldn't start
-			console.error("Record Now error:", e?.message || e)
+			consola.error("Record Now error:", e?.message || e)
 			navigate(`/a/${auth.accountId}/projects/new?from=record`)
 		} finally {
 			setRecordingStart(false)
 		}
-	}
+	}, [auth.accountId, navigate, projectId])
 
-	const handleNext = () => {
+	const handleNext = useCallback(() => {
 		if (selectedFile) {
 			onNext(selectedFile, mediaType, projectId)
 		}
-	}
+	}, [selectedFile, mediaType, projectId, onNext])
 
 	const formatFileSize = (bytes: number): string => {
 		if (bytes === 0) return "0 Bytes"

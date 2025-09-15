@@ -6,6 +6,8 @@ class Anchor {
   target string @description("media_id | doc_id | URL | stream id")
   start string @description("av: ms (number-as-string OK); doc: p14#para3; web: selector; log: ISO time")
   end string? @description("optional end position")
+  speaker string? @description("Optional: speaker label or name if available")
+  chapter_title string? @description("Optional: chapter/section title for quick context")
 }
 
 class KindTags {
@@ -26,6 +28,8 @@ class EvidenceUnit {
   journey_stage string? @description("Optional journey stage if clear")
   anchors Anchor[] @description("At least one deep-link anchor to source")
   confidence string @description("low | medium | high")
+  context_summary string? @description("1–2 sentences: who/where/what; why it matters")
+  independence_key string? @description("Stable signature for dedupe (e.g., normalized quote + main tag)")
 }
 
 class Chapter {
@@ -42,16 +46,26 @@ function ExtractEvidenceFromTranscript(
 ) -> EvidenceUnit[] {
   client "CustomGPT4o"
   prompt #"
-    You are an expert UX researcher. Identify and extract notable facts about the people, what they say,their behavior, goals and challegnes.
-		Output concise, citable evidence units from the transcript.
+    You are an expert UX researcher. Identify decision-relevant, high-impact evidence from the transcript:
+    crisply citable quotes with just enough context to understand and act.
 
-    Rules
-    - Prefer short, verbatim quotes over long passages; trim filler.
-    - Each unit must include at least one Anchor pointing to the exact location.
-    - Classify tags into canonical buckets: problem, goal, behavior, emotion, context, artifact.
-    - Set support = supports | refutes | neutral relative to the observed statement.
-    - Confidence: low | medium | high based on clarity and specificity.
+    Selection priorities
+    - Prefer high-severity pains, frequent behaviors, explicit goals/success criteria.
+    - Include workarounds/hacks, switching triggers, evaluation criteria, blockers, and signals of commitment/WTP.
+    - Skip generic opinions or filler unless tied to a concrete outcome.
+
+    For each evidence unit
+    - verbatim: Short quote (<= ~200 chars when possible), trim filler.
+    - anchors: Include an anchor with precise start (ms for av) and, when possible, speaker and chapter_title.
+    - kind_tags: Fill problem/goal/behavior/emotion/context/artifact appropriately.
+    - support: supports | refutes | neutral relative to the statement.
+    - confidence: low | medium | high based on clarity and specificity.
+    - context_summary: 1–2 sentences stating who said it, in what situation/flow, and why it matters for the decision.
+    - independence_key: Stable signature (e.g., normalized quote + prominent tag) to dedupe similar units.
+
+    Guardrails
     - Only infer persona/segment/journey_stage when obvious.
+    - Prefer fewer, higher-quality units over many weak ones.
 
     Transcript (language={{ language }})
     {{ transcript }}

@@ -708,6 +708,7 @@ export type Database = {
           anchors: Json
           citation: string | null
           confidence: string | null
+          context_summary: string | null
           created_at: string
           created_by: string | null
           id: string
@@ -733,6 +734,7 @@ export type Database = {
           anchors?: Json
           citation?: string | null
           confidence?: string | null
+          context_summary?: string | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -758,6 +760,7 @@ export type Database = {
           anchors?: Json
           citation?: string | null
           confidence?: string | null
+          context_summary?: string | null
           created_at?: string
           created_by?: string | null
           id?: string

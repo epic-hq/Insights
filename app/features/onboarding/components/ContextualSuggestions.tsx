@@ -9,6 +9,9 @@ interface ContextualSuggestionsProps {
 	existingItems: string[]
 	onSuggestionClick: (suggestion: string) => void
 	apiPath?: string // Allow custom API path to be passed in
+	shownSuggestions?: string[] // Track previously shown suggestions
+	onSuggestionShown?: (suggestions: string[]) => void // Callback when suggestions are shown
+	isActive?: boolean // Whether this component should show suggestions
 }
 
 export default function ContextualSuggestions({
@@ -18,6 +21,9 @@ export default function ContextualSuggestions({
 	existingItems,
 	onSuggestionClick,
 	apiPath = "/api/contextual-suggestions", // Default fallback for backward compatibility
+	shownSuggestions = [],
+	onSuggestionShown,
+	isActive = false,
 }: ContextualSuggestionsProps) {
 	const [suggestions, setSuggestions] = useState<string[]>([])
 	const [isLoading, setIsLoading] = useState(false)
@@ -47,9 +53,18 @@ export default function ContextualSuggestions({
 			}
 
 			const data = await response.json()
-			console.log("Received suggestions data:", data)
+			consola.log("Received suggestions data:", data)
 			const suggestionsArray = Array.isArray(data) ? data : data.suggestions || []
-			setSuggestions(suggestionsArray.slice(0, 3)) // Limit to 3 suggestions
+			// Filter out suggestions that have already been shown
+			const filteredSuggestions = suggestionsArray.filter(suggestion => 
+				!shownSuggestions.includes(suggestion) && !existingItems.includes(suggestion)
+			)
+			const finalSuggestions = filteredSuggestions.slice(0, 3)
+			setSuggestions(finalSuggestions)
+			// Notify parent component about shown suggestions
+			if (onSuggestionShown && finalSuggestions.length > 0) {
+				onSuggestionShown(finalSuggestions)
+			}
 			setHasGenerated(true)
 		} catch (error) {
 			consola.error("Error generating contextual suggestions:", error)
@@ -59,14 +74,18 @@ export default function ContextualSuggestions({
 		}
 	}
 
-	// Generate suggestions only once when component mounts
+	// Auto-generate suggestions when component mounts and research goal is available
 	useEffect(() => {
 		if (!hasGenerated && researchGoal.trim()) {
-			generateSuggestions()
+			// Auto-generate after a short delay to improve UX
+			const timer = setTimeout(() => {
+				generateSuggestions()
+			}, 500)
+			return () => clearTimeout(timer)
 		}
-	}, [researchGoal, suggestionType]) // Only depend on research goal and suggestion type, not current input
+	}, [researchGoal, suggestionType, hasGenerated])
 
-	if (!researchGoal.trim()) return null
+	if (!researchGoal.trim() || !isActive) return null
 
 	return (
 		<div className="space-y-2">

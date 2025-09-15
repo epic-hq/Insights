@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useCallback, useMemo } from "react"
 import { useSearchParams, useNavigate } from "react-router"
 import { Button } from "~/components/ui/button"
 import ProcessingScreen from "./ProcessingScreen"
@@ -75,7 +75,7 @@ export default function OnboardingFlow({
 		projectId,
 	})
 
-	const handleWelcomeNext = async (welcomeData: {
+	const handleWelcomeNext = useCallback(async (welcomeData: {
 		target_orgs: string[]
 		target_roles: string[]
 		research_goal: string
@@ -94,14 +94,14 @@ export default function OnboardingFlow({
 		}))
 
 		setCurrentStep("questions")
-	}
+	}, [projectId])
 
-	const handleQuestionsNext = (questions: string[]) => {
+	const handleQuestionsNext = useCallback((questions: string[]) => {
 		setData((prev) => ({ ...prev, questions }))
 		setCurrentStep("upload")
-	}
+	}, [])
 
-	const handleUploadNext = async (file: File, mediaType: string, uploadProjectId?: string) => {
+	const handleUploadNext = useCallback(async (file: File, mediaType: string, uploadProjectId?: string) => {
 		const updatedData = { ...data, file, mediaType }
 		setData(updatedData)
 		setCurrentStep("processing")
@@ -155,14 +155,14 @@ export default function OnboardingFlow({
 			const errorMessage = error instanceof Error ? error.message : "Upload failed"
 			setData((prev) => ({ ...prev, error: errorMessage }))
 		}
-	}
+	}, [data])
 
-	const handleProcessingComplete = () => {
+	const handleProcessingComplete = useCallback(() => {
 		setCurrentStep("complete")
 		onComplete(data)
-	}
+	}, [data, onComplete])
 
-	const handleBack = () => {
+	const handleBack = useCallback(() => {
 		switch (currentStep) {
 			case "questions":
 				setCurrentStep("welcome")
@@ -173,19 +173,19 @@ export default function OnboardingFlow({
 			default:
 				break
 		}
-	}
+	}, [currentStep])
 
 	// Generate project name from target orgs and roles
-	const getProjectName = () => {
+	const getProjectName = useCallback(() => {
 		if (data.target_orgs.length === 0) return "New Project"
 		if (data.target_roles.length > 0) {
 			return `${data.target_roles[0]} at ${data.target_orgs[0]} Research`
 		}
 		return `${data.target_orgs[0]} Research`
-	}
+	}, [data.target_orgs, data.target_roles])
 
 	// Handle exit from onboarding
-	const handleExit = () => {
+	const handleExit = useCallback(() => {
 		if (isOnboarding) {
 			// Exit onboarding and go to home - remove onboarding param
 			navigate('/home')
@@ -193,13 +193,13 @@ export default function OnboardingFlow({
 			// Regular navigation behavior
 			navigate(-1)
 		}
-	}
+	}, [isOnboarding, navigate])
 
 	// Use the most current projectId - either from data (newly created) or props (existing)
-	const currentProjectId = data.projectId || projectId
+	const currentProjectId = useMemo(() => data.projectId || projectId, [data.projectId, projectId])
 
 	// Render navigation controls for onboarding mode
-	const renderOnboardingHeader = () => {
+	const renderOnboardingHeader = useCallback(() => {
 		if (!isOnboarding) return null
 		
 		return (
@@ -214,9 +214,9 @@ export default function OnboardingFlow({
 				</div>
 			</div>
 		)
-	}
+	}, [isOnboarding, handleExit, currentStep])
 
-	const stepContent = () => {
+	const stepContent = useMemo(() => {
 		switch (currentStep) {
 			case "welcome":
 				return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
@@ -255,12 +255,12 @@ export default function OnboardingFlow({
 			default:
 				return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
 		}
-	}
+	}, [currentStep, handleWelcomeNext, currentProjectId, data, handleQuestionsNext, handleBack, handleUploadNext, handleProcessingComplete, getProjectName, accountId])
 
 	return (
 		<div className="min-h-screen bg-background">
 			{renderOnboardingHeader()}
-			{stepContent()}
+			{stepContent}
 		</div>
 	)
 }

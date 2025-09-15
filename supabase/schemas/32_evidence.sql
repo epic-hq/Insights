@@ -31,6 +31,7 @@ create table if not exists evidence (
   -- content
   verbatim text not null,
   anchors jsonb not null default '[]'::jsonb, -- [{type, target, start?, end?}]
+  context_summary text, -- 1–2 sentence situational summary and relevance
   citation text,
 
   created_at timestamptz not null default now(),
@@ -46,6 +47,7 @@ comment on column evidence.project_id   is 'Owning project.';
 comment on column evidence.interview_id is 'Source interview if applicable.';
 comment on column evidence.verbatim     is 'Quoted text or descriptive evidence.';
 comment on column evidence.anchors      is 'JSONB array of deep-link anchors. Each: {type, target, start?, end?}.';
+comment on column evidence.context_summary is '1–2 sentences to situate the quote and explain why it matters.';
 
 -- Indexes -----------------------------------------------------------
 create index if not exists idx_evidence_account_id   on public.evidence(account_id);

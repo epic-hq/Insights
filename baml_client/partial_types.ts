@@ -47,6 +47,8 @@ export namespace partial_types {
       target?: string | null
       start?: string | null
       end?: string | null
+      speaker?: string | null
+      chapter_title?: string | null
     }
     export interface AutoGroupThemesResponse {
       themes: ThemeCandidate[]
@@ -113,6 +115,8 @@ export namespace partial_types {
       journey_stage?: string | null
       anchors: Anchor[]
       confidence?: string | null
+      context_summary?: string | null
+      independence_key?: string | null
     }
     export interface ExecutiveInsight {
       title?: string | null

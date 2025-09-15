@@ -3,7 +3,6 @@ import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, Users, X } f
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 import { z } from "zod"
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
@@ -13,6 +12,7 @@ import { StatusPill } from "~/components/ui/StatusPill"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
@@ -30,35 +30,11 @@ type TemplatePrefill = {
 	custom_instructions: string
 }
 
-// Template-focused suggestions for "Understand Customer Needs"
-const sampleData = [
-	{
-		goal: "Understand core customer outcomes for pricing & packaging",
-		orgs: ["Early-stage SaaS", "Mid-market B2B teams", "Ecommerce brands", "Digital services"],
-		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
-		assumptions: [
-			"Users buy to achieve outcome X, not feature Y",
-			"Clear onboarding reduces early churn",
-			"Price sensitivity drops when value is obvious",
-		],
-		unknowns: [
-			"Which 1–2 outcomes matter most enough to switch",
-			"Where in the journey do users hit most friction",
-			"What alternatives are commonly compared and why",
-		],
-	},
-	{
-		goal: "Map jobs-to-be-done for our new collaboration feature",
-		orgs: ["Product-led SaaS", "B2B platforms"],
-		roles: ["PM", "Design Lead", "Operations Manager", "Engineering Manager"],
-		assumptions: ["Teams care about speed over completeness", "Adoption hinges on low setup cost"],
-		unknowns: ["What triggers collaboration needs", "What evaluation criteria decide team adoption"],
-	},
-]
+// Removed sampleData to prevent auto-population
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
-	// Relaxed: allow no orgs; treat as "Any" downstream
+	// Organizations are optional - user can specify none
 	target_orgs: z.array(z.string()).default([]),
 	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
 	research_goal: z.string().min(1, "Research goal is required"),
@@ -71,78 +47,11 @@ const projectGoalsSchema = z.object({
 
 type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
-// Sample suggestions extracted from data
-const sampleGoals = sampleData.map((item) => item.goal)
+// Removed sampleGoals to prevent auto-population
 
-// Context-aware suggestions based on research goal
-const getContextualSuggestions = (goal: string) => {
-	const sample = sampleData.find((item) => {
-		const goalLower = goal.toLowerCase()
-		const sampleGoalLower = item.goal.toLowerCase()
-		return (
-			goalLower.length > 3 &&
-			(sampleGoalLower.includes(goalLower) ||
-				(goalLower.includes("newsletter") && sampleGoalLower.includes("newsletter")) ||
-				(goalLower.includes("automation") && sampleGoalLower.includes("automation")) ||
-				(goalLower.includes("meal") && sampleGoalLower.includes("meal")) ||
-				(goalLower.includes("community") && sampleGoalLower.includes("community")))
-		)
-	})
+// Removed contextual suggestions function to rely solely on AI-generated suggestions
 
-	if (sample) {
-		return {
-			orgs: sample.orgs,
-			roles: sample.roles,
-			assumptions: sample.assumptions,
-			unknowns: sample.unknowns,
-		}
-	}
-
-	return {
-		orgs: ["Early-stage SaaS", "Mid-market B2B product teams", "Ecommerce brands", "Digital services"],
-		roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
-		assumptions: [
-			"Users buy to achieve outcomes, not features",
-			"Onboarding clarity drives early retention",
-			"Pricing is justified when value is obvious",
-		],
-		unknowns: [
-			"Which outcomes have highest willingness-to-pay",
-			"Where the journey has most friction",
-			"Which alternatives users compare and why",
-		],
-	}
-}
-
-// Suggestion badge component
-interface SuggestionBadgesProps {
-	suggestions: string[]
-	onSuggestionClick: (suggestion: string) => void
-	show: boolean
-	color?: "blue" | "green" | "purple" | "amber"
-}
-
-function SuggestionBadges({ suggestions, onSuggestionClick, show }: SuggestionBadgesProps) {
-	if (!show || suggestions.length === 0) return null
-	const neutralClasses = "bg-slate-100 text-slate-700 hover:bg-slate-200 border border-slate-200"
-
-	return (
-		<div className="mt-3 mb-4 flex flex-wrap gap-2">
-			{suggestions.slice(0, 4).map((suggestion, index) => (
-				<button
-					key={index}
-					onMouseDown={(e) => {
-						e.preventDefault()
-						onSuggestionClick(suggestion)
-					}}
-					className={`cursor-pointer rounded-full px-2.5 py-1 font-medium text-xs transition-colors ${neutralClasses}`}
-				>
-					+ {suggestion}
-				</button>
-			))}
-		</div>
-	)
-}
+// Removed SuggestionBadges component - no longer needed
 
 interface ProjectGoalsScreenProps {
 	onNext: (data: {
@@ -193,20 +102,27 @@ export default function ProjectGoalsScreen({
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
 	const [isCreatingProject, setIsCreatingProject] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
-	const [showGoalSuggestions, setShowGoalSuggestions] = useState(false)
+	// Removed showGoalSuggestions state - no longer using fallback suggestions
 	const [showDecisionQuestionSuggestions, setShowDecisionQuestionSuggestions] = useState(false)
 	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
 	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
+	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
+	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
 	const supabase = createClient()
 
 	// Feature flag for chat setup button
-	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag('ffSetupChat')
+	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat")
 
 	// Accordion state - only one section can be open at a time
 	const [openAccordion, setOpenAccordion] = useState<string | null>("research-goal")
+
+	// Reset active suggestion type when accordion changes
+	useEffect(() => {
+		setActiveSuggestionType(null)
+	}, [openAccordion])
 
 	// Refs for input fields to handle focus after suggestion selection
 	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
@@ -263,10 +179,10 @@ export default function ProjectGoalsScreen({
 			formData.append(
 				"projectData",
 				JSON.stringify({
-					target_orgs: target_orgs.length > 0 ? target_orgs : ["Any"],
-					target_roles: target_roles.length > 0 ? target_roles : ["New Role"],
-					research_goal: research_goal || "New Research Project",
-					research_goal_details: research_goal_details || "",
+					target_orgs: target_orgs,
+					target_roles: target_roles,
+					research_goal: research_goal,
+					research_goal_details: research_goal_details,
 				})
 			)
 
@@ -537,10 +453,10 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
-	const contextualSuggestions = getContextualSuggestions(research_goal)
-	// Prefill seeds up to 3, but users may add more as needed
+	// Removed contextualSuggestions fallback - rely only on AI-generated suggestions
 
-	const isValid = target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0
+	const isValid =
+		target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0 && unknowns.length > 0
 
 	const onboardingSteps = [
 		{ id: "goals", title: "Project Goals" },
@@ -596,7 +512,9 @@ export default function ProjectGoalsScreen({
 						<div className="flex items-center gap-2 text-right">
 							{accountId && currentProjectId && isSetupChatEnabled && !isFeatureFlagLoading ? (
 								<Link to={`/a/${accountId}/${currentProjectId}/project-chat`}>
-									<Button variant="outline" size="sm">Use Chat Setup</Button>
+									<Button variant="outline" size="sm">
+										Use Chat Setup
+									</Button>
 								</Link>
 							) : null}
 							{isSaving ? (
@@ -651,27 +569,16 @@ export default function ProjectGoalsScreen({
 									<Textarea
 										placeholder={
 											templateKey === "understand_customer_needs"
-												? "e.g., Understand the core jobs, outcomes, and pains for SaaS product managers when evaluating new tools"
-												: "e.g., Understanding price sensitivity for our new pricing tier"
+												? "e.g., Understand key decision factors for SaaS buyers, or discover shopping motivations for mobile app users"
+												: "e.g., Validate product-market fit for enterprise clients, or understand user onboarding friction for consumers"
 										}
 										value={research_goal}
 										onChange={(e) => setResearchGoal(e.target.value)}
-										onFocus={() => setShowGoalSuggestions(true)}
-										onBlur={() => {
-											handleResearchGoalBlur()
-											setTimeout(() => setShowGoalSuggestions(false), 150)
-										}}
+										onBlur={handleResearchGoalBlur}
 										rows={2}
 										className="min-h-[72px]"
 									/>
-									<SuggestionBadges
-										suggestions={sampleGoals}
-										onSuggestionClick={(goal) => {
-											setResearchGoal(goal)
-											setShowGoalSuggestions(false)
-										}}
-										show={showGoalSuggestions}
-									/>
+									{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
 								</CardContent>
 							</CollapsibleContent>
 						</Card>
@@ -738,7 +645,10 @@ export default function ProjectGoalsScreen({
 									{/* Add Question UI */}
 									{!showDecisionQuestionInput ? (
 										<Button
-											onClick={() => setShowDecisionQuestionInput(true)}
+											onClick={() => {
+												setShowDecisionQuestionInput(true)
+												setActiveSuggestionType("decision_questions")
+											}}
 											variant="outline"
 											size="sm"
 											className="w-full justify-center border-dashed"
@@ -751,7 +661,7 @@ export default function ProjectGoalsScreen({
 											<div className="flex gap-2">
 												<Textarea
 													ref={decisionQuestionInputRef}
-													placeholder="What specific questions will this research answer?"
+													placeholder="e.g., What drives B2B purchase decisions? What causes consumer app abandonment?"
 													value={newDecisionQuestion}
 													onChange={(e) => setNewDecisionQuestion(e.target.value)}
 													onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addDecisionQuestion()}
@@ -786,9 +696,20 @@ export default function ProjectGoalsScreen({
 												researchGoal={research_goal}
 												existingItems={decision_questions}
 												apiPath={apiPath}
+												shownSuggestions={shownSuggestionsByType["decision_questions"] || []}
+												isActive={activeSuggestionType === null || activeSuggestionType === "decision_questions"}
 												onSuggestionClick={(suggestion) => {
 													setNewDecisionQuestion(suggestion)
 													focusInputAtEnd(decisionQuestionInputRef)
+												}}
+												onSuggestionShown={(suggestions) => {
+													if (activeSuggestionType === null) {
+														setActiveSuggestionType("decision_questions")
+													}
+													setShownSuggestionsByType((prev) => ({
+														...prev,
+														decision_questions: [...(prev.decision_questions || []), ...suggestions],
+													}))
 												}}
 											/>
 										</div>
@@ -858,7 +779,10 @@ export default function ProjectGoalsScreen({
 										</div>
 										{!showOrgSuggestions ? (
 											<Button
-												onClick={() => setShowOrgSuggestions(true)}
+												onClick={() => {
+													setShowOrgSuggestions(true)
+													setActiveSuggestionType("organizations")
+												}}
 												variant="outline"
 												size="sm"
 												className="w-full justify-center border-dashed"
@@ -871,7 +795,7 @@ export default function ProjectGoalsScreen({
 												<div className="flex gap-2">
 													<Textarea
 														ref={orgInputRef}
-														placeholder="e.g., Early-stage SaaS, E-commerce brands"
+														placeholder="e.g., Enterprise software companies, D2C fashion brands, Healthcare startups"
 														value={newOrg}
 														onChange={(e) => setNewOrg(e.target.value)}
 														onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addOrg()}
@@ -900,9 +824,20 @@ export default function ProjectGoalsScreen({
 													researchGoal={research_goal}
 													existingItems={target_orgs}
 													apiPath={apiPath}
+													shownSuggestions={shownSuggestionsByType["organizations"] || []}
+													isActive={activeSuggestionType === null || activeSuggestionType === "organizations"}
 													onSuggestionClick={(suggestion) => {
 														setNewOrg(suggestion)
 														focusInputAtEnd(orgInputRef)
+													}}
+													onSuggestionShown={(suggestions) => {
+														if (activeSuggestionType === null) {
+															setActiveSuggestionType("organizations")
+														}
+														setShownSuggestionsByType((prev) => ({
+															...prev,
+															organizations: [...(prev.organizations || []), ...suggestions],
+														}))
 													}}
 												/>
 											</div>
@@ -930,7 +865,10 @@ export default function ProjectGoalsScreen({
 										</div>
 										{!showRoleSuggestions ? (
 											<Button
-												onClick={() => setShowRoleSuggestions(true)}
+												onClick={() => {
+													setShowRoleSuggestions(true)
+													setActiveSuggestionType("roles")
+												}}
 												variant="outline"
 												size="sm"
 												className="w-full justify-center border-dashed"
@@ -943,7 +881,7 @@ export default function ProjectGoalsScreen({
 												<div className="flex gap-2">
 													<Textarea
 														ref={roleInputRef}
-														placeholder="e.g., Product Manager, Head of Growth"
+														placeholder="e.g., Chief Technology Officer, Marketing Director, End Users, Small Business Owners"
 														value={newRole}
 														onChange={(e) => setNewRole(e.target.value)}
 														onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addRole()}
@@ -972,9 +910,20 @@ export default function ProjectGoalsScreen({
 													researchGoal={research_goal}
 													existingItems={target_roles}
 													apiPath={apiPath}
+													shownSuggestions={shownSuggestionsByType["roles"] || []}
+													isActive={activeSuggestionType === null || activeSuggestionType === "roles"}
 													onSuggestionClick={(suggestion) => {
 														setNewRole(suggestion)
 														focusInputAtEnd(roleInputRef)
+													}}
+													onSuggestionShown={(suggestions) => {
+														if (activeSuggestionType === null) {
+															setActiveSuggestionType("roles")
+														}
+														setShownSuggestionsByType((prev) => ({
+															...prev,
+															roles: [...(prev.roles || []), ...suggestions],
+														}))
 													}}
 												/>
 											</div>
@@ -996,7 +945,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Target className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">Research Context</h2>
+											<h2 className="font-semibold text-lg">Crucial Assumptions & Unknowns</h2>
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
@@ -1046,7 +995,10 @@ export default function ProjectGoalsScreen({
 											</div>
 											{!showAssumptionSuggestions ? (
 												<Button
-													onClick={() => setShowAssumptionSuggestions(true)}
+													onClick={() => {
+														setShowAssumptionSuggestions(true)
+														setActiveSuggestionType("assumptions")
+													}}
 													variant="outline"
 													size="sm"
 													className="w-full justify-center border-dashed"
@@ -1059,7 +1011,7 @@ export default function ProjectGoalsScreen({
 													<div className="flex gap-2">
 														<Textarea
 															ref={assumptionInputRef}
-															placeholder="Add something you believe to be true..."
+															placeholder="e.g., Enterprise buyers need ROI proof, or Consumers value ease of use over features"
 															value={newAssumption}
 															onChange={(e) => setNewAssumption(e.target.value)}
 															onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addAssumption()}
@@ -1088,9 +1040,20 @@ export default function ProjectGoalsScreen({
 														researchGoal={research_goal}
 														existingItems={assumptions}
 														apiPath={apiPath}
+														shownSuggestions={shownSuggestionsByType["assumptions"] || []}
+														isActive={activeSuggestionType === null || activeSuggestionType === "assumptions"}
 														onSuggestionClick={(suggestion) => {
 															setNewAssumption(suggestion)
 															focusInputAtEnd(assumptionInputRef)
+														}}
+														onSuggestionShown={(suggestions) => {
+															if (activeSuggestionType === null) {
+																setActiveSuggestionType("assumptions")
+															}
+															setShownSuggestionsByType((prev) => ({
+																...prev,
+																assumptions: [...(prev.assumptions || []), ...suggestions],
+															}))
 														}}
 													/>
 												</div>
@@ -1121,7 +1084,10 @@ export default function ProjectGoalsScreen({
 											</div>
 											{!showUnknownSuggestions ? (
 												<Button
-													onClick={() => setShowUnknownSuggestions(true)}
+													onClick={() => {
+														setShowUnknownSuggestions(true)
+														setActiveSuggestionType("unknowns")
+													}}
 													variant="outline"
 													size="sm"
 													className="w-full justify-center border-dashed"
@@ -1134,7 +1100,7 @@ export default function ProjectGoalsScreen({
 													<div className="flex gap-2">
 														<Textarea
 															ref={unknownInputRef}
-															placeholder="Add something you're unsure about..."
+															placeholder="e.g., Which pricing model B2B customers prefer, or What mobile features drive user retention"
 															value={newUnknown}
 															onChange={(e) => setNewUnknown(e.target.value)}
 															onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addUnknown()}
@@ -1163,9 +1129,20 @@ export default function ProjectGoalsScreen({
 														researchGoal={research_goal}
 														existingItems={unknowns}
 														apiPath={apiPath}
+														shownSuggestions={shownSuggestionsByType["unknowns"] || []}
+														isActive={activeSuggestionType === null || activeSuggestionType === "unknowns"}
 														onSuggestionClick={(suggestion) => {
 															setNewUnknown(suggestion)
 															focusInputAtEnd(unknownInputRef)
+														}}
+														onSuggestionShown={(suggestions) => {
+															if (activeSuggestionType === null) {
+																setActiveSuggestionType("unknowns")
+															}
+															setShownSuggestionsByType((prev) => ({
+																...prev,
+																unknowns: [...(prev.unknowns || []), ...suggestions],
+															}))
 														}}
 													/>
 												</div>

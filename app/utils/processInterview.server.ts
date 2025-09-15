@@ -76,6 +76,24 @@ function sanitizeVerbatim(input: unknown): string | null {
 	return cleaned.length ? cleaned : null
 }
 
+// Generate a stable, short signature for dedupe/independence.
+// Not cryptographically strong; sufficient to cluster near-duplicates.
+function stringHash(input: string): string {
+  let h = 2166136261 >>> 0
+  for (let i = 0; i < input.length; i++) {
+    h ^= input.charCodeAt(i)
+    h = Math.imul(h, 16777619) >>> 0
+  }
+  return ("00000000" + h.toString(16)).slice(-8)
+}
+
+function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
+  const normQuote = verbatim.toLowerCase().replace(/\s+/g, " ").trim()
+  const mainTag = (kindTags[0] || "").toLowerCase().trim()
+  const basis = `${normQuote.slice(0, 160)}|${mainTag}`
+  return stringHash(basis)
+}
+
 /**
  * processInterviewTranscript
  * --------------------------
@@ -268,6 +286,13 @@ async function processInterviewTranscriptWithClient({
 						: Object.values(ev.kind_tags ?? {})
 							.flat()
 							.filter((x): x is string => typeof x === "string")
+					const confidenceStr = (ev as unknown as { confidence?: EvidenceInsert["confidence"] })?.confidence ?? "medium"
+					const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
+					const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
+					const providedIndKey = (ev as unknown as { independence_key?: string })?.independence_key
+					const independence_key = providedIndKey && providedIndKey.trim().length > 0
+					  ? providedIndKey.trim()
+					  : computeIndependenceKey(verb, kind_tags)
 					const row: EvidenceInsert = {
 						account_id: metadata.accountId,
 						project_id: (metadata.projectId ?? null) as any,
@@ -280,11 +305,16 @@ async function processInterviewTranscriptWithClient({
 						personas: (ev.personas ?? []) as string[],
 						segments: (ev.segments ?? []) as string[],
 						journey_stage: ev.journey_stage || null,
-						weight_quality: 0.8,
-						weight_relevance: 0.8,
-						confidence: (ev as unknown as { confidence?: EvidenceInsert["confidence"] })?.confidence ?? "medium",
+						weight_quality,
+						weight_relevance,
+						independence_key,
+						confidence: confidenceStr,
 						verbatim: verb,
 						anchors: (ev.anchors ?? []) as unknown as Json,
+					}
+					const context_summary = (ev as unknown as { context_summary?: string })?.context_summary
+					if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
+						;(row as unknown as Record<string, unknown>)["context_summary"] = context_summary.trim()
 					}
 					return row
 				})

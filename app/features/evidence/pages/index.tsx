@@ -11,11 +11,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (!projectId) throw new Response("Missing projectId", { status: 400 })
 	const { data, error } = await supabase
 		.from("evidence")
-		.select("id, verbatim, support, confidence, created_at")
+		.select("id, verbatim, context_summary, support, confidence, created_at")
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 	if (error) throw new Error(`Failed to load evidence: ${error.message}`)
-	const evidence = (data ?? []) as Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "created_at">[]
+	const evidence = (data ?? []) as (Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "created_at"> & {
+		context_summary?: string | null
+	})[]
 
 	// Join evidence_people -> people to get person names and roles for each evidence
 	let peopleByEvidence = new Map<
@@ -82,7 +84,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		...e,
 		people: peopleByEvidence.get(e.id) ?? [],
 	})) as Array<
-		Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "created_at"> & {
+		(Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "created_at"> & { context_summary?: string | null }) & {
 			people: { id: string; name: string | null; role: string | null; personas: Array<{ id: string; name: string }> }[]
 		}
 	>
@@ -104,6 +106,9 @@ export default function EvidenceIndex() {
 									<Card key={e.id} className="flex items-start justify-between gap-4 p-3">
 										<div>
 											<div className="line-clamp-2 text-foreground text-md">“{e.verbatim}”</div>
+											{e.context_summary && (
+												<div className="mt-1 line-clamp-2 text-muted-foreground text-sm">{e.context_summary}</div>
+											)}
 											{/* People + metadata */}
 											<div className="mt-1 flex flex-wrap items-center gap-x-2 gap-y-1 text-muted-foreground text-xs">
 												{e.people && e.people.length > 0 ? (

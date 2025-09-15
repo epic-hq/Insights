@@ -24,29 +24,14 @@ function fallbackPrefill(templateKey: string, projectName: string, signup: Recor
 
 	const pre: TemplatePrefill = {
 		template_key: templateKey,
-		target_orgs: ["Early-stage SaaS companies", "Mid-market B2B product teams", "Ecommerce brands"],
-		target_roles: ["Product Manager", "Head of Growth", "UX Researcher", "Customer Success Lead", "Founder/CEO"],
-		research_goal: inferredGoal,
-		research_goal_details: challenges
-			? `Why now: ${challenges}`
-			: "Map customer jobs-to-be-done, outcomes, pains, triggers, and decision criteria to guide product and messaging.",
-		decision_questions: [
-			"Which outcomes do customers care about most, and why?",
-			"What jobs-to-be-done lead customers to hire our solution?",
-			"Where are the biggest pains and frictions in their current workflow?",
-		],
-		assumptions: [
-			"Users buy primarily to achieve outcome X, not feature Y.",
-			"Price sensitivity is low if the outcome impact is clear.",
-			"Onboarding speed is a key driver of early retention.",
-		],
-		unknowns: [
-			"Which 1–2 outcomes matter most enough to switch/upgrade?",
-			"Which moments cause the highest friction or drop-off?",
-			"Which alternatives are most commonly compared and why?",
-		],
-		custom_instructions:
-			"Speak in plain language. Avoid leading or binary questions. Focus on outcomes, contexts, and tradeoffs. Prefer concrete examples.",
+		target_orgs: [],
+		target_roles: [],
+		research_goal: goalFromSignup || "",
+		research_goal_details: challenges || "",
+		decision_questions: [],
+		assumptions: [],
+		unknowns: [],
+		custom_instructions: "",
 	}
 
 	return pre

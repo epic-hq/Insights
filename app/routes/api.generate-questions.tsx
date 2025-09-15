@@ -182,7 +182,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				const s = typeof v === "string" ? v : String(v ?? "")
 				return s.trim().length > 0 ? s : fallback
 			}
-			questionSet = await generateQuestionSetCanonical({
+			
+			const canonicalParams = {
 				target_orgs: ensure(target_orgs),
 				target_roles: ensure(target_roles),
 				research_goal: ensure(research_goal, "General research goal"),
@@ -192,10 +193,19 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				custom_instructions: ensure(custom_instructions, ""),
 				session_id: ensure(computedSessionId),
 				round: 1,
-					total_per_round: questionCount || 10,
+				total_per_round: questionCount || 10,
 				per_category_min: 1,
 				per_category_max: 3,
 				interview_time_limit,
+			}
+			
+			consola.log("[BAML DEBUG] Calling generateQuestionSetCanonical with params:", canonicalParams)
+			questionSet = await generateQuestionSetCanonical(canonicalParams)
+			consola.log("[BAML DEBUG] Canonical result:", {
+				hasQuestions: Array.isArray(questionSet?.questions),
+				questionCount: questionSet?.questions?.length || 0,
+				questions: questionSet?.questions?.slice(0, 3).map((q: any) => q.text) || [],
+				fullResult: questionSet
 			})
 
 			// Sanitize canonical output to remove any placeholders
@@ -296,8 +306,23 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				consola.warn("[api.generate-questions] Top-up via fallback failed", topUpErr)
 			}
 		} catch (e) {
-			consola.warn("[api.generate-questions] Canonical generation failed; using fallback shape.", e)
+			consola.error("[BAML ERROR] Canonical generation failed:", {
+				error: e,
+				errorMessage: e instanceof Error ? e.message : String(e),
+				errorStack: e instanceof Error ? e.stack : undefined,
+				params: {
+					target_orgs,
+					target_roles,
+					research_goal,
+					research_goal_details,
+					assumptions,
+					unknowns,
+					custom_instructions
+				}
+			})
+			
 			// Fallback: use legacy suggestions and adapt to QuestionSet shape expected by UI.
+			consola.log("[BAML DEBUG] Attempting fallback generateResearchQuestions...")
 			const { generateResearchQuestions } = await import("~/utils/research-analysis.server")
 			const suggestions = await generateResearchQuestions(
 				target_orgs,
@@ -308,6 +333,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				unknowns,
 				custom_instructions
 			)
+			consola.log("[BAML DEBUG] Fallback suggestions result:", suggestions)
 
 			const categories = [
 				{ id: "core", label: "Core" },

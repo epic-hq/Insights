@@ -78,25 +78,42 @@ export async function generateQuestionSetCanonical(params: {
 	// includes top-level sessionId, policy, and round with exact values.
 	const enforcedShapeNote = `\n\nSTRUCTURE REQUIREMENTS (non-negotiable):\n- Always return valid JSON matching QuestionSet.\n- You MUST include top-level keys: sessionId, policy, categories, questions, history, round.\n- Set sessionId exactly to: ${session_id || ""}\n- Set round exactly to: ${round ?? 1}\n- policy object MUST be present with EXACT keys and values:\n  {\n    "totalPerRound": ${total_per_round ?? 10},\n    "perCategoryMin": ${per_category_min ?? 1},\n    "perCategoryMax": ${per_category_max ?? 3},\n    "dedupeWindowRounds": 2,\n    "balanceBy": ["category","novelty"]\n  }\nReturn only the JSON object — no prose.`
 
-	const questionSet = await b.GenerateQuestionSet({
-		inputs: {
-			target_org: target_orgs,
-			target_roles,
-			research_goal,
-			research_goal_details,
-			assumptions,
-			unknowns,
-			custom_instructions: [custom_instructions || "", enforcedShapeNote].filter(Boolean).join("\n\n"),
-			session_id: session_id || `session_${Date.now()}`,
-			round: round ?? 1,
-			total_per_round: total_per_round ?? 10,
-			per_category_min: per_category_min ?? 1,
-			per_category_max: per_category_max ?? 3,
-    interview_time_limit: interview_time_limit ?? 30,
-  },
-})
-
-	return questionSet
+	const bamlInputs = {
+		target_org: target_orgs,
+		target_roles,
+		research_goal,
+		research_goal_details,
+		assumptions,
+		unknowns,
+		custom_instructions: [custom_instructions || "", enforcedShapeNote].filter(Boolean).join("\n\n"),
+		session_id: session_id || `session_${Date.now()}`,
+		round: round ?? 1,
+		total_per_round: total_per_round ?? 10,
+		per_category_min: per_category_min ?? 1,
+		per_category_max: per_category_max ?? 3,
+		interview_time_limit: interview_time_limit ?? 30,
+	}
+	
+	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs)
+	
+	try {
+		const questionSet = await b.GenerateQuestionSet(bamlInputs)
+		consola.log("[BAML DEBUG] GenerateQuestionSet result:", {
+			success: true,
+			hasQuestions: Array.isArray(questionSet?.questions),
+			questionCount: questionSet?.questions?.length || 0,
+			result: questionSet
+		})
+		return questionSet
+	} catch (error) {
+		consola.error("[BAML ERROR] GenerateQuestionSet failed:", {
+			error,
+			errorMessage: error instanceof Error ? error.message : String(error),
+			errorStack: error instanceof Error ? error.stack : undefined,
+			inputs: bamlInputs
+		})
+		throw error
+	}
 }
 
 /**
@@ -289,21 +306,19 @@ export async function generateResearchQuestions(
 			return s.trim().length > 0 ? s : fallback
 		}
 		const questionSet = await b.GenerateQuestionSet({
-			inputs: {
-				target_org: ensure(target_orgs),
-				target_roles: ensure(target_roles),
-				research_goal: ensure(research_goal, "General research goal"),
-				research_goal_details: ensure(research_goal_details, ""),
-				assumptions: ensure(assumptions, ""),
-				unknowns: ensure(unknowns, ""),
-				custom_instructions: ensure(custom_instructions, ""),
-				session_id: `session_${Date.now()}`,
-				round: 1,
-				total_per_round: 10,
-				per_category_min: 1,
-				per_category_max: 3,
-				interview_time_limit: 60,
-			},
+			target_org: ensure(target_orgs),
+			target_roles: ensure(target_roles),
+			research_goal: ensure(research_goal, "General research goal"),
+			research_goal_details: ensure(research_goal_details, ""),
+			assumptions: ensure(assumptions, ""),
+			unknowns: ensure(unknowns, ""),
+			custom_instructions: ensure(custom_instructions, ""),
+			session_id: `session_${Date.now()}`,
+			round: 1,
+			total_per_round: 10,
+			per_category_min: 1,
+			per_category_max: 3,
+			interview_time_limit: 60,
 		})
 
 		// Convert new QuestionSet format to legacy format for backward compatibility

@@ -14,7 +14,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.single()
 	if (error) throw new Error(`Failed to load evidence: ${error.message}`)
 	return {
-		evidence: data as Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "anchors"> & {
+			evidence: data as (Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "anchors"> & {
+				context_summary?: string | null
+			}) & {
 			evidence_tag?: { tag_id: string; confidence: number | null }[]
 		},
 	}
@@ -28,6 +30,9 @@ export default function EvidenceDetail() {
 			<h1 className="font-semibold text-xl">Evidence Detail</h1>
 			<div className="rounded-md border bg-white p-4">
 				<div className="text-lg">“{evidence.verbatim}”</div>
+				{(evidence as any).context_summary && (
+					<div className="mt-2 text-muted-foreground text-sm">{(evidence as any).context_summary}</div>
+				)}
 				<div className="mt-2 text-gray-500 text-sm">
 					{evidence.support} • {evidence.confidence}
 				</div>

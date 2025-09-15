@@ -309,6 +309,8 @@ export interface Anchor {
   target: string
   start: string
   end?: string | null
+  speaker?: string | null
+  chapter_title?: string | null
   
 }
 
@@ -395,6 +397,8 @@ export interface EvidenceUnit {
   journey_stage?: string | null
   anchors: Anchor[]
   confidence: string
+  context_summary?: string | null
+  independence_key?: string | null
   
 }
 

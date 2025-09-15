@@ -77,11 +77,18 @@ export function EvidenceCard({
 					<div className="flex-1">
 						{/* Main verbatim quote - Clean Typography */}
 						<motion.blockquote
-							className="mb-4 text-base text-gray-900 leading-relaxed dark:text-white"
+							className="mb-2 text-base text-gray-900 leading-relaxed dark:text-white"
 							style={{ borderLeftColor: themeColor }}
 						>
 							"{evidence.verbatim}"
 						</motion.blockquote>
+
+						{/* Context summary if present */}
+						{(evidence as any).context_summary && (
+							<p className="mb-3 text-muted-foreground text-sm">
+								{(evidence as any).context_summary}
+							</p>
+						)}
 
 						{/* Journey Stage with Theme Color Accent */}
 						{evidence.journey_stage && (
