@@ -288,10 +288,21 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						source: "ai" as const,
 						isMustHave: false,
 					}))
-					setPendingGeneratedQuestions((prev) => [...prev, ...formattedNewQuestions])
+
+					// Deduplicate questions by ID, regenerating UUIDs for duplicates
+					const existingIds = new Set(questions.map(q => q.id))
+					const deduplicatedQuestions = formattedNewQuestions.map(q => {
+						if (existingIds.has(q.id)) {
+							console.warn(`Duplicate question ID detected: ${q.id}, regenerating UUID...`)
+							return { ...q, id: crypto.randomUUID() }
+						}
+						return q
+					})
+
+					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
 					setPendingInsertionChoices((prev) => ({
 						...prev,
-						...formattedNewQuestions.reduce<Record<string, string>>((acc, question) => {
+						...deduplicatedQuestions.reduce<Record<string, string>>((acc, question) => {
 							acc[question.id] = "end"
 							return acc
 						}, {}),
@@ -300,12 +311,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 					if (autoGenerateInitial) {
 						setAutoGenerateInitial(false)
-						toast.success(`Generated ${formattedNewQuestions.length} initial questions`, {
+						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
 							description: "Review each new question to decide how it should be added.",
 							duration: 5000,
 						})
 					} else {
-						toast.success(`Generated ${formattedNewQuestions.length} new questions`, {
+						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
 							description: "Review the new questions and choose where to add them.",
 							duration: 4000,
 						})
@@ -475,7 +486,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					.sort((a, b) => (a.q.selectedOrder ?? 1e9) - (b.q.selectedOrder ?? 1e9))
 					.map(({ idx }) => resolvedIds[idx])
 
-				setQuestions(formattedQuestions)
+				// Deduplicate questions by ID, regenerating UUIDs for duplicates
+				const seenIds = new Set<string>()
+				const deduplicatedQuestions = formattedQuestions.map(q => {
+					if (seenIds.has(q.id)) {
+						console.warn(`Duplicate question ID detected on load: ${q.id}, regenerating UUID...`)
+						const newId = crypto.randomUUID()
+						seenIds.add(newId)
+						return { ...q, id: newId }
+					}
+					seenIds.add(q.id)
+					return q
+				})
+
+				setQuestions(deduplicatedQuestions)
 				if (selectedQuestionsWithOrder.length > 0) {
 					commitSelection(selectedQuestionsWithOrder)
 					setHasInitialized(true)
@@ -1291,44 +1315,48 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				</Card>
 			)}
 
+			{/* Interview Summary */}
+			{showSettings && (
+				<div className="rounded-lg bg-blue-50 p-4 text-sm">
+					<p className="text-blue-800">
+						<strong>Interview Plan:</strong> I want to conduct a <strong>{timeMinutes}-minute {purpose}</strong> interview 
+						with <strong>{familiarity === 'cold' ? 'new' : 'familiar'}</strong> participants to gather insights for my research.
+					</p>
+				</div>
+			)}
+
 			{/* Main Question List Section */}
 			<div className="space-y-4">
 				{/* Action Buttons - Reorganized with functional grouping */}
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						{/* Primary Action Group */}
-						<DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button
-									variant="outline"
-									className="border-blue-500 text-blue-600 hover:bg-blue-50"
-									disabled={generating || autoGenerateInitial}
-								>
-									{generating || autoGenerateInitial ? (
-										<>
-											<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-											Generating...
-										</>
-									) : (
-										<>
-											<Brain className="mr-2 h-4 w-4" />
-											Add Questions
-											<ChevronDown className="ml-1 h-4 w-4" />
-										</>
-									)}
-								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="start">
-								<DropdownMenuItem onClick={generateQuestions} disabled={generating || autoGenerateInitial}>
+						<Button
+							variant="outline"
+							onClick={() => setShowAddCustomQuestion(true)}
+						>
+							<Plus className="mr-2 h-4 w-4" />
+							Add Prompt
+						</Button>
+						
+						<Button
+							variant="outline"
+							className="border-blue-500 text-blue-600 hover:bg-blue-50"
+							onClick={generateQuestions}
+							disabled={generating || autoGenerateInitial}
+						>
+							{generating || autoGenerateInitial ? (
+								<>
+									<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+									Generating...
+								</>
+							) : (
+								<>
 									<Brain className="mr-2 h-4 w-4" />
-									Generate {moreCount} AI Questions
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setShowAddCustomQuestion(true)}>
-									<Plus className="mr-2 h-4 w-4" />
-									Write Custom Question
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu>
+									Generate {moreCount} Questions
+								</>
+							)}
+						</Button>
 
 						{/* Settings Group */}
 						{/* <DropdownMenu>
@@ -1771,8 +1799,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																								</div>
 																							) : (
 																								<p
-																									className="mb-2 font-medium text-sm leading-relaxed"
+																									className="-mx-1 mb-2 cursor-pointer rounded px-1 text-sm font-medium leading-relaxed hover:bg-gray-50"
 																									title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																									onClick={() => {
+																										setEditingId(question.id)
+																										setEditingText(question.text)
+																									}}
 																								>
 																									{question.text}
 																								</p>
@@ -1782,6 +1814,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							{isEvalEnabled && question.qualityFlag && (
 																								<QualityFlag qualityFlag={question.qualityFlag} />
 																							)}
+																							<Button 
+																								variant="ghost" 
+																								size="sm" 
+																								className="h-8 px-2 text-xs text-gray-500 hover:text-gray-700"
+																								title="View question details"
+																							>
+																								{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"} • 
+																								~{Math.round(question.estimatedMinutes || 3)}min
+																							</Button>
 																							<DropdownMenu>
 																								<TooltipProvider>
 																									<Tooltip>
@@ -1885,7 +1926,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								{showAllQuestions && (
 									<div className="mt-4 space-y-3">
 										<p className="text-gray-600 text-sm">
-											Additional questions below the line - click to include in your list:
+											Generated questions - Accept to add to your interview or Reject to remove:
 										</p>
 										{questionPack.remainingQuestions.map((question) => (
 											<TooltipProvider key={question.id}>
@@ -1894,52 +1935,33 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 														<Card className="border-none py-2 shadow-none sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm">
 															<CardContent className="p-2 sm:p-2">
 																<div className="flex items-start gap-3">
-																	<button
-																		onClick={() => addQuestionFromReserve(question)}
-																		className="mt-1 flex items-center gap-2 rounded p-1 transition-colors hover:bg-blue-100 dark:hover:bg-blue-900"
-																		title="Add question to your pack"
-																	>
-																		<GripVertical className="h-4 w-4 text-gray-400" />
-																		<Plus className="h-4 w-4 text-blue-500" />
-																	</button>
 																	<div className="min-w-0 flex-1">
-																		<div className="mb-2 flex flex-wrap items-center gap-2">
-																			{question.source === "user" && (
-																				<Badge
-																					variant="outline"
-																					className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
-																				>
-																					<User className="mr-1 h-3 w-3" />
-																					Custom
-																				</Badge>
-																			)}
-																			{question.timesAnswered > 0 && (
-																				<Badge
-																					className={getAnsweredCountColor(question.timesAnswered)}
-																					variant="outline"
-																				>
-																					{question.timesAnswered}
-																				</Badge>
-																			)}
+																		<div className="mb-2">
+																			<Badge variant="outline" className="text-xs">
+																				{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"}
+																			</Badge>
 																		</div>
-																		<p
-																			className="text-sm leading-relaxed"
-																			title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																		>
+																		<p className="text-sm leading-relaxed">
 																			{question.text}
 																		</p>
 																	</div>
-																	<div className="flex items-center gap-1">
-																		{isEvalEnabled && question.qualityFlag && (
-																			<QualityFlag qualityFlag={question.qualityFlag} />
-																		)}
-																		<button
-																			onClick={() => rejectQuestion(question.id)}
-																			className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
-																			title="Reject this question (won't appear in future generations)"
+																	<div className="flex items-center gap-2">
+																		<Button
+																			size="sm"
+																			variant="outline"
+																			onClick={() => addQuestionFromReserve(question)}
+																			className="border-green-500 text-green-600 hover:bg-green-50"
 																		>
-																			<X className="h-4 w-4" />
-																		</button>
+																			Accept
+																		</Button>
+																		<Button
+																			size="sm"
+																			variant="outline"
+																			onClick={() => rejectQuestion(question.id)}
+																			className="border-red-500 text-red-600 hover:bg-red-50"
+																		>
+																			Reject
+																		</Button>
 																	</div>
 																</div>
 															</CardContent>

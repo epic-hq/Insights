@@ -6,6 +6,7 @@ import {
 	CheckCircle,
 	CircleHelp,
 	Eye,
+	Hash,
 	Headphones,
 	Info,
 	Lightbulb,
@@ -77,6 +78,203 @@ function DecisionRow({ qa }: { qa: any }) {
 					</div>
 				</div>
 			)}
+		</div>
+	)
+}
+
+interface ThemesSectionProps {
+	projectId?: string
+	accountId?: string
+	routes: any
+}
+
+function ThemesSection({ projectId, routes }: ThemesSectionProps) {
+	const [themes, setThemes] = useState<any[]>([])
+	const [loading, setLoading] = useState(true)
+	const supabase = createClient()
+
+	useEffect(() => {
+		if (!projectId) return
+
+		const fetchThemes = async () => {
+			try {
+				// Load themes with evidence counts
+				const { data: themesData, error: themesError } = await supabase
+					.from("themes")
+					.select("id, name, statement, created_at")
+					.eq("project_id", projectId)
+					.order("created_at", { ascending: false })
+
+				if (themesError) throw themesError
+
+				// Load theme evidence links to count frequency
+				const { data: themeEvidence, error: evidenceError } = await supabase
+					.from("theme_evidence")
+					.select("theme_id, evidence:evidence_id(id, interview_id)")
+					.eq("project_id", projectId)
+
+				if (evidenceError) throw evidenceError
+
+				// Load evidence_people to get people count per theme
+				const evidenceIds = themeEvidence?.map((te) => te.evidence?.id).filter(Boolean) || []
+				const { data: evidencePeople, error: peopleError } = await supabase
+					.from("evidence_people")
+					.select("evidence_id, person_id, person:person_id(id, name)")
+					.eq("project_id", projectId)
+					.in("evidence_id", evidenceIds)
+
+				if (peopleError) throw peopleError
+
+				// Load people_personas to get personas per person
+				const personIds = evidencePeople?.map((ep) => ep.person_id).filter(Boolean) || []
+				const { data: peoplePersonas, error: personasError } = await supabase
+					.from("people_personas")
+					.select("person_id, persona:persona_id(id, name)")
+					.eq("project_id", projectId)
+					.in("person_id", personIds)
+
+				if (personasError) throw personasError
+
+				// Build theme data with counts
+				const enrichedThemes =
+					themesData?.map((theme) => {
+						const themeEvidenceLinks = themeEvidence?.filter((te) => te.theme_id === theme.id) || []
+						const evidenceCount = themeEvidenceLinks.length
+
+						// Get unique people for this theme
+						const themeEvidenceIds = themeEvidenceLinks.map((te) => te.evidence?.id).filter(Boolean)
+						const themePeople = evidencePeople?.filter((ep) => themeEvidenceIds.includes(ep.evidence_id)) || []
+						const uniquePeople = new Set(themePeople.map((tp) => tp.person_id))
+						const peopleCount = uniquePeople.size
+
+						// Get personas for this theme's people
+						const themePersonas = new Set<string>()
+						for (const personId of uniquePeople) {
+							const personPersonas = peoplePersonas?.filter((pp) => pp.person_id === personId) || []
+							for (const pp of personPersonas) {
+								if (pp.persona?.name) {
+									themePersonas.add(pp.persona.name)
+								}
+							}
+						}
+
+						return {
+							...theme,
+							evidenceCount,
+							peopleCount,
+							personas: Array.from(themePersonas),
+						}
+					}) || []
+
+				// Sort by evidence count (frequency) descending
+				enrichedThemes.sort((a, b) => b.evidenceCount - a.evidenceCount)
+
+				setThemes(enrichedThemes)
+			} catch (error) {
+				consola.error("Failed to fetch themes:", error)
+			} finally {
+				setLoading(false)
+			}
+		}
+
+		fetchThemes()
+	}, [projectId, supabase])
+
+	if (loading) {
+		return (
+			<div>
+				<div className="mb-3 flex items-center gap-2">
+					<Hash className="h-5 w-5 text-orange-600" />
+					Top Themes
+				</div>
+				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+					<CardContent className="p-3 sm:p-4">
+						<div className="flex items-center justify-center py-4">
+							<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+						</div>
+					</CardContent>
+				</Card>
+			</div>
+		)
+	}
+
+	return (
+		<div>
+			<div className="mb-3 flex items-center justify-between">
+				<div className="flex items-center gap-2">
+					<Hash className="h-5 w-5 text-orange-600" />
+					Top Themes
+				</div>
+				<Button
+					variant="outline"
+					size="sm"
+					onClick={() => {
+						if (routes?.themes?.index) {
+							window.location.href = routes.themes.index()
+						}
+					}}
+				>
+					View All
+				</Button>
+			</div>
+			<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+				<CardContent className="space-y-3 p-3 sm:p-4">
+					{themes.length === 0 ? (
+						<div className="py-4 text-center">
+							<Hash className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
+							<p className="text-muted-foreground text-sm">No themes generated yet</p>
+							<p className="text-muted-foreground text-xs">Themes will appear after analyzing interviews</p>
+						</div>
+					) : (
+						themes.slice(0, 5).map((theme) => (
+							<div
+								key={theme.id}
+								className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50"
+								onClick={() => {
+									if (routes?.themes?.detail) {
+										window.location.href = routes.themes.detail(theme.id)
+									}
+								}}
+							>
+								<div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/20">
+									<Hash className="h-4 w-4 text-orange-600" />
+								</div>
+								<div className="flex-1">
+									<div className="mb-1 flex items-center gap-2">
+										<h5 className="font-medium text-foreground text-sm">{theme.name}</h5>
+										<Badge variant="secondary" className="text-xs">
+											{theme.evidenceCount} evidence
+										</Badge>
+									</div>
+									{theme.statement && (
+										<p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{theme.statement}</p>
+									)}
+									<div className="flex items-center gap-3 text-muted-foreground text-xs">
+										<span className="flex items-center gap-1">
+											<Users className="h-3 w-3" />
+											{theme.peopleCount} people
+										</span>
+										{theme.personas.length > 0 && (
+											<div className="flex flex-wrap gap-1">
+												{theme.personas.slice(0, 3).map((persona: string) => (
+													<Badge key={persona} variant="outline" className="text-xs">
+														{persona}
+													</Badge>
+												))}
+												{theme.personas.length > 3 && (
+													<Badge variant="outline" className="text-xs">
+														+{theme.personas.length - 3} more
+													</Badge>
+												)}
+											</div>
+										)}
+									</div>
+								</div>
+							</div>
+						))
+					)}
+				</CardContent>
+			</Card>
 		</div>
 	)
 }
@@ -532,9 +730,9 @@ export default function ProjectStatusScreen({
 												<div>
 													{getGoalSections().map((goalSection) => (
 														<div key={goalSection.id} className="flex items-start gap-3">
-															<div className="mt-1 flex-shrink-0">
+															{/* <div className="mt-1 flex-shrink-0">
 																<Target className="h-5 w-5 text-gray-400" />
-															</div>
+															</div> */}
 															<div className="flex-1">
 																<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
 															</div>
@@ -550,11 +748,9 @@ export default function ProjectStatusScreen({
 													{(displayData.questionAnswers || []).slice(0, 3).map((qa: any, idx: number) => (
 														<DecisionRow key={`dq-${idx}`} qa={qa} />
 													))}
-													{(!displayData.questionAnswers || displayData.questionAnswers.length === 0) && (
-														<p className="text-muted-foreground text-sm">
-															No decisions yet — add interviews to generate findings.
-														</p>
-													)}
+													{displayData?.questionAnswers?.map((qa: any, idx: number) => (
+														<DecisionRow key={`dq-${idx}`} qa={qa} />
+													)) || <p className="text-muted-foreground text-sm">No decisions yet</p>}
 
 													{/* Nested Research Questions */}
 													{statusData?.hasAnalysis &&
@@ -592,20 +788,28 @@ export default function ProjectStatusScreen({
 									</Card>
 								</div>
 
-								{/* 2. Personas & Themes */}
+								{/* 2. Personas & People */}
 								<div>
 									<div className="mb-3 flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											Personas & Themes
+											People
 										</div>
 									</div>
 									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 										<CardContent className="space-y-4 p-3 sm:p-4">
 											{personas?.length === 0 && (
-												<p className="text-muted-foreground text-sm">
-													No personas yet — add interviews to generate personas.
-												</p>
+												<Button
+													onClick={() => {
+														if (routes) {
+															window.location.href = routes.interviews.upload()
+														}
+													}}
+													className="bg-green-600 hover:bg-green-700"
+												>
+													<PlusCircle className="mr-2 h-4 w-4" />
+													None yet. Add Interviews
+												</Button>
 											)}
 											{/* Enhanced Target Market Display */}
 											{getTargetMarketSections().length > 0 && (
@@ -685,22 +889,7 @@ export default function ProjectStatusScreen({
 											{/* Discovered Personas */}
 											{personas.length > 0 && (
 												<div>
-													<div className="mb-3 flex items-center gap-2">
-														<h4 className="font-medium text-muted-foreground text-sm">Personas Discovered</h4>
-														<TooltipProvider>
-															<Tooltip>
-																<TooltipTrigger>
-																	<Info className="h-3 w-3 text-muted-foreground transition-colors hover:text-foreground" />
-																</TooltipTrigger>
-																<TooltipContent>
-																	<p className="max-w-xs">
-																		The percentage represents how much of your interview data this persona represents
-																		based on similar patterns, behaviors, and characteristics found across participants.
-																	</p>
-																</TooltipContent>
-															</Tooltip>
-														</TooltipProvider>
-													</div>
+													<div className="mb-3 flex items-center gap-2"></div>
 													<div className="space-y-3">
 														{personas.slice(0, 3).map((persona) => (
 															<div
@@ -713,14 +902,14 @@ export default function ProjectStatusScreen({
 																</div>
 																<div className="flex-1">
 																	<div className="mb-1 flex items-center gap-2">
-																		<h5 className="font-medium text-foreground text-sm">{persona.name}</h5>
-																		{persona.percentage && (
+																		<h5 className="font-medium text-foreground text-md">{persona.name}</h5>
+																		{/* {persona.percentage && (
 																			<Badge variant="secondary" className="text-xs">
 																				{persona.percentage}%
 																			</Badge>
-																		)}
+																		)} */}
 																	</div>
-																	<p className="line-clamp-2 text-muted-foreground text-xs">{persona.description}</p>
+																	<p className="line-clamp-2 text-muted-foreground text-sm">{persona.description}</p>
 																	{persona.topThemes && persona.topThemes.length > 0 && (
 																		<div className="mt-2 flex flex-wrap gap-1">
 																			{persona.topThemes.slice(0, 3).map((theme: string, i: number) => (
@@ -734,7 +923,7 @@ export default function ProjectStatusScreen({
 															</div>
 														))}
 													</div>
-													<div className="mt-3 flex gap-2">
+													{/* <div className="mt-3 flex gap-2">
 														<Button
 															variant="outline"
 															size="sm"
@@ -751,14 +940,19 @@ export default function ProjectStatusScreen({
 														>
 															Persona × Theme Matrix
 														</Button>
-													</div>
+													</div> */}
 												</div>
 											)}
 										</CardContent>
 									</Card>
 								</div>
 
-								{/* 3. Interviews */}
+								{/* 3. Top Themes */}
+								{(statusData?.totalThemes ?? 0) > 0 && (
+									<ThemesSection projectId={projectId} accountId={accountId} routes={routes} />
+								)}
+
+								{/* 4. Interviews */}
 								<div>
 									<div className="mb-3 flex items-center justify-between">
 										<div className="flex items-center gap-2">
@@ -819,14 +1013,14 @@ export default function ProjectStatusScreen({
 																			return (
 																				<div
 																					key={`question-${section.id}-${question.id ?? index}`}
-																					className={`rounded-lg border p-3 border-border bg-card`}
+																					className={"rounded-lg border border-border bg-card p-3"}
 																				>
 																					<div className="flex items-start gap-2">
 																						<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
 																						<div className="flex-1">
 																							<p className="font-medium text-foreground text-sm">{question.text}</p>
 																						</div>
-																				</div>
+																					</div>
 																				</div>
 																			)
 																		})}

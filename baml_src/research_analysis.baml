@@ -276,7 +276,7 @@ class Source {
 }
 
 class Question {
-  id string @description("Unique string identifier (uuid/ulid-like). Must be unique across this QuestionSet.")
+  id string @description("CRITICAL: Unique string identifier (uuid/ulid-like). Must be globally unique across this entire QuestionSet. Generate using crypto.randomUUID() or similar. Never reuse IDs.")
   text string @description("The complete, conversational question text as you would ask a person. Include natural follow-ups when helpful.")
   categoryId string @description("Category.id this question belongs to. Must match a Category in this QuestionSet.")
   rationale string? @description("One short sentence on why this question matters for needs/potential.")
@@ -417,7 +417,7 @@ function GenerateQuestionSet(
        context, goals, pain, workflow, motivation, constraints, willingness, demographics.
     7) Provide scores in [0,1]: importance (highest signal), goalMatch, novelty.
     8) New questions must have status 'proposed'.
-    9) Use unique string IDs for questions (uuid/ulid-like).
+    9) CRITICAL: Use completely unique string IDs for questions (uuid/ulid-like). Never reuse IDs. Each question must have a globally unique identifier.
     10) Sound like a human talking to another human, not a researcher conducting an interview.
     11) Do NOT use placeholders or template tokens like [relevant process], <thing>, {something}. If specifics are missing, write a complete, neutral phrase without brackets. The final question text must not contain '[' or ']'.
 

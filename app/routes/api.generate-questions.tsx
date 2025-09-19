@@ -393,11 +393,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		}
 
 		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
-			questionSet.questions = questionSet.questions.map((question: any) => ({
-				...question,
-				id: question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID(),
-				text: sanitizeText(question.text),
-			}))
+			// Ensure all question IDs are unique to prevent drag/drop issues
+			const usedIds = new Set<string>()
+			questionSet.questions = questionSet.questions.map((question: any) => {
+				let id = question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
+				// If ID is already used, generate a new unique one
+				while (usedIds.has(id)) {
+					id = randomUUID()
+				}
+				usedIds.add(id)
+				return {
+					...question,
+					id,
+					text: sanitizeText(question.text),
+				}
+			})
 		}
 
 		return Response.json({
