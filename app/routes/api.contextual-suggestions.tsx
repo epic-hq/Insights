@@ -12,16 +12,18 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const research_goal = formData.get("researchGoal") as string
 		const current_input = formData.get("currentInput") as string
 		const suggestion_type = formData.get("suggestionType") as string
-		const existing_items = JSON.parse((formData.get("existingItems") as string) || "[]")
+    const existing_items = JSON.parse((formData.get("existingItems") as string) || "[]")
+    const shown_suggestions = JSON.parse((formData.get("shownSuggestions") as string) || "[]")
 		const project_context = (formData.get("projectContext") as string) || ""
 
-		console.log("Contextual suggestions request:", {
-			research_goal,
-			current_input,
-			suggestion_type,
-			existing_items,
-			project_context,
-		})
+    console.log("Contextual suggestions request:", {
+      research_goal,
+      current_input,
+      suggestion_type,
+      existing_items,
+      shown_suggestions,
+      project_context,
+    })
 
 		if (!research_goal || !suggestion_type) {
 			console.log("Missing required parameters")
@@ -33,54 +35,40 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		// @ts-expect-error - function may not exist until baml generate runs
 		if (!b?.GenerateContextualSuggestions) {
-			console.log("BAML function not available")
-			// Return fallback suggestions for now
-			const fallbackSuggestions = {
-				decision_questions: [
-					"What outcomes matter most to customers?",
-					"Which features drive adoption?",
-					"What causes user churn?",
-				],
-				assumptions: [
-					"Users value speed over features",
-					"Price is less important than value",
-					"Onboarding affects retention",
-				],
-				unknowns: ["Customer willingness to pay", "Feature usage patterns", "Competitive alternatives"],
-				organizations: ["Early-stage startups", "Mid-market SaaS", "Enterprise companies"],
-				roles: ["Product Manager", "Head of Growth", "UX Researcher"],
-			}
-
+			console.log("BAML function not available; refusing non-AI fallback")
 			return new Response(
-				JSON.stringify(fallbackSuggestions[suggestion_type as keyof typeof fallbackSuggestions] || []),
-				{
-					headers: { "Content-Type": "application/json" },
-				}
+				JSON.stringify({ error: "AI generation unavailable" }),
+				{ status: 503, headers: { "Content-Type": "application/json" } }
 			)
 		}
 
 		const gen = lfTrace?.generation?.({ name: "baml.GenerateContextualSuggestions" })
 
-		const suggestions = await b.GenerateContextualSuggestions(
-			research_goal,
-			current_input || "",
-			suggestion_type,
-			existing_items,
-			project_context
-		)
+    // Merge already-added items with suggestions already presented to the user
+    const exclude_items: string[] = Array.from(
+      new Set([...(Array.isArray(existing_items) ? existing_items : []), ...(Array.isArray(shown_suggestions) ? shown_suggestions : [])])
+    )
+
+    const suggestions = await b.GenerateContextualSuggestions(
+      research_goal,
+      current_input || "",
+      suggestion_type,
+      exclude_items,
+      project_context
+    )
 
 		console.log("Generated suggestions:", suggestions)
-		gen?.update?.({
-			input: {
-				suggestions: suggestions,
-				research_goal,
-				current_input,
-				suggestion_type,
-				existing_items,
-				project_context,
-			},
-			output: suggestions,
-		})
+    gen?.update?.({
+      input: {
+        suggestions: suggestions,
+        research_goal,
+        current_input,
+        suggestion_type,
+        existing_items: exclude_items,
+        project_context,
+      },
+      output: suggestions,
+    })
 		gen?.end?.()
 		return new Response(JSON.stringify(suggestions), {
 			headers: { "Content-Type": "application/json" },

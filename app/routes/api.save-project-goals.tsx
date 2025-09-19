@@ -25,7 +25,8 @@ const sectionFormatters = {
 	}),
 
 	goal_with_details: (goal: string, details: string) => ({
-		content_md: `# ${goal}\n\n${details || ""}`,
+		// Store only the user's goal as content_md; keep details in meta
+		content_md: goal,
 		meta: { research_goal: goal, research_goal_details: details || "" },
 	}),
 

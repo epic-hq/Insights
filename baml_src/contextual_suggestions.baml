@@ -24,12 +24,12 @@ function GenerateContextualSuggestions(
     PROJECT CONTEXT:
     - Research Goal: {{ research_goal }}
     - Current Input Being Typed: "{{ current_input }}"
-    - Already Added Items: {{ existing_items }}
+    - Exclude (already added or previously shown): {{ existing_items }}
     - Additional Context: {{ project_context }}
 
-    IMPORTANT: 
+    IMPORTANT:
     - Build upon the research goal and current input context
-    - Avoid duplicating existing items: {{ existing_items }}
+    - Avoid generating any suggestions that are similar to those in the exclude list: {{ existing_items }}
     - Make suggestions specific to the research domain mentioned in the goal
     - If current input exists, consider it as a starting point or theme to expand on
 
@@ -41,8 +41,8 @@ function GenerateContextualSuggestions(
     - Customer behavior insights that could change how you build or market
     - Specific outcomes that could be measured and validated
     - Questions that, once answered, would reduce uncertainty about what to build next
-    
-    Format examples: 
+
+    Format examples:
     - "What specific job-to-be-done causes customers to switch from competitors?"
     - "Which onboarding steps predict long-term retention?"
     - "What pricing threshold makes customers choose premium over basic?"
@@ -54,7 +54,7 @@ function GenerateContextualSuggestions(
     - Market conditions or competitive dynamics you're assuming
     - Product/feature beliefs that influence your roadmap
     - Business model assumptions that affect strategy
-    
+
     Make them concrete and testable. Format examples:
     - "Customers value outcome X more than feature Y"
     - "Users abandon the product primarily due to onboarding friction"
@@ -68,7 +68,7 @@ function GenerateContextualSuggestions(
     - Customer behavior patterns that you're unsure about
     - Market dynamics that could affect adoption or success
     - Competitive threats or advantages that remain unclear
-    
+
     Frame as specific uncertainties. Format examples:
     - "Customer willingness to pay for premium features"
     - "Which competitor features drive the most switching"
@@ -82,7 +82,7 @@ function GenerateContextualSuggestions(
     - Industry verticals where your research goal is most relevant
     - Business models that align with what you're trying to learn
     - Market segments that face the problems you're investigating
-    
+
     Be specific about characteristics. Format examples:
     - "Series A B2B SaaS companies (50-200 employees)"
     - "Ecommerce brands with $1M-10M annual revenue"
@@ -96,7 +96,7 @@ function GenerateContextualSuggestions(
     - End users who directly experience the problems you're researching
     - Stakeholders who would be affected by potential solutions
     - Roles that span different levels (individual contributors, managers, executives)
-    
+
     Include seniority and functional context. Format examples:
     - "VP of Product (50-500 person companies)"
     - "Customer Success Manager at SaaS companies"
@@ -106,7 +106,7 @@ function GenerateContextualSuggestions(
 
     REQUIREMENTS:
     - Each suggestion should be 4-20 words (slightly longer for more context)
-    - Avoid duplicating existing items: {{ existing_items }}
+    - Avoid duplicating any in exclude list: {{ existing_items }}
     - Be specific and actionable, not generic
     - Directly relate to the research goal context
     - Use clear, professional language that a researcher would understand

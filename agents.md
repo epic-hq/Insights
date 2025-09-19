@@ -10,7 +10,7 @@ This is the authoritative, efficient playbook for building and operating feature
 
 ## Using Development Server
 
-- Use `npm run dev` to start the development server. it will start the development server with hot reloading on :4280, and mastra server on :4111.
+- I Use `npm run dev` to start the development server, and is generally always running, so you shouldn't have to restart it unless there are package changes. It will start the development server with hot reloading on :4280, and mastra server on :4111.
 - Ensure there is only one dev server and mastra server running at a time. If you get port conflicts, kill the process and try again.
 - variables are in .env but for production .env.production and we use dotenvx to load the variables. in production we use .env.keys to decrypt .env.production
 
@@ -33,7 +33,7 @@ This is the authoritative, efficient playbook for building and operating feature
 - `app/lib/supabase/*` — SSR server/client Supabase clients.
 - `app/utils/*` — Cross-feature server utilities (e.g., `autoInsightsData.server.ts`).
 - `baml_src/*` — BAML functions and tests (LLM I/O contracts).
-- `supabase/schemas/*` — Declarative SQL schemas & functions. Generate migrations from here.
+- `supabase/schemas/*` — Declarative SQL schemas & functions. We do this first, then generate migrations from here. Special imperative migrations required for GRANT Statements and any scripts that seed data.
 - `supabase/migrations/*` — Generated SQL migrations applied to environments.
 - `supabase/functions/*` — Edge functions.
 - `mastra/*` - Mastra agentic framework config and integration with `copilotKit`.

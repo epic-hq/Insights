@@ -34,6 +34,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const [currentCaption, setCurrentCaption] = useState("")
 	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
+	const [notesExpanded, setNotesExpanded] = useState(false)
 	const supabase = createClient()
 	const navigate = useNavigate()
 	const { accountId, projectPath } = useCurrentProject()
@@ -63,6 +64,13 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const recordStartRef = useRef<number | null>(null)
 	const elapsedMsRef = useRef(0)
 	const allFinalTranscriptsRef = useRef<string[]>([])
+
+	// Recording duration and timer
+	const [recordingDuration, setRecordingDuration] = useState(0)
+	const durationTimerRef = useRef<number | null>(null)
+
+	// Track all media streams for cleanup
+	const mediaStreamsRef = useRef<MediaStream[]>([])
 
 	const TARGET_SAMPLE_RATE = 16000
 	const CHUNK_MS = 100
@@ -98,12 +106,56 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	// Track keys for final turns to avoid duplicates
 	const finalKeysRef = useRef<string[]>([])
 
+	// Helper function to clean up all media streams
+	const cleanupMediaStreams = useCallback(() => {
+		mediaStreamsRef.current.forEach((stream) => {
+			stream.getTracks().forEach((track) => {
+				track.stop()
+				consola.log("Stopped media track:", track.kind)
+			})
+		})
+		mediaStreamsRef.current = []
+	}, [])
+
 	// When route unmounts, ensure cleanup
 	useEffect(() => {
 		return () => {
+			if (durationTimerRef.current) {
+				clearInterval(durationTimerRef.current)
+			}
+			cleanupMediaStreams()
 			stopStreaming()
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [])
+
+	// Start duration timer
+	const startDurationTimer = useCallback(() => {
+		if (durationTimerRef.current) {
+			clearInterval(durationTimerRef.current)
+		}
+
+		const startTime = Date.now() - recordingDuration * 1000
+
+		durationTimerRef.current = window.setInterval(() => {
+			const elapsed = Math.floor((Date.now() - startTime) / 1000)
+			setRecordingDuration(elapsed)
+		}, 1000)
+	}, [recordingDuration])
+
+	// Stop duration timer
+	const stopDurationTimer = useCallback(() => {
+		if (durationTimerRef.current) {
+			clearInterval(durationTimerRef.current)
+			durationTimerRef.current = null
+		}
+	}, [])
+
+	// Format duration as MM:SS
+	const formatDuration = useCallback((seconds: number) => {
+		const mins = Math.floor(seconds / 60)
+		const secs = seconds % 60
+		return `${mins}:${secs.toString().padStart(2, "0")}`
 	}, [])
 
 	// Save interview notes to database (debounced)
@@ -196,6 +248,19 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		return () => clearTimeout(timeoutId)
 	}, [interviewNotes, saveInterviewNotes])
 
+	// Expand notes by default on md+ screens
+	useEffect(() => {
+		try {
+			const mq = window.matchMedia("(min-width: 768px)")
+			const setFromMatch = () => setNotesExpanded(mq.matches)
+			setFromMatch()
+			mq.addEventListener?.("change", setFromMatch)
+			return () => mq.removeEventListener?.("change", setFromMatch)
+		} catch {
+			// no-op for SSR or older browsers
+		}
+	}, [])
+
 	// ========= Realtime streaming logic =========
 	const startStreaming = useCallback(async () => {
 		try {
@@ -226,6 +291,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				setStreamStatus("streaming")
 				// Start wall-clock timer for duration fallback
 				recordStartRef.current = performance.now()
+				startDurationTimer()
 				// Audio capture via AudioWorklet
 				const ctx = new AudioContext({ sampleRate: 48000 })
 				ctxRef.current = ctx
@@ -234,6 +300,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
 					video: false,
 				})
+				// Track the stream for cleanup
+				mediaStreamsRef.current.push(stream)
 				const src = ctx.createMediaStreamSource(stream)
 				const node = new AudioWorkletNode(ctx, "pcm-processor")
 				nodeRef.current = node
@@ -359,6 +427,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			clearInterval(timerRef.current)
 			timerRef.current = null
 		}
+		stopDurationTimer()
 		try {
 			nodeRef.current?.disconnect()
 			ctxRef.current?.suspend?.()
@@ -377,7 +446,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			}
 		} catch { }
 		setStreamStatus("paused")
-	}, [])
+	}, [stopDurationTimer])
 
 	// Resume after pause; reuse existing WS if open
 	const resumeStreaming = useCallback(async () => {
@@ -386,6 +455,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				setStreamStatus("streaming")
 				// Resume wall-clock timer
 				recordStartRef.current = performance.now()
+				startDurationTimer()
 				const ctx = new AudioContext({ sampleRate: 48000 })
 				ctxRef.current = ctx
 				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
@@ -393,6 +463,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
 					video: false,
 				})
+				// Track the stream for cleanup
+				mediaStreamsRef.current.push(stream)
 				const src = ctx.createMediaStreamSource(stream)
 				const node = new AudioWorkletNode(ctx, "pcm-processor")
 				nodeRef.current = node
@@ -439,18 +511,22 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		} catch (e) {
 			consola.warn("resumeStreaming error", e)
 		}
-	}, [startStreaming])
+	}, [startStreaming, startDurationTimer])
 
 	const stopStreaming = useCallback(async () => {
 		if (timerRef.current) {
 			clearInterval(timerRef.current)
 			timerRef.current = null
 		}
+		stopDurationTimer()
+		cleanupMediaStreams()
 		if (wsRef.current) {
 			try {
 				// Signal end of stream to upstream to flush final results
 				if (wsRef.current.readyState === WebSocket.OPEN) {
-					try { wsRef.current.send("__end__") } catch {}
+					try {
+						wsRef.current.send("__end__")
+					} catch { }
 					// Give a brief moment for any final Turn events to arrive
 					await new Promise((r) => setTimeout(r, 300))
 				}
@@ -543,7 +619,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				consola.warn("Finalize error", e)
 			}
 		})()
-	}, [assignedInterviewId, currentCaption, navigate, projectId, supabase])
+	}, [assignedInterviewId, currentCaption, navigate, projectId, supabase, stopDurationTimer, cleanupMediaStreams])
 
 	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 
@@ -726,115 +802,195 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}
 
+	const handleCancel = useCallback(() => {
+		if (isRecording || streamStatus === "streaming" || streamStatus === "paused") {
+			// Stop recording without saving and cleanup all streams
+			stopDurationTimer()
+			cleanupMediaStreams()
+		}
+		setRecordingDuration(0)
+		navigate(routes.interviews.index())
+	}, [isRecording, streamStatus, stopDurationTimer, cleanupMediaStreams, navigate, routes])
+
+	const handleFinish = useCallback(() => {
+		setIsFinishing(true)
+		// Explicit stop finalizes and navigates, cleanup happens in stopStreaming
+		stopStreaming()
+	}, [stopStreaming])
+
+	// Simple waveform component with dynamic animation
+	const WaveformAnimation = ({ isRecording }: { isRecording: boolean }) => {
+		const [bars, setBars] = useState([8, 12, 6, 15, 9])
+
+		useEffect(() => {
+			if (!isRecording) {
+				setBars([8, 8, 8, 8, 8])
+				return
+			}
+
+			const interval = setInterval(() => {
+				setBars([
+					Math.random() * 12 + 4,
+					Math.random() * 16 + 6,
+					Math.random() * 10 + 4,
+					Math.random() * 18 + 8,
+					Math.random() * 14 + 5,
+				])
+			}, 150)
+
+			return () => clearInterval(interval)
+		}, [isRecording])
+
+		return (
+			<div className="flex items-center gap-1">
+				{bars.map((height, i) => (
+					<div
+						key={i}
+						className={`w-1 rounded-full bg-red-500 transition-all duration-150 ${isRecording ? "animate-pulse" : ""}`}
+						style={{
+							height: `${height}px`,
+							animationDelay: `${i * 50}ms`,
+						}}
+					/>
+				))}
+			</div>
+		)
+	}
+
 	return (
-		<div className="grid h-[calc(100dvh-5rem)] grid-cols-1 gap-6 p-6 md:h-dvh lg:grid-cols-2">
-			{/* Left Side - Minimal Questions */}
-			<div className="min-h-0 space-y-4 overflow-y-auto">
-				<MinimalQuestionView projectId={projectId} />
+		<div className="relative flex min-h-[85vh] flex-col">
+			{/* Header with Exit buttons */}
+			<div className="flex flex-shrink-0 items-center justify-between border-b bg-background p-3">
+				<div className="flex items-center gap-3">
+					<h1 className="font-semibold text-lg">Interview</h1>
+					{(isRecording || streamStatus === "paused") && (
+						<div className="flex items-center gap-2 text-sm">
+							<WaveformAnimation isRecording={streamStatus === "streaming"} />
+							<span className="font-mono text-muted-foreground">{formatDuration(recordingDuration)}</span>
+						</div>
+					)}
+				</div>
+				<div className="flex gap-2">
+					<Button variant="outline" size="sm" onClick={handleCancel}>
+						Cancel
+					</Button>
+					<Button size="sm" onClick={handleFinish} disabled={isFinishing}>
+						{isFinishing ? (
+							<>
+								<Loader2 className="mr-2 h-3 w-3 animate-spin" /> Finishing...
+							</>
+						) : (
+							"Finish"
+						)}
+					</Button>
+				</div>
 			</div>
 
-			{/* Right Side - Controls & Notes */}
-			<div className="min-h-0 space-y-4 overflow-y-auto">
-				{/* Processing Notification */}
-				{isFinishing && (
-					<Card className="border-blue-200 bg-blue-50">
-						<CardContent className="p-4">
-							<div className="flex items-center gap-3">
-								<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-								<div>
-									<p className="font-medium text-blue-900">Processing your recording...</p>
-									<p className="text-sm text-blue-700">
-										We're storing your audio file, generating insights, and preparing your interview summary.
-									</p>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				)}
+			{/* Main Content Area */}
+			<div className="min-h-0 flex-1 overflow-hidden">
+				<div className="flex h-full flex-col gap-4 p-4 lg:flex-row">
+					{/* Left Side - Questions */}
+					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:max-w-md">
+						<MinimalQuestionView projectId={projectId} />
+					</div>
 
-				{/* Recording Controls */}
-				<Card>
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							{isRecording || streamStatus === "paused" ? (
-								<Mic className="h-5 w-5 text-red-600" />
-							) : (
-								<MicOff className="h-5 w-5" />
-							)}
-							Interview Recording
-							{isRecording && streamStatus === "streaming" && (
-								<Badge variant="destructive" className="ml-auto animate-pulse">
-									LIVE
-								</Badge>
-							)}
-						</CardTitle>
-					</CardHeader>
-					<CardContent className="space-y-3">
-						<div className="flex flex-wrap items-center gap-2">
-							<Button
-								onClick={toggleRecording}
-								size="sm"
-								className="min-w-0 flex-1 bg-red-600 text-white hover:bg-red-700"
-								disabled={streamStatus === "connecting" || isFinishing}
-							>
-								{streamStatus === "streaming" && isRecording ? (
-									<>
-										<Pause className="mr-2 h-4 w-4" /> Pause
-									</>
-								) : (
-									<>
-										<Play className="mr-2 h-4 w-4" />
-										{streamStatus === "connecting" ? "Connecting…" : streamStatus === "paused" ? "Resume" : "Record"}
-									</>
-								)}
-							</Button>
-							<Button
-								onClick={handleStop}
-								size="sm"
-								className="min-w-0 flex-1 border-red-600 text-red-700 hover:bg-red-50"
-								variant="outline"
-								disabled={isFinishing || streamStatus !== "streaming"}
-							>
-								{isFinishing ? (
-									<>
-										<Loader2 className="mr-2 h-4 w-4 animate-spin" /> Processing...
-									</>
-								) : (
-									<>
-										<Square className="mr-2 h-4 w-4" /> Finish
-									</>
-								)}
-							</Button>
-						</div>
-						<div className="text-foreground/75 text-sm">
-							Finish will generate Insights Summary
-						</div>
-						<div className="flex items-center gap-2">
-							<Button onClick={replayLast30s} variant="secondary" className="w-full">
-								<RotateCcw className="mr-2 h-4 w-4" /> Replay last 30s
-							</Button>
-						</div>
-						{replayText && (
-							<div className="rounded-md border p-3 text-base text-foreground md:text-lg">{replayText}</div>
+					{/* Right Side - Notes (collapsible on mobile) */}
+					<div className="flex min-h-0 flex-col space-y-2 md:flex-1">
+						{/* Processing Notification */}
+						{isFinishing && (
+							<Card className="flex-shrink-0 border-blue-200 bg-blue-50">
+								<CardContent className="p-3">
+									<div className="flex items-center gap-3">
+										<Loader2 className="h-4 w-4 animate-spin text-blue-600" />
+										<div>
+											<p className="font-medium text-blue-900 text-sm">Processing your recording...</p>
+											<p className="text-blue-700 text-xs">Storing audio file and generating insights.</p>
+										</div>
+									</div>
+								</CardContent>
+							</Card>
 						)}
-					</CardContent>
-				</Card>
 
-				{/* Interview Notes */}
-				<Card>
-					<CardHeader>
-						<CardTitle>Interview Notes</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<Textarea
-							placeholder="Jot down key insights, quotes, or observations..."
-							value={interviewNotes}
-							onChange={(e) => setInterviewNotes(e.target.value)}
-							rows={6}
-							className="resize-none"
-						/>
-					</CardContent>
-				</Card>
+						{/* Notes header with mobile toggle */}
+						<div className="mb-1 flex items-center justify-between">
+							<div className="text-lg">Notes</div>
+							<Button
+								variant="ghost"
+								size="sm"
+								onClick={() => setNotesExpanded((v) => !v)}
+								className="md:hidden"
+							>
+								{notesExpanded ? "Collapse" : "Expand"}
+							</Button>
+						</div>
+
+						<Card
+							className={
+								`min-h-0 ${notesExpanded ? "block h-64" : "hidden"} md:block md:h-auto md:flex-1`
+							}
+						>
+							<CardContent className="h-full p-0">
+								<Textarea
+									placeholder="Jot down key insights..."
+									value={interviewNotes}
+									onChange={(e) => setInterviewNotes(e.target.value)}
+									className="h-full border-0 text-sm resize-none"
+									rows={6}
+								/>
+							</CardContent>
+						</Card>
+					</div>
+				</div>
+			</div>
+
+			{/* Fixed Bottom Recording Controls */
+			/* Ensure always visible regardless of inner scroll */}
+			<div className="flex-shrink-0 border-t bg-background/95 p-3 backdrop-blur-sm">
+				<div className="mx-auto flex max-w-sm items-center gap-2">
+					{/* Recording Status Indicator */}
+					<div className="flex items-center gap-1">
+						{isRecording || streamStatus === "paused" ? (
+							<Mic className="h-3 w-3 text-red-600" />
+						) : (
+							<MicOff className="h-3 w-3 text-muted-foreground" />
+						)}
+						{isRecording && streamStatus === "streaming" && (
+							<Badge variant="destructive" className="animate-pulse px-1 py-0 text-xs">
+								LIVE
+							</Badge>
+						)}
+					</div>
+
+					{/* Main Controls */}
+					<div className="flex flex-1 items-center gap-2">
+						<Button
+							onClick={toggleRecording}
+							size="sm"
+							className="h-8 flex-1 bg-red-600 text-white text-xs hover:bg-red-700"
+							disabled={streamStatus === "connecting" || isFinishing}
+						>
+							{streamStatus === "streaming" && isRecording ? (
+								<>
+									<Pause className="mr-1 h-3 w-3" /> Pause
+								</>
+							) : (
+								<>
+									<Play className="mr-1 h-3 w-3" />
+									{streamStatus === "connecting" ? "Connecting…" : streamStatus === "paused" ? "Resume" : "Record"}
+								</>
+							)}
+						</Button>
+
+						<Button onClick={replayLast30s} variant="outline" size="sm" className="h-8 px-2">
+							<RotateCcw className="h-3 w-3" />
+						</Button>
+					</div>
+				</div>
+
+				{/* Replay Text */}
+				{replayText && (
+					<div className="mx-auto mt-2 max-w-sm rounded-md border bg-muted/50 p-2 text-xs">{replayText}</div>
+				)}
 			</div>
 		</div>
 	)

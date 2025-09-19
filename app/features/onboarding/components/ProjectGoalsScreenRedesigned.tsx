@@ -17,6 +17,7 @@ import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
 import ContextualSuggestions from "./ContextualSuggestions"
+import InlineEdit from "~/components/ui/inline-edit"
 
 type TemplatePrefill = {
 	template_key: string
@@ -385,6 +386,15 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
+	const updateDecisionQuestion = (index: number, value: string) => {
+		const v = value.trim()
+		if (!v) return
+		const updated = [...decision_questions]
+		updated[index] = v
+		setDecisionQuestions(updated)
+		saveDecisionQuestions(updated)
+	}
+
 	const removeDecisionQuestion = (index: number) => {
 		const newQuestions = decision_questions.filter((_, i) => i !== index)
 		setDecisionQuestions(newQuestions)
@@ -401,6 +411,15 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
+	const updateAssumption = (index: number, value: string) => {
+		const v = value.trim()
+		if (!v) return
+		const updated = [...assumptions]
+		updated[index] = v
+		setAssumptions(updated)
+		saveAssumptions(updated)
+	}
+
 	const addUnknown = async () => {
 		if (newUnknown.trim()) {
 			await createProjectIfNeeded()
@@ -409,6 +428,15 @@ export default function ProjectGoalsScreen({
 			setNewUnknown("")
 			saveUnknowns(newUnknowns)
 		}
+	}
+
+	const updateUnknown = (index: number, value: string) => {
+		const v = value.trim()
+		if (!v) return
+		const updated = [...unknowns]
+		updated[index] = v
+		setUnknowns(updated)
+		saveUnknowns(updated)
 	}
 
 	const removeAssumption = (index: number) => {
@@ -529,60 +557,57 @@ export default function ProjectGoalsScreen({
 				{/* Main Content - Single Column Accordion Layout */}
 				<div className="mx-auto max-w-4xl space-y-4">
 					{/* Research Goal Accordion */}
-					<Collapsible
-						open={openAccordion === "research-goal"}
-						onOpenChange={() => setOpenAccordion(openAccordion === "research-goal" ? null : "research-goal")}
-					>
-						<Card>
-							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
-									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-2">
-											<Target className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">
-												{templateKey === "understand_customer_needs" ? "Business Goal" : "Primary Goal"}
-											</h2>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<span className="inline-flex">
-														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-													</span>
-												</TooltipTrigger>
-												<TooltipContent className="max-w-xs">
-													<p>
-														Define what you want to understand about your customers. This will guide your research and
-														interview questions.
-													</p>
-												</TooltipContent>
-											</Tooltip>
-										</div>
-										{openAccordion === "research-goal" ? (
-											<ChevronDown className="h-4 w-4" />
-										) : (
-											<ChevronRight className="h-4 w-4" />
-										)}
-									</div>
-								</CardHeader>
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<CardContent className="p-6 pt-0">
-									<Textarea
-										placeholder={
-											templateKey === "understand_customer_needs"
-												? "e.g., Understand key decision factors for SaaS buyers, or discover shopping motivations for mobile app users"
-												: "e.g., Validate product-market fit for enterprise clients, or understand user onboarding friction for consumers"
-										}
-										value={research_goal}
-										onChange={(e) => setResearchGoal(e.target.value)}
-										onBlur={handleResearchGoalBlur}
-										rows={2}
-										className="min-h-[72px]"
-									/>
-									{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
-								</CardContent>
-							</CollapsibleContent>
-						</Card>
-					</Collapsible>
+
+					<Card>
+
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Target className="h-5 w-5 text-blue-600" />
+									<h2 className="font-semibold text-lg">
+										{templateKey === "understand_customer_needs" ? "Business Goal" : "Primary Goal"}
+									</h2>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												What problem would you like to solve? This will guide your research and
+												interview questions.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+								{openAccordion === "research-goal" ? (
+									<ChevronDown className="h-4 w-4" />
+								) : (
+									<ChevronRight className="h-4 w-4" />
+								)}
+							</div>
+						</CardHeader>
+
+
+						<CardContent className="p-6 pt-0">
+							<Textarea
+								placeholder={
+									templateKey === "understand_customer_needs"
+										? "e.g., Understand key decision factors for SaaS buyers, or discover shopping motivations for mobile app users"
+										: "e.g., Validate product-market fit for enterprise clients, or understand user onboarding friction for consumers"
+								}
+								value={research_goal}
+								onChange={(e) => setResearchGoal(e.target.value)}
+								onBlur={handleResearchGoalBlur}
+								rows={2}
+								className="min-h-[72px]"
+							/>
+							{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
+						</CardContent>
+
+					</Card>
+
 
 					{/* Key Questions Accordion */}
 					<Collapsible
@@ -631,7 +656,14 @@ export default function ProjectGoalsScreen({
 												<div className="mt-1 flex-shrink-0">
 													<div className="h-2 w-2 rounded-full bg-green-500" />
 												</div>
-												<span className="flex-1 text-gray-800 text-sm leading-relaxed">{question}</span>
+												<InlineEdit
+													value={question}
+													onSubmit={(val) => updateDecisionQuestion(index, val)}
+													multiline={false}
+													textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+													inputClassName="text-sm"
+													showEditButton={true}
+												/>
 												<button
 													onClick={() => removeDecisionQuestion(index)}
 													className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
@@ -730,7 +762,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											<h2 className="font-semibold text-lg">Target Market</h2>
+											<h2 className="font-semibold text-lg">Market & Stakeholders</h2>
 											<span className="rounded-full px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
@@ -762,12 +794,24 @@ export default function ProjectGoalsScreen({
 									<div className="mb-6">
 										<label className="mb-3 block font-medium text-gray-900 text-sm">Organizations</label>
 										<div className="mb-3 flex flex-wrap gap-2">
-											{target_orgs.map((org) => (
+											{target_orgs.map((org, index) => (
 												<div
-													key={org}
+													key={`${org}-${index}`}
 													className="group flex items-center gap-2 rounded-full border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200"
 												>
-													<span className="font-medium text-green-800">{org}</span>
+													<InlineEdit
+														value={org}
+														onSubmit={(val) => {
+															const v = val.trim()
+															if (!v) return
+															const list = [...target_orgs]
+															list[index] = v
+															setTargetOrgs(list)
+															saveTargetOrgs(list)
+														}}
+														textClassName="font-medium text-green-800"
+														inputClassName="h-6 py-0 text-green-900"
+													/>
 													<button
 														onClick={() => removeOrg(org)}
 														className="rounded-full p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100"
@@ -848,12 +892,24 @@ export default function ProjectGoalsScreen({
 									<div>
 										<label className="mb-3 block font-medium text-gray-900 text-sm">People's Roles</label>
 										<div className="mb-3 flex flex-wrap gap-2">
-											{target_roles.map((role) => (
+											{target_roles.map((role, index) => (
 												<div
-													key={role}
+													key={`${role}-${index}`}
 													className="group flex items-center gap-2 rounded-full border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200"
 												>
-													<span className="font-medium text-purple-800">{role}</span>
+													<InlineEdit
+														value={role}
+														onSubmit={(val) => {
+															const v = val.trim()
+															if (!v) return
+															const list = [...target_roles]
+															list[index] = v
+															setTargetRoles(list)
+															saveTargetRoles(list)
+														}}
+														textClassName="font-medium text-purple-800"
+														inputClassName="h-6 py-0 text-purple-900"
+													/>
 													<button
 														onClick={() => removeRole(role)}
 														className="rounded-full p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100"
@@ -983,7 +1039,14 @@ export default function ProjectGoalsScreen({
 														<div className="mt-1 flex-shrink-0">
 															<div className="h-2 w-2 rounded-full bg-blue-500" />
 														</div>
-														<span className="flex-1 text-gray-800 text-sm leading-relaxed">{assumption}</span>
+													<InlineEdit
+														value={assumption}
+														onSubmit={(val) => updateAssumption(index, val)}
+														multiline={false}
+														textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+														inputClassName="text-sm"
+														showEditButton={true}
+													/>
 														<button
 															onClick={() => removeAssumption(index)}
 															className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100"
@@ -1072,7 +1135,14 @@ export default function ProjectGoalsScreen({
 														<div className="mt-0.5 flex-shrink-0">
 															<HelpCircle className="h-4 w-4 text-amber-600" />
 														</div>
-														<span className="flex-1 text-gray-800 text-sm leading-relaxed">{unknown}</span>
+													<InlineEdit
+														value={unknown}
+														onSubmit={(val) => updateUnknown(index, val)}
+														multiline={false}
+														textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+														inputClassName="text-sm"
+														showEditButton={true}
+													/>
 														<button
 															onClick={() => removeUnknown(index)}
 															className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100"

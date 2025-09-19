@@ -10,8 +10,8 @@ interface ContextualSuggestionsProps {
 	onSuggestionClick: (suggestion: string) => void
 	apiPath?: string // Allow custom API path to be passed in
 	shownSuggestions?: string[] // Track previously shown suggestions
-	onSuggestionShown?: (suggestions: string[]) => void // Callback when suggestions are shown
-	isActive?: boolean // Whether this component should show suggestions
+  onSuggestionShown?: (suggestions: string[]) => void // Callback when suggestions are shown
+  isActive?: boolean // Whether this component should show suggestions
 }
 
 export default function ContextualSuggestions({
@@ -25,21 +25,23 @@ export default function ContextualSuggestions({
 	onSuggestionShown,
 	isActive = false,
 }: ContextualSuggestionsProps) {
-	const [suggestions, setSuggestions] = useState<string[]>([])
-	const [isLoading, setIsLoading] = useState(false)
-	const [hasGenerated, setHasGenerated] = useState(false)
+  const [suggestions, setSuggestions] = useState<string[]>([])
+  const [isLoading, setIsLoading] = useState(false)
+  const [hasGenerated, setHasGenerated] = useState(false)
+  const [consumed, setConsumed] = useState<Set<string>>(new Set())
 
-	const generateSuggestions = async () => {
-		if (!researchGoal.trim()) return
+  const generateSuggestions = async () => {
+    if (!researchGoal.trim()) return
 
 		setIsLoading(true)
-		try {
-			const formData = new FormData()
-			formData.append("researchGoal", researchGoal)
-			formData.append("currentInput", currentInput)
-			formData.append("suggestionType", suggestionType)
-			formData.append("existingItems", JSON.stringify(existingItems))
-			formData.append("projectContext", "") // Could be expanded later
+    try {
+      const formData = new FormData()
+      formData.append("researchGoal", researchGoal)
+      formData.append("currentInput", currentInput)
+      formData.append("suggestionType", suggestionType)
+      formData.append("existingItems", JSON.stringify(existingItems))
+      formData.append("shownSuggestions", JSON.stringify(shownSuggestions))
+      formData.append("projectContext", "") // Could be expanded later
 
 			const response = await fetch(apiPath, {
 				method: "POST",
@@ -52,21 +54,21 @@ export default function ContextualSuggestions({
 				throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`)
 			}
 
-			const data = await response.json()
-			consola.log("Received suggestions data:", data)
-			const suggestionsArray = Array.isArray(data) ? data : data.suggestions || []
-			// Filter out suggestions that have already been shown
-			const filteredSuggestions = suggestionsArray.filter(suggestion => 
-				!shownSuggestions.includes(suggestion) && !existingItems.includes(suggestion)
-			)
-			const finalSuggestions = filteredSuggestions.slice(0, 3)
-			setSuggestions(finalSuggestions)
-			// Notify parent component about shown suggestions
-			if (onSuggestionShown && finalSuggestions.length > 0) {
-				onSuggestionShown(finalSuggestions)
-			}
-			setHasGenerated(true)
-		} catch (error) {
+      const data = await response.json()
+      consola.log("Received suggestions data:", data)
+      const suggestionsArray = Array.isArray(data) ? data : data.suggestions || []
+      // Filter out suggestions that have already been shown
+      const filteredSuggestions = suggestionsArray.filter(
+        (suggestion) => !shownSuggestions.includes(suggestion) && !existingItems.includes(suggestion)
+      )
+      const finalSuggestions = filteredSuggestions.slice(0, 3)
+      setSuggestions(finalSuggestions)
+      // Notify parent component about shown suggestions
+      if (onSuggestionShown && finalSuggestions.length > 0) {
+        onSuggestionShown(finalSuggestions)
+      }
+      setHasGenerated(true)
+    } catch (error) {
 			consola.error("Error generating contextual suggestions:", error)
 			setSuggestions([])
 		} finally {
@@ -74,22 +76,34 @@ export default function ContextualSuggestions({
 		}
 	}
 
-	// Auto-generate suggestions when component mounts and research goal is available
-	useEffect(() => {
-		if (!hasGenerated && researchGoal.trim()) {
-			// Auto-generate after a short delay to improve UX
-			const timer = setTimeout(() => {
-				generateSuggestions()
-			}, 500)
-			return () => clearTimeout(timer)
-		}
-	}, [researchGoal, suggestionType, hasGenerated])
+  // Auto-generate suggestions when component mounts and research goal is available
+  useEffect(() => {
+    if (!hasGenerated && researchGoal.trim()) {
+      // Auto-generate after a short delay to improve UX
+      const timer = setTimeout(() => {
+        generateSuggestions()
+      }, 500)
+      return () => clearTimeout(timer)
+    }
+  }, [researchGoal, suggestionType, hasGenerated])
 
 	if (!researchGoal.trim() || !isActive) return null
 
 	return (
 		<div className="space-y-2">
-			{isLoading && <div className="text-gray-500 text-xs">💭 Generating contextual suggestions...</div>}
+			{isLoading && (
+				<div>
+					<div className="mb-2 flex items-center justify-between">
+						<div className="h-4 w-40 animate-pulse rounded bg-gray-200" />
+						<div className="h-6 w-16 animate-pulse rounded bg-gray-200" />
+					</div>
+					<div className="flex flex-wrap gap-2">
+						<div className="h-6 w-24 animate-pulse rounded-full bg-gray-200" />
+						<div className="h-6 w-32 animate-pulse rounded-full bg-gray-200" />
+						<div className="h-6 w-28 animate-pulse rounded-full bg-gray-200" />
+					</div>
+				</div>
+			)}
 
 			{suggestions.length > 0 && !isLoading && (
 				<div>
@@ -106,19 +120,32 @@ export default function ContextualSuggestions({
 							Refresh
 						</button>
 					</div>
-					<div className="flex flex-wrap gap-2">
-						{suggestions.map((suggestion, index) => (
-							<button
-								key={index}
-								onClick={() => onSuggestionClick(suggestion)}
-								className="cursor-pointer rounded-full border border-slate-200 bg-slate-50 px-2.5 py-1 font-medium text-slate-700 text-xs transition-colors hover:bg-slate-100"
-							>
-								+ {suggestion}
-							</button>
-						))}
-					</div>
-				</div>
-			)}
+        <div className="flex flex-wrap gap-2">
+          {suggestions.map((suggestion, index) => {
+            const isConsumed = consumed.has(suggestion)
+            return (
+              <button
+                key={index}
+                onClick={() => {
+                  onSuggestionClick(suggestion)
+                  setConsumed((prev) => new Set(prev).add(suggestion))
+                }}
+                disabled={isConsumed}
+                className={
+                  `cursor-pointer rounded-full border px-2.5 py-1 font-medium text-sm transition-colors ` +
+                  (isConsumed
+                    ? "border-slate-200 bg-slate-50 text-slate-400 line-through opacity-50 cursor-not-allowed"
+                    : "border-slate-200 bg-slate-50 text-slate-700 hover:bg-slate-100")
+                }
+                title={isConsumed ? "Already added to input" : "Add to input"}
+              >
+                + {suggestion}
+              </button>
+            )
+          })}
+        </div>
+      </div>
+    )}
 
 			{!isLoading && !hasGenerated && (
 				<button

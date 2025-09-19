@@ -38,6 +38,7 @@ import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import type { QuestionInput } from "~/types"
@@ -122,6 +123,12 @@ const questionCategories = [
 		name: "Willingness to Pay",
 		weight: 0.8,
 		color: "border-indigo-100 text-indigo-800 dark:border-indigo-900 dark:text-indigo-200",
+	},
+	{
+		id: "demographics",
+		name: "Demographics",
+		weight: 0.7,
+		color: "border-slate-200 text-slate-800 dark:border-slate-800 dark:text-slate-200",
 	},
 ]
 
@@ -218,8 +225,17 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [evaluatingId, setEvaluatingId] = useState<string | null>(null)
 	// How many new questions to generate when user clicks "Generate More"
 	// Default "Generate More" count to 8 instead of 3
-	const [moreCount, setMoreCount] = useState<number>(8)
+	const [moreCount, setMoreCount] = useState<number>(3)
 	const previousSelectionRef = React.useRef<string[] | null>(null)
+	const recentlyAddedTimeoutsRef = React.useRef<Record<string, number>>({})
+	const [recentlyAddedQuestionIds, setRecentlyAddedQuestionIds] = useState<string[]>([])
+	const [pendingGeneratedQuestions, setPendingGeneratedQuestions] = useState<Question[]>([])
+	const [showPendingModal, setShowPendingModal] = useState(false)
+	const [pendingInsertionChoices, setPendingInsertionChoices] = useState<Record<string, string>>({})
+	const [processingPendingId, setProcessingPendingId] = useState<string | null>(null)
+
+	// PostHog feature flag to gate Quality Check
+	const { isEnabled: isEvalEnabled } = usePostHogFeatureFlag("ffEvalQuestion")
 
 	const generateQuestions = async () => {
 		if (generating) return
@@ -256,32 +272,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				const data = await response.json()
 				if (data.success && data.questionSet?.questions) {
 					const newQuestions = data.questionSet.questions as QuestionInput[]
-					if (projectId) {
-						const existingQuestions = questions.map((q) => {
-							const idx = selectedQuestionIds.indexOf(q.id)
-							return {
-								id: q.id,
-								text: q.text,
-								categoryId: q.categoryId,
-								scores: q.scores,
-								rationale: q.rationale,
-								status: "proposed",
-								selectedOrder: idx >= 0 ? idx : null,
-								isSelected: idx >= 0,
-							}
-						})
-						const allQuestions = [...existingQuestions, ...newQuestions]
-						await supabase.from("project_sections").upsert(
-							{
-								project_id: projectId,
-								kind: "questions",
-								position: 2,
-								content_md: `# Interview Questions\n\nGenerated ${allQuestions.length} questions for interview planning.`,
-								meta: { questions: allQuestions },
-							},
-							{ onConflict: "project_id,kind", ignoreDuplicates: false }
-						)
-					}
 
 					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => ({
 						id: q.id || crypto.randomUUID(),
@@ -298,17 +288,25 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						source: "ai" as const,
 						isMustHave: false,
 					}))
-					setQuestions((prev) => [...prev, ...formattedNewQuestions])
+					setPendingGeneratedQuestions((prev) => [...prev, ...formattedNewQuestions])
+					setPendingInsertionChoices((prev) => ({
+						...prev,
+						...formattedNewQuestions.reduce<Record<string, string>>((acc, question) => {
+							acc[question.id] = "end"
+							return acc
+						}, {}),
+					}))
+					setShowPendingModal(true)
 
 					if (autoGenerateInitial) {
 						setAutoGenerateInitial(false)
-						toast.success(`Generated ${formattedNewQuestions.length} initial questions for your interview`, {
-							description: "Review and edit them below, then click 'Add Interview' when ready",
+						toast.success(`Generated ${formattedNewQuestions.length} initial questions`, {
+							description: "Review each new question to decide how it should be added.",
 							duration: 5000,
 						})
 					} else {
-						toast.success(`Added ${formattedNewQuestions.length} new questions to the bottom of your available list`, {
-							description: "You can now select them to add to your question pack",
+						toast.success(`Generated ${formattedNewQuestions.length} new questions`, {
+							description: "Review the new questions and choose where to add them.",
 							duration: 4000,
 						})
 					}
@@ -351,11 +349,55 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId])
 
+	useEffect(() => {
+		return () => {
+			Object.values(recentlyAddedTimeoutsRef.current).forEach((id) => window.clearTimeout(id))
+			recentlyAddedTimeoutsRef.current = {}
+		}
+	}, [])
+
 	const supabase = createClient()
 
+	const getBaseSelectedIds = useCallback((): string[] => {
+		if (mustHavesOnly) {
+			const stored = previousSelectionRef.current
+			if (stored && stored.length > 0) return [...stored]
+		}
+		return [...selectedQuestionIds]
+	}, [mustHavesOnly, selectedQuestionIds])
+
+	const commitSelection = useCallback(
+		(nextBaseIds: string[]) => {
+			previousSelectionRef.current = [...nextBaseIds]
+			if (mustHavesOnly) {
+				const filtered = nextBaseIds.filter((id) => {
+					const q = questions.find((question) => question.id === id)
+					return q?.isMustHave
+				})
+				setSelectedQuestionIds(filtered)
+			} else {
+				setSelectedQuestionIds(nextBaseIds)
+			}
+		},
+		[mustHavesOnly, questions]
+	)
+
+	const markQuestionAsRecentlyAdded = useCallback((id: string) => {
+		setRecentlyAddedQuestionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
+		if (recentlyAddedTimeoutsRef.current[id]) {
+			window.clearTimeout(recentlyAddedTimeoutsRef.current[id])
+		}
+		const timeoutId = window.setTimeout(() => {
+			setRecentlyAddedQuestionIds((prev) => prev.filter((existing) => existing !== id))
+			delete recentlyAddedTimeoutsRef.current[id]
+		}, 6000)
+		recentlyAddedTimeoutsRef.current[id] = timeoutId
+	}, [])
+
 	useEffect(() => {
-		onSelectionChange?.(selectedQuestionIds)
-	}, [selectedQuestionIds, onSelectionChange])
+		const baseIds = getBaseSelectedIds()
+		onSelectionChange?.(baseIds)
+	}, [getBaseSelectedIds, onSelectionChange])
 
 	// Load questions from project_sections when projectId is provided
 	useEffect(() => {
@@ -435,7 +477,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 				setQuestions(formattedQuestions)
 				if (selectedQuestionsWithOrder.length > 0) {
-					setSelectedQuestionIds(selectedQuestionsWithOrder)
+					commitSelection(selectedQuestionsWithOrder)
 					setHasInitialized(true)
 				}
 			} catch (error) {
@@ -587,11 +629,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		estimateMinutesPerQuestion,
 	])
 
+	const baseSelectedIdsForModal = useMemo(() => getBaseSelectedIds(), [getBaseSelectedIds])
+	const baseSelectedQuestionsForModal = useMemo(
+		() =>
+			baseSelectedIdsForModal.map((id) => questions.find((q) => q.id === id)).filter((q): q is Question => Boolean(q)),
+		[baseSelectedIdsForModal, questions]
+	)
+
 	// Initialize selected questions once after computing the pack (no state changes inside useMemo)
 	useEffect(() => {
 		if (!hasInitialized && selectedQuestionIds.length === 0 && questionPack.questions.length > 0) {
 			const ids = questionPack.questions.map((q) => q.id)
-			setSelectedQuestionIds(ids)
+			commitSelection(ids)
 			setHasInitialized(true)
 		}
 	}, [hasInitialized, selectedQuestionIds.length, questionPack.questions])
@@ -599,9 +648,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	// Notify parent when the selected questions (with text) change
 	useEffect(() => {
 		if (!onSelectedQuestionsChange) return
-		const minimal = questionPack.questions.map((q) => ({ id: q.id, text: q.text }))
+		const baseIds = getBaseSelectedIds()
+		const minimal = baseIds
+			.map((id) => {
+				const match = questions.find((q) => q.id === id)
+				return match ? { id: match.id, text: match.text } : null
+			})
+			.filter(Boolean) as { id: string; text: string }[]
 		onSelectedQuestionsChange(minimal)
-	}, [questionPack.questions, onSelectedQuestionsChange])
+	}, [getBaseSelectedIds, onSelectedQuestionsChange, questions])
 
 	const saveQuestionsToDatabase = useCallback(
 		async (questionsToSave: Question[], selectedIds: string[]) => {
@@ -652,36 +707,53 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	useEffect(() => {
 		if (!projectId || !hasInitialized || skipDebounce) return
 		const timeoutId = setTimeout(() => {
-			saveQuestionsToDatabase(questions, selectedQuestionIds)
+			const baseIds = getBaseSelectedIds()
+			saveQuestionsToDatabase(questions, baseIds)
 		}, 1000) // Debounce saves - longer timeout for settings
 		return () => clearTimeout(timeoutId)
-	}, [projectId, hasInitialized, questions, selectedQuestionIds, saveQuestionsToDatabase, skipDebounce])
+	}, [projectId, hasInitialized, questions, getBaseSelectedIds, saveQuestionsToDatabase, skipDebounce])
 
 	const removeQuestion = useCallback(
 		async (id: string) => {
-			const newIds = selectedQuestionIds.filter((qId) => qId !== id)
-			setSelectedQuestionIds(newIds)
+			const baseIds = getBaseSelectedIds().filter((qId) => qId !== id)
+			commitSelection(baseIds)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(questions, newIds)
+			await saveQuestionsToDatabase(questions, baseIds)
 			// Reset the flag after a delay to allow debounced saves for other changes
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[selectedQuestionIds, questions, saveQuestionsToDatabase]
+		[getBaseSelectedIds, commitSelection, markQuestionAsRecentlyAdded, questions, saveQuestionsToDatabase]
 	)
 
 	const moveQuestion = useCallback(
 		async (fromIndex: number, toIndex: number) => {
-			const currentIds = selectedQuestionIds.length > 0 ? selectedQuestionIds : questionPack.questions.map((q) => q.id)
-			const newIds = [...currentIds]
-			const [removed] = newIds.splice(fromIndex, 1)
-			newIds.splice(toIndex, 0, removed)
-			setSelectedQuestionIds(newIds)
+			const visibleIds = selectedQuestionIds.length > 0 ? selectedQuestionIds : questionPack.questions.map((q) => q.id)
+			const reorderedVisible = [...visibleIds]
+			const [removed] = reorderedVisible.splice(fromIndex, 1)
+			reorderedVisible.splice(toIndex, 0, removed)
+			const baseIds = getBaseSelectedIds()
+			const visibleSet = new Set(visibleIds)
+			let visiblePointer = 0
+			const newBaseIds = baseIds.map((id) => {
+				if (!visibleSet.has(id)) return id
+				const replacement = reorderedVisible[visiblePointer++]
+				return replacement
+			})
+			commitSelection(newBaseIds)
+			markQuestionAsRecentlyAdded(question.id)
 			setHasInitialized(true)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(questions, newIds)
+			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
+		[
+			selectedQuestionIds,
+			questionPack.questions,
+			getBaseSelectedIds,
+			commitSelection,
+			questions,
+			saveQuestionsToDatabase,
+		]
 	)
 
 	const onDragEnd = (result: DropResult) => {
@@ -692,16 +764,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 	const addQuestionFromReserve = useCallback(
 		async (question: Question) => {
-			if (selectedQuestionIds.includes(question.id)) return
-			const baseIds = selectedQuestionIds.length > 0 ? selectedQuestionIds : questionPack.questions.map((q) => q.id)
-			const newIds = [...baseIds, question.id]
-			setSelectedQuestionIds(newIds)
+			const baseIds = getBaseSelectedIds()
+			if (baseIds.includes(question.id)) return
+			const newBaseIds = [...baseIds, question.id]
+			commitSelection(newBaseIds)
 			setHasInitialized(true)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(questions, newIds)
+			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[selectedQuestionIds, questionPack.questions, questions, saveQuestionsToDatabase]
+		[getBaseSelectedIds, commitSelection, questions, saveQuestionsToDatabase]
 	)
 
 	const addCustomQuestion = useCallback(async () => {
@@ -712,6 +784,32 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 		setAddingCustomQuestion(true)
 		try {
+			if (!isEvalEnabled) {
+				const customQuestion: Question = {
+					id: crypto.randomUUID(),
+					text: newQuestionText.trim(),
+					categoryId: newQuestionCategory,
+					scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 },
+					rationale: "Custom user question",
+					status: "proposed",
+					timesAnswered: 0,
+					source: "user",
+					isMustHave: false,
+				}
+				const updatedQuestions = [...questions, customQuestion]
+				const baseIds = [...getBaseSelectedIds(), customQuestion.id]
+				setQuestions(updatedQuestions)
+				commitSelection(baseIds)
+				setHasInitialized(true)
+				markQuestionAsRecentlyAdded(customQuestion.id)
+				setSkipDebounce(true)
+				await saveQuestionsToDatabase(updatedQuestions, baseIds)
+				setTimeout(() => setSkipDebounce(false), 1500)
+				setNewQuestionText("")
+				setNewQuestionCategory("context")
+				setShowAddCustomQuestion(false)
+				return
+			}
 			// Evaluate question quality first
 			const response = await fetch("/api/evaluate-question", {
 				method: "POST",
@@ -773,18 +871,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			}
 
 			const updatedQuestions = [...questions, customQuestion]
+			const baseIds = [...getBaseSelectedIds(), customQuestion.id]
 			setQuestions(updatedQuestions)
+			commitSelection(baseIds)
+			setHasInitialized(true)
+			markQuestionAsRecentlyAdded(customQuestion.id)
 
-			// Auto-add to selected questions
-			const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
-			setSelectedQuestionIds(newSelectedIds)
-
-			// Save to database
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			await saveQuestionsToDatabase(updatedQuestions, baseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 
-			// Reset form
 			setNewQuestionText("")
 			setNewQuestionCategory("context")
 			setShowAddCustomQuestion(false)
@@ -810,18 +906,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			}
 
 			const updatedQuestions = [...questions, customQuestion]
+			const baseIds = [...getBaseSelectedIds(), customQuestion.id]
 			setQuestions(updatedQuestions)
+			commitSelection(baseIds)
+			setHasInitialized(true)
+			markQuestionAsRecentlyAdded(customQuestion.id)
 
-			// Auto-add to selected questions
-			const newSelectedIds = [...selectedQuestionIds, customQuestion.id]
-			setSelectedQuestionIds(newSelectedIds)
-
-			// Save to database
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			await saveQuestionsToDatabase(updatedQuestions, baseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 
-			// Reset form
 			setNewQuestionText("")
 			setNewQuestionCategory("context")
 			setShowAddCustomQuestion(false)
@@ -837,15 +931,19 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		newQuestionText,
 		newQuestionCategory,
 		questions,
-		selectedQuestionIds,
+		getBaseSelectedIds,
+		commitSelection,
+		markQuestionAsRecentlyAdded,
 		saveQuestionsToDatabase,
 		research_goal,
 		target_roles,
+		isEvalEnabled,
 	])
 
 	// Auto-evaluate question quality when text changes are saved
 	const evaluateQuestionQuality = useCallback(
 		async (text: string) => {
+			if (!isEvalEnabled) return null
 			try {
 				const response = await fetch("/api/evaluate-question", {
 					method: "POST",
@@ -874,7 +972,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				return null
 			}
 		},
-		[research_goal, target_roles]
+		[research_goal, target_roles, isEvalEnabled]
 	)
 
 	const rejectQuestion = useCallback(
@@ -882,19 +980,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const updatedQuestions = questions.map((q) => (q.id === questionId ? { ...q, status: "rejected" as const } : q))
 			setQuestions(updatedQuestions)
 
-			// Also remove from selected questions if it was selected
-			const newSelectedIds = selectedQuestionIds.filter((id) => id !== questionId)
-			setSelectedQuestionIds(newSelectedIds)
+			const baseIds = getBaseSelectedIds().filter((id) => id !== questionId)
+			commitSelection(baseIds)
 
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+			await saveQuestionsToDatabase(updatedQuestions, baseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 
 			toast.success("Question rejected", {
 				description: "This question won't appear in future generations",
 			})
 		},
-		[questions, selectedQuestionIds, saveQuestionsToDatabase]
+		[questions, getBaseSelectedIds, commitSelection, saveQuestionsToDatabase]
 	)
 
 	const getAnsweredCountColor = (count: number) => {
@@ -945,23 +1042,23 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					isMustHave: false,
 				}))
 
-				// Find the index of the original question in selectedQuestionIds
-				const originalIndex = selectedQuestionIds.indexOf(questionId)
+				const baseIds = getBaseSelectedIds()
+				const originalIndex = baseIds.indexOf(questionId)
 				if (originalIndex >= 0) {
-					// Insert follow-up questions right after the original question
 					const updatedQuestions = [...questions, ...followUpQuestions]
-					setQuestions(updatedQuestions)
-
-					const newSelectedIds = [
-						...selectedQuestionIds.slice(0, originalIndex + 1),
-						...followUpQuestions.map((q) => q.id),
-						...selectedQuestionIds.slice(originalIndex + 1),
+					const followUpIds = followUpQuestions.map((q) => q.id)
+					const newBaseIds = [
+						...baseIds.slice(0, originalIndex + 1),
+						...followUpIds,
+						...baseIds.slice(originalIndex + 1),
 					]
-					setSelectedQuestionIds(newSelectedIds)
+					setQuestions(updatedQuestions)
+					commitSelection(newBaseIds)
+					setHasInitialized(true)
+					followUpIds.forEach((id) => markQuestionAsRecentlyAdded(id))
 
-					// Save to database
 					setSkipDebounce(true)
-					await saveQuestionsToDatabase(updatedQuestions, newSelectedIds)
+					await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
 					setTimeout(() => setSkipDebounce(false), 1500)
 
 					toast.success(`Added ${followUpQuestions.length} follow-up questions`, {
@@ -982,7 +1079,86 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}
 
+	const handlePendingInsertionChange = useCallback((questionId: string, value: string) => {
+		setPendingInsertionChoices((prev) => ({ ...prev, [questionId]: value }))
+	}, [])
 
+	const handleRejectPendingQuestion = useCallback((questionId: string) => {
+		setPendingGeneratedQuestions((prev) => prev.filter((q) => q.id !== questionId))
+		setPendingInsertionChoices((prev) => {
+			const next = { ...prev }
+			delete next[questionId]
+			return next
+		})
+		toast.info("Question rejected", {
+			description: "This generated question was discarded.",
+		})
+	}, [])
+
+	const handleAcceptPendingQuestion = useCallback(
+		async (questionId: string, mode: "end" | "after") => {
+			setProcessingPendingId(questionId)
+			const pending = pendingGeneratedQuestions.find((q) => q.id === questionId)
+			if (!pending) {
+				setProcessingPendingId(null)
+				return
+			}
+			const baseIds = getBaseSelectedIds()
+			let newBaseIds: string[]
+			if (mode === "after") {
+				const anchorId = pendingInsertionChoices[questionId]
+				const anchorIndex = anchorId && baseIds.includes(anchorId) ? baseIds.indexOf(anchorId) : baseIds.length - 1
+				if (anchorIndex >= 0) {
+					newBaseIds = [...baseIds.slice(0, anchorIndex + 1), pending.id, ...baseIds.slice(anchorIndex + 1)]
+				} else {
+					newBaseIds = [...baseIds, pending.id]
+				}
+			} else {
+				newBaseIds = [...baseIds, pending.id]
+			}
+
+			setSkipDebounce(true)
+			try {
+				const updatedQuestions = [...questions, pending]
+				setQuestions(updatedQuestions)
+				commitSelection(newBaseIds)
+				setHasInitialized(true)
+				markQuestionAsRecentlyAdded(pending.id)
+				setPendingGeneratedQuestions((prev) => prev.filter((q) => q.id !== questionId))
+				setPendingInsertionChoices((prev) => {
+					const next = { ...prev }
+					delete next[questionId]
+					return next
+				})
+
+				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+				toast.success("Question added", {
+					description:
+						mode === "after"
+							? "Inserted right after your chosen question."
+							: "Added to the end of your interview plan.",
+				})
+			} finally {
+				setTimeout(() => setSkipDebounce(false), 1500)
+				setProcessingPendingId(null)
+			}
+		},
+		[
+			pendingGeneratedQuestions,
+			getBaseSelectedIds,
+			pendingInsertionChoices,
+			questions,
+			commitSelection,
+			markQuestionAsRecentlyAdded,
+			saveQuestionsToDatabase,
+		]
+	)
+
+	useEffect(() => {
+		if (pendingGeneratedQuestions.length === 0) {
+			setShowPendingModal(false)
+		}
+	}, [pendingGeneratedQuestions])
 
 	if (loading) {
 		return (
@@ -1155,7 +1331,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						</DropdownMenu>
 
 						{/* Settings Group */}
-						<DropdownMenu>
+						{/* <DropdownMenu>
 							<DropdownMenuTrigger asChild>
 								<Button variant="outline" size="sm">
 									<Settings className="mr-1 h-4 w-4" />
@@ -1173,7 +1349,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 									Interview Settings
 								</DropdownMenuItem>
 							</DropdownMenuContent>
-						</DropdownMenu>
+						</DropdownMenu> */}
 					</div>
 
 					{/* Filter Group */}
@@ -1208,6 +1384,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												previousSelectionRef.current && previousSelectionRef.current.length > 0
 													? previousSelectionRef.current
 													: questionPack.questions.map((q) => q.id)
+											previousSelectionRef.current = [...restore]
 											setSelectedQuestionIds(restore)
 											setMustHavesOnly(false)
 										}
@@ -1257,6 +1434,102 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</Card>
 				)}
 
+				<Dialog
+					open={showPendingModal && pendingGeneratedQuestions.length > 0}
+					onOpenChange={(open) => {
+						if (!open && pendingGeneratedQuestions.length === 0) {
+							setShowPendingModal(false)
+						}
+					}}
+				>
+					<DialogContent className="sm:max-w-3xl">
+						<DialogHeader>
+							<DialogTitle>Review Generated Questions</DialogTitle>
+							{baseSelectedQuestionsForModal.length === 0 ? (
+								<p className="text-muted-foreground text-sm">
+									Accepting a question will add it to the end of your plan. Once you have selected questions, you can
+									insert generated ones after a specific question.
+								</p>
+							) : (
+								<p className="text-muted-foreground text-sm">
+									Choose where each question should go, then accept or reject it individually.
+								</p>
+							)}
+						</DialogHeader>
+						<div className="space-y-4">
+							{pendingGeneratedQuestions.map((pendingQuestion) => {
+								const insertionChoice = pendingInsertionChoices[pendingQuestion.id] ?? "end"
+								const canInsertAfter = baseSelectedQuestionsForModal.length > 0
+								return (
+									<Card key={pendingQuestion.id} className="border-blue-100 bg-blue-50/40">
+										<CardContent className="space-y-3 p-4">
+											<div>
+												<p className="font-medium text-base leading-relaxed">{pendingQuestion.text}</p>
+												<div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+													<span>
+														Category:{" "}
+														{questionCategories.find((cat) => cat.id === pendingQuestion.categoryId)?.name || "Context"}
+													</span>
+													<span>Source: AI</span>
+												</div>
+											</div>
+											{canInsertAfter && (
+												<div className="flex flex-wrap items-center gap-2 text-xs">
+													<span className="text-muted-foreground">Insert after:</span>
+													<Select
+														value={insertionChoice}
+														onValueChange={(value) => handlePendingInsertionChange(pendingQuestion.id, value)}
+													>
+														<SelectTrigger className="h-8 w-full sm:w-80">
+															<SelectValue placeholder="Choose position" />
+														</SelectTrigger>
+														<SelectContent>
+															<SelectItem value="end">Add to end of list</SelectItem>
+															{baseSelectedQuestionsForModal.map((existingQuestion) => (
+																<SelectItem key={existingQuestion.id} value={existingQuestion.id}>
+																	After “{existingQuestion.text.slice(0, 60)}
+																	{existingQuestion.text.length > 60 ? "…" : ""}”
+																</SelectItem>
+															))}
+														</SelectContent>
+													</Select>
+												</div>
+											)}
+											<div className="flex flex-wrap gap-2">
+												<Button
+													size="sm"
+													disabled={processingPendingId === pendingQuestion.id}
+													onClick={() => handleAcceptPendingQuestion(pendingQuestion.id, "end")}
+												>
+													Accept & Add to End
+												</Button>
+												<Button
+													size="sm"
+													variant="secondary"
+													disabled={
+														processingPendingId === pendingQuestion.id || !canInsertAfter || insertionChoice === "end"
+													}
+													onClick={() => handleAcceptPendingQuestion(pendingQuestion.id, "after")}
+												>
+													Accept & Insert After
+												</Button>
+												<Button
+													size="sm"
+													variant="ghost"
+													className="text-red-600 hover:text-red-700"
+													onClick={() => handleRejectPendingQuestion(pendingQuestion.id)}
+												>
+													Reject
+												</Button>
+											</div>
+										</CardContent>
+									</Card>
+								)
+							})}
+						</div>
+					</DialogContent>
+				</Dialog>
+
 				{/* Help Dialog */}
 				<InterviewQuestionHelp open={showHelp} onOpenChange={setShowHelp} />
 
@@ -1285,7 +1558,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												)
 												setQuestions(updated)
 												setSkipDebounce(true)
-												await saveQuestionsToDatabase(updated, selectedQuestionIds)
+												await saveQuestionsToDatabase(updated, getBaseSelectedIds())
 												setTimeout(() => setSkipDebounce(false), 1500)
 												setEvaluatingId(null)
 												setImprovingId(null)
@@ -1396,9 +1669,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																	<Tooltip>
 																		<TooltipTrigger asChild>
 																			<Card
-																				className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${fitsInTime
-																					? "sm:border-l-blue-500"
-																					: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
+																				className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${recentlyAddedQuestionIds.includes(question.id)
+																						? "bg-green-50 sm:border-l-green-500"
+																						: fitsInTime
+																							? "sm:border-l-blue-500"
+																							: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
 																					}`}
 																			>
 																				<CardContent className="p-2">
@@ -1454,7 +1729,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																										size="icon"
 																										onClick={async () => {
 																											setEvaluatingId(question.id)
-																											const quality = await evaluateQuestionQuality(editingText)
+																											const quality = isEvalEnabled
+																												? await evaluateQuestionQuality(editingText)
+																												: null
 																											const updated = questions.map((q) =>
 																												q.id === question.id
 																													? {
@@ -1466,7 +1743,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																											)
 																											setQuestions(updated)
 																											setSkipDebounce(true)
-																											await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																											await saveQuestionsToDatabase(updated, getBaseSelectedIds())
 																											setTimeout(() => setSkipDebounce(false), 1500)
 																											setEditingId(null)
 																											setEditingText("")
@@ -1502,7 +1779,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							)}
 																						</div>
 																						<div className="flex items-center gap-1">
-																							{question.qualityFlag && (
+																							{isEvalEnabled && question.qualityFlag && (
 																								<QualityFlag qualityFlag={question.qualityFlag} />
 																							)}
 																							<DropdownMenu>
@@ -1653,7 +1930,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																		</p>
 																	</div>
 																	<div className="flex items-center gap-1">
-																		{question.qualityFlag && <QualityFlag qualityFlag={question.qualityFlag} />}
+																		{isEvalEnabled && question.qualityFlag && (
+																			<QualityFlag qualityFlag={question.qualityFlag} />
+																		)}
 																		<button
 																			onClick={() => rejectQuestion(question.id)}
 																			className="mt-1 rounded p-1 text-red-500 transition-colors hover:bg-red-100 dark:hover:bg-red-900"
@@ -1678,7 +1957,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							</div>
 						</div>
 					)}
-
 				</div>
 			</div>
 		</div>

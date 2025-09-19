@@ -240,37 +240,39 @@ export default function Index() {
 			</div>
 
 			{/* Existing Projects Section */}
-			{projects && projects.length > 0 && (
-				<div>
-					<div className="mb-6 flex items-center justify-between">
-						<div>
-							<h2 className="font-semibold text-2xl">Your Existing Projects</h2>
-							<p className="text-muted-foreground text-sm">Continue working on your research projects</p>
-						</div>
-						{projects.length > 4 && (
-							<Button variant="outline" asChild>
-								<Link to={`${accountBase}/projects`}>
-									View All
-									<ArrowRight className="ml-2 h-4 w-4" />
-								</Link>
-							</Button>
-						)}
-					</div>
-					<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-						{projects.slice(0, 4).map((project) => {
-							const projectSections = latest_sections.filter((section) => section.project_id === project.id)
-							return (
-								<CompactProjectCard
-									key={project.id}
-									project={project}
-									projectPath={`${accountBase}/${project.id}`}
-									sections={projectSections}
-								/>
-							)
-						})}
+
+			<div className="space-y-3">
+				<div className="mb-6 flex items-center justify-between">
+					<div>
+						<h2 className="font-semibold text-2xl">Existing Projects</h2>
+						<p className="hidden text-muted-foreground text-sm md:block">Continue working on your research projects</p>
 					</div>
 				</div>
-			)}
+				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+					{projects.slice(0, 4).map((project) => {
+						const projectSections = latest_sections.filter((section) => section.project_id === project.id)
+						return (
+							<CompactProjectCard
+								key={project.id}
+								project={project}
+								projectPath={`${accountBase}/${project.id}`}
+								sections={projectSections}
+							/>
+						)
+					})}
+				</div>
+
+				<div className="flex flex-wrap">
+					{projects?.length > 4 && (
+						<Button variant="outline" asChild>
+							<Link to={`${accountBase}/projects`}>
+								View All ({projects.length})
+								<ArrowRight className="ml-2 h-4 w-4" />
+							</Link>
+						</Button>
+					)}
+				</div>
+			</div>
 		</div>
 	)
 }

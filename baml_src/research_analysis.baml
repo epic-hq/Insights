@@ -414,7 +414,7 @@ function GenerateQuestionSet(
     4) Ask about specific situations, tools, processes they encounter daily.
     5) Focus on real stories, concrete examples, day-to-day reality.
     6) Provide balanced coverage across categories:
-       context, goals, pain, workflow, motivation, constraints, willingness.
+       context, goals, pain, workflow, motivation, constraints, willingness, demographics.
     7) Provide scores in [0,1]: importance (highest signal), goalMatch, novelty.
     8) New questions must have status 'proposed'.
     9) Use unique string IDs for questions (uuid/ulid-like).
@@ -522,6 +522,7 @@ function GenerateFollowUpQuestions(
     - goals: Motivations, desired outcomes
     - constraints: Limitations, barriers
     - willingness: Adoption, willingness to change
+    - demographics: Role, tenure, team size, seniority, geography, org size, etc.
 
     SCORING:
     - importance: 0.7-1.0 (these are follow-ups to important questions)

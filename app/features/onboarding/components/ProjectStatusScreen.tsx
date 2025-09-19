@@ -147,61 +147,7 @@ export default function ProjectStatusScreen({
 	const getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
 	const getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
 
-	// Map analysis results to original goals
-	const getGoalStatus = (goalContent: string) => {
-		if (!statusData?.questionAnswers) return { status: "pending", confidence: 0 }
-
-		// Try to match this goal with answered questions
-		const matchedAnswer = statusData.questionAnswers.find(
-			(qa) =>
-				goalContent.toLowerCase().includes(qa.question.toLowerCase().split(" ").slice(0, 3).join(" ")) ||
-				qa.question.toLowerCase().includes(goalContent.toLowerCase().split(" ").slice(0, 3).join(" "))
-		)
-
-		if (matchedAnswer) {
-			return {
-				status: "answered",
-				confidence: matchedAnswer.confidence || 0,
-				answer: matchedAnswer.answer_summary,
-				evidence: matchedAnswer.evidence,
-			}
-		}
-
-		return { status: "open", confidence: 0 }
-	}
-
-	// Map analysis results to interview questions stored in project_sections
-	const getQuestionStatus = (questionText: string) => {
-		if (!statusData?.questionAnswers) return { status: "pending", confidence: 0 }
-
-		// Try to match this question with answered questions from analysis
-		const matchedAnswer = statusData.questionAnswers.find((qa) => {
-			const qaText = qa.question.toLowerCase()
-			const qText = questionText.toLowerCase()
-			// More flexible matching for question text
-			return (
-				qaText.includes(qText.split(" ").slice(0, 5).join(" ")) ||
-				qText.includes(qaText.split(" ").slice(0, 5).join(" ")) ||
-				// Fuzzy match key words
-				qaText
-					.split(" ")
-					.some((word) => word.length > 3 && qText.includes(word)) ||
-				qText.split(" ").some((word) => word.length > 3 && qaText.includes(word))
-			)
-		})
-
-		if (matchedAnswer) {
-			return {
-				status: "answered" as const,
-				confidence: matchedAnswer.confidence || 0,
-				answer: matchedAnswer.answer_summary,
-				evidence: matchedAnswer.evidence,
-				insights_found: matchedAnswer.insights_found,
-			}
-		}
-
-		return { status: "pending" as const, confidence: 0 }
-	}
+	// Removed client-side goal/question matching. Rely on backend analysis (statusData.questionAnswers).
 
 	const runCustomAnalysis = async () => {
 		if (!projectId) return
@@ -584,45 +530,16 @@ export default function ProjectStatusScreen({
 											{/* Research Goals */}
 											{getGoalSections().length > 0 && (
 												<div>
-													{getGoalSections().map((goalSection) => {
-														const goalStatus = getGoalStatus(goalSection.content_md)
-														return (
-															<div key={goalSection.id} className="flex items-start gap-3">
-																<div className="mt-1 flex-shrink-0">
-																	{goalStatus.status === "answered" ? (
-																		<SquareCheckBig className="h-5 w-5 text-green-600" />
-																	) : goalStatus.status === "open" ? (
-																		<Square className="h-5 w-5 text-amber-600" />
-																	) : (
-																		<Target className="h-5 w-5 text-gray-400" />
-																	)}
-																</div>
-																<div className="flex-1">
-																	<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
-																	{goalStatus.status === "answered" && goalStatus.answer && (
-																		<div className="mt-2 rounded bg-green-50 p-3 dark:bg-green-950/20">
-																			<p className="text-green-800 text-sm dark:text-green-200">{goalStatus.answer}</p>
-																			{goalStatus.confidence && (
-																				<Badge variant="outline" className="mt-2 text-xs">
-																					{goalStatus.confidence === 1
-																						? "High"
-																						: goalStatus.confidence === 2
-																							? "Medium"
-																							: "Low"}{" "}
-																					confidence
-																				</Badge>
-																			)}
-																		</div>
-																	)}
-																	{goalStatus.status === "open" && (
-																		<p className="mt-1 text-muted-foreground text-sm">
-																			Needs more evidence from interviews
-																		</p>
-																	)}
-																</div>
+													{getGoalSections().map((goalSection) => (
+														<div key={goalSection.id} className="flex items-start gap-3">
+															<div className="mt-1 flex-shrink-0">
+																<Target className="h-5 w-5 text-gray-400" />
 															</div>
-														)
-													})}
+															<div className="flex-1">
+																<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
+															</div>
+														</div>
+													))}
 												</div>
 											)}
 
@@ -899,30 +816,17 @@ export default function ProjectStatusScreen({
 																return (
 																	<div key={section.id} className="space-y-3">
 																		{fit.map((question: { text: string; id: string }, index: number) => {
-																			const questionStatus = getQuestionStatus(question.text)
 																			return (
 																				<div
 																					key={`question-${section.id}-${question.id ?? index}`}
-																					className={`rounded-lg border p-3 ${questionStatus.status === "answered"
-																						? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-950/20"
-																						: "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-950/20"
-																						}`}
+																					className={`rounded-lg border p-3 border-border bg-card`}
 																				>
 																					<div className="flex items-start gap-2">
-																						{questionStatus.status === "answered" ? (
-																							<CheckCircle className="mt-0.5 h-4 w-4 flex-shrink-0 text-green-600" />
-																						) : (
-																							<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-600" />
-																						)}
+																						<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
 																						<div className="flex-1">
 																							<p className="font-medium text-foreground text-sm">{question.text}</p>
-																							{questionStatus.status === "answered" && questionStatus.answer && (
-																								<div className="mt-2 line-clamp-2 text-muted-foreground text-sm">
-																									{questionStatus.answer}
-																								</div>
-																							)}
 																						</div>
-																					</div>
+																				</div>
 																				</div>
 																			)
 																		})}

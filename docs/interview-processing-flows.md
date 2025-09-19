@@ -53,20 +53,27 @@ Both flows follow the same analysis pipeline after transcription to ensure consi
 
 **Files involved:**
 - Onboarding: `app/features/onboarding/components/UploadScreen.tsx`
-- Webhook: `app/routes/api.assemblyai-webhook.tsx`  
+- Webhook: `app/routes/api.assemblyai-webhook.tsx`
 - Analysis: `app/utils/processInterviewAnalysis.server.ts`
 - Processing: `app/utils/processInterview.server.ts`
+
+Note the Webhook requirement: AssemblyAI processes async, so we need to wait for the webhook to complete before processing the transcript. In production, supabase hosts the webhok, but in dev we need to run ngrok to open a port:
+
+```bash
+ngrok http --url=cowbird-still-routinely.ngrok-free.app 4280
+```
+
 
 **Process:**
 ```
 1. User uploads file via UploadScreen
    └── File stored in Supabase Storage
-   
+
 2. Upload job created → AssemblyAI submission
    ├── Creates upload_jobs record with assemblyai_id
    ├── Submits to AssemblyAI for transcription
    └── AssemblyAI processes async
-   
+
 3. POST /api/assemblyai-webhook (when transcription completes)
    ├── Finds upload_jobs record by assemblyai_id
    ├── Fetches full transcript data from AssemblyAI API
@@ -100,7 +107,7 @@ Both flows follow the same analysis pipeline after transcription to ensure consi
 ```
 1. GET /a/{accountId}/{projectId}/interviews/{interviewId}/realtime
    └── Loads InterviewCopilot component
-   
+
 2. InterviewCopilot Component Operations:
    ├── Establishes WebSocket connection to /ws/realtime-transcribe
    ├── Captures audio via AudioWorklet (PCM processing)
@@ -108,7 +115,7 @@ Both flows follow the same analysis pipeline after transcription to ensure consi
    ├── Receives real-time transcript updates
    ├── Records audio locally via MediaRecorder (WebM/Opus)
    └── Shows live transcript + interview tools
-   
+
 3. User clicks "Finish" → stopStreaming()
    ├── Stops WebSocket connection
    ├── Stops MediaRecorder and creates audio blob
@@ -122,7 +129,7 @@ Both flows follow the same analysis pipeline after transcription to ensure consi
    │   │   ├── file_type: "realtime"
    │   │   └── original_filename: "realtime-{interviewId}"
    │   ├── Calls createAndProcessAnalysisJob()
-   │   │   ├── Creates analysis_jobs record  
+   │   │   ├── Creates analysis_jobs record
    │   │   ├── Updates interview status: "processing"
    │   │   ├── Calls processInterviewTranscriptWithAdminClient()
    │   │   ├── Extracts evidence via BAML
@@ -154,7 +161,7 @@ Both flows converge at `createAndProcessAnalysisJob()` which ensures consistent 
    ├── Assign persona via BAML AssignPersonaToInterview
    ├── Create tags from insights.relatedTags
    └── Link insights to personas automatically
-4. Update analysis_jobs status: "done" 
+4. Update analysis_jobs status: "done"
 5. Update interview status: "ready"
 ```
 
@@ -171,13 +178,13 @@ Both flows converge at `createAndProcessAnalysisJob()` which ensures consistent 
 
 ## Audio Duration Handling
 
-**Upload Flow**: 
+**Upload Flow**:
 - ✅ `duration_sec` stored directly from AssemblyAI `audio_duration` field
 - AssemblyAI provides accurate duration after transcription completes
 
-**Realtime Flow**: 
+**Realtime Flow**:
 - ✅ `duration_sec` extracted from recorded audio blob using HTML5 Audio API
-- `getAudioDuration()` function loads the blob and reads `audio.duration` 
+- `getAudioDuration()` function loads the blob and reads `audio.duration`
 - Duration sent to `realtime-finalize` endpoint and stored in database
 
 **Resolution**: Both flows now properly store audio duration in the `duration_sec` field.
@@ -193,7 +200,7 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 
 **Shared Utility**: `storeAudioFile.server.ts`
 - Handles File, Blob, and URL sources
-- Stores files in `interview-recordings` bucket  
+- Stores files in `interview-recordings` bucket
 - Generates consistent filenames: `interviews/{projectId}/{interviewId}-{timestamp}.{ext}`
 - Returns public URLs for database storage
 
@@ -204,9 +211,9 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 2. Uploads to AssemblyAI for transcription
 3. Uses stored URL as `media_url` in database
 
-**api.upload-from-url.tsx**:  
+**api.upload-from-url.tsx**:
 1. ✅ Downloads file from URL and stores in Supabase Storage
-2. Uploads to AssemblyAI for transcription  
+2. Uploads to AssemblyAI for transcription
 3. Uses stored URL as `media_url` in database
 
 **api.assemblyai-webhook.tsx**:
@@ -216,12 +223,12 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 
 **Realtime Flow**:
 1. ✅ Records audio locally via MediaRecorder
-2. Stores recorded blob in Supabase Storage  
+2. Stores recorded blob in Supabase Storage
 3. Uses stored URL as `media_url` in database
 
 ### Benefits:
 - **Consistent Access**: All interviews have persistent media URLs
-- **Data Ownership**: Audio files stored in our infrastructure  
+- **Data Ownership**: Audio files stored in our infrastructure
 - **Reliability**: Not dependent on external URLs or temporary AssemblyAI URLs
 - **Performance**: Files served from Supabase CDN
 
@@ -231,11 +238,11 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 Upload URL → Store → AssemblyAI → Webhook → Analysis → Database
      ↓          ↓         ↓          ↓         ↓         ↓
 File/URL  Supabase  Transcription Processing   AI     Insights
-         Storage  + audio_duration              ↓    + Evidence  
+         Storage  + audio_duration              ↓    + Evidence
                                           Themes   + People
                                                  + Personas
 
-Realtime → WebSocket → Record+Store → Finalize → Analysis → Database  
+Realtime → WebSocket → Record+Store → Finalize → Analysis → Database
     ↓          ↓            ↓            ↓         ↓         ↓
  Live Audio  Streaming  Supabase    Processing    AI    Insights
            Transcription Storage   + duration           + Evidence

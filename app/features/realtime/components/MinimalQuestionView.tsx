@@ -1,9 +1,10 @@
 import consola from "consola"
-import { Check, Forward, SkipForward } from "lucide-react"
+import { X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Checkbox } from "~/components/ui/checkbox"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
@@ -81,17 +82,31 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 	const activeQuestions = useMemo(() => {
 		const byId = new Map(allQuestions.map((q) => [q.id, q]))
 		const seen = new Set<string>()
-		const openIds = [] as string[]
+		const questionsToShow = [] as string[]
+
+		// Show all questions - answered questions first, then unanswered
 		for (const id of queue) {
 			if (seen.has(id)) continue
 			const q = byId.get(id)
 			if (!q) continue
-			if (q.status === "answered" || q.status === "skipped") continue
-			seen.add(id)
-			openIds.push(id)
-			if (openIds.length >= 2) break
+			if (q.status === "answered") {
+				seen.add(id)
+				questionsToShow.push(id)
+			}
 		}
-		return openIds.map((id) => byId.get(id)!).filter(Boolean)
+
+		// Then add all unanswered questions (not skipped)
+		for (const id of queue) {
+			if (seen.has(id)) continue
+			const q = byId.get(id)
+			if (!q) continue
+			if (q.status !== "answered" && q.status !== "skipped") {
+				seen.add(id)
+				questionsToShow.push(id)
+			}
+		}
+
+		return questionsToShow.map((id) => byId.get(id)).filter((q): q is MinimalQuestion => q !== undefined)
 	}, [allQuestions, queue])
 
 	const persist = useCallback(
@@ -116,7 +131,18 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 	const markDone = useCallback(
 		(id: string) => {
 			setAllQuestions((prev) => {
-				const next = prev.map((q) => (q.id === id ? { ...q, status: "answered" } : q))
+				const next = prev.map((q) => (q.id === id ? { ...q, status: "answered" as const } : q))
+				void persist(next)
+				return next
+			})
+		},
+		[persist]
+	)
+
+	const unmarkDone = useCallback(
+		(id: string) => {
+			setAllQuestions((prev) => {
+				const next = prev.map((q) => (q.id === id ? { ...q, status: "proposed" as const } : q))
 				void persist(next)
 				return next
 			})
@@ -127,7 +153,7 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 	const skip = useCallback(
 		(id: string) => {
 			setAllQuestions((prev) => {
-				const next = prev.map((q) => (q.id === id ? { ...q, status: "skipped" } : q))
+				const next = prev.map((q) => (q.id === id ? { ...q, status: "skipped" as const } : q))
 				void persist(next)
 				return next
 			})
@@ -135,24 +161,25 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 		[persist]
 	)
 
-	const defer = useCallback((id: string) => {
-		// Move to end of queue; keep status as-is (typically proposed), keep unique
-		setQueue((prev) => {
-			const rest = prev.filter((x) => x !== id)
-			const next = [...rest, id]
-			return Array.from(new Set(next))
-		})
-	}, [])
+
+	// Calculate answered count
+	const answeredCount = allQuestions.filter((q) => q.status === "answered").length
+	const totalCount = allQuestions.length
 
 	return (
-		<Card>
-			<CardHeader>
-				<CardTitle className="flex items-center justify-between">
-					<span>Interview Questions</span>
+		<Card className="flex h-full flex-col border-0 px-0 md:border-1 md:px-4">
+			<CardHeader className="flex-shrink-0 px-2 sm:px-2 md:px-2">
+				<CardTitle className="flex items-center justify-between pr-2">
+					<span>Prompts</span>
 					{saving && <span className="text-muted-foreground text-xs">Saving…</span>}
+					{totalCount > 0 && (
+						<div className="text-muted-foreground text-sm">
+							{answeredCount} of {totalCount}
+						</div>
+					)}
 				</CardTitle>
 			</CardHeader>
-			<CardContent className="space-y-3">
+			<CardContent className="flex-1 space-y-3 overflow-y-auto px-2 sm:px-2 md:px-2">
 				{loading && <div className="text-muted-foreground text-sm">Loading…</div>}
 				{!loading && allQuestions.length === 0 && (
 					<div className="text-muted-foreground text-sm">
@@ -164,26 +191,86 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 					<div className="text-muted-foreground text-sm">All questions completed. Great job!</div>
 				)}
 				{activeQuestions.map((q, idx) => (
-					<div key={q.id} className={`rounded-md border p-3 ${idx === 0 ? "border-green-200" : ""}`}>
-						<div className="mb-1 text-muted-foreground text-xs uppercase tracking-wide">
-							{idx === 0 ? "Current Question" : "Next Up"}
-						</div>
-						<div className="mb-3 text-sm">{q.text}</div>
-						<div className="flex gap-2">
-							<Button
-								size="sm"
-								variant="outline"
-								className="border-green-600 text-green-700 hover:bg-green-50"
-								onClick={() => markDone(q.id)}
-							>
-								<Check className="mr-1 h-4 w-4" /> Done
-							</Button>
-							<Button size="sm" variant="outline" onClick={() => skip(q.id)}>
-								<SkipForward className="mr-1 h-4 w-4" /> Skip
-							</Button>
-							<Button size="sm" variant="secondary" onClick={() => defer(q.id)}>
-								<Forward className="mr-1 h-4 w-4" /> Defer
-							</Button>
+					<div
+						key={q.id}
+						className="touch-pan-y rounded-md border p-2 md:p-4 "
+						style={{
+							transform: "translateX(0px)",
+							transition: "transform 0.2s ease-out",
+						}}
+						onTouchStart={(e) => {
+							if (q.status === "answered") return // Don't allow swiping on answered questions
+
+							const touch = e.touches[0]
+							const startX = touch.clientX
+							const element = e.currentTarget as HTMLElement
+
+							const handleTouchMove = (moveEvent: TouchEvent) => {
+								const currentTouch = moveEvent.touches[0]
+								const deltaX = currentTouch.clientX - startX
+
+								if (deltaX < -50) {
+									// Swipe left threshold
+									element.style.transform = `translateX(${deltaX}px)`
+									element.style.opacity = String(Math.max(0.3, 1 + deltaX / 200))
+								}
+							}
+
+							const handleTouchEnd = (endEvent: TouchEvent) => {
+								const currentTouch = endEvent.changedTouches[0]
+								const deltaX = currentTouch.clientX - startX
+
+								if (deltaX < -100) {
+									// Skip if swiped far enough
+									skip(q.id)
+								} else {
+									// Reset position
+									element.style.transform = "translateX(0px)"
+									element.style.opacity = "1"
+								}
+
+								document.removeEventListener("touchmove", handleTouchMove)
+								document.removeEventListener("touchend", handleTouchEnd)
+							}
+
+							document.addEventListener("touchmove", handleTouchMove, { passive: false })
+							document.addEventListener("touchend", handleTouchEnd)
+						}}
+					>
+						<div className="space-y-2">
+							<div className="flex items-start gap-3">
+								<div className="flex items-center gap-2">
+									<Checkbox
+										checked={q.status === "answered"}
+										onCheckedChange={(checked) => {
+											if (checked) {
+												markDone(q.id)
+											} else {
+												unmarkDone(q.id)
+											}
+										}}
+										className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
+									/>
+									<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
+								</div>
+								<div className="min-w-0 flex-1">
+									<div
+										className={`text-sm leading-relaxed ${q.status === "answered" ? "text-muted-foreground line-through" : ""}`}
+									>
+										{q.text}
+									</div>
+									{idx === 0 && q.status !== "answered" && (
+										<div className="mt-2 text-muted-foreground text-xs">← Swipe left to skip</div>
+									)}
+								</div>
+							</div>
+							{q.status !== "answered" && (
+								<div className="flex justify-end">
+									<Button size="sm" variant="outline" onClick={() => skip(q.id)}>
+										<X className="mr-1 h-3 w-3" /> Skip
+									</Button>
+								</div>
+							)}
 						</div>
 					</div>
 				))}

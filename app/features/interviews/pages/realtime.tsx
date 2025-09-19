@@ -1,9 +1,7 @@
-import { ChevronLeft } from "lucide-react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
-import { Button } from "~/components/ui/button"
+import { useLoaderData } from "react-router"
+import { useEffect } from "react"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => [{ title: "Interview Realtime | Insights" }]
@@ -36,20 +34,25 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewRealtimePage() {
-	const { accountId, projectId, interviewId } = useLoaderData<typeof loader>()
-	const routes = useProjectRoutesFromIds(accountId, projectId)
+	const { projectId, interviewId } = useLoaderData<typeof loader>()
+
+	useEffect(() => {
+		const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+			// Show confirmation dialog when user tries to leave the page
+			e.preventDefault()
+			// Note: Modern browsers ignore custom messages and show their own standard message
+			return 'Are you sure you want to leave? Any unsaved recording may be lost.'
+		}
+
+		window.addEventListener('beforeunload', handleBeforeUnload)
+
+		return () => {
+			window.removeEventListener('beforeunload', handleBeforeUnload)
+		}
+	}, [])
 
 	return (
-		<div className="bg-background">
-			{/* Back button */}
-			<div className="top-4 left-4 z-10">
-				<Link to={routes.interviews.index()}>
-					<Button variant="outline" size="sm" className="flex items-center gap-2 bg-background/80 backdrop-blur-sm">
-						<ChevronLeft className="h-4 w-4" />
-						Back to Interviews
-					</Button>
-				</Link>
-			</div>
+		<div className="min-h-screen bg-background">
 			<InterviewCopilot projectId={projectId} interviewId={interviewId} />
 		</div>
 	)

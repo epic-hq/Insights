@@ -216,95 +216,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				}))
 			}
 
-			// If canonical returns fewer than requested, top up via fallback suggestions
-			try {
-				const have = Array.isArray(questionSet?.questions) ? questionSet.questions.length : 0
-				const need = Math.max(0, (Number(questionCount) || 10) - have)
-				if (need > 0) {
-					const { generateResearchQuestions } = await import("~/utils/research-analysis.server")
-					const suggestions = await generateResearchQuestions(
-						target_orgs,
-						target_roles,
-						research_goal,
-						research_goal_details,
-						assumptions,
-						unknowns,
-						custom_instructions
-					)
-
-					const categories = [
-						{ id: "core", label: "Core" },
-						{ id: "behavior", label: "Behavior" },
-						{ id: "pain", label: "Pain" },
-						{ id: "solutions", label: "Solutions" },
-						{ id: "context", label: "Context" },
-					]
-
-					const toQuestion = (categoryId: string) => (q: any, idx: number) => ({
-						id: randomUUID(),
-						text: sanitizeQuestion(q.question),
-						categoryId,
-						rationale: q.rationale || undefined,
-						tags: [],
-						scores: {
-							importance: q.priority === 1 ? 0.9 : q.priority === 2 ? 0.7 : 0.55,
-							goalMatch: 0.65,
-							novelty: 0.6,
-						},
-						estimatedMinutes: 4.5,
-						status: "proposed" as const,
-						source: "llm" as const,
-						displayOrder: idx + 1,
-					})
-
-					// Build per-category pools for balanced selection
-					const corePool = (suggestions.core_questions || []).map(toQuestion("goals"))
-					const behaviorPool = (suggestions.behavioral_questions || []).map(toQuestion("workflow"))
-					const painPool = (suggestions.pain_point_questions || []).map(toQuestion("pain"))
-					const solutionsPool = (suggestions.solution_questions || []).map(toQuestion("willingness"))
-					const contextPool = (suggestions.context_questions || []).map(toQuestion("context"))
-
-					const existingTexts = new Set(
-						(questionSet?.questions || []).map((q: any) =>
-							String(q?.text || "")
-								.toLowerCase()
-								.trim()
-						)
-					)
-					const extras: any[] = []
-					// Round-robin across categories to ensure spread
-					const pickers = [corePool, painPool, behaviorPool, contextPool, solutionsPool]
-					const perCategoryCap = 3
-					const takenPerCat = new Map<string, number>()
-					let idx = 0
-					while (extras.length < need && pickers.some((p) => p.length > 0)) {
-						const pool = pickers[idx % pickers.length]
-						idx++
-						if (pool.length === 0) continue
-						const q = pool.shift() as any
-						if (!q) continue
-						const t = String(q.text || "")
-							.toLowerCase()
-							.trim()
-						if (!t || existingTexts.has(t)) continue
-						const cat = q.categoryId || "other"
-						const used = takenPerCat.get(cat) || 0
-						if (used >= perCategoryCap) continue
-						takenPerCat.set(cat, used + 1)
-						existingTexts.add(t)
-						extras.push(q)
-					}
-					if (extras.length > 0) {
-						questionSet = {
-							...(questionSet || {}),
-							categories: questionSet?.categories || categories,
-							questions: [...(questionSet?.questions || []), ...extras],
-						}
-					}
-				}
-			} catch (topUpErr) {
-				consola.warn("[api.generate-questions] Top-up via fallback failed", topUpErr)
-			}
+			// No non-AI top-up; use canonical result as-is
 		} catch (e) {
 			consola.error("[BAML ERROR] Canonical generation failed:", {
 				error: e,
@@ -320,6 +232,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					custom_instructions
 				}
 			})
+			// AI-only mode: do not use text fallbacks
+			throw e
 			
 			// Fallback: use legacy suggestions and adapt to QuestionSet shape expected by UI.
 			consola.log("[BAML DEBUG] Attempting fallback generateResearchQuestions...")

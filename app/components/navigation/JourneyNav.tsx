@@ -1,4 +1,4 @@
-import { ChevronRight, Command, Lightbulb, Search, TrendingUp, Users } from "lucide-react"
+import { ChevronRight, Command, Lightbulb, Mic, Search, TrendingUp, Users } from "lucide-react"
 import { NavLink, useLocation } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -27,6 +27,17 @@ export const journeySteps: JourneyStep[] = [
 		subItems: [
 			{ label: "Status", route: "/dashboard", description: "Project overview & recommendations" },
 			{ label: "Interviews", route: "/interviews", description: "Transcripts & evidence collection" },
+			{ label: "Add Data", route: "/interviews/new", description: "Upload interviews & surveys" },
+		],
+	},
+	{
+		key: "interviews",
+		title: "Interviews",
+		description: "Interview transcripts & evidence collection",
+		icon: Mic,
+		routes: ["/interviews", "/interviews/new"],
+		subItems: [
+			{ label: "Interviews", route: "/interviews", description: "Interview transcripts & evidence collection" },
 			{ label: "Add Data", route: "/interviews/new", description: "Upload interviews & surveys" },
 		],
 	},

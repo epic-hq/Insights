@@ -142,10 +142,11 @@ export default function ProtectedLayout() {
 
 	const isLoading = navigation.state === "loading"
 
-	// Don't show JourneyNav on home route
+	// Don't show JourneyNav on home route, project creation, and realtime routes
 	const isHomePage = location.pathname === "/home"
 	const isProjectNew = location.pathname.includes("/projects/new")
-	const showJourneyNav = !isHomePage && !isProjectNew
+	const isRealtimePage = location.pathname.includes("/realtime")
+	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage
 
 	useEffect(() => {
 		posthog.identify(auth.user.sub, {
