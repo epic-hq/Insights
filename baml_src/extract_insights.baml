@@ -252,24 +252,27 @@ enum BBValues {
 class ExtractedInsight {
 	// While trying to do **GOAL/Desired_outcome**, people struggle with **pain** because **WHY: Details/context**.
 
-	pain string | null @description("Pain, discomfort, or friction the user experiences in doing a task")
 	name string @description("Short Text description of the insight in up to 5 words")
+	pain string | null @description("Pain, discomfort, or friction the user experiences in doing a task")
 	details string | null @description("The why or cause of the pain. Details and background leading to or causing the pain. Multiple sentences or bullet points as needed.")
 	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
+
+	// Research validation fields
+	assumptionAlignment string | null @description("How this insight relates to existing assumptions: 'SUPPORTS', 'REFUTES', 'NEUTRAL', or 'UNEXPECTED'. Be explicit about which assumption it addresses.")
+	researchQuestionAnswered string | null @description("Which specific research or decision question does this insight help answer? Be explicit about the connection.")
+	evidenceStrength string | null @description("Strength of supporting evidence: 'DIRECT_QUOTE', 'CLEAR_BEHAVIOR', 'IMPLIED', or 'WEAK'. How confident are we in this finding?")
+	productImplication string | null @description("What does this mean for product decisions? How should this insight influence our roadmap or strategy?")
+	followUpQuestions string | null @description("What new questions does this insight raise? What should we investigate further?")
+
 	emotionalResponse Emotions @description("describe the emotion the person feels about this using the Emotions enum.")
 	underlyingMotivation string | null @description("why do they want to achieve this, or overcome the pain?")
 	values BBValues[] @description("Which values is the person expressing?")
 	category string @description("The topical theme or category of the insight to help us group similar insights") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
-	// impact int | null @description("Impact or severity to the user or business value (1 = minor annoyance, 5 = critical blocker)")
-	// novelty int | null @description("How unique or unexpected is the insight? (1 = common expectation, 5 = breakthrough idea)")
 	jtbd string | null @description("The user story or **Job to be done** style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
-	// opportunityIdeas string[] | null @description("Opportunity ideas of insight")
-	// confidence int | null @description("Confidence of insight")
-	contradictions string | null @description("Potential contradictions and themes explicitly or implicitly by omission, things that the interviewee doesn’t say, e.g. given an opportunity to discuss A,B,C, they only discussed A. Does the user discuss opposing claims?")
+	contradictions string | null @description("Potential contradictions and themes explicitly or implicitly by omission, things that the interviewee doesn't say, e.g. given an opportunity to discuss A,B,C, they only discussed A. Does the user discuss opposing claims?")
 	relatedTags string[] @description("Related tags or keywords to the insight. Make tags conceptual, not UI feature names (e.g. social_accountability, not leaderboard)")
-	// createdAt string | null @description("Created at of insight")
 }
 
 class InterviewMetadata {
@@ -296,9 +299,10 @@ class InterviewExtraction {
 	metadata InterviewMetadata
 	interviewee Interviewee
 	insights ExtractedInsight[]
+	relevantAnswers string[] @description("List of relevant answers from the interview to the business goal, key decisions, and research questions.")
 	observationsAndNotes string @description("Non‑verbal cues, environment, surprising behaviours—anything that adds colour but doesn’t belong in an insight. In markdown format")
-	highImpactThemes string[] @description("List the biggest takeaways from the insights as single lines, each starting with a tag and a quick rating of importance. Example: \"Tag: One-sentence insight (Rating: 1-5)\"")
-	openQuestionsAndNextSteps string @description("What don't we know yet? What do we need to learn more about? What are the next steps we should take to validate our hypotheses or address our knowledge gaps? A bullet list of open questions and next steps in markdown format")
+	highImpactThemes string[] @description("List the 3 strongest takeaways from the user's comments and behavior related to your questions")
+	openQuestionsAndNextSteps string @description("What next steps should we take to validate our hypotheses or address our knowledge gaps? Pithy statements.")
 }
 
 
@@ -316,19 +320,34 @@ class Set {
 function ExtractInsights(transcript: string, userCustomInstructions: string) -> InterviewExtraction {
   client "CustomGPT4oMini"
   prompt #"
-    Using the following interview transcript, extract key statements and insights about the interview, interviewee, and their key activities, behaviors, objectives, and any pain or friction they encounter along the way.
-		Also identify desired outcomes as specifically as possible. key insights that will help us understand the user's experiences, motivations and needs.
-		We will use this information to improve our products and services, so it's important to
-		be specific and actionable.
+    Extract targeted insights from this interview transcript that directly address research questions and validate/refute key assumptions.
 
-		Custom user instructions:
-		{{userCustomInstructions}}
+    Focus on extracting succinct takeaways that answer:
+    - How do the interviewee's responses support or challenge our core assumptions?
+    - What specific evidence validates or contradicts our hypotheses?
+    - Which research questions does this interview help answer and how?
+    - What unexpected findings emerged that we didn't anticipate?
 
-    Transcript:
+    For each insight, be specific about:
+    - Whether it SUPPORTS, REFUTES, or is NEUTRAL toward existing assumptions
+    - The strength of evidence (direct quote vs. implied behavior)
+    - How this finding impacts our understanding of the problem space
+    - What follow-up questions this raises for future research
+
+    Prioritize insights that:
+    1. Directly answer key research/decision questions
+    2. Challenge or validate core product assumptions
+    3. Reveal unexpected user behaviors or needs
+    4. Provide actionable direction for product decisions
+
+    Custom research focus:
+    {{userCustomInstructions}}
+
+    Interview transcript:
     {{ transcript }}
 
-		Output format:
-		{{ ctx.output_format }}
+    Output format:
+    {{ ctx.output_format }}
   "#
 }
 

@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -72,6 +73,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	// Track all media streams for cleanup
 	const mediaStreamsRef = useRef<MediaStream[]>([])
 
+	// Audio source selection
+	const [audioSource, setAudioSource] = useState<"microphone" | "system">("microphone")
+	const [micDeviceId, setMicDeviceId] = useState<string | "default">("default")
+	const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([])
+
 	const TARGET_SAMPLE_RATE = 16000
 	const CHUNK_MS = 100
 	const MIN_OUT_MS = 60
@@ -124,7 +130,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				clearInterval(durationTimerRef.current)
 			}
 			cleanupMediaStreams()
-			stopStreaming()
+			// On unmount, ensure we don't accidentally finalize
+			stopStreaming(false)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
@@ -261,6 +268,46 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}, [])
 
+	// Load audio devices (labels may be empty until mic permission granted)
+	useEffect(() => {
+		const loadDevices = async () => {
+			try {
+				const devs = await navigator.mediaDevices.enumerateDevices()
+				setAudioDevices(devs.filter((d) => d.kind === "audioinput"))
+			} catch {
+				setAudioDevices([])
+			}
+		}
+		loadDevices()
+		navigator.mediaDevices.addEventListener?.("devicechange", loadDevices)
+		return () => navigator.mediaDevices.removeEventListener?.("devicechange", loadDevices)
+	}, [])
+
+	// Helper to get capture stream based on selected source
+	const getCaptureStream = useCallback(async (): Promise<MediaStream> => {
+		if (audioSource === "system") {
+			// Use display capture to get tab/system audio. Keep video track alive but ignore it.
+			// User will pick the tab/window and opt to share audio in the browser prompt.
+			const ds = (await navigator.mediaDevices.getDisplayMedia({
+				video: true,
+				audio: true,
+			})) as MediaStream
+			return ds
+		}
+
+		// Microphone capture with optional deviceId
+		const mic = await navigator.mediaDevices.getUserMedia({
+			audio: {
+				deviceId: micDeviceId === "default" ? undefined : { exact: micDeviceId },
+				echoCancellation: true,
+				noiseSuppression: true,
+				channelCount: 1,
+			},
+			video: false,
+		})
+		return mic
+	}, [audioSource, micDeviceId])
+
 	// ========= Realtime streaming logic =========
 	const startStreaming = useCallback(async () => {
 		try {
@@ -296,20 +343,20 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				const ctx = new AudioContext({ sampleRate: 48000 })
 				ctxRef.current = ctx
 				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
-				const stream = await navigator.mediaDevices.getUserMedia({
-					audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
-					video: false,
-				})
-				// Track the stream for cleanup
-				mediaStreamsRef.current.push(stream)
-				const src = ctx.createMediaStreamSource(stream)
+				// Choose stream based on selected source
+				const fullStream = await getCaptureStream()
+				// Track the full stream for cleanup (may include video if system capture)
+				mediaStreamsRef.current.push(fullStream)
+				// Use audio-only stream for processing/recording
+				const audioOnly = new MediaStream(fullStream.getAudioTracks())
+				const src = ctx.createMediaStreamSource(audioOnly)
 				const node = new AudioWorkletNode(ctx, "pcm-processor")
 				nodeRef.current = node
 				src.connect(node)
 
 				// Start in-browser recording for upload
 				try {
-					const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" })
+					const rec = new MediaRecorder(audioOnly, { mimeType: "audio/webm;codecs=opus" })
 					recRef.current = rec
 					recChunksRef.current = []
 					rec.ondataavailable = (e) => {
@@ -419,7 +466,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			setIsRecording(false)
 			stopStreaming()
 		}
-	}, [assignedInterviewId])
+	}, [assignedInterviewId, getCaptureStream])
 
 	// Pause without finalizing; keeps WS alive if possible
 	const pauseStreaming = useCallback(() => {
@@ -459,13 +506,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				const ctx = new AudioContext({ sampleRate: 48000 })
 				ctxRef.current = ctx
 				await ctx.audioWorklet.addModule("/worklets/pcm-processor.js")
-				const stream = await navigator.mediaDevices.getUserMedia({
-					audio: { echoCancellation: true, noiseSuppression: true, channelCount: 1 },
-					video: false,
-				})
-				// Track the stream for cleanup
-				mediaStreamsRef.current.push(stream)
-				const src = ctx.createMediaStreamSource(stream)
+				const fullStream = await getCaptureStream()
+				mediaStreamsRef.current.push(fullStream)
+				const audioOnly = new MediaStream(fullStream.getAudioTracks())
+				const src = ctx.createMediaStreamSource(audioOnly)
 				const node = new AudioWorkletNode(ctx, "pcm-processor")
 				nodeRef.current = node
 				src.connect(node)
@@ -511,9 +555,9 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		} catch (e) {
 			consola.warn("resumeStreaming error", e)
 		}
-	}, [startStreaming, startDurationTimer])
+	}, [startStreaming, startDurationTimer, getCaptureStream])
 
-	const stopStreaming = useCallback(async () => {
+	const stopStreaming = useCallback(async (finalize: boolean = true) => {
 		if (timerRef.current) {
 			clearInterval(timerRef.current)
 			timerRef.current = null
@@ -522,13 +566,12 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		cleanupMediaStreams()
 		if (wsRef.current) {
 			try {
-				// Signal end of stream to upstream to flush final results
 				if (wsRef.current.readyState === WebSocket.OPEN) {
-					try {
-						wsRef.current.send("__end__")
-					} catch { }
-					// Give a brief moment for any final Turn events to arrive
-					await new Promise((r) => setTimeout(r, 300))
+					if (finalize) {
+						// Signal end of stream to upstream to flush final results
+						try { wsRef.current.send("__end__") } catch { }
+						await new Promise((r) => setTimeout(r, 300))
+					}
 				}
 				wsRef.current.close()
 			} catch { }
@@ -552,7 +595,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			}
 		} catch { }
 
-		// finalize recording and save transcript (captions joined)
+		// finalize or abort recording
 		void (async () => {
 			try {
 				const rec = recRef.current
@@ -562,6 +605,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					})
 					rec.stop()
 					const blob = await stopped
+					if (!finalize) {
+						// Abort path: do not upload or finalize
+						return
+					}
+
 					let mediaUrl: string | undefined
 					const id = assignedInterviewId
 					if (blob.size > 0 && id) {
@@ -802,15 +850,14 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}
 
-	const handleCancel = useCallback(() => {
-		if (isRecording || streamStatus === "streaming" || streamStatus === "paused") {
-			// Stop recording without saving and cleanup all streams
-			stopDurationTimer()
-			cleanupMediaStreams()
-		}
-		setRecordingDuration(0)
-		navigate(routes.interviews.index())
-	}, [isRecording, streamStatus, stopDurationTimer, cleanupMediaStreams, navigate, routes])
+    const handleCancel = useCallback(() => {
+        if (isRecording || streamStatus === "streaming" || streamStatus === "paused") {
+            // Abort streaming: close WS/streams/recorder without saving
+            stopStreaming(false)
+        }
+        setRecordingDuration(0)
+        navigate(routes.interviews.index())
+    }, [isRecording, streamStatus, stopStreaming, navigate, routes])
 
 	const handleFinish = useCallback(() => {
 		setIsFinishing(true)
@@ -863,6 +910,37 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			<div className="flex flex-shrink-0 items-center justify-between border-b bg-background p-3">
 				<div className="flex items-center gap-3">
 					<h1 className="font-semibold text-lg">Interview</h1>
+					{/* Audio source selector */}
+					<div className="ml-2 flex items-center gap-2">
+						<span className="text-xs text-muted-foreground">Audio source</span>
+						<Select
+							value={audioSource === "system" ? "system" : `mic:${micDeviceId}`}
+							onValueChange={(val) => {
+								if (val === "system") {
+									setAudioSource("system")
+								} else if (val.startsWith("mic:")) {
+									const id = val.slice(4) || "default"
+									setAudioSource("microphone")
+									setMicDeviceId((id as any) || "default")
+								}
+							}}
+							disabled={isRecording || streamStatus === "paused" || streamStatus === "streaming"}
+						>
+							<SelectTrigger className="h-8 w-56 text-xs">
+								<SelectValue placeholder="Select audio source" />
+							</SelectTrigger>
+							<SelectContent className="text-sm">
+								<SelectItem value="mic:default">Microphone (default)</SelectItem>
+								{audioDevices.map((d, idx) => (
+									<SelectItem key={d.deviceId || idx} value={`mic:${d.deviceId}`}>
+										{d.label || `Microphone ${idx + 1}`}
+									</SelectItem>
+								))}
+								<SelectItem value="system">Share tab/system audio…</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
 					{(isRecording || streamStatus === "paused") && (
 						<div className="flex items-center gap-2 text-sm">
 							<WaveformAnimation isRecording={streamStatus === "streaming"} />

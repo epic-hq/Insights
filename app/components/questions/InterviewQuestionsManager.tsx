@@ -4,7 +4,6 @@ import {
 	Brain,
 	BriefcaseBusiness,
 	Check,
-	ChevronDown,
 	Clock,
 	Edit,
 	Filter,
@@ -12,7 +11,6 @@ import {
 	GripVertical,
 	HelpCircle,
 	MessageCircleQuestion,
-	Mic,
 	MoreHorizontal,
 	Plus,
 	Settings,
@@ -25,7 +23,7 @@ import {
 import React, { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
-import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
+import { z } from "zod"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -132,6 +130,33 @@ const questionCategories = [
 	},
 ]
 
+// Safe minutes schema for user-entered allocation values
+const MinutesSchema = z.coerce.number().refine(Number.isFinite).int().min(0).max(240)
+
+function sanitizeAllocations(input?: Record<string, unknown>): Record<string, number> {
+	const out: Record<string, number> = {}
+	for (const cat of questionCategories) {
+		const parsed = MinutesSchema.safeParse(input?.[cat.id])
+		out[cat.id] = parsed.success ? parsed.data : 0
+	}
+	return out
+}
+
+// Ensure a list of questions has unique IDs against an existing set and within itself
+function ensureUniqueQuestionIds(newQs: Question[], existingQs: Question[]): Question[] {
+	const used = new Set<string>(existingQs.map((q) => q.id))
+	const result: Question[] = []
+	for (const q of newQs) {
+		let id = q.id && q.id.length > 0 ? q.id : crypto.randomUUID()
+		while (used.has(id)) {
+			id = crypto.randomUUID()
+		}
+		used.add(id)
+		result.push({ ...q, id })
+	}
+	return result
+}
+
 // Quality flag component
 function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) {
 	if (!qualityFlag) return null
@@ -208,7 +233,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [hasInitialized, setHasInitialized] = useState(false)
 	const [skipDebounce, setSkipDebounce] = useState(false)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
-	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
+	const [showCustomInstructions, _setShowCustomInstructions] = useState(false)
 	const [showAddCustomQuestion, setShowAddCustomQuestion] = useState(false)
 	const [newQuestionText, setNewQuestionText] = useState("")
 	const [newQuestionCategory, setNewQuestionCategory] = useState("context")
@@ -223,6 +248,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [improvingId, setImprovingId] = useState<string | null>(null)
 	const [improveOptions, setImproveOptions] = useState<string[]>([])
 	const [evaluatingId, setEvaluatingId] = useState<string | null>(null)
+	// Category-focused enhancements
+	const [categoryTimeAllocations, setCategoryTimeAllocations] = useState<Record<string, number>>({})
+	const [generatingCategoryId, setGeneratingCategoryId] = useState<string | null>(null)
 	// How many new questions to generate when user clicks "Generate More"
 	// Default "Generate More" count to 8 instead of 3
 	const [moreCount, setMoreCount] = useState<number>(3)
@@ -289,15 +317,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						isMustHave: false,
 					}))
 
-					// Deduplicate questions by ID, regenerating UUIDs for duplicates
-					const existingIds = new Set(questions.map(q => q.id))
-					const deduplicatedQuestions = formattedNewQuestions.map(q => {
-						if (existingIds.has(q.id)) {
-							console.warn(`Duplicate question ID detected: ${q.id}, regenerating UUID...`)
-							return { ...q, id: crypto.randomUUID() }
-						}
-						return q
-					})
+					// Deduplicate questions by ID against existing and within this batch (and pending list)
+					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, [
+						...questions,
+						...pendingGeneratedQuestions,
+					])
 
 					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
 					setPendingInsertionChoices((prev) => ({
@@ -362,7 +386,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 	useEffect(() => {
 		return () => {
-			Object.values(recentlyAddedTimeoutsRef.current).forEach((id) => window.clearTimeout(id))
+			Object.values(recentlyAddedTimeoutsRef.current).forEach((id) => {
+				window.clearTimeout(id)
+			})
 			recentlyAddedTimeoutsRef.current = {}
 		}
 	}, [])
@@ -462,6 +488,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				if (settings.customInstructions && typeof settings.customInstructions === "string")
 					setCustomInstructions(settings.customInstructions)
 
+				// Load category time allocations if present (sanitized)
+				const catTimesRaw = (settings as { categoryTimeAllocations?: Record<string, unknown> } | undefined)
+					?.categoryTimeAllocations
+				setCategoryTimeAllocations(sanitizeAllocations(catTimesRaw))
+
 				const formattedQuestions: Question[] = questionsData.map((q: QuestionInput, idx: number) => ({
 					id: resolvedIds[idx],
 					text: q.text || q.question || "",
@@ -488,7 +519,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 				// Deduplicate questions by ID, regenerating UUIDs for duplicates
 				const seenIds = new Set<string>()
-				const deduplicatedQuestions = formattedQuestions.map(q => {
+				const deduplicatedQuestions = formattedQuestions.map((q) => {
 					if (seenIds.has(q.id)) {
 						console.warn(`Duplicate question ID detected on load: ${q.id}, regenerating UUID...`)
 						const newId = crypto.randomUUID()
@@ -512,7 +543,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 
 		loadQuestions()
-	}, [projectId, supabase])
+	}, [projectId, supabase, commitSelection])
 
 	const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
 		const baseTimes = { exploratory: 6.5, validation: 4.5, followup: 3.5 }
@@ -667,7 +698,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			commitSelection(ids)
 			setHasInitialized(true)
 		}
-	}, [hasInitialized, selectedQuestionIds.length, questionPack.questions])
+	}, [hasInitialized, selectedQuestionIds.length, questionPack.questions, commitSelection])
+
+	// Time used per category for currently selected questions
+	const usedMinutesByCategory = useMemo(() => {
+		const acc: Record<string, number> = {}
+		for (const q of questionPack.questions as Array<{ categoryId: string; estimatedMinutes: number }>) {
+			acc[q.categoryId] = (acc[q.categoryId] || 0) + (q.estimatedMinutes || 0)
+		}
+		return acc
+	}, [questionPack.questions])
+
+	// Grouping helper is not required for DnD; headers are inserted inline
 
 	// Notify parent when the selected questions (with text) change
 	useEffect(() => {
@@ -727,6 +769,90 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[projectId, supabase, timeMinutes, purpose, familiarity, goDeepMode, customInstructions]
 	)
 
+	// Generate a single question focused on a specific category
+	const generateOneInCategory = useCallback(
+		async (categoryId: string) => {
+			if (generating || generatingCategoryId) return
+			setGeneratingCategoryId(categoryId)
+			try {
+				const formData = new FormData()
+				formData.append("project_id", projectId || "")
+				formData.append("questionCount", "1")
+				formData.append("interview_time_limit", timeMinutes.toString())
+				// Bias the model toward a category without changing saved instructions
+				const catName = questionCategories.find((c) => c.id === categoryId)?.name || categoryId
+				const augmented = `${customInstructions || ""}\nFocus on the category: ${catName}.`
+				formData.append("custom_instructions", augmented)
+
+				if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
+				if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
+				if (research_goal) formData.append("research_goal", research_goal)
+				if (research_goal_details) formData.append("research_goal_details", research_goal_details)
+				if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
+				if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
+
+				const response = await fetch("/api/generate-questions", {
+					method: "POST",
+					body: formData,
+				})
+				if (!response.ok) {
+					const err = await response.json().catch(() => ({}))
+					throw new Error(err?.error || `Server error ${response.status}`)
+				}
+				const data = await response.json()
+				if (data.success && Array.isArray(data.questionSet?.questions)) {
+					const result = data.questionSet.questions as QuestionInput[]
+					const formatted: Question[] = result.map((q) => ({
+						id: q.id || crypto.randomUUID(),
+						text: q.text || "",
+						// Force target category for UX clarity
+						categoryId: categoryId,
+						scores: {
+							importance: (q.scores?.importance ?? 0.5) as number,
+							goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
+							novelty: (q.scores?.novelty ?? 0.5) as number,
+						},
+						rationale: q.rationale || "",
+						status: "proposed",
+						timesAnswered: 0,
+						source: "ai",
+						isMustHave: false,
+					}))
+
+					setPendingGeneratedQuestions((prev) => [...prev, ...formatted])
+					setPendingInsertionChoices((prev) => ({
+						...prev,
+						...formatted.reduce<Record<string, string>>((acc, q) => {
+							acc[q.id] = "end"
+							return acc
+						}, {}),
+					}))
+					setShowPendingModal(true)
+					toast.success("Generated 1 question", { description: `Added to review for ${catName}.` })
+				} else {
+					throw new Error("No question returned")
+				}
+			} catch (e) {
+				toast.error("Failed to generate in category", { description: e instanceof Error ? e.message : "Unknown error" })
+			} finally {
+				setGeneratingCategoryId(null)
+			}
+		},
+		[
+			generating,
+			generatingCategoryId,
+			projectId,
+			timeMinutes,
+			customInstructions,
+			target_orgs,
+			target_roles,
+			research_goal,
+			research_goal_details,
+			assumptions,
+			unknowns,
+		]
+	)
+
 	// Save settings changes to database (separate from question changes)
 	useEffect(() => {
 		if (!projectId || !hasInitialized || skipDebounce) return
@@ -736,6 +862,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}, 1000) // Debounce saves - longer timeout for settings
 		return () => clearTimeout(timeoutId)
 	}, [projectId, hasInitialized, questions, getBaseSelectedIds, saveQuestionsToDatabase, skipDebounce])
+
+	// Removed: category allocation auto-persist to avoid network loops
 
 	const removeQuestion = useCallback(
 		async (id: string) => {
@@ -1049,22 +1177,23 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 			const data = await response.json()
 			if (data.success && data.followUpSet?.followUps) {
-				// Convert follow-up questions to our Question format
-				const followUpQuestions: Question[] = data.followUpSet.followUps.map((q: any) => ({
+				// Convert follow-up questions to our Question format and ensure unique IDs
+				const mappedFollowUps: Question[] = data.followUpSet.followUps.map((q: Partial<QuestionInput>) => ({
 					id: q.id || crypto.randomUUID(),
-					text: q.text,
-					categoryId: q.categoryId,
+					text: q.text || "",
+					categoryId: (q as any).categoryId || "context",
 					scores: {
-						importance: q.scores.importance,
-						goalMatch: q.scores.goalMatch,
-						novelty: q.scores.novelty,
+						importance: (q.scores?.importance ?? 0.5) as number,
+						goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
+						novelty: (q.scores?.novelty ?? 0.5) as number,
 					},
-					rationale: q.rationale,
+					rationale: q.rationale || "",
 					status: "proposed" as const,
 					timesAnswered: 0,
 					source: "ai" as const,
 					isMustHave: false,
 				}))
+				const followUpQuestions = ensureUniqueQuestionIds(mappedFollowUps, questions)
 
 				const baseIds = getBaseSelectedIds()
 				const originalIndex = baseIds.indexOf(questionId)
@@ -1079,7 +1208,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					setQuestions(updatedQuestions)
 					commitSelection(newBaseIds)
 					setHasInitialized(true)
-					followUpIds.forEach((id) => markQuestionAsRecentlyAdded(id))
+					followUpIds.forEach((id) => {
+						markQuestionAsRecentlyAdded(id)
+					})
 
 					setSkipDebounce(true)
 					await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
@@ -1105,6 +1236,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 	const handlePendingInsertionChange = useCallback((questionId: string, value: string) => {
 		setPendingInsertionChoices((prev) => ({ ...prev, [questionId]: value }))
+	}, [])
+
+	const handlePendingCategoryChange = useCallback((questionId: string, categoryId: string) => {
+		setPendingGeneratedQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, categoryId } : q)))
 	}, [])
 
 	const handleRejectPendingQuestion = useCallback((questionId: string) => {
@@ -1319,8 +1454,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			{showSettings && (
 				<div className="rounded-lg bg-blue-50 p-4 text-sm">
 					<p className="text-blue-800">
-						<strong>Interview Plan:</strong> I want to conduct a <strong>{timeMinutes}-minute {purpose}</strong> interview 
-						with <strong>{familiarity === 'cold' ? 'new' : 'familiar'}</strong> participants to gather insights for my research.
+						<strong>Interview Plan:</strong> I want to conduct a{" "}
+						<strong>
+							{timeMinutes}-minute {purpose}
+						</strong>{" "}
+						interview with <strong>{familiarity === "cold" ? "new" : "familiar"}</strong> participants to gather
+						insights for my research.
 					</p>
 				</div>
 			)}
@@ -1331,14 +1470,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-2">
 						{/* Primary Action Group */}
-						<Button
-							variant="outline"
-							onClick={() => setShowAddCustomQuestion(true)}
-						>
+						<Button variant="outline" onClick={() => setShowAddCustomQuestion(true)}>
 							<Plus className="mr-2 h-4 w-4" />
 							Add Prompt
 						</Button>
-						
+
 						<Button
 							variant="outline"
 							className="border-blue-500 text-blue-600 hover:bg-blue-50"
@@ -1501,28 +1637,49 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 													<span>Source: AI</span>
 												</div>
 											</div>
-											{canInsertAfter && (
-												<div className="flex flex-wrap items-center gap-2 text-xs">
-													<span className="text-muted-foreground">Insert after:</span>
+											<div className="flex flex-wrap items-center gap-3 text-xs">
+												{canInsertAfter && (
+													<>
+														<span className="text-muted-foreground">Insert after:</span>
+														<Select
+															value={insertionChoice}
+															onValueChange={(value) => handlePendingInsertionChange(pendingQuestion.id, value)}
+														>
+															<SelectTrigger className="h-8 w-full sm:w-80">
+																<SelectValue placeholder="Choose position" />
+															</SelectTrigger>
+															<SelectContent>
+																<SelectItem value="end">Add to end of list</SelectItem>
+																{baseSelectedQuestionsForModal.map((existingQuestion) => (
+																	<SelectItem key={existingQuestion.id} value={existingQuestion.id}>
+																		After “{existingQuestion.text.slice(0, 60)}
+																		{existingQuestion.text.length > 60 ? "…" : ""}”
+																	</SelectItem>
+																))}
+															</SelectContent>
+														</Select>
+													</>
+												)}
+
+												<div className="flex items-center gap-2">
+													<span className="text-muted-foreground">Category:</span>
 													<Select
-														value={insertionChoice}
-														onValueChange={(value) => handlePendingInsertionChange(pendingQuestion.id, value)}
+														value={pendingQuestion.categoryId}
+														onValueChange={(value) => handlePendingCategoryChange(pendingQuestion.id, value)}
 													>
-														<SelectTrigger className="h-8 w-full sm:w-80">
-															<SelectValue placeholder="Choose position" />
+														<SelectTrigger className="h-8 w-52">
+															<SelectValue />
 														</SelectTrigger>
 														<SelectContent>
-															<SelectItem value="end">Add to end of list</SelectItem>
-															{baseSelectedQuestionsForModal.map((existingQuestion) => (
-																<SelectItem key={existingQuestion.id} value={existingQuestion.id}>
-																	After “{existingQuestion.text.slice(0, 60)}
-																	{existingQuestion.text.length > 60 ? "…" : ""}”
+															{questionCategories.map((cat) => (
+																<SelectItem key={cat.id} value={cat.id}>
+																	{cat.name}
 																</SelectItem>
 															))}
 														</SelectContent>
 													</Select>
 												</div>
-											)}
+											</div>
 											<div className="flex flex-wrap gap-2">
 												<Button
 													size="sm"
@@ -1572,9 +1729,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								<div className="text-muted-foreground text-sm">Generating suggestions…</div>
 							) : improveOptions.length > 0 ? (
 								<div className="space-y-2">
-									{improveOptions.map((opt, idx) => (
+									{improveOptions.map((opt) => (
 										<Button
-											key={idx}
+											key={opt}
 											variant="outline"
 											className="w-full justify-start"
 											onClick={async () => {
@@ -1660,31 +1817,49 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</Card>
 				)}
 
-				<div className="space-y-2">
+				<div className="space-y-4">
 					<DragDropContext onDragEnd={onDragEnd}>
 						<Droppable droppableId="question-pack">
 							{(provided) => (
 								<div className="space-y-3" {...provided.droppableProps} ref={provided.innerRef}>
 									{questionPack.questions.map((question, index) => {
 										const isFirstOverflow = index === questionPack.overflowIndex
-										const runningTime = questionPack.questions
-											.slice(0, index + 1)
-											.reduce((sum, q) => sum + q.estimatedMinutes, 0)
-										const fitsInTime = runningTime <= timeMinutes
+										const prevCat = questionPack.questions[index - 1]?.categoryId
+										const isFirstInCategory = index === 0 || prevCat !== question.categoryId
+										const cat = questionCategories.find((c) => c.id === question.categoryId)
 
 										return (
 											<React.Fragment key={question.id}>
+												{isFirstInCategory && (
+													<div className="mt-6 mb-3">
+														<div className="flex items-center justify-between gap-2">
+															<span className={`rounded-full border px-3 py-1 text-sm font-medium ${cat?.color || ""}`}>
+																{cat?.name || "Category"}
+															</span>
+															<Button
+																variant="outline"
+																size="icon"
+																onClick={() => generateOneInCategory(question.categoryId)}
+																disabled={Boolean(generatingCategoryId) && generatingCategoryId === question.categoryId}
+																title="Generate one question in this category"
+															>
+																<Plus className="h-4 w-4" />
+															</Button>
+														</div>
+													</div>
+												)}
+
 												{isFirstOverflow && (
 													<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
 														<div className="mb-4 flex items-center gap-2">
 															<Clock className="h-4 w-4 text-orange-600" />
 															<span className="font-medium text-orange-600 text-sm">
-																Questions below may not fit in your {timeMinutes}-minute time limit (
-																{questionPack.belowCount} below)
+																Questions below may not fit in your {timeMinutes}-minute time limit
 															</span>
 														</div>
 													</div>
 												)}
+
 												<Draggable draggableId={question.id} index={index}>
 													{(provided, snapshot) => (
 														<div
@@ -1692,209 +1867,188 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 															{...provided.draggableProps}
 															className={`${snapshot.isDragging ? "opacity-50" : ""}`}
 														>
-															<AnimatedBorderCard active={fitsInTime}>
-																<TooltipProvider>
-																	<Tooltip>
-																		<TooltipTrigger asChild>
-																			<Card
-																				className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${recentlyAddedQuestionIds.includes(question.id)
-																						? "bg-green-50 sm:border-l-green-500"
-																						: fitsInTime
-																							? "sm:border-l-blue-500"
-																							: "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
-																					}`}
-																			>
-																				<CardContent className="p-2">
-																					<div className="flex items-start gap-3">
-																						<div className="mt-0.5 flex items-center gap-2">
-																							<div {...provided.dragHandleProps}>
-																								<GripVertical className="h-4 w-4 cursor-grab text-gray-400 active:cursor-grabbing" />
-																							</div>
-																							<div className="min-w-[1.5rem] font-medium text-foreground/60 text-sm">
-																								{index + 1}
-																							</div>
-																						</div>
-																						<div className="min-w-0 flex-1">
-																							<div className="flex flex-wrap items-center gap-2">
-																								{question.source === "user" && (
-																									<Badge
-																										variant="outline"
-																										className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
-																									>
-																										<User className="mr-1 h-3 w-3" />
-																										Custom
-																									</Badge>
-																								)}
-																								{question.timesAnswered > 0 && (
-																									<Badge
-																										className={getAnsweredCountColor(question.timesAnswered)}
-																										variant="outline"
-																									>
-																										{question.timesAnswered}
-																									</Badge>
-																								)}
-																								{question.isMustHave && (
-																									<Badge
-																										variant="outline"
-																										className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
-																									>
-																										<TriangleAlert className="mr-1 h-3 w-3 fill-current" />
-																										Must-Have
-																									</Badge>
-																								)}
-																							</div>
-																							{editingId === question.id ? (
-																								<div className="mb-2 flex items-center gap-2">
-																									<Textarea
-																										value={editingText}
-																										onChange={(e) => setEditingText(e.target.value)}
-																										autoFocus
-																										rows={2}
-																										className="resize-none"
-																									/>
-																									<Button
-																										variant="ghost"
-																										size="icon"
-																										onClick={async () => {
-																											setEvaluatingId(question.id)
-																											const quality = isEvalEnabled
-																												? await evaluateQuestionQuality(editingText)
-																												: null
-																											const updated = questions.map((q) =>
-																												q.id === question.id
-																													? {
-																														...q,
-																														text: editingText,
-																														qualityFlag: quality ?? undefined,
-																													}
-																													: q
-																											)
-																											setQuestions(updated)
-																											setSkipDebounce(true)
-																											await saveQuestionsToDatabase(updated, getBaseSelectedIds())
-																											setTimeout(() => setSkipDebounce(false), 1500)
-																											setEditingId(null)
-																											setEditingText("")
-																											setEvaluatingId(null)
-																										}}
-																										className="text-green-600"
-																									>
-																										{evaluatingId === question.id ? (
-																											<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																										) : (
-																											<Check className="h-4 w-4" />
-																										)}
-																									</Button>
-																									<Button
-																										variant="ghost"
-																										size="icon"
-																										onClick={() => {
-																											setEditingId(null)
-																											setEditingText("")
-																										}}
-																										className="text-gray-500"
-																									>
-																										<X className="h-4 w-4" />
-																									</Button>
-																								</div>
-																							) : (
-																								<p
-																									className="-mx-1 mb-2 cursor-pointer rounded px-1 text-sm font-medium leading-relaxed hover:bg-gray-50"
-																									title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																									onClick={() => {
-																										setEditingId(question.id)
-																										setEditingText(question.text)
-																									}}
-																								>
-																									{question.text}
-																								</p>
-																							)}
-																						</div>
-																						<div className="flex items-center gap-1">
-																							{isEvalEnabled && question.qualityFlag && (
-																								<QualityFlag qualityFlag={question.qualityFlag} />
-																							)}
-																							<Button 
-																								variant="ghost" 
-																								size="sm" 
-																								className="h-8 px-2 text-xs text-gray-500 hover:text-gray-700"
-																								title="View question details"
-																							>
-																								{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"} • 
-																								~{Math.round(question.estimatedMinutes || 3)}min
-																							</Button>
-																							<DropdownMenu>
-																								<TooltipProvider>
-																									<Tooltip>
-																										<TooltipTrigger asChild>
-																											<DropdownMenuTrigger asChild>
-																												<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-																													<MoreHorizontal className="h-4 w-4" />
-																												</Button>
-																											</DropdownMenuTrigger>
-																										</TooltipTrigger>
-																										<TooltipContent>Refine & Manage questions</TooltipContent>
-																									</Tooltip>
-																								</TooltipProvider>
-																								<DropdownMenuContent align="end">
-																									<DropdownMenuItem
-																										onClick={async () => {
-																											const updated = questions.map((q) =>
-																												q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
-																											)
-																											setQuestions(updated)
-																											// Save to database
-																											setSkipDebounce(true)
-																											await saveQuestionsToDatabase(updated, selectedQuestionIds)
-																											setTimeout(() => setSkipDebounce(false), 1500)
-																										}}
-																									>
-																										<TriangleAlert className="mr-2 h-4 w-4" />
-																										{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
-																									</DropdownMenuItem>
-																									<DropdownMenuItem
-																										onClick={() =>
-																											generateFollowUpQuestions(question.id, question.text)
+															<Card className={`border-l-4 shadow-sm transition-all ${recentlyAddedQuestionIds.includes(question.id) ? "bg-green-50 border-l-green-500" : "border-l-gray-200"}`}>
+																<CardContent className="p-4">
+																	<div className="flex items-start gap-3">
+																		<div className="flex items-center gap-2">
+																			<div {...provided.dragHandleProps}>
+																				<GripVertical className="h-4 w-4 cursor-grab text-gray-400 hover:text-gray-600 active:cursor-grabbing" />
+																			</div>
+																			<div className="min-w-[1.5rem] font-medium text-foreground/60 text-sm">
+																				{index + 1}
+																			</div>
+																		</div>
+																		<div className="min-w-0 flex-1">
+																			<div className="mb-2 flex flex-wrap items-center gap-2">
+																				{question.source === "user" && (
+																					<Badge
+																						variant="outline"
+																						className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+																					>
+																						<User className="mr-1 h-3 w-3" />
+																						Custom
+																					</Badge>
+																				)}
+																				{question.timesAnswered > 0 && (
+																					<Badge
+																						className={getAnsweredCountColor(question.timesAnswered)}
+																						variant="outline"
+																					>
+																						{question.timesAnswered}
+																					</Badge>
+																				)}
+																				{question.isMustHave && (
+																					<Badge
+																						variant="outline"
+																						className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
+																					>
+																						<TriangleAlert className="mr-1 h-3 w-3 fill-current" />
+																						Must-Have
+																					</Badge>
+																				)}
+																			</div>
+																			{editingId === question.id ? (
+																				<div className="mb-2 flex items-center gap-2">
+																					<Textarea
+																						value={editingText}
+																						onChange={(e) => setEditingText(e.target.value)}
+																						autoFocus
+																						rows={2}
+																						className="resize-none"
+																					/>
+																					<Button
+																						variant="ghost"
+																						size="icon"
+																						onClick={async () => {
+																							setEvaluatingId(question.id)
+																							const quality = isEvalEnabled
+																								? await evaluateQuestionQuality(editingText)
+																								: null
+																							const updated = questions.map((q) =>
+																								q.id === question.id
+																									? {
+																											...q,
+																											text: editingText,
+																											qualityFlag: quality ?? undefined,
 																										}
-																										disabled={generatingFollowUp === question.id}
-																									>
-																										{generatingFollowUp === question.id ? (
-																											<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																										) : (
-																											<Zap className="mr-2 h-4 w-4" />
-																										)}
-																										Generate Follow-ups
-																									</DropdownMenuItem>
-																									<DropdownMenuItem
-																										onClick={() => {
-																											setEditingId(question.id)
-																											setEditingText(question.text)
-																										}}
-																									>
-																										<Edit className="mr-2 h-4 w-4" />
-																										Edit Question
-																									</DropdownMenuItem>
-																									<DropdownMenuItem
-																										onClick={() => removeQuestion(question.id)}
-																										className="text-red-600 focus:text-red-600"
-																									>
-																										<Trash2 className="mr-2 h-4 w-4" />
-																										Remove Question
-																									</DropdownMenuItem>
-																								</DropdownMenuContent>
-																							</DropdownMenu>
-																						</div>
-																					</div>
-																				</CardContent>
-																			</Card>
-																		</TooltipTrigger>
-																		<TooltipContent>
-																			{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"} •
-																			~{Math.round(question.estimatedMinutes)}min
-																		</TooltipContent>
-																	</Tooltip>
-																</TooltipProvider>
-															</AnimatedBorderCard>
+																									: q
+																							)
+																							setQuestions(updated)
+																							setSkipDebounce(true)
+																							await saveQuestionsToDatabase(updated, getBaseSelectedIds())
+																							setTimeout(() => setSkipDebounce(false), 1500)
+																							setEditingId(null)
+																							setEditingText("")
+																							setEvaluatingId(null)
+																						}}
+																						className="text-green-600"
+																					>
+																						{evaluatingId === question.id ? (
+																							<div className="h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																						) : (
+																							<Check className="h-4 w-4" />
+																						)}
+																					</Button>
+																					<Button
+																						variant="ghost"
+																						size="icon"
+																						onClick={() => {
+																							setEditingId(null)
+																							setEditingText("")
+																						}}
+																						className="text-gray-500"
+																					>
+																						<X className="h-4 w-4" />
+																					</Button>
+																				</div>
+																			) : (
+																				<p
+																					className="-mx-1 mb-2 cursor-pointer rounded px-1 font-medium text-sm leading-relaxed hover:bg-gray-50"
+																					title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																					onClick={() => {
+																						setEditingId(question.id)
+																						setEditingText(question.text)
+																					}}
+																				>
+																					{question.text}
+																				</p>
+																			)}
+																		</div>
+																		<div className="flex items-center gap-1">
+																			{isEvalEnabled && question.qualityFlag && (
+																				<QualityFlag qualityFlag={question.qualityFlag} />
+																			)}
+																			<Button
+																				variant="ghost"
+																				size="sm"
+																				className="h-8 px-2 text-gray-500 text-xs hover:text-gray-700"
+																				title="View question details"
+																			>
+																				{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"}{" "}
+																				• ~{Math.round(question.estimatedMinutes || 3)}min
+																			</Button>
+																			<DropdownMenu>
+																				<TooltipProvider>
+																					<Tooltip>
+																						<TooltipTrigger asChild>
+																							<DropdownMenuTrigger asChild>
+																								<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+																									<MoreHorizontal className="h-4 w-4" />
+																								</Button>
+																							</DropdownMenuTrigger>
+																						</TooltipTrigger>
+																						<TooltipContent>Refine & Manage questions</TooltipContent>
+																					</Tooltip>
+																				</TooltipProvider>
+																				<DropdownMenuContent align="end">
+																					<DropdownMenuItem
+																						onClick={async () => {
+																							const updated = questions.map((q) =>
+																								q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
+																							)
+																							setQuestions(updated)
+																							// Save to database
+																							setSkipDebounce(true)
+																							await saveQuestionsToDatabase(updated, selectedQuestionIds)
+																							setTimeout(() => setSkipDebounce(false), 1500)
+																						}}
+																					>
+																						<TriangleAlert className="mr-2 h-4 w-4" />
+																						{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
+																					</DropdownMenuItem>
+																					<DropdownMenuItem
+																						onClick={() => generateFollowUpQuestions(question.id, question.text)}
+																						disabled={generatingFollowUp === question.id}
+																					>
+																						{generatingFollowUp === question.id ? (
+																							<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
+																						) : (
+																							<Zap className="mr-2 h-4 w-4" />
+																						)}
+																						Generate Follow-ups
+																					</DropdownMenuItem>
+																					<DropdownMenuItem
+																						onClick={() => {
+																							setEditingId(question.id)
+																							setEditingText(question.text)
+																						}}
+																					>
+																						<Edit className="mr-2 h-4 w-4" />
+																						Edit Question
+																					</DropdownMenuItem>
+																					<DropdownMenuItem
+																						onClick={() => removeQuestion(question.id)}
+																						className="text-red-600 focus:text-red-600"
+																					>
+																						<Trash2 className="mr-2 h-4 w-4" />
+																						Remove Question
+																					</DropdownMenuItem>
+																				</DropdownMenuContent>
+																			</DropdownMenu>
+																		</div>
+																	</div>
+																</CardContent>
+															</Card>
 														</div>
 													)}
 												</Draggable>
@@ -1941,9 +2095,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"}
 																			</Badge>
 																		</div>
-																		<p className="text-sm leading-relaxed">
-																			{question.text}
-																		</p>
+																		<p className="text-sm leading-relaxed">{question.text}</p>
 																	</div>
 																	<div className="flex items-center gap-2">
 																		<Button

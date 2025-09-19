@@ -11,15 +11,26 @@ class Anchor {
 }
 
 class KindTags {
-  problem string[]?
-  goal string[]?
-  behavior string[]?
+  problem string[]? @description(#"
+		Pain points, frustrations, blockers, etc.
+	"#)
+  goal string[]? @description(#"
+		Goals, success criteria, desired outcomes, etc.
+	"#)
+  behavior string[]? @description(#"
+		Behaviors, actions, habits, etc.
+	"#)
   emotion Emotions? @description("Optional emotion if obvious from context")
-  context string[]?
-  artifact string[]?
+  context string[]? @description(#"
+		Context, background, environment, etc.
+	"#)
+  artifact string[]? @description(#"
+		items, data, places, things, documents, etc.
+	"#)
 }
 
 class EvidenceUnit {
+	person_role string @description("interviewer | interviewee")
   verbatim string @description("Exact quote or concise snippet. Keep short and citable.")
   support string @description("supports | refutes | neutral")
   kind_tags KindTags @description("Canonical tag buckets for clustering")
@@ -46,8 +57,10 @@ function ExtractEvidenceFromTranscript(
 ) -> EvidenceUnit[] {
   client "CustomGPT4o"
   prompt #"
-    You are an expert UX researcher. Identify decision-relevant, high-impact evidence from the transcript:
-    crisply citable quotes with just enough context to understand and act.
+    You are an expert UX researcher. First, identify who is the interviewer and interviewee.
+		Identify key statements by the interviewee that are relevant to context, behavior, pains, goals decision-making process, etc.
+    Select crisply citable quotes that represent the person's perspective, with just enough context to understand and act.
+		Capture statements or questions from the interviewer as such, so we can clearly differentiate.
 
     Selection priorities
     - Prefer high-severity pains, frequent behaviors, explicit goals/success criteria.
@@ -310,12 +323,6 @@ SPEAKER 1
 Super. Okay, curious. Do you. Do you pay for any of the other tools that you use?
 SPEAKER 2
 I do not. No, I don't pay for any of them. I just mainly utilize the free ones.
-SPEAKER 1
-Okay, cool. Um. All right, that's it.
-
-
-
-
     "#
     chapters [ { start_ms 0, end_ms 60000, title "Onboarding" } ]
     language "en"

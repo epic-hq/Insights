@@ -6,6 +6,7 @@
 set search_path = public;
 
 create table if not exists interview_people (
+  id           bigserial primary key,
   interview_id uuid not null references public.interviews (id) on delete cascade,
   person_id    uuid not null references public.people     (id) on delete cascade,
 	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -14,7 +15,7 @@ create table if not exists interview_people (
   updated_at   timestamptz not null default now(),
   created_by   uuid references auth.users(id),
   updated_by   uuid references auth.users(id),
-  primary key (interview_id, person_id)
+  unique (interview_id, person_id)
 );
 
 -- Indexes for performance ----------------------------------------------------

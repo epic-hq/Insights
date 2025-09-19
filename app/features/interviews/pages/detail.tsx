@@ -8,7 +8,6 @@ import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { EvidenceCard } from "~/features/evidence/components/EvidenceCard"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -383,16 +382,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					</div>
 					{/* Interview Summary Fields */}
 					<div className="mb-4 space-y-4">
-						{/* <div>
+						<div>
 							<label className="mb-1 block font-bold text-lg">High Impact Themes</label>
 							<InlineEdit
-								value={
-									Array.isArray(interview.high_impact_themes)
-										? interview.high_impact_themes.join("\n")
-										: (interview.high_impact_themes ?? "")
-								}
+								textClassName="text-foreground"
+								value={normalizeMultilineText(interview.high_impact_themes)}
 								multiline
-								placeholder="High Impact Themes"
+								markdown
+								placeholder="High Impact Themes - biggest takeaways from the insights"
 								onSubmit={(value) => {
 									try {
 										consola.info("🎨 Submitting high_impact_themes update:", {
@@ -400,14 +397,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											accountId,
 											projectId,
 											valueLength: value?.length,
-											valuePreview: value?.substring(0, 50),
 										})
-
-										// Convert newline-separated text to JSON array for storage
-										const arrayValue = value ? value.split("\n").filter((item) => item.trim()) : []
-										const jsonValue = JSON.stringify(arrayValue)
-
-										consola.info("🔄 Converted to JSON:", { arrayValue, jsonValue })
 
 										fetcher.submit(
 											{
@@ -416,17 +406,51 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												accountId,
 												projectId,
 												fieldName: "high_impact_themes",
-												fieldValue: jsonValue,
+												fieldValue: value,
 											},
 											{ method: "post", action: "/api/update-field" }
 										)
 									} catch (error) {
 										consola.error("❌ Failed to update high_impact_themes:", error)
-										// Don't throw - just log the error to prevent crash
 									}
 								}}
 							/>
-						</div> */}
+						</div>
+						
+						<div>
+							<label className="mb-1 block font-bold text-lg">Relevant Answers</label>
+							<InlineEdit
+								textClassName="text-foreground"
+								value={normalizeMultilineText(interview.relevant_answers)}
+								multiline
+								markdown
+								placeholder="Key answers relevant to business goals and research questions"
+								onSubmit={(value) => {
+									try {
+										consola.info("📝 Submitting relevant_answers update:", {
+											interviewId: interview.id,
+											accountId,
+											projectId,
+											valueLength: value?.length,
+										})
+
+										fetcher.submit(
+											{
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "relevant_answers",
+												fieldValue: value,
+											},
+											{ method: "post", action: "/api/update-field" }
+										)
+									} catch (error) {
+										consola.error("❌ Failed to update relevant_answers:", error)
+									}
+								}}
+							/>
+						</div>
 						<div>
 							<label className="mb-1 block font-bold text-lg">Open Questions & Next Steps</label>
 							<InlineEdit
@@ -464,20 +488,35 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-					{/* Evidence Section */}
+					{/* Evidence Section - Simplified Cards */}
 					{evidence.length > 0 && (
 						<div className="space-y-4">
 							<h2 className="font-semibold text-foreground text-lg">Evidence ({evidence.length})</h2>
-							<div className="space-y-4">
-									{evidence.map((evidenceItem) => (
-										<EvidenceCard
-											key={evidenceItem.id}
-											evidence={evidenceItem}
-											showInterviewLink={true}
-											projectPath={projectPath}
-											interviewTitle={interview.title}
-										/>
-									))}
+							<div className="grid gap-4 md:grid-cols-2">
+								{evidence.map((evidenceItem) => (
+									<div key={evidenceItem.id} className="rounded-lg border bg-white p-4 shadow-sm dark:bg-gray-800">
+										{/* Quote */}
+										<blockquote className="mb-3 text-gray-900 dark:text-white">
+											"{evidenceItem.verbatim}"
+										</blockquote>
+										
+										{/* Tags */}
+										{evidenceItem.kind_tags && evidenceItem.kind_tags.length > 0 && (
+											<div className="flex flex-wrap gap-1">
+												{evidenceItem.kind_tags.slice(0, 3).map((tag, index) => (
+													<Badge key={index} variant="outline" className="text-xs">
+														{tag}
+													</Badge>
+												))}
+												{evidenceItem.kind_tags.length > 3 && (
+													<Badge variant="outline" className="text-xs">
+														+{evidenceItem.kind_tags.length - 3}
+													</Badge>
+												)}
+											</div>
+										)}
+									</div>
+								))}
 							</div>
 						</div>
 					)}
@@ -491,7 +530,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									mediaUrl={interview.media_url}
 									title="Play Recording"
 									size="sm"
-									duration_sec={interview.duration_sec}
+									duration_sec={interview.duration_sec || undefined}
 								/>
 							)}
 						</div>
@@ -528,26 +567,65 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							</div>
 						)}
 
-						{/* Insights */}
+						{/* Research Insights */}
 						{insights.length > 0 && (
 							<div className="rounded-lg border bg-background p-6">
-								<h3 className="mb-4 font-semibold text-foreground">Insights</h3>
-								<div className="space-y-3">
+								<h3 className="mb-4 font-semibold text-foreground">Research Insights ({insights.length})</h3>
+								<div className="space-y-4">
 									{insights.map((insight) => (
-										<div key={insight.id} className="border-green-500 border-l-4 pl-3">
-											<Link
-												to={routes.insights.detail(insight.id)}
-												className="font-medium text-blue-600 hover:text-blue-800"
-											>
-												{insight.name}
-											</Link>
-											{insight.category && (
-												<Badge variant="secondary" className="ml-2">
-													{insight.category}
-												</Badge>
+										<div key={insight.id} className="rounded-lg border bg-gray-50 p-4 dark:bg-gray-800">
+											<div className="mb-3">
+												<Link
+													to={routes.insights.detail(insight.id)}
+													className="font-semibold text-blue-600 hover:text-blue-800"
+												>
+													{insight.name}
+												</Link>
+												<div className="mt-1 flex flex-wrap gap-2">
+													{insight.category && (
+														<Badge variant="secondary" className="text-xs">
+															{insight.category}
+														</Badge>
+													)}
+													{(insight as any).assumption_alignment && (
+														<Badge 
+															variant={(insight as any).assumption_alignment === 'SUPPORTS' ? 'default' : 
+																(insight as any).assumption_alignment === 'REFUTES' ? 'destructive' : 'outline'}
+															className="text-xs"
+														>
+															{(insight as any).assumption_alignment}
+														</Badge>
+													)}
+													{(insight as any).evidence_strength && (
+														<Badge variant="outline" className="text-xs">
+															{(insight as any).evidence_strength}
+														</Badge>
+													)}
+												</div>
+											</div>
+											
+											{/* Research Question Answered */}
+											{(insight as any).research_question_answered && (
+												<div className="mb-2 text-sm">
+													<span className="font-medium text-green-700 dark:text-green-400">Answers:</span>
+													<span className="ml-1 text-gray-700 dark:text-gray-300">{(insight as any).research_question_answered}</span>
+												</div>
 											)}
-											{insight.impact && (
-												<div className="mt-1 text-foreground/50 text-sm">Impact: {insight.impact}</div>
+											
+											{/* Product Implication */}
+											{(insight as any).product_implication && (
+												<div className="mb-2 text-sm">
+													<span className="font-medium text-blue-700 dark:text-blue-400">Impact:</span>
+													<span className="ml-1 text-gray-700 dark:text-gray-300">{(insight as any).product_implication}</span>
+												</div>
+											)}
+											
+											{/* Follow-up Questions */}
+											{(insight as any).follow_up_questions && (
+												<div className="text-sm">
+													<span className="font-medium text-orange-700 dark:text-orange-400">Next:</span>
+													<span className="ml-1 text-gray-700 dark:text-gray-300">{(insight as any).follow_up_questions}</span>
+												</div>
 											)}
 										</div>
 									))}
@@ -565,7 +643,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								</div>
 								<div>
 									<span className="text-gray-500">Created By:</span>{" "}
-									<span className="text-foreground/70">{renderCreatedBy(interview.created_by, protectedData?.auth?.user)}</span>
+									<span className="text-foreground/70">{renderCreatedBy((interview as any).created_by, protectedData?.auth?.user)}</span>
 								</div>
 								{interview.updated_at && (
 									<div>

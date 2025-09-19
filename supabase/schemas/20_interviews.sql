@@ -27,6 +27,7 @@ create table if not exists interviews (
 	transcript text,
 	transcript_formatted jsonb,
 	high_impact_themes text[],
+	relevant_answers text[],
 	open_questions_and_next_steps text,
 	observations_and_notes text,
   duration_sec int,
