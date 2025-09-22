@@ -553,6 +553,13 @@ export type Database = {
             foreignKeyName: "decision_question_metrics_decision_question_id_fkey"
             columns: ["decision_question_id"]
             isOneToOne: false
+            referencedRelation: "decision_question_summary"
+            referencedColumns: ["decision_question_id"]
+          },
+          {
+            foreignKeyName: "decision_question_metrics_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
             referencedRelation: "decision_questions"
             referencedColumns: ["id"]
           },
@@ -585,6 +592,13 @@ export type Database = {
           risk?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "decision_question_risks_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_question_summary"
+            referencedColumns: ["decision_question_id"]
+          },
           {
             foreignKeyName: "decision_question_risks_decision_question_id_fkey"
             columns: ["decision_question_id"]
@@ -723,6 +737,7 @@ export type Database = {
           modality: string
           pains: string[] | null
           personas: string[] | null
+          project_answer_id: string | null
           project_id: string | null
           says: string[] | null
           segments: string[] | null
@@ -755,6 +770,7 @@ export type Database = {
           modality?: string
           pains?: string[] | null
           personas?: string[] | null
+          project_answer_id?: string | null
           project_id?: string | null
           says?: string[] | null
           segments?: string[] | null
@@ -787,6 +803,7 @@ export type Database = {
           modality?: string
           pains?: string[] | null
           personas?: string[] | null
+          project_answer_id?: string | null
           project_id?: string | null
           says?: string[] | null
           segments?: string[] | null
@@ -805,6 +822,20 @@ export type Database = {
             columns: ["interview_id"]
             isOneToOne: false
             referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_project_answer_id_fkey"
+            columns: ["project_answer_id"]
+            isOneToOne: false
+            referencedRelation: "project_answer_metrics"
+            referencedColumns: ["project_answer_id"]
+          },
+          {
+            foreignKeyName: "evidence_project_answer_id_fkey"
+            columns: ["project_answer_id"]
+            isOneToOne: false
+            referencedRelation: "project_answers"
             referencedColumns: ["id"]
           },
           {
@@ -1256,6 +1287,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "interview_prompts"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_prompt_research_questions_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
+            referencedRelation: "research_question_summary"
+            referencedColumns: ["research_question_id"]
           },
           {
             foreignKeyName: "interview_prompt_research_questions_research_question_id_fkey"
@@ -2312,6 +2350,13 @@ export type Database = {
             foreignKeyName: "project_answer_evidence_answer_id_fkey"
             columns: ["answer_id"]
             isOneToOne: false
+            referencedRelation: "project_answer_metrics"
+            referencedColumns: ["project_answer_id"]
+          },
+          {
+            foreignKeyName: "project_answer_evidence_answer_id_fkey"
+            columns: ["answer_id"]
+            isOneToOne: false
             referencedRelation: "project_answers"
             referencedColumns: ["id"]
           },
@@ -2334,50 +2379,114 @@ export type Database = {
       project_answers: {
         Row: {
           answer_text: string | null
+          answered_at: string | null
+          asked_at: string | null
           confidence: number | null
           created_at: string
+          decision_question_id: string | null
+          detected_question_text: string | null
+          estimated_time_minutes: number | null
+          followup_of_answer_id: string | null
           id: string
           interview_id: string | null
           interviewer_user_id: string | null
+          order_index: number | null
+          origin: string | null
           project_id: string
+          prompt_id: string | null
+          question_category: string | null
           question_id: string | null
           question_text: string
+          research_question_id: string | null
           respondent_person_id: string | null
+          skipped_at: string | null
           status: string | null
           time_spent_seconds: number | null
           updated_at: string
         }
         Insert: {
           answer_text?: string | null
+          answered_at?: string | null
+          asked_at?: string | null
           confidence?: number | null
           created_at?: string
+          decision_question_id?: string | null
+          detected_question_text?: string | null
+          estimated_time_minutes?: number | null
+          followup_of_answer_id?: string | null
           id?: string
           interview_id?: string | null
           interviewer_user_id?: string | null
+          order_index?: number | null
+          origin?: string | null
           project_id: string
+          prompt_id?: string | null
+          question_category?: string | null
           question_id?: string | null
           question_text: string
+          research_question_id?: string | null
           respondent_person_id?: string | null
+          skipped_at?: string | null
           status?: string | null
           time_spent_seconds?: number | null
           updated_at?: string
         }
         Update: {
           answer_text?: string | null
+          answered_at?: string | null
+          asked_at?: string | null
           confidence?: number | null
           created_at?: string
+          decision_question_id?: string | null
+          detected_question_text?: string | null
+          estimated_time_minutes?: number | null
+          followup_of_answer_id?: string | null
           id?: string
           interview_id?: string | null
           interviewer_user_id?: string | null
+          order_index?: number | null
+          origin?: string | null
           project_id?: string
+          prompt_id?: string | null
+          question_category?: string | null
           question_id?: string | null
           question_text?: string
+          research_question_id?: string | null
           respondent_person_id?: string | null
+          skipped_at?: string | null
           status?: string | null
           time_spent_seconds?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "project_answers_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_question_summary"
+            referencedColumns: ["decision_question_id"]
+          },
+          {
+            foreignKeyName: "project_answers_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_followup_of_answer_id_fkey"
+            columns: ["followup_of_answer_id"]
+            isOneToOne: false
+            referencedRelation: "project_answer_metrics"
+            referencedColumns: ["project_answer_id"]
+          },
+          {
+            foreignKeyName: "project_answers_followup_of_answer_id_fkey"
+            columns: ["followup_of_answer_id"]
+            isOneToOne: false
+            referencedRelation: "project_answers"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "project_answers_interview_id_fkey"
             columns: ["interview_id"]
@@ -2390,6 +2499,27 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "interview_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
+            referencedRelation: "research_question_summary"
+            referencedColumns: ["research_question_id"]
+          },
+          {
+            foreignKeyName: "project_answers_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
+            referencedRelation: "research_questions"
             referencedColumns: ["id"]
           },
           {
@@ -2674,6 +2804,13 @@ export type Database = {
             foreignKeyName: "research_question_evidence_types_research_question_id_fkey"
             columns: ["research_question_id"]
             isOneToOne: false
+            referencedRelation: "research_question_summary"
+            referencedColumns: ["research_question_id"]
+          },
+          {
+            foreignKeyName: "research_question_evidence_types_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
             referencedRelation: "research_questions"
             referencedColumns: ["id"]
           },
@@ -2705,6 +2842,13 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "projects"
             referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_question_methods_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
+            referencedRelation: "research_question_summary"
+            referencedColumns: ["research_question_id"]
           },
           {
             foreignKeyName: "research_question_methods_research_question_id_fkey"
@@ -2753,6 +2897,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "research_questions_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_question_summary"
+            referencedColumns: ["decision_question_id"]
+          },
           {
             foreignKeyName: "research_questions_decision_question_id_fkey"
             columns: ["decision_question_id"]
@@ -3123,6 +3274,28 @@ export type Database = {
       }
     }
     Views: {
+      decision_question_summary: {
+        Row: {
+          answered_answer_count: number | null
+          decision_question_id: string | null
+          decision_question_text: string | null
+          evidence_count: number | null
+          interview_count: number | null
+          open_answer_count: number | null
+          persona_count: number | null
+          project_id: string | null
+          research_question_count: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "decision_questions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       insights_with_priority: {
         Row: {
           account_id: string | null
@@ -3190,6 +3363,80 @@ export type Database = {
         }
         Relationships: []
       }
+      project_answer_metrics: {
+        Row: {
+          answered_at: string | null
+          decision_question_id: string | null
+          evidence_count: number | null
+          interview_count: number | null
+          interview_id: string | null
+          persona_count: number | null
+          project_answer_id: string | null
+          project_id: string | null
+          prompt_id: string | null
+          research_question_id: string | null
+          respondent_person_id: string | null
+          status: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_answers_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_question_summary"
+            referencedColumns: ["decision_question_id"]
+          },
+          {
+            foreignKeyName: "project_answers_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_prompt_id_fkey"
+            columns: ["prompt_id"]
+            isOneToOne: false
+            referencedRelation: "interview_prompts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
+            referencedRelation: "research_question_summary"
+            referencedColumns: ["research_question_id"]
+          },
+          {
+            foreignKeyName: "project_answers_research_question_id_fkey"
+            columns: ["research_question_id"]
+            isOneToOne: false
+            referencedRelation: "research_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_respondent_person_id_fkey"
+            columns: ["respondent_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_sections_latest: {
         Row: {
           content_md: string | null
@@ -3212,6 +3459,42 @@ export type Database = {
           },
           {
             foreignKeyName: "project_sections_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      research_question_summary: {
+        Row: {
+          answered_answer_count: number | null
+          decision_question_id: string | null
+          evidence_count: number | null
+          interview_count: number | null
+          open_answer_count: number | null
+          persona_count: number | null
+          project_id: string | null
+          research_question_id: string | null
+          research_question_text: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "research_questions_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_question_summary"
+            referencedColumns: ["decision_question_id"]
+          },
+          {
+            foreignKeyName: "research_questions_decision_question_id_fkey"
+            columns: ["decision_question_id"]
+            isOneToOne: false
+            referencedRelation: "decision_questions"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "research_questions_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

@@ -7,6 +7,7 @@ create table if not exists evidence (
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   project_id uuid references projects (id) on delete cascade,
   interview_id uuid references interviews (id) on delete cascade,
+  project_answer_id uuid references public.project_answers(id) on delete set null,
 
   -- provenance
   source_type text check (source_type in ('primary','secondary')) default 'primary',
@@ -61,6 +62,7 @@ comment on column evidence.context_summary is '1–2 sentences to situate the qu
 create index if not exists idx_evidence_account_id   on public.evidence(account_id);
 create index if not exists idx_evidence_project_id   on public.evidence(project_id);
 create index if not exists idx_evidence_interview_id on public.evidence(interview_id);
+create index if not exists idx_evidence_project_answer on public.evidence(project_answer_id);
 create index if not exists idx_evidence_created_at   on public.evidence(created_at desc);
 create index if not exists idx_evidence_kind_tags    on public.evidence using gin (kind_tags);
 create index if not exists idx_evidence_anchors_gin  on public.evidence using gin (anchors jsonb_path_ops);

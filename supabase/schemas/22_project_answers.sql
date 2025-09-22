@@ -10,9 +10,21 @@ create table if not exists public.project_answers (
   interview_id uuid references public.interviews(id) on delete set null,
   interviewer_user_id uuid references auth.users(id) on delete set null,
   respondent_person_id uuid references public.people(id) on delete set null,
-  question_id text,                           -- soft link to canonical QuestionSet.questions[].id
+  prompt_id uuid references public.interview_prompts(id) on delete set null,
+  research_question_id uuid references public.research_questions(id) on delete set null,
+  decision_question_id uuid references public.decision_questions(id) on delete set null,
+  followup_of_answer_id uuid references public.project_answers(id) on delete set null,
+  question_id text,                           -- legacy soft link to question meta (kept for compatibility)
   question_text text not null,                -- snapshot at time of asking
-  status text check (status in ('asked','answered','skipped','followup')) default 'asked',
+  detected_question_text text,                -- raw text when inferred from transcript (ad-hoc)
+  question_category text,                     -- e.g. context, pain, goals
+  estimated_time_minutes int,
+  order_index int,
+  status text check (status in ('planned','asked','answered','skipped','ad_hoc')) default 'planned',
+  origin text check (origin in ('scripted','ad_hoc','retro')) default 'scripted',
+  asked_at timestamptz,
+  answered_at timestamptz,
+  skipped_at timestamptz,
   answer_text text,
   confidence numeric check (confidence >= 0 and confidence <= 1),
   time_spent_seconds int,
@@ -21,12 +33,18 @@ create table if not exists public.project_answers (
 );
 
 -- Indexes ------------------------------------------------------------------
-create index if not exists idx_project_answers_project_id       on public.project_answers(project_id);
-create index if not exists idx_project_answers_interview_id     on public.project_answers(interview_id);
-create index if not exists idx_project_answers_respondent_id    on public.project_answers(respondent_person_id);
-create index if not exists idx_project_answers_status           on public.project_answers(status);
-create index if not exists idx_project_answers_created_at       on public.project_answers(created_at);
-create index if not exists idx_project_answers_question_id      on public.project_answers(question_id);
+create index if not exists idx_project_answers_project_id          on public.project_answers(project_id);
+create index if not exists idx_project_answers_interview_id        on public.project_answers(interview_id);
+create index if not exists idx_project_answers_respondent_id       on public.project_answers(respondent_person_id);
+create index if not exists idx_project_answers_status              on public.project_answers(status);
+create index if not exists idx_project_answers_origin              on public.project_answers(origin);
+create index if not exists idx_project_answers_created_at          on public.project_answers(created_at);
+create index if not exists idx_project_answers_question_id         on public.project_answers(question_id);
+create index if not exists idx_project_answers_prompt_id           on public.project_answers(prompt_id);
+create index if not exists idx_project_answers_research_question   on public.project_answers(project_id, research_question_id);
+create index if not exists idx_project_answers_decision_question   on public.project_answers(project_id, decision_question_id);
+create index if not exists idx_project_answers_followup            on public.project_answers(followup_of_answer_id);
+create index if not exists idx_project_answers_order               on public.project_answers(interview_id, order_index);
 
 -- Triggers (timestamps + user tracking) ------------------------------------
 create trigger set_project_answers_timestamp
