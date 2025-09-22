@@ -1,8 +1,7 @@
-import { Separator } from "@radix-ui/react-separator"
 import consola from "consola"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useRouteLoaderData } from "react-router-dom"
+import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
@@ -56,7 +55,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		accountId,
 		projectId,
 		interviewId,
-		params
+		params,
 	})
 
 	if (!accountId || !projectId || !interviewId) {
@@ -86,12 +85,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		consola.info("✅ Interview data fetched successfully:", {
 			interviewId: interviewData.id,
-			title: interviewData.title
+			title: interviewData.title,
 		})
 
 		// Fetch participant data separately to avoid junction table query issues
-		let participants: any[] = []
-		let primaryParticipant: any = null
+		let participants: Array<{ people?: { id?: string; name?: string | null; segment?: string | null } }> = []
+		let primaryParticipant: { id?: string; name?: string | null; segment?: string | null } | null = null
 
 		try {
 			const { data: participantData } = await getInterviewParticipants({
@@ -100,7 +99,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			})
 
 			participants = participantData || []
-			primaryParticipant = participants[0]?.people
+			primaryParticipant = participants[0]?.people || null
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error)
 			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
@@ -158,12 +157,97 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			consola.warn("Could not fetch evidence:", evidenceError.message)
 		}
 
+		// Process empathy map data in the loader for better performance
+		const empathyMap = {
+			says: [] as Array<{ text: string; evidenceId: string }>,
+			does: [] as Array<{ text: string; evidenceId: string }>,
+			thinks: [] as Array<{ text: string; evidenceId: string }>,
+			feels: [] as Array<{ text: string; evidenceId: string }>,
+			pains: [] as Array<{ text: string; evidenceId: string }>,
+			gains: [] as Array<{ text: string; evidenceId: string }>,
+		}
+
+		if (evidence) {
+			evidence.forEach((e) => {
+				const evidenceId = e.id
+
+				// Process each empathy map category
+				if (Array.isArray(e.says)) {
+					e.says.forEach((item: string) => {
+						if (typeof item === "string" && item.trim()) {
+							empathyMap.says.push({ text: item.trim(), evidenceId })
+						}
+					})
+				}
+
+				if (Array.isArray(e.does)) {
+					e.does.forEach((item: string) => {
+						if (typeof item === "string" && item.trim()) {
+							empathyMap.does.push({ text: item.trim(), evidenceId })
+						}
+					})
+				}
+
+				if (Array.isArray(e.thinks)) {
+					e.thinks.forEach((item: string) => {
+						if (typeof item === "string" && item.trim()) {
+							empathyMap.thinks.push({ text: item.trim(), evidenceId })
+						}
+					})
+				}
+
+				if (Array.isArray(e.feels)) {
+					e.feels.forEach((item: string) => {
+						if (typeof item === "string" && item.trim()) {
+							empathyMap.feels.push({ text: item.trim(), evidenceId })
+						}
+					})
+				}
+
+				if (Array.isArray(e.pains)) {
+					e.pains.forEach((item: string) => {
+						if (typeof item === "string" && item.trim()) {
+							empathyMap.pains.push({ text: item.trim(), evidenceId })
+						}
+					})
+				}
+
+				if (Array.isArray(e.gains)) {
+					e.gains.forEach((item: string) => {
+						if (typeof item === "string" && item.trim()) {
+							empathyMap.gains.push({ text: item.trim(), evidenceId })
+						}
+					})
+				}
+			})
+		}
+
+		// Deduplicate while preserving order and limit results
+		const deduplicateAndLimit = (items: Array<{ text: string; evidenceId: string }>, limit = 8) => {
+			const seen = new Set<string>()
+			return items
+				.filter((item) => {
+					if (seen.has(item.text)) return false
+					seen.add(item.text)
+					return true
+				})
+				.slice(0, limit)
+		}
+
+		empathyMap.says = deduplicateAndLimit(empathyMap.says)
+		empathyMap.does = deduplicateAndLimit(empathyMap.does)
+		empathyMap.thinks = deduplicateAndLimit(empathyMap.thinks)
+		empathyMap.feels = deduplicateAndLimit(empathyMap.feels)
+		empathyMap.pains = deduplicateAndLimit(empathyMap.pains)
+		empathyMap.gains = deduplicateAndLimit(empathyMap.gains)
+
 		const loaderResult = {
 			accountId,
 			projectId,
 			interview,
 			insights,
 			evidence: evidence || [],
+			empathyMap,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -171,7 +255,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			projectId,
 			interviewId: interview.id,
 			insightsCount: insights?.length || 0,
-			evidenceCount: evidence?.length || 0
+			evidenceCount: evidence?.length || 0,
 		})
 
 		return loaderResult
@@ -182,21 +266,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			message: msg,
 			accountId,
 			projectId,
-			interviewId
+			interviewId,
 		})
 		throw new Response(`Failed to load interview: ${msg}`, { status: 500 })
 	}
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { accountId, projectId, interview, insights, evidence } = useLoaderData<typeof loader>()
+	const { accountId, projectId, interview, insights, evidence, empathyMap } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
-	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as any
 
 	// Always call hooks at the top level
-	const currentProject = useCurrentProject()
-	const projectPath = currentProject.projectPath || `/a/${accountId}/${projectId}`
-	const routes = useProjectRoutes(projectPath)
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 	const [isProcessing, setIsProcessing] = useState(false)
 
 	useEffect(() => {
@@ -245,25 +327,33 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return lower.replace(/^(\w{3}) (\d{2}), /, "$1-$2 ")
 	}
 
-	function renderCreatedBy(createdBy?: string | null, user?: any) {
-		if (!createdBy) return "Unknown"
-		if (user?.sub === createdBy) return user?.user_metadata?.full_name || user?.email || "You"
-		return createdBy
-	}
-
 	return (
 		<div className="mx-auto max-w-6xl">
 			<div className="mb-6">
 				<BackButton to={routes.interviews.index()} label="Back to Interviews" position="relative" />
 			</div>
-			<div className="grid gap-8 lg:grid-cols-3" />
-			<Separator />
-			<div className="mx-auto mt-8 w-full max-w-7xl px-4 lg:flex lg:space-x-8">
-				<div className="flex-1 space-y-8">
-					{/* Header: Title, participant, persona, date, project */}
-					<div className="mb-4 flex flex-col gap-2 border-b pb-4">
-						<div className="flex items-center justify-between gap-3">
-							<h1 className="font-bold text-2xl">{interview.title || "Untitled Interview"}</h1>
+
+			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
+				<div className="flex-1 space-y-6">
+					{/* Streamlined Header */}
+					<div className="mb-6 space-y-4">
+						<div className="flex items-start justify-between gap-4">
+							<div className="flex-1">
+								<h1 className="mb-2 font-bold text-3xl leading-tight">{interview.title || "Untitled Interview"}</h1>
+								<div className="flex flex-wrap items-center gap-3">
+									{/* Show participant from junction table if available, fallback to legacy field */}
+									{interview.primaryParticipant?.name ? (
+										<MiniPersonCard person={primaryParticipant} />
+									) : (
+										interview.participant_pseudonym && (
+											<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
+												{interview.participant_pseudonym}
+											</span>
+										)
+									)}
+									<span className="text-muted-foreground text-sm">{formatReadable(interview.created_at)}</span>
+								</div>
+							</div>
 							<div className="flex items-center gap-2">
 								{enableRecording && (
 									<Link
@@ -274,7 +364,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										Record Now
 									</Link>
 								)}
-
 								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
 									<button
 										onClick={() => {
@@ -296,161 +385,250 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								)}
 								<Link
 									to={routes.interviews.edit(interview.id)}
-									className="inline-flex items-center rounded-md px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
+									className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"
 								>
-									Edit Interview
+									Edit
 								</Link>
 							</div>
 						</div>
-						<div className="flex flex-wrap items-center gap-2 text-base">
-							{/* Show participant from junction table if available, fallback to legacy field */}
-							{interview.primaryParticipant?.name ? (
-								<MiniPersonCard person={primaryParticipant} />
-							) : (
-								interview.participant_pseudonym && (
-									<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
-										{interview.participant_pseudonym}
-									</span>
-								)
-							)}
-							{/* Show persona from junction table if available, fallback to legacy field */}
-							{/* {interview.primaryParticipant?.personas?.name ? (
-								<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
-									{interview.primaryParticipant.personas.name}
-								</span>
-							) : interview.primaryParticipant?.segment ? (
-								<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
-									{interview.primaryParticipant.segment}
-								</span>
-							) : (
-								interview.segment && (
-									<span className="inline-block rounded bg-green-100 px-2 py-0.5 font-medium text-green-800">
-										{interview.segment}
-									</span>
-								)
-							)} */}
-
-							{/* {interview?.project?.title && (
-								<span className="inline-block rounded bg-gray-100 px-2 py-0.5 font-medium text-gray-800">
-									Project: {interview.project.title}
-								</span>
-							)} */}
-						</div>
 					</div>
 
-					{/* Empathy Map (Says/Does/Thinks/Feels + Pains/Gains) */}
-					{evidence.length > 0 && (
-						<div className="mb-6 rounded-lg border bg-background p-4">
-							<h2 className="mb-3 font-semibold text-foreground text-lg">Empathy Map</h2>
-							{(() => {
-								const gather = (key: 'says'|'does'|'thinks'|'feels'|'pains'|'gains') => {
-									const vals: string[] = []
-									evidence.forEach((e: any) => {
-										const arr = Array.isArray(e[key]) ? e[key] : []
-										for (const v of arr) if (typeof v === 'string' && v.trim()) vals.push(v.trim())
-									})
-									// Deduplicate while preserving order
-									const seen = new Set<string>()
-									return vals.filter(v => (seen.has(v) ? false : (seen.add(v), true))).slice(0, 20)
-								}
-
-								const blocks: Array<{title: string; key: 'says'|'does'|'thinks'|'feels'|'pains'|'gains'}> = [
-									{ title: 'Says', key: 'says' },
-									{ title: 'Does', key: 'does' },
-									{ title: 'Thinks', key: 'thinks' },
-									{ title: 'Feels', key: 'feels' },
-									{ title: 'Pains', key: 'pains' },
-									{ title: 'Gains', key: 'gains' },
-								]
-
-								return (
-									<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-										{blocks.map((b) => {
-											const items = gather(b.key)
-											return (
-												<div key={b.key} className="rounded-md border bg-card p-3">
-													<div className="mb-2 font-medium text-foreground">{b.title}</div>
-													{items.length === 0 ? (
-														<div className="text-muted-foreground text-sm">No data yet</div>
-													) : (
-														<ul className="flex flex-wrap gap-1">
-															{items.map((it, i) => (
-																<li key={i} className="rounded-full border px-2 py-0.5 text-xs text-foreground">
-																	{it}
-																</li>
-															))}
-														</ul>
-													)}
-												</div>
-											)
-										})}
+					{/* Enhanced Empathy Map - 2 Column Layout */}
+					{(empathyMap.says.length > 0 ||
+						empathyMap.does.length > 0 ||
+						empathyMap.thinks.length > 0 ||
+						empathyMap.feels.length > 0) && (
+							<div className="mb-8 rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:from-blue-950/20 dark:to-indigo-950/20">
+								<div className="mb-6 flex items-center gap-3">
+									<div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/50">
+										<svg
+											className="h-5 w-5 text-blue-600 dark:text-blue-400"
+											fill="none"
+											viewBox="0 0 24 24"
+											stroke="currentColor"
+										>
+											<path
+												strokeLinecap="round"
+												strokeLinejoin="round"
+												strokeWidth={2}
+												d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+											/>
+										</svg>
 									</div>
-								)
-							})()}
+									<h2 className="font-bold text-foreground text-xl">User Empathy Map</h2>
+									<Badge variant="outline" className="ml-auto">
+										{evidence.length} evidence points
+									</Badge>
+								</div>
+
+								{/* 2-Row Layout: Says|Does, then Thinks|Feels */}
+								<div className="space-y-4">
+									{/* First Row: Says & Does */}
+									<div className="grid gap-4 lg:grid-cols-2">
+										{/* Says Section */}
+										<div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
+											<div className="mb-3 flex items-center gap-2">
+												<span className="text-lg">💬</span>
+												<div className="font-semibold text-foreground">Says</div>
+												<Badge variant="secondary" className="ml-auto text-xs">
+													{empathyMap.says.length}
+												</Badge>
+											</div>
+											{empathyMap.says.length === 0 ? (
+												<div className="text-muted-foreground text-sm italic">No quotes captured</div>
+											) : (
+												<div className="space-y-2">
+													{empathyMap.says.map((item, i) => (
+														<Link
+															key={`says-${item.evidenceId}-${i}`}
+															to={routes.evidence.detail(item.evidenceId)}
+															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+														>
+															{item.text}
+														</Link>
+													))}
+												</div>
+											)}
+										</div>
+
+										{/* Does Section */}
+										<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
+											<div className="mb-3 flex items-center gap-2">
+												<span className="text-lg">⚡</span>
+												<div className="font-semibold text-foreground">Does</div>
+												<Badge variant="secondary" className="ml-auto text-xs">
+													{empathyMap.does.length}
+												</Badge>
+											</div>
+											{empathyMap.does.length === 0 ? (
+												<div className="text-muted-foreground text-sm italic">No behaviors captured</div>
+											) : (
+												<div className="space-y-2">
+													{empathyMap.does.map((item, i) => (
+														<Link
+															key={`does-${item.evidenceId}-${i}`}
+															to={routes.evidence.detail(item.evidenceId)}
+															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+														>
+															{item.text}
+														</Link>
+													))}
+												</div>
+											)}
+										</div>
+									</div>
+
+									{/* Second Row: Thinks & Feels */}
+									<div className="grid gap-4 lg:grid-cols-2">
+										{/* Thinks Section */}
+										<div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/20">
+											<div className="mb-3 flex items-center gap-2">
+												<span className="text-lg">💭</span>
+												<div className="font-semibold text-foreground">Thinks</div>
+												<Badge variant="secondary" className="ml-auto text-xs">
+													{empathyMap.thinks.length}
+												</Badge>
+											</div>
+											{empathyMap.thinks.length === 0 ? (
+												<div className="text-muted-foreground text-sm italic">No thoughts captured</div>
+											) : (
+												<div className="space-y-2">
+													{empathyMap.thinks.map((item, i) => (
+														<Link
+															key={`thinks-${item.evidenceId}-${i}`}
+															to={routes.evidence.detail(item.evidenceId)}
+															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+														>
+															{item.text}
+														</Link>
+													))}
+												</div>
+											)}
+										</div>
+
+										{/* Feels Section */}
+										<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950/20">
+											<div className="mb-3 flex items-center gap-2">
+												<span className="text-lg">❤️</span>
+												<div className="font-semibold text-foreground">Feels</div>
+												<Badge variant="secondary" className="ml-auto text-xs">
+													{empathyMap.feels.length}
+												</Badge>
+											</div>
+											{empathyMap.feels.length === 0 ? (
+												<div className="text-muted-foreground text-sm italic">No emotions captured</div>
+											) : (
+												<div className="space-y-2">
+													{empathyMap.feels.map((item, i) => (
+														<Link
+															key={`feels-${item.evidenceId}-${i}`}
+															to={routes.evidence.detail(item.evidenceId)}
+															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+														>
+															{item.text}
+														</Link>
+													))}
+												</div>
+											)}
+										</div>
+									</div>
+								</div>
+							</div>
+						)}
+
+					{/* Pains & Gains Table */}
+					{(empathyMap.pains.length > 0 || empathyMap.gains.length > 0) && (
+						<div className="mb-8 rounded-xl border bg-gradient-to-br from-red-50 to-green-50 p-6 dark:from-red-950/20 dark:to-green-950/20">
+							<div className="mb-6 flex items-center gap-3">
+								<div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/50">
+									<svg
+										className="h-5 w-5 text-orange-600 dark:text-orange-400"
+										fill="none"
+										viewBox="0 0 24 24"
+										stroke="currentColor"
+									>
+										<path
+											strokeLinecap="round"
+											strokeLinejoin="round"
+											strokeWidth={2}
+											d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+										/>
+									</svg>
+								</div>
+								<h2 className="font-bold text-foreground text-xl">Pains & Gains</h2>
+								<Badge variant="outline" className="ml-auto">
+									{empathyMap.pains.length + empathyMap.gains.length} items
+								</Badge>
+							</div>
+
+							<div className="grid gap-6 lg:grid-cols-2">
+								{/* Pains Column */}
+								<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
+									<div className="mb-3 flex items-center gap-2">
+										<span className="text-lg">😣</span>
+										<div className="font-semibold text-foreground">Pain Points</div>
+										<Badge variant="secondary" className="ml-auto text-xs">
+											{empathyMap.pains.length}
+										</Badge>
+									</div>
+									{empathyMap.pains.length === 0 ? (
+										<div className="text-muted-foreground text-sm italic">No pain points identified</div>
+									) : (
+										<div className="space-y-2">
+											{empathyMap.pains.map((item, i) => (
+												<Link
+													key={`pain-${item.evidenceId}-${i}`}
+													to={routes.evidence.detail(item.evidenceId)}
+													className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+												>
+													{item.text}
+												</Link>
+											))}
+										</div>
+									)}
+								</div>
+
+								{/* Gains Column */}
+								<div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
+									<div className="mb-3 flex items-center gap-2">
+										<span className="text-lg">🎯</span>
+										<div className="font-semibold text-foreground">Gains & Benefits</div>
+										<Badge variant="secondary" className="ml-auto text-xs">
+											{empathyMap.gains.length}
+										</Badge>
+									</div>
+									{empathyMap.gains.length === 0 ? (
+										<div className="text-muted-foreground text-sm italic">No gains identified</div>
+									) : (
+										<div className="space-y-2">
+											{empathyMap.gains.map((item, i) => (
+												<Link
+													key={`gain-${item.evidenceId}-${i}`}
+													to={routes.evidence.detail(item.evidenceId)}
+													className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+												>
+													{item.text}
+												</Link>
+											))}
+										</div>
+									)}
+								</div>
+							</div>
 						</div>
 					)}
 
-					{/* Interviewer info */}
-					{/* TODO: Interviewer info */}
-					{/* {interviewerData?.name && (
-						<div className="mb-2 text-foreground/50 text-sm">
-							Interviewer: <span className="font-medium text-foreground/50">{interviewerData.name}</span>
-						</div>
-					)} */}
-
-					<div>
-						<label className="mb-1 block font-bold text-foreground text-lg">Observations & Notes</label>
-						<InlineEdit
-							textClassName="text-foreground"
-							value={normalizeMultilineText(interview.observations_and_notes)}
-							multiline
-							markdown
-							placeholder="Observations & Notes"
-							onSubmit={(value) => {
-								try {
-									consola.info("📝 Submitting observations_and_notes update:", {
-										interviewId: interview.id,
-										accountId,
-										projectId,
-										valueLength: value?.length,
-									})
-									fetcher.submit(
-										{
-											entity: "interview",
-											entityId: interview.id,
-											accountId,
-											projectId,
-											fieldName: "observations_and_notes",
-											fieldValue: value,
-										},
-										{ method: "post", action: "/api/update-field" }
-									)
-								} catch (error) {
-									consola.error("❌ Failed to update observations_and_notes:", error)
-									// Don't throw - just log the error to prevent crash
-								}
-							}}
-						/>
-					</div>
-					{/* Interview Summary Fields */}
-					<div className="mb-4 space-y-4">
+					{/* Key Takeaways Section */}
+					<div className="space-y-4">
 						<div>
-							<label className="mb-1 block font-bold text-lg">High Impact Themes</label>
+							<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
 							<InlineEdit
 								textClassName="text-foreground"
 								value={normalizeMultilineText(interview.high_impact_themes)}
 								multiline
 								markdown
-								placeholder="High Impact Themes - biggest takeaways from the insights"
+								placeholder="What are the most important insights from this interview?"
 								onSubmit={(value) => {
 									try {
-										consola.info("🎨 Submitting high_impact_themes update:", {
-											interviewId: interview.id,
-											accountId,
-											projectId,
-											valueLength: value?.length,
-										})
-
 										fetcher.submit(
 											{
 												entity: "interview",
@@ -468,205 +646,143 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								}}
 							/>
 						</div>
-						
+
 						<div>
-							<label className="mb-1 block font-bold text-lg">Relevant Answers</label>
+							<label className="mb-2 block font-semibold text-foreground text-lg">Research Notes</label>
 							<InlineEdit
 								textClassName="text-foreground"
-								value={normalizeMultilineText(interview.relevant_answers)}
+								value={normalizeMultilineText(interview.observations_and_notes)}
 								multiline
 								markdown
-								placeholder="Key answers relevant to business goals and research questions"
+								placeholder="Your observations and analysis notes"
 								onSubmit={(value) => {
 									try {
-										consola.info("📝 Submitting relevant_answers update:", {
-											interviewId: interview.id,
-											accountId,
-											projectId,
-											valueLength: value?.length,
-										})
-
 										fetcher.submit(
 											{
 												entity: "interview",
 												entityId: interview.id,
 												accountId,
 												projectId,
-												fieldName: "relevant_answers",
+												fieldName: "observations_and_notes",
 												fieldValue: value,
 											},
 											{ method: "post", action: "/api/update-field" }
 										)
 									} catch (error) {
-										consola.error("❌ Failed to update relevant_answers:", error)
+										consola.error("❌ Failed to update observations_and_notes:", error)
 									}
 								}}
 							/>
 						</div>
-						{/* Removed Open Questions & Next Steps per request */}
 					</div>
 
-					{/* Evidence Section - Simplified Cards */}
-					{evidence.length > 0 && (
-						<div className="space-y-4">
-							<h2 className="font-semibold text-foreground text-lg">Evidence ({evidence.length})</h2>
-							<div className="grid gap-4 md:grid-cols-2">
-								{evidence.map((evidenceItem) => (
-									<div key={evidenceItem.id} className="rounded-lg border bg-white p-4 shadow-sm dark:bg-gray-800">
-										{/* Quote */}
-										<blockquote className="mb-3 text-gray-900 dark:text-white">
-											"{evidenceItem.verbatim}"
-										</blockquote>
-										
-										{/* Tags */}
-										{evidenceItem.kind_tags && evidenceItem.kind_tags.length > 0 && (
-											<div className="flex flex-wrap gap-1">
-												{evidenceItem.kind_tags.slice(0, 3).map((tag, index) => (
-													<Badge key={index} variant="outline" className="text-xs">
-														{tag}
-													</Badge>
-												))}
-												{evidenceItem.kind_tags.length > 3 && (
-													<Badge variant="outline" className="text-xs">
-														+{evidenceItem.kind_tags.length - 3}
-													</Badge>
-												)}
-											</div>
-										)}
-									</div>
-								))}
+					{/* Transcript Section - Collapsed by default */}
+					<details className="group">
+						<summary className="flex cursor-pointer items-center justify-between rounded-lg border bg-background p-4 hover:bg-muted/50">
+							<h3 className="font-semibold text-foreground text-lg">Full Transcript</h3>
+							<div className="flex items-center gap-2">
+								{interview.media_url && (
+									<MediaPlayer
+										mediaUrl={interview.media_url}
+										title="Play Recording"
+										size="sm"
+										duration_sec={interview.duration_sec || undefined}
+									/>
+								)}
+								<svg
+									className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180"
+									fill="none"
+									viewBox="0 0 24 24"
+									stroke="currentColor"
+								>
+									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+								</svg>
 							</div>
+						</summary>
+						<div className="mt-4">
+							<LazyTranscriptResults
+								interviewId={interview.id}
+								hasTranscript={interview.hasTranscript}
+								hasFormattedTranscript={interview.hasFormattedTranscript}
+							/>
 						</div>
-					)}
-
-					{/* Transcript Section */}
-					<div>
-						<div className="mb-4 flex items-center justify-between">
-							<h3 className="font-semibold text-gray-900 text-lg">Transcript</h3>
-							{interview.media_url && (
-								<MediaPlayer
-									mediaUrl={interview.media_url}
-									title="Play Recording"
-									size="sm"
-									duration_sec={interview.duration_sec || undefined}
-								/>
-							)}
-						</div>
-						<LazyTranscriptResults
-							interviewId={interview.id}
-							hasTranscript={interview.hasTranscript}
-							hasFormattedTranscript={interview.hasFormattedTranscript}
-						/>
-					</div>
+					</details>
 				</div>
 				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
-					<div className="space-y-6">
-						{/* Participants */}
-						{participants.length > 0 && (
-							<div className="rounded-lg border bg-background p-6">
-								<h3 className="mb-4 font-semibold text-foreground">Participants</h3>
-								<div className="space-y-3">
-									{participants.map((participant, index) => (
-										<div key={index} className="border-blue-500 border-l-4 pl-3">
-											<div className="font-medium text-foreground">
-												{participant.people?.name || "Unknown Participant"}
-											</div>
-											{participant.people?.segment && (
-												<div className="text-foreground/50 text-sm">{participant.people.segment}</div>
-											)}
-											{participant.people?.segment && (
-												<Badge variant="secondary" className="mt-1">
-													{participant.people.segment}
+					<div className="space-y-4">
+						{/* Simplified Insights Summary */}
+						{insights.length > 0 && (
+							<div className="rounded-lg border bg-background p-4">
+								<div className="mb-3 flex items-center justify-between">
+									<h3 className="font-semibold text-foreground">Insights</h3>
+									<Badge variant="secondary" className="text-xs">
+										{insights.length}
+									</Badge>
+								</div>
+								<div className="space-y-2">
+									{insights.slice(0, 3).map((insight) => (
+										<Link
+											key={insight.id}
+											to={routes.insights.detail(insight.id)}
+											className="block rounded-md border bg-muted/30 p-3 text-sm hover:bg-muted/50"
+										>
+											<div className="font-medium text-foreground">{insight.name}</div>
+											{insight.category && (
+												<Badge variant="outline" className="mt-1 text-xs">
+													{insight.category}
 												</Badge>
 											)}
-										</div>
+										</Link>
 									))}
+									{insights.length > 3 && (
+										<div className="text-center text-muted-foreground text-xs">
+											+{insights.length - 3} more insights
+										</div>
+									)}
 								</div>
 							</div>
 						)}
 
-						{/* Research Insights */}
-						{insights.length > 0 && (
-							<div className="rounded-lg border bg-background p-6">
-								<h3 className="mb-4 font-semibold text-foreground">Research Insights ({insights.length})</h3>
-								<div className="space-y-4">
-									{insights.map((insight) => (
-										<div key={insight.id} className="rounded-lg border bg-gray-50 p-4 dark:bg-gray-800">
-											<div className="mb-3">
-												<Link
-													to={routes.insights.detail(insight.id)}
-													className="font-semibold text-blue-600 hover:text-blue-800"
-												>
-													{insight.name}
-												</Link>
-												<div className="mt-1 flex flex-wrap gap-2">
-													{insight.category && (
-														<Badge variant="secondary" className="text-xs">
-															{insight.category}
-														</Badge>
-													)}
-													{(insight as any).assumption_alignment && (
-														<Badge 
-															variant={(insight as any).assumption_alignment === 'SUPPORTS' ? 'default' : 
-																(insight as any).assumption_alignment === 'REFUTES' ? 'destructive' : 'outline'}
-															className="text-xs"
-														>
-															{(insight as any).assumption_alignment}
-														</Badge>
-													)}
-													{(insight as any).evidence_strength && (
-														<Badge variant="outline" className="text-xs">
-															{(insight as any).evidence_strength}
-														</Badge>
-													)}
-												</div>
+						{/* Participants Summary */}
+						{participants.length > 0 && (
+							<div className="rounded-lg border bg-background p-4">
+								<h3 className="mb-3 font-semibold text-foreground">Participants</h3>
+								<div className="space-y-2">
+									{participants.map((participant) => (
+										<div key={participant.people?.id || participant.people?.name} className="flex items-center gap-2">
+											<div className="h-2 w-2 rounded-full bg-blue-500" />
+											<div className="text-sm">
+												<div className="font-medium text-foreground">{participant.people?.name || "Unknown"}</div>
+												{participant.people?.segment && (
+													<div className="text-muted-foreground text-xs">{participant.people.segment}</div>
+												)}
 											</div>
-											
-											{/* Research Question Answered */}
-											{(insight as any).research_question_answered && (
-												<div className="mb-2 text-sm">
-													<span className="font-medium text-green-700 dark:text-green-400">Answers:</span>
-													<span className="ml-1 text-gray-700 dark:text-gray-300">{(insight as any).research_question_answered}</span>
-												</div>
-											)}
-											
-											{/* Product Implication */}
-											{(insight as any).product_implication && (
-												<div className="mb-2 text-sm">
-													<span className="font-medium text-blue-700 dark:text-blue-400">Impact:</span>
-													<span className="ml-1 text-gray-700 dark:text-gray-300">{(insight as any).product_implication}</span>
-												</div>
-											)}
-											
-											{/* Follow-up Questions */}
-											{(insight as any).follow_up_questions && (
-												<div className="text-sm">
-													<span className="font-medium text-orange-700 dark:text-orange-400">Next:</span>
-													<span className="ml-1 text-gray-700 dark:text-gray-300">{(insight as any).follow_up_questions}</span>
-												</div>
-											)}
 										</div>
 									))}
 								</div>
 							</div>
 						)}
 
-						{/* Metadata (compact) */}
-						<div className="rounded-md border bg-background p-4">
-							<h3 className="mb-2 font-semibold text-foreground text-sm uppercase tracking-wide">Metadata</h3>
-							<div className="space-y-1 text-sm">
-								<div>
-									<span className="text-gray-500">Created:</span>{" "}
-									<span className="text-foreground/70">{formatReadable(interview.created_at)}</span>
+						{/* Essential Metadata */}
+						<div className="rounded-lg border bg-background p-4">
+							<h3 className="mb-3 font-semibold text-foreground">Details</h3>
+							<div className="space-y-2 text-sm">
+								<div className="flex justify-between">
+									<span className="text-muted-foreground">Created</span>
+									<span className="text-foreground">{formatReadable(interview.created_at)}</span>
 								</div>
-								<div>
-									<span className="text-gray-500">Created By:</span>{" "}
-									<span className="text-foreground/70">{renderCreatedBy((interview as any).created_by, protectedData?.auth?.user)}</span>
-								</div>
-								{interview.updated_at && (
-									<div>
-										<span className="text-gray-500">Last Updated:</span>{" "}
-										<span className="text-foreground/70">{formatReadable(interview.updated_at)}</span>
+								{interview.duration_sec && (
+									<div className="flex justify-between">
+										<span className="text-muted-foreground">Duration</span>
+										<span className="text-foreground">
+											{Math.floor(interview.duration_sec / 60)}m {interview.duration_sec % 60}s
+										</span>
+									</div>
+								)}
+								{evidence.length > 0 && (
+									<div className="flex justify-between">
+										<span className="text-muted-foreground">Evidence</span>
+										<span className="text-foreground">{evidence.length} points</span>
 									</div>
 								)}
 							</div>
