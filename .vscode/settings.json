@@ -48,5 +48,16 @@
 	"scm.countBadge": "all",
 	"[typescript]": {
 		"editor.defaultFormatter": "vscode.typescript-language-features"
+	},
+	"[baml]": {
+		"editor.defaultFormatter": "Boundary.baml-extension"
+	},
+	"baml.enableCodeLens": true,
+	"baml.enableInlayHints": true,
+	"baml.trace.server": "verbose",
+	"baml.playground.autoStart": true,
+	"editor.codeLens": true,
+	"files.associations": {
+		"*.baml": "baml"
 	}
 }

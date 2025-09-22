@@ -389,6 +389,7 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceUnit {
+  person_role: string
   verbatim: string
   support: string
   kind_tags: KindTags
@@ -399,6 +400,12 @@ export interface EvidenceUnit {
   confidence: string
   context_summary?: string | null
   independence_key?: string | null
+  says?: string[] | null
+  does?: string[] | null
+  thinks?: string[] | null
+  feels?: string[] | null
+  pains?: string[] | null
+  gains?: string[] | null
   
 }
 
@@ -425,11 +432,16 @@ export interface ExecutiveSummary {
 }
 
 export interface ExtractedInsight {
-  pain?: string | null
   name: string
+  pain?: string | null
   details?: string | null
   evidence?: string | null
   desiredOutcome?: string | null
+  assumptionAlignment?: string | null
+  researchQuestionAnswered?: string | null
+  evidenceStrength?: string | null
+  productImplication?: string | null
+  followUpQuestions?: string | null
   emotionalResponse: Emotions
   underlyingMotivation?: string | null
   values: BBValues[]
@@ -517,6 +529,7 @@ export interface InterviewExtraction {
   metadata: InterviewMetadata
   interviewee: Interviewee
   insights: ExtractedInsight[]
+  relevantAnswers: string[]
   observationsAndNotes: string
   highImpactThemes: string[]
   openQuestionsAndNextSteps: string

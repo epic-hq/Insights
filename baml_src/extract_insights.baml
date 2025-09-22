@@ -300,7 +300,7 @@ class InterviewExtraction {
 	interviewee Interviewee
 	insights ExtractedInsight[]
 	relevantAnswers string[] @description("List of relevant answers from the interview to the business goal, key decisions, and research questions.")
-	observationsAndNotes string @description("Non‑verbal cues, environment, surprising behaviours—anything that adds colour but doesn’t belong in an insight. In markdown format")
+	observationsAndNotes string @description("Pithy takeaways about their attitude, needs, and relevance to the research goals")
 	highImpactThemes string[] @description("List the 3 strongest takeaways from the user's comments and behavior related to your questions")
 	openQuestionsAndNextSteps string @description("What next steps should we take to validate our hypotheses or address our knowledge gaps? Pithy statements.")
 }

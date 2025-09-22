@@ -52,7 +52,8 @@ export default function InterviewRealtimePage() {
 	}, [])
 
 	return (
-		<div className="min-h-screen bg-background">
+		// Fill available outlet height from AppLayout, avoid double 100vh under header
+		<div className="h-full min-h-0 bg-background">
 			<InterviewCopilot projectId={projectId} interviewId={interviewId} />
 		</div>
 	)

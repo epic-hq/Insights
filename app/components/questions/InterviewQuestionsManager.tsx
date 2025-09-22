@@ -20,10 +20,11 @@ import {
 	X,
 	Zap,
 } from "lucide-react"
-import React, { useCallback, useEffect, useMemo, useState } from "react"
+import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
 import { z } from "zod"
+import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -220,6 +221,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	} = props
 
 	const routes = useProjectRoutes(projectPath)
+	const isLoadingRef = useRef(false)
+	const lastLoadedRef = useRef<{ projectId?: string; ts: number }>({ projectId: undefined, ts: 0 })
 	const [timeMinutes, setTimeMinutes] = useState<number>(defaultTimeMinutes)
 	const [purpose, setPurpose] = useState<Purpose>(defaultPurpose)
 	const [familiarity, setFamiliarity] = useState<Familiarity>(defaultFamiliarity)
@@ -455,12 +458,17 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 				if (sectionError && sectionError.code !== "PGRST116") throw sectionError
 
-				const { data: answerCounts, error: countsError } = await supabase
-					.from("project_answers")
-					.select("question_id, status")
-					.eq("project_id", projectId)
-
-				if (countsError) throw countsError
+				// Robust, empty-safe fetch for answer counts (table may be empty)
+				let answerCounts: Array<{ question_id: string; status: string }> = []
+				try {
+					const { data: acData } = await supabase
+						.from("project_answers")
+						.select("question_id, status")
+						.eq("project_id", projectId)
+					answerCounts = acData ?? []
+				} catch {
+					answerCounts = []
+				}
 
 				const answerCountMap = new Map<string, number>()
 				answerCounts?.forEach((answer) => {
@@ -542,8 +550,17 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			}
 		}
 
+		// Guarded one-shot load per projectId, skip if called again too soon
+		if (isLoadingRef.current) return
+		const now = Date.now()
+		if (lastLoadedRef.current.projectId === projectId && now - lastLoadedRef.current.ts < 1500) return
+		isLoadingRef.current = true
 		loadQuestions()
-	}, [projectId, supabase, commitSelection])
+			.finally(() => {
+				lastLoadedRef.current = { projectId, ts: Date.now() }
+				isLoadingRef.current = false
+			})
+	}, [projectId])
 
 	const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
 		const baseTimes = { exploratory: 6.5, validation: 4.5, followup: 3.5 }
@@ -1833,7 +1850,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												{isFirstInCategory && (
 													<div className="mt-6 mb-3">
 														<div className="flex items-center justify-between gap-2">
-															<span className={`rounded-full border px-3 py-1 text-sm font-medium ${cat?.color || ""}`}>
+															<span className={`rounded-full border px-3 py-1 font-medium text-sm ${cat?.color || ""}`}>
 																{cat?.name || "Category"}
 															</span>
 															<Button
@@ -1867,7 +1884,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 															{...provided.draggableProps}
 															className={`${snapshot.isDragging ? "opacity-50" : ""}`}
 														>
-															<Card className={`border-l-4 shadow-sm transition-all ${recentlyAddedQuestionIds.includes(question.id) ? "bg-green-50 border-l-green-500" : "border-l-gray-200"}`}>
+															<Card
+																className={`border-l-4 shadow-sm transition-all ${recentlyAddedQuestionIds.includes(question.id) ? "border-l-green-500 bg-green-50" : "border-l-gray-200"}`}
+															>
 																<CardContent className="p-4">
 																	<div className="flex items-start gap-3">
 																		<div className="flex items-center gap-2">
@@ -1927,10 +1946,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							const updated = questions.map((q) =>
 																								q.id === question.id
 																									? {
-																											...q,
-																											text: editingText,
-																											qualityFlag: quality ?? undefined,
-																										}
+																										...q,
+																										text: editingText,
+																										qualityFlag: quality ?? undefined,
+																									}
 																									: q
 																							)
 																							setQuestions(updated)

@@ -34,6 +34,14 @@ create table if not exists evidence (
   context_summary text, -- 1–2 sentence situational summary and relevance
   citation text,
 
+  -- empathy map facets (optional arrays of short phrases)
+  says text[] default '{}',
+  does text[] default '{}',
+  thinks text[] default '{}',
+  feels text[] default '{}',
+  pains text[] default '{}',
+  gains text[] default '{}',
+
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users (id) on delete cascade,

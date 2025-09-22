@@ -6,8 +6,8 @@ import { useNavigate } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Textarea } from "~/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -557,58 +557,83 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}, [startStreaming, startDurationTimer, getCaptureStream])
 
-	const stopStreaming = useCallback(async (finalize: boolean = true) => {
-		if (timerRef.current) {
-			clearInterval(timerRef.current)
-			timerRef.current = null
-		}
-		stopDurationTimer()
-		cleanupMediaStreams()
-		if (wsRef.current) {
-			try {
-				if (wsRef.current.readyState === WebSocket.OPEN) {
-					if (finalize) {
-						// Signal end of stream to upstream to flush final results
-						try { wsRef.current.send("__end__") } catch { }
-						await new Promise((r) => setTimeout(r, 300))
-					}
-				}
-				wsRef.current.close()
-			} catch { }
-		}
-		wsRef.current = null
-		try {
-			nodeRef.current?.disconnect()
-			ctxRef.current?.close()
-		} catch { }
-		nodeRef.current = null
-		ctxRef.current = null
-		bufferRef.current = []
-		setCurrentCaption("")
-		setStreamStatus("stopped")
-
-		// Stop wall-clock timer and accumulate
-		try {
-			if (recordStartRef.current != null) {
-				elapsedMsRef.current += performance.now() - recordStartRef.current
-				recordStartRef.current = null
+	const stopStreaming = useCallback(
+		async (finalize = true) => {
+			if (timerRef.current) {
+				clearInterval(timerRef.current)
+				timerRef.current = null
 			}
-		} catch { }
-
-		// finalize or abort recording
-		void (async () => {
+			stopDurationTimer()
+			if (wsRef.current) {
+				try {
+					if (wsRef.current.readyState === WebSocket.OPEN) {
+						if (finalize) {
+							// Signal end of stream to upstream to flush final results
+							try {
+								wsRef.current.send("__end__")
+							} catch { }
+							await new Promise((r) => setTimeout(r, 300))
+						}
+					}
+					wsRef.current.close()
+				} catch { }
+			}
+			wsRef.current = null
 			try {
-				const rec = recRef.current
-				if (rec && rec.state !== "inactive") {
-					const stopped = new Promise<Blob>((resolve) => {
-						rec.onstop = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
-					})
-					rec.stop()
-					const blob = await stopped
+				nodeRef.current?.disconnect()
+				ctxRef.current?.close()
+			} catch { }
+			nodeRef.current = null
+			ctxRef.current = null
+			bufferRef.current = []
+			setCurrentCaption("")
+			setStreamStatus("stopped")
+
+			// Stop wall-clock timer and accumulate
+			try {
+				if (recordStartRef.current != null) {
+					elapsedMsRef.current += performance.now() - recordStartRef.current
+					recordStartRef.current = null
+				}
+			} catch { }
+
+			// finalize or abort recording
+			void (async () => {
+				try {
 					if (!finalize) {
-						// Abort path: do not upload or finalize
+						cleanupMediaStreams()
 						return
 					}
+
+					// Try to stop MediaRecorder and get a blob
+					let blob: Blob = new Blob()
+					const rec = recRef.current
+					if (rec) {
+						try {
+							const stopped = new Promise<Blob>((resolve) => {
+								const handler = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
+								try {
+									rec.addEventListener?.("stop", handler as any)
+								} catch {
+									; (rec as any).onstop = handler
+								}
+							})
+							if (rec.state !== "inactive") {
+								try {
+									rec.stop()
+								} catch { }
+							}
+							blob = await Promise.race<Blob>([
+								stopped,
+								new Promise<Blob>((resolve) => setTimeout(() => resolve(new Blob()), 2000)),
+							])
+						} catch {
+							/* swallow */
+						}
+					}
+
+					// Now safe to stop media tracks
+					cleanupMediaStreams()
 
 					let mediaUrl: string | undefined
 					const id = assignedInterviewId
@@ -630,22 +655,17 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						const draft = (currentCaption || "").trim()
 						const transcript = [full, draft].filter(Boolean).join(" ").replace(/\s+/g, " ").trim()
 
-						// Extract audio duration from the blob
+						// Determine duration
 						let audioDuration: number | undefined
 						try {
 							if (blob.size > 0) {
 								audioDuration = await getAudioDuration(blob)
-								consola.log("Extracted audio duration:", audioDuration)
 							}
 						} catch (e) {
 							consola.warn("Failed to extract audio duration:", e)
 						}
-
-						// Fallback to wall-clock elapsed if metadata unavailable
 						if (!audioDuration || !Number.isFinite(audioDuration) || audioDuration <= 0) {
-							const fallback = Math.max(1, Math.round(elapsedMsRef.current / 1000))
-							consola.log("Using fallback audio duration:", fallback)
-							audioDuration = fallback
+							audioDuration = Math.max(1, Math.round(elapsedMsRef.current / 1000))
 						}
 
 						await fetch(`${projectPath}/api/interviews/realtime-finalize`, {
@@ -659,15 +679,15 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								audioDuration,
 							}),
 						})
-						// Navigate to interview detail
 						navigate(routes.interviews.detail(id))
 					}
+				} catch (e) {
+					consola.warn("Finalize error", e)
 				}
-			} catch (e) {
-				consola.warn("Finalize error", e)
-			}
-		})()
-	}, [assignedInterviewId, currentCaption, navigate, projectId, supabase, stopDurationTimer, cleanupMediaStreams])
+			})()
+		},
+		[assignedInterviewId, currentCaption, navigate, projectId, supabase, stopDurationTimer, cleanupMediaStreams]
+	)
 
 	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 
@@ -850,14 +870,14 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}
 
-    const handleCancel = useCallback(() => {
-        if (isRecording || streamStatus === "streaming" || streamStatus === "paused") {
-            // Abort streaming: close WS/streams/recorder without saving
-            stopStreaming(false)
-        }
-        setRecordingDuration(0)
-        navigate(routes.interviews.index())
-    }, [isRecording, streamStatus, stopStreaming, navigate, routes])
+	const handleCancel = useCallback(() => {
+		if (isRecording || streamStatus === "streaming" || streamStatus === "paused") {
+			// Abort streaming: close WS/streams/recorder without saving
+			stopStreaming(false)
+		}
+		setRecordingDuration(0)
+		navigate(routes.interviews.index())
+	}, [isRecording, streamStatus, stopStreaming, navigate, routes])
 
 	const handleFinish = useCallback(() => {
 		setIsFinishing(true)
@@ -905,62 +925,68 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	}
 
 	return (
-		<div className="relative flex min-h-[85vh] flex-col">
-			{/* Header with Exit buttons */}
-			<div className="flex flex-shrink-0 items-center justify-between border-b bg-background p-3">
-				<div className="flex items-center gap-3">
-					<h1 className="font-semibold text-lg">Interview</h1>
-					{/* Audio source selector */}
-					<div className="ml-2 flex items-center gap-2">
-						<span className="text-xs text-muted-foreground">Audio source</span>
-						<Select
-							value={audioSource === "system" ? "system" : `mic:${micDeviceId}`}
-							onValueChange={(val) => {
-								if (val === "system") {
-									setAudioSource("system")
-								} else if (val.startsWith("mic:")) {
-									const id = val.slice(4) || "default"
-									setAudioSource("microphone")
-									setMicDeviceId((id as any) || "default")
-								}
-							}}
-							disabled={isRecording || streamStatus === "paused" || streamStatus === "streaming"}
-						>
-							<SelectTrigger className="h-8 w-56 text-xs">
-								<SelectValue placeholder="Select audio source" />
-							</SelectTrigger>
-							<SelectContent className="text-sm">
-								<SelectItem value="mic:default">Microphone (default)</SelectItem>
-								{audioDevices.map((d, idx) => (
-									<SelectItem key={d.deviceId || idx} value={`mic:${d.deviceId}`}>
-										{d.label || `Microphone ${idx + 1}`}
-									</SelectItem>
-								))}
-								<SelectItem value="system">Share tab/system audio…</SelectItem>
-							</SelectContent>
-						</Select>
+		// Fill parent height (AppLayout content area). Add small-screen bottom padding safety for bottom nav.
+		<div className="relative flex h-full min-h-0 flex-col pb-14 md:pb-0">
+			{/* Header with responsive layout for title, audio source, timer, and actions */}
+			<div className="flex flex-shrink-0 border-b bg-background p-3">
+				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+					{/* Left cluster: title + audio source + timer (wraps on small) */}
+					<div className="flex flex-wrap items-center gap-2">
+						<h1 className="font-semibold text-lg">Interview</h1>
+						{/* Audio source selector */}
+						<div className="flex items-center gap-2">
+							<span className="text-muted-foreground text-xs">Audio source</span>
+							<Select
+								value={audioSource === "system" ? "system" : `mic:${micDeviceId}`}
+								onValueChange={(val) => {
+									if (val === "system") {
+										setAudioSource("system")
+									} else if (val.startsWith("mic:")) {
+										const id = val.slice(4) || "default"
+										setAudioSource("microphone")
+										setMicDeviceId((id as any) || "default")
+									}
+								}}
+								disabled={isRecording || streamStatus === "paused" || streamStatus === "streaming"}
+							>
+								<SelectTrigger className="h-8 w-44 text-xs sm:w-56">
+									<SelectValue placeholder="Select audio source" />
+								</SelectTrigger>
+								<SelectContent className="text-sm">
+									<SelectItem value="mic:default">Microphone (default)</SelectItem>
+									{audioDevices.map((d, idx) => (
+										<SelectItem key={d.deviceId || idx} value={`mic:${d.deviceId}`}>
+											{d.label || `Microphone ${idx + 1}`}
+										</SelectItem>
+									))}
+									<SelectItem value="system">Share tab/system audio…</SelectItem>
+								</SelectContent>
+							</Select>
+						</div>
+
+						{(isRecording || streamStatus === "paused") && (
+							<div className="flex items-center gap-2 text-sm">
+								<WaveformAnimation isRecording={streamStatus === "streaming"} />
+								<span className="font-mono text-muted-foreground">{formatDuration(recordingDuration)}</span>
+							</div>
+						)}
 					</div>
 
-					{(isRecording || streamStatus === "paused") && (
-						<div className="flex items-center gap-2 text-sm">
-							<WaveformAnimation isRecording={streamStatus === "streaming"} />
-							<span className="font-mono text-muted-foreground">{formatDuration(recordingDuration)}</span>
-						</div>
-					)}
-				</div>
-				<div className="flex gap-2">
-					<Button variant="outline" size="sm" onClick={handleCancel}>
-						Cancel
-					</Button>
-					<Button size="sm" onClick={handleFinish} disabled={isFinishing}>
-						{isFinishing ? (
-							<>
-								<Loader2 className="mr-2 h-3 w-3 animate-spin" /> Finishing...
-							</>
-						) : (
-							"Finish"
-						)}
-					</Button>
+					{/* Right cluster: actions (wrap on small) */}
+					<div className="flex flex-wrap items-center gap-2">
+						<Button variant="outline" size="sm" onClick={handleCancel}>
+							Cancel
+						</Button>
+						<Button size="sm" onClick={handleFinish} disabled={isFinishing}>
+							{isFinishing ? (
+								<>
+									<Loader2 className="mr-2 h-3 w-3 animate-spin" /> Finishing...
+								</>
+							) : (
+								"Finish"
+							)}
+						</Button>
+					</div>
 				</div>
 			</div>
 
@@ -992,27 +1018,18 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						{/* Notes header with mobile toggle */}
 						<div className="mb-1 flex items-center justify-between">
 							<div className="text-lg">Notes</div>
-							<Button
-								variant="ghost"
-								size="sm"
-								onClick={() => setNotesExpanded((v) => !v)}
-								className="md:hidden"
-							>
+							<Button variant="ghost" size="sm" onClick={() => setNotesExpanded((v) => !v)} className="md:hidden">
 								{notesExpanded ? "Collapse" : "Expand"}
 							</Button>
 						</div>
 
-						<Card
-							className={
-								`min-h-0 ${notesExpanded ? "block h-64" : "hidden"} md:block md:h-auto md:flex-1`
-							}
-						>
+						<Card className={`min-h-0 ${notesExpanded ? "block h-64" : "hidden"} md:block md:h-auto md:flex-1`}>
 							<CardContent className="h-full p-0">
 								<Textarea
 									placeholder="Jot down key insights..."
 									value={interviewNotes}
 									onChange={(e) => setInterviewNotes(e.target.value)}
-									className="h-full border-0 text-sm resize-none"
+									className="h-full resize-none border-0 text-sm"
 									rows={6}
 								/>
 							</CardContent>

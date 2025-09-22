@@ -1,5 +1,5 @@
 import consola from "consola"
-import { X } from "lucide-react"
+import { Eye, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
@@ -29,8 +29,7 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	// Local ordering queue; store ids to manage defers
-	const [queue, setQueue] = useState<string[]>([])
+	// Deprecated queue ordering; we now preserve original order as loaded
 
 	useEffect(() => {
 		const load = async () => {
@@ -69,7 +68,6 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 				const remaining = deduped.filter((q) => !selectedIds.has(q.id))
 				const ordered = [...selected, ...remaining].map(({ id, text, status }) => ({ id, text, status }))
 				setAllQuestions(ordered)
-				setQueue(ordered.map((q) => q.id))
 			} catch (e) {
 				consola.error("MinimalQuestionView load error", e)
 			} finally {
@@ -79,35 +77,8 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 		void load()
 	}, [projectId, supabase])
 
-	const activeQuestions = useMemo(() => {
-		const byId = new Map(allQuestions.map((q) => [q.id, q]))
-		const seen = new Set<string>()
-		const questionsToShow = [] as string[]
-
-		// Show all questions - answered questions first, then unanswered
-		for (const id of queue) {
-			if (seen.has(id)) continue
-			const q = byId.get(id)
-			if (!q) continue
-			if (q.status === "answered") {
-				seen.add(id)
-				questionsToShow.push(id)
-			}
-		}
-
-		// Then add all unanswered questions (not skipped)
-		for (const id of queue) {
-			if (seen.has(id)) continue
-			const q = byId.get(id)
-			if (!q) continue
-			if (q.status !== "answered" && q.status !== "skipped") {
-				seen.add(id)
-				questionsToShow.push(id)
-			}
-		}
-
-		return questionsToShow.map((id) => byId.get(id)).filter((q): q is MinimalQuestion => q !== undefined)
-	}, [allQuestions, queue])
+	// Preserve original order and include all questions, regardless of status
+	const shownQuestions = useMemo(() => allQuestions, [allQuestions])
 
 	const persist = useCallback(
 		async (next: MinimalQuestion[]) => {
@@ -161,10 +132,72 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 		[persist]
 	)
 
+	const unhide = useCallback(
+		(id: string) => {
+			setAllQuestions((prev) => {
+				const next = prev.map((q) => (q.id === id ? { ...q, status: "proposed" as const } : q))
+				void persist(next)
+				return next
+			})
+		},
+		[persist]
+	)
 
 	// Calculate answered count
 	const answeredCount = allQuestions.filter((q) => q.status === "answered").length
 	const totalCount = allQuestions.length
+
+	// Pre-render question list to simplify JSX in return
+	const renderedQuestions = useMemo<JSX.Element[]>(() => {
+		return shownQuestions.map((q, idx) => {
+			return (
+				<div
+					key={q.id}
+					className={`touch-pan-y rounded-md border p-2 ${q.status === "answered" ? "opacity-60" : q.status === "skipped" ? "opacity-60" : ""}`}
+					style={{ transform: "translateX(0px)", transition: "transform 0.2s ease-out" }}
+				>
+					<div className="space-y-1">
+						<div className="flex items-start gap-2">
+							<div className="flex items-center gap-2 pt-0.5">
+								<Checkbox
+									checked={q.status === "answered"}
+									onCheckedChange={(checked) => {
+										if (checked) {
+											markDone(q.id)
+										} else {
+											unmarkDone(q.id)
+										}
+									}}
+									className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
+								/>
+								<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
+							</div>
+							<div className="min-w-0 flex-1">
+								<div
+									className={`text-sm leading-snug ${q.status === "answered" ? "text-muted-foreground line-through" : q.status === "skipped" ? "text-muted-foreground" : ""}`}
+								>
+									{q.text}
+								</div>
+								{idx === 0 && q.status !== "answered" && q.status !== "skipped" && (
+									<div className="text-[10px] text-muted-foreground">← Swipe left to skip</div>
+								)}
+							</div>
+							{q.status === "skipped" && (
+								<Button size="sm" variant="ghost" className="ml-2 h-6 px-2 text-xs" onClick={() => unhide(q.id)}>
+									<Eye className="mr-1 h-3 w-3" /> Unhide
+								</Button>
+							)}
+							{q.status !== "answered" && q.status !== "skipped" && (
+								<Button size="sm" variant="ghost" className="ml-2 h-6 px-2 text-xs" onClick={() => skip(q.id)}>
+									<X className="mr-1 h-3 w-3" /> Skip
+								</Button>
+							)}
+						</div>
+					</div>
+				</div>
+			)
+		})
+	}, [shownQuestions, markDone, unmarkDone, skip, unhide])
 
 	return (
 		<Card className="flex h-full flex-col border-0 px-0 md:border-1 md:px-4">
@@ -179,7 +212,7 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 					)}
 				</CardTitle>
 			</CardHeader>
-			<CardContent className="flex-1 space-y-3 overflow-y-auto px-2 sm:px-2 md:px-2">
+			<CardContent className="flex-1 space-y-3 overflow-y-auto px-0 md:px-2">
 				{loading && <div className="text-muted-foreground text-sm">Loading…</div>}
 				{!loading && allQuestions.length === 0 && (
 					<div className="text-muted-foreground text-sm">
@@ -187,93 +220,10 @@ export function MinimalQuestionView({ projectId }: MinimalQuestionViewProps) {
 						<Link to={routes.projects.setup()}> Configure</Link>
 					</div>
 				)}
-				{!loading && allQuestions.length > 0 && activeQuestions.length === 0 && (
+				{!loading && allQuestions.length > 0 && shownQuestions.length === 0 && (
 					<div className="text-muted-foreground text-sm">All questions completed. Great job!</div>
 				)}
-				{activeQuestions.map((q, idx) => (
-					<div
-						key={q.id}
-						className="touch-pan-y rounded-md border p-2 md:p-4 "
-						style={{
-							transform: "translateX(0px)",
-							transition: "transform 0.2s ease-out",
-						}}
-						onTouchStart={(e) => {
-							if (q.status === "answered") return // Don't allow swiping on answered questions
-
-							const touch = e.touches[0]
-							const startX = touch.clientX
-							const element = e.currentTarget as HTMLElement
-
-							const handleTouchMove = (moveEvent: TouchEvent) => {
-								const currentTouch = moveEvent.touches[0]
-								const deltaX = currentTouch.clientX - startX
-
-								if (deltaX < -50) {
-									// Swipe left threshold
-									element.style.transform = `translateX(${deltaX}px)`
-									element.style.opacity = String(Math.max(0.3, 1 + deltaX / 200))
-								}
-							}
-
-							const handleTouchEnd = (endEvent: TouchEvent) => {
-								const currentTouch = endEvent.changedTouches[0]
-								const deltaX = currentTouch.clientX - startX
-
-								if (deltaX < -100) {
-									// Skip if swiped far enough
-									skip(q.id)
-								} else {
-									// Reset position
-									element.style.transform = "translateX(0px)"
-									element.style.opacity = "1"
-								}
-
-								document.removeEventListener("touchmove", handleTouchMove)
-								document.removeEventListener("touchend", handleTouchEnd)
-							}
-
-							document.addEventListener("touchmove", handleTouchMove, { passive: false })
-							document.addEventListener("touchend", handleTouchEnd)
-						}}
-					>
-						<div className="space-y-2">
-							<div className="flex items-start gap-3">
-								<div className="flex items-center gap-2">
-									<Checkbox
-										checked={q.status === "answered"}
-										onCheckedChange={(checked) => {
-											if (checked) {
-												markDone(q.id)
-											} else {
-												unmarkDone(q.id)
-											}
-										}}
-										className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
-									/>
-									<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
-								</div>
-								<div className="min-w-0 flex-1">
-									<div
-										className={`text-sm leading-relaxed ${q.status === "answered" ? "text-muted-foreground line-through" : ""}`}
-									>
-										{q.text}
-									</div>
-									{idx === 0 && q.status !== "answered" && (
-										<div className="mt-2 text-muted-foreground text-xs">← Swipe left to skip</div>
-									)}
-								</div>
-							</div>
-							{q.status !== "answered" && (
-								<div className="flex justify-end">
-									<Button size="sm" variant="outline" onClick={() => skip(q.id)}>
-										<X className="mr-1 h-3 w-3" /> Skip
-									</Button>
-								</div>
-							)}
-						</div>
-					</div>
-				))}
+				{renderedQuestions}
 			</CardContent>
 		</Card>
 	)

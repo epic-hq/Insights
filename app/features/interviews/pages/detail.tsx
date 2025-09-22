@@ -338,6 +338,58 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
+					{/* Empathy Map (Says/Does/Thinks/Feels + Pains/Gains) */}
+					{evidence.length > 0 && (
+						<div className="mb-6 rounded-lg border bg-background p-4">
+							<h2 className="mb-3 font-semibold text-foreground text-lg">Empathy Map</h2>
+							{(() => {
+								const gather = (key: 'says'|'does'|'thinks'|'feels'|'pains'|'gains') => {
+									const vals: string[] = []
+									evidence.forEach((e: any) => {
+										const arr = Array.isArray(e[key]) ? e[key] : []
+										for (const v of arr) if (typeof v === 'string' && v.trim()) vals.push(v.trim())
+									})
+									// Deduplicate while preserving order
+									const seen = new Set<string>()
+									return vals.filter(v => (seen.has(v) ? false : (seen.add(v), true))).slice(0, 20)
+								}
+
+								const blocks: Array<{title: string; key: 'says'|'does'|'thinks'|'feels'|'pains'|'gains'}> = [
+									{ title: 'Says', key: 'says' },
+									{ title: 'Does', key: 'does' },
+									{ title: 'Thinks', key: 'thinks' },
+									{ title: 'Feels', key: 'feels' },
+									{ title: 'Pains', key: 'pains' },
+									{ title: 'Gains', key: 'gains' },
+								]
+
+								return (
+									<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+										{blocks.map((b) => {
+											const items = gather(b.key)
+											return (
+												<div key={b.key} className="rounded-md border bg-card p-3">
+													<div className="mb-2 font-medium text-foreground">{b.title}</div>
+													{items.length === 0 ? (
+														<div className="text-muted-foreground text-sm">No data yet</div>
+													) : (
+														<ul className="flex flex-wrap gap-1">
+															{items.map((it, i) => (
+																<li key={i} className="rounded-full border px-2 py-0.5 text-xs text-foreground">
+																	{it}
+																</li>
+															))}
+														</ul>
+													)}
+												</div>
+											)
+										})}
+									</div>
+								)
+							})()}
+						</div>
+					)}
+
 					{/* Interviewer info */}
 					{/* TODO: Interviewer info */}
 					{/* {interviewerData?.name && (
@@ -451,41 +503,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								}}
 							/>
 						</div>
-						<div>
-							<label className="mb-1 block font-bold text-lg">Open Questions & Next Steps</label>
-							<InlineEdit
-								textClassName="text-foreground"
-								value={normalizeMultilineText(interview.open_questions_and_next_steps)}
-								multiline
-								markdown
-								placeholder="Open Questions & Next Steps"
-								onSubmit={(value) => {
-									try {
-										consola.info("📝 Submitting open_questions_and_next_steps update:", {
-											interviewId: interview.id,
-											accountId,
-											projectId,
-											valueLength: value?.length,
-										})
-
-										fetcher.submit(
-											{
-												entity: "interview",
-												entityId: interview.id,
-												accountId,
-												projectId,
-												fieldName: "open_questions_and_next_steps",
-												fieldValue: value,
-											},
-											{ method: "post", action: "/api/update-field" }
-										)
-									} catch (error) {
-										consola.error("❌ Failed to update open_questions_and_next_steps:", error)
-										// Don't throw - just log the error to prevent crash
-									}
-								}}
-							/>
-						</div>
+						{/* Removed Open Questions & Next Steps per request */}
 					</div>
 
 					{/* Evidence Section - Simplified Cards */}

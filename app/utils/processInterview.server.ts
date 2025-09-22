@@ -273,120 +273,152 @@ async function processInterviewTranscriptWithClient({
 	try {
 		consola.log("ExtractEvidence starting")
 		evidenceUnits = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language)
+		consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceUnits, null, 2))
 
 		if (evidenceUnits?.length) {
 			// Map BAML EvidenceUnit -> DB rows
-			const evidenceRows: EvidenceInsert[] = evidenceUnits
-				.map((ev: EvidenceFromBaml[number]) => {
-					const verb = sanitizeVerbatim(ev.verbatim)
-					if (!verb) return null
-					const support = normalizeSupport((ev as unknown as { support?: string })?.support)
-					const kind_tags = Array.isArray(ev.kind_tags)
-						? (ev.kind_tags as string[])
-						: Object.values(ev.kind_tags ?? {})
-							.flat()
-							.filter((x): x is string => typeof x === "string")
-					const confidenceStr = (ev as unknown as { confidence?: EvidenceInsert["confidence"] })?.confidence ?? "medium"
-					const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
-					const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
-					const providedIndKey = (ev as unknown as { independence_key?: string })?.independence_key
-					const independence_key = providedIndKey && providedIndKey.trim().length > 0
-					  ? providedIndKey.trim()
-					  : computeIndependenceKey(verb, kind_tags)
-					const row: EvidenceInsert = {
-						account_id: metadata.accountId,
-						project_id: (metadata.projectId ?? null) as any,
-						interview_id: interviewRecord.id,
-						source_type: "primary",
-						method: "interview",
-						modality: "qual",
-						support,
-						kind_tags,
-						personas: (ev.personas ?? []) as string[],
-						segments: (ev.segments ?? []) as string[],
-						journey_stage: ev.journey_stage || null,
-						weight_quality,
-						weight_relevance,
-						independence_key,
-						confidence: confidenceStr,
-						verbatim: verb,
-						anchors: (ev.anchors ?? []) as unknown as Json,
+			const empathyStats = { says: 0, does: 0, thinks: 0, feels: 0, pains: 0, gains: 0 }
+			const empathySamples: Record<keyof typeof empathyStats, string[]> = {
+				says: [], does: [], thinks: [], feels: [], pains: [], gains: [],
+			}
+
+			const evidenceRows: EvidenceInsert[] = (evidenceUnits as EvidenceFromBaml["evidence"]).map((ev) => {
+				const verb = sanitizeVerbatim((ev as unknown as { verbatim?: string })?.verbatim)
+				if (!verb) return null
+				const support = normalizeSupport((ev as unknown as { support?: string })?.support)
+				const kind_tags = Array.isArray(ev.kind_tags)
+					? (ev.kind_tags as string[])
+					: Object.values(ev.kind_tags ?? {})
+						.flat()
+						.filter((x): x is string => typeof x === "string")
+				const confidenceStr = (ev as unknown as { confidence?: EvidenceInsert["confidence"] })?.confidence ?? "medium"
+				const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
+				const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
+				const providedIndKey = (ev as unknown as { independence_key?: string })?.independence_key
+				const independence_key = providedIndKey && providedIndKey.trim().length > 0
+				  ? providedIndKey.trim()
+				  : computeIndependenceKey(verb, kind_tags)
+				const row: EvidenceInsert = {
+					account_id: metadata.accountId,
+					project_id: metadata.projectId,
+					interview_id: interviewRecord.id,
+					source_type: "primary",
+					method: "interview",
+					modality: "qual",
+					support,
+					kind_tags,
+					personas: (ev.personas ?? []) as string[],
+					segments: (ev.segments ?? []) as string[],
+					journey_stage: ev.journey_stage || null,
+					weight_quality,
+					weight_relevance,
+					independence_key,
+					confidence: confidenceStr,
+					verbatim: verb,
+					anchors: (ev.anchors ?? []) as unknown as Json,
+				}
+
+				// Empathy map facets (optional arrays)
+				const _says = Array.isArray((ev as any).says) ? (ev as any).says as string[] : []
+				const _does = Array.isArray((ev as any).does) ? (ev as any).does as string[] : []
+				const _thinks = Array.isArray((ev as any).thinks) ? (ev as any).thinks as string[] : []
+				const _feels = Array.isArray((ev as any).feels) ? (ev as any).feels as string[] : []
+				const _pains = Array.isArray((ev as any).pains) ? (ev as any).pains as string[] : []
+				const _gains = Array.isArray((ev as any).gains) ? (ev as any).gains as string[] : []
+				;(row as unknown as Record<string, unknown>)["says"] = _says
+				;(row as unknown as Record<string, unknown>)["does"] = _does
+				;(row as unknown as Record<string, unknown>)["thinks"] = _thinks
+				;(row as unknown as Record<string, unknown>)["feels"] = _feels
+				;(row as unknown as Record<string, unknown>)["pains"] = _pains
+				;(row as unknown as Record<string, unknown>)["gains"] = _gains
+
+				// Update empathy stats + capture a few samples
+				empathyStats.says += _says.length; empathyStats.does += _does.length
+				empathyStats.thinks += _thinks.length; empathyStats.feels += _feels.length
+				empathyStats.pains += _pains.length; empathyStats.gains += _gains.length
+				for (const [k, arr] of Object.entries({ says: _says, does: _does, thinks: _thinks, feels: _feels, pains: _pains, gains: _gains }) as Array<[keyof typeof empathyStats, string[]]>) {
+					for (const v of arr) {
+						if (typeof v === "string" && v.trim() && empathySamples[k].length < 3) empathySamples[k].push(v.trim())
 					}
-					const context_summary = (ev as unknown as { context_summary?: string })?.context_summary
-					if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
-						;(row as unknown as Record<string, unknown>)["context_summary"] = context_summary.trim()
-					}
-					return row
-				})
-				.filter((row): row is EvidenceInsert => row !== null)
+				}
+				const context_summary = (ev as unknown as { context_summary?: string })?.context_summary
+				if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
+					;(row as unknown as Record<string, unknown>)["context_summary"] = context_summary.trim()
+				}
+				return row
+			})
+			.filter((row): row is EvidenceInsert => row !== null)
 
 			if (evidenceRows.length === 0) {
 				consola.warn("No valid evidence rows after sanitization; skipping evidence insert")
-			}
-
-			const { data: insertedEvidence, error: evidenceError } = evidenceRows.length
-				? await db.from("evidence").insert(evidenceRows).select("id, kind_tags")
-				: { data: [] as Array<{ id: string; kind_tags: string[] | null }>, error: null as null }
-
-			if (evidenceError) {
-				consola.warn(`Failed to insert evidence: ${evidenceError.message}`)
-			} else if (insertedEvidence?.length) {
-				// Stash IDs for later linking to people
+			} else {
 				try {
-					insertedEvidenceIds = (insertedEvidence as Array<{ id: string }>).map((e) => e.id)
-				} catch { }
-				// Optionally upsert tags from kind_tags and link via evidence_tag
-				try {
-					// Build unique tag list
-					const tagsSet = new Set<string>()
-					const insertedEvidenceTyped = insertedEvidence as Array<{ id: string; kind_tags: string[] | null }>
-					insertedEvidenceTyped.forEach((ev) => {
-						; (ev.kind_tags || []).forEach((t) => {
-							if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
-						})
+					const { data: insertedEvidence, error: evidenceInsertError } = await db
+						.from("evidence")
+						.insert(evidenceRows)
+						.select("id, kind_tags")
+					if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
+					insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
+					// Log empathy stats snapshot for observability
+					consola.info("🧠 Empathy facets extracted", {
+						counts: empathyStats,
+						samples: empathySamples,
 					})
-					const tags = Array.from(tagsSet)
+					// Optionally upsert tags from kind_tags and link via evidence_tag
+					try {
+						// Build unique tag list
+						const tagsSet = new Set<string>()
+						const insertedEvidenceTyped = (insertedEvidence ?? []) as Array<{ id: string; kind_tags: string[] | null }>
+						insertedEvidenceTyped.forEach((ev) => {
+							for (const t of ev.kind_tags || []) {
+								if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
+							}
+						})
+						const tags = Array.from(tagsSet)
 
-					const tagIdByName = new Map<string, string>()
-					for (const tagName of tags) {
-						const { data: tagRow, error: tagErr } = await db
-							.from("tags")
-							.upsert(
-								{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
-								{ onConflict: "account_id,tag" }
-							)
-							.select("id")
-							.single()
-						if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
-					}
-
-					// Link evidence -> tags
-					for (const ev of insertedEvidenceTyped) {
-						for (const tagName of ev.kind_tags || []) {
-							const tagId = tagIdByName.get(tagName)
-							if (!tagId) continue
-							const { error: etErr } = await db
-								.from("evidence_tag")
-								.insert({
-									evidence_id: ev.id,
-									tag_id: tagId,
-									account_id: metadata.accountId,
-									project_id: metadata.projectId,
-								})
-								.select()
+						const tagIdByName = new Map<string, string>()
+						for (const tagName of tags) {
+							const { data: tagRow, error: tagErr } = await db
+								.from("tags")
+								.upsert(
+									{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
+									{ onConflict: "account_id,tag" }
+								)
+								.select("id")
 								.single()
-							if (etErr && !etErr.message?.includes("duplicate")) {
-								consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+							if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
+						}
+
+						// Link evidence -> tags
+						for (const ev of insertedEvidenceTyped) {
+							for (const tagName of ev.kind_tags || []) {
+								const tagId = tagIdByName.get(tagName)
+								if (!tagId) continue
+								const { error: etErr } = await db
+									.from("evidence_tag")
+									.insert({
+										evidence_id: ev.id,
+										tag_id: tagId,
+										account_id: metadata.accountId,
+										project_id: metadata.projectId,
+									})
+									.select()
+									.single()
+								if (etErr && !etErr.message?.includes("duplicate")) {
+									consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+								}
 							}
 						}
+					} catch (linkErr) {
+						consola.warn("Failed to create/link tags for evidence", linkErr)
 					}
-				} catch (linkErr) {
-					consola.warn("Failed to create/link tags for evidence", linkErr)
+				} catch (evidenceInsertErr) {
+					consola.warn("Evidence insert phase failed; continuing", evidenceInsertErr)
 				}
 			}
 		}
 	} catch (evidenceExtractErr) {
-		consola.warn("Evidence extraction/insert phase failed; continuing", evidenceExtractErr)
+		consola.warn("Evidence extraction phase failed; continuing", evidenceExtractErr)
 	}
 
 	// 3. Auto-generate themes from accumulated evidence before insights
@@ -519,14 +551,137 @@ async function processInterviewTranscriptWithClient({
 		}
 	}
 
+	// Heuristic: Map evidence -> answers by category against latest questions set
+	try {
+		// 1) Load latest questions from project_sections.meta.questions
+		let latestQuestions: Array<{ id: string; text: string; categoryId?: string }> = []
+		if (metadata.projectId) {
+			const { data: qsSection } = await db
+				.from("project_sections")
+				.select("meta, created_at")
+				.eq("project_id", metadata.projectId)
+				.eq("kind", "questions")
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.single()
+			const meta = (qsSection?.meta as any) || {}
+			const fromMeta = Array.isArray(meta?.questions) ? meta.questions : []
+			latestQuestions = fromMeta.map((q: any) => ({ id: String(q.id), text: String(q.text || ""), categoryId: q.categoryId }))
+		}
+
+		// 2) Build a category -> representative question map (first in each category)
+		const categoryToQuestion = new Map<string, { id: string; text: string }>()
+		for (const q of latestQuestions) {
+			if (!q.id || !q.text) continue
+			if (q.categoryId && !categoryToQuestion.has(q.categoryId)) {
+				categoryToQuestion.set(q.categoryId, { id: q.id, text: q.text })
+			}
+		}
+
+		// Known categories from UI (keep in sync):
+		const knownCategories = new Set([
+			"context",
+			"pain",
+			"workflow",
+			"goals",
+			"constraints",
+			"willingness",
+			"demographics",
+		])
+
+		// 3) For each inserted evidence, if it has a matching category tag, upsert project_answers and link
+		if (Array.isArray(evidenceUnits) && evidenceUnits.length && metadata.projectId) {
+			// We also need the DB IDs of inserted evidence to link; we have insertedEvidenceIds in the same order as evidenceRows mapping
+			// However types may differ; we already captured insertedEvidenceIds above
+			for (let i = 0; i < insertedEvidenceIds.length; i++) {
+				const evId = insertedEvidenceIds[i]
+				// Safeguard: find the corresponding evidence unit's kind_tags if available
+				const evUnit = Array.isArray(evidenceUnits) ? evidenceUnits[i] as any : undefined
+				const tags: string[] = Array.isArray(evUnit?.kind_tags)
+					? evUnit.kind_tags
+					: Object.values(evUnit?.kind_tags ?? {}).flat().filter((x: unknown): x is string => typeof x === "string")
+
+				const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
+				const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined
+				if (!qRep) continue
+
+				// See if answer already exists for (project_id, interview_id, question_id)
+				let answerId: string | null = null
+				const { data: existingAns } = await db
+					.from("project_answers")
+					.select("id")
+					.eq("project_id", metadata.projectId)
+					.eq("interview_id", interviewRecord.id)
+					.eq("question_id", qRep.id)
+					.limit(1)
+					.single()
+				if (existingAns?.id) {
+					answerId = existingAns.id
+				} else {
+					const { data: createdAns, error: ansErr } = await db
+						.from("project_answers")
+						.insert({
+							project_id: metadata.projectId,
+							interview_id: interviewRecord.id,
+							respondent_person_id: personData.id,
+							question_id: qRep.id,
+							question_text: qRep.text,
+							status: "answered",
+						})
+						.select("id")
+						.single()
+					if (ansErr) {
+						consola.warn("Failed to upsert project_answers for evidence", ansErr.message)
+						continue
+					}
+					answerId = createdAns?.id ?? null
+				}
+
+				if (!answerId) continue
+
+				// Link evidence to answer
+				const { error: linkErr } = await db
+					.from("project_answer_evidence")
+					.insert({
+						project_id: metadata.projectId,
+						answer_id: answerId,
+						interview_id: interviewRecord.id,
+						source: "transcript",
+						payload: { evidence_id: evId } as unknown as Json,
+					})
+					.select("id")
+					.single()
+				if (linkErr && !linkErr.message?.includes("duplicate")) {
+					consola.warn("Failed to link project_answer_evidence", linkErr.message)
+				}
+			}
+		}
+	} catch (mapErr) {
+		consola.warn("Evidence→Answer mapping skipped due to error", mapErr)
+	}
+
 	const junctionData: InterviewPeopleInsert = {
 		interview_id: interviewRecord.id,
 		person_id: personData.id,
 		role: "participant",
 		project_id: metadata.projectId,
 	}
-	const { error: junctionError } = await db.from("interview_people").insert(junctionData)
-	if (junctionError) throw new Error(`Failed to link person to interview: ${junctionError.message}`)
+	const { error: junctionError } = await db
+		.from("interview_people")
+		.upsert(junctionData, { onConflict: "interview_id,person_id" })
+		.select("id")
+		.single()
+	if (junctionError) {
+		// Ignore duplicate unique violation explicitly; surface other errors
+		if (!junctionError.message?.toLowerCase().includes("duplicate key value")) {
+			throw new Error(`Failed to link person to interview: ${junctionError.message}`)
+		} else {
+			consola.info("interview_people already linked; skipping duplicate link", {
+				interview_id: interviewRecord.id,
+				person_id: personData.id,
+			})
+		}
+	}
 
 	// Assign persona to the person using BAML client
 	try {

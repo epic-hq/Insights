@@ -1,0 +1,10 @@
+[
+  {
+    "key": "cmd+shift+t",
+    "command": "workbench.action.terminal.sendSequence",
+    "args": {
+      "text": "npx baml-cli test -i \"ExtractEvidenceFromTranscript::ExtractEvidenceFromTranscript_EmpathyTest\"\n"
+    },
+    "when": "resourceExtname == '.baml'"
+  }
+]

@@ -11,25 +11,16 @@ class Anchor {
 }
 
 class KindTags {
-  problem string[]? @description(#"
-		Pain points, frustrations, blockers, etc.
-	"#)
-  goal string[]? @description(#"
-		Goals, success criteria, desired outcomes, etc.
-	"#)
-  behavior string[]? @description(#"
-		Behaviors, actions, habits, etc.
-	"#)
+  problem string[]? @description(#" Pain points, frustrations, blockers, etc. "#)
+  goal string[]? @description(#" Goals, success criteria, desired outcomes, etc. "#)
+  behavior string[]? @description(#" Behaviors, actions, habits, etc. "#)
   emotion Emotions? @description("Optional emotion if obvious from context")
-  context string[]? @description(#"
-		Context, background, environment, etc.
-	"#)
-  artifact string[]? @description(#"
-		items, data, places, things, documents, etc.
-	"#)
+  context string[]? @description(#" Context, background, environment, etc. "#)
+  artifact string[]? @description(#" items, data, places, things, documents, etc."#)
 }
 
 class EvidenceUnit {
+
 	person_role string @description("interviewer | interviewee")
   verbatim string @description("Exact quote or concise snippet. Keep short and citable.")
   support string @description("supports | refutes | neutral")
@@ -41,6 +32,14 @@ class EvidenceUnit {
   confidence string @description("low | medium | high")
   context_summary string? @description("1–2 sentences: who/where/what; why it matters")
   independence_key string? @description("Stable signature for dedupe (e.g., normalized quote + main tag)")
+
+  // Empathy map facets: short, succinct phrases categorized for UX synthesis
+  says string[]? @description("Short quotes the user says out loud; keep each entry under ~120 characters.")
+  does string[]? @description("Observable actions/behaviors; short imperative phrases, under ~120 characters.")
+  thinks string[]? @description("Internal thoughts/beliefs; concise first-person statements, under ~120 characters.")
+  feels string[]? @description("Emotions with brief context; e.g., 'Frustrated with long load times'.")
+  pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases.")
+  gains string[]? @description("Positive outcomes/benefits/success factors; short phrases.")
 }
 
 class Chapter {
@@ -76,6 +75,14 @@ function ExtractEvidenceFromTranscript(
     - context_summary: 1–2 sentences stating who said it, in what situation/flow, and why it matters for the decision.
     - independence_key: Stable signature (e.g., normalized quote + prominent tag) to dedupe similar units.
 
+    EMPATHY MAP FACETS (CRITICAL - always populate these):
+    - says: Direct quotes the user says out loud (short phrases, <120 chars each)
+    - does: Observable actions/behaviors they perform (imperative phrases, <120 chars each)
+    - thinks: Internal thoughts/beliefs they express (first-person statements, <120 chars each)
+    - feels: Emotions with brief context (e.g., "Frustrated with long load times", <120 chars each)
+    - pains: Biggest frustrations/fears/obstacles mentioned (short phrases, <120 chars each)
+    - gains: Positive outcomes/benefits/success factors they want (short phrases, <120 chars each)
+
     Guardrails
     - Only infer persona/segment/journey_stage when obvious.
     - Prefer fewer, higher-quality units over many weak ones.
@@ -90,7 +97,29 @@ function ExtractEvidenceFromTranscript(
   "#
 }
 
-// Dev test
+// Simple empathy test
+test ExtractEvidenceFromTranscript_EmpathyTest {
+  functions [ExtractEvidenceFromTranscript]
+  args {
+    transcript #"
+INTERVIEWER: How do you feel about your current project management tool?
+
+PARTICIPANT: Honestly, it's really frustrating. I spend way too much time just trying to find where I put things. Like, I'll create a task and then I can't remember which project I assigned it to. It makes me feel disorganized and stressed out.
+
+INTERVIEWER: What do you do when that happens?
+
+PARTICIPANT: I usually end up searching through every project folder, which takes forever. Sometimes I just give up and create a duplicate task. I know it's not efficient, but I need to get my work done. I really wish there was a better way to organize everything automatically.
+
+INTERVIEWER: What would success look like for you?
+
+PARTICIPANT: I want to feel confident that I can find anything I need within seconds. When I'm in a meeting and someone asks about a project status, I want to pull it up instantly instead of saying 'let me get back to you on that.' That would make me feel so much more professional and in control.
+    "#
+    chapters []
+    language "en"
+  }
+}
+
+// Full dev test
 test ExtractEvidenceFromTranscript_Sample {
   functions [ExtractEvidenceFromTranscript]
   args {

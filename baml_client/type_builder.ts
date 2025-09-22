@@ -49,13 +49,13 @@ export default class TypeBuilder {
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
-    EvidenceUnit: ClassViewer<'EvidenceUnit', "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key">;
+    EvidenceUnit: ClassViewer<'EvidenceUnit', "person_role" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
     ExecutiveSummary: ClassViewer<'ExecutiveSummary', "answered_insights" | "critical_unknowns" | "completion_percentage" | "confidence" | "next_action">;
     
-    ExtractedInsight: ClassBuilder<'ExtractedInsight', "pain" | "name" | "details" | "evidence" | "desiredOutcome" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
+    ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
     FollowUpQuestion: ClassViewer<'FollowUpQuestion', "id" | "text" | "rationale" | "estimatedMinutes" | "categoryId" | "scores">;
     
@@ -73,7 +73,7 @@ export default class TypeBuilder {
     
     InterviewDoc: ClassViewer<'InterviewDoc', "source" | "snippets">;
     
-    InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
+    InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "relevantAnswers" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
     InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
     
@@ -201,7 +201,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
-          "verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key",
+          "person_role","verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key","says","does","thinks","feels","pains","gains",
         ]);
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [
@@ -213,7 +213,7 @@ export default class TypeBuilder {
         ]);
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
-          "pain","name","details","evidence","desiredOutcome","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
+          "name","pain","details","evidence","desiredOutcome","assumptionAlignment","researchQuestionAnswered","evidenceStrength","productImplication","followUpQuestions","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
         ]);
         
         this.FollowUpQuestion = this.tb.classViewer("FollowUpQuestion", [
@@ -249,7 +249,7 @@ export default class TypeBuilder {
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [
-          "metadata","interviewee","insights","observationsAndNotes","highImpactThemes","openQuestionsAndNextSteps",
+          "metadata","interviewee","insights","relevantAnswers","observationsAndNotes","highImpactThemes","openQuestionsAndNextSteps",
         ]);
         
         this.InterviewMetadata = this.tb.classViewer("InterviewMetadata", [

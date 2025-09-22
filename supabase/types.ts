@@ -7,6 +7,11 @@ export type Json =
   | Json[]
 
 export type Database = {
+  // Allows to automatically instantiate createClient with right options
+  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
+  __InternalSupabase: {
+    PostgrestVersion: "12.2.3 (519615d)"
+  }
   accounts: {
     Tables: {
       account_user: {
@@ -292,31 +297,6 @@ export type Database = {
         | "incomplete_expired"
         | "past_due"
         | "unpaid"
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
     }
     CompositeTypes: {
       [_ in never]: never
@@ -731,6 +711,9 @@ export type Database = {
           context_summary: string | null
           created_at: string
           created_by: string | null
+          does: string[] | null
+          feels: string[] | null
+          gains: string[] | null
           id: string
           independence_key: string | null
           interview_id: string | null
@@ -738,11 +721,14 @@ export type Database = {
           kind_tags: string[] | null
           method: string | null
           modality: string
+          pains: string[] | null
           personas: string[] | null
           project_id: string | null
+          says: string[] | null
           segments: string[] | null
           source_type: string | null
           support: string | null
+          thinks: string[] | null
           updated_at: string
           updated_by: string | null
           verbatim: string
@@ -757,6 +743,9 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           created_by?: string | null
+          does?: string[] | null
+          feels?: string[] | null
+          gains?: string[] | null
           id?: string
           independence_key?: string | null
           interview_id?: string | null
@@ -764,11 +753,14 @@ export type Database = {
           kind_tags?: string[] | null
           method?: string | null
           modality?: string
+          pains?: string[] | null
           personas?: string[] | null
           project_id?: string | null
+          says?: string[] | null
           segments?: string[] | null
           source_type?: string | null
           support?: string | null
+          thinks?: string[] | null
           updated_at?: string
           updated_by?: string | null
           verbatim: string
@@ -783,6 +775,9 @@ export type Database = {
           context_summary?: string | null
           created_at?: string
           created_by?: string | null
+          does?: string[] | null
+          feels?: string[] | null
+          gains?: string[] | null
           id?: string
           independence_key?: string | null
           interview_id?: string | null
@@ -790,11 +785,14 @@ export type Database = {
           kind_tags?: string[] | null
           method?: string | null
           modality?: string
+          pains?: string[] | null
           personas?: string[] | null
           project_id?: string | null
+          says?: string[] | null
           segments?: string[] | null
           source_type?: string | null
           support?: string | null
+          thinks?: string[] | null
           updated_at?: string
           updated_by?: string | null
           verbatim?: string
@@ -1450,6 +1448,339 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      mastra_evals: {
+        Row: {
+          agent_name: string
+          created_at: string
+          created_atZ: string | null
+          createdAt: string | null
+          createdAtZ: string | null
+          global_run_id: string
+          input: string
+          instructions: string
+          metric_name: string
+          output: string
+          result: Json
+          run_id: string
+          test_info: Json | null
+        }
+        Insert: {
+          agent_name: string
+          created_at: string
+          created_atZ?: string | null
+          createdAt?: string | null
+          createdAtZ?: string | null
+          global_run_id: string
+          input: string
+          instructions: string
+          metric_name: string
+          output: string
+          result: Json
+          run_id: string
+          test_info?: Json | null
+        }
+        Update: {
+          agent_name?: string
+          created_at?: string
+          created_atZ?: string | null
+          createdAt?: string | null
+          createdAtZ?: string | null
+          global_run_id?: string
+          input?: string
+          instructions?: string
+          metric_name?: string
+          output?: string
+          result?: Json
+          run_id?: string
+          test_info?: Json | null
+        }
+        Relationships: []
+      }
+      mastra_messages: {
+        Row: {
+          content: string
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          resourceId: string | null
+          role: string
+          thread_id: string
+          type: string
+        }
+        Insert: {
+          content: string
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          resourceId?: string | null
+          role: string
+          thread_id: string
+          type: string
+        }
+        Update: {
+          content?: string
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          resourceId?: string | null
+          role?: string
+          thread_id?: string
+          type?: string
+        }
+        Relationships: []
+      }
+      mastra_resources: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: Json | null
+          updatedAt: string
+          updatedAtZ: string | null
+          workingMemory: string | null
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: Json | null
+          updatedAt: string
+          updatedAtZ?: string | null
+          workingMemory?: string | null
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: Json | null
+          updatedAt?: string
+          updatedAtZ?: string | null
+          workingMemory?: string | null
+        }
+        Relationships: []
+      }
+      mastra_scorers: {
+        Row: {
+          additionalContext: Json | null
+          analyzePrompt: string | null
+          analyzeStepResult: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          entity: Json | null
+          entityId: string | null
+          entityType: string | null
+          extractPrompt: string | null
+          extractStepResult: Json | null
+          generateReasonPrompt: string | null
+          generateScorePrompt: string | null
+          id: string
+          input: Json
+          metadata: Json | null
+          output: Json
+          preprocessPrompt: string | null
+          preprocessStepResult: Json | null
+          reason: string | null
+          reasonPrompt: string | null
+          resourceId: string | null
+          runId: string
+          runtimeContext: Json | null
+          score: number
+          scorer: Json
+          scorerId: string
+          source: string
+          threadId: string | null
+          traceId: string | null
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          additionalContext?: Json | null
+          analyzePrompt?: string | null
+          analyzeStepResult?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          entity?: Json | null
+          entityId?: string | null
+          entityType?: string | null
+          extractPrompt?: string | null
+          extractStepResult?: Json | null
+          generateReasonPrompt?: string | null
+          generateScorePrompt?: string | null
+          id: string
+          input: Json
+          metadata?: Json | null
+          output: Json
+          preprocessPrompt?: string | null
+          preprocessStepResult?: Json | null
+          reason?: string | null
+          reasonPrompt?: string | null
+          resourceId?: string | null
+          runId: string
+          runtimeContext?: Json | null
+          score: number
+          scorer: Json
+          scorerId: string
+          source: string
+          threadId?: string | null
+          traceId?: string | null
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          additionalContext?: Json | null
+          analyzePrompt?: string | null
+          analyzeStepResult?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          entity?: Json | null
+          entityId?: string | null
+          entityType?: string | null
+          extractPrompt?: string | null
+          extractStepResult?: Json | null
+          generateReasonPrompt?: string | null
+          generateScorePrompt?: string | null
+          id?: string
+          input?: Json
+          metadata?: Json | null
+          output?: Json
+          preprocessPrompt?: string | null
+          preprocessStepResult?: Json | null
+          reason?: string | null
+          reasonPrompt?: string | null
+          resourceId?: string | null
+          runId?: string
+          runtimeContext?: Json | null
+          score?: number
+          scorer?: Json
+          scorerId?: string
+          source?: string
+          threadId?: string | null
+          traceId?: string | null
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
+      mastra_threads: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          id: string
+          metadata: string | null
+          resourceId: string
+          title: string
+          updatedAt: string
+          updatedAtZ: string | null
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          id: string
+          metadata?: string | null
+          resourceId: string
+          title: string
+          updatedAt: string
+          updatedAtZ?: string | null
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          id?: string
+          metadata?: string | null
+          resourceId?: string
+          title?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
+      mastra_traces: {
+        Row: {
+          attributes: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          endTime: number
+          events: Json | null
+          id: string
+          kind: number
+          links: Json | null
+          name: string
+          other: string | null
+          parentSpanId: string | null
+          scope: string
+          startTime: number
+          status: Json | null
+          traceId: string
+        }
+        Insert: {
+          attributes?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          endTime: number
+          events?: Json | null
+          id: string
+          kind: number
+          links?: Json | null
+          name: string
+          other?: string | null
+          parentSpanId?: string | null
+          scope: string
+          startTime: number
+          status?: Json | null
+          traceId: string
+        }
+        Update: {
+          attributes?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          endTime?: number
+          events?: Json | null
+          id?: string
+          kind?: number
+          links?: Json | null
+          name?: string
+          other?: string | null
+          parentSpanId?: string | null
+          scope?: string
+          startTime?: number
+          status?: Json | null
+          traceId?: string
+        }
+        Relationships: []
+      }
+      mastra_workflow_snapshot: {
+        Row: {
+          createdAt: string
+          createdAtZ: string | null
+          resourceId: string | null
+          run_id: string
+          snapshot: string
+          updatedAt: string
+          updatedAtZ: string | null
+          workflow_name: string
+        }
+        Insert: {
+          createdAt: string
+          createdAtZ?: string | null
+          resourceId?: string | null
+          run_id: string
+          snapshot: string
+          updatedAt: string
+          updatedAtZ?: string | null
+          workflow_name: string
+        }
+        Update: {
+          createdAt?: string
+          createdAtZ?: string | null
+          resourceId?: string | null
+          run_id?: string
+          snapshot?: string
+          updatedAt?: string
+          updatedAtZ?: string | null
+          workflow_name?: string
+        }
+        Relationships: []
       }
       opportunities: {
         Row: {
@@ -2173,12 +2504,15 @@ export type Database = {
       }
       project_section_kinds: {
         Row: {
+          Goal: string | null
           id: string
         }
         Insert: {
+          Goal?: string | null
           id: string
         }
         Update: {
+          Goal?: string | null
           id?: string
         }
         Relationships: []
@@ -3064,7 +3398,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
+        Returns: unknown
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
@@ -3334,9 +3668,6 @@ export const Constants = {
       ],
     },
   },
-  graphql_public: {
-    Enums: {},
-  },
   public: {
     Enums: {
       interview_status: [
@@ -3356,4 +3687,3 @@ export const Constants = {
     },
   },
 } as const
-

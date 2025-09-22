@@ -107,6 +107,7 @@ export namespace partial_types {
       quotes: string[]
     }
     export interface EvidenceUnit {
+      person_role?: string | null
       verbatim?: string | null
       support?: string | null
       kind_tags?: KindTags | null
@@ -117,6 +118,12 @@ export namespace partial_types {
       confidence?: string | null
       context_summary?: string | null
       independence_key?: string | null
+      says?: string[] | null
+      does?: string[] | null
+      thinks?: string[] | null
+      feels?: string[] | null
+      pains?: string[] | null
+      gains?: string[] | null
     }
     export interface ExecutiveInsight {
       title?: string | null
@@ -137,11 +144,16 @@ export namespace partial_types {
       next_action?: string | null
     }
     export interface ExtractedInsight {
-      pain?: string | null
       name?: string | null
+      pain?: string | null
       details?: string | null
       evidence?: string | null
       desiredOutcome?: string | null
+      assumptionAlignment?: string | null
+      researchQuestionAnswered?: string | null
+      evidenceStrength?: string | null
+      productImplication?: string | null
+      followUpQuestions?: string | null
       emotionalResponse?: types.Emotions | null
       underlyingMotivation?: string | null
       values: types.BBValues[]
@@ -211,6 +223,7 @@ export namespace partial_types {
       metadata?: InterviewMetadata | null
       interviewee?: Interviewee | null
       insights: ExtractedInsight[]
+      relevantAnswers: string[]
       observationsAndNotes?: string | null
       highImpactThemes: string[]
       openQuestionsAndNextSteps?: string | null

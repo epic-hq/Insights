@@ -1,0 +1,14 @@
+{
+  "version": "0.2.0",
+  "configurations": [
+    {
+      "name": "BAML Playground",
+      "type": "node",
+      "request": "launch",
+      "program": "${workspaceFolder}/node_modules/@boundaryml/baml/cli.js",
+      "args": ["dev"],
+      "console": "integratedTerminal",
+      "cwd": "${workspaceFolder}"
+    }
+  ]
+}
