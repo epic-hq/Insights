@@ -275,6 +275,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
 	const { accountId, projectId, interview, insights, evidence, empathyMap } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
+	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
 
 	// Always call hooks at the top level
 	const { projectPath } = useCurrentProject()
@@ -393,229 +394,288 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-					{/* Enhanced Empathy Map - 2 Column Layout */}
-					{(empathyMap.says.length > 0 ||
-						empathyMap.does.length > 0 ||
-						empathyMap.thinks.length > 0 ||
+					{/* Tabbed Interface: Pains & Gains / User Actions */}
+					{(empathyMap.pains.length > 0 ||
+						empathyMap.gains.length > 0 ||
+						empathyMap.says.length > 0 || empathyMap.does.length > 0 || empathyMap.thinks.length > 0 ||
 						empathyMap.feels.length > 0) && (
-							<div className="mb-8 rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:from-blue-950/20 dark:to-indigo-950/20">
-								<div className="mb-6 flex items-center gap-3">
-									<div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/50">
-										<svg
-											className="h-5 w-5 text-blue-600 dark:text-blue-400"
-											fill="none"
-											viewBox="0 0 24 24"
-											stroke="currentColor"
-										>
-											<path
-												strokeLinecap="round"
-												strokeLinejoin="round"
-												strokeWidth={2}
-												d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
-											/>
-										</svg>
-									</div>
-									<h2 className="font-bold text-foreground text-xl">User Empathy Map</h2>
-									<Badge variant="outline" className="ml-auto">
-										{evidence.length} evidence points
-									</Badge>
+							<div className="mb-8">
+								{/* Tab Navigation */}
+								<div className="mb-6 flex space-x-1 rounded-lg bg-gray-100 p-1 dark:bg-gray-800">
+									<button
+										onClick={() => setActiveTab("pains-gains")}
+										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "pains-gains"
+											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+											}`}
+									>
+										<div className="flex items-center justify-center gap-2">
+											<div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/50">
+												<svg
+													className="h-5 w-5 text-orange-600 dark:text-orange-400"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+												>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+													/>
+												</svg>
+											</div>
+											<span>Pains & Goals</span>
+											<Badge variant="secondary" className="text-xs">
+												{empathyMap.pains.length + empathyMap.gains.length}
+											</Badge>
+										</div>
+									</button>
+									<button
+										onClick={() => setActiveTab("user-actions")}
+										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "user-actions"
+											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+											}`}
+									>
+										<div className="flex items-center justify-center gap-2">
+											<span>⚡</span>
+											<span>User Actions</span>
+											<Badge variant="secondary" className="text-xs">
+												{empathyMap.says.length +
+													empathyMap.does.length +
+													empathyMap.thinks.length +
+													empathyMap.feels.length}
+											</Badge>
+										</div>
+									</button>
 								</div>
 
-								{/* 2-Row Layout: Says|Does, then Thinks|Feels */}
-								<div className="space-y-4">
-									{/* First Row: Says & Does */}
-									<div className="grid gap-4 lg:grid-cols-2">
-										{/* Says Section */}
-										<div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">💬</span>
-												<div className="font-semibold text-foreground">Says</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.says.length}
-												</Badge>
+								{/* Tab Content */}
+								{activeTab === "pains-gains" && (
+									<div className="rounded-xl border bg-gradient-to-br from-red-50 to-green-50 p-6 dark:from-red-950/20 dark:to-green-950/20">
+										<div className="mb-6 flex items-center gap-3">
+											<div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/50">
+												<svg
+													className="h-5 w-5 text-orange-600 dark:text-orange-400"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+												>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+													/>
+												</svg>
 											</div>
-											{empathyMap.says.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No quotes captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.says.map((item, i) => (
-														<Link
-															key={`says-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
-														>
-															{item.text}
-														</Link>
-													))}
-												</div>
-											)}
+											<h2 className="font-bold text-foreground text-xl">Pains & Goals</h2>
+											<Badge variant="outline" className="ml-auto">
+												{empathyMap.pains.length + empathyMap.gains.length} items
+											</Badge>
 										</div>
 
-										{/* Does Section */}
-										<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">⚡</span>
-												<div className="font-semibold text-foreground">Does</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.does.length}
-												</Badge>
-											</div>
-											{empathyMap.does.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No behaviors captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.does.map((item, i) => (
-														<Link
-															key={`does-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
-														>
-															{item.text}
-														</Link>
-													))}
+										<div className="grid gap-6 lg:grid-cols-2">
+											{/* Pains Column */}
+											<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
+												<div className="mb-3 flex items-center gap-2">
+													<span className="text-lg">😣</span>
+													<div className="font-semibold text-foreground">Pain Points</div>
+													<Badge variant="secondary" className="ml-auto text-xs">
+														{empathyMap.pains.length}
+													</Badge>
 												</div>
-											)}
+												{empathyMap.pains.length === 0 ? (
+													<div className="text-muted-foreground text-sm italic">No pain points identified</div>
+												) : (
+													<div className="space-y-2">
+														{empathyMap.pains.map((item, i) => (
+															<Link
+																key={`pain-${item.evidenceId}-${i}`}
+																to={routes.evidence.detail(item.evidenceId)}
+																className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+															>
+																{item.text}
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
+
+											{/* Gains Column */}
+											<div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
+												<div className="mb-3 flex items-center gap-2">
+													<span className="text-lg">🎯</span>
+													<div className="font-semibold text-foreground">Goals</div>
+													<Badge variant="secondary" className="ml-auto text-xs">
+														{empathyMap.gains.length}
+													</Badge>
+												</div>
+												{empathyMap.gains.length === 0 ? (
+													<div className="text-muted-foreground text-sm italic">No gains identified</div>
+												) : (
+													<div className="space-y-2">
+														{empathyMap.gains.map((item, i) => (
+															<Link
+																key={`gain-${item.evidenceId}-${i}`}
+																to={routes.evidence.detail(item.evidenceId)}
+																className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+															>
+																{item.text}
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
 										</div>
 									</div>
+								)}
 
-									{/* Second Row: Thinks & Feels */}
-									<div className="grid gap-4 lg:grid-cols-2">
-										{/* Thinks Section */}
-										<div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/20">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">💭</span>
-												<div className="font-semibold text-foreground">Thinks</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.thinks.length}
-												</Badge>
+								{activeTab === "user-actions" && (
+									<div className="rounded-xl border bg-gradient-to-br from-blue-50 to-indigo-50 p-6 dark:from-blue-950/20 dark:to-indigo-950/20">
+										<div className="mb-6 flex items-center gap-3">
+											<div className="rounded-full bg-blue-100 p-2 dark:bg-blue-900/50">
+												<svg
+													className="h-5 w-5 text-blue-600 dark:text-blue-400"
+													fill="none"
+													viewBox="0 0 24 24"
+													stroke="currentColor"
+												>
+													<path
+														strokeLinecap="round"
+														strokeLinejoin="round"
+														strokeWidth={2}
+														d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"
+													/>
+												</svg>
 											</div>
-											{empathyMap.thinks.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No thoughts captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.thinks.map((item, i) => (
-														<Link
-															key={`thinks-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
-														>
-															{item.text}
-														</Link>
-													))}
-												</div>
-											)}
+											<h2 className="font-bold text-foreground text-xl">User Actions</h2>
+											<Badge variant="outline" className="ml-auto">
+												{empathyMap.says.length +
+													empathyMap.does.length +
+													empathyMap.thinks.length +
+													empathyMap.feels.length}{" "}
+												evidence points
+											</Badge>
 										</div>
 
-										{/* Feels Section */}
-										<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950/20">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">❤️</span>
-												<div className="font-semibold text-foreground">Feels</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.feels.length}
-												</Badge>
-											</div>
-											{empathyMap.feels.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No emotions captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.feels.map((item, i) => (
-														<Link
-															key={`feels-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
-														>
-															{item.text}
-														</Link>
-													))}
+										{/* 2-Row Layout: Says|Does, then Thinks|Feels */}
+										<div className="space-y-4">
+											{/* First Row: Says & Does */}
+											<div className="grid gap-4 lg:grid-cols-2">
+												{/* Says Section */}
+												<div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
+													<div className="mb-3 flex items-center gap-2">
+														<span className="text-lg">💬</span>
+														<div className="font-semibold text-foreground">Says</div>
+														<Badge variant="secondary" className="ml-auto text-xs">
+															{empathyMap.says.length}
+														</Badge>
+													</div>
+													{empathyMap.says.length === 0 ? (
+														<div className="text-muted-foreground text-sm italic">No quotes captured</div>
+													) : (
+														<div className="space-y-2">
+															{empathyMap.says.map((item, i) => (
+																<Link
+																	key={`says-${item.evidenceId}-${i}`}
+																	to={routes.evidence.detail(item.evidenceId)}
+																	className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+																>
+																	{item.text}
+																</Link>
+															))}
+														</div>
+													)}
 												</div>
-											)}
+
+												{/* Does Section */}
+												<div className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-950/20">
+													<div className="mb-3 flex items-center gap-2">
+														<span className="text-lg">⚡</span>
+														<div className="font-semibold text-foreground">Does</div>
+														<Badge variant="secondary" className="ml-auto text-xs">
+															{empathyMap.does.length}
+														</Badge>
+													</div>
+													{empathyMap.does.length === 0 ? (
+														<div className="text-muted-foreground text-sm italic">No behaviors captured</div>
+													) : (
+														<div className="space-y-2">
+															{empathyMap.does.map((item, i) => (
+																<Link
+																	key={`does-${item.evidenceId}-${i}`}
+																	to={routes.evidence.detail(item.evidenceId)}
+																	className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+																>
+																	{item.text}
+																</Link>
+															))}
+														</div>
+													)}
+												</div>
+											</div>
+
+											{/* Second Row: Thinks & Feels */}
+											<div className="grid gap-4 lg:grid-cols-2">
+												{/* Thinks Section */}
+												<div className="rounded-lg border border-purple-200 bg-purple-50 p-4 dark:border-purple-800 dark:bg-purple-950/20">
+													<div className="mb-3 flex items-center gap-2">
+														<span className="text-lg">💭</span>
+														<div className="font-semibold text-foreground">Thinks</div>
+														<Badge variant="secondary" className="ml-auto text-xs">
+															{empathyMap.thinks.length}
+														</Badge>
+													</div>
+													{empathyMap.thinks.length === 0 ? (
+														<div className="text-muted-foreground text-sm italic">No thoughts captured</div>
+													) : (
+														<div className="space-y-2">
+															{empathyMap.thinks.map((item, i) => (
+																<Link
+																	key={`thinks-${item.evidenceId}-${i}`}
+																	to={routes.evidence.detail(item.evidenceId)}
+																	className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+																>
+																	{item.text}
+																</Link>
+															))}
+														</div>
+													)}
+												</div>
+
+												{/* Feels Section */}
+												<div className="rounded-lg border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-950/20">
+													<div className="mb-3 flex items-center gap-2">
+														<span className="text-lg">❤️</span>
+														<div className="font-semibold text-foreground">Feels</div>
+														<Badge variant="secondary" className="ml-auto text-xs">
+															{empathyMap.feels.length}
+														</Badge>
+													</div>
+													{empathyMap.feels.length === 0 ? (
+														<div className="text-muted-foreground text-sm italic">No emotions captured</div>
+													) : (
+														<div className="space-y-2">
+															{empathyMap.feels.map((item, i) => (
+																<Link
+																	key={`feels-${item.evidenceId}-${i}`}
+																	to={routes.evidence.detail(item.evidenceId)}
+																	className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
+																>
+																	{item.text}
+																</Link>
+															))}
+														</div>
+													)}
+												</div>
+											</div>
 										</div>
 									</div>
-								</div>
+								)}
 							</div>
 						)}
-
-					{/* Pains & Gains Table */}
-					{(empathyMap.pains.length > 0 || empathyMap.gains.length > 0) && (
-						<div className="mb-8 rounded-xl border bg-gradient-to-br from-red-50 to-green-50 p-6 dark:from-red-950/20 dark:to-green-950/20">
-							<div className="mb-6 flex items-center gap-3">
-								<div className="rounded-full bg-orange-100 p-2 dark:bg-orange-900/50">
-									<svg
-										className="h-5 w-5 text-orange-600 dark:text-orange-400"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth={2}
-											d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
-										/>
-									</svg>
-								</div>
-								<h2 className="font-bold text-foreground text-xl">Pains & Gains</h2>
-								<Badge variant="outline" className="ml-auto">
-									{empathyMap.pains.length + empathyMap.gains.length} items
-								</Badge>
-							</div>
-
-							<div className="grid gap-6 lg:grid-cols-2">
-								{/* Pains Column */}
-								<div className="rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-950/20">
-									<div className="mb-3 flex items-center gap-2">
-										<span className="text-lg">😣</span>
-										<div className="font-semibold text-foreground">Pain Points</div>
-										<Badge variant="secondary" className="ml-auto text-xs">
-											{empathyMap.pains.length}
-										</Badge>
-									</div>
-									{empathyMap.pains.length === 0 ? (
-										<div className="text-muted-foreground text-sm italic">No pain points identified</div>
-									) : (
-										<div className="space-y-2">
-											{empathyMap.pains.map((item, i) => (
-												<Link
-													key={`pain-${item.evidenceId}-${i}`}
-													to={routes.evidence.detail(item.evidenceId)}
-													className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
-												>
-													{item.text}
-												</Link>
-											))}
-										</div>
-									)}
-								</div>
-
-								{/* Gains Column */}
-								<div className="rounded-lg border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-950/20">
-									<div className="mb-3 flex items-center gap-2">
-										<span className="text-lg">🎯</span>
-										<div className="font-semibold text-foreground">Gains & Benefits</div>
-										<Badge variant="secondary" className="ml-auto text-xs">
-											{empathyMap.gains.length}
-										</Badge>
-									</div>
-									{empathyMap.gains.length === 0 ? (
-										<div className="text-muted-foreground text-sm italic">No gains identified</div>
-									) : (
-										<div className="space-y-2">
-											{empathyMap.gains.map((item, i) => (
-												<Link
-													key={`gain-${item.evidenceId}-${i}`}
-													to={routes.evidence.detail(item.evidenceId)}
-													className="block w-full rounded-md bg-white/60 px-3 py-2 text-left text-foreground text-sm hover:bg-white/80 dark:bg-black/20 dark:hover:bg-black/30"
-												>
-													{item.text}
-												</Link>
-											))}
-										</div>
-									)}
-								</div>
-							</div>
-						</div>
-					)}
 
 					{/* Key Takeaways Section */}
 					<div className="space-y-4">

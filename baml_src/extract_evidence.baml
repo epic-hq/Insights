@@ -38,8 +38,8 @@ class EvidenceUnit {
   does string[]? @description("Observable actions/behaviors; short imperative phrases, under ~120 characters.")
   thinks string[]? @description("Internal thoughts/beliefs; concise first-person statements, under ~120 characters.")
   feels string[]? @description("Emotions with brief context; e.g., 'Frustrated with long load times'.")
-  pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases.")
-  gains string[]? @description("Positive outcomes/benefits/success factors; short phrases.")
+  pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases in specific context.")
+  gains string[]? @description("Goals, desires, positive outcomes/benefits/success factors; short phrases in specific context.")
 }
 
 class Chapter {
@@ -56,36 +56,43 @@ function ExtractEvidenceFromTranscript(
 ) -> EvidenceUnit[] {
   client "CustomGPT4o"
   prompt #"
-    You are an expert UX researcher. First, identify who is the interviewer and interviewee.
-		Identify key statements by the interviewee that are relevant to context, behavior, pains, goals decision-making process, etc.
-    Select crisply citable quotes that represent the person's perspective, with just enough context to understand and act.
-		Capture statements or questions from the interviewer as such, so we can clearly differentiate.
+   You are an expert UX researcher.
+Your task is to extract sequential evidence from an interview transcript so the reader can easily follow what happened, moment by moment.
 
-    Selection priorities
-    - Prefer high-severity pains, frequent behaviors, explicit goals/success criteria.
-    - Include workarounds/hacks, switching triggers, evaluation criteria, blockers, and signals of commitment/WTP.
-    - Skip generic opinions or filler unless tied to a concrete outcome.
+## Steps
+Identify who is the interviewer and who is the interviewee.
+For each segment, capture the interviewee’s statements relevant to context, behavior, pains, goals, decision process, or emotions.
+Capture interviewer questions or comments clearly marked as such.
+Output in a chronological list, so each evidence unit is ordered as it occurred.
 
-    For each evidence unit
-    - verbatim: Short quote (<= ~200 chars when possible), trim filler.
-    - anchors: Include an anchor with precise start (ms for av) and, when possible, speaker and chapter_title.
-    - kind_tags: Fill problem/goal/behavior/emotion/context/artifact appropriately.
-    - support: supports | refutes | neutral relative to the statement.
-    - confidence: low | medium | high based on clarity and specificity.
-    - context_summary: 1–2 sentences stating who said it, in what situation/flow, and why it matters for the decision.
-    - independence_key: Stable signature (e.g., normalized quote + prominent tag) to dedupe similar units.
+## Selection Priorities
+High-severity pains, frequent behaviors, explicit goals, success criteria.
+Workarounds, hacks, switching triggers, evaluation criteria, blockers, willingness-to-pay signals.
+Skip generic opinions or filler unless tied to a concrete outcome.
 
-    EMPATHY MAP FACETS (CRITICAL - always populate these):
-    - says: Direct quotes the user says out loud (short phrases, <120 chars each)
-    - does: Observable actions/behaviors they perform (imperative phrases, <120 chars each)
-    - thinks: Internal thoughts/beliefs they express (first-person statements, <120 chars each)
-    - feels: Emotions with brief context (e.g., "Frustrated with long load times", <120 chars each)
-    - pains: Biggest frustrations/fears/obstacles mentioned (short phrases, <120 chars each)
-    - gains: Positive outcomes/benefits/success factors they want (short phrases, <120 chars each)
+## Evidence Unit Schema
+Each evidence unit must include:
 
-    Guardrails
-    - Only infer persona/segment/journey_stage when obvious.
-    - Prefer fewer, higher-quality units over many weak ones.
+verbatim: Short quote, aim for ≤15 words (trim filler, keep crisp).
+anchors: Start time (ms for av), speaker, and chapter_title if available.
+kind_tags: problem | goal | behavior | emotion | context | artifact.
+support: supports | refutes | neutral relative to statement.
+confidence: low | medium | high.
+context_summary: 1–2 sentences on who said it, in what situation, and why it matters.
+independence_key: Stable signature (normalized quote + main tag).
+
+## EMPATHY MAP FACETS (always fill, ≤12 words each)
+
+says: Direct short quotes (e.g., “wants better leads quicker”).
+does: Observable actions (imperative phrasing, e.g., “manually scrapes LinkedIn lists daily”).
+thinks: Internal beliefs or self-talk (e.g., “I spend hours chasing low-quality prospects”).
+feels: Emotions with context (e.g., “frustrated wasting evenings on prospecting”).
+pains: Biggest frustrations/obstacles (e.g., “tools deliver unqualified contacts”).
+gains: Desired positive outcomes (e.g., “save time with pre-qualified leads”).
+
+## Guardrails
+Only infer persona/segment/journey_stage when obvious.
+Prefer fewer, higher-quality units over many weak ones.
 
     Transcript (language={{ language }})
     {{ transcript }}
