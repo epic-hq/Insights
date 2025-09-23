@@ -15,3 +15,12 @@ Use these examples to implement streaming speech-to-text when user presses the R
 [Assemblyai LEMUR analysis guide](https://www.assemblyai.com/docs/guides/real_time_lemur)
 
 [Assemblyai NextJS Example](https://github.com/AssemblyAI-Community/streaming-api-nextjs)
+
+
+## Uploading media
+
+downconvert MP4 to mp3
+
+```bash
+ffmpeg -i input_video.mp4 -vn -c:a libmp3lame -q:a 2 output_audio.mp3
+```

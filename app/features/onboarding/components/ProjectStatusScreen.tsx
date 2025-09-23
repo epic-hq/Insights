@@ -23,7 +23,7 @@ import {
 	Users,
 	Zap,
 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
 import { Badge } from "~/components/ui/badge"
@@ -35,8 +35,26 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import {
+	ResearchAnswers,
+	type ResearchAnswerNode,
+	type ResearchAnswersData,
+	type ResearchQuestionNode,
+} from "~/features/research/components/ResearchAnswers"
+import {
+	getAnsweredQuestions,
+	getOpenQuestions,
+	calculateResearchMetrics,
+	type AnsweredQuestionSummary,
+	type OpenQuestionSummary,
+} from "~/features/research/utils/research-data-mappers"
+import { KeyDecisionsCard, type DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
+import { InterviewAnalysisCard } from "~/features/onboarding/components/InterviewAnalysisCard"
 import { createClient } from "~/lib/supabase/client"
 import type { Project_Section } from "~/types"
+
+const ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
+const OPEN_STATUSES = new Set(["planned", "asked"])
 import type { ProjectStatusData } from "~/utils/project-status.server"
 
 function ConfidenceBadge({ value }: { value?: number }) {
@@ -47,39 +65,6 @@ function ConfidenceBadge({ value }: { value?: number }) {
 	else if (pct >= 60) color = "bg-yellow-100 text-yellow-800"
 	else color = "bg-orange-100 text-orange-800"
 	return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{pct}%</span>
-}
-
-function DecisionRow({ qa }: { qa: any }) {
-	const [expanded, setExpanded] = useState(false)
-	return (
-		<div className="rounded-md border p-3">
-			<div className="flex items-start justify-between gap-3">
-				<div className="min-w-0 flex-1">
-					<div className="mb-1 font-medium">{qa?.decision || qa?.answer_summary || "Decision summary unavailable"}</div>
-					<div className="text-muted-foreground text-xs">Based on interview analysis</div>
-				</div>
-				<ConfidenceBadge value={qa?.confidence} />
-				<Button variant="ghost" size="sm" onClick={() => setExpanded((v) => !v)}>
-					{expanded ? "Less" : "More"}
-				</Button>
-			</div>
-			{expanded && (
-				<div className="mt-3 border-t pt-3">
-					<div className="mb-1 text-muted-foreground text-xs">Supporting Q&A</div>
-					<div className="space-y-2 pl-3">
-						<div className="text-foreground text-sm">
-							<span className="font-medium">Q: </span>
-							{qa?.question || "Question text"}
-						</div>
-						<div className="text-foreground text-sm">
-							<span className="font-medium">A: </span>
-							{qa?.answer_summary || "Answer summary"}
-						</div>
-					</div>
-				</div>
-			)}
-		</div>
-	)
 }
 
 interface ThemesSectionProps {
@@ -304,12 +289,26 @@ export default function ProjectStatusScreen({
 	const [projectSections, setProjectSections] = useState<Project_Section[]>(initialSections || [])
 	const [loading, setLoading] = useState(!initialSections)
 	const [showFlowView, _setShowFlowView] = useState(false)
+	const [researchMetrics, setResearchMetrics] = useState<{ answered: number; open: number; total: number }>({
+		answered: 0,
+		open: 0,
+		total: 0,
+	})
+	const [researchRollup, setResearchRollup] = useState<ResearchAnswersData | null>(null)
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
 	const projectPath =
 		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
 	const routes = useProjectRoutes(projectPath)
 	const supabase = createClient()
+
+	const handleResearchMetrics = useCallback((metrics: { answered: number; open: number; total: number }) => {
+		setResearchMetrics(metrics)
+	}, [])
+
+	const handleResearchRollup = useCallback((data: ResearchAnswersData | null) => {
+		setResearchRollup(data)
+	}, [])
 
 	// Feature flag for chat setup button
 	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat")
@@ -408,12 +407,53 @@ export default function ProjectStatusScreen({
 		return
 	}
 
+	const decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup])
+
+	const decoratedResearchQuestions = useMemo<DecoratedResearchQuestion[]>(() => {
+		if (!researchRollup) return []
+		const withDecisions = researchRollup.decision_questions.flatMap((decision) =>
+			decision.research_questions.map((rq) => ({ ...rq, decisionText: decision.text }))
+		)
+		const withoutDecisions = researchRollup.research_questions_without_decision.map((rq) => ({
+			...rq,
+			decisionText: null,
+		}))
+		return [...withDecisions, ...withoutDecisions]
+	}, [researchRollup])
+
+	const topResearchQuestions = useMemo(() => {
+		return decoratedResearchQuestions
+			.filter((rq) => (rq.metrics.answered_answer_count ?? 0) + (rq.metrics.open_answer_count ?? 0) > 0)
+			.sort(
+				(a, b) =>
+					(b.metrics.answered_answer_count ?? 0) - (a.metrics.answered_answer_count ?? 0) ||
+					(b.metrics.open_answer_count ?? 0) - (a.metrics.open_answer_count ?? 0)
+			)
+			.slice(0, 3)
+	}, [decoratedResearchQuestions])
+
+	type DecoratedResearchQuestion = ResearchQuestionNode & { decisionText: string | null }
+
+	const allResearchAnswers = useMemo<ResearchAnswerNode[]>(() => {
+		if (!researchRollup) return []
+		const fromDecisions = researchRollup.decision_questions.flatMap((decision) =>
+			decision.research_questions.flatMap((rq) => rq.answers)
+		)
+		const fromStandalone = researchRollup.research_questions_without_decision.flatMap((rq) => rq.answers)
+		return [...fromDecisions, ...fromStandalone, ...researchRollup.orphan_answers]
+	}, [researchRollup])
+
+	// Use helper functions to extract data from research rollup
+	const answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
+	const openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
+	const researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup])
+
 	// Derive a single-line research goal for display
 	const researchGoalText = (() => {
 		const gs = getGoalSections()
 		if (gs.length === 0) return ""
 		const section = gs[0]
-		const meta: any = section.meta || {}
+		const meta = section.meta || {}
 		return meta.research_goal || meta.customGoal || section.content_md || ""
 	})()
 
@@ -493,8 +533,7 @@ export default function ProjectStatusScreen({
 									<Target className="mx-auto mb-3 h-8 w-8 text-blue-600" />
 									<h3 className="mb-2 font-semibold text-blue-800 text-xl dark:text-blue-300">Research Goals</h3>
 									<div className="text-blue-600 dark:text-blue-400">
-										{statusData?.questionAnswers?.length || 0}/
-										{(statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0)} Questions
+										{researchMetrics.answered}/{Math.max(1, researchMetrics.total)} Questions
 									</div>
 								</motion.div>
 
@@ -566,15 +605,14 @@ export default function ProjectStatusScreen({
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground">Questions Answered</span>
 											<span className="font-semibold text-lg">
-												{statusData?.questionAnswers?.length || 0} /{" "}
-												{(statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0)}
+												{researchMetrics.answered} / {Math.max(1, researchMetrics.total)}
 											</span>
 										</div>
 										<div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700">
 											<div
 												className="h-3 rounded-full bg-blue-600 transition-all"
 												style={{
-													width: `${((statusData?.questionAnswers?.length || 0) / Math.max(1, (statusData?.questionAnswers?.length || 0) + (statusData?.openQuestions?.length || 0))) * 100}%`,
+													width: `${researchMetrics.total > 0 ? (researchMetrics.answered / researchMetrics.total) * 100 : 0}%`,
 												}}
 											/>
 										</div>
@@ -742,420 +780,13 @@ export default function ProjectStatusScreen({
 											)}
 
 											{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
-											<div>
-												<div className="mb-3 text-foreground text-sm">Key Decisions</div>
-												<div className="space-y-3 border-gray-200 border-l-2 pl-4 dark:border-gray-700">
-													{(displayData.questionAnswers || []).slice(0, 3).map((qa: any, idx: number) => (
-														<DecisionRow key={`dq-${idx}`} qa={qa} />
-													))}
-													{displayData?.questionAnswers?.map((qa: any, idx: number) => (
-														<DecisionRow key={`dq-${idx}`} qa={qa} />
-													)) || <p className="text-muted-foreground text-sm">No decisions yet</p>}
-
-													{/* Nested Research Questions */}
-													{statusData?.hasAnalysis &&
-														statusData?.questionAnswers &&
-														statusData.questionAnswers.length > 0 && (
-															<div className="mt-4">
-																<div className="mb-2 text-muted-foreground/50 text-xs">
-																	Supporting Research Questions
-																</div>
-																<div className="space-y-2">
-																	{statusData.questionAnswers.slice(0, 3).map((qa) => (
-																		<div
-																			key={`nested-qa-${qa.question}`}
-																			className="rounded-lg border border-green-200 bg-green-50/50 p-2 dark:border-green-800 dark:bg-green-950/10"
-																		>
-																			<div className="flex items-start gap-2">
-																				<CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-600" />
-																				<div className="flex-1">
-																					<p className="font-medium text-foreground text-xs">{qa.question}</p>
-																					{qa.answer_summary && (
-																						<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
-																							{qa.answer_summary}
-																						</p>
-																					)}
-																				</div>
-																			</div>
-																		</div>
-																	))}
-																</div>
-															</div>
-														)}
-												</div>
-											</div>
+											<KeyDecisionsCard
+												decisionSummaries={decisionSummaries}
+												topResearchQuestions={topResearchQuestions}
+											/>
 										</CardContent>
 									</Card>
 								</div>
-
-								{/* 2. Personas & People */}
-								<div>
-									<div className="mb-3 flex items-center justify-between">
-										<div className="flex items-center gap-2">
-											<Users className="h-5 w-5 text-purple-600" />
-											People
-										</div>
-									</div>
-									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardContent className="space-y-4 p-3 sm:p-4">
-											{personas?.length === 0 && (
-												<Button
-													onClick={() => {
-														if (routes) {
-															window.location.href = routes.interviews.upload()
-														}
-													}}
-													className="bg-green-600 hover:bg-green-700"
-												>
-													<PlusCircle className="mr-2 h-4 w-4" />
-													None yet. Add Interviews
-												</Button>
-											)}
-											{/* Enhanced Target Market Display */}
-											{getTargetMarketSections().length > 0 && (
-												<div className="space-y-3">
-													{getTargetMarketSections().map((section) => {
-														const meta = section.meta as any
-														return (
-															<div key={section.id} className="space-y-3">
-																{/* Target Organizations */}
-																{meta?.target_orgs && (
-																	<div>
-																		<div className="mb-1 text-muted-foreground text-xs">Target Organizations</div>
-																		<div className="flex flex-wrap gap-1">
-																			{(Array.isArray(meta.target_orgs)
-																				? meta.target_orgs
-																				: meta.target_orgs.split(", ")
-																			).map((org: string, i: number) => (
-																				<Badge key={i} variant="outline" className="text-xs">
-																					{org}
-																				</Badge>
-																			))}
-																		</div>
-																	</div>
-																)}
-
-																{/* Target Roles */}
-																{meta?.target_roles && (
-																	<div>
-																		<div className="mb-1 text-muted-foreground text-xs">Target Roles</div>
-																		<div className="flex flex-wrap gap-1">
-																			{(Array.isArray(meta.target_roles)
-																				? meta.target_roles
-																				: meta.target_roles.split(", ")
-																			).map((role: string, i: number) => (
-																				<Badge key={i} variant="outline" className="text-xs">
-																					{role}
-																				</Badge>
-																			))}
-																		</div>
-																	</div>
-																)}
-
-																{/* Research Goal Details */}
-																{meta?.research_goal_details && (
-																	<div>
-																		<div className="mb-1 text-muted-foreground text-xs">Goal Details</div>
-																		<div className="rounded bg-muted/30 p-2 text-foreground text-sm">
-																			{meta.research_goal_details}
-																		</div>
-																	</div>
-																)}
-
-																{/* Unknowns */}
-																{meta?.unknowns && (
-																	<div>
-																		<div className="mb-1 text-muted-foreground text-xs">Key Unknowns</div>
-																		<div className="rounded bg-muted/30 p-2 text-foreground text-sm">
-																			{Array.isArray(meta.unknowns) ? meta.unknowns.join(", ") : meta.unknowns}
-																		</div>
-																	</div>
-																)}
-
-																{/* Original markdown content as fallback */}
-																{!meta?.target_orgs && !meta?.target_roles && (
-																	<div className="rounded-lg bg-muted/50 p-2">
-																		<div className="prose prose-sm max-w-none text-foreground text-sm">
-																			<Streamdown>{section.content_md}</Streamdown>
-																		</div>
-																	</div>
-																)}
-															</div>
-														)
-													})}
-												</div>
-											)}
-
-											{/* Discovered Personas */}
-											{personas.length > 0 && (
-												<div>
-													<div className="mb-3 flex items-center gap-2"></div>
-													<div className="space-y-3">
-														{personas.slice(0, 3).map((persona) => (
-															<div
-																key={persona.id}
-																className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50"
-																onClick={() => routes && (window.location.href = routes.personas.detail(persona.id))}
-															>
-																<div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-purple-100 dark:bg-purple-900/20">
-																	<Users className="h-4 w-4 text-purple-600" />
-																</div>
-																<div className="flex-1">
-																	<div className="mb-1 flex items-center gap-2">
-																		<h5 className="font-medium text-foreground text-md">{persona.name}</h5>
-																		{/* {persona.percentage && (
-																			<Badge variant="secondary" className="text-xs">
-																				{persona.percentage}%
-																			</Badge>
-																		)} */}
-																	</div>
-																	<p className="line-clamp-2 text-muted-foreground text-sm">{persona.description}</p>
-																	{persona.topThemes && persona.topThemes.length > 0 && (
-																		<div className="mt-2 flex flex-wrap gap-1">
-																			{persona.topThemes.slice(0, 3).map((theme: string, i: number) => (
-																				<Badge key={i} variant="outline" className="text-xs">
-																					{theme}
-																				</Badge>
-																			))}
-																		</div>
-																	)}
-																</div>
-															</div>
-														))}
-													</div>
-													{/* <div className="mt-3 flex gap-2">
-														<Button
-															variant="outline"
-															size="sm"
-															className="flex-1"
-															onClick={() => routes && (window.location.href = routes.personas.index())}
-														>
-															View All Personas
-														</Button>
-														<Button
-															variant="outline"
-															size="sm"
-															className="flex-1"
-															onClick={() => routes && (window.location.href = routes.themes.index())}
-														>
-															Persona × Theme Matrix
-														</Button>
-													</div> */}
-												</div>
-											)}
-										</CardContent>
-									</Card>
-								</div>
-
-								{/* 3. Top Themes */}
-								{(statusData?.totalThemes ?? 0) > 0 && (
-									<ThemesSection projectId={projectId} accountId={accountId} routes={routes} />
-								)}
-
-								{/* 4. Interviews */}
-								<div>
-									<div className="mb-3 flex items-center justify-between">
-										<div className="flex items-center gap-2">
-											<MessageCircleQuestionIcon className="h-5 w-5 text-indigo-600" />
-											Questions
-										</div>
-										<div className="flex flex-row items-center gap-2">
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => {
-													if (routes) {
-														window.location.href = routes.questions?.index() || "#"
-													}
-												}}
-											>
-												<Settings2 className="h-5 w-5 text-indigo-600" />
-												Edit
-											</Button>
-										</div>
-									</div>
-									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardContent className="space-y-6 p-3 sm:p-4">
-											{/* Interview Questions */}
-											<div>
-												{/* <div className="mb-3 text-muted-foreground/50 text-sm">Interview Questions</div> */}
-												<div className="space-y-3">
-													{getQuestionsSections().length > 0 ? (
-														getQuestionsSections()
-															.slice(0, 1)
-															.map((section) => {
-																const all = Array.isArray(section.meta?.questions)
-																	? (section.meta!.questions as any[])
-																	: []
-																// Prefer the user's selected pack order if present
-																const selected = all
-																	.filter(
-																		(q: any) => q && (q.isSelected === true || typeof q.selectedOrder === "number")
-																	)
-																	.sort((a: any, b: any) => (a.selectedOrder ?? 1e9) - (b.selectedOrder ?? 1e9))
-																const questions = selected.length > 0 ? selected : all
-																const timeLimit = Number((section.meta as any)?.settings?.timeMinutes) || 45
-																let used = 0
-																const fit: { text: string; id: string; estimatedMinutes?: number }[] = []
-																for (const q of questions as any[]) {
-																	const est = Number(q?.estimatedMinutes) || 4
-																	if (used + est <= timeLimit) {
-																		fit.push(q)
-																		used += est
-																	} else {
-																		break
-																	}
-																}
-																const remainingCount = Math.max(questions.length - fit.length, 0)
-																return (
-																	<div key={section.id} className="space-y-3">
-																		{fit.map((question: { text: string; id: string }, index: number) => {
-																			return (
-																				<div
-																					key={`question-${section.id}-${question.id ?? index}`}
-																					className={"rounded-lg border border-border bg-card p-3"}
-																				>
-																					<div className="flex items-start gap-2">
-																						<CircleHelp className="mt-0.5 h-4 w-4 flex-shrink-0 text-muted-foreground" />
-																						<div className="flex-1">
-																							<p className="font-medium text-foreground text-sm">{question.text}</p>
-																						</div>
-																					</div>
-																				</div>
-																			)
-																		})}
-																		{remainingCount > 0 && (
-																			<p className="text-muted-foreground text-xs">
-																				+{remainingCount} more questions (won't fit into {timeLimit}m)
-																			</p>
-																		)}
-																	</div>
-																)
-															})
-													) : (
-														<div className="py-4 text-center">
-															<BookOpen className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-															<p className="text-muted-foreground text-sm">No interview questions generated yet</p>
-															<Button
-																variant="outline"
-																size="sm"
-																className="mt-2"
-																onClick={() => {
-																	if (routes) {
-																		window.location.href = routes.questions.index()
-																	}
-																}}
-															>
-																Generate Questions
-															</Button>
-														</div>
-													)}
-												</div>
-											</div>
-
-											{/* Interview Status */}
-											{statusData?.hasAnalysis && (
-												<div>
-													<div className="mb-3 text-muted-foreground/50 text-sm">Interview Analysis</div>
-													<div className="space-y-4">
-														{/* Questions Answered */}
-														{statusData.questionAnswers && statusData.questionAnswers.length > 0 && (
-															<div>
-																<h4 className="mb-2 font-medium text-green-700 text-sm dark:text-green-400">
-																	Answered ({statusData.questionAnswers.length})
-																</h4>
-																<div className="space-y-2">
-																	{statusData.questionAnswers.slice(0, 3).map((qa) => (
-																		<div
-																			key={`qa-${qa.question}`}
-																			className="rounded-lg border border-green-200 bg-green-50/50 p-2 dark:border-green-800 dark:bg-green-950/10"
-																		>
-																			<div className="flex items-start gap-2">
-																				<CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-600" />
-																				<div className="flex-1">
-																					<p className="font-medium text-foreground text-xs">{qa.question}</p>
-																					{qa.answer_summary && (
-																						<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">
-																							{qa.answer_summary}
-																						</p>
-																					)}
-																				</div>
-																			</div>
-																		</div>
-																	))}
-																	{statusData.questionAnswers.length > 3 && (
-																		<p className="text-muted-foreground text-xs">
-																			+{statusData.questionAnswers.length - 3} more questions answered
-																		</p>
-																	)}
-																</div>
-															</div>
-														)}
-
-														{/* Open Questions */}
-														{statusData.openQuestions && statusData.openQuestions.length > 0 && (
-															<div>
-																<h4 className="mb-2 font-medium text-amber-700 text-sm dark:text-amber-400">
-																	Unanswered ({statusData.openQuestions.length})
-																</h4>
-																<div className="space-y-2">
-																	{statusData.openQuestions.slice(0, 3).map((question, index) => (
-																		<div
-																			key={`open-${index}`}
-																			className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50/50 p-2 dark:border-amber-800 dark:bg-amber-950/10"
-																		>
-																			<CircleHelp className="mt-0.5 h-3 w-3 flex-shrink-0 text-amber-600" />
-																			<p className="text-foreground text-xs">{question}</p>
-																		</div>
-																	))}
-																	{statusData.openQuestions.length > 3 && (
-																		<p className="text-muted-foreground text-xs">
-																			+{statusData.openQuestions.length - 3} more questions need answers
-																		</p>
-																	)}
-																</div>
-															</div>
-														)}
-													</div>
-												</div>
-											)}
-										</CardContent>
-									</Card>
-								</div>
-
-								{/* If no interviews exist, show prompt to add interviews */}
-								{(!statusData?.totalInterviews || statusData.totalInterviews === 0) && (
-									<div>
-										<div className="mb-3 flex items-center gap-2">
-											<MicIcon className="h-5 w-5 text-green-600" />
-											Get Started with Interviews
-										</div>
-										<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-											<CardContent className="p-3 py-8 text-center sm:p-4">
-												<div className="space-y-4">
-													<div>
-														<MicIcon className="mx-auto mb-3 h-8 w-8 text-muted-foreground" />
-														<h3 className="font-semibold text-foreground text-lg">No Interviews Yet</h3>
-														<p className="text-muted-foreground text-sm">
-															Add your first interview to start generating insights and analysis
-														</p>
-													</div>
-													<Button
-														onClick={() => {
-															if (routes) {
-																window.location.href = routes.interviews.upload()
-															}
-														}}
-														className="bg-green-600 hover:bg-green-700"
-													>
-														<PlusCircle className="mr-2 h-4 w-4" />
-														Add Interviews
-													</Button>
-												</div>
-											</CardContent>
-										</Card>
-									</div>
-								)}
 
 								{/* 4. Recommended Next Steps */}
 								{statusData && displayData.nextSteps?.length > 0 && (
@@ -1202,7 +833,7 @@ export default function ProjectStatusScreen({
 											<PlusCircle className="mr-2 h-4 w-4" />
 											Add Interview
 										</Button>
-										{statusData?.openQuestions && statusData.openQuestions.length > 0 && (
+										{openQuestions.length > 0 && (
 											<Button
 												onClick={() => {
 													if (routes) {
@@ -1213,8 +844,8 @@ export default function ProjectStatusScreen({
 												variant="default"
 											>
 												<Target className="mr-2 h-4 w-4" />
-												Address {statusData.openQuestions.length} Open Question
-												{statusData.openQuestions.length > 1 ? "s" : ""}
+												Address {openQuestions.length} Open Question
+												{openQuestions.length > 1 ? "s" : ""}
 											</Button>
 										)}
 										{/* Always show Manage Interview Questions button */}

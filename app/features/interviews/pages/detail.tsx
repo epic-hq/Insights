@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -343,8 +344,15 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								<h1 className="mb-2 font-bold text-3xl leading-tight">{interview.title || "Untitled Interview"}</h1>
 								<div className="flex flex-wrap items-center gap-3">
 									{/* Show participant from junction table if available, fallback to legacy field */}
-									{interview.primaryParticipant?.name ? (
-										<MiniPersonCard person={primaryParticipant} />
+									{primaryParticipant?.name ? (
+										<MiniPersonCard
+											person={{
+												id: primaryParticipant.id || "",
+												name: primaryParticipant.name,
+												image_url: null,
+												people_personas: [],
+											}}
+										/>
 									) : (
 										interview.participant_pseudonym && (
 											<span className="inline-block rounded bg-blue-100 px-2 py-0.5 font-medium text-blue-800">
@@ -402,18 +410,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						empathyMap.thinks.length > 0 ||
 						empathyMap.feels.length > 0) && (
 							<div
-								className={`mb-8 rounded-xl border p-6 transition-all duration-300 ${activeTab === "pains-gains"
-									? "border-orange-200/50 bg-gradient-to-br from-red-50 to-green-50 dark:border-orange-800/20 dark:from-red-950/20 dark:to-green-950/20"
-									: "border-blue-200/50 bg-gradient-to-br from-blue-50 to-indigo-50 dark:border-blue-800/20 dark:from-blue-950/20 dark:to-indigo-950/20"
-									}`}
+							// className={`mb-8 rounded-xl border p-6 transition-all duration-300 ${activeTab === "pains-gains"
+							// 	? "border-orange-200/50 bg-gradient-to-br from-red-50 to-green-50 dark:border-orange-800/20 dark:from-red-950/20 dark:to-green-950/20"
+							// 	: "border-blue-200/50 bg-gradient-to-br from-blue-50 to-indigo-50 dark:border-blue-800/20 dark:from-blue-950/20 dark:to-indigo-950/20"
+							// 	}`}
 							>
 								{/* Tab Navigation */}
 								<div className="mb-6 flex space-x-1 rounded-lg bg-gray-100/50 p-1 dark:bg-gray-900/50">
 									<button
 										onClick={() => setActiveTab("pains-gains")}
 										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "pains-gains"
-											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
@@ -427,8 +435,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<button
 										onClick={() => setActiveTab("user-actions")}
 										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "user-actions"
-											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
@@ -524,7 +532,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 																to={routes.evidence.detail(item.evidenceId)}
 																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 															>
-																{item.text}
+																"{item.text}"
 															</Link>
 														))}
 													</div>
@@ -675,6 +683,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							/>
 						</div>
 					</div>
+
+					{/* Evidence Timeline Section */}
+					{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-6" />}
 
 					{/* Transcript Section - Collapsed by default */}
 					<details className="group">

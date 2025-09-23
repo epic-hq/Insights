@@ -995,7 +995,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				<div className="flex h-full flex-col gap-4 p-4 lg:flex-row">
 					{/* Left Side - Questions */}
 					<div className="flex min-h-0 flex-1 flex-col overflow-y-auto lg:max-w-md">
-						<MinimalQuestionView projectId={projectId} />
+						<MinimalQuestionView projectId={projectId} interviewId={interviewId} />
 					</div>
 
 					{/* Right Side - Notes (collapsible on mobile) */}

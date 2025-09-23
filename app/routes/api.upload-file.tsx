@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 
@@ -83,6 +84,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			if (insertError || !interview) {
 				return Response.json({ error: "Failed to create interview record" }, { status: 500 })
 			}
+
+			await createPlannedAnswersForInterview(supabase, { projectId, interviewId: interview.id })
 
 			// Store audio file in Supabase Storage
 			consola.log("Storing audio file in Supabase Storage...")

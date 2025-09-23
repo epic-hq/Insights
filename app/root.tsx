@@ -1,3 +1,4 @@
+import consola from "consola"
 import { PostHogProvider } from "posthog-js/react"
 import { useTranslation } from "react-i18next"
 import type { LoaderFunctionArgs } from "react-router"
@@ -18,24 +19,40 @@ import { ClientOnly } from "~/components/ClientOnly"
 import ErrorBoundaryComponent from "~/components/ErrorBoundary"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import { ThemeProvider } from "~/contexts/ThemeContext"
+import { getClientEnv } from "~/env.server"
 import { loadContext } from "~/server/load-context"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-  // Get the load context with proper typing
-  const loadCtx = context.get(loadContext) as {
-    lang: string
-    clientEnv: Record<string, unknown>
-    env: { APP_ENV: string }
-    isProductionDeployment: boolean
-    t: (key: string) => string
+  let lang = "en"
+  let clientEnv: Record<string, unknown> | undefined
+
+  try {
+    const loadCtx = context.get(loadContext) as {
+      lang?: string
+      clientEnv?: Record<string, unknown>
+      env?: { APP_ENV: string }
+      isProductionDeployment?: boolean
+      t?: (key: string) => string
+    }
+
+    if (loadCtx?.lang) {
+      lang = loadCtx.lang
+    }
+
+    if (loadCtx?.clientEnv) {
+      clientEnv = loadCtx.clientEnv
+    }
+  } catch (error) {
+    consola.warn("[root.loader] Missing loadContext; falling back to defaults", error)
   }
+
 	const hints = getHints(request)
 
 	return {
-		lang: loadCtx.lang,
-		clientEnv: loadCtx.clientEnv,
+		lang,
+		clientEnv: clientEnv ?? getClientEnv(),
 		hints,
 	}
 }

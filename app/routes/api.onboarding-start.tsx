@@ -4,6 +4,7 @@ import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
@@ -239,6 +240,11 @@ Please extract insights that specifically address these research questions and h
 			consola.error("Interview creation failed:", interviewError)
 			return Response.json({ error: "Failed to create interview" }, { status: 500 })
 		}
+
+		await createPlannedAnswersForInterview(supabase, {
+			projectId: finalProjectId,
+			interviewId: interview.id,
+		})
 
 		consola.log("Created interview:", interview.id)
 

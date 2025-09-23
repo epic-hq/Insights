@@ -79,6 +79,16 @@ create table if not exists public.interview_prompts (
   project_id uuid not null references public.projects(id) on delete cascade,
   plan_id uuid references public.project_research_plans(id) on delete cascade,
   text text not null,
+  category text,
+  estimated_time_minutes int,
+  is_must_have boolean default false,
+  status text check (status in ('proposed','asked','answered','skipped','rejected')) default 'proposed',
+  order_index int,
+  scores jsonb,
+  source text default 'ai',
+  rationale text,
+  is_selected boolean default false,
+  selected_order int,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users(id) on delete set null,
@@ -129,6 +139,7 @@ create index if not exists idx_research_questions_dq on public.research_question
 create index if not exists idx_rq_evidence_rq on public.research_question_evidence_types(research_question_id);
 create index if not exists idx_rq_methods_rq on public.research_question_methods(research_question_id);
 create index if not exists idx_prompts_project on public.interview_prompts(project_id);
+create index if not exists idx_prompts_project_order on public.interview_prompts(project_id, order_index);
 create index if not exists idx_prompts_plan on public.interview_prompts(plan_id);
 create index if not exists idx_prompt_followups_prompt on public.interview_prompt_followups(prompt_id);
 create index if not exists idx_prompt_bias_prompt on public.interview_prompt_bias_checks(prompt_id);

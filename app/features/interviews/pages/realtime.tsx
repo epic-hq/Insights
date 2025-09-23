@@ -2,6 +2,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
 import { useEffect } from "react"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => [{ title: "Interview Realtime | Insights" }]
@@ -29,6 +30,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (error || !interview) {
 		throw new Response("Interview not found", { status: 404 })
 	}
+
+	await createPlannedAnswersForInterview(supabase, { projectId, interviewId })
 
 	return { accountId, projectId, interviewId }
 }

@@ -20,7 +20,7 @@ class ResearchQuestionOut {
 }
 
 class InterviewPromptOut {
-  id string @description("Local id like 'ip1'")
+  id string @description("Unique UUID")
   rq_ids string[] @description("Links to ResearchQuestionOut.id")
   text string @description("Open-ended question to ask interviewees to gather evidence for the research question")
   followups string[] @description("Follow-up questions to ask interviewees to dig deeper")

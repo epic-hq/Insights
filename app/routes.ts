@@ -119,6 +119,7 @@ const routes = [
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
+	route("api.research-answers", "./routes/api.research-answers.tsx"),
 	...voiceRoutes,
 
 	// Resource routes

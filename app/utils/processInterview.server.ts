@@ -9,13 +9,15 @@ import consola from "consola"
 import { b } from "~/../baml_client"
 import type { Database, Json } from "~/../supabase/types"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 
 // Supabase table types
-type PeopleInsert = Database["public"]["Tables"]["people"]["Insert"]
-type InterviewPeopleInsert = Database["public"]["Tables"]["interview_people"]["Insert"]
-type EvidenceInsert = Database["public"]["Tables"]["evidence"]["Insert"]
+type Tables = Database["public"]["Tables"]
+type PeopleInsert = Tables["people"]["Insert"]
+type InterviewPeopleInsert = Tables["interview_people"]["Insert"]
+type EvidenceInsert = Tables["evidence"]["Insert"]
 
 export interface ProcessingResult {
 	stored: InsightInsert[]
@@ -227,6 +229,13 @@ async function processInterviewTranscriptWithClient({
 			throw new Error(`Failed to create interview record: ${interviewError?.message}`)
 		}
 		interviewRecord = created as unknown as Interview
+	}
+
+	if (metadata.projectId && interviewRecord?.id) {
+		await createPlannedAnswersForInterview(db, {
+			projectId: metadata.projectId,
+			interviewId: interviewRecord.id,
+		})
 	}
 
 	// 2. Extract and persist Evidence units from transcript (BAML)
@@ -553,20 +562,46 @@ async function processInterviewTranscriptWithClient({
 
 	// Heuristic: Map evidence -> answers by category against latest questions set
 	try {
-		// 1) Load latest questions from project_sections.meta.questions
-		let latestQuestions: Array<{ id: string; text: string; categoryId?: string }> = []
+		// 1) Prefer planned answers for this interview; fallback to project_sections meta
+		let latestQuestions: Array<{ id: string; text: string; categoryId?: string | null }> = []
 		if (metadata.projectId) {
-			const { data: qsSection } = await db
-				.from("project_sections")
-				.select("meta, created_at")
+			const { data: plannedAnswers, error: plannedError } = await db
+				.from("project_answers")
+				.select("question_id, question_text, question_category")
 				.eq("project_id", metadata.projectId)
-				.eq("kind", "questions")
-				.order("created_at", { ascending: false })
-				.limit(1)
-				.single()
-			const meta = (qsSection?.meta as any) || {}
-			const fromMeta = Array.isArray(meta?.questions) ? meta.questions : []
-			latestQuestions = fromMeta.map((q: any) => ({ id: String(q.id), text: String(q.text || ""), categoryId: q.categoryId }))
+				.eq("interview_id", interviewRecord.id)
+
+			if (plannedError) {
+				consola.warn("Failed to load planned project_answers", plannedError.message)
+			}
+
+			if (plannedAnswers && plannedAnswers.length > 0) {
+				latestQuestions = plannedAnswers
+					.filter((row) => row.question_id && row.question_text)
+					.map((row) => ({
+						id: row.question_id as string,
+						text: row.question_text ?? "",
+						categoryId: row.question_category,
+					}))
+			} else {
+				const { data: qsSection } = await db
+					.from("project_sections")
+					.select("meta, created_at")
+					.eq("project_id", metadata.projectId)
+					.eq("kind", "questions")
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.single()
+				const meta = (qsSection?.meta as any) || {}
+				const fromMeta = Array.isArray(meta?.questions) ? meta.questions : []
+				latestQuestions = fromMeta
+					.filter((q: any) => q?.id && (q?.text || q?.question))
+					.map((q: any) => ({
+						id: String(q.id),
+						text: String(q.text || q.question || ""),
+						categoryId: q.categoryId || q.category || null,
+					}))
+			}
 		}
 
 		// 2) Build a category -> representative question map (first in each category)
@@ -607,9 +642,10 @@ async function processInterviewTranscriptWithClient({
 
 				// See if answer already exists for (project_id, interview_id, question_id)
 				let answerId: string | null = null
+				let existingAnswer: Pick<Tables["project_answers"]["Row"], "id" | "answered_at" | "respondent_person_id" | "question_category" | "estimated_time_minutes" | "order_index" | "origin"> | null = null
 				const { data: existingAns } = await db
 					.from("project_answers")
-					.select("id")
+					.select("id, answered_at, respondent_person_id, question_category, estimated_time_minutes, order_index, origin")
 					.eq("project_id", metadata.projectId)
 					.eq("interview_id", interviewRecord.id)
 					.eq("question_id", qRep.id)
@@ -617,6 +653,7 @@ async function processInterviewTranscriptWithClient({
 					.single()
 				if (existingAns?.id) {
 					answerId = existingAns.id
+					existingAnswer = existingAns as typeof existingAnswer
 				} else {
 					const { data: createdAns, error: ansErr } = await db
 						.from("project_answers")
@@ -626,7 +663,10 @@ async function processInterviewTranscriptWithClient({
 							respondent_person_id: personData.id,
 							question_id: qRep.id,
 							question_text: qRep.text,
+							question_category: qRep.categoryId || matchCat || null,
 							status: "answered",
+							origin: "scripted",
+							answered_at: new Date().toISOString(),
 						})
 						.select("id")
 						.single()
@@ -639,20 +679,36 @@ async function processInterviewTranscriptWithClient({
 
 				if (!answerId) continue
 
-				// Link evidence to answer
-				const { error: linkErr } = await db
-					.from("project_answer_evidence")
-					.insert({
-						project_id: metadata.projectId,
-						answer_id: answerId,
-						interview_id: interviewRecord.id,
-						source: "transcript",
-						payload: { evidence_id: evId } as unknown as Json,
-					})
-					.select("id")
-					.single()
-				if (linkErr && !linkErr.message?.includes("duplicate")) {
-					consola.warn("Failed to link project_answer_evidence", linkErr.message)
+				const answerUpdatePayload: Tables["project_answers"]["Update"] = {}
+				if (existingAnswer?.respondent_person_id !== personData.id) {
+					answerUpdatePayload.respondent_person_id = personData.id
+				}
+				if (existingAnswer?.status !== "answered") {
+					answerUpdatePayload.status = "answered"
+				}
+				if (!existingAnswer?.answered_at) {
+					answerUpdatePayload.answered_at = new Date().toISOString()
+				}
+				if (!existingAnswer?.question_category && (qRep?.categoryId || matchCat)) {
+					answerUpdatePayload.question_category = qRep?.categoryId || matchCat || null
+				}
+
+				if (Object.keys(answerUpdatePayload).length) {
+					const { error: answerUpdateErr } = await db
+						.from("project_answers")
+						.update(answerUpdatePayload)
+						.eq("id", answerId)
+					if (answerUpdateErr) {
+						consola.warn("Failed to update project_answers metadata", answerUpdateErr.message)
+					}
+				}
+
+				const { error: evidenceUpdateErr } = await db
+					.from("evidence")
+					.update({ project_answer_id: answerId })
+					.eq("id", evId)
+				if (evidenceUpdateErr) {
+					consola.warn("Failed to attach evidence to project_answer", evidenceUpdateErr.message)
 				}
 			}
 		}

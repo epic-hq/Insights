@@ -1,5 +1,6 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { userContext } from "~/server/user-context"
 
 export async function action({ request, context }: ActionFunctionArgs) {
@@ -55,6 +56,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				headers: { "Content-Type": "application/json" },
 			})
 		}
+
+		await createPlannedAnswersForInterview(supabase, { projectId: project.id, interviewId: interview.id })
 
 		return new Response(JSON.stringify({ projectId: project.id, interviewId: interview.id }), {
 			headers: { "Content-Type": "application/json" },
