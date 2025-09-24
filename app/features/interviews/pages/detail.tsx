@@ -2,7 +2,7 @@ import consola from "consola"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
-import { BackButton, BackButton } from "~/components/ui/BackButton"
+import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
@@ -419,8 +419,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<button
 										onClick={() => setActiveTab("pains-gains")}
 										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "pains-gains"
-												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
@@ -434,8 +434,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<button
 										onClick={() => setActiveTab("user-actions")}
 										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "user-actions"
-												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">

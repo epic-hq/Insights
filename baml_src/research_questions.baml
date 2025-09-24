@@ -93,7 +93,7 @@ function GenerateNestedResearchQuestions(
     - Ask interviewees about THEIR experiences, not the user's business
     - Use "Tell me about..." "Walk me through..." "Describe..." formats
     - Focus on behaviors, motivations, pain points, and decision-making processes
-    - Avoid yes/no questions and leading language
+    - Avoid yes/no questions and leading language unless the question_category is 'demographic' or intentionally very specific
     - Make questions specific to {{ target_roles }} at {{ target_orgs }}
     - Example: Instead of "How should we improve our pricing?" ask "Tell me about your experience evaluating and choosing between similar products or services"
 

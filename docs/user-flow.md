@@ -322,3 +322,121 @@ flowchart TD
    - Keep this flow diagram and table up to date in both user and developer docs, and add a section on "How evidence is linked to interviews and questions" for advanced users.
 
 ---
+
+## Deep Interview Data Flow (Technical, 2025)
+
+| Step | Route/Function/Component | Purpose | Data Storage | Key Relationships |
+|------|-------------------------|---------|--------------|-------------------|
+| 1 | [`InterviewQuestionsManager.tsx`](app/components/questions/InterviewQuestionsManager.tsx) | Plan, generate, edit, and organize interview questions | `interview_prompts`, `project_answers` | Questions linked to project, can be associated with interviews via `prompt_id`/`question_id` |
+| 2 | [`new.tsx`](app/features/interviews/pages/new.tsx) | Create a new interview, assign participants, set meta | `interviews` | Interview linked to project, account, and optionally people (participants) |
+| 3 | [`api.upload-file.tsx`](app/routes/api.upload-file.tsx:13) | Upload interview recording (audio/video) | File storage (media), `interviews.media_url` | Uploaded file URL saved to interview record |
+| 4 | [`api.interview-transcript.tsx`](app/routes/api.interview-transcript.tsx:5) | Transcribe uploaded media, attach transcript to interview | `interviews.transcript`, `interviews.transcript_formatted` | Transcript linked to interview, used for downstream analysis |
+| 5 | [`api.process-interview-internal.tsx`](app/routes/api.process-interview-internal.tsx:13) + [`processInterview.server.ts`](app/utils/processInterview.server.ts:108) | **Extract evidence units from transcript (BAML), insert into `evidence`, link to tags, people, answers, and personas** | `evidence`, `evidence_tag`, `evidence_people`, `project_answers`, `people`, `personas`, `people_personas` | Evidence linked to interview, project, person, persona, and mapped to answers by category/tag. Answers link to prompts, RQ, DQ, research_goal via `question_id`/`question_category` |
+| 6 | [`project-answers.server.ts`](app/lib/database/project-answers.server.ts) | Maintain answer records for each interview/question | `project_answers` | Answers linked to interview, question, person, and evidence |
+| 7 | [`interview_people`](supabase/schemas/21_interview_people.sql), [`people_personas`](supabase/schemas/60_persona_distribution_view.sql) | Maintain person and persona relationships | `interview_people`, `people_personas` | Person linked to interview and persona, persona assigned via BAML |
+| 8 | [`detail.tsx`](app/features/interviews/pages/detail.tsx) | View interview details, evidence, empathy map, insights | Reads from all above | UI aggregates all related data for a single interview |
+| 9 | [`index.tsx`](app/features/interviews/pages/index.tsx) | List all interviews for a project | Reads from `interviews` | Aggregates interviews by project/account |
+
+```mermaid
+flowchart TD
+    Q[InterviewQuestionsManager<br/>(Plan Questions)] --> N[NewInterviewPage<br/>(Create Interview)]
+    N --> U[UploadFileAPI<br/>(Upload Recording)]
+    U --> T[InterviewTranscriptAPI<br/>(Transcribe)]
+    T --> P[ProcessInterviewInternal<br/>(Extract Evidence, Map Answers)]
+    P --> E[Evidence Table]
+    P --> PA[Project Answers]
+    P --> Pe[People]
+    P --> PeP[Personas]
+    P --> EP[EvidencePeople]
+    P --> ET[EvidenceTag]
+    P --> PP[PeoplePersonas]
+    E --> D[InterviewDetailPage<br/>(View Insights, Empathy Map)]
+    PA --> D
+    Pe --> D
+    PeP --> D
+    EP --> D
+    ET --> D
+    PP --> D
+    D --> X[InterviewsIndexPage<br/>(Project Interview List)]
+
+    subgraph Data
+      I[interviews]
+      J[interview_prompts]
+      K[project_answers]
+      L[evidence]
+      M[evidence_tag]
+      N[evidence_people]
+      O[personas]
+      P[people]
+      Q[people_personas]
+    end
+
+    N -- saves --> I
+    Q -- saves --> J
+    P -- saves --> L
+    P -- saves --> K
+    P -- saves --> M
+    P -- saves --> N
+    P -- saves --> O
+    P -- saves --> P
+    P -- saves --> Q
+    D -- reads --> I
+    D -- reads --> L
+    D -- reads --> K
+    D -- reads --> M
+    D -- reads --> N
+    D -- reads --> O
+    D -- reads --> P
+    D -- reads --> Q
+    X -- reads --> I
+```
+
+### Data Flow for KeyDecisionsCard
+
+The `KeyDecisionsCard` component displays a summary of Decision Questions (DQs), their linked Research Questions (RQs), and supporting answers/evidence from interviews. The data flow is as follows:
+
+- **Decision Questions (DQs):**
+  - Table: `decision_questions`
+  - Queried via: `decision_question_summary`
+  - Key field: `id` (decision_question_id)
+- **Research Questions (RQs):**
+  - Table: `research_questions`
+  - Linked to DQ via: `decision_question_id`
+  - Queried via: `research_question_summary`
+  - Key field: `id` (research_question_id)
+- **Answers:**
+  - Table: `project_answers`
+  - Linked to RQ via: `research_question_id`
+  - Linked to DQ via: `decision_question_id`
+  - Linked to interview via: `interview_id`
+  - Linked to respondent via: `respondent_person_id`
+- **Evidence:**
+  - Table: `evidence`
+  - Linked to answer via: `project_answer_id`
+  - Contains verbatim, support, anchors, etc.
+
+**Data Assembly:**
+- For each DQ, find all RQs (`research_questions` where `decision_question_id` matches).
+- For each RQ, find all answers (`project_answers` where `research_question_id` matches).
+- For each answer, find all evidence (`evidence` where `project_answer_id` matches).
+- For each answer, join interview and respondent for context.
+
+**Diagram:**
+```mermaid
+flowchart TD
+  DQ[Decision Question] --> RQ[Research Question]
+  RQ --> A[Project Answer]
+  A --> E[Evidence]
+  A --> I[Interview]
+  A --> P[Person]
+```
+
+**Relevant DB Fields:**
+- `decision_questions.id` → `research_questions.decision_question_id`
+- `research_questions.id` → `project_answers.research_question_id`
+- `decision_questions.id` → `project_answers.decision_question_id`
+- `project_answers.id` → `evidence.project_answer_id`
+- `project_answers.interview_id` → `interviews.id`
+- `project_answers.respondent_person_id` → `people.id`
+
+This structure ensures that every Key Decision is traceable to the research questions, answers, and evidence that support it, with full interview and respondent context.

@@ -6,7 +6,6 @@ import {
 	CheckCircle,
 	CircleHelp,
 	Eye,
-	Hash,
 	Headphones,
 	Info,
 	Lightbulb,
@@ -32,29 +31,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { InterviewAnalysisCard } from "~/features/onboarding/components/InterviewAnalysisCard"
+import { type DecoratedResearchQuestion, KeyDecisionsCard } from "~/features/onboarding/components/KeyDecisionsCard"
+import { ThemesSection } from "~/features/onboarding/components/ThemesSection"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import {
-	ResearchAnswers,
 	type ResearchAnswerNode,
+	ResearchAnswers,
 	type ResearchAnswersData,
 	type ResearchQuestionNode,
 } from "~/features/research/components/ResearchAnswers"
 import {
+	type AnsweredQuestionSummary,
+	calculateResearchMetrics,
 	getAnsweredQuestions,
 	getOpenQuestions,
-	calculateResearchMetrics,
-	type AnsweredQuestionSummary,
 	type OpenQuestionSummary,
 } from "~/features/research/utils/research-data-mappers"
-import { KeyDecisionsCard, type DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
-import { InterviewAnalysisCard } from "~/features/onboarding/components/InterviewAnalysisCard"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import type { Project_Section } from "~/types"
 
 const ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
 const OPEN_STATUSES = new Set(["planned", "asked"])
+
 import type { ProjectStatusData } from "~/utils/project-status.server"
 
 function ConfidenceBadge({ value }: { value?: number }) {
@@ -65,203 +66,6 @@ function ConfidenceBadge({ value }: { value?: number }) {
 	else if (pct >= 60) color = "bg-yellow-100 text-yellow-800"
 	else color = "bg-orange-100 text-orange-800"
 	return <span className={`rounded px-2 py-0.5 text-xs ${color}`}>{pct}%</span>
-}
-
-interface ThemesSectionProps {
-	projectId?: string
-	accountId?: string
-	routes: any
-}
-
-function ThemesSection({ projectId, routes }: ThemesSectionProps) {
-	const [themes, setThemes] = useState<any[]>([])
-	const [loading, setLoading] = useState(true)
-	const supabase = createClient()
-
-	useEffect(() => {
-		if (!projectId) return
-
-		const fetchThemes = async () => {
-			try {
-				// Load themes with evidence counts
-				const { data: themesData, error: themesError } = await supabase
-					.from("themes")
-					.select("id, name, statement, created_at")
-					.eq("project_id", projectId)
-					.order("created_at", { ascending: false })
-
-				if (themesError) throw themesError
-
-				// Load theme evidence links to count frequency
-				const { data: themeEvidence, error: evidenceError } = await supabase
-					.from("theme_evidence")
-					.select("theme_id, evidence:evidence_id(id, interview_id)")
-					.eq("project_id", projectId)
-
-				if (evidenceError) throw evidenceError
-
-				// Load evidence_people to get people count per theme
-				const evidenceIds = themeEvidence?.map((te) => te.evidence?.id).filter(Boolean) || []
-				const { data: evidencePeople, error: peopleError } = await supabase
-					.from("evidence_people")
-					.select("evidence_id, person_id, person:person_id(id, name)")
-					.eq("project_id", projectId)
-					.in("evidence_id", evidenceIds)
-
-				if (peopleError) throw peopleError
-
-				// Load people_personas to get personas per person
-				const personIds = evidencePeople?.map((ep) => ep.person_id).filter(Boolean) || []
-				const { data: peoplePersonas, error: personasError } = await supabase
-					.from("people_personas")
-					.select("person_id, persona:persona_id(id, name)")
-					.eq("project_id", projectId)
-					.in("person_id", personIds)
-
-				if (personasError) throw personasError
-
-				// Build theme data with counts
-				const enrichedThemes =
-					themesData?.map((theme) => {
-						const themeEvidenceLinks = themeEvidence?.filter((te) => te.theme_id === theme.id) || []
-						const evidenceCount = themeEvidenceLinks.length
-
-						// Get unique people for this theme
-						const themeEvidenceIds = themeEvidenceLinks.map((te) => te.evidence?.id).filter(Boolean)
-						const themePeople = evidencePeople?.filter((ep) => themeEvidenceIds.includes(ep.evidence_id)) || []
-						const uniquePeople = new Set(themePeople.map((tp) => tp.person_id))
-						const peopleCount = uniquePeople.size
-
-						// Get personas for this theme's people
-						const themePersonas = new Set<string>()
-						for (const personId of uniquePeople) {
-							const personPersonas = peoplePersonas?.filter((pp) => pp.person_id === personId) || []
-							for (const pp of personPersonas) {
-								if (pp.persona?.name) {
-									themePersonas.add(pp.persona.name)
-								}
-							}
-						}
-
-						return {
-							...theme,
-							evidenceCount,
-							peopleCount,
-							personas: Array.from(themePersonas),
-						}
-					}) || []
-
-				// Sort by evidence count (frequency) descending
-				enrichedThemes.sort((a, b) => b.evidenceCount - a.evidenceCount)
-
-				setThemes(enrichedThemes)
-			} catch (error) {
-				consola.error("Failed to fetch themes:", error)
-			} finally {
-				setLoading(false)
-			}
-		}
-
-		fetchThemes()
-	}, [projectId, supabase])
-
-	if (loading) {
-		return (
-			<div>
-				<div className="mb-3 flex items-center gap-2">
-					<Hash className="h-5 w-5 text-orange-600" />
-					Top Themes
-				</div>
-				<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-					<CardContent className="p-3 sm:p-4">
-						<div className="flex items-center justify-center py-4">
-							<Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-						</div>
-					</CardContent>
-				</Card>
-			</div>
-		)
-	}
-
-	return (
-		<div>
-			<div className="mb-3 flex items-center justify-between">
-				<div className="flex items-center gap-2">
-					<Hash className="h-5 w-5 text-orange-600" />
-					Top Themes
-				</div>
-				<Button
-					variant="outline"
-					size="sm"
-					onClick={() => {
-						if (routes?.themes?.index) {
-							window.location.href = routes.themes.index()
-						}
-					}}
-				>
-					View All
-				</Button>
-			</div>
-			<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-				<CardContent className="space-y-3 p-3 sm:p-4">
-					{themes.length === 0 ? (
-						<div className="py-4 text-center">
-							<Hash className="mx-auto mb-2 h-6 w-6 text-muted-foreground" />
-							<p className="text-muted-foreground text-sm">No themes generated yet</p>
-							<p className="text-muted-foreground text-xs">Themes will appear after analyzing interviews</p>
-						</div>
-					) : (
-						themes.slice(0, 5).map((theme) => (
-							<div
-								key={theme.id}
-								className="flex cursor-pointer items-start gap-3 rounded-lg border border-border bg-card p-3 transition-colors hover:bg-muted/50"
-								onClick={() => {
-									if (routes?.themes?.detail) {
-										window.location.href = routes.themes.detail(theme.id)
-									}
-								}}
-							>
-								<div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-orange-100 dark:bg-orange-900/20">
-									<Hash className="h-4 w-4 text-orange-600" />
-								</div>
-								<div className="flex-1">
-									<div className="mb-1 flex items-center gap-2">
-										<h5 className="font-medium text-foreground text-sm">{theme.name}</h5>
-										<Badge variant="secondary" className="text-xs">
-											{theme.evidenceCount} evidence
-										</Badge>
-									</div>
-									{theme.statement && (
-										<p className="mb-2 line-clamp-2 text-muted-foreground text-xs">{theme.statement}</p>
-									)}
-									<div className="flex items-center gap-3 text-muted-foreground text-xs">
-										<span className="flex items-center gap-1">
-											<Users className="h-3 w-3" />
-											{theme.peopleCount} people
-										</span>
-										{theme.personas.length > 0 && (
-											<div className="flex flex-wrap gap-1">
-												{theme.personas.slice(0, 3).map((persona: string) => (
-													<Badge key={persona} variant="outline" className="text-xs">
-														{persona}
-													</Badge>
-												))}
-												{theme.personas.length > 3 && (
-													<Badge variant="outline" className="text-xs">
-														+{theme.personas.length - 3} more
-													</Badge>
-												)}
-											</div>
-										)}
-									</div>
-								</div>
-							</div>
-						))
-					)}
-				</CardContent>
-			</Card>
-		</div>
-	)
 }
 
 interface ProjectStatusScreenProps {
@@ -788,23 +592,34 @@ export default function ProjectStatusScreen({
 									</Card>
 								</div>
 
+								{/* Themes */}
+								<div>
+									<ThemesSection routes={routes} projectId={projectId} />
+								</div>
+
 								{/* 4. Recommended Next Steps */}
-								{statusData && displayData.nextSteps?.length > 0 && (
+								<div className="mb-3 flex items-center gap-2">
+									<ArrowRight className="h-5 w-5 text-blue-600" />
+									Recommended Next Steps
+								</div>
+								{statusData && displayData.nextSteps?.length > 0 ? (
+									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+										<CardContent className="space-y-3 p-3 sm:p-4">
+											{displayData.nextSteps.slice(0, 3).map((step: string, index: number) => (
+												<div key={`action-${index}`} className="flex items-start gap-3">
+													<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
+														{index + 1}
+													</div>
+													<p className="text-foreground text-sm">{step}</p>
+												</div>
+											))}
+										</CardContent>
+									</Card>
+								) : (
 									<div>
-										<div className="mb-3 flex items-center gap-2">
-											<ArrowRight className="h-5 w-5 text-blue-600" />
-											Recommended Next Steps
-										</div>
 										<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 											<CardContent className="space-y-3 p-3 sm:p-4">
-												{displayData.nextSteps.slice(0, 3).map((step: string, index: number) => (
-													<div key={`action-${index}`} className="flex items-start gap-3">
-														<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
-															{index + 1}
-														</div>
-														<p className="text-foreground text-sm">{step}</p>
-													</div>
-												))}
+												<p className="text-foreground text-sm">Pending</p>
 											</CardContent>
 										</Card>
 									</div>
@@ -812,12 +627,12 @@ export default function ProjectStatusScreen({
 							</div>
 
 							{/* Right Column: Quick Actions */}
-							<div className="space-y-6">
+
+
+							<div className="space-y-4">
+								<h2 className="">Quick Actions</h2>
 								{/* Quick Actions */}
 								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-									<CardHeader className="p-3 pb-2 sm:p-4">
-										<CardTitle>Quick Actions</CardTitle>
-									</CardHeader>
 									<CardContent className="flex w-full max-w-sm flex-col gap-2 p-3 lg:max-w-md">
 										<Button
 											// TODO: Temporarily just go to upload instead of naming the interview. it's quicker and we have a small DB insert blocker.

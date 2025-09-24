@@ -1,0 +1,27 @@
+```mermaid
+flowchart TD
+    A[InterviewQuestionsManager<br/>(Plan Questions)] --> B[NewInterviewPage<br/>(Create Interview)]
+    B --> C[UploadFileAPI<br/>(Upload Recording)]
+    C --> D[InterviewTranscriptAPI<br/>(Transcribe)]
+    D --> E[TriggerAnalysisAPI<br/>(Extract Evidence/Answers)]
+    E --> F[InterviewDetailPage<br/>(View Insights, Empathy Map)]
+    F --> G[InterviewsIndexPage<br/>(Project Interview List)]
+
+    subgraph Data
+      I[interviews]
+      J[interview_prompts]
+      K[project_answers]
+      L[evidence]
+      M[project_answer_evidence]
+    end
+
+    B -- saves --> I
+    A -- saves --> J
+    E -- saves --> L
+    E -- saves --> K
+    E -- saves --> M
+    F -- reads --> I
+    F -- reads --> L
+    F -- reads --> K
+    G -- reads --> I
+```

@@ -1,0 +1,47 @@
+flowchart TD
+  %% Pages / APIs / Services
+  plan_mgr["InterviewQuestionsManager\n(Plan Questions)"] --> new_interview_page["NewInterviewPage\n(Create Interview)"]
+  new_interview_page --> upload_file_api["UploadFileAPI\n(Upload Recording)"]
+  upload_file_api --> transcript_api["InterviewTranscriptAPI\n(Transcribe)"]
+  transcript_api --> process_svc["ProcessInterviewInternal\n(Extract Evidence, Map Answers)"]
+
+  %% Data tables (unique IDs, grouped in subgraph)
+  subgraph Data
+    tbl_interviews["interviews"]
+    tbl_interview_prompts["interview_prompts"]
+    tbl_project_answers["project_answers"]
+    tbl_evidence["evidence"]
+    tbl_evidence_tag["evidence_tag"]
+    tbl_evidence_people["evidence_people"]
+    tbl_personas["personas"]
+    tbl_people["people"]
+    tbl_people_personas["people_personas"]
+  end
+
+  %% Writes from app/services to tables
+  new_interview_page -- saves --> tbl_interviews
+  plan_mgr -- saves --> tbl_interview_prompts
+  process_svc -- saves --> tbl_evidence
+  process_svc -- saves --> tbl_project_answers
+  process_svc -- saves --> tbl_evidence_tag
+  process_svc -- saves --> tbl_evidence_people
+  process_svc -- saves --> tbl_personas
+  process_svc -- saves --> tbl_people
+  process_svc -- saves --> tbl_people_personas
+
+  %% Detail & index pages (reads)
+  interview_detail_page["InterviewDetailPage\n(View Insights, Empathy Map)"]
+  interviews_index_page["InterviewsIndexPage\n(Project Interview List)"]
+
+  %% Reads into detail page
+  tbl_interviews -->|reads| interview_detail_page
+  tbl_evidence -->|reads| interview_detail_page
+  tbl_project_answers -->|reads| interview_detail_page
+  tbl_evidence_tag -->|reads| interview_detail_page
+  tbl_evidence_people -->|reads| interview_detail_page
+  tbl_personas -->|reads| interview_detail_page
+  tbl_people -->|reads| interview_detail_page
+  tbl_people_personas -->|reads| interview_detail_page
+
+  %% Index page reads
+  tbl_interviews -->|reads| interviews_index_page
