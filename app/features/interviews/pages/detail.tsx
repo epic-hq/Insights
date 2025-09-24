@@ -2,7 +2,7 @@ import consola from "consola"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
-import { BackButton } from "~/components/ui/BackButton"
+import { BackButton, BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
@@ -331,17 +331,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	return (
 		<div className="mx-auto max-w-6xl">
-			<div className="mb-6">
-				<BackButton to={routes.interviews.index()} label="Back to Interviews" position="relative" />
-			</div>
-
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 				<div className="flex-1 space-y-6">
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
-						<div className="flex items-start justify-between gap-4">
+						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
-								<h1 className="mb-2 font-bold text-3xl leading-tight">{interview.title || "Untitled Interview"}</h1>
+								<div className="mb-2 flex items-center gap-2 font-bold text-3xl leading-tight">
+									<BackButton to={routes.interviews.index()} label="" position="relative" />
+									{interview.title || "Untitled Interview"}
+								</div>
 								<div className="flex flex-wrap items-center gap-3">
 									{/* Show participant from junction table if available, fallback to legacy field */}
 									{primaryParticipant?.name ? (

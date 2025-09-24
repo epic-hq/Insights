@@ -358,6 +358,7 @@ export interface ContextualSuggestions {
   unknowns: string[]
   organizations: string[]
   roles: string[]
+  interview_questions: string[]
   
 }
 

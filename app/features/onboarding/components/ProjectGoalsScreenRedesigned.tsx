@@ -6,6 +6,7 @@ import { z } from "zod"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
+import InlineEdit from "~/components/ui/inline-edit"
 import { Input } from "~/components/ui/input"
 import { ProgressDots } from "~/components/ui/ProgressDots"
 import { StatusPill } from "~/components/ui/StatusPill"
@@ -17,7 +18,6 @@ import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
 import ContextualSuggestions from "./ContextualSuggestions"
-import InlineEdit from "~/components/ui/inline-edit"
 
 type TemplatePrefill = {
 	template_key: string
@@ -559,7 +559,6 @@ export default function ProjectGoalsScreen({
 					{/* Research Goal Accordion */}
 
 					<Card>
-
 						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
@@ -575,8 +574,7 @@ export default function ProjectGoalsScreen({
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
 											<p>
-												What problem would you like to solve? This will guide your research and
-												interview questions.
+												What problem would you like to solve? This will guide your research and interview questions.
 											</p>
 										</TooltipContent>
 									</Tooltip>
@@ -588,7 +586,6 @@ export default function ProjectGoalsScreen({
 								)}
 							</div>
 						</CardHeader>
-
 
 						<CardContent className="p-6 pt-0">
 							<Textarea
@@ -605,9 +602,7 @@ export default function ProjectGoalsScreen({
 							/>
 							{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
 						</CardContent>
-
 					</Card>
-
 
 					{/* Key Questions Accordion */}
 					<Collapsible
@@ -621,7 +616,7 @@ export default function ProjectGoalsScreen({
 										<div className="flex items-center gap-2">
 											<HelpCircle className="h-5 w-5 text-green-600" />
 											<h2 className="font-semibold text-lg">Key Questions</h2>
-											<span className="rounded-full px-2 py-1 font-medium text-foreground/75 text-xs">
+											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{" "}
 												{decision_questions.length}
 											</span>
@@ -654,7 +649,7 @@ export default function ProjectGoalsScreen({
 												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100"
 											>
 												<div className="mt-1 flex-shrink-0">
-													<div className="h-2 w-2 rounded-full bg-green-500" />
+													<div className="h-2 w-2 rounded-md bg-green-500" />
 												</div>
 												<InlineEdit
 													value={question}
@@ -666,7 +661,7 @@ export default function ProjectGoalsScreen({
 												/>
 												<button
 													onClick={() => removeDecisionQuestion(index)}
-													className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
+													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
 												>
 													<X className="h-3 w-3 text-green-700" />
 												</button>
@@ -763,7 +758,7 @@ export default function ProjectGoalsScreen({
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
 											<h2 className="font-semibold text-lg">Market & Stakeholders</h2>
-											<span className="rounded-full px-2 py-1 font-medium text-foreground/75 text-xs">
+											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
 											<Tooltip>
@@ -797,7 +792,7 @@ export default function ProjectGoalsScreen({
 											{target_orgs.map((org, index) => (
 												<div
 													key={`${org}-${index}`}
-													className="group flex items-center gap-2 rounded-full border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200"
+													className="group flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200"
 												>
 													<InlineEdit
 														value={org}
@@ -814,7 +809,7 @@ export default function ProjectGoalsScreen({
 													/>
 													<button
 														onClick={() => removeOrg(org)}
-														className="rounded-full p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100"
 													>
 														<X className="h-3 w-3 text-green-700" />
 													</button>
@@ -895,7 +890,7 @@ export default function ProjectGoalsScreen({
 											{target_roles.map((role, index) => (
 												<div
 													key={`${role}-${index}`}
-													className="group flex items-center gap-2 rounded-full border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200"
+													className="group flex items-center gap-2 rounded-md border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200"
 												>
 													<InlineEdit
 														value={role}
@@ -912,7 +907,7 @@ export default function ProjectGoalsScreen({
 													/>
 													<button
 														onClick={() => removeRole(role)}
-														className="rounded-full p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100"
 													>
 														<X className="h-3 w-3 text-purple-700" />
 													</button>
@@ -1037,19 +1032,19 @@ export default function ProjectGoalsScreen({
 														className="group flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-all hover:bg-blue-100"
 													>
 														<div className="mt-1 flex-shrink-0">
-															<div className="h-2 w-2 rounded-full bg-blue-500" />
+															<div className="h-2 w-2 rounded-md bg-blue-500" />
 														</div>
-													<InlineEdit
-														value={assumption}
-														onSubmit={(val) => updateAssumption(index, val)}
-														multiline={false}
-														textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
-														inputClassName="text-sm"
-														showEditButton={true}
-													/>
+														<InlineEdit
+															value={assumption}
+															onSubmit={(val) => updateAssumption(index, val)}
+															multiline={false}
+															textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+															inputClassName="text-sm"
+															showEditButton={true}
+														/>
 														<button
 															onClick={() => removeAssumption(index)}
-															className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100"
+															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100"
 														>
 															<X className="h-3 w-3 text-blue-700" />
 														</button>
@@ -1135,17 +1130,17 @@ export default function ProjectGoalsScreen({
 														<div className="mt-0.5 flex-shrink-0">
 															<HelpCircle className="h-4 w-4 text-amber-600" />
 														</div>
-													<InlineEdit
-														value={unknown}
-														onSubmit={(val) => updateUnknown(index, val)}
-														multiline={false}
-														textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
-														inputClassName="text-sm"
-														showEditButton={true}
-													/>
+														<InlineEdit
+															value={unknown}
+															onSubmit={(val) => updateUnknown(index, val)}
+															multiline={false}
+															textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+															inputClassName="text-sm"
+															showEditButton={true}
+														/>
 														<button
 															onClick={() => removeUnknown(index)}
-															className="flex-shrink-0 rounded-full p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100"
+															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100"
 														>
 															<X className="h-3 w-3 text-amber-700" />
 														</button>
@@ -1266,7 +1261,7 @@ export default function ProjectGoalsScreen({
 					<div className="mt-8 border-gray-200 border-t pt-8">
 						<div className="flex items-center justify-center">
 							<Button onClick={handleNext} disabled={!isValid || isLoading} size="lg" className="px-8 py-3">
-								Generate Interview Questions
+								Next
 								<ChevronRight className="ml-2 h-4 w-4" />
 							</Button>
 						</div>

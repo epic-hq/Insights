@@ -411,7 +411,7 @@ export class HttpRequest {
   }
   
   GenerateContextualSuggestions(
-      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],project_context: string,
+      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],rejected_items: string[],project_context: string,custom_instructions: string,response_count: number,question_category?: string | null,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -422,7 +422,7 @@ export class HttpRequest {
       return this.runtime.buildRequestSync(
         "GenerateContextualSuggestions",
         {
-          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"project_context": project_context
+          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"rejected_items": rejected_items,"project_context": project_context,"custom_instructions": custom_instructions,"response_count": response_count,"question_category": question_category?? null
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -1017,7 +1017,7 @@ export class HttpStreamRequest {
   }
   
   GenerateContextualSuggestions(
-      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],project_context: string,
+      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],rejected_items: string[],project_context: string,custom_instructions: string,response_count: number,question_category?: string | null,
       __baml_options__?: BamlCallOptions
   ): HTTPRequest {
     try {
@@ -1028,7 +1028,7 @@ export class HttpStreamRequest {
       return this.runtime.buildRequestSync(
         "GenerateContextualSuggestions",
         {
-          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"project_context": project_context
+          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"rejected_items": rejected_items,"project_context": project_context,"custom_instructions": custom_instructions,"response_count": response_count,"question_category": question_category?? null
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

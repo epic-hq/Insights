@@ -82,7 +82,7 @@ Click the **⋯ (three dots)** next to any question for options:
 ## Best Practices
 
 ### Time Management
-- **Warmup questions**: Start with 2-3 easy context questions (2-3 min each)
+- **Warmup questions**: Start with 2-3 easy context questions (3-5 min total)
 - **Core questions**: Focus on your research goals (4-6 min each)
 - **Deep dives**: Save complex questions for when rapport is established (6-8 min each)
 - **Buffer time**: Leave 5-10 minutes for unexpected insights

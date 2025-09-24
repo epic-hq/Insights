@@ -1,5 +1,6 @@
-// Contextual suggestions for project setup
+// Enhanced contextual suggestions for project setup and interview questions
 // Provides real-time suggestions based on project context and user input
+// Supports both project goals setup and interview question generation
 
 class ContextualSuggestions {
   decision_questions string[] @description("Contextual decision questions")
@@ -7,31 +8,42 @@ class ContextualSuggestions {
   unknowns string[] @description("Key unknowns")
   organizations string[] @description("Target organization types")
   roles string[] @description("Target user roles")
+  interview_questions string[] @description("Interview questions for specific categories")
 }
 
 function GenerateContextualSuggestions(
   research_goal: string,
   current_input: string,
-  suggestion_type: string, // "decision_questions", "assumptions", "unknowns", "organizations", "roles"
+  suggestion_type: string, // "decision_questions", "assumptions", "unknowns", "organizations", "roles", "interview_questions"
   existing_items: string[],
-  project_context: string
+  rejected_items: string[],
+  project_context: string,
+  custom_instructions: string,
+  response_count: int,
+  question_category: string? // For interview questions: "context", "pain", "workflow", etc.
 ) -> string[] {
   client CustomGPT4oMini
   prompt #"
-    You are an expert UX researcher helping someone set up their research project.
-    Generate 3-4 highly relevant, contextual suggestions for the {{ suggestion_type }} field.
+    You are an expert UX researcher helping someone set up their research project and create interview questions.
+    Generate {{ response_count }} highly relevant, contextual suggestions for the {{ suggestion_type }} field.
 
     PROJECT CONTEXT:
     - Research Goal: {{ research_goal }}
     - Current Input Being Typed: "{{ current_input }}"
     - Exclude (already added or previously shown): {{ existing_items }}
+    - Rejected Items (avoid similar suggestions): {{ rejected_items }}
     - Additional Context: {{ project_context }}
+    {% if custom_instructions %}- Custom Instructions: {{ custom_instructions }}{% endif %}
+    {% if question_category %}- Question Category: {{ question_category }}{% endif %}
 
-    IMPORTANT:
-    - Build upon the research goal and current input context
-    - Avoid generating any suggestions that are similar to those in the exclude list: {{ existing_items }}
+    CRITICAL REQUIREMENTS:
+    - Build upon the research goal and ESPECIALLY the current input ("{{ current_input }}") as the primary direction
+    - The current input should heavily influence the suggestions - expand on its theme and direction
+    - Avoid generating any suggestions similar to those in the exclude list: {{ existing_items }}
+    - Avoid generating suggestions similar to rejected items: {{ rejected_items }}
     - Make suggestions specific to the research domain mentioned in the goal
-    - If current input exists, consider it as a starting point or theme to expand on
+    - If current input exists, treat it as the primary context and build complementary suggestions
+    {% if custom_instructions %}- Follow the custom instructions: {{ custom_instructions }}{% endif %}
 
     GENERATE SUGGESTIONS FOR: {{ suggestion_type }}
 
@@ -104,14 +116,38 @@ function GenerateContextualSuggestions(
     - "Small business owner (solo or 2-10 employees)"
     {% endif %}
 
-    REQUIREMENTS:
-    - Each suggestion should be 4-20 words (slightly longer for more context)
-    - Avoid duplicating any in exclude list: {{ existing_items }}
-    - Be specific and actionable, not generic
-    - Directly relate to the research goal context
-    - Use clear, professional language that a researcher would understand
-    - If current input exists, build upon or complement that theme
+    {% if suggestion_type == "interview_questions" %}
+    Generate specific, well-crafted interview questions{% if question_category %} for the {{ question_category }} category{% endif %}. Focus on:
+    - Open-ended questions that encourage detailed responses
+    - Questions that align with the research goal and current input direction
+    - Questions that would provide actionable insights
+    - Questions appropriate for the specified category context
+    {% if question_category == "context" %}- Background and situational questions{% endif %}
+    {% if question_category == "pain" %}- Questions about problems, frustrations, and challenges{% endif %}
+    {% if question_category == "workflow" %}- Questions about processes, behaviors, and current methods{% endif %}
+    {% if question_category == "goals" %}- Questions about objectives, desired outcomes, and motivations{% endif %}
+    {% if question_category == "constraints" %}- Questions about limitations, barriers, and restrictions{% endif %}
+    {% if question_category == "willingness" %}- Questions about pricing, value perception, and purchase decisions{% endif %}
+    {% if question_category == "demographics" %}- Questions about background, role, and organizational context{% endif %}
 
-    Return only a JSON array of exactly 3-4 strings, like: ["suggestion 1", "suggestion 2", "suggestion 3"]
+    Format examples:
+    - "Can you walk me through how you currently [process/task]?"
+    - "What's the biggest challenge you face when [context]?"
+    - "Tell me about a time when [situation] didn't go as planned."
+    - "How do you decide whether to [decision/action]?"
+    {% endif %}
+
+    REQUIREMENTS:
+    - Generate exactly {{ response_count }} suggestions
+    - Each suggestion should be 4-25 words (interview questions can be slightly longer)
+    - Avoid duplicating any in exclude list: {{ existing_items }}
+    - Avoid suggestions similar to rejected items: {{ rejected_items }}
+    - Be specific and actionable, not generic
+    - Directly relate to the research goal and current input context
+    - Use clear, professional language that a researcher would understand
+    - PRIORITIZE building upon the current input ("{{ current_input }}") as the main direction
+    {% if custom_instructions %}- Follow custom instructions: {{ custom_instructions }}{% endif %}
+
+    Return only a JSON array of exactly {{ response_count }} strings, like: ["suggestion 1", "suggestion 2", "suggestion 3"]
   "#
 }

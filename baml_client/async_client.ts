@@ -767,7 +767,7 @@ export class BamlAsyncClient {
   }
   
   async GenerateContextualSuggestions(
-      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],project_context: string,
+      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],rejected_items: string[],project_context: string,custom_instructions: string,response_count: number,question_category?: string | null,
       __baml_options__?: BamlCallOptions
   ): Promise<string[]> {
     try {
@@ -781,7 +781,7 @@ export class BamlAsyncClient {
       // Check if onTick is provided - route through streaming if so
       if (options.onTick) {
         const stream = this.stream.GenerateContextualSuggestions(
-          research_goal,current_input,suggestion_type,existing_items,project_context,
+          research_goal,current_input,suggestion_type,existing_items,rejected_items,project_context,custom_instructions,response_count,question_category,
           __baml_options__
         );
         
@@ -796,7 +796,7 @@ export class BamlAsyncClient {
       const raw = await this.runtime.callFunction(
         "GenerateContextualSuggestions",
         {
-          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"project_context": project_context
+          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"rejected_items": rejected_items,"project_context": project_context,"custom_instructions": custom_instructions,"response_count": response_count,"question_category": question_category?? null
         },
         this.ctxManager.cloneContext(),
         options.tb?.__tb(),
@@ -2131,7 +2131,7 @@ class BamlStreamClient {
   }
   
   GenerateContextualSuggestions(
-      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],project_context: string,
+      research_goal: string,current_input: string,suggestion_type: string,existing_items: string[],rejected_items: string[],project_context: string,custom_instructions: string,response_count: number,question_category?: string | null,
       __baml_options__?: BamlCallOptions
   ): BamlStream<string[], string[]> {
     try {
@@ -2170,7 +2170,7 @@ class BamlStreamClient {
       const raw = this.runtime.streamFunction(
         "GenerateContextualSuggestions",
         {
-          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"project_context": project_context
+          "research_goal": research_goal,"current_input": current_input,"suggestion_type": suggestion_type,"existing_items": existing_items,"rejected_items": rejected_items,"project_context": project_context,"custom_instructions": custom_instructions,"response_count": response_count,"question_category": question_category ?? null
         },
         undefined,
         this.ctxManager.cloneContext(),

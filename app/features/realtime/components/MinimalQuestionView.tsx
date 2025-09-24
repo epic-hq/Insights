@@ -13,227 +13,224 @@ import type { Database } from "~/types"
 type AnswerStatus = Database["public"]["Tables"]["project_answers"]["Row"]["status"]
 
 type MinimalQuestion = {
-  projectAnswerId: string
-  questionId: string | null
-  text: string
-  status: AnswerStatus
-  orderIndex: number | null
+	projectAnswerId: string
+	questionId: string | null
+	text: string
+	status: AnswerStatus
+	orderIndex: number | null
 }
 
 interface MinimalQuestionViewProps {
-  projectId: string
-  interviewId: string
+	projectId: string
+	interviewId: string
 }
 
 export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProps) {
-  const supabase = createClient()
-  const [allQuestions, setAllQuestions] = useState<MinimalQuestion[]>([])
-  const [loading, setLoading] = useState(true)
-  const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
+	const supabase = createClient()
+	const [allQuestions, setAllQuestions] = useState<MinimalQuestion[]>([])
+	const [loading, setLoading] = useState(true)
+	const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
 
-  const { projectPath } = useCurrentProject()
-  const routes = useProjectRoutes(projectPath || "")
+	const { projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(projectPath || "")
 
-  useEffect(() => {
-    const load = async () => {
-      try {
-        setLoading(true)
-        const { data, error } = await supabase
-          .from("project_answers")
-          .select("id, question_id, question_text, status, order_index")
-          .eq("project_id", projectId)
-          .eq("interview_id", interviewId)
-          .order("order_index", { ascending: true, nullsFirst: true })
-          .order("created_at", { ascending: true })
+	useEffect(() => {
+		const load = async () => {
+			try {
+				setLoading(true)
+				const { data, error } = await supabase
+					.from("project_answers")
+					.select("id, question_id, question_text, status, order_index")
+					.eq("project_id", projectId)
+					.eq("interview_id", interviewId)
+					.order("order_index", { ascending: true, nullsFirst: true })
+					.order("created_at", { ascending: true })
 
-        if (error) throw error
+				if (error) throw error
 
-        const mapped: MinimalQuestion[] = (data || []).map((row, idx) => ({
-          projectAnswerId: row.id,
-          questionId: row.question_id,
-          text: row.question_text ?? `Question ${idx + 1}`,
-          status: (row.status as AnswerStatus) ?? "planned",
-          orderIndex: row.order_index ?? null,
-        }))
+				const mapped: MinimalQuestion[] = (data || []).map((row, idx) => ({
+					projectAnswerId: row.id,
+					questionId: row.question_id,
+					text: row.question_text ?? `Question ${idx + 1}`,
+					status: (row.status as AnswerStatus) ?? "planned",
+					orderIndex: row.order_index ?? null,
+				}))
 
-        setAllQuestions(mapped)
-      } catch (e) {
-        consola.error("MinimalQuestionView load error", e)
-      } finally {
-        setLoading(false)
-      }
-    }
+				setAllQuestions(mapped)
+			} catch (e) {
+				consola.error("MinimalQuestionView load error", e)
+			} finally {
+				setLoading(false)
+			}
+		}
 
-    void load()
-  }, [interviewId, projectId, supabase])
+		void load()
+	}, [interviewId, projectId, supabase])
 
-  const updateStatus = useCallback(
-    async (projectAnswerId: string, nextStatus: AnswerStatus) => {
-      setSavingIds((prev) => new Set(prev).add(projectAnswerId))
-      const previous = allQuestions
-      setAllQuestions((prev) =>
-        prev.map((q) => (q.projectAnswerId === projectAnswerId ? { ...q, status: nextStatus } : q))
-      )
+	const updateStatus = useCallback(
+		async (projectAnswerId: string, nextStatus: AnswerStatus) => {
+			setSavingIds((prev) => new Set(prev).add(projectAnswerId))
+			const previous = allQuestions
+			setAllQuestions((prev) =>
+				prev.map((q) => (q.projectAnswerId === projectAnswerId ? { ...q, status: nextStatus } : q))
+			)
 
-      const payload: Database["public"]["Tables"]["project_answers"]["Update"] = { status: nextStatus }
-      if (nextStatus === "answered") {
-        payload.answered_at = new Date().toISOString()
-        payload.skipped_at = null
-      } else if (nextStatus === "skipped") {
-        payload.skipped_at = new Date().toISOString()
-        payload.answered_at = null
-      } else {
-        payload.answered_at = null
-        payload.skipped_at = null
-      }
+			const payload: Database["public"]["Tables"]["project_answers"]["Update"] = { status: nextStatus }
+			if (nextStatus === "answered") {
+				payload.answered_at = new Date().toISOString()
+				payload.skipped_at = null
+			} else if (nextStatus === "skipped") {
+				payload.skipped_at = new Date().toISOString()
+				payload.answered_at = null
+			} else {
+				payload.answered_at = null
+				payload.skipped_at = null
+			}
 
-      const { error } = await supabase
-        .from("project_answers")
-        .update(payload)
-        .eq("id", projectAnswerId)
+			const { error } = await supabase
+				.from("project_answers")
+				.update(payload)
+				.eq("id", projectAnswerId)
 
-      if (error) {
-        consola.warn("Failed to update project answer status", error.message)
-        setAllQuestions(previous)
-      }
+			if (error) {
+				consola.warn("Failed to update project answer status", error.message)
+				setAllQuestions(previous)
+			}
 
-      setSavingIds((prev) => {
-        const next = new Set(prev)
-        next.delete(projectAnswerId)
-        return next
-      })
-    },
-    [allQuestions, supabase]
-  )
+			setSavingIds((prev) => {
+				const next = new Set(prev)
+				next.delete(projectAnswerId)
+				return next
+			})
+		},
+		[allQuestions, supabase]
+	)
 
-  const markDone = useCallback(
-    (projectAnswerId: string) => {
-      void updateStatus(projectAnswerId, "answered")
-    },
-    [updateStatus]
-  )
+	const markDone = useCallback(
+		(projectAnswerId: string) => {
+			void updateStatus(projectAnswerId, "answered")
+		},
+		[updateStatus]
+	)
 
-  const unmarkDone = useCallback(
-    (projectAnswerId: string) => {
-      void updateStatus(projectAnswerId, "planned")
-    },
-    [updateStatus]
-  )
+	const unmarkDone = useCallback(
+		(projectAnswerId: string) => {
+			void updateStatus(projectAnswerId, "planned")
+		},
+		[updateStatus]
+	)
 
-  const skip = useCallback(
-    (projectAnswerId: string) => {
-      void updateStatus(projectAnswerId, "skipped")
-    },
-    [updateStatus]
-  )
+	const skip = useCallback(
+		(projectAnswerId: string) => {
+			void updateStatus(projectAnswerId, "skipped")
+		},
+		[updateStatus]
+	)
 
-  const unhide = useCallback(
-    (projectAnswerId: string) => {
-      void updateStatus(projectAnswerId, "planned")
-    },
-    [updateStatus]
-  )
+	const unhide = useCallback(
+		(projectAnswerId: string) => {
+			void updateStatus(projectAnswerId, "planned")
+		},
+		[updateStatus]
+	)
 
-  const answeredCount = allQuestions.filter((q) => q.status === "answered").length
-  const totalCount = allQuestions.length
+	const answeredCount = allQuestions.filter((q) => q.status === "answered").length
+	const totalCount = allQuestions.length
 
-  const renderedQuestions = useMemo<JSX.Element[]>(() => {
-    return allQuestions.map((q, idx) => {
-      const isUpdating = savingIds.has(q.projectAnswerId)
-      return (
-        <div
-          key={q.projectAnswerId}
-          className={`touch-pan-y rounded-md border p-2 ${q.status === "answered" || q.status === "skipped" ? "opacity-60" : ""}`}
-          style={{ transform: "translateX(0px)", transition: "transform 0.2s ease-out" }}
-        >
-          <div className="space-y-1">
-            <div className="flex items-start gap-2">
-              <div className="flex items-center gap-2 pt-0.5">
-                <Checkbox
-                  checked={q.status === "answered"}
-                  disabled={isUpdating}
-                  onCheckedChange={(checked) => {
-                    if (checked) {
-                      markDone(q.projectAnswerId)
-                    } else {
-                      unmarkDone(q.projectAnswerId)
-                    }
-                  }}
-                  className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
-                />
-                <span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
-              </div>
-              <div className="min-w-0 flex-1">
-                <div
-                  className={`text-sm leading-snug ${
-                    q.status === "answered"
-                      ? "text-muted-foreground line-through"
-                      : q.status === "skipped"
-                      ? "text-muted-foreground"
-                      : ""
-                  }`}
-                >
-                  {q.text}
-                </div>
-                {idx === 0 && q.status !== "answered" && q.status !== "skipped" && (
-                  <div className="text-[10px] text-muted-foreground">← Swipe left to skip</div>
-                )}
-              </div>
-              {q.status === "skipped" && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="ml-2 h-6 px-2 text-xs"
-                  disabled={isUpdating}
-                  onClick={() => unhide(q.projectAnswerId)}
-                >
-                  <Eye className="mr-1 h-3 w-3" /> Unhide
-                </Button>
-              )}
-              {q.status !== "answered" && q.status !== "skipped" && (
-                <Button
-                  size="sm"
-                  variant="ghost"
-                  className="ml-2 h-6 px-2 text-xs"
-                  disabled={isUpdating}
-                  onClick={() => skip(q.projectAnswerId)}
-                >
-                  <X className="mr-1 h-3 w-3" /> Skip
-                </Button>
-              )}
-            </div>
-          </div>
-        </div>
-      )
-    })
-  }, [allQuestions, markDone, savingIds, skip, unhide, unmarkDone])
+	const renderedQuestions = useMemo<JSX.Element[]>(() => {
+		return allQuestions.map((q, idx) => {
+			const isUpdating = savingIds.has(q.projectAnswerId)
+			return (
+				<div
+					key={q.projectAnswerId}
+					className={`touch-pan-y rounded-md border p-2 ${q.status === "answered" || q.status === "skipped" ? "opacity-60" : ""}`}
+					style={{ transform: "translateX(0px)", transition: "transform 0.2s ease-out" }}
+				>
+					<div className="space-y-1">
+						<div className="flex items-start gap-2">
+							<div className="flex items-center gap-2 pt-0.5">
+								<Checkbox
+									checked={q.status === "answered"}
+									disabled={isUpdating}
+									onCheckedChange={(checked) => {
+										if (checked) {
+											markDone(q.projectAnswerId)
+										} else {
+											unmarkDone(q.projectAnswerId)
+										}
+									}}
+									className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
+								/>
+								<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
+							</div>
+							<div className="min-w-0 flex-1">
+								<div
+									className={`text-sm leading-snug ${q.status === "answered"
+											? "text-muted-foreground line-through"
+											: q.status === "skipped"
+												? "text-muted-foreground"
+												: ""
+										}`}
+								>
+									{q.text}
+								</div>
 
-  return (
-    <Card className="flex h-full flex-col border-0 px-0 md:border md:px-4">
-      <CardHeader className="flex-shrink-0 px-2 sm:px-2 md:px-2">
-        <CardTitle className="flex items-center justify-between pr-2">
-          <span>Prompts</span>
-          <div className="flex items-center gap-2 text-muted-foreground text-sm">
-            {savingIds.size > 0 && <span>Saving…</span>}
-            {totalCount > 0 && (
-              <span>
-                {answeredCount} of {totalCount}
-              </span>
-            )}
-          </div>
-        </CardTitle>
-      </CardHeader>
-      <CardContent className="flex-1 space-y-3 overflow-y-auto px-0 md:px-2">
-        {loading && <div className="text-muted-foreground text-sm">Loading…</div>}
-        {!loading && allQuestions.length === 0 && (
-          <div className="text-muted-foreground text-sm">
-            No questions available yet. <Link to={routes.projects.setup()}>Configure</Link>
-          </div>
-        )}
-        {!loading && allQuestions.length > 0 && renderedQuestions}
-      </CardContent>
-    </Card>
-  )
+							</div>
+							{q.status === "skipped" && (
+								<Button
+									size="sm"
+									variant="ghost"
+									className="ml-2 h-6 px-2 text-xs"
+									disabled={isUpdating}
+									onClick={() => unhide(q.projectAnswerId)}
+								>
+									<Eye className="mr-1 h-3 w-3" /> Unhide
+								</Button>
+							)}
+							{q.status !== "answered" && q.status !== "skipped" && (
+								<Button
+									size="sm"
+									variant="ghost"
+									className="ml-2 h-6 px-2 text-xs"
+									disabled={isUpdating}
+									onClick={() => skip(q.projectAnswerId)}
+								>
+									<X className="mr-1 h-3 w-3" /> Skip
+								</Button>
+							)}
+						</div>
+					</div>
+				</div>
+			)
+		})
+	}, [allQuestions, markDone, savingIds, skip, unhide, unmarkDone])
+
+	return (
+		<Card className="flex h-full flex-col border-0 px-0 md:border md:px-4">
+			<CardHeader className="flex-shrink-0 px-2 sm:px-2 md:px-2">
+				<CardTitle className="flex items-center justify-between pr-2">
+					<span>Prompts</span>
+					<div className="flex items-center gap-2 text-muted-foreground text-sm">
+						{savingIds.size > 0 && <span>Saving…</span>}
+						{totalCount > 0 && (
+							<span>
+								{answeredCount} of {totalCount}
+							</span>
+						)}
+					</div>
+				</CardTitle>
+			</CardHeader>
+			<CardContent className="flex-1 space-y-3 overflow-y-auto px-0 md:px-2">
+				{loading && <div className="text-muted-foreground text-sm">Loading…</div>}
+				{!loading && allQuestions.length === 0 && (
+					<div className="text-muted-foreground text-sm">
+						No questions available yet. <Link to={routes.projects.setup()}>Configure</Link>
+					</div>
+				)}
+				{!loading && allQuestions.length > 0 && renderedQuestions}
+			</CardContent>
+		</Card>
+	)
 }
 
 export default MinimalQuestionView

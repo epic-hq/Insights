@@ -925,8 +925,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	}
 
 	return (
-		// Fill parent height (AppLayout content area). Add small-screen bottom padding safety for bottom nav.
-		<div className="relative flex h-full min-h-0 flex-col pb-14 md:pb-0">
+		// Use viewport height minus navigation space. Add small-screen bottom padding safety for bottom nav.
+		<div className="relative flex min-h-0 flex-col pb-14 md:pb-0" style={{ height: 'calc(100vh - 4rem)' }}>
 			{/* Header with responsive layout for title, audio source, timer, and actions */}
 			<div className="flex flex-shrink-0 border-b bg-background p-3">
 				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">

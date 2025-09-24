@@ -6,6 +6,8 @@ import {
 	Check,
 	Clock,
 	Edit,
+	Eye,
+	EyeOff,
 	Filter,
 	Flag,
 	GripVertical,
@@ -13,6 +15,7 @@ import {
 	MessageCircleQuestion,
 	MoreHorizontal,
 	Plus,
+	RefreshCw,
 	Settings,
 	Trash2,
 	TriangleAlert,
@@ -30,12 +33,15 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
+import { Input } from "~/components/ui/input"
 import { ProgressDots } from "~/components/ui/ProgressDots"
 import { StatusPill } from "~/components/ui/StatusPill"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Separator } from "~/components/ui/separator"
 import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
+import ContextualSuggestions from "~/features/onboarding/components/ContextualSuggestions"
 import InterviewQuestionHelp from "~/features/questions/components/InterviewQuestionHelp"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -277,6 +283,57 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [pendingInsertionChoices, setPendingInsertionChoices] = useState<Record<string, string>>({})
 	const [processingPendingId, setProcessingPendingId] = useState<string | null>(null)
 
+	// Category/time visibility toggle
+	const [showCategoryTime, setShowCategoryTime] = useState(false)
+
+	// Inline question adding
+	const [showInlineAdd, setShowInlineAdd] = useState(false)
+	const [inlineQuestionText, setInlineQuestionText] = useState("")
+	const [inlineQuestionCategory, setInlineQuestionCategory] = useState("context")
+
+	// Interview sync
+	const [syncingInterviews, setSyncingInterviews] = useState(false)
+
+	// ContextualSuggestions state
+	const [contextualInput, setContextualInput] = useState("")
+	const [contextualCategory, setContextualCategory] = useState("context")
+	const [loadedResearchGoal, setLoadedResearchGoal] = useState("")
+	const [showContextualInput, setShowContextualInput] = useState(false)
+	const contextualInputRef = useRef<HTMLTextAreaElement>(null)
+
+	// Load research goal from API
+	useEffect(() => {
+		if (!projectId) return
+
+		const loadResearchGoal = async () => {
+			try {
+				const response = await fetch(`/api/load-project-goals?projectId=${projectId}`)
+
+				if (response.ok) {
+					const result = await response.json()
+					consola.log("🔍 Loaded project goals response:", result)
+					const researchGoal = result.data?.research_goal || ""
+					consola.log("🔍 Extracted research goal:", researchGoal)
+					setLoadedResearchGoal(researchGoal)
+				}
+			} catch (error) {
+				console.error("Failed to load research goal:", error)
+			}
+		}
+
+		loadResearchGoal()
+	}, [projectId])
+
+	// Use research_goal prop if provided, otherwise use loaded research goal
+	const effectiveResearchGoal = research_goal || loadedResearchGoal
+
+	consola.log("🎯 ContextualSuggestions Debug:", {
+		research_goal_prop: research_goal,
+		loadedResearchGoal,
+		effectiveResearchGoal,
+		willShow: !!effectiveResearchGoal,
+	})
+
 	// PostHog feature flag to gate Quality Check
 	const { isEnabled: isEvalEnabled } = usePostHogFeatureFlag("ffEvalQuestion")
 
@@ -334,7 +391,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						}
 						return {
 							...baseQuestion,
-							estimatedMinutes: (q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ?? estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+							estimatedMinutes:
+								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
+								estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
 							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
 							isSelected: (q as QuestionInput & { isSelected?: boolean }).isSelected ?? false,
 						}
@@ -485,10 +544,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						.order("created_at", { ascending: false })
 						.limit(1)
 						.maybeSingle(),
-					supabase
-						.from("project_answers")
-						.select("question_id, status")
-						.eq("project_id", projectId),
+					supabase.from("project_answers").select("question_id, status").eq("project_id", projectId),
 				])
 
 				if (promptRes.error) consola.warn("Failed to load interview_prompts", promptRes.error.message)
@@ -512,7 +568,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				if (typeof settings.familiarity === "string") setFamiliarity(settings.familiarity as Familiarity)
 				if (typeof settings.goDeepMode === "boolean") setGoDeepMode(settings.goDeepMode)
 				if (typeof settings.customInstructions === "string") setCustomInstructions(settings.customInstructions)
-				const catTimesRaw = (settings as { categoryTimeAllocations?: Record<string, unknown> } | undefined)?.categoryTimeAllocations
+				const catTimesRaw = (settings as { categoryTimeAllocations?: Record<string, unknown> } | undefined)
+					?.categoryTimeAllocations
 				setCategoryTimeAllocations(sanitizeAllocations(catTimesRaw))
 
 				let formattedQuestions: Question[] = []
@@ -536,7 +593,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					}))
 					selectedIds = promptRows
 						.filter((row) => row.is_selected || typeof row.selected_order === "number")
-						.sort((a, b) => (a.selected_order ?? Number.POSITIVE_INFINITY) - (b.selected_order ?? Number.POSITIVE_INFINITY))
+						.sort(
+							(a, b) => (a.selected_order ?? Number.POSITIVE_INFINITY) - (b.selected_order ?? Number.POSITIVE_INFINITY)
+						)
 						.map((row) => row.id)
 				} else {
 					existingPromptIdsRef.current = []
@@ -546,11 +605,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						id: resolvedIds[idx],
 						text: q.text || q.question || "",
 						categoryId: q.categoryId || q.category || "context",
-						scores: parseScores(q.scores ?? {
-							importance: q.importance,
-							goalMatch: q.goalMatch,
-							novelty: q.novelty,
-						}),
+						scores: parseScores(
+							q.scores ?? {
+								importance: q.importance,
+								goalMatch: q.goalMatch,
+								novelty: q.novelty,
+							}
+						),
 						rationale: q.rationale || "",
 						status: (q.status as Question["status"]) || "proposed",
 						timesAnswered: answerCountMap.get(resolvedIds[idx]) || 0,
@@ -562,8 +623,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					}))
 					selectedIds = legacyQuestions
 						.map((q, idx) => ({ q, idx }))
-						.filter(({ q }) => q && ((q as QuestionInput & { isSelected?: boolean }).isSelected || typeof q.selectedOrder === "number"))
-						.sort((a, b) => ((a.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY) - ((b.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY))
+						.filter(
+							({ q }) =>
+								q && ((q as QuestionInput & { isSelected?: boolean }).isSelected || typeof q.selectedOrder === "number")
+						)
+						.sort(
+							(a, b) =>
+								((a.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY) -
+								((b.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY)
+						)
 						.map(({ idx }) => resolvedIds[idx])
 				}
 
@@ -602,7 +670,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			isLoadingRef.current = false
 		})
 	}, [projectId, supabase, commitSelection])
-
 
 	const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
 		const baseTimes = { exploratory: 6.5, validation: 4.5, followup: 3.5 }
@@ -807,7 +874,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						project_id: projectId,
 						text: q.text,
 						category: q.categoryId,
-						estimated_time_minutes: Math.round(q.estimatedMinutes ?? estimateMinutesPerQuestion(q, purpose, familiarity)),
+						estimated_time_minutes: Math.round(
+							q.estimatedMinutes ?? estimateMinutesPerQuestion(q, purpose, familiarity)
+						),
 						is_must_have: q.isMustHave ?? false,
 						status: q.status,
 						order_index: index + 1,
@@ -838,28 +907,26 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				}
 				existingPromptIdsRef.current = Array.from(keepIds)
 
-				const { error: sectionError } = await supabase
-					.from("project_sections")
-					.upsert(
-						{
-							project_id: projectId,
-							kind: "questions",
-							position: 2,
-							content_md: `# Questions\n\nManaged ${withOrder.length} questions for interview planning.`,
-							meta: {
-								questions: withOrder,
-								settings: {
-									timeMinutes,
-									purpose,
-									familiarity,
-									goDeepMode,
-									customInstructions,
-									categoryTimeAllocations,
-								},
+				const { error: sectionError } = await supabase.from("project_sections").upsert(
+					{
+						project_id: projectId,
+						kind: "questions",
+						position: 2,
+						content_md: `# Questions\n\nManaged ${withOrder.length} questions for interview planning.`,
+						meta: {
+							questions: withOrder,
+							settings: {
+								timeMinutes,
+								purpose,
+								familiarity,
+								goDeepMode,
+								customInstructions,
+								categoryTimeAllocations,
 							},
 						},
-						{ onConflict: "project_id,kind", ignoreDuplicates: false }
-					)
+					},
+					{ onConflict: "project_id,kind", ignoreDuplicates: false }
+				)
 				if (sectionError) consola.error("Error saving questions meta:", sectionError)
 			} catch (e) {
 				consola.error("Error saving questions to database:", e)
@@ -931,7 +998,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						}
 						return {
 							...baseQuestion,
-							estimatedMinutes: (q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ?? estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+							estimatedMinutes:
+								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
+								estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
 							selectedOrder: null,
 							isSelected: false,
 						}
@@ -1054,27 +1123,27 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 		setAddingCustomQuestion(true)
 		try {
-				if (!isEvalEnabled) {
-					const baseQuestion = {
-						id: crypto.randomUUID(),
-						text: newQuestionText.trim(),
-						categoryId: newQuestionCategory,
-						scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 },
-						rationale: "Custom user question",
-						status: "proposed" as const,
-						timesAnswered: 0,
-						source: "user" as const,
-						isMustHave: false,
-					} as Question
-					const customQuestion: Question = {
-						...baseQuestion,
-						estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
-						selectedOrder: null,
-						isSelected: true,
-					}
-					const updatedQuestions = [...questions, customQuestion]
-					const baseIds = [...getBaseSelectedIds(), customQuestion.id]
-					setQuestions(updatedQuestions)
+			if (!isEvalEnabled) {
+				const baseQuestion = {
+					id: crypto.randomUUID(),
+					text: newQuestionText.trim(),
+					categoryId: newQuestionCategory,
+					scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 },
+					rationale: "Custom user question",
+					status: "proposed" as const,
+					timesAnswered: 0,
+					source: "user" as const,
+					isMustHave: false,
+				} as Question
+				const customQuestion: Question = {
+					...baseQuestion,
+					estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+					selectedOrder: null,
+					isSelected: true,
+				}
+				const updatedQuestions = [...questions, customQuestion]
+				const baseIds = [...getBaseSelectedIds(), customQuestion.id]
+				setQuestions(updatedQuestions)
 				commitSelection(baseIds)
 				setHasInitialized(true)
 				markQuestionAsRecentlyAdded(customQuestion.id)
@@ -1390,6 +1459,196 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		})
 	}, [])
 
+	// Handle inline question adding
+	const handleInlineQuestionAdd = useCallback(async () => {
+		if (!inlineQuestionText.trim()) {
+			toast.error("Please enter a question")
+			return
+		}
+
+		setAddingCustomQuestion(true)
+		try {
+			const baseQuestion = {
+				id: crypto.randomUUID(),
+				text: inlineQuestionText.trim(),
+				categoryId: inlineQuestionCategory,
+				scores: { importance: 0.7, goalMatch: 0.6, novelty: 0.5 },
+				rationale: "Custom user question",
+				status: "proposed" as const,
+				timesAnswered: 0,
+				source: "user" as const,
+				isMustHave: false,
+			} as Question
+
+			const customQuestion: Question = {
+				...baseQuestion,
+				estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+				selectedOrder: null,
+				isSelected: true,
+			}
+
+			const updatedQuestions = [...questions, customQuestion]
+			const baseIds = [...getBaseSelectedIds(), customQuestion.id]
+			setQuestions(updatedQuestions)
+			commitSelection(baseIds)
+			setHasInitialized(true)
+			markQuestionAsRecentlyAdded(customQuestion.id)
+			await saveQuestionsToDatabase(updatedQuestions, baseIds)
+
+			// Reset form
+			setInlineQuestionText("")
+			setInlineQuestionCategory("context")
+			setShowInlineAdd(false)
+			toast.success("Question added successfully")
+		} catch (error) {
+			consola.error("Error adding custom question:", error)
+			toast.error("Failed to add question")
+		} finally {
+			setAddingCustomQuestion(false)
+		}
+	}, [
+		inlineQuestionText,
+		inlineQuestionCategory,
+		questions,
+		getBaseSelectedIds,
+		commitSelection,
+		markQuestionAsRecentlyAdded,
+		saveQuestionsToDatabase,
+		estimateMinutesPerQuestion,
+		purpose,
+		familiarity,
+	])
+
+	// Handle suggestion click from ContextualSuggestions
+	const handleSuggestionClick = useCallback((suggestion: string) => {
+		setInlineQuestionText(suggestion)
+	}, [])
+
+	// Handle contextual suggestion click - fill input and focus, do NOT add immediately
+	const handleContextualSuggestionClick = useCallback((suggestion: string) => {
+		setContextualInput(suggestion)
+		contextualInputRef.current?.focus()
+	}, [])
+
+	// Add contextual input as a new question (Enter key or + button)
+	const handleAddContextualQuestion = useCallback(async () => {
+		const text = contextualInput.trim()
+		if (!text) return
+
+		try {
+			setAddingCustomQuestion(true)
+
+			// Create the question object to save to database
+			const questionToSave = {
+				text,
+				category: contextualCategory,
+				is_selected: true,
+				selected_order: questions.filter((q) => q.isSelected).length,
+				project_id: projectId!,
+			}
+
+			// Save to database first
+			const { data: savedQuestion, error } = await supabase
+				.from("interview_prompts")
+				.insert(questionToSave)
+				.select()
+				.single()
+
+			if (error) throw error
+
+			// Create local question object
+			const newQuestion: Question = {
+				id: savedQuestion.id,
+				text: savedQuestion.text,
+				categoryId: (savedQuestion as any).category || "context",
+				estimatedMinutes: estimateMinutesPerQuestion(
+					{
+						id: savedQuestion.id,
+						text: savedQuestion.text,
+						categoryId: (savedQuestion as any).category || "context",
+						scores: { importance: 3, goalMatch: 3, novelty: 3 },
+						status: "proposed",
+						timesAnswered: 0,
+					} as Question,
+					purpose,
+					familiarity
+				),
+				isMustHave: false,
+				status: "proposed",
+				source: "user",
+				scores: { importance: 3, goalMatch: 3, novelty: 3 },
+				isSelected: true,
+				timesAnswered: 0,
+			}
+
+			// Update local state without flashing
+			setQuestions((prev) => [...prev, newQuestion])
+
+			// Clear input and hide form
+			setContextualInput("")
+			setShowContextualInput(false)
+
+			// Show brief success feedback
+			setRecentlyAddedQuestionIds([newQuestion.id])
+			setTimeout(() => setRecentlyAddedQuestionIds([]), 2000)
+
+			toast.success("Question added")
+		} catch (error) {
+			console.error("Error adding contextual question:", error)
+			toast.error("Failed to add question")
+		} finally {
+			setAddingCustomQuestion(false)
+		}
+	}, [
+		contextualInput,
+		contextualCategory,
+		questions,
+		projectId,
+		purpose,
+		familiarity,
+		estimateMinutesPerQuestion,
+		supabase,
+	])
+
+	const syncExistingInterviews = useCallback(async () => {
+		if (!projectId || syncingInterviews) return
+
+		try {
+			setSyncingInterviews(true)
+
+			// Get all interviews for this project
+			const { data: interviews, error: interviewsError } = await supabase
+				.from("interviews")
+				.select("id")
+				.eq("project_id", projectId)
+
+			if (interviewsError) throw interviewsError
+
+			// Sync questions for each interview
+			for (const interview of interviews || []) {
+				const formData = new FormData()
+				formData.append("projectId", projectId)
+				formData.append("interviewId", interview.id)
+
+				const response = await fetch("/api/refresh-interview-questions", {
+					method: "POST",
+					body: formData,
+				})
+
+				if (!response.ok) {
+					throw new Error(`Failed to sync interview ${interview.id}`)
+				}
+			}
+
+			toast.success(`Synced questions for ${interviews?.length || 0} interviews`)
+		} catch (error) {
+			console.error("Error syncing interviews:", error)
+			toast.error("Failed to sync interview questions")
+		} finally {
+			setSyncingInterviews(false)
+		}
+	}, [projectId, syncingInterviews, supabase])
+
 	const handleAcceptPendingQuestion = useCallback(
 		async (questionId: string, mode: "end" | "after") => {
 			setProcessingPendingId(questionId)
@@ -1500,7 +1759,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				</div>
 
 				{/* Description Row */}
-				<p className="text-muted-foreground text-sm">
+				<p className="hidden text-muted-foreground text-sm md:visible">
 					Review, edit, and finalize your interview questions. Based on your{" "}
 					<Link
 						to={routes.projects.setup()}
@@ -1519,7 +1778,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</Button>
 				</p>
 
-				{/* Settings Button Row - Moved down */}
+				{/* Settings Button Row with Filters */}
 				<div className="flex items-center justify-between">
 					<Button
 						variant="outline"
@@ -1529,13 +1788,71 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						<Settings className="h-4 w-4" />
 						{purpose.charAt(0).toUpperCase() + purpose.slice(1)} • {timeMinutes}m
 					</Button>
+
+					{/* Filter Group - Moved here */}
+					<div className="flex items-center gap-2">
+						{/* Category/Time Visibility Toggle */}
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => setShowCategoryTime(!showCategoryTime)}
+										className={showCategoryTime ? "border-blue-200 bg-blue-50" : ""}
+									>
+										{showCategoryTime ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+										<span className="ml-1 hidden sm:inline">{showCategoryTime ? "Hide" : "Show"} Categories</span>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>{showCategoryTime ? "Hide" : "Show"} category and time information</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+
+						<TooltipProvider>
+							<Tooltip>
+								<TooltipTrigger asChild>
+									<Button
+										variant="outline"
+										size="sm"
+										onClick={() => {
+											if (!mustHavesOnly) {
+												// Save current selection (or default to all visible) before filtering
+												previousSelectionRef.current =
+													selectedQuestionIds.length > 0
+														? [...selectedQuestionIds]
+														: questionPack.questions.map((q) => q.id)
+												// Filter to must-haves
+												const filteredIds = (previousSelectionRef.current || []).filter((id) => {
+													const q = questions.find((qq) => qq.id === id)
+													return q?.isMustHave
+												})
+												setSelectedQuestionIds(filteredIds)
+											} else {
+												// Restore previous selection
+												setSelectedQuestionIds(previousSelectionRef.current || [])
+											}
+											setMustHavesOnly(!mustHavesOnly)
+										}}
+										className={mustHavesOnly ? "border-orange-200 bg-orange-50" : ""}
+									>
+										<Filter className="h-4 w-4" />
+										<span className="ml-1 hidden sm:inline">{mustHavesOnly ? "Show All" : "Filter"}</span>
+									</Button>
+								</TooltipTrigger>
+								<TooltipContent>
+									{mustHavesOnly ? "Show all questions" : "Show only must-have questions"}
+								</TooltipContent>
+							</Tooltip>
+						</TooltipProvider>
+					</div>
 				</div>
 			</div>
 
 			{/* Expandable Settings Panel */}
 			{showSettings && (
 				<Card className="border-blue-100">
-					<CardContent className="p-4">
+					<CardContent className="p-3">
 						<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
 							<div>
 								<label className="mb-3 block font-medium text-sm">Interview Time: {timeMinutes} minutes</label>
@@ -1602,107 +1919,87 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 			{/* Main Question List Section */}
 			<div className="space-y-4">
-				{/* Action Buttons - Reorganized with functional grouping */}
+				{/* Simple Add Question Button */}
 				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-2">
-						{/* Primary Action Group */}
-						<Button variant="outline" onClick={() => setShowAddCustomQuestion(true)}>
+					{!showContextualInput ? (
+						<Button onClick={() => setShowContextualInput(true)} variant="outline" size="sm" className="border-dashed">
 							<Plus className="mr-2 h-4 w-4" />
 							Add Prompt
 						</Button>
-
-						<Button
-							variant="outline"
-							className="border-blue-500 text-blue-600 hover:bg-blue-50"
-							onClick={generateQuestions}
-							disabled={generating || autoGenerateInitial}
-						>
-							{generating || autoGenerateInitial ? (
-								<>
-									<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-									Generating...
-								</>
-							) : (
-								<>
-									<Brain className="mr-2 h-4 w-4" />
-									Generate {moreCount} Questions
-								</>
-							)}
-						</Button>
-
-						{/* Settings Group */}
-						{/* <DropdownMenu>
-							<DropdownMenuTrigger asChild>
-								<Button variant="outline" size="sm">
-									<Settings className="mr-1 h-4 w-4" />
-									<span className="hidden md:inline">Options</span>
-									<ChevronDown className="ml-1 h-4 w-4" />
+					) : (
+						<div>
+							<div className="flex flex-row items-center gap-2">
+								<Button onClick={() => setShowContextualInput(false)} variant="outline" size="sm" className="border-dashed">
+									<Plus className="mr-2 h-4 w-4" />
+									Add Prompt
 								</Button>
-							</DropdownMenuTrigger>
-							<DropdownMenuContent align="start">
-								<DropdownMenuItem onClick={() => setShowCustomInstructions(!showCustomInstructions)}>
-									<Edit className="mr-2 h-4 w-4" />
-									AI Instructions & Count
-								</DropdownMenuItem>
-								<DropdownMenuItem onClick={() => setShowSettings(!showSettings)}>
-									<Settings className="mr-2 h-4 w-4" />
-									Interview Settings
-								</DropdownMenuItem>
-							</DropdownMenuContent>
-						</DropdownMenu> */}
-					</div>
-
-					{/* Filter Group */}
-					<TooltipProvider>
-						<Tooltip>
-							<TooltipTrigger asChild>
-								<Button
-									variant="outline"
-									size="sm"
-									onClick={() => {
-										if (!mustHavesOnly) {
-											// Save current selection (or default to all visible) before filtering
-											previousSelectionRef.current =
-												selectedQuestionIds.length > 0
-													? [...selectedQuestionIds]
-													: questionPack.questions.map((q) => q.id)
-											// Filter to must-haves
-											const filteredIds = (previousSelectionRef.current || []).filter((id) => {
-												const q = questions.find((qq) => qq.id === id)
-												return q?.isMustHave
-											})
-											if (filteredIds.length > 0) {
-												setSelectedQuestionIds(filteredIds)
-												setMustHavesOnly(true)
-											} else {
-												// No must-haves yet; keep selection and do not toggle
-												toast.info("No questions are marked as must‑have yet")
-											}
-										} else {
-											// Restore prior selection or all
-											const restore =
-												previousSelectionRef.current && previousSelectionRef.current.length > 0
-													? previousSelectionRef.current
-													: questionPack.questions.map((q) => q.id)
-											previousSelectionRef.current = [...restore]
-											setSelectedQuestionIds(restore)
-											setMustHavesOnly(false)
-										}
-									}}
-								>
-									<Filter className="mr-1 h-4 w-4" />
-									<span className="hidden md:inline">Must-Haves</span>
-									{mustHavesOnly && (
-										<span className="ml-2 rounded-md border border-blue-200 bg-blue-50 px-1.5 py-0.5 text-blue-700 text-xs">
-											on
-										</span>
-									)}
-								</Button>
-							</TooltipTrigger>
-							<TooltipContent>Filter Must-Have Questions</TooltipContent>
-						</Tooltip>
-					</TooltipProvider>
+								<Select value={contextualCategory} onValueChange={setContextualCategory}>
+									<SelectTrigger className="w-48">
+										<SelectValue />
+									</SelectTrigger>
+									<SelectContent>
+										{questionCategories.map((cat) => (
+											<SelectItem key={cat.id} value={cat.id}>
+												{cat.name}
+											</SelectItem>
+										))}
+									</SelectContent>
+								</Select>
+							</div>
+							<div className="flex w-full items-center gap-2">
+								<Textarea
+									ref={contextualInputRef as any}
+									placeholder="e.g., What challenges do you face with your current solution?"
+									value={contextualInput}
+									onChange={(e) => setContextualInput(e.target.value)}
+									onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && handleAddContextualQuestion()}
+									className="flex-1 resize-none"
+									rows={2}
+									autoFocus
+								/>
+								<div className="flex flex-col gap-1">
+									<Button
+										onClick={handleAddContextualQuestion}
+										variant="outline"
+										size="sm"
+										disabled={!contextualInput.trim() || addingCustomQuestion}
+										className="h-8 w-8 p-0"
+									>
+										<Check className="h-4 w-4" />
+									</Button>
+									<Button
+										onClick={() => {
+											setShowContextualInput(false)
+											setContextualInput("")
+										}}
+										variant="ghost"
+										size="sm"
+										className="h-8 w-8 p-0"
+									>
+										<X className="h-4 w-4" />
+									</Button>
+								</div>
+							</div>
+						</div>
+					)}
 				</div>
+
+				{/* Contextual Suggestions - only show when input is active */}
+				{showContextualInput && effectiveResearchGoal && (
+					<ContextualSuggestions
+						researchGoal={
+							effectiveResearchGoal ||
+							"Help startups identify bottlenecks and resolve them through discipline and guidance so they can increase success rates."
+						}
+						currentInput={contextualInput}
+						suggestionType="interview_questions"
+						questionCategory={contextualCategory}
+						existingItems={questions.map((q) => q.text)}
+						onSuggestionClick={handleContextualSuggestionClick}
+						apiPath="api/contextual-suggestions"
+						isActive={true}
+					/>
+				)}
 
 				{/* Custom Instructions */}
 				{showCustomInstructions && (
@@ -1897,61 +2194,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</DialogContent>
 				</Dialog>
 
-				{/* Add Custom Question Modal */}
-				{showAddCustomQuestion && (
-					<Card className="border-blue-100">
-						<CardContent className="p-4">
-							<div className="space-y-3">
-								<h3 className="font-medium">Add Custom Question</h3>
-								<Textarea
-									placeholder="Enter your custom question..."
-									value={newQuestionText}
-									onChange={(e) => setNewQuestionText(e.target.value)}
-									rows={3}
-								/>
-								<Select value={newQuestionCategory} onValueChange={setNewQuestionCategory}>
-									<SelectTrigger>
-										<SelectValue placeholder="Select category" />
-									</SelectTrigger>
-									<SelectContent>
-										{questionCategories.map((cat) => (
-											<SelectItem key={cat.id} value={cat.id}>
-												{cat.name}
-											</SelectItem>
-										))}
-									</SelectContent>
-								</Select>
-								<div className="flex justify-end gap-2">
-									<Button
-										onClick={() => {
-											setShowAddCustomQuestion(false)
-											setNewQuestionText("")
-											setNewQuestionCategory("context")
-										}}
-										variant="outline"
-									>
-										Cancel
-									</Button>
-									<Button
-										onClick={addCustomQuestion}
-										disabled={!newQuestionText.trim() || addingCustomQuestion}
-										variant="default"
-										className="bg-blue-600 hover:bg-blue-700"
-									>
-										{addingCustomQuestion ? (
-											<>
-												<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-												Evaluating...
-											</>
-										) : (
-											"Add Question"
-										)}
-									</Button>
-								</div>
-							</div>
-						</CardContent>
-					</Card>
-				)}
 
 				<div className="space-y-4">
 					<DragDropContext onDragEnd={onDragEnd}>
@@ -1960,31 +2202,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								<div className="space-y-3" {...provided.droppableProps} ref={provided.innerRef}>
 									{questionPack.questions.map((question, index) => {
 										const isFirstOverflow = index === questionPack.overflowIndex
-										const prevCat = questionPack.questions[index - 1]?.categoryId
-										const isFirstInCategory = index === 0 || prevCat !== question.categoryId
 										const cat = questionCategories.find((c) => c.id === question.categoryId)
 
 										return (
 											<React.Fragment key={question.id}>
-												{isFirstInCategory && (
-													<div className="mt-6 mb-3">
-														<div className="flex items-center justify-between gap-2">
-															<span className={`rounded-full border px-3 py-1 font-medium text-sm ${cat?.color || ""}`}>
-																{cat?.name || "Category"}
-															</span>
-															<Button
-																variant="outline"
-																size="icon"
-																onClick={() => generateOneInCategory(question.categoryId)}
-																disabled={Boolean(generatingCategoryId) && generatingCategoryId === question.categoryId}
-																title="Generate one question in this category"
-															>
-																<Plus className="h-4 w-4" />
-															</Button>
-														</div>
-													</div>
-												)}
-
 												{isFirstOverflow && (
 													<div className="mt-6 border-orange-300 border-t-2 border-dashed pt-4">
 														<div className="mb-4 flex items-center gap-2">
@@ -2004,47 +2225,19 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 															className={`${snapshot.isDragging ? "opacity-50" : ""}`}
 														>
 															<Card
-																className={`border-l-4 shadow-sm transition-all ${recentlyAddedQuestionIds.includes(question.id) ? "border-l-green-500 bg-green-50" : "border-l-gray-200"}`}
+																className={`border-l-4 p-1 shadow-sm transition-all ${recentlyAddedQuestionIds.includes(question.id) ? "border-l-green-500 bg-green-50" : "border-l-gray-200"}`}
 															>
-																<CardContent className="p-4">
+																<CardContent className="p-2">
 																	<div className="flex items-start gap-3">
-																		<div className="flex items-center gap-2">
+																		<div className="flex items-start gap-2">
 																			<div {...provided.dragHandleProps}>
-																				<GripVertical className="h-4 w-4 cursor-grab text-gray-400 hover:text-gray-600 active:cursor-grabbing" />
+																				<GripVertical className="mt-0.5 h-4 w-4 cursor-grab text-gray-400 hover:text-gray-600 active:cursor-grabbing" />
 																			</div>
-																			<div className="min-w-[1.5rem] font-medium text-foreground/60 text-sm">
-																				{index + 1}
+																			<div className="mt-0.5 min-w-[1.5rem] font-medium text-foreground/60 text-sm">
+																				{index + 1}.
 																			</div>
 																		</div>
 																		<div className="min-w-0 flex-1">
-																			<div className="mb-2 flex flex-wrap items-center gap-2">
-																				{question.source === "user" && (
-																					<Badge
-																						variant="outline"
-																						className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
-																					>
-																						<User className="mr-1 h-3 w-3" />
-																						Custom
-																					</Badge>
-																				)}
-																				{question.timesAnswered > 0 && (
-																					<Badge
-																						className={getAnsweredCountColor(question.timesAnswered)}
-																						variant="outline"
-																					>
-																						{question.timesAnswered}
-																					</Badge>
-																				)}
-																				{question.isMustHave && (
-																					<Badge
-																						variant="outline"
-																						className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
-																					>
-																						<TriangleAlert className="mr-1 h-3 w-3 fill-current" />
-																						Must-Have
-																					</Badge>
-																				)}
-																			</div>
 																			{editingId === question.id ? (
 																				<div className="mb-2 flex items-center gap-2">
 																					<Textarea
@@ -2100,31 +2293,76 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					</Button>
 																				</div>
 																			) : (
-																				<p
-																					className="-mx-1 mb-2 cursor-pointer rounded px-1 font-medium text-sm leading-relaxed hover:bg-gray-50"
-																					title={question.rationale ? `Why: ${question.rationale}` : undefined}
-																					onClick={() => {
-																						setEditingId(question.id)
-																						setEditingText(question.text)
-																					}}
-																				>
-																					{question.text}
-																				</p>
+																				<div className="mb-2">
+																					<p
+																						className="-mx-1 cursor-pointer rounded-md px-1 font-medium text-sm hover:bg-gray-50"
+																						title={question.rationale ? `Why: ${question.rationale}` : undefined}
+																						onClick={() => {
+																							setEditingId(question.id)
+																							setEditingText(question.text)
+																						}}
+																					>
+																						{question.text}
+																					</p>
+																					{/* Inline badges */}
+																					<div className="mt-1 flex flex-wrap items-center gap-2">
+																						{/* {question.source === "user" && (
+																							<Badge
+																								variant="outline"
+																								className="border-blue-200 text-blue-800 dark:border-blue-800 dark:text-blue-200"
+																							>
+																								<User className="mr-1 h-3 w-3" />
+																								Custom
+																							</Badge>
+																						)} */}
+																						{/* {question.timesAnswered > 0 && (
+																							<Badge
+																								className={getAnsweredCountColor(question.timesAnswered)}
+																								variant="outline"
+																							>
+																								{question.timesAnswered}
+																							</Badge>
+																						)} */}
+																						{question.isMustHave && (
+																							<Badge
+																								variant="outline"
+																								className="border-red-200 text-red-800 dark:border-red-800 dark:text-red-200"
+																							>
+																								<TriangleAlert className="mr-1 h-3 w-3 fill-current" />
+																								Must-Have
+																							</Badge>
+																						)}
+																					</div>
+																				</div>
+																			)}
+
+																			{/* Category/Time display on small screens */}
+																			{showCategoryTime && (
+																				<div className="mt-2 sm:hidden">
+																					<span
+																						className={`inline-flex items-center rounded-md border px-2 py-1 text-xs ${cat?.color || "border-gray-200 bg-gray-50 text-gray-700"}`}
+																					>
+																						{cat?.name || "Other"} • ~{Math.round(question.estimatedMinutes || 3)}min
+																					</span>
+																				</div>
 																			)}
 																		</div>
 																		<div className="flex items-center gap-1">
 																			{isEvalEnabled && question.qualityFlag && (
 																				<QualityFlag qualityFlag={question.qualityFlag} />
 																			)}
-																			<Button
-																				variant="ghost"
-																				size="sm"
-																				className="h-8 px-2 text-gray-500 text-xs hover:text-gray-700"
-																				title="View question details"
-																			>
-																				{questionCategories.find((c) => c.id === question.categoryId)?.name || "Other"}{" "}
-																				• ~{Math.round(question.estimatedMinutes || 3)}min
-																			</Button>
+																			{showCategoryTime && (
+																				<Button
+																					variant="ghost"
+																					size="sm"
+																					className="hidden h-8 px-2 text-gray-500 text-xs hover:text-gray-700 sm:inline-flex"
+																					title="View question details"
+																				>
+																					{questionCategories.find((c) => c.id === question.categoryId)?.name ||
+																						"Other"}{" "}
+																					• ~{Math.round(question.estimatedMinutes || 3)}min
+																				</Button>
+																			)}
 																			<DropdownMenu>
 																				<TooltipProvider>
 																					<Tooltip>
@@ -2225,7 +2463,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 												<Tooltip>
 													<TooltipTrigger asChild>
 														<Card className="border-none py-2 shadow-none sm:rounded-xl sm:border sm:border-gray-200 sm:shadow-sm">
-															<CardContent className="p-2 sm:p-2">
+															<CardContent className="p-0 md:p-2">
 																<div className="flex items-start gap-3">
 																	<div className="min-w-0 flex-1">
 																		<div className="mb-2">
@@ -2271,7 +2509,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					)}
 				</div>
 			</div>
-		</div>
+		</div >
 	)
 }
 

@@ -248,3 +248,77 @@ Global: Workspace switcher ▸ Projects ▸ Settings/Team
 ## UX Decisions (resolved)
 * Single workspace for now.
 * Read-only share links are auth-gated.
+
+## Interview Data Flow (2025 Update)
+
+| Step | Route/Function/Component | Purpose | Data Storage | Key Relationships |
+|------|-------------------------|---------|--------------|-------------------|
+| 1 | [`app/components/questions/InterviewQuestionsManager.tsx`](app/components/questions/InterviewQuestionsManager.tsx) | Plan, generate, edit, and organize interview questions | `interview_prompts`, `project_answers` | Questions linked to project, can be associated with interviews via `prompt_id`/`question_id` |
+| 2 | [`app/features/interviews/pages/new.tsx`](app/features/interviews/pages/new.tsx) | Create a new interview, assign participants, set meta | `interviews` | Interview linked to project, account, and optionally people (participants) |
+| 3 | [`app/routes/api.upload-file.tsx`](app/routes/api.upload-file.tsx:13) | Upload interview recording (audio/video) | File storage (media), `interviews.media_url` | Uploaded file URL saved to interview record |
+| 4 | [`app/routes/api.interview-transcript.tsx`](app/routes/api.interview-transcript.tsx:5) | Transcribe uploaded media, attach transcript to interview | `interviews.transcript`, `interviews.transcript_formatted` | Transcript linked to interview, used for downstream analysis |
+| 5 | [`app/routes/api.trigger-analysis.tsx`](app/routes/api.trigger-analysis.tsx:5) | Trigger LLM/AI analysis on transcript | `evidence`, `project_answers`, `project_answer_evidence` | Extracted evidence/answers linked to interview, project, and optionally to questions |
+| 6 | [`app/features/interviews/pages/detail.tsx`](app/features/interviews/pages/detail.tsx) | View interview details, evidence, empathy map, insights | Reads from `interviews`, `evidence`, `project_answers` | UI aggregates all related data for a single interview |
+| 7 | [`app/features/interviews/pages/index.tsx`](app/features/interviews/pages/index.tsx) | List all interviews for a project | Reads from `interviews` | Aggregates interviews by project/account |
+
+```mermaid
+flowchart TD
+    A[InterviewQuestionsManager<br/>(Plan Questions)] --> B[NewInterviewPage<br/>(Create Interview)]
+    B --> C[UploadFileAPI<br/>(Upload Recording)]
+    C --> D[InterviewTranscriptAPI<br/>(Transcribe)]
+    D --> E[TriggerAnalysisAPI<br/>(Extract Evidence/Answers)]
+    E --> F[InterviewDetailPage<br/>(View Insights, Empathy Map)]
+    F --> G[InterviewsIndexPage<br/>(Project Interview List)]
+
+    subgraph Data
+      I[interviews]
+      J[interview_prompts]
+      K[project_answers]
+      L[evidence]
+      M[project_answer_evidence]
+    end
+
+    B -- saves --> I
+    A -- saves --> J
+    E -- saves --> L
+    E -- saves --> K
+    E -- saves --> M
+    F -- reads --> I
+    F -- reads --> L
+    F -- reads --> K
+    G -- reads --> I
+```
+
+### Recommendations for Interview Data Flow Improvements (2025 Review)
+
+**Strengths:**
+- Data is highly normalized, with clear separation between interviews, answers, and evidence.
+- All entities are project/account scoped with RLS, supporting multi-tenancy and security.
+- The flow from question planning to evidence extraction is explicit and traceable.
+- Empathy map facets and rich metadata on evidence support advanced analysis.
+
+**Potential Improvements:**
+1. **Transcript Chunking:**
+   - If interviews become very long, consider normalizing transcript storage (e.g., `transcript_chunks` table) for more granular evidence mapping and efficient querying.
+   - This is already hinted at in `project_answer_evidence.transcript_chunk_id` but not yet implemented.
+
+2. **Explicit People/Participant Linking:**
+   - While interviews can reference participants, consider a junction table for `interview_people` to support multi-participant interviews and richer role tracking (speaker, observer, etc.).
+   - This would align with the `evidence_people` pattern.
+
+3. **Evidence Provenance:**
+   - Consider tracking the exact LLM/model version or pipeline used for evidence extraction in the `evidence` table for auditability and reproducibility.
+
+4. **Error Handling & Status:**
+   - The `interviews.status` enum is robust, but consider adding more granular error codes or logs for failed uploads/transcriptions/analyses to aid debugging.
+
+5. **UI/UX:**
+   - Consider adding a visual "data lineage" or "evidence trace" feature in the UI, so users can click from an insight/evidence unit back to the original transcript/audio segment and question.
+
+6. **API Consistency:**
+   - Ensure all API endpoints return consistent error structures and status codes, especially for file upload and analysis triggers.
+
+7. **Documentation:**
+   - Keep this flow diagram and table up to date in both user and developer docs, and add a section on "How evidence is linked to interviews and questions" for advanced users.
+
+---

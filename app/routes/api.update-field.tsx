@@ -54,12 +54,21 @@ export async function action({ request }: ActionFunctionArgs) {
 		const updateData: Record<string, unknown> = {}
 
 		// Handle special cases for complex field types
-		if (fieldName === "high_impact_themes" && fieldValue) {
-			try {
-				updateData[fieldName] = JSON.parse(fieldValue)
-			} catch {
-				updateData[fieldName] = fieldValue
-			}
+		if ((fieldName === "high_impact_themes" || fieldName === "relevant_answers") && fieldValue) {
+			// These fields are text[] arrays in the database
+			// Convert multiline text to array by splitting on newlines
+			const lines = fieldValue
+				.split('\n')
+				.map(line => line.trim())
+				.filter(line => line.length > 0)
+			
+			updateData[fieldName] = lines.length > 0 ? lines : null
+			
+			consola.info(`📝 Converted ${fieldName} to array:`, {
+				originalValue: fieldValue,
+				processedArray: updateData[fieldName],
+				arrayLength: lines.length
+			})
 		} else {
 			updateData[fieldName] = fieldValue || null
 		}

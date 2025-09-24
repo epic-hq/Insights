@@ -15,6 +15,28 @@ export async function getProjectQuestionPlan(
   supabase: SupabaseClient<Database>,
   projectId: string
 ): Promise<QuestionPlanItem[]> {
+  // First try to get questions from the modern interview_prompts table
+  const { data: promptsData, error: promptsError } = await supabase
+    .from("interview_prompts")
+    .select("id, text, category, estimated_time_minutes, is_selected, selected_order, order_index")
+    .eq("project_id", projectId)
+    .eq("is_selected", true)
+    .order("selected_order", { ascending: true, nullsFirst: true })
+    .order("order_index", { ascending: true, nullsFirst: true })
+    .order("created_at", { ascending: true })
+
+  if (!promptsError && promptsData && promptsData.length > 0) {
+    // Use modern interview_prompts data
+    return promptsData.map((row, idx) => ({
+      id: row.id,
+      text: row.text,
+      categoryId: row.category,
+      estimatedMinutes: row.estimated_time_minutes,
+      orderIndex: row.selected_order ?? row.order_index ?? idx + 1
+    }))
+  }
+
+  // Fallback to legacy project_sections.meta.questions for backward compatibility
   const { data, error } = await supabase
     .from("project_sections")
     .select("meta")
@@ -58,6 +80,11 @@ export async function createPlannedAnswersForInterview(
   params: { projectId: string; interviewId: string }
 ) {
   const { projectId, interviewId } = params
+  
+  // Always sync with current plan when creating/accessing interview
+  // This ensures questions are always up-to-date without manual intervention
+  await refreshInterviewQuestions(supabase, { projectId, interviewId })
+  
   const plan = await getProjectQuestionPlan(supabase, projectId)
   if (!plan.length) return
 
@@ -105,6 +132,102 @@ export async function createPlannedAnswersForInterview(
     }
   })
 
+  if (inserts.length) {
+    const { error: insertError } = await supabase.from("project_answers").insert(inserts)
+    if (insertError) throw insertError
+  }
+
+  for (const update of updates) {
+    const { error: updateError } = await supabase
+      .from("project_answers")
+      .update(update.payload)
+      .eq("id", update.id)
+    if (updateError) throw updateError
+  }
+}
+
+export async function refreshInterviewQuestions(
+  supabase: SupabaseClient<Database>,
+  params: { projectId: string; interviewId: string }
+) {
+  const { projectId, interviewId } = params
+  
+  // Get current question plan from interview_prompts
+  const plan = await getProjectQuestionPlan(supabase, projectId)
+  if (!plan.length) return
+
+  // Get existing project_answers for this interview
+  const { data: existingAnswers, error: existingError } = await supabase
+    .from("project_answers")
+    .select("id, question_id, status, answer_text, answered_at, skipped_at")
+    .eq("project_id", projectId)
+    .eq("interview_id", interviewId)
+
+  if (existingError) throw existingError
+
+  // Create a map of existing answers by question_id
+  const existingByQuestionId = new Map<string, any>()
+  existingAnswers?.forEach((answer) => {
+    if (answer.question_id) {
+      existingByQuestionId.set(answer.question_id, answer)
+    }
+  })
+
+  // NEVER delete project_answers - preserve all collected data
+  // Instead, mark questions not in current plan as "archived" or "legacy"
+  const currentQuestionIds = new Set(plan.map(q => q.id))
+  const legacyAnswers = existingAnswers?.filter(answer => 
+    answer.question_id && !currentQuestionIds.has(answer.question_id)
+  ) || []
+
+  // Mark legacy questions but preserve the data
+  for (const legacyAnswer of legacyAnswers) {
+    const { error: updateError } = await supabase
+      .from("project_answers")
+      .update({ 
+        // Mark as legacy but preserve all data
+        origin: "legacy_plan" 
+      })
+      .eq("id", legacyAnswer.id)
+    
+    if (updateError) console.warn("Failed to mark legacy answer:", updateError)
+  }
+
+  // Update or insert questions based on current plan
+  const inserts: Tables["project_answers"]["Insert"][] = []
+  const updates: { id: string; payload: Tables["project_answers"]["Update"] }[] = []
+
+  plan.forEach((item, idx) => {
+    const orderIndex = item.orderIndex ?? idx + 1
+    const existing = existingByQuestionId.get(item.id)
+
+    if (existing) {
+      // Update existing answer with new question text and order
+      const payload: Tables["project_answers"]["Update"] = {
+        question_text: item.text,
+        question_category: item.categoryId,
+        estimated_time_minutes: item.estimatedMinutes ?? undefined,
+        order_index: orderIndex,
+      }
+      updates.push({ id: existing.id, payload })
+    } else {
+      // Insert new question
+      const insertPayload: Tables["project_answers"]["Insert"] = {
+        project_id: projectId,
+        interview_id: interviewId,
+        question_id: item.id,
+        question_text: item.text,
+        question_category: item.categoryId,
+        estimated_time_minutes: item.estimatedMinutes ?? undefined,
+        order_index: orderIndex,
+        status: "planned",
+        origin: "scripted",
+      }
+      inserts.push(insertPayload)
+    }
+  })
+
+  // Execute inserts and updates
   if (inserts.length) {
     const { error: insertError } = await supabase.from("project_answers").insert(inserts)
     if (insertError) throw insertError

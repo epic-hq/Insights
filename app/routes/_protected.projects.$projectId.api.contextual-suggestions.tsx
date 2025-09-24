@@ -5,9 +5,10 @@ import { userContext } from "~/server/user-context"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	const langfuse = getLangfuseClient()
-	const lfTrace = (langfuse as any).trace?.({ name: "api.contextual-suggestions" })
+	const lfTrace = langfuse?.trace?.({ name: "api.contextual-suggestions" })
 	try {
-		const ctx = context.get(userContext)
+		// Get user context for potential future use
+		context.get(userContext)
 		const formData = await request.formData()
 		const research_goal = formData.get("researchGoal") as string
 		const current_input = formData.get("currentInput") as string
@@ -39,12 +40,21 @@ export async function action({ request, context }: ActionFunctionArgs) {
     })
 
 		if (!research_goal || !suggestion_type) {
-			console.log("Missing required parameters")
-			return new Response(JSON.stringify({ error: "Missing required parameters" }), {
+			console.log("Missing required parameters: research_goal and suggestion_type are required")
+			return new Response(JSON.stringify({ error: "Missing required parameters: research_goal and suggestion_type are required" }), {
 				status: 400,
 				headers: { "Content-Type": "application/json" },
 			})
 		}
+
+    // Validate response_count
+    if (response_count < 1 || response_count > 10) {
+      console.log("Invalid response_count: must be between 1 and 10")
+      return new Response(JSON.stringify({ error: "response_count must be between 1 and 10" }), {
+        status: 400,
+        headers: { "Content-Type": "application/json" },
+      })
+    }
 
 		if (!b?.GenerateContextualSuggestions) {
 			console.log("BAML function not available; refusing non-AI fallback")

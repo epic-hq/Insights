@@ -84,6 +84,7 @@ export namespace partial_types {
       unknowns: string[]
       organizations: string[]
       roles: string[]
+      interview_questions: string[]
     }
     export interface DecisionQuestionOut {
       id?: string | null

@@ -38,7 +38,7 @@ export default function QuestionsIndex() {
 			)}
 
 			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
-			<div className="flex justify-center">
+			<div className="flex justify-center p-4">
 				<Button
 					onClick={() => {
 						if (routes) {

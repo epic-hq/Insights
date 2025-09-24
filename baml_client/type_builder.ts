@@ -41,7 +41,7 @@ export default class TypeBuilder {
     
     Chapter: ClassViewer<'Chapter', "start_ms" | "end_ms" | "summary" | "title">;
     
-    ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles">;
+    ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles" | "interview_questions">;
     
     DecisionQuestionOut: ClassViewer<'DecisionQuestionOut', "id" | "text" | "rationale" | "key_metrics" | "risks_if_wrong">;
     
@@ -185,7 +185,7 @@ export default class TypeBuilder {
         ]);
         
         this.ContextualSuggestions = this.tb.classViewer("ContextualSuggestions", [
-          "decision_questions","assumptions","unknowns","organizations","roles",
+          "decision_questions","assumptions","unknowns","organizations","roles","interview_questions",
         ]);
         
         this.DecisionQuestionOut = this.tb.classViewer("DecisionQuestionOut", [
