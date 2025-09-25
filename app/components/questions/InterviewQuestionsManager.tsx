@@ -263,7 +263,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [addingCustomQuestion, setAddingCustomQuestion] = useState(false)
 	const [showSettings, setShowSettings] = useState(false)
 	const [autoGenerateInitial, setAutoGenerateInitial] = useState(false)
-	const [generatingFollowUp, setGeneratingFollowUp] = useState<string | null>(null)
+	const [showingFollowupFor, setShowingFollowupFor] = useState<string | null>(null)
+	const [followupInput, setFollowupInput] = useState("")
 	const [mustHavesOnly, setMustHavesOnly] = useState(false)
 	const [showHelp, setShowHelp] = useState(false)
 	const [improvingId, setImprovingId] = useState<string | null>(null)
@@ -278,10 +279,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const previousSelectionRef = React.useRef<string[] | null>(null)
 	const recentlyAddedTimeoutsRef = React.useRef<Record<string, number>>({})
 	const [recentlyAddedQuestionIds, setRecentlyAddedQuestionIds] = useState<string[]>([])
-	const [pendingGeneratedQuestions, setPendingGeneratedQuestions] = useState<Question[]>([])
-	const [showPendingModal, setShowPendingModal] = useState(false)
-	const [pendingInsertionChoices, setPendingInsertionChoices] = useState<Record<string, string>>({})
-	const [processingPendingId, setProcessingPendingId] = useState<string | null>(null)
 
 	// Category/time visibility toggle
 	const [showCategoryTime, setShowCategoryTime] = useState(false)
@@ -395,38 +392,27 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
 								estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
 							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
-							isSelected: (q as QuestionInput & { isSelected?: boolean }).isSelected ?? false,
+							isSelected: true, // Auto-select all generated questions
+							status: "selected" as const, // Set status to selected
 						}
 					})
 
-					// Deduplicate questions by ID against existing and within this batch (and pending list)
-					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, [
-						...questions,
-						...pendingGeneratedQuestions,
-					])
+					// Deduplicate questions by ID against existing questions
+					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, questions)
 
-					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
-					setPendingInsertionChoices((prev) => ({
-						...prev,
-						...deduplicatedQuestions.reduce<Record<string, string>>((acc, question) => {
-							acc[question.id] = "end"
-							return acc
-						}, {}),
-					}))
-					setShowPendingModal(true)
+					// Always add all questions directly to main list
+					setAutoGenerateInitial(false)
+					setQuestions((prev) => [...prev, ...deduplicatedQuestions])
 
-					if (autoGenerateInitial) {
-						setAutoGenerateInitial(false)
-						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
-							description: "Review each new question to decide how it should be added.",
-							duration: 5000,
-						})
-					} else {
-						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
-							description: "Review the new questions and choose where to add them.",
-							duration: 4000,
-						})
-					}
+					// Save to database immediately
+					setSkipDebounce(true)
+					await saveQuestionsToDatabase([...questions, ...deduplicatedQuestions], getBaseSelectedIds())
+					setTimeout(() => setSkipDebounce(false), 1500)
+
+					toast.success(`Added ${deduplicatedQuestions.length} questions to your interview`, {
+						description: "All questions have been automatically selected and saved.",
+						duration: 5000,
+					})
 				} else {
 					toast.error("Failed to generate questions", {
 						description: "The response was successful but contained no questions",
@@ -672,7 +658,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	}, [projectId, supabase, commitSelection])
 
 	const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
-		const baseTimes = { exploratory: 6.5, validation: 4.5, followup: 3.5 }
+		const baseTimes = { exploratory: 3.5, validation: 2.5, followup: 2.0 }
 		const categoryAdjustments: Record<string, number> = {
 			pain: 0.5,
 			workflow: 0.5,
@@ -684,7 +670,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		const familiarityAdjustment = f === "warm" ? -0.5 : f === "cold" ? 0.5 : 0
 		const baseTime = baseTimes[p]
 		const categoryAdj = categoryAdjustments[q.categoryId] || 0
-		return Math.max(2.5, baseTime + categoryAdj + familiarityAdjustment)
+		return Math.max(1.0, Math.min(4.0, baseTime + categoryAdj + familiarityAdjustment))
 	}, [])
 
 	const calculateCompositeScore = useCallback((q: Question): number => {
@@ -855,6 +841,21 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			if (!projectId) return
 			try {
 				setSaving(true)
+
+				// ALLOWED VALUES TABLE FOR DEBUGGING
+				const ALLOWED_STATUS_VALUES = ["proposed", "asked", "answered", "skipped", "rejected"] as const
+				const ALLOWED_SOURCE_VALUES = ["ai", "user"] as const
+
+				console.group("🔍 SAVE QUESTIONS TO DATABASE DEBUG")
+				console.log("📊 ALLOWED VALUES:")
+				console.table({
+					"Status Values": ALLOWED_STATUS_VALUES.join(", "),
+					"Source Values": ALLOWED_SOURCE_VALUES.join(", "),
+					"Project ID": projectId,
+					"Questions Count": questionsToSave.length,
+					"Selected IDs Count": selectedIds.length,
+				})
+
 				const withOrder = questionsToSave.map((q, index) => {
 					const selectedIndex = selectedIds.indexOf(q.id)
 					const estimated = q.estimatedMinutes ?? estimateMinutesPerQuestion(q, purpose, familiarity)
@@ -869,7 +870,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 				const promptPayloads = withOrder.map((q, index) => {
 					const selectedIndex = selectedIds.indexOf(q.id)
-					return {
+					const payload = {
 						id: q.id,
 						project_id: projectId,
 						text: q.text,
@@ -886,12 +887,41 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						is_selected: q.isSelected ?? selectedIndex >= 0,
 						selected_order: q.selectedOrder ?? (selectedIndex >= 0 ? selectedIndex : null),
 					}
+
+					// Log each payload for debugging
+					if (q.status === "rejected" || q.isMustHave) {
+						console.log(`🔴 CRITICAL QUESTION [${q.id.slice(0, 8)}]:`, {
+							text: q.text.slice(0, 50) + "...",
+							status: q.status,
+							is_must_have: payload.is_must_have,
+							payload_status: payload.status,
+						})
+					}
+
+					return payload
 				})
 
-				const { error: promptError } = await supabase
+				console.log("📤 SENDING TO DATABASE:", {
+					payloads_count: promptPayloads.length,
+					rejected_count: promptPayloads.filter((p) => p.status === "rejected").length,
+					must_have_count: promptPayloads.filter((p) => p.is_must_have).length,
+				})
+
+				const { data, error: promptError } = await supabase
 					.from("interview_prompts")
 					.upsert(promptPayloads, { onConflict: "id" })
-				if (promptError) throw promptError
+					.select("id")
+
+				if (promptError) {
+					console.error("❌ DATABASE ERROR:", promptError)
+					throw promptError
+				}
+
+				console.log("✅ DATABASE RESPONSE:", {
+					returned_count: data?.length || 0,
+					upserted_ids: data?.map((d) => d.id.slice(0, 8)).join(", ") || "none",
+				})
+				console.groupEnd()
 
 				const keepIds = new Set(promptPayloads.map((p) => p.id))
 				if (existingPromptIdsRef.current.length) {
@@ -1002,20 +1032,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
 								estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
 							selectedOrder: null,
-							isSelected: false,
+							isSelected: true, // Auto-select generated questions
+							status: "selected" as const, // Set status to selected
 						}
 					})
 
-					setPendingGeneratedQuestions((prev) => [...prev, ...formatted])
-					setPendingInsertionChoices((prev) => ({
-						...prev,
-						...formatted.reduce<Record<string, string>>((acc, q) => {
-							acc[q.id] = "end"
-							return acc
-						}, {}),
-					}))
-					setShowPendingModal(true)
-					toast.success("Generated 1 question", { description: `Added to review for ${catName}.` })
+					// Always add directly to main list
+					setQuestions((prev) => [...prev, ...formatted])
+
+					// Save to database immediately
+					setSkipDebounce(true)
+					await saveQuestionsToDatabase([...questions, ...formatted], getBaseSelectedIds())
+					setTimeout(() => setSkipDebounce(false), 1500)
+
+					toast.success("Added 1 question", { description: `Question added to ${catName} and saved.` })
 				} else {
 					throw new Error("No question returned")
 				}
@@ -1358,87 +1388,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		return "bg-transparent text-blue-600 dark:text-blue-400"
 	}
 
-	const generateFollowUpQuestions = async (questionId: string, originalQuestion: string) => {
-		if (generatingFollowUp) return
-		setGeneratingFollowUp(questionId)
-
-		try {
-			const response = await fetch("/api/generate-followup-questions", {
-				method: "POST",
-				headers: { "Content-Type": "application/x-www-form-urlencoded" },
-				body: new URLSearchParams({
-					originalQuestion,
-					researchContext: `Research goal: ${research_goal || "General user research"}. Target roles: ${target_roles?.join(", ") || "Various roles"}.`,
-					targetRoles: target_roles?.join(", ") || "Various roles",
-					customInstructions:
-						customInstructions ||
-						"Generate thoughtful, conversational follow-up questions that dive deeper into the topic.",
-				}),
-			})
-
-			if (!response.ok) {
-				throw new Error(`Server error: ${response.status}`)
-			}
-
-			const data = await response.json()
-			if (data.success && data.followUpSet?.followUps) {
-				// Convert follow-up questions to our Question format and ensure unique IDs
-				const mappedFollowUps: Question[] = data.followUpSet.followUps.map((q: Partial<QuestionInput>) => ({
-					id: q.id || crypto.randomUUID(),
-					text: q.text || "",
-					categoryId: (q as any).categoryId || "context",
-					scores: {
-						importance: (q.scores?.importance ?? 0.5) as number,
-						goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
-						novelty: (q.scores?.novelty ?? 0.5) as number,
-					},
-					rationale: q.rationale || "",
-					status: "proposed" as const,
-					timesAnswered: 0,
-					source: "ai" as const,
-					isMustHave: false,
-				}))
-				const followUpQuestions = ensureUniqueQuestionIds(mappedFollowUps, questions)
-
-				const baseIds = getBaseSelectedIds()
-				const originalIndex = baseIds.indexOf(questionId)
-				if (originalIndex >= 0) {
-					const updatedQuestions = [...questions, ...followUpQuestions]
-					const followUpIds = followUpQuestions.map((q) => q.id)
-					const newBaseIds = [
-						...baseIds.slice(0, originalIndex + 1),
-						...followUpIds,
-						...baseIds.slice(originalIndex + 1),
-					]
-					setQuestions(updatedQuestions)
-					commitSelection(newBaseIds)
-					setHasInitialized(true)
-					followUpIds.forEach((id) => {
-						markQuestionAsRecentlyAdded(id)
-					})
-
-					setSkipDebounce(true)
-					await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
-					setTimeout(() => setSkipDebounce(false), 1500)
-
-					toast.success(`Added ${followUpQuestions.length} follow-up questions`, {
-						description: `Dive deeper questions inserted after "${originalQuestion.slice(0, 50)}${originalQuestion.length > 50 ? "..." : ""}"`,
-						duration: 4000,
-					})
-				}
-			} else {
-				throw new Error("No follow-up questions generated")
-			}
-		} catch (error) {
-			console.error("Follow-up generation error:", error)
-			toast.error("Failed to generate follow-up questions", {
-				description: error instanceof Error ? error.message : "An unexpected error occurred",
-			})
-		} finally {
-			setGeneratingFollowUp(null)
-		}
-	}
-
 	const handlePendingInsertionChange = useCallback((questionId: string, value: string) => {
 		setPendingInsertionChoices((prev) => ({ ...prev, [questionId]: value }))
 	}, [])
@@ -1649,71 +1598,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}, [projectId, syncingInterviews, supabase])
 
-	const handleAcceptPendingQuestion = useCallback(
-		async (questionId: string, mode: "end" | "after") => {
-			setProcessingPendingId(questionId)
-			const pending = pendingGeneratedQuestions.find((q) => q.id === questionId)
-			if (!pending) {
-				setProcessingPendingId(null)
-				return
-			}
-			const baseIds = getBaseSelectedIds()
-			let newBaseIds: string[]
-			if (mode === "after") {
-				const anchorId = pendingInsertionChoices[questionId]
-				const anchorIndex = anchorId && baseIds.includes(anchorId) ? baseIds.indexOf(anchorId) : baseIds.length - 1
-				if (anchorIndex >= 0) {
-					newBaseIds = [...baseIds.slice(0, anchorIndex + 1), pending.id, ...baseIds.slice(anchorIndex + 1)]
-				} else {
-					newBaseIds = [...baseIds, pending.id]
-				}
-			} else {
-				newBaseIds = [...baseIds, pending.id]
-			}
-
-			setSkipDebounce(true)
-			try {
-				const updatedQuestions = [...questions, pending]
-				setQuestions(updatedQuestions)
-				commitSelection(newBaseIds)
-				setHasInitialized(true)
-				markQuestionAsRecentlyAdded(pending.id)
-				setPendingGeneratedQuestions((prev) => prev.filter((q) => q.id !== questionId))
-				setPendingInsertionChoices((prev) => {
-					const next = { ...prev }
-					delete next[questionId]
-					return next
-				})
-
-				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
-				toast.success("Question added", {
-					description:
-						mode === "after"
-							? "Inserted right after your chosen question."
-							: "Added to the end of your interview plan.",
-				})
-			} finally {
-				setTimeout(() => setSkipDebounce(false), 1500)
-				setProcessingPendingId(null)
-			}
-		},
-		[
-			pendingGeneratedQuestions,
-			getBaseSelectedIds,
-			pendingInsertionChoices,
-			questions,
-			commitSelection,
-			markQuestionAsRecentlyAdded,
-			saveQuestionsToDatabase,
-		]
-	)
-
-	useEffect(() => {
-		if (pendingGeneratedQuestions.length === 0) {
-			setShowPendingModal(false)
-		}
-	}, [pendingGeneratedQuestions])
-
 	if (loading) {
 		return (
 			<div className="mx-auto max-w-4xl p-4 sm:p-6">
@@ -1759,7 +1643,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				</div>
 
 				{/* Description Row */}
-				<p className="hidden text-muted-foreground text-sm md:visible">
+				<div className="hidden text-muted-foreground text-sm md:visible">
 					Review, edit, and finalize your interview questions. Based on your{" "}
 					<Link
 						to={routes.projects.setup()}
@@ -1776,7 +1660,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					>
 						<HelpCircle className="h-4 w-4" />
 					</Button>
-				</p>
+				</div>
 
 				{/* Settings Button Row with Filters */}
 				<div className="flex items-center justify-between">
@@ -1817,17 +1701,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										size="sm"
 										onClick={() => {
 											if (!mustHavesOnly) {
-												// Save current selection (or default to all visible) before filtering
+												// Save current selection before filtering
 												previousSelectionRef.current =
 													selectedQuestionIds.length > 0
 														? [...selectedQuestionIds]
 														: questionPack.questions.map((q) => q.id)
-												// Filter to must-haves
-												const filteredIds = (previousSelectionRef.current || []).filter((id) => {
-													const q = questions.find((qq) => qq.id === id)
-													return q?.isMustHave
-												})
-												setSelectedQuestionIds(filteredIds)
+												// Filter to must-haves from interview_prompts table only
+												const mustHaveIds = questions
+													.filter((q) => q.isMustHave && q.status !== "rejected")
+													.map((q) => q.id)
+												setSelectedQuestionIds(mustHaveIds)
 											} else {
 												// Restore previous selection
 												setSelectedQuestionIds(previousSelectionRef.current || [])
@@ -1929,7 +1812,12 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					) : (
 						<div>
 							<div className="flex flex-row items-center gap-2">
-								<Button onClick={() => setShowContextualInput(false)} variant="outline" size="sm" className="border-dashed">
+								<Button
+									onClick={() => setShowContextualInput(false)}
+									variant="outline"
+									size="sm"
+									className="border-dashed"
+								>
 									<Plus className="mr-2 h-4 w-4" />
 									Add Prompt
 								</Button>
@@ -2031,122 +1919,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					</Card>
 				)}
 
-				<Dialog
-					open={showPendingModal && pendingGeneratedQuestions.length > 0}
-					onOpenChange={(open) => {
-						if (!open && pendingGeneratedQuestions.length === 0) {
-							setShowPendingModal(false)
-						}
-					}}
-				>
-					<DialogContent className="sm:max-w-3xl">
-						<DialogHeader>
-							<DialogTitle>Review Generated Questions</DialogTitle>
-							{baseSelectedQuestionsForModal.length === 0 ? (
-								<p className="text-muted-foreground text-sm">
-									Accepting a question will add it to the end of your plan. Once you have selected questions, you can
-									insert generated ones after a specific question.
-								</p>
-							) : (
-								<p className="text-muted-foreground text-sm">
-									Choose where each question should go, then accept or reject it individually.
-								</p>
-							)}
-						</DialogHeader>
-						<div className="space-y-4">
-							{pendingGeneratedQuestions.map((pendingQuestion) => {
-								const insertionChoice = pendingInsertionChoices[pendingQuestion.id] ?? "end"
-								const canInsertAfter = baseSelectedQuestionsForModal.length > 0
-								return (
-									<Card key={pendingQuestion.id} className="border-blue-100 bg-blue-50/40">
-										<CardContent className="space-y-3 p-4">
-											<div>
-												<p className="font-medium text-base leading-relaxed">{pendingQuestion.text}</p>
-												<div className="mt-2 flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
-													<span>
-														Category:{" "}
-														{questionCategories.find((cat) => cat.id === pendingQuestion.categoryId)?.name || "Context"}
-													</span>
-													<span>Source: AI</span>
-												</div>
-											</div>
-											<div className="flex flex-wrap items-center gap-3 text-xs">
-												{canInsertAfter && (
-													<>
-														<span className="text-muted-foreground">Insert after:</span>
-														<Select
-															value={insertionChoice}
-															onValueChange={(value) => handlePendingInsertionChange(pendingQuestion.id, value)}
-														>
-															<SelectTrigger className="h-8 w-full sm:w-80">
-																<SelectValue placeholder="Choose position" />
-															</SelectTrigger>
-															<SelectContent>
-																<SelectItem value="end">Add to end of list</SelectItem>
-																{baseSelectedQuestionsForModal.map((existingQuestion) => (
-																	<SelectItem key={existingQuestion.id} value={existingQuestion.id}>
-																		After “{existingQuestion.text.slice(0, 60)}
-																		{existingQuestion.text.length > 60 ? "…" : ""}”
-																	</SelectItem>
-																))}
-															</SelectContent>
-														</Select>
-													</>
-												)}
 
-												<div className="flex items-center gap-2">
-													<span className="text-muted-foreground">Category:</span>
-													<Select
-														value={pendingQuestion.categoryId}
-														onValueChange={(value) => handlePendingCategoryChange(pendingQuestion.id, value)}
-													>
-														<SelectTrigger className="h-8 w-52">
-															<SelectValue />
-														</SelectTrigger>
-														<SelectContent>
-															{questionCategories.map((cat) => (
-																<SelectItem key={cat.id} value={cat.id}>
-																	{cat.name}
-																</SelectItem>
-															))}
-														</SelectContent>
-													</Select>
-												</div>
-											</div>
-											<div className="flex flex-wrap gap-2">
-												<Button
-													size="sm"
-													disabled={processingPendingId === pendingQuestion.id}
-													onClick={() => handleAcceptPendingQuestion(pendingQuestion.id, "end")}
-												>
-													Accept & Add to End
-												</Button>
-												<Button
-													size="sm"
-													variant="secondary"
-													disabled={
-														processingPendingId === pendingQuestion.id || !canInsertAfter || insertionChoice === "end"
-													}
-													onClick={() => handleAcceptPendingQuestion(pendingQuestion.id, "after")}
-												>
-													Accept & Insert After
-												</Button>
-												<Button
-													size="sm"
-													variant="ghost"
-													className="text-red-600 hover:text-red-700"
-													onClick={() => handleRejectPendingQuestion(pendingQuestion.id)}
-												>
-													Reject
-												</Button>
-											</div>
-										</CardContent>
-									</Card>
-								)
-							})}
-						</div>
-					</DialogContent>
-				</Dialog>
 
 				{/* Help Dialog */}
 				<InterviewQuestionHelp open={showHelp} onOpenChange={setShowHelp} />
@@ -2193,7 +1966,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						</div>
 					</DialogContent>
 				</Dialog>
-
 
 				<div className="space-y-4">
 					<DragDropContext onDragEnd={onDragEnd}>
@@ -2352,16 +2124,14 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				<QualityFlag qualityFlag={question.qualityFlag} />
 																			)}
 																			{showCategoryTime && (
-																				<Button
-																					variant="ghost"
-																					size="sm"
-																					className="hidden h-8 px-2 text-gray-500 text-xs hover:text-gray-700 sm:inline-flex"
+																				<span
+																					className={`hidden items-center rounded-md border px-2 py-1 text-xs sm:inline-flex ${cat?.color || "border-gray-200 bg-gray-50 text-gray-700"}`}
 																					title="View question details"
 																				>
 																					{questionCategories.find((c) => c.id === question.categoryId)?.name ||
 																						"Other"}{" "}
 																					• ~{Math.round(question.estimatedMinutes || 3)}min
-																				</Button>
+																				</span>
 																			)}
 																			<DropdownMenu>
 																				<TooltipProvider>
@@ -2379,29 +2149,51 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				<DropdownMenuContent align="end">
 																					<DropdownMenuItem
 																						onClick={async () => {
-																							const updated = questions.map((q) =>
-																								q.id === question.id ? { ...q, isMustHave: !q.isMustHave } : q
-																							)
-																							setQuestions(updated)
-																							// Save to database
-																							setSkipDebounce(true)
-																							await saveQuestionsToDatabase(updated, selectedQuestionIds)
-																							setTimeout(() => setSkipDebounce(false), 1500)
+																							// Use new intent-based API
+																							const formData = new FormData()
+																							formData.append("intent", "toggle-must-have")
+
+																							try {
+																								const response = await fetch(`/api/questions/${question.id}`, {
+																									method: "POST",
+																									body: formData,
+																								})
+
+																								const result = await response.json()
+
+																								if (result.success) {
+																									// Update UI state with server response
+																									const updated = questions.map((q) =>
+																										q.id === question.id
+																											? { ...q, isMustHave: result.question.is_must_have }
+																											: q
+																									)
+																									setQuestions(updated)
+																									toast.success(result.message)
+																								} else {
+																									toast.error("Failed to toggle must-have", {
+																										description: result.error || "Please try again",
+																									})
+																								}
+																							} catch (error) {
+																								console.error("❌ Network error:", error)
+																								toast.error("Failed to toggle must-have", {
+																									description: "Network error, please try again",
+																								})
+																							}
 																						}}
 																					>
 																						<TriangleAlert className="mr-2 h-4 w-4" />
 																						{question.isMustHave ? "Remove Must-Have" : "Mark Must-Have"}
 																					</DropdownMenuItem>
 																					<DropdownMenuItem
-																						onClick={() => generateFollowUpQuestions(question.id, question.text)}
-																						disabled={generatingFollowUp === question.id}
+																						onClick={() => {
+																							setShowingFollowupFor(question.id)
+																							setFollowupInput("")
+																						}}
 																					>
-																						{generatingFollowUp === question.id ? (
-																							<div className="mr-2 h-4 w-4 animate-spin rounded-full border-current border-b-2" />
-																						) : (
-																							<Zap className="mr-2 h-4 w-4" />
-																						)}
-																						Generate Follow-ups
+																						<Zap className="mr-2 h-4 w-4" />
+																						Add Followup
 																					</DropdownMenuItem>
 																					<DropdownMenuItem
 																						onClick={() => {
@@ -2414,10 +2206,59 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					</DropdownMenuItem>
 																					<DropdownMenuItem
 																						onClick={() => removeQuestion(question.id)}
-																						className="text-red-600 focus:text-red-600"
+																						className="text-orange-600 focus:text-orange-600"
 																					>
 																						<Trash2 className="mr-2 h-4 w-4" />
-																						Remove Question
+																						Backup
+																					</DropdownMenuItem>
+																					<DropdownMenuItem
+																						onClick={async () => {
+																							console.group(`🗑️ DELETE QUESTION [${question.id.slice(0, 8)}]`)
+
+																							// Use new intent-based API
+																							const formData = new FormData()
+																							formData.append("intent", "delete")
+
+																							try {
+																								const response = await fetch(`/api/questions/${question.id}`, {
+																									method: "POST",
+																									body: formData,
+																								})
+
+																								const result = await response.json()
+
+																								if (result.success) {
+																									// Update UI state with server response
+																									const updated = questions.map((q) =>
+																										q.id === question.id ? { ...q, status: "deleted" as const } : q
+																									)
+																									setQuestions(updated)
+																									const baseIds = getBaseSelectedIds().filter(
+																										(id) => id !== question.id
+																									)
+																									commitSelection(baseIds)
+
+																									console.log("✅ Delete operation completed successfully")
+																									toast.success(result.message)
+																								} else {
+																									console.error("❌ Failed to delete question:", result.error)
+																									toast.error("Failed to delete question", {
+																										description: result.error || "Please try again",
+																									})
+																								}
+																							} catch (error) {
+																								console.error("❌ Network error:", error)
+																								toast.error("Failed to delete question", {
+																									description: "Network error, please try again",
+																								})
+																							} finally {
+																								console.groupEnd()
+																							}
+																						}}
+																						className="text-red-600 focus:text-red-600"
+																					>
+																						<X className="mr-2 h-4 w-4" />
+																						Delete
 																					</DropdownMenuItem>
 																				</DropdownMenuContent>
 																			</DropdownMenu>
@@ -2425,6 +2266,116 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																	</div>
 																</CardContent>
 															</Card>
+
+															{/* Contextual Suggestions for Follow-up Questions */}
+															{showingFollowupFor === question.id && (
+																<div className="mt-2 ml-8 rounded-lg border border-blue-200 bg-blue-50/50 p-4">
+																	<div className="mb-3 flex items-center justify-between">
+																		<h4 className="font-medium text-blue-900 text-sm">
+																			Add deeper follow-up questions for: "{question.text.slice(0, 50)}..."
+																		</h4>
+																		<Button
+																			variant="ghost"
+																			size="sm"
+																			onClick={() => {
+																				setShowingFollowupFor(null)
+																				setFollowupInput("")
+																			}}
+																			className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
+																		>
+																			<X className="h-4 w-4" />
+																		</Button>
+																	</div>
+
+																	<div className="mb-3">
+																		<Textarea
+																			placeholder="e.g., Can you walk me through a specific example of that challenge?"
+																			value={followupInput}
+																			onChange={(e) => setFollowupInput(e.target.value)}
+																			className="mb-2 resize-none"
+																			rows={2}
+																		/>
+																		<div className="flex items-center gap-2">
+																			<Button
+																				onClick={async () => {
+																					if (!followupInput.trim()) return
+
+																					try {
+																						setAddingCustomQuestion(true)
+
+																						// Create the follow-up question
+																						const followupQuestion: Question = {
+																							id: crypto.randomUUID(),
+																							text: followupInput.trim(),
+																							categoryId: question.categoryId, // Use same category as parent question
+																							scores: { importance: 0.7, goalMatch: 0.8, novelty: 0.6 },
+																							rationale: `Follow-up to: ${question.text}`,
+																							status: "proposed",
+																							timesAnswered: 0,
+																							source: "user",
+																							isMustHave: false,
+																							estimatedMinutes: estimateMinutesPerQuestion(
+																								{ categoryId: question.categoryId } as Question,
+																								purpose,
+																								familiarity
+																							),
+																							selectedOrder: null,
+																							isSelected: true,
+																						}
+
+																						// Insert after the current question
+																						const baseIds = getBaseSelectedIds()
+																						const currentIndex = baseIds.indexOf(question.id)
+																						const newBaseIds = [
+																							...baseIds.slice(0, currentIndex + 1),
+																							followupQuestion.id,
+																							...baseIds.slice(currentIndex + 1),
+																						]
+
+																						const updatedQuestions = [...questions, followupQuestion]
+																						setQuestions(updatedQuestions)
+																						commitSelection(newBaseIds)
+																						markQuestionAsRecentlyAdded(followupQuestion.id)
+
+																						setSkipDebounce(true)
+																						await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+																						setTimeout(() => setSkipDebounce(false), 1500)
+
+																						setFollowupInput("")
+																						setShowingFollowupFor(null)
+																						toast.success("Follow-up question added")
+																					} catch (error) {
+																						console.error("Error adding follow-up:", error)
+																						toast.error("Failed to add follow-up question")
+																					} finally {
+																						setAddingCustomQuestion(false)
+																					}
+																				}}
+																				size="sm"
+																				disabled={!followupInput.trim() || addingCustomQuestion}
+																			>
+																				<Plus className="mr-1 h-3 w-3" />
+																				Add Follow-up
+																			</Button>
+																		</div>
+																	</div>
+
+																	{effectiveResearchGoal && (
+																		<ContextualSuggestions
+																			researchGoal={effectiveResearchGoal}
+																			currentInput={followupInput}
+																			suggestionType="interview_questions"
+																			questionCategory={question.categoryId}
+																			customInstructions={`Generate deeper follow-up questions specifically for: "${question.text}"`}
+																			existingItems={questions.map((q) => q.text)}
+																			onSuggestionClick={(suggestion) => setFollowupInput(suggestion)}
+																			apiPath="api/contextual-suggestions"
+																			isActive={true}
+																			responseCount={3}
+																		/>
+																	)}
+																</div>
+															)}
 														</div>
 													)}
 												</Draggable>
@@ -2456,7 +2407,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								{showAllQuestions && (
 									<div className="mt-4 space-y-3">
 										<p className="text-gray-600 text-sm">
-											Generated questions - Accept to add to your interview or Reject to remove:
+											Generated backup questions - Click <Plus className="inline h-3 w-3" /> to add to your interview
+											plan:
 										</p>
 										{questionPack.remainingQuestions.map((question) => (
 											<TooltipProvider key={question.id}>
@@ -2479,17 +2431,35 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																			variant="outline"
 																			onClick={() => addQuestionFromReserve(question)}
 																			className="border-green-500 text-green-600 hover:bg-green-50"
+																			title="Add to selected questions"
 																		>
-																			Accept
+																			<Plus className="h-4 w-4" />
 																		</Button>
-																		<Button
-																			size="sm"
-																			variant="outline"
-																			onClick={() => rejectQuestion(question.id)}
-																			className="border-red-500 text-red-600 hover:bg-red-50"
-																		>
-																			Reject
-																		</Button>
+																		<DropdownMenu>
+																			<DropdownMenuTrigger asChild>
+																				<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+																					<MoreHorizontal className="h-4 w-4" />
+																				</Button>
+																			</DropdownMenuTrigger>
+																			<DropdownMenuContent align="end">
+																				<DropdownMenuItem
+																					onClick={() => {
+																						// TODO: Implement edit functionality for backup questions
+																						toast.info("Edit functionality coming soon")
+																					}}
+																				>
+																					<Edit className="mr-2 h-4 w-4" />
+																					Edit Question
+																				</DropdownMenuItem>
+																				<DropdownMenuItem
+																					onClick={() => rejectQuestion(question.id)}
+																					className="text-red-600 focus:text-red-600"
+																				>
+																					<X className="mr-2 h-4 w-4" />
+																					Delete
+																				</DropdownMenuItem>
+																			</DropdownMenuContent>
+																		</DropdownMenu>
 																	</div>
 																</div>
 															</CardContent>
@@ -2509,7 +2479,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					)}
 				</div>
 			</div>
-		</div >
+		</div>
 	)
 }
 

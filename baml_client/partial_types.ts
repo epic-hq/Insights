@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionOut,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionOut,  ResearchQuestionSuggestions,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -85,6 +85,11 @@ export namespace partial_types {
       organizations: string[]
       roles: string[]
       interview_questions: string[]
+    }
+    export interface DecisionQuestionItem {
+      id?: string | null
+      text?: string | null
+      rationale?: string | null
     }
     export interface DecisionQuestionOut {
       id?: string | null
@@ -234,6 +239,11 @@ export namespace partial_types {
       date?: string | null
       interviewer?: string | null
       durationMin?: number | null
+    }
+    export interface InterviewPromptItem {
+      id?: string | null
+      text?: string | null
+      research_question_id?: string | null
     }
     export interface InterviewPromptOut {
       id?: string | null
@@ -455,6 +465,12 @@ export namespace partial_types {
       question?: string | null
       priority?: number | null
     }
+    export interface ResearchQuestionItem {
+      id?: string | null
+      text?: string | null
+      rationale?: string | null
+      decision_question_id?: string | null
+    }
     export interface ResearchQuestionOut {
       id?: string | null
       dq_id?: string | null
@@ -469,6 +485,11 @@ export namespace partial_types {
       pain_point_questions: SuggestedQuestion[]
       solution_questions: SuggestedQuestion[]
       context_questions: SuggestedQuestion[]
+    }
+    export interface ResearchStructure {
+      decision_questions: DecisionQuestionItem[]
+      research_questions: ResearchQuestionItem[]
+      interview_prompts: InterviewPromptItem[]
     }
     export interface Scores {
       goalMatch?: number | null

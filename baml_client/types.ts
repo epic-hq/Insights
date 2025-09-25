@@ -362,6 +362,13 @@ export interface ContextualSuggestions {
   
 }
 
+export interface DecisionQuestionItem {
+  id: string
+  text: string
+  rationale?: string | null
+  
+}
+
 export interface DecisionQuestionOut {
   id: string
   text: string
@@ -487,13 +494,13 @@ export interface GapAnalysis {
 }
 
 export interface GenerateInputs {
-  target_org: string
-  target_roles: string
+  target_org?: string | null
+  target_roles?: string | null
   research_goal: string
-  research_goal_details: string
-  assumptions: string
-  unknowns: string
-  custom_instructions: string
+  research_goal_details?: string | null
+  assumptions?: string | null
+  unknowns?: string | null
+  custom_instructions?: string | null
   session_id: string
   round: number
   total_per_round?: number | null
@@ -542,6 +549,13 @@ export interface InterviewMetadata {
   date?: string | null
   interviewer?: string | null
   durationMin?: number | null
+  
+}
+
+export interface InterviewPromptItem {
+  id: string
+  text: string
+  research_question_id: string
   
 }
 
@@ -809,6 +823,14 @@ export interface ResearchQuestion {
   
 }
 
+export interface ResearchQuestionItem {
+  id: string
+  text: string
+  rationale?: string | null
+  decision_question_id: string
+  
+}
+
 export interface ResearchQuestionOut {
   id: string
   dq_id: string
@@ -825,6 +847,13 @@ export interface ResearchQuestionSuggestions {
   pain_point_questions: SuggestedQuestion[]
   solution_questions: SuggestedQuestion[]
   context_questions: SuggestedQuestion[]
+  
+}
+
+export interface ResearchStructure {
+  decision_questions: DecisionQuestionItem[]
+  research_questions: ResearchQuestionItem[]
+  interview_prompts: InterviewPromptItem[]
   
 }
 

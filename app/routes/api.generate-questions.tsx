@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import { b } from "~/baml_client"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { getServerClient } from "~/lib/supabase/server"
 import { currentProjectContext } from "~/server/current-project-context"
@@ -112,7 +113,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Only the core trio are required: target_orgs, target_roles, research_goal
 		if (!project_id) {
 			const missing: string[] = []
-			if (!target_orgs?.trim()) missing.push("target_orgs")
+
 			if (!target_roles?.trim()) missing.push("target_roles")
 			if (!research_goal?.trim()) missing.push("research_goal")
 			// Soft-optional: details/assumptions/unknowns (default to empty if missing)
@@ -127,7 +128,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Final validation after potentially loading from database
 		// Require only the core trio; default the rest to empty strings
 		const coreMissing: string[] = []
-		if (!target_orgs?.trim()) coreMissing.push("target_orgs")
 		if (!target_roles?.trim()) coreMissing.push("target_roles")
 		if (!research_goal?.trim()) coreMissing.push("research_goal")
 		research_goal_details = research_goal_details || ""
@@ -182,7 +182,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				const s = typeof v === "string" ? v : String(v ?? "")
 				return s.trim().length > 0 ? s : fallback
 			}
-			
+
 			const canonicalParams = {
 				target_orgs: ensure(target_orgs),
 				target_roles: ensure(target_roles),
@@ -198,14 +198,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				per_category_max: 3,
 				interview_time_limit,
 			}
-			
+
 			consola.log("[BAML DEBUG] Calling generateQuestionSetCanonical with params:", canonicalParams)
 			questionSet = await generateQuestionSetCanonical(canonicalParams)
 			consola.log("[BAML DEBUG] Canonical result:", {
 				hasQuestions: Array.isArray(questionSet?.questions),
 				questionCount: questionSet?.questions?.length || 0,
 				questions: questionSet?.questions?.slice(0, 3).map((q: any) => q.text) || [],
-				fullResult: questionSet
+				fullResult: questionSet,
 			})
 
 			// Sanitize canonical output to remove any placeholders
@@ -229,12 +229,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					research_goal_details,
 					assumptions,
 					unknowns,
-					custom_instructions
-				}
+					custom_instructions,
+				},
 			})
 			// AI-only mode: do not use text fallbacks
 			throw e
-			
+
 			// Fallback: use legacy suggestions and adapt to QuestionSet shape expected by UI.
 			consola.log("[BAML DEBUG] Attempting fallback generateResearchQuestions...")
 			const { generateResearchQuestions } = await import("~/utils/research-analysis.server")
@@ -376,9 +376,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Ensure all questions have unique, stable IDs and sanitize text length/format
 		const sanitizeText = (text: string): string => {
 			try {
-				let t = String(text || "").replace(/\s+/g, " ").trim()
+				let t = String(text || "")
+					.replace(/\s+/g, " ")
+					.trim()
 				// Remove any bracketed placeholders that may slip through
-				t = t.replace(/\[[^\]]*\]/g, "").replace(/\{[^}]*\}/g, "").replace(/<[^>]*>/g, "").replace(/\s+/g, " ").trim()
+				t = t
+					.replace(/\[[^\]]*\]/g, "")
+					.replace(/\{[^}]*\}/g, "")
+					.replace(/<[^>]*>/g, "")
+					.replace(/\s+/g, " ")
+					.trim()
 				const MAX = 140
 				if (t.length <= MAX) return t
 				// Prefer cutting at a natural boundary before MAX
@@ -386,7 +393,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				const lastPunct = Math.max(cut.lastIndexOf("?"), cut.lastIndexOf("."), cut.lastIndexOf("!"))
 				const lastSpace = cut.lastIndexOf(" ")
 				const end = lastPunct >= 40 ? lastPunct + 1 : lastSpace >= 40 ? lastSpace : MAX
-				return cut.slice(0, end).trim().replace(/[,:;\-]$/, "") + (end < t.length ? "…" : "")
+				return (
+					cut
+						.slice(0, end)
+						.trim()
+						.replace(/[,:;-]$/, "") + (end < t.length ? "…" : "")
+				)
 			} catch {
 				return String(text || "").slice(0, 140)
 			}

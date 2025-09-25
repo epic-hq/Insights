@@ -440,3 +440,22 @@ flowchart TD
 - `project_answers.respondent_person_id` → `people.id`
 
 This structure ensures that every Key Decision is traceable to the research questions, answers, and evidence that support it, with full interview and respondent context.
+
+### Why Does KeyDecisionsCard Prompt to Create a Plan First?
+
+The `KeyDecisionsCard` component is displayed within the `ProjectStatusScreen` only if the project has defined research goals or plan sections. This is determined by the presence of project sections of kind `"goal"` or `"research_goal"`.
+
+- The helper function `getGoalSections()` filters the project's sections for these kinds.
+- If no such sections exist, the UI does not render the KeyDecisionsCard and instead prompts the user to create a plan first.
+- This "plan" is not represented by a single `plan_id` field but rather by the presence of these goal-related project sections.
+- Creating a plan means adding at least one project section with kind `"goal"` or `"research_goal"`, which defines the research objectives.
+- Once a plan exists, the KeyDecisionsCard can display linked Decision Questions, Research Questions, and supporting answers/evidence.
+
+This design encourages users to explicitly define their research goals before diving into detailed analysis, ensuring alignment and context for the insights.
+
+---
+
+**Summary:**
+- No direct `plan_id` field is used.
+- The "plan" is modeled as project sections of kind `"goal"` or `"research_goal"`.
+- KeyDecisionsCard requires these sections to show meaningful data.

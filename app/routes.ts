@@ -117,6 +117,8 @@ const routes = [
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
+	route("api/questions/:questionId", "./routes/api.questions.$questionId.tsx"),
+	route("api/generate-research-structure", "./routes/api.generate-research-structure.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),

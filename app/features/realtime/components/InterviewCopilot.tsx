@@ -1,11 +1,12 @@
 import consola from "consola"
-import { Lightbulb, Loader2, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Square, Users } from "lucide-react"
+import { Lightbulb, Loader2, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Square, Users, Home, Plus } from "lucide-react"
 import posthog from "posthog-js"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -50,6 +51,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const replayTimerRef = useRef<number | null>(null)
 	const [assignedInterviewId, setAssignedInterviewId] = useState<string | undefined>(interviewId)
 	const [isFinishing, setIsFinishing] = useState(false)
+	const [showCompletionDialog, setShowCompletionDialog] = useState(false)
+	const [completedInterviewId, setCompletedInterviewId] = useState<string | undefined>()
 	const wsRef = useRef<WebSocket | null>(null)
 	const ctxRef = useRef<AudioContext | null>(null)
 	const nodeRef = useRef<AudioWorkletNode | null>(null)
@@ -679,7 +682,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								audioDuration,
 							}),
 						})
-						navigate(routes.interviews.detail(id))
+						
+						// Show completion dialog instead of immediately navigating
+						setCompletedInterviewId(id)
+						setIsFinishing(false)
+						setShowCompletionDialog(true)
 					}
 				} catch (e) {
 					consola.warn("Finalize error", e)
@@ -885,6 +892,30 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		stopStreaming()
 	}, [stopStreaming])
 
+	// Dialog handlers
+	const handleRecordAnother = useCallback(() => {
+		setShowCompletionDialog(false)
+		setCompletedInterviewId(undefined)
+		// Reset recording state and stay on the same page
+		setRecordingDuration(0)
+		setIsFinishing(false)
+		// Clear any existing recording state
+		setStreamStatus("idle")
+		setIsRecording(false)
+	}, [])
+
+	const handleGoHome = useCallback(() => {
+		setShowCompletionDialog(false)
+		navigate(routes.interviews.index())
+	}, [navigate, routes])
+
+	const handleViewInterview = useCallback(() => {
+		if (completedInterviewId) {
+			setShowCompletionDialog(false)
+			navigate(routes.interviews.detail(completedInterviewId))
+		}
+	}, [completedInterviewId, navigate, routes])
+
 	// Simple waveform component with dynamic animation
 	const WaveformAnimation = ({ isRecording }: { isRecording: boolean }) => {
 		const [bars, setBars] = useState([8, 12, 6, 15, 9])
@@ -1087,6 +1118,55 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					<div className="mx-auto mt-2 max-w-sm rounded-md border bg-muted/50 p-2 text-xs">{replayText}</div>
 				)}
 			</div>
+
+			{/* Analysis Complete Dialog */}
+			<Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
+				<DialogContent className="sm:max-w-md" showCloseButton={false}>
+					<DialogHeader>
+						<DialogTitle className="flex items-center gap-2">
+							<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+							Analyzing your recording
+						</DialogTitle>
+						<DialogDescription>
+							This may take a minute... You can:
+						</DialogDescription>
+					</DialogHeader>
+					
+					<DialogFooter className="flex-col gap-3 sm:flex-col">
+						<div className="flex w-full flex-col gap-2">
+							<Button 
+								onClick={handleRecordAnother} 
+								className="flex w-full items-center gap-2"
+								variant="outline"
+							>
+								<Plus className="h-4 w-4" />
+								Record Another Interview
+							</Button>
+							<Button 
+								onClick={handleGoHome} 
+								className="flex w-full items-center gap-2"
+								variant="outline"
+							>
+								<Home className="h-4 w-4" />
+								Go Home
+							</Button>
+						</div>
+						
+						{completedInterviewId && (
+							<div className="text-center text-sm text-muted-foreground">
+								<p>Or wait for the processed interview...</p>
+								<Button 
+									onClick={handleViewInterview}
+									variant="link"
+									className="mt-1 h-auto p-0 text-sm"
+								>
+									View completed interview
+								</Button>
+							</div>
+						)}
+					</DialogFooter>
+				</DialogContent>
+			</Dialog>
 		</div>
 	)
 }

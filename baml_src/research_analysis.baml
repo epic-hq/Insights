@@ -282,7 +282,7 @@ class Question {
   rationale string? @description("One short sentence on why this question matters for needs/potential.")
   tags string[]? @description("Optional short tags for filtering (e.g., 'pricing', 'workflow', 'adoption').")
   scores Scores @description("Scoring object. Provide values in [0,1] per field; the app computes a composite.")
-  estimatedMinutes float @description("Realistic time estimate in minutes for this question (2-7 minutes typical). Consider question complexity, follow-ups, and discussion depth.")
+  estimatedMinutes float @description("Realistic time estimate in minutes for this question (1-5 minutes typical). Consider question complexity, follow-ups, and discussion depth.")
   status "proposed" | "shown" | "rejected" | "asked" | "answered" @description("Lifecycle state. New questions must start as 'proposed'.")
   source "llm" | "curated" | "custom" @description("Origin of the question. Use 'llm' for generated items by default.")
   displayOrder int? @description("Optional UI order hint. Leave unset; the app may assign.")
@@ -313,6 +313,32 @@ class QuestionSet {
   round int @description("Current round number (1-based). Echo back the caller-provided value.")
 }
 
+// ---------- Research Structure Classes ----------
+class DecisionQuestionItem {
+  id string @description("Unique identifier for this decision question.")
+  text string @description("The key business decision to be made (e.g., 'Should we build feature X?').")
+  rationale string? @description("Why this decision matters for the business.")
+}
+
+class ResearchQuestionItem {
+  id string @description("Unique identifier for this research question.")
+  text string @description("Specific research question to investigate (e.g., 'How do users currently solve problem Y?').")
+  rationale string? @description("Why this research question helps answer the decision question.")
+  decision_question_id string @description("ID of the decision question this research question supports.")
+}
+
+class InterviewPromptItem {
+  id string @description("Unique identifier for this interview prompt.")
+  text string @description("Natural, conversational question to ask in interviews.")
+  research_question_id string @description("ID of the research question this prompt investigates.")
+}
+
+class ResearchStructure {
+  decision_questions DecisionQuestionItem[] @description("High-level business decisions to be made.")
+  research_questions ResearchQuestionItem[] @description("Specific research questions that support the decisions.")
+  interview_prompts InterviewPromptItem[] @description("Natural interview questions that gather evidence.")
+}
+
 // ---------- Legacy compatibility (kept) ----------
 class SuggestedQuestion {
   question string @description("Plain-text question wording.")
@@ -331,19 +357,43 @@ class ResearchQuestionSuggestions {
 
 // ---------- Inputs ----------
 class GenerateInputs {
-  target_org string @description("Target organization context (industry, size, market).")
-  target_roles string @description("Primary user roles/segments to interview (comma-separated or natural language).")
+  target_org string? @description("Target organization context (industry, size, market).")
+  target_roles string? @description("Primary user roles/segments to interview (comma-separated or natural language).")
   research_goal string @description("Short statement of the overarching research goal.")
-  research_goal_details string @description("Specific details and hypotheses relevant to this study.")
-  assumptions string @description("Key assumptions the team currently holds.")
-  unknowns string @description("Open questions and uncertainties to investigate.")
-  custom_instructions string @description("Optional caller-provided guidance that overrides defaults.")
+  research_goal_details string? @description("Specific details and hypotheses relevant to this study.")
+  assumptions string? @description("Key assumptions the team currently holds.")
+  unknowns string? @description("Open questions and uncertainties to investigate.")
+  custom_instructions string? @description("Optional caller-provided guidance that overrides defaults.")
   session_id string @description("Session identifier to embed into the returned QuestionSet.sessionId.")
   round int @description("1-based round number provided by the caller.")
   total_per_round int? @description("Default 25: number of questions to show per round.")
   per_category_min int? @description("Default 3: minimum per category.")
   per_category_max int? @description("Default 5: maximum per category.")
   interview_time_limit int? @description("Default 30: Expected interview time in minutes, use this to guide the selection of must ask questions.")
+}
+
+// ---------- Research Structure Generation ----------
+function GenerateResearchStructure(
+  inputs: GenerateInputs
+) -> ResearchStructure {
+  client CustomGPT4o
+  prompt #"
+  You are a research strategist helping to structure a user research study. Generate a complete research structure with decision questions, research questions, and interview prompts.
+
+  RESEARCH GOAL: {{ inputs.research_goal }}
+  DETAILS: {{ inputs.research_goal_details }}
+  TARGET ROLES: {{ inputs.target_roles }}
+  TARGET ORGS: {{ inputs.target_org }}
+  ASSUMPTIONS: {{ inputs.assumptions }}
+  UNKNOWNS: {{ inputs.unknowns }}
+
+  Generate 2-3 key business DECISION QUESTIONS that need to be answered.
+  For each decision question, generate 2-4 specific RESEARCH QUESTIONS.
+  For each research question, generate 2-3 natural INTERVIEW PROMPTS.
+
+  Make interview prompts conversational and natural, like you're talking to a friend.
+  Focus on understanding user behavior, pain points, and needs.
+  "#
 }
 
 // ---------- Main generation function ----------

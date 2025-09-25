@@ -43,6 +43,8 @@ export default class TypeBuilder {
     
     ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles" | "interview_questions">;
     
+    DecisionQuestionItem: ClassViewer<'DecisionQuestionItem', "id" | "text" | "rationale">;
+    
     DecisionQuestionOut: ClassViewer<'DecisionQuestionOut', "id" | "text" | "rationale" | "key_metrics" | "risks_if_wrong">;
     
     EvidenceLinkProposal: ClassViewer<'EvidenceLinkProposal', "evidence_id" | "rationale" | "confidence">;
@@ -76,6 +78,8 @@ export default class TypeBuilder {
     InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "relevantAnswers" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
     InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
+    
+    InterviewPromptItem: ClassViewer<'InterviewPromptItem', "id" | "text" | "research_question_id">;
     
     InterviewPromptOut: ClassViewer<'InterviewPromptOut', "id" | "rq_ids" | "text" | "followups" | "bias_checks">;
     
@@ -121,9 +125,13 @@ export default class TypeBuilder {
     
     ResearchQuestion: ClassViewer<'ResearchQuestion', "question" | "priority">;
     
+    ResearchQuestionItem: ClassViewer<'ResearchQuestionItem', "id" | "text" | "rationale" | "decision_question_id">;
+    
     ResearchQuestionOut: ClassViewer<'ResearchQuestionOut', "id" | "dq_id" | "text" | "rationale" | "evidence_types" | "suggested_methods">;
     
     ResearchQuestionSuggestions: ClassViewer<'ResearchQuestionSuggestions', "core_questions" | "behavioral_questions" | "pain_point_questions" | "solution_questions" | "context_questions">;
+    
+    ResearchStructure: ClassViewer<'ResearchStructure', "decision_questions" | "research_questions" | "interview_prompts">;
     
     Scores: ClassViewer<'Scores', "goalMatch" | "novelty" | "importance" | "uncertainty">;
     
@@ -148,7 +156,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionOut","ResearchQuestionSuggestions","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionItem","DecisionQuestionOut","EvidenceLinkProposal","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -186,6 +194,10 @@ export default class TypeBuilder {
         
         this.ContextualSuggestions = this.tb.classViewer("ContextualSuggestions", [
           "decision_questions","assumptions","unknowns","organizations","roles","interview_questions",
+        ]);
+        
+        this.DecisionQuestionItem = this.tb.classViewer("DecisionQuestionItem", [
+          "id","text","rationale",
         ]);
         
         this.DecisionQuestionOut = this.tb.classViewer("DecisionQuestionOut", [
@@ -254,6 +266,10 @@ export default class TypeBuilder {
         
         this.InterviewMetadata = this.tb.classViewer("InterviewMetadata", [
           "title","date","interviewer","durationMin",
+        ]);
+        
+        this.InterviewPromptItem = this.tb.classViewer("InterviewPromptItem", [
+          "id","text","research_question_id",
         ]);
         
         this.InterviewPromptOut = this.tb.classViewer("InterviewPromptOut", [
@@ -344,12 +360,20 @@ export default class TypeBuilder {
           "question","priority",
         ]);
         
+        this.ResearchQuestionItem = this.tb.classViewer("ResearchQuestionItem", [
+          "id","text","rationale","decision_question_id",
+        ]);
+        
         this.ResearchQuestionOut = this.tb.classViewer("ResearchQuestionOut", [
           "id","dq_id","text","rationale","evidence_types","suggested_methods",
         ]);
         
         this.ResearchQuestionSuggestions = this.tb.classViewer("ResearchQuestionSuggestions", [
           "core_questions","behavioral_questions","pain_point_questions","solution_questions","context_questions",
+        ]);
+        
+        this.ResearchStructure = this.tb.classViewer("ResearchStructure", [
+          "decision_questions","research_questions","interview_prompts",
         ]);
         
         this.Scores = this.tb.classViewer("Scores", [

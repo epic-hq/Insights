@@ -24,11 +24,7 @@ import { SignupDataWatcher } from "~/features/signup-chat/components/SignupDataW
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { cn } from "~/lib/utils"
 import type { SignupAgentState } from "~/mastra/agents"
-import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
-
-const memory = new Memory({
-	storage: getSharedPostgresStore(),
-})
+import { memory } from "~/mastra/memory"
 
 type AgentState = z.infer<typeof SignupAgentState>
 

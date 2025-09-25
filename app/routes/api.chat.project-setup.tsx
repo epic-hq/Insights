@@ -5,17 +5,13 @@ import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { mastra } from "~/mastra"
-import { getSharedPostgresStore } from "~/mastra/storage/postgres-singleton"
+import { memory } from "~/mastra/memory"
 import { userContext } from "~/server/user-context"
-
-const memory = new Memory({ storage: getSharedPostgresStore() })
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return new Response("Method Not Allowed", { status: 405 })
 	}
-
-	// Auth + context
 	const user = await getAuthenticatedUser(request)
 	if (!user) {
 		throw new Response("Unauthorized", { status: 401 })
