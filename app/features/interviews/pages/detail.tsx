@@ -1,4 +1,5 @@
 import consola from "consola"
+import { HeartHandshake, Puzzle } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
@@ -424,11 +425,12 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
-											<span>😣</span>
+											{/* <span>😣</span> */}
+											<Puzzle className="h-5 w-5 text-accent" />
 											<span>Pains & Goals</span>
-											<Badge variant="secondary" className="text-xs">
+											{/* <Badge variant="secondary" className="text-xs">
 												{empathyMap.pains.length + empathyMap.gains.length}
-											</Badge>
+											</Badge> */}
 										</div>
 									</button>
 									<button
@@ -439,14 +441,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
-											<span>⚡</span>
-											<span>User Actions</span>
-											<Badge variant="secondary" className="text-xs">
+											<HeartHandshake className="h-5 w-5 text-accent" />
+											<span>Empathy Map</span>
+											{/* <Badge variant="secondary" className="text-xs">
 												{empathyMap.says.length +
 													empathyMap.does.length +
 													empathyMap.thinks.length +
 													empathyMap.feels.length}
-											</Badge>
+											</Badge> */}
 										</div>
 									</button>
 								</div>
@@ -687,36 +689,35 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-6" />}
 
 					{/* Transcript Section - Collapsed by default */}
-					<details className="group">
-						<summary className="flex cursor-pointer items-center justify-between rounded-lg border bg-background p-4 hover:bg-muted/50">
-							<h3 className="font-semibold text-foreground text-lg">Full Transcript</h3>
-							<div className="flex items-center gap-2">
-								{interview.media_url && (
-									<MediaPlayer
-										mediaUrl={interview.media_url}
-										title="Play Recording"
-										size="sm"
-										duration_sec={interview.duration_sec || undefined}
-									/>
-								)}
-								<svg
-									className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180"
-									fill="none"
-									viewBox="0 0 24 24"
-									stroke="currentColor"
-								>
-									<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-								</svg>
-							</div>
-						</summary>
-						<div className="mt-4">
-							<LazyTranscriptResults
-								interviewId={interview.id}
-								hasTranscript={interview.hasTranscript}
-								hasFormattedTranscript={interview.hasFormattedTranscript}
+					<h3 className="font-semibold text-foreground text-lg">Raw Recording Details</h3>
+
+					<div className="flex items-center gap-2">
+						{interview.media_url && (
+							<MediaPlayer
+								mediaUrl={interview.media_url}
+								title="Play Recording"
+								size="sm"
+								duration_sec={interview.duration_sec || undefined}
 							/>
-						</div>
-					</details>
+						)}
+						{/* <svg
+							className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180"
+							fill="none"
+							viewBox="0 0 24 24"
+							stroke="currentColor"
+						>
+							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+						</svg> */}
+					</div>
+
+					<div className="mt-4">
+						<LazyTranscriptResults
+							interviewId={interview.id}
+							hasTranscript={interview.hasTranscript}
+							hasFormattedTranscript={interview.hasFormattedTranscript}
+						/>
+					</div>
+
 				</div>
 				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
 					<div className="space-y-4">

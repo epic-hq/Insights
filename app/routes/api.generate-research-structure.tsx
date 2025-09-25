@@ -107,9 +107,33 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 async function saveResearchStructure(supabase: any, projectId: string, structure: any) {
 	try {
+		// Generate proper UUIDs for all items since BAML might generate simple numeric IDs
+		const idMapping = new Map<string, string>()
+		
+		// Generate UUID mappings for decision questions
+		structure.decision_questions.forEach((dq: any) => {
+			if (!idMapping.has(dq.id)) {
+				idMapping.set(dq.id, randomUUID())
+			}
+		})
+		
+		// Generate UUID mappings for research questions
+		structure.research_questions.forEach((rq: any) => {
+			if (!idMapping.has(rq.id)) {
+				idMapping.set(rq.id, randomUUID())
+			}
+		})
+		
+		// Generate UUID mappings for interview prompts
+		structure.interview_prompts.forEach((ip: any) => {
+			if (!idMapping.has(ip.id)) {
+				idMapping.set(ip.id, randomUUID())
+			}
+		})
+
 		// 1. Save Decision Questions
 		const decisionQuestions = structure.decision_questions.map((dq: any) => ({
-			id: dq.id,
+			id: idMapping.get(dq.id),
 			project_id: projectId,
 			text: dq.text,
 			rationale: dq.rationale,
@@ -121,11 +145,11 @@ async function saveResearchStructure(supabase: any, projectId: string, structure
 
 		// 2. Save Research Questions
 		const researchQuestions = structure.research_questions.map((rq: any) => ({
-			id: rq.id,
+			id: idMapping.get(rq.id),
 			project_id: projectId,
 			text: rq.text,
 			rationale: rq.rationale,
-			decision_question_id: rq.decision_question_id,
+			decision_question_id: idMapping.get(rq.decision_question_id),
 		}))
 
 		const { error: rqError } = await supabase.from("research_questions").upsert(researchQuestions, { onConflict: "id" })
@@ -134,7 +158,7 @@ async function saveResearchStructure(supabase: any, projectId: string, structure
 
 		// 3. Save Interview Prompts
 		const interviewPrompts = structure.interview_prompts.map((ip: any) => ({
-			id: ip.id,
+			id: idMapping.get(ip.id),
 			project_id: projectId,
 			text: ip.text,
 		}))
@@ -147,8 +171,8 @@ async function saveResearchStructure(supabase: any, projectId: string, structure
 		const promptResearchLinks = structure.interview_prompts.map((ip: any) => ({
 			id: randomUUID(),
 			project_id: projectId,
-			prompt_id: ip.id,
-			research_question_id: ip.research_question_id,
+			prompt_id: idMapping.get(ip.id),
+			research_question_id: idMapping.get(ip.research_question_id),
 		}))
 
 		const { error: linkError } = await supabase

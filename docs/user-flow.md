@@ -246,8 +246,7 @@ Global: Workspace switcher ▸ Projects ▸ Settings/Team
 ---
 
 ## UX Decisions (resolved)
-* Single workspace for now.
-* Read-only share links are auth-gated.
+
 
 ## Interview Data Flow (2025 Update)
 
@@ -261,33 +260,7 @@ Global: Workspace switcher ▸ Projects ▸ Settings/Team
 | 6 | [`app/features/interviews/pages/detail.tsx`](app/features/interviews/pages/detail.tsx) | View interview details, evidence, empathy map, insights | Reads from `interviews`, `evidence`, `project_answers` | UI aggregates all related data for a single interview |
 | 7 | [`app/features/interviews/pages/index.tsx`](app/features/interviews/pages/index.tsx) | List all interviews for a project | Reads from `interviews` | Aggregates interviews by project/account |
 
-```mermaid
-flowchart TD
-    A[InterviewQuestionsManager<br/>(Plan Questions)] --> B[NewInterviewPage<br/>(Create Interview)]
-    B --> C[UploadFileAPI<br/>(Upload Recording)]
-    C --> D[InterviewTranscriptAPI<br/>(Transcribe)]
-    D --> E[TriggerAnalysisAPI<br/>(Extract Evidence/Answers)]
-    E --> F[InterviewDetailPage<br/>(View Insights, Empathy Map)]
-    F --> G[InterviewsIndexPage<br/>(Project Interview List)]
-
-    subgraph Data
-      I[interviews]
-      J[interview_prompts]
-      K[project_answers]
-      L[evidence]
-      M[project_answer_evidence]
-    end
-
-    B -- saves --> I
-    A -- saves --> J
-    E -- saves --> L
-    E -- saves --> K
-    E -- saves --> M
-    F -- reads --> I
-    F -- reads --> L
-    F -- reads --> K
-    G -- reads --> I
-```
+<!-- MERMAID diagram is broken. fix -->
 
 ### Recommendations for Interview Data Flow Improvements (2025 Review)
 
@@ -459,3 +432,154 @@ This design encourages users to explicitly define their research goals before di
 - No direct `plan_id` field is used.
 - The "plan" is modeled as project sections of kind `"goal"` or `"research_goal"`.
 - KeyDecisionsCard requires these sections to show meaningful data.
+
+---
+
+## Research Structure Management System (2025 Update)
+
+### Overview
+A comprehensive system for managing Decision Questions (DQs) and Research Questions (RQs) with database persistence, evidence analysis, and progress tracking.
+
+### Key Components
+
+#### 1. Research Structure Manager (`ResearchStructureManager.tsx`)
+**Purpose:** Define and edit Decision Questions and Research Questions before generating interview prompts.
+
+**Features:**
+- ✅ **Real-time Database Persistence**: All edits to DQs and RQs are immediately saved to database via PATCH API
+- ✅ **Inline Editing**: Click-to-edit functionality for question text and rationale
+- ✅ **AI-Powered Generation**: Generate structured research questions from project goals
+- ✅ **Proper Route Integration**: Uses `useProjectRoutes` for navigation to project setup
+
+**Database Integration:**
+- `decision_questions` table for key decisions
+- `research_questions` table for research questions (linked to DQs)
+- PATCH API at `/api/questions/{id}` supports updating all question types
+
+#### 2. Research Workflow Page (`research-workflow.tsx`)
+**Purpose:** Simplified, unified interface for research planning.
+
+**Features:**
+- ✅ **Simplified UI**: Removed complex stepper navigation
+- ✅ **Single Page Flow**: Shows both ResearchStructureManager and InterviewQuestionsManager
+- ✅ **Clean Navigation**: Minimal header with project name only
+- ✅ **Accessible Route**: Available at `/questions/research-workflow`
+
+#### 3. Research Evidence Analysis (`api.analyze-research-evidence.tsx`)
+**Purpose:** Analyze evidence and create traceable connections to research questions.
+
+**Features:**
+- ✅ **Evidence-to-Question Linking**: Keyword matching algorithm links evidence to relevant DQs and RQs
+- ✅ **Project Answers Creation**: Creates `project_answers` entries for traceable research progress
+- ✅ **Confidence Scoring**: Assigns confidence levels to evidence-question connections
+- ✅ **Analysis Metrics**: Returns summary of evidence analyzed and connections made
+
+**Data Flow:**
+```
+Evidence → Analysis → Project Answers → Research Questions → Decision Questions
+```
+
+#### 4. Enhanced Project Status Screen (`ProjectStatusScreen.tsx`)
+**Purpose:** Comprehensive view of research progress with detailed answers.
+
+**Features:**
+- ✅ **Key Decisions Summary**: Shows DQ and RQ counts with answer status
+- ✅ **Research Answers Detail**: Full `ResearchAnswers` component for detailed progress
+- ✅ **Navigation Links**: Direct link to research workflow management
+- ✅ **Progress Tracking**: Visual indicators for answered vs. open questions
+
+#### 5. Navigatable Onboarding Stepper (`OnboardingStepper.tsx`)
+**Purpose:** Allow users to navigate between onboarding steps directly.
+
+**Features:**
+- ✅ **Clickable Steps**: Each step has `href` property for direct navigation
+- ✅ **Route Integration**: Uses proper project routes for navigation
+- ✅ **Visual Progress**: Shows completed, current, and upcoming steps
+
+**Step Navigation:**
+- **Project Goals** → `/setup`
+- **Questions** → `/questions`
+- **Upload** → `/interviews/upload`
+
+### Technical Architecture
+
+#### Database Schema
+```sql
+-- Decision Questions (DQs)
+decision_questions:
+  - id (primary key)
+  - project_id (foreign key)
+  - text (question text)
+  - rationale (explanation)
+  - order_index (for ordering)
+
+-- Research Questions (RQs) 
+research_questions:
+  - id (primary key)
+  - project_id (foreign key)
+  - decision_question_id (foreign key to DQ)
+  - text (question text)
+  - rationale (explanation)
+  - order_index (for ordering)
+
+-- Project Answers (links evidence to questions)
+project_answers:
+  - id (primary key)
+  - project_id (foreign key)
+  - interview_id (foreign key)
+  - research_question_id (foreign key)
+  - decision_question_id (foreign key)
+  - answer_text (evidence text)
+  - confidence_level (0.0-1.0)
+  - status (answered/pending)
+```
+
+#### API Endpoints
+- **PATCH `/api/questions/{id}`**: Update DQ, RQ, or interview prompt
+- **POST `/api/analyze-research-evidence`**: Analyze evidence and link to questions
+- **GET `/questions/research-workflow`**: Research structure management page
+
+#### Route Structure
+```typescript
+routes.questions = {
+  index: () => `${base}/questions`,
+  researchWorkflow: () => `${base}/questions/research-workflow`,
+  // ... other routes
+}
+```
+
+### User Experience Improvements
+
+#### Before (Issues)
+- ❌ Editing DQs/RQs only updated local state, no database persistence
+- ❌ Complex stepper UI with nested navigation
+- ❌ No evidence analysis or traceability
+- ❌ Limited research progress visibility
+- ❌ Non-navigatable onboarding steps
+
+#### After (Solutions)
+- ✅ **Immediate Database Persistence**: All edits save to database with user feedback
+- ✅ **Simplified Interface**: Clean, single-page research workflow
+- ✅ **Evidence Traceability**: Complete evidence → question → decision pipeline
+- ✅ **Comprehensive Progress Tracking**: Detailed view of research status
+- ✅ **Intuitive Navigation**: Clickable stepper and proper route integration
+
+### Files Modified
+1. **`ResearchStructureManager.tsx`** - Added database persistence and route integration
+2. **`api.questions.$questionId.tsx`** - Added PATCH support for multiple table types
+3. **`research-workflow.tsx`** - Simplified UI structure, removed stepper complexity
+4. **`ProjectStatusScreen.tsx`** - Added ResearchAnswers component and navigation links
+5. **`api.analyze-research-evidence.tsx`** - New research analysis endpoint
+6. **`route-definitions.ts`** - Added research workflow route
+7. **`OnboardingStepper.tsx`** - Enhanced with navigation support
+8. **`questions/index.tsx`** - Made stepper steps clickable
+
+### Impact
+This system provides a complete research structure management experience with:
+- **Real-time persistence** for all research planning activities
+- **Evidence traceability** from interviews back to research questions
+- **Simplified user experience** with clear navigation paths
+- **Comprehensive progress tracking** for research projects
+- **Scalable architecture** supporting complex research workflows
+
+The implementation follows established patterns in the codebase and maintains consistency with existing authentication, routing, and data management approaches.

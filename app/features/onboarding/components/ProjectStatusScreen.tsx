@@ -23,7 +23,7 @@ import {
 	Zap,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { useRevalidator } from "react-router-dom"
+import { Link, useRevalidator } from "react-router"
 import { Streamdown } from "streamdown"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -588,14 +588,37 @@ export default function ProjectStatusScreen({
 												decisionSummaries={decisionSummaries}
 												topResearchQuestions={topResearchQuestions}
 											/>
+
+											{/* Research Workflow Link */}
+											<div className="mt-4">
+												<Link
+													to={routes.questions.researchWorkflow()}
+													className="inline-flex items-center gap-2 font-medium text-blue-600 text-sm hover:text-blue-800 hover:underline"
+												>
+													<MessageCircleQuestionIcon className="h-4 w-4" />
+													Manage Research Structure & Questions
+													<ArrowRight className="h-3 w-3" />
+												</Link>
+											</div>
+
+											{/* Research Answers - Detailed DQ & RQ Answers */}
+											{researchRollup && (
+												<div className="mt-6">
+													<ResearchAnswers
+														projectId={projectId}
+														onMetricsChange={handleResearchMetrics}
+														onDataChange={handleResearchRollup}
+													/>
+												</div>
+											)}
 										</CardContent>
 									</Card>
 								</div>
 
 								{/* Themes */}
-								<div>
+								{/* <div>
 									<ThemesSection routes={routes} projectId={projectId} />
-								</div>
+								</div> */}
 
 								{/* 4. Recommended Next Steps */}
 								<div className="mb-3 flex items-center gap-2">
@@ -627,7 +650,6 @@ export default function ProjectStatusScreen({
 							</div>
 
 							{/* Right Column: Quick Actions */}
-
 
 							<div className="space-y-4">
 								<h2 className="">Quick Actions</h2>

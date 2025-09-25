@@ -1,4 +1,4 @@
-import { BookOpen, MessageCircleQuestion, Mic } from "lucide-react"
+import { BookOpen, MessageCircleQuestion, Mic, UploadCloud, UploadCloud } from "lucide-react"
 import { useSearchParams } from "react-router"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"
@@ -28,9 +28,9 @@ export default function QuestionsIndex() {
 				<div className="mb-8">
 					<OnboardingStepper
 						steps={[
-							{ id: "goals", title: "Project Goals" },
-							{ id: "questions", title: "Questions" },
-							{ id: "upload", title: "Upload" },
+							{ id: "goals", title: "Project Goals", href: routes.projects.setup() },
+							{ id: "questions", title: "Questions", href: routes.questions.index() },
+							{ id: "upload", title: "Upload", href: routes.interviews.upload() },
 						]}
 						currentStepId="questions"
 					/>
@@ -38,7 +38,7 @@ export default function QuestionsIndex() {
 			)}
 
 			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
-			<div className="flex justify-center p-4">
+			<div className="flex flex-row justify-center gap-3 p-4">
 				<Button
 					onClick={() => {
 						if (routes) {
@@ -47,10 +47,23 @@ export default function QuestionsIndex() {
 					}}
 					variant="default"
 					// disabled={questionPack.questions.length === 0}
-					className="mx-auto w-full max-w-sm justify-center bg-blue-600 hover:bg-blue-700"
+					className="mx-auto w-full max-w-sm justify-center border-red-600 bg-red-700/50 hover:bg-red-700"
 				>
 					<Mic className="mr-2 h-4 w-4" />
-					Add Interview
+					Record Live
+				</Button>
+				<Button
+					onClick={() => {
+						if (routes) {
+							window.location.href = routes.interviews.upload()
+						}
+					}}
+					variant="default"
+					// disabled={questionPack.questions.length === 0}
+					className="mx-auto w-full max-w-sm justify-center border-red-600 bg-blue-700/50 hover:bg-blue-700"
+				>
+					<UploadCloud className="mr-2 h-4 w-4" />
+					Upload Audio / Transcript
 				</Button>
 			</div>
 		</div>

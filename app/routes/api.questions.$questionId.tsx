@@ -4,9 +4,10 @@ import { getServerClient } from "~/lib/supabase/server"
 
 /**
  * Intent-based API endpoint for question operations
- * POST /api/questions/:questionId
+ * POST /api/questions/:questionId - Form-based intents
+ * PATCH /api/questions/:questionId - JSON-based updates
  * 
- * Supported intents (via formData.intent):
+ * POST Supported intents (via formData.intent):
  * - "delete" - Set status to 'deleted'
  * - "reject" - Set status to 'rejected' 
  * - "backup" - Set status to 'backup'
@@ -14,6 +15,11 @@ import { getServerClient } from "~/lib/supabase/server"
  * - "toggle-must-have" - Toggle is_must_have boolean
  * - "update-order" - Update order_index (requires 'order' field)
  * - "update-category" - Update category (requires 'category' field)
+ * 
+ * PATCH Supported fields (via JSON body):
+ * - text - Update question text
+ * - rationale - Update question rationale
+ * - table - Specify table: "decision_questions", "research_questions", "interview_prompts"
  */
 export async function action({ params, request }: ActionFunctionArgs) {
 	const { client: supabase } = getServerClient(request)
@@ -24,6 +30,41 @@ export async function action({ params, request }: ActionFunctionArgs) {
 	}
 
 	try {
+		// Handle PATCH requests for direct text/rationale updates
+		if (request.method === "PATCH") {
+			const body = await request.json()
+			const { text, rationale, table } = body
+
+			if (!table || !["decision_questions", "research_questions", "interview_prompts"].includes(table)) {
+				return { error: "Valid table name required: decision_questions, research_questions, or interview_prompts", status: 400 }
+			}
+
+			const updateData: Record<string, any> = {
+				updated_at: new Date().toISOString()
+			}
+
+			if (text !== undefined) updateData.text = text
+			if (rationale !== undefined) updateData.rationale = rationale
+
+			consola.info(`📝 PATCH Update ${table}:`, { id: questionId, updateData })
+
+			const { data, error } = await supabase
+				.from(table)
+				.update(updateData)
+				.eq("id", questionId)
+				.select("id, text, rationale")
+				.single()
+
+			if (error) {
+				consola.error("❌ Failed to update:", error)
+				return { error: "Failed to update", details: error.message, status: 500 }
+			}
+
+			consola.info("✅ Updated successfully:", data)
+			return { success: true, data, message: `${table.replace('_', ' ')} updated successfully` }
+		}
+
+		// Handle POST requests with form data (existing logic)
 		const formData = await request.formData()
 		const intent = formData.get("intent") as string
 

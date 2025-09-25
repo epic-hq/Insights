@@ -90,6 +90,7 @@ export interface RouteDefinitions {
 		new: () => string
 		detail: (id: string) => string
 		edit: (id: string) => string
+		researchWorkflow: () => string
 	}
 
 	// Projects (note: these are at account level, not project level)
@@ -97,6 +98,7 @@ export interface RouteDefinitions {
 		index: () => string
 		new: () => string
 		setup: () => string
+		projectChat: () => string
 		detail: (id: string) => string
 		edit: (id: string) => string
 		dashboard: (id: string) => string
@@ -217,6 +219,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `${base}/questions/new`,
 			detail: (id: string) => `${base}/questions/${id}`,
 			edit: (id: string) => `${base}/questions/${id}/edit`,
+			researchWorkflow: () => `${base}/research-workflow`,
 		},
 
 		// Projects (note: these are at account level, not project level)

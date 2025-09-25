@@ -1,0 +1,452 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>UpSight – Plan → Interview → Analyze</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-neutral-50">
+  <div id="root"></div>
+
+  <!-- React + Router + Babel (CDN) -->
+  <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/react-router-dom@6/umd/react-router-dom.development.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <script type="text/babel">
+
+    const { useState, useEffect, useContext, createContext, StrictMode } = React;
+    const { HashRouter, Routes, Route, Link, NavLink, useNavigate } = ReactRouterDOM;
+
+    // --- Types (JS doc for clarity) ---
+    /** @typedef {{id:string,text:string,assumptions:string[],unknowns:string[],segments:string[],timebox:15|30}} Goal */
+    /** @typedef {{id:string,text:string,confidence:number,coverage:number,direction:"Likely Yes"|"Mixed"|"Likely No"}} Decision */
+    /** @typedef {{id:string,text:string,followups?:string[],rqIds?:string[]}} Prompt */
+    /** @typedef {{id:string,promptId:string,atSeconds:number,excerpt:string,tags:string[],decisionId?:string,createdAt:string}} Highlight */
+    /** @typedef {{id:string,prompts:Prompt[],forDecisions:string[]}} Guide */
+
+    // --- Utils ---
+    const rid = () => Math.random().toString(36).slice(2, 10);
+    const formatTime = (s) => `${String(Math.floor(s / 60)).padStart(2,"0")}:${String(s % 60).padStart(2,"0")}`;
+
+    // --- Store ---
+    const AppCtx = createContext(null);
+
+    function AppProvider({ children }) {
+      const [goal, setGoalState] = useState(null);
+      const [decisions, setDecisions] = useState([
+        { id: "dqA", text: "Is trust the main blocker at payment?", confidence: 20, coverage: 0.0, direction: "Mixed" },
+        { id: "dqB", text: "Prioritize mobile checkout speed over new features?", confidence: 30, coverage: 0.0, direction: "Mixed" },
+      ]);
+      const [guide, setGuide] = useState(null);
+      const [highlights, setHighlights] = useState([]);
+
+      const setGoal = (g) => {
+        setGoalState(prev => ({
+          id: prev?.id ?? rid(),
+          text: g.text ?? prev?.text ?? "",
+          assumptions: g.assumptions ?? prev?.assumptions ?? [],
+          unknowns: g.unknowns ?? prev?.unknowns ?? [],
+          segments: g.segments ?? prev?.segments ?? [],
+          timebox: g.timebox ?? prev?.timebox ?? 30,
+        }));
+      };
+
+      const generateGuide = (mode) => {
+        const base = [
+          { id: rid(), text: "Walk me through the last time this problem came up. What happened?" },
+          { id: rid(), text: "What did you try? What worked, what didn’t?" },
+          { id: rid(), text: "Where did it get frustrating or slow?" },
+          { id: rid(), text: "What made you continue, or decide to stop?" },
+          { id: rid(), text: "If you could change one thing about it, what would it be?" },
+        ];
+        const expert = [
+          { id: rid(), text: "When paying on mobile, what makes you trust a site enough to finish?" },
+          { id: rid(), text: "In the last month, what made a checkout feel fast vs. slow?" },
+        ];
+        const tb = goal?.timebox ?? 30;
+        const pool = mode === "EXPERT" ? [...base, ...expert] : base;
+        const count = tb === 15 ? 5 : Math.min(7, pool.length);
+        setGuide({ id: rid(), prompts: pool.slice(0, count), forDecisions: decisions.map(d => d.id) });
+      };
+
+      const addHighlight = (h) => {
+        setHighlights(prev => [{ id: rid(), createdAt: new Date().toISOString(), ...h }, ...prev]);
+      };
+
+      const linkHighlightToDecision = (highlightId, decisionId) => {
+        setHighlights(prev => prev.map(h => h.id === highlightId ? { ...h, decisionId } : h));
+      };
+
+      const recomputeAnalysis = () => {
+        const totals = {};
+        highlights.forEach(h => { if (h.decisionId) totals[h.decisionId] = (totals[h.decisionId] ?? 0) + 1; });
+        setDecisions(prev => prev.map(d => {
+          const hits = totals[d.id] ?? 0;
+          const confidence = Math.min(100, 20 + hits * 10);
+          const coverage = Math.min(1, hits / 5);
+          const direction = confidence >= 70 ? "Likely Yes" : confidence <= 30 ? "Likely No" : "Mixed";
+          return { ...d, confidence, coverage, direction };
+        }));
+      };
+
+      return (
+        <AppCtx.Provider value={{
+          goal, decisions, guide, highlights,
+          setGoal, generateGuide, addHighlight, linkHighlightToDecision, recomputeAnalysis
+        }}>
+          {children}
+        </AppCtx.Provider>
+      );
+    }
+
+    const useStore = () => {
+      const ctx = useContext(AppCtx);
+      if (!ctx) throw new Error("useStore must be used within AppProvider");
+      return ctx;
+    };
+
+    // --- Layout ---
+    function AppLayout() {
+      const tabs = [
+        { to: "/plan", label: "Plan" },
+        { to: "/interview", label: "Interview" },
+        { to: "/analyze", label: "Analyze" },
+      ];
+      return (
+        <div className="min-h-dvh text-neutral-900">
+          <header className="border-b bg-white">
+            <div className="mx-auto max-w-5xl px-4 h-14 flex items-center justify-between">
+              <Link to="/plan" className="font-semibold">UpSight</Link>
+              <nav className="flex gap-2 text-sm">
+                {tabs.map(t => (
+                  <NavLink key={t.to} to={t.to}
+                    className={({isActive}) => `px-3 py-1.5 rounded-md ${isActive ? "bg-black text-white" : "hover:bg-neutral-200"}`}>
+                    {t.label}
+                  </NavLink>
+                ))}
+              </nav>
+            </div>
+          </header>
+          <main className="mx-auto max-w-5xl px-4 py-6">
+            <Routes>
+              <Route path="/" element={<PlanLite />} />
+              <Route path="/plan" element={<PlanLite />} />
+              <Route path="/interview" element={<InterviewLite />} />
+              <Route path="/analyze" element={<AnalyzeLite />} />
+            </Routes>
+          </main>
+        </div>
+      );
+    }
+
+    // --- Plan ---
+    function PlanLite() {
+      const { goal, setGoal, generateGuide, decisions } = useStore();
+      const nav = useNavigate();
+      return (
+        <section className="rounded-xl border bg-white p-4 md:p-6 space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">What do you want to achieve?</h2>
+            <div className="text-xs text-neutral-500">Ready in under a minute</div>
+          </div>
+
+          <textarea
+            value={goal?.text ?? ""}
+            onChange={(e) => setGoal({ text: e.target.value })}
+            placeholder="e.g., Lift mobile checkout conversion by 20% this quarter"
+            className="w-full rounded-md border p-3 text-sm focus:outline-none focus:ring-2 focus:ring-black/30"
+          />
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <ChipInput label="Assumptions" values={goal?.assumptions ?? []}
+              onAdd={(v) => setGoal({ assumptions: [...(goal?.assumptions ?? []), v] })} />
+            <ChipInput label="Unknowns" values={goal?.unknowns ?? []}
+              onAdd={(v) => setGoal({ unknowns: [...(goal?.unknowns ?? []), v] })} />
+            <ChipInput label="Segments" values={goal?.segments ?? []}
+              onAdd={(v) => setGoal({ segments: [...(goal?.segments ?? []), v] })} />
+          </div>
+
+          <div className="flex items-center justify-between">
+            <TimeboxToggle value={goal?.timebox ?? 30} onChange={(tb) => setGoal({ timebox: tb })} />
+            <div className="text-sm text-neutral-600">Big choices detected: <span className="font-medium">{decisions.length}</span></div>
+          </div>
+
+          <div className="flex gap-2">
+            <button className="rounded-md bg-black px-4 py-2 text-white text-sm"
+              disabled={!goal?.text}
+              onClick={() => { generateGuide("QUICK"); nav("/interview"); }}>
+              Generate Guide
+            </button>
+            <button className="rounded-md border px-4 py-2 text-sm"
+              disabled={!goal?.text}
+              onClick={() => { generateGuide("EXPERT"); nav("/interview"); }}>
+              Use Context (Expert)
+            </button>
+          </div>
+
+          {goal?.text && (
+            <div className="text-xs text-neutral-500">
+              This guide will cover {decisions.length} big choices. You’ll ask ~{(goal?.timebox ?? 30) === 15 ? 5 : 7} questions.
+            </div>
+          )}
+        </section>
+      );
+    }
+
+    function ChipInput({ label, values, onAdd }) {
+      const [val, setVal] = useState("");
+      return (
+        <div>
+          <div className="text-sm mb-1">{label}</div>
+          <div className="flex gap-2">
+            <input
+              className="flex-1 rounded-md border px-3 py-2 text-sm"
+              value={val}
+              onChange={(e) => setVal(e.target.value)}
+              placeholder={`Add ${label.toLowerCase().slice(0, -1)}`}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" && val.trim()) { onAdd(val.trim()); setVal(""); }
+              }}
+            />
+            <button className="rounded-md border px-3 text-sm" onClick={() => { if (val.trim()) { onAdd(val.trim()); setVal(""); } }}>
+              Add
+            </button>
+          </div>
+          <div className="mt-2 flex flex-wrap gap-1">
+            {values.map((v, i) => (
+              <span key={`${v}-${i}`} className="rounded-full bg-neutral-100 px-2 py-0.5 text-xs">{v}</span>
+            ))}
+          </div>
+        </div>
+      );
+    }
+
+    function TimeboxToggle({ value, onChange }) {
+      return (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-neutral-600">Timebox:</span>
+          {[15, 30].map(v => (
+            <button key={v}
+              className={`rounded-md border px-3 py-1 ${value === v ? "bg-black text-white" : "hover:bg-neutral-100"}`}
+              onClick={() => onChange(v)}>
+              {v}m
+            </button>
+          ))}
+        </div>
+      );
+    }
+
+    // --- Interview ---
+    function InterviewLite() {
+      const { goal, guide, addHighlight, decisions, linkHighlightToDecision, recomputeAnalysis } = useStore();
+      const [running, setRunning] = useState(false);
+      const [seconds, setSeconds] = useState(0);
+      const [activePrompt, setActivePrompt] = useState(0);
+      const nav = useNavigate();
+
+      useEffect(() => {
+        if (!running) return;
+        const id = setInterval(() => setSeconds(s => s + 1), 1000);
+        return () => clearInterval(id);
+      }, [running]);
+
+      useEffect(() => {
+        if (!guide || !goal?.text) nav("/plan");
+      }, [guide, goal, nav]);
+
+      if (!guide) {
+        return (
+          <div className="rounded-xl border bg-white p-6">
+            <p className="text-sm mb-3">No guide generated yet.</p>
+            <Link to="/plan" className="text-sm underline">Create a goal to generate a guide →</Link>
+          </div>
+        );
+      }
+
+      const current = guide.prompts[activePrompt];
+
+      const addQuickHighlight = () => {
+        const excerpt = window.prompt("Add highlight (short quote or note):", "") || "";
+        if (!excerpt.trim()) return;
+        const h = { atSeconds: seconds, promptId: current.id, excerpt, tags: [] };
+        addHighlight(h);
+      };
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="lg:col-span-2 rounded-xl border bg-white p-4 md:p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-neutral-600">Interview • {goal?.segments?.[0] ?? "General"}</div>
+              <div className="flex items-center gap-2">
+                <button
+                  className={`rounded-md px-3 py-1.5 text-sm ${running ? "bg-red-600 text-white" : "bg-black text-white"}`}
+                  onClick={() => setRunning(r => !r)}
+                >
+                  {running ? "Pause" : "Record"}
+                </button>
+                <span className="font-mono text-sm tabular-nums">{formatTime(seconds)}</span>
+              </div>
+            </div>
+
+            <div className="space-y-3">
+              {guide.prompts.map((p, i) => (
+                <button
+                  key={p.id}
+                  onClick={() => setActivePrompt(i)}
+                  className={`w-full text-left rounded-lg border p-3 hover:bg-neutral-50 ${i === activePrompt ? "border-black" : "border-neutral-200"}`}
+                >
+                  <div className="text-sm">{i + 1}. {p.text}</div>
+                  {!!p.followups?.length && (
+                    <div className="mt-1 text-xs text-neutral-500">Follow-ups: {p.followups.join(" · ")}</div>
+                  )}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center gap-2">
+              <button className="rounded-md bg-amber-600 px-3 py-1.5 text-white text-sm" onClick={addQuickHighlight}>
+                ⭐ Add highlight
+              </button>
+              <div className="text-xs text-neutral-500">Tip: keep it short; you can refine later.</div>
+            </div>
+
+            <div className="pt-2 border-t mt-2 flex items-center justify-between">
+              <button className="rounded-md border px-3 py-1.5 text-sm" onClick={() => setSeconds(0)}>Reset Timer</button>
+              <button className="rounded-md border px-3 py-1.5 text-sm"
+                onClick={() => { recomputeAnalysis(); nav("/analyze"); }}>
+                Finish & Analyze
+              </button>
+            </div>
+          </section>
+
+          <aside className="rounded-xl border bg-white p-4 md:p-6">
+            <h3 className="text-sm font-semibold">Highlights</h3>
+            <div className="mt-3 space-y-2">
+              <HighlightsPane />
+            </div>
+            <div className="mt-4">
+              <div className="text-xs text-neutral-500 mb-2">Link latest highlight to a decision:</div>
+              <div className="flex flex-wrap gap-2">
+                {decisions.map(d => (
+                  <button
+                    key={d.id}
+                    className="rounded-full border px-3 py-1 text-xs hover:bg-neutral-100"
+                    onClick={() => {
+                      const latestId = document.querySelectorAll("[data-hid]")[0]?.getAttribute("data-hid");
+                      if (!latestId) return;
+                      linkHighlightToDecision(latestId, d.id);
+                      recomputeAnalysis();
+                    }}
+                  >
+                    {d.text}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </aside>
+        </div>
+      );
+    }
+
+    function HighlightsPane() {
+      const { highlights } = useStore();
+      if (!highlights.length) return <div className="text-xs text-neutral-500">No highlights yet.</div>;
+      return (
+        <div className="space-y-2">
+          {highlights.map((h, idx) => (
+            <div key={h.id} data-hid={idx === 0 ? h.id : undefined} className="rounded-lg border p-2">
+              <div className="text-xs text-neutral-500">{formatTime(h.atSeconds)} • {new Date(h.createdAt).toLocaleTimeString()}</div>
+              <div className="text-sm">{h.excerpt}</div>
+              {!!h.decisionId && <div className="mt-1 text-[11px] text-emerald-700">Linked to decision: {h.decisionId}</div>}
+            </div>
+          ))}
+        </div>
+      );
+    }
+
+    // --- Analyze ---
+    function AnalyzeLite() {
+      const { goal, decisions, highlights } = useStore();
+      const coverageAvg = decisions.length ? Math.round(decisions.reduce((a, d) => a + d.coverage, 0) / decisions.length * 100) : 0;
+      const confAvg = decisions.length ? Math.round(decisions.reduce((a, d) => a + d.confidence, 0) / decisions.length) : 0;
+
+      return (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          <section className="lg:col-span-2 rounded-xl border bg-white p-4 md:p-6">
+            <h2 className="text-lg font-semibold">Goal</h2>
+            <p className="text-sm text-neutral-700 mt-1">{goal?.text || "No goal yet."}</p>
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Stat label="Goal Confidence" value={`${confAvg}%`} />
+              <Stat label="Coverage" value={`${coverageAvg}%`} />
+            </div>
+            <div className="mt-4">
+              <Link to="/interview" className="rounded-md bg-black text-white px-3 py-1.5 text-sm">Schedule 1 more interview</Link>
+            </div>
+            <div className="mt-6">
+              <h3 className="text-sm font-semibold mb-2">Recent Evidence</h3>
+              {highlights.length ? (
+                <ul className="space-y-2">
+                  {highlights.slice(0, 3).map(h => (
+                    <li key={h.id} className="text-sm">• {h.excerpt} <span className="text-xs text-neutral-500">({formatTime(h.atSeconds)})</span></li>
+                  ))}
+                </ul>
+              ) : (
+                <div className="text-xs text-neutral-500">No evidence yet.</div>
+              )}
+            </div>
+          </section>
+
+          <aside className="rounded-xl border bg-white p-4 md:p-6 space-y-3">
+            <h3 className="text-sm font-semibold">Big Choices</h3>
+            {decisions.map(d => (
+              <div key={d.id} className="rounded-lg border p-3">
+                <div className="text-sm font-medium">{d.text}</div>
+                <div className="mt-2 flex items-center gap-2">
+                  <Pill label="Direction" value={d.direction} />
+                  <Pill label="Confidence" value={`${d.confidence}%`} />
+                  <Pill label="Coverage" value={`${Math.round(d.coverage * 100)}%`} />
+                </div>
+                <div className="mt-3">
+                  <Link to="/interview" className="text-xs underline">Collect more evidence →</Link>
+                </div>
+              </div>
+            ))}
+          </aside>
+        </div>
+      );
+    }
+
+    function Stat({ label, value }) {
+      return (
+        <div className="rounded-lg border p-3">
+          <div className="text-xs text-neutral-500">{label}</div>
+          <div className="text-xl font-semibold">{value}</div>
+        </div>
+      );
+    }
+
+    function Pill({ label, value }) {
+      return (
+        <div className="rounded-full border px-2 py-0.5 text-xs">
+          <span className="text-neutral-500">{label}:</span> <span className="font-medium">{value}</span>
+        </div>
+      );
+    }
+
+    // --- Mount ---
+    const root = ReactDOM.createRoot(document.getElementById("root"));
+    root.render(
+      <StrictMode>
+        <AppProvider>
+          <HashRouter>
+            <AppLayout />
+          </HashRouter>
+        </AppProvider>
+      </StrictMode>
+    );
+  </script>
+</body>
+</html>

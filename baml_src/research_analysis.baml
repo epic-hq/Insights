@@ -387,12 +387,42 @@ function GenerateResearchStructure(
   ASSUMPTIONS: {{ inputs.assumptions }}
   UNKNOWNS: {{ inputs.unknowns }}
 
-  Generate 2-3 key business DECISION QUESTIONS that need to be answered.
-  For each decision question, generate 2-4 specific RESEARCH QUESTIONS.
-  For each research question, generate 2-3 natural INTERVIEW PROMPTS.
+  TASK: Create a structured research plan with three levels:
 
-  Make interview prompts conversational and natural, like you're talking to a friend.
-  Focus on understanding user behavior, pain points, and needs.
+  1. DECISION QUESTIONS (2-3 items):
+     - High-level business decisions that need to be made
+     - Should be strategic and actionable
+     - Examples: "Should we build feature X?", "Which user segment should we prioritize?"
+     - Each needs a unique ID and clear rationale
+
+  2. RESEARCH QUESTIONS (2-4 per decision question):
+     - Specific questions that help answer each decision question
+     - Should be investigative and focused
+     - Examples: "How do users currently solve problem Y?", "What are the main barriers to adoption?"
+     - Each needs a unique ID, rationale, and links to a decision question
+
+  3. INTERVIEW PROMPTS (2-3 per research question):
+     - Natural, conversational questions to ask in interviews
+     - Should be open-ended and behavior-focused
+     - Examples: "Tell me about the last time you...", "What's most frustrating about..."
+     - Each needs a unique ID and links to a research question
+
+  GUIDELINES:
+  - Make interview prompts conversational and natural, like you're talking to a friend
+  - Focus on understanding user behavior, pain points, and needs
+  - Avoid leading questions or yes/no questions
+  - Generate unique IDs for all items (use crypto.randomUUID() style)
+  - Ensure all items have proper relationships (research questions link to decision questions, etc.)
+
+  QUALITY REQUIREMENTS:
+  - Decision questions should be strategic and business-focused
+  - Research questions should be specific and investigative
+  - Interview prompts should be natural and open-ended
+  - All text should be clear, concise, and actionable
+
+  Return the complete structure with all relationships properly linked.
+
+  {{ ctx.output_format }}
   "#
 }
 

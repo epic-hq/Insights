@@ -56,9 +56,10 @@ const routes = [
 
 				// Project setup route
 				route("setup", "./features/projects/pages/setup.tsx"),
-
 				// Preview redesigned setup route
 				route("setup-preview", "./routes/preview.setup.tsx"),
+				// Research workflow route
+				route("research-workflow", "./features/questions/pages/research-workflow.tsx"),
 
 				// Project settings route (new, replacing deprecated /projects/:id/edit)
 				route("settings", "./features/projects/pages/edit.tsx"),
@@ -119,6 +120,8 @@ const routes = [
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/questions/:questionId", "./routes/api.questions.$questionId.tsx"),
 	route("api/generate-research-structure", "./routes/api.generate-research-structure.tsx"),
+	route("api/migrate-research-structure", "./routes/api.migrate-research-structure.tsx"),
+	route("api/check-research-structure", "./routes/api.check-research-structure.tsx"),
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),

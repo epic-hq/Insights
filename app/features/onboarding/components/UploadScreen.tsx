@@ -128,9 +128,9 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			/>
 
 			{/* Stepper */}
-			<div className="bg-background p-4 pb-8">
+			{/* <div className="bg-background p-4 pb-8">
 				<OnboardingStepper steps={onboardingSteps} currentStepId="upload" className="text-foreground" />
-			</div>
+			</div> */}
 
 
 

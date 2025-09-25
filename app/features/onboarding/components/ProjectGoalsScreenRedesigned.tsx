@@ -1,5 +1,5 @@
 import consola from "consola"
-import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, Users, X } from "lucide-react"
+import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, TargetIcon, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 import { z } from "zod"
@@ -80,7 +80,7 @@ export default function ProjectGoalsScreen({
 	project,
 	projectId,
 	accountId,
-	showStepper = true,
+	showStepper = false,
 	showNextButton = true,
 	templateKey,
 	prefill,
@@ -604,148 +604,6 @@ export default function ProjectGoalsScreen({
 						</CardContent>
 					</Card>
 
-					{/* Key Questions Accordion */}
-					<Collapsible
-						open={openAccordion === "key-questions"}
-						onOpenChange={() => setOpenAccordion(openAccordion === "key-questions" ? null : "key-questions")}
-					>
-						<Card>
-							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
-									<div className="flex items-center justify-between">
-										<div className="flex items-center gap-2">
-											<HelpCircle className="h-5 w-5 text-green-600" />
-											<h2 className="font-semibold text-lg">Key Questions</h2>
-											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
-												{" "}
-												{decision_questions.length}
-											</span>
-											<Tooltip>
-												<TooltipTrigger asChild>
-													<span className="inline-flex">
-														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-													</span>
-												</TooltipTrigger>
-												<TooltipContent className="max-w-xs">
-													<p>These questions will guide your research and help shape the interviews.</p>
-												</TooltipContent>
-											</Tooltip>
-										</div>
-										{openAccordion === "key-questions" ? (
-											<ChevronDown className="h-4 w-4" />
-										) : (
-											<ChevronRight className="h-4 w-4" />
-										)}
-									</div>
-								</CardHeader>
-							</CollapsibleTrigger>
-							<CollapsibleContent>
-								<CardContent className="p-6 pt-0">
-									{/* Question List */}
-									<div className="mb-4 space-y-2">
-										{decision_questions.map((question, index) => (
-											<div
-												key={`decision-${index}-${question.slice(0, 10)}`}
-												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100"
-											>
-												<div className="mt-1 flex-shrink-0">
-													<div className="h-2 w-2 rounded-md bg-green-500" />
-												</div>
-												<InlineEdit
-													value={question}
-													onSubmit={(val) => updateDecisionQuestion(index, val)}
-													multiline={false}
-													textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
-													inputClassName="text-sm"
-													showEditButton={true}
-												/>
-												<button
-													onClick={() => removeDecisionQuestion(index)}
-													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
-												>
-													<X className="h-3 w-3 text-green-700" />
-												</button>
-											</div>
-										))}
-									</div>
-
-									{/* Add Question UI */}
-									{!showDecisionQuestionInput ? (
-										<Button
-											onClick={() => {
-												setShowDecisionQuestionInput(true)
-												setActiveSuggestionType("decision_questions")
-											}}
-											variant="outline"
-											size="sm"
-											className="w-full justify-center border-dashed"
-										>
-											<Plus className="mr-2 h-4 w-4" />
-											Add research question
-										</Button>
-									) : (
-										<div className="space-y-3">
-											<div className="flex gap-2">
-												<Textarea
-													ref={decisionQuestionInputRef}
-													placeholder="e.g., What drives B2B purchase decisions? What causes consumer app abandonment?"
-													value={newDecisionQuestion}
-													onChange={(e) => setNewDecisionQuestion(e.target.value)}
-													onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addDecisionQuestion()}
-													className="flex-1 resize-none"
-													rows={2}
-													autoFocus
-												/>
-												<Button
-													onClick={addDecisionQuestion}
-													variant="outline"
-													size="sm"
-													disabled={!newDecisionQuestion.trim()}
-												>
-													<Plus className="h-4 w-4" />
-												</Button>
-												<Button
-													onClick={() => {
-														setShowDecisionQuestionInput(false)
-														setNewDecisionQuestion("")
-													}}
-													variant="ghost"
-													size="sm"
-												>
-													<X className="h-4 w-4" />
-												</Button>
-											</div>
-
-											{/* Contextual Suggestions */}
-											<ContextualSuggestions
-												suggestionType="decision_questions"
-												currentInput={newDecisionQuestion}
-												researchGoal={research_goal}
-												existingItems={decision_questions}
-												apiPath={apiPath}
-												shownSuggestions={shownSuggestionsByType["decision_questions"] || []}
-												isActive={activeSuggestionType === null || activeSuggestionType === "decision_questions"}
-												onSuggestionClick={(suggestion) => {
-													setNewDecisionQuestion(suggestion)
-													focusInputAtEnd(decisionQuestionInputRef)
-												}}
-												onSuggestionShown={(suggestions) => {
-													if (activeSuggestionType === null) {
-														setActiveSuggestionType("decision_questions")
-													}
-													setShownSuggestionsByType((prev) => ({
-														...prev,
-														decision_questions: [...(prev.decision_questions || []), ...suggestions],
-													}))
-												}}
-											/>
-										</div>
-									)}
-								</CardContent>
-							</CollapsibleContent>
-						</Card>
-					</Collapsible>
-
 					{/* Target Market Accordion */}
 					<Collapsible
 						open={openAccordion === "target-market"}
@@ -757,7 +615,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											<h2 className="font-semibold text-lg">Market & Stakeholders</h2>
+											<h2 className="font-semibold text-lg">Who are we talking to?</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
@@ -985,7 +843,151 @@ export default function ProjectGoalsScreen({
 						</Card>
 					</Collapsible>
 
-					{/* Research Context Accordion */}
+					{/* Key Decisions to make Accordion */}
+					<Collapsible
+						open={openAccordion === "key-questions"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "key-questions" ? null : "key-questions")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<TargetIcon className="h-5 w-5 text-green-600" />
+											<h2 className="font-semibold text-lg">What Decisions Need to be Made?</h2>
+											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+												{" "}
+												{decision_questions.length}
+											</span>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+													</span>
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>These questions will guide your research and help shape the interviews.</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "key-questions" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									{/* Question List */}
+									<div className="mb-4 space-y-2">
+										{decision_questions.map((question, index) => (
+											<div
+												key={`decision-${index}-${question.slice(0, 10)}`}
+												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100"
+											>
+												<div className="mt-1 flex-shrink-0">
+													<div className="h-2 w-2 rounded-md bg-green-500" />
+												</div>
+												<InlineEdit
+													value={question}
+													onSubmit={(val) => updateDecisionQuestion(index, val)}
+													multiline={false}
+													textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+													inputClassName="text-sm"
+													showEditButton={true}
+												/>
+												<button
+													onClick={() => removeDecisionQuestion(index)}
+													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
+												>
+													<X className="h-3 w-3 text-green-700" />
+												</button>
+											</div>
+										))}
+									</div>
+
+									{/* Add Question UI */}
+									{!showDecisionQuestionInput ? (
+										<Button
+											onClick={() => {
+												setShowDecisionQuestionInput(true)
+												setActiveSuggestionType("decision_questions")
+											}}
+											variant="outline"
+											size="sm"
+											className="w-full justify-center border-dashed"
+										>
+											<Plus className="mr-2 h-4 w-4" />
+											Add research question
+										</Button>
+									) : (
+										<div className="space-y-3">
+											<div className="flex gap-2">
+												<Textarea
+													ref={decisionQuestionInputRef}
+													placeholder="e.g., What drives B2B purchase decisions? What causes consumer app abandonment?"
+													value={newDecisionQuestion}
+													onChange={(e) => setNewDecisionQuestion(e.target.value)}
+													onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addDecisionQuestion()}
+													className="flex-1 resize-none"
+													rows={2}
+													autoFocus
+												/>
+												<Button
+													onClick={addDecisionQuestion}
+													variant="outline"
+													size="sm"
+													disabled={!newDecisionQuestion.trim()}
+												>
+													<Plus className="h-4 w-4" />
+												</Button>
+												<Button
+													onClick={() => {
+														setShowDecisionQuestionInput(false)
+														setNewDecisionQuestion("")
+													}}
+													variant="ghost"
+													size="sm"
+												>
+													<X className="h-4 w-4" />
+												</Button>
+											</div>
+
+											{/* Contextual Suggestions */}
+											<ContextualSuggestions
+												suggestionType="decision_questions"
+												currentInput={newDecisionQuestion}
+												researchGoal={research_goal}
+												existingItems={decision_questions}
+												apiPath={apiPath}
+												shownSuggestions={shownSuggestionsByType["decision_questions"] || []}
+												isActive={activeSuggestionType === null || activeSuggestionType === "decision_questions"}
+												onSuggestionClick={(suggestion) => {
+													setNewDecisionQuestion(suggestion)
+													focusInputAtEnd(decisionQuestionInputRef)
+												}}
+												onSuggestionShown={(suggestions) => {
+													if (activeSuggestionType === null) {
+														setActiveSuggestionType("decision_questions")
+													}
+													setShownSuggestionsByType((prev) => ({
+														...prev,
+														decision_questions: [...(prev.decision_questions || []), ...suggestions],
+													}))
+												}}
+											/>
+										</div>
+									)}
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+
+
+
+					{/* Research Questions Accordion */}
 					<Collapsible
 						open={openAccordion === "research-context"}
 						onOpenChange={() => setOpenAccordion(openAccordion === "research-context" ? null : "research-context")}
@@ -995,8 +997,8 @@ export default function ProjectGoalsScreen({
 								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
-											<Target className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">Crucial Assumptions & Unknowns</h2>
+											<HelpCircle className="h-5 w-5 text-blue-600" />
+											<h2 className="font-semibold text-lg">Research Questions</h2>
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
@@ -1005,8 +1007,7 @@ export default function ProjectGoalsScreen({
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
 													<p>
-														Define what you believe (assumptions) and what you're unsure about (unknowns) to guide your
-														research.
+														What do we need to learn in order to make decisions?
 													</p>
 												</TooltipContent>
 											</Tooltip>
@@ -1023,7 +1024,7 @@ export default function ProjectGoalsScreen({
 								<CardContent className="p-6 pt-0">
 									<div className="mb-6">
 										{/* Assumptions */}
-										<div className="mb-6">
+										{/* <div className="mb-6">
 											<label className="mb-3 block font-medium text-gray-900 text-sm">Assumptions</label>
 											<div className="mb-3 space-y-2">
 												{assumptions.map((assumption, index) => (
@@ -1116,11 +1117,11 @@ export default function ProjectGoalsScreen({
 													/>
 												</div>
 											)}
-										</div>
+										</div> */}
 
-										{/* Unknowns */}
+										{/* Unknowns -> Research Questions */}
 										<div>
-											<label className="mb-3 block font-medium text-gray-900 text-sm">Key Unknowns</label>
+											{/* <label className="mb-3 block font-medium text-gray-900 text-sm">Research Questions (Unknowns)</label> */}
 											<div className="mb-3 space-y-2">
 												{unknowns.map((unknown, index) => (
 													<div
