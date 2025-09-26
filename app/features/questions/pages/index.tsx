@@ -1,16 +1,25 @@
-import { BookOpen, MessageCircleQuestion, Mic, UploadCloud, UploadCloud } from "lucide-react"
+import { Mic, UploadCloud } from "lucide-react"
+import { useCallback } from "react"
 import { useSearchParams } from "react-router"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useRecordNow } from "~/hooks/useRecordNow"
 
 export default function QuestionsIndex() {
 	const { projectId, projectPath } = useCurrentProject()
 	const [params] = useSearchParams()
 	const isOnboarding = params.get("onboarding") === "1"
 	const routes = useProjectRoutes(projectPath)
+	const { recordNow, isRecording } = useRecordNow()
+
+	const handleRecordNow = useCallback(() => {
+		if (projectId) {
+			recordNow({ projectId })
+		}
+	}, [projectId, recordNow])
 
 	if (!projectId) {
 		return (
@@ -40,13 +49,9 @@ export default function QuestionsIndex() {
 			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
 			<div className="flex flex-row justify-center gap-3 p-4">
 				<Button
-					onClick={() => {
-						if (routes) {
-							window.location.href = routes.interviews.upload()
-						}
-					}}
+					onClick={handleRecordNow}
 					variant="default"
-					// disabled={questionPack.questions.length === 0}
+					disabled={isRecording}
 					className="mx-auto w-full max-w-sm justify-center border-red-600 bg-red-700/50 hover:bg-red-700"
 				>
 					<Mic className="mr-2 h-4 w-4" />

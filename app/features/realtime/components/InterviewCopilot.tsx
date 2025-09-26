@@ -1,15 +1,46 @@
 import consola from "consola"
-import { Lightbulb, Loader2, MessageSquare, Mic, MicOff, Pause, Play, RotateCcw, Square, Users, Home, Plus } from "lucide-react"
+import {
+	Home,
+	Lightbulb,
+	Loader2,
+	MessageSquare,
+	Mic,
+	MicOff,
+	Pause,
+	Play,
+	Plus,
+	RotateCcw,
+	Square,
+	Users,
+} from "lucide-react"
 import posthog from "posthog-js"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "~/components/ui/dialog"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+} from "~/components/ui/dialog"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { deleteInterview } from "~/features/interviews/db"
 import MinimalQuestionView from "~/features/realtime/components/MinimalQuestionView"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
@@ -53,6 +84,8 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const [isFinishing, setIsFinishing] = useState(false)
 	const [showCompletionDialog, setShowCompletionDialog] = useState(false)
 	const [completedInterviewId, setCompletedInterviewId] = useState<string | undefined>()
+	const [showCancelDialog, setShowCancelDialog] = useState(false)
+	const [isCanceling, setIsCanceling] = useState(false)
 	const wsRef = useRef<WebSocket | null>(null)
 	const ctxRef = useRef<AudioContext | null>(null)
 	const nodeRef = useRef<AudioWorkletNode | null>(null)
@@ -560,6 +593,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		}
 	}, [startStreaming, startDurationTimer, getCaptureStream])
 
+	// Process the recording
 	const stopStreaming = useCallback(
 		async (finalize = true) => {
 			if (timerRef.current) {
@@ -637,6 +671,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 					// Now safe to stop media tracks
 					cleanupMediaStreams()
+					setShowCompletionDialog(true)
 
 					let mediaUrl: string | undefined
 					const id = assignedInterviewId
@@ -682,11 +717,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								audioDuration,
 							}),
 						})
-						
+
 						// Show completion dialog instead of immediately navigating
 						setCompletedInterviewId(id)
 						setIsFinishing(false)
-						setShowCompletionDialog(true)
 					}
 				} catch (e) {
 					consola.warn("Finalize error", e)
@@ -878,19 +912,58 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	}
 
 	const handleCancel = useCallback(() => {
-		if (isRecording || streamStatus === "streaming" || streamStatus === "paused") {
-			// Abort streaming: close WS/streams/recorder without saving
-			stopStreaming(false)
-		}
-		setRecordingDuration(0)
-		navigate(routes.interviews.index())
-	}, [isRecording, streamStatus, stopStreaming, navigate, routes])
+		setShowCancelDialog(true)
+	}, [])
 
 	const handleFinish = useCallback(() => {
 		setIsFinishing(true)
 		// Explicit stop finalizes and navigates, cleanup happens in stopStreaming
 		stopStreaming()
 	}, [stopStreaming])
+
+	const handleConfirmCancel = useCallback(async () => {
+		if (isCanceling) return
+		setIsCanceling(true)
+		let redirectPath: string | null = null
+		try {
+			await stopStreaming(false)
+			setIsRecording(false)
+			setRecordingDuration(0)
+			const id = assignedInterviewId
+			if (id) {
+				const { error } = await deleteInterview({
+					supabase,
+					id,
+					accountId,
+					projectId,
+				})
+				if (error) {
+					throw new Error(error.message)
+				}
+				setAssignedInterviewId(undefined)
+			}
+			redirectPath = routes.interviews.index()
+			setShowCancelDialog(false)
+		} catch (error) {
+			consola.error("Cancel interview error:", error)
+		} finally {
+			setIsCanceling(false)
+			if (redirectPath) {
+				navigate(redirectPath)
+			}
+		}
+	}, [
+		isCanceling,
+		stopStreaming,
+		setIsRecording,
+		setRecordingDuration,
+		assignedInterviewId,
+		supabase,
+		accountId,
+		projectId,
+		navigate,
+		routes,
+	])
 
 	// Dialog handlers
 	const handleRecordAnother = useCallback(() => {
@@ -906,7 +979,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 	const handleGoHome = useCallback(() => {
 		setShowCompletionDialog(false)
-		navigate(routes.interviews.index())
+		navigate(routes.projects.dashboard(projectId))
 	}, [navigate, routes])
 
 	const handleViewInterview = useCallback(() => {
@@ -957,7 +1030,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 	return (
 		// Use viewport height minus navigation space. Add small-screen bottom padding safety for bottom nav.
-		<div className="relative flex min-h-0 flex-col pb-14 md:pb-0" style={{ height: 'calc(100vh - 4rem)' }}>
+		<div className="relative flex min-h-0 flex-col pb-14 md:pb-0" style={{ height: "calc(100vh - 4rem)" }}>
 			{/* Header with responsive layout for title, audio source, timer, and actions */}
 			<div className="flex flex-shrink-0 border-b bg-background p-3">
 				<div className="flex w-full flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
@@ -1119,6 +1192,41 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				)}
 			</div>
 
+			<AlertDialog
+				open={showCancelDialog}
+				onOpenChange={(open) => {
+					if (isCanceling) return
+					setShowCancelDialog(open)
+				}}
+			>
+				<AlertDialogContent>
+					<AlertDialogHeader>
+						<AlertDialogTitle>Cancel recording?</AlertDialogTitle>
+						<AlertDialogDescription>
+							We&apos;ll delete this realtime interview and discard the in-progress recording. This action cannot be
+							undone.
+						</AlertDialogDescription>
+					</AlertDialogHeader>
+					<AlertDialogFooter>
+						<AlertDialogCancel disabled={isCanceling}>Continue recording</AlertDialogCancel>
+						<AlertDialogAction
+							onClick={handleConfirmCancel}
+							disabled={isCanceling}
+							className="bg-red-600 hover:bg-red-700"
+						>
+							{isCanceling ? (
+								<>
+									<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+									Discarding...
+								</>
+							) : (
+								"Discard interview"
+							)}
+						</AlertDialogAction>
+					</AlertDialogFooter>
+				</AlertDialogContent>
+			</AlertDialog>
+
 			{/* Analysis Complete Dialog */}
 			<Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
 				<DialogContent className="sm:max-w-md" showCloseButton={false}>
@@ -1127,39 +1235,25 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
 							Analyzing your recording
 						</DialogTitle>
-						<DialogDescription>
-							This may take a minute... You can:
-						</DialogDescription>
+						<DialogDescription>This may take a minute... please standby</DialogDescription>
 					</DialogHeader>
-					
+
 					<DialogFooter className="flex-col gap-3 sm:flex-col">
 						<div className="flex w-full flex-col gap-2">
-							<Button 
-								onClick={handleRecordAnother} 
-								className="flex w-full items-center gap-2"
-								variant="outline"
-							>
+							<Button onClick={handleRecordAnother} className="flex w-full items-center gap-2" variant="outline">
 								<Plus className="h-4 w-4" />
 								Record Another Interview
 							</Button>
-							<Button 
-								onClick={handleGoHome} 
-								className="flex w-full items-center gap-2"
-								variant="outline"
-							>
+							<Button onClick={handleGoHome} className="flex w-full items-center gap-2" variant="outline">
 								<Home className="h-4 w-4" />
 								Go Home
 							</Button>
 						</div>
-						
+
 						{completedInterviewId && (
-							<div className="text-center text-sm text-muted-foreground">
+							<div className="text-center text-muted-foreground text-sm">
 								<p>Or wait for the processed interview...</p>
-								<Button 
-									onClick={handleViewInterview}
-									variant="link"
-									className="mt-1 h-auto p-0 text-sm"
-								>
+								<Button onClick={handleViewInterview} variant="link" className="mt-1 h-auto p-0 text-sm">
 									View completed interview
 								</Button>
 							</div>

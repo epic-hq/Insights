@@ -1,9 +1,8 @@
-import consola from "consola"
 import { CheckCircle, ChevronLeft, File, Mic, Upload, Video } from "lucide-react"
-import { useCallback, useMemo, useRef, useState } from "react"
-import { useNavigate, useRouteLoaderData } from "react-router"
+import { useCallback, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { OnboardingStepper } from "./OnboardingStepper"
+import { useRecordNow } from "~/hooks/useRecordNow"
 
 interface UploadScreenProps {
 	onNext: (file: File, mediaType: string, projectId?: string) => void
@@ -51,44 +50,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 		fileInputRef.current?.click()
 	}
 
-	const navigate = useNavigate()
-	const routeData = useRouteLoaderData("routes/_ProtectedLayout") as { auth: { accountId: string } } | null
-	const auth = useMemo(() => routeData?.auth || { accountId: "" }, [routeData])
-	const [recordingStart, setRecordingStart] = useState(false)
+	const { recordNow, isRecording } = useRecordNow()
 
-	const handleRecordNow = useCallback(async () => {
-		try {
-			setRecordingStart(true)
-			// If we have a projectId, create an interview in that project; else create project+interview
-			if (projectId) {
-				const res = await fetch(`/a/${auth.accountId}/${projectId}/api/interviews/realtime-start`, {
-					method: "POST",
-					headers: { "Content-Type": "application/json" },
-					body: JSON.stringify({}),
-				})
-				const data = await res.json()
-				if (!res.ok) throw new Error(data?.error || "Failed to start interview")
-				navigate(`/a/${auth.accountId}/${projectId}/interviews/${data.interviewId}/realtime`)
-				return
-			}
-
-			const res = await fetch(`/a/${auth.accountId}/api/interviews/record-now`, { method: "POST" })
-			const data = await res.json()
-			if (!res.ok) throw new Error(data?.error || "Failed to start quick recording")
-			const { projectId: newProjectId, interviewId } = data
-			if (newProjectId && interviewId) {
-				navigate(`/a/${auth.accountId}/${newProjectId}/interviews/${interviewId}/realtime`)
-				return
-			}
-			throw new Error("Invalid response from Record Now API")
-		} catch (e: any) {
-			// Fallback: go to create project if we couldn't start
-			consola.error("Record Now error:", e?.message || e)
-			navigate(`/a/${auth.accountId}/projects/new?from=record`)
-		} finally {
-			setRecordingStart(false)
-		}
-	}, [auth.accountId, navigate, projectId])
+	const handleRecordNow = useCallback(() => {
+		recordNow({ projectId })
+	}, [projectId, recordNow])
 
 	const handleNext = useCallback(() => {
 		if (selectedFile) {
@@ -154,7 +120,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 						<Button
 							onClick={handleRecordNow}
 							size="lg"
-							disabled={recordingStart}
+							disabled={isRecording}
 							className="m-0 h-15 w-15 rounded-full bg-red-600 p-0 text-foreground hover:bg-red-700 focus:ring-2 focus:ring-red-500 focus:ring-offset-2 focus:ring-offset-black"
 						>
 							<Mic className="h-20 w-20" />

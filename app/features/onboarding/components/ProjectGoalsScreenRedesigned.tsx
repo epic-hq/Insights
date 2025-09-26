@@ -531,11 +531,13 @@ export default function ProjectGoalsScreen({
 					<div className="flex items-center justify-between">
 						<div>
 							<h1 className="font-semibold text-2xl text-gray-900">{project?.name}</h1>
+							{/*
+							-- hiding for now. future use --
 							{templateKey === "understand_customer_needs" && (
 								<StatusPill variant="neutral" className="mt-2">
 									Intent: Understand Customer Needs
 								</StatusPill>
-							)}
+							)} */}
 						</div>
 						<div className="flex items-center gap-2 text-right">
 							{accountId && currentProjectId && isSetupChatEnabled && !isFeatureFlagLoading ? (
@@ -598,7 +600,7 @@ export default function ProjectGoalsScreen({
 								onChange={(e) => setResearchGoal(e.target.value)}
 								onBlur={handleResearchGoalBlur}
 								rows={2}
-								className="min-h-[72px]"
+								className="min-h-[72px] font-semibold text-blue-800 text-xl"
 							/>
 							{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
 						</CardContent>
@@ -985,8 +987,6 @@ export default function ProjectGoalsScreen({
 						</Card>
 					</Collapsible>
 
-
-
 					{/* Research Questions Accordion */}
 					<Collapsible
 						open={openAccordion === "research-context"}
@@ -998,7 +998,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<HelpCircle className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">Research Questions</h2>
+											<h2 className="font-semibold text-lg">What do we need to Learn?</h2>
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
@@ -1006,9 +1006,7 @@ export default function ProjectGoalsScreen({
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
-													<p>
-														What do we need to learn in order to make decisions?
-													</p>
+													<p>What do we need to learn in order to make decisions?</p>
 												</TooltipContent>
 											</Tooltip>
 										</div>
