@@ -16,6 +16,7 @@ import questionsRoutes from "./features/questions/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
 import themesRoutes from "./features/themes/routes"
 import voiceRoutes from "./features/voice/routes"
+import teamsRoutes from "./features/teams/routes"
 
 const routes = [
 	// Public marketing landing page
@@ -28,6 +29,7 @@ const routes = [
 	layout("./routes/_ProtectedLayout.tsx", [
 		// Home dashboard for logged-in users
 		...homeRoutes,
+		...teamsRoutes,
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
