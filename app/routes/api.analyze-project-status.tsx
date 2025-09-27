@@ -1,3 +1,5 @@
+// Simple baml v1 analysis, stored in annotations
+
 import { b } from "baml_client"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"

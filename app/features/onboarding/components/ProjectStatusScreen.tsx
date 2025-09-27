@@ -261,6 +261,27 @@ export default function ProjectStatusScreen({
 		return meta.research_goal || meta.customGoal || section.content_md || ""
 	})()
 
+	const goalConfidence = (() => {
+		const gs = getGoalSections()
+		if (gs.length === 0) return "low"
+		const section = gs[0]
+		const meta = section.meta || {}
+		return meta.confidence || "low"
+	})()
+
+	const getConfidenceColor = (confidence: string) => {
+		switch (confidence) {
+			case "high":
+				return "text-success"
+			case "medium":
+				return "text-warning"
+			case "low":
+				return "text-destructive"
+			default:
+				return "text-muted-foreground"
+		}
+	}
+
 	if (loading) {
 		return (
 			<div className="flex h-screen items-center justify-center">
@@ -546,7 +567,7 @@ export default function ProjectStatusScreen({
 														<Button
 															variant="outline"
 															onClick={() => setShowCustomAnalysis(true)}
-															disabled={true || isAnalyzing}
+															disabled={isAnalyzing}
 															className="hover:bg-blue-700 hover:text-background"
 															size="sm"
 														>
@@ -566,28 +587,26 @@ export default function ProjectStatusScreen({
 										</div>
 									</div>
 									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardContent className="space-y-6 p-3 sm:p-4">
+										<CardHeader>
 											{/* Research Goals */}
 											{getGoalSections().length > 0 && (
-												<div>
+												<div className="flex items-center justify-between">
 													{getGoalSections().map((goalSection) => (
-														<div key={goalSection.id} className="flex items-start gap-3">
-															{/* <div className="mt-1 flex-shrink-0">
-																<Target className="h-5 w-5 text-gray-400" />
-															</div> */}
-															<div className="flex-1">
-																<p className="font-medium text-foreground text-sm">{goalSection.content_md}</p>
-															</div>
+														<div key={goalSection.id} className="flex items-start gap-3 font-medium text-foreground text-md">
+															{goalSection.content_md}
 														</div>
 													))}
+													<Badge
+														variant={goalConfidence === "high" ? "default" : goalConfidence === "medium" ? "secondary" : "outline"}
+														className={getConfidenceColor(goalConfidence)}
+													>
+														{goalConfidence.charAt(0).toUpperCase() + goalConfidence.slice(1)}
+													</Badge>
 												</div>
 											)}
+										</CardHeader>
+										<CardContent className="space-y-6 p-3 sm:p-4">
 
-											{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
-											<KeyDecisionsCard
-												decisionSummaries={decisionSummaries}
-												topResearchQuestions={topResearchQuestions}
-											/>
 
 											{/* Research Workflow Link */}
 											<div className="mt-4">
@@ -601,19 +620,26 @@ export default function ProjectStatusScreen({
 												</Link>
 											</div>
 
-											{/* Research Answers - Detailed DQ & RQ Answers */}
-											{researchRollup && (
-												<div className="mt-6">
-													<ResearchAnswers
-														projectId={projectId}
-														onMetricsChange={handleResearchMetrics}
-														onDataChange={handleResearchRollup}
-													/>
-												</div>
-											)}
+
 										</CardContent>
 									</Card>
 								</div>
+
+								{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
+								<KeyDecisionsCard
+									decisionSummaries={decisionSummaries}
+									topResearchQuestions={topResearchQuestions}
+								/>
+								{/* Research Answers - Detailed DQ & RQ Answers */}
+								{researchRollup && (
+									<div className="mt-6">
+										<ResearchAnswers
+											projectId={projectId}
+											onMetricsChange={handleResearchMetrics}
+											onDataChange={handleResearchRollup}
+										/>
+									</div>
+								)}
 
 								{/* Themes */}
 								{/* <div>

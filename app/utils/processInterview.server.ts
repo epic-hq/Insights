@@ -9,6 +9,7 @@ import consola from "consola"
 import { b } from "~/../baml_client"
 import type { Database, Json } from "~/../supabase/types"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
@@ -904,7 +905,20 @@ async function processInterviewTranscriptWithClient({
 		}
 	}
 
-	// 7. Update interview status to ready
+	// 7. Run research evidence analysis to link answers/evidence
+	if (metadata.projectId) {
+		try {
+			await runEvidenceAnalysis({
+				supabase: db,
+				projectId: metadata.projectId,
+				interviewId: interviewRecord.id,
+			})
+		} catch (analysisError) {
+			consola.warn("[processInterview] Evidence analysis failed", analysisError)
+		}
+	}
+
+	// 8. Update interview status to ready
 	await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
 
 	return { stored: data as InsightInsert[], interview: interviewRecord }

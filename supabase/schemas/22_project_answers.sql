@@ -27,6 +27,10 @@ create table if not exists public.project_answers (
   skipped_at timestamptz,
   answer_text text,
   confidence numeric check (confidence >= 0 and confidence <= 1),
+  analysis_summary text,
+  analysis_rationale text,
+  analysis_next_steps text,
+  analysis_run_metadata jsonb,
   time_spent_seconds int,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()

@@ -2,6 +2,9 @@
 set search_path = public;
 
 -- 1) Normalize legacy status values and origins
+alter table public.project_answers
+	add column if not exists origin text;
+
 update public.project_answers
 set status = 'ad_hoc'
 where status not in ('planned','asked','answered','skipped','ad_hoc');
@@ -15,6 +18,11 @@ end,
     status = case when status = 'ad_hoc' and question_id is not null then 'answered' else status end;
 
 -- 2) Hydrate metadata from latest saved question sets in project_sections
+alter table public.project_answers
+	add column if not exists question_category text,
+	add column if not exists estimated_time_minutes int,
+	add column if not exists order_index int;
+
 with latest_sections as (
   select distinct on (project_id)
     project_id,
@@ -66,6 +74,9 @@ where pa.id = sub.id
 update public.project_answers
 set question_category = coalesce(question_category, 'context')
 where question_category is null;
+
+alter table public.evidence
+	add column if not exists project_answer_id uuid;
 
 do $$
 begin

@@ -36,6 +36,55 @@ class ProjectAnalysis {
   next_steps string[]
 }
 
+class EvidenceItem {
+  id string
+  verbatim string
+  support "supports" | "refutes" | "neutral"
+  interview_id string?
+  context_summary string?
+}
+
+class QuestionContext {
+  id string
+  kind "decision" | "research"
+  decision_question_id string?
+  text string
+  rationale string?
+}
+
+class EvidenceQuestionLink {
+  question_id string
+  question_kind "decision" | "research"
+  decision_question_id string?
+  relationship "supports" | "refutes" | "neutral"
+  confidence float
+  answer_summary string
+  rationale string
+  next_steps string?
+}
+
+class EvidenceLinkResult {
+  evidence_id string
+  links EvidenceQuestionLink[]
+}
+
+class QuestionAnalysisSummary {
+  question_id string
+  question_kind "decision" | "research"
+  decision_question_id string?
+  confidence float
+  summary string
+  goal_achievement_summary string?
+  next_steps string?
+}
+
+class EvidenceAnalysisResponse {
+  evidence_results EvidenceLinkResult[]
+  question_summaries QuestionAnalysisSummary[]
+  global_goal_summary string?
+  recommended_actions string[]
+}
+
 function AnalyzeProjectInsights(
   research_goal: string,
   insights_data: string,
@@ -93,6 +142,52 @@ function AnalyzeProjectInsights(
 
 	    	Output format:
     	{{ ctx.output_format }}
+  "#
+}
+
+function LinkEvidenceToResearchStructure(
+  evidence: EvidenceItem[],
+  questions: QuestionContext[],
+  custom_instructions: string
+) -> EvidenceAnalysisResponse {
+  client CustomGPT4oMini
+  prompt #"
+    You are an expert research analyst linking raw evidence to structured research questions and decisions.
+
+    EVIDENCE ITEMS (array of JSON objects with id, verbatim, support, interview_id, context_summary when available):
+    {{ evidence }}
+
+    QUESTION CONTEXT (each includes id, kind=decision/research, text, optional decision_question_id when kind='research'):
+    {{ questions }}
+
+    CUSTOM INSTRUCTIONS (optional, may be empty):
+    {{ custom_instructions }}
+
+    TASK REQUIREMENTS:
+    1. For each evidence item, evaluate which questions it meaningfully addresses.
+       - Allow multiple matches per evidence when justified.
+       - Provide relationship (supports/refutes/neutral) and a numeric confidence 0.0 – 1.0.
+       - Summarize the answer in plain language (<= 2 sentences) tied to the evidence.
+       - Include a concise rationale referencing key phrases from the evidence (<= 220 chars).
+       - Suggest targeted next steps when helpful (follow-up interviews, data sources, personas, etc.). Use null when none.
+
+    2. Produce per-question rollups combining all evidence impacts:
+       - Give an overall confidence 0.0 – 1.0 based on coverage and agreement of evidence.
+       - Provide a short summary of what we now know.
+       - For decision questions, optionally populate goal_achievement_summary (how close we are to answering the decision).
+       - Suggest next steps (or null) to close remaining gaps.
+
+    3. Provide project-wide guidance:
+       - global_goal_summary: status of overall goal confidence.
+       - recommended_actions: 1-3 bullet strings for the project team.
+
+    OUTPUT RULES:
+    - Return valid JSON matching EvidenceAnalysisResponse exactly.
+    - Omit evidence items that do not meaningfully map to questions (empty links array is acceptable).
+    - Keep confidence within [0.0, 1.0].
+    - Ensure every evidence link references question ids that exist in QUESTION CONTEXT.
+
+    {{ ctx.output_format }}
   "#
 }
 

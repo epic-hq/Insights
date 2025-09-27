@@ -53,62 +53,81 @@ interface ResearchAnswerEvidence {
 }
 
 export interface ResearchAnswerNode {
-  id: string
-  question_text: string
-  question_category: string | null
-  status: Tables["project_answers"]["Row"]["status"]
-  order_index: number | null
-  answered_at: string | null
-  interview: {
-    id: string | null
-    title: string | null
-    interview_date: string | null
-  }
-  respondent: {
-    id: string | null
-    name: string | null
-  }
-  answer_text: string | null
-  detected_question_text: string | null
-  metrics: {
-    evidence_count: number
-    interview_count: number
-    persona_count: number
-  }
-  evidence: ResearchAnswerEvidence[]
+	id: string
+	question_text: string
+	question_category: string | null
+	status: Tables["project_answers"]["Row"]["status"]
+	order_index: number | null
+	answered_at: string | null
+	interview: {
+		id: string | null
+		title: string | null
+		interview_date: string | null
+	}
+	respondent: {
+		id: string | null
+		name: string | null
+	}
+	answer_text: string | null
+	detected_question_text: string | null
+	analysis_summary: string | null
+	analysis_rationale: string | null
+	analysis_next_steps: string | null
+	metrics: {
+		evidence_count: number
+		interview_count: number
+		persona_count: number
+	}
+	evidence: ResearchAnswerEvidence[]
 }
 
 export interface ResearchQuestionNode {
-  id: string
-  text: string
-  metrics: {
-    answered_answer_count: number
-    open_answer_count: number
-    evidence_count: number
-    interview_count: number
-    persona_count: number
-  }
-  answers: ResearchAnswerNode[]
+	id: string
+	text: string
+	metrics: {
+		answered_answer_count: number
+		open_answer_count: number
+		evidence_count: number
+		interview_count: number
+		persona_count: number
+	}
+	analysis?: {
+		summary: string | null
+		confidence: number | null
+		next_steps: string | null
+	}
+	answers: ResearchAnswerNode[]
 }
 
 export interface DecisionQuestionNode {
-  id: string
-  text: string
-  metrics: {
-    research_question_count: number
-    answered_answer_count: number
-    open_answer_count: number
-    evidence_count: number
-    interview_count: number
-    persona_count: number
-  }
-  research_questions: ResearchQuestionNode[]
+	id: string
+	text: string
+	metrics: {
+		research_question_count: number
+		answered_answer_count: number
+		open_answer_count: number
+		evidence_count: number
+		interview_count: number
+		persona_count: number
+	}
+	analysis?: {
+		summary: string | null
+		confidence: number | null
+		next_steps: string | null
+		goal_achievement_summary: string | null
+	}
+	research_questions: ResearchQuestionNode[]
 }
 
 export interface ResearchAnswerRollup {
   decision_questions: DecisionQuestionNode[]
   research_questions_without_decision: ResearchQuestionNode[]
   orphan_answers: ResearchAnswerNode[]
+  latest_analysis_run: {
+    id: string
+    run_summary: string | null
+    recommended_actions: string[]
+  } | null
 }
 
 function safeInt(value: number | null | undefined): number {
@@ -116,11 +135,31 @@ function safeInt(value: number | null | undefined): number {
   return 0
 }
 
+function safeNumber(value: number | null | undefined): number | null {
+  if (typeof value === "number" && Number.isFinite(value)) return value
+  return null
+}
+
+function toStringArray(value: unknown): string[] {
+  if (!Array.isArray(value)) return []
+  return value
+    .filter((item): item is string => typeof item === "string")
+    .map((item) => item.trim())
+    .filter((item) => item.length > 0)
+}
+
 export async function getResearchAnswerRollup(
   supabase: SupabaseClient<Database>,
   projectId: string
 ): Promise<ResearchAnswerRollup> {
-  const [decisionSummaryRes, researchSummaryRes, answerMetricsRes, answersRes] = await Promise.all([
+  const [
+    decisionSummaryRes,
+    researchSummaryRes,
+    answerMetricsRes,
+    answersRes,
+    questionAnalysisRes,
+    latestRunRes,
+  ] = await Promise.all([
     supabase
       .from("decision_question_summary")
       .select("*")
@@ -136,20 +175,54 @@ export async function getResearchAnswerRollup(
     supabase
       .from("project_answers")
       .select(
-        "id, project_id, interview_id, respondent_person_id, question_text, question_category, order_index, status, answered_at, answer_text, detected_question_text, research_question_id, decision_question_id"
+        "id, project_id, interview_id, respondent_person_id, question_text, question_category, order_index, status, answered_at, answer_text, detected_question_text, research_question_id, decision_question_id, analysis_summary, analysis_rationale, analysis_next_steps"
       )
       .eq("project_id", projectId),
+    supabase
+      .from("project_question_analysis")
+      .select("question_type, question_id, summary, confidence, next_steps, goal_achievement_summary, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false }),
+    supabase
+      .from("project_research_analysis_runs")
+      .select("id, run_summary, recommended_actions, created_at")
+      .eq("project_id", projectId)
+      .order("created_at", { ascending: false })
+      .limit(1),
   ])
 
   if (decisionSummaryRes.error) throw decisionSummaryRes.error
   if (researchSummaryRes.error) throw researchSummaryRes.error
   if (answerMetricsRes.error) throw answerMetricsRes.error
   if (answersRes.error) throw answersRes.error
+  if (questionAnalysisRes.error) throw questionAnalysisRes.error
+  if (latestRunRes.error) throw latestRunRes.error
 
   const decisionSummary = (decisionSummaryRes.data || []) as DecisionSummaryRow[]
   const researchSummary = (researchSummaryRes.data || []) as ResearchSummaryRow[]
   const answerMetrics = (answerMetricsRes.data || []) as AnswerMetricRow[]
   const answers = answersRes.data || []
+  const questionAnalysisRows = questionAnalysisRes.data || []
+  const latestAnalysisRunRow = latestRunRes.data?.[0] ?? null
+
+  const questionAnalysisMap = new Map<string, {
+    summary: string | null
+    confidence: number | null
+    next_steps: string | null
+    goal_achievement_summary: string | null
+  }>()
+
+  for (const row of questionAnalysisRows) {
+    const key = `kind:${row.question_type}|id:${row.question_id}`
+    if (!questionAnalysisMap.has(key)) {
+      questionAnalysisMap.set(key, {
+        summary: row.summary ?? null,
+        confidence: safeNumber(row.confidence),
+        next_steps: row.next_steps ?? null,
+        goal_achievement_summary: row.goal_achievement_summary ?? null,
+      })
+    }
+  }
 
   const answerIds = answers.map((ans) => ans.id)
   const interviewIds = [...new Set(answers.map((ans) => ans.interview_id).filter(Boolean))] as string[]
@@ -225,6 +298,9 @@ export async function getResearchAnswerRollup(
       },
       answer_text: ans.answer_text ?? null,
       detected_question_text: ans.detected_question_text ?? null,
+      analysis_summary: ans.analysis_summary ?? null,
+      analysis_rationale: ans.analysis_rationale ?? null,
+      analysis_next_steps: ans.analysis_next_steps ?? null,
       metrics: {
         evidence_count: safeInt(metrics?.evidence_count ?? (evidence_by_answer.get(ans.id)?.length ?? 0)),
         interview_count: safeInt(metrics?.interview_count),
@@ -247,6 +323,15 @@ export async function getResearchAnswerRollup(
         persona_count: safeInt(rqRow.persona_count),
       },
       answers: [],
+    }
+
+    const analysis = questionAnalysisMap.get(`kind:research|id:${node.id}`)
+    if (analysis) {
+      node.analysis = {
+        summary: analysis.summary,
+        confidence: analysis.confidence,
+        next_steps: analysis.next_steps,
+      }
     }
     researchNodes.set(node.id, node)
   }
@@ -275,6 +360,16 @@ export async function getResearchAnswerRollup(
       },
       research_questions: [],
     }
+
+    const analysis = questionAnalysisMap.get(`kind:decision|id:${node.id}`)
+    if (analysis) {
+      node.analysis = {
+        summary: analysis.summary,
+        confidence: analysis.confidence,
+        next_steps: analysis.next_steps,
+        goal_achievement_summary: analysis.goal_achievement_summary,
+      }
+    }
     decisionsMap.set(node.id, node)
   }
 
@@ -298,10 +393,19 @@ export async function getResearchAnswerRollup(
     }
   }
 
+  const latestAnalysis = latestAnalysisRunRow
+    ? {
+        id: latestAnalysisRunRow.id,
+        run_summary: latestAnalysisRunRow.run_summary ?? null,
+        recommended_actions: toStringArray(latestAnalysisRunRow.recommended_actions),
+      }
+    : null
+
   return {
     decision_questions: Array.from(decisionsMap.values()),
     research_questions_without_decision,
     orphan_answers,
+    latest_analysis_run: latestAnalysis,
   }
 }
 

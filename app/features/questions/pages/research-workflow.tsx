@@ -120,7 +120,7 @@ export default function ResearchWorkflowPage() {
 					onStructureValidated={handleStructureValidated}
 				/>
 
-				{/* Interview Questions Section */}
+				{/* Interview Questions Section
 				<InterviewQuestionsManager
 					projectId={data.project.id}
 					research_goal={data.research_goal}
@@ -129,7 +129,7 @@ export default function ResearchWorkflowPage() {
 					assumptions={data.assumptions}
 					unknowns={data.unknowns}
 					researchStructure={validatedStructure}
-				/>
+				/> */}
 			</div>
 		</div>
 	)

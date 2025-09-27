@@ -1,74 +1,146 @@
-alter table "public"."project_answers" drop constraint "project_answers_status_check";
+alter table "public"."project_answers" drop constraint if exists "project_answers_status_check";
 
-alter table "public"."evidence" add column "project_answer_id" uuid;
+alter table "public"."evidence" add column if not exists "project_answer_id" uuid;
 
-alter table "public"."project_answers" add column "answered_at" timestamp with time zone;
+alter table "public"."project_answers" add column if not exists "answered_at" timestamp with time zone;
 
-alter table "public"."project_answers" add column "asked_at" timestamp with time zone;
+alter table "public"."project_answers" add column if not exists "asked_at" timestamp with time zone;
 
-alter table "public"."project_answers" add column "decision_question_id" uuid;
+alter table "public"."project_answers" add column if not exists "decision_question_id" uuid;
 
-alter table "public"."project_answers" add column "detected_question_text" text;
+alter table "public"."project_answers" add column if not exists "detected_question_text" text;
 
-alter table "public"."project_answers" add column "estimated_time_minutes" integer;
+alter table "public"."project_answers" add column if not exists "estimated_time_minutes" integer;
 
-alter table "public"."project_answers" add column "followup_of_answer_id" uuid;
+alter table "public"."project_answers" add column if not exists "followup_of_answer_id" uuid;
 
-alter table "public"."project_answers" add column "order_index" integer;
+alter table "public"."project_answers" add column if not exists "order_index" integer;
 
-alter table "public"."project_answers" add column "origin" text default 'scripted'::text;
+alter table "public"."project_answers" add column if not exists "origin" text;
 
-alter table "public"."project_answers" add column "prompt_id" uuid;
+alter table "public"."project_answers" alter column "origin" set default 'scripted'::text;
 
-alter table "public"."project_answers" add column "question_category" text;
+alter table "public"."project_answers" add column if not exists "prompt_id" uuid;
 
-alter table "public"."project_answers" add column "research_question_id" uuid;
+alter table "public"."project_answers" add column if not exists "question_category" text;
 
-alter table "public"."project_answers" add column "skipped_at" timestamp with time zone;
+alter table "public"."project_answers" add column if not exists "research_question_id" uuid;
+
+alter table "public"."project_answers" add column if not exists "skipped_at" timestamp with time zone;
 
 alter table "public"."project_answers" alter column "status" set default 'planned'::text;
 
-CREATE INDEX idx_evidence_project_answer ON public.evidence USING btree (project_answer_id);
+CREATE INDEX IF NOT EXISTS idx_evidence_project_answer ON public.evidence USING btree (project_answer_id);
 
-CREATE INDEX idx_project_answers_decision_question ON public.project_answers USING btree (project_id, decision_question_id);
+CREATE INDEX IF NOT EXISTS idx_project_answers_decision_question ON public.project_answers USING btree (project_id, decision_question_id);
 
-CREATE INDEX idx_project_answers_followup ON public.project_answers USING btree (followup_of_answer_id);
+CREATE INDEX IF NOT EXISTS idx_project_answers_followup ON public.project_answers USING btree (followup_of_answer_id);
 
-CREATE INDEX idx_project_answers_order ON public.project_answers USING btree (interview_id, order_index);
+CREATE INDEX IF NOT EXISTS idx_project_answers_order ON public.project_answers USING btree (interview_id, order_index);
 
-CREATE INDEX idx_project_answers_origin ON public.project_answers USING btree (origin);
+CREATE INDEX IF NOT EXISTS idx_project_answers_origin ON public.project_answers USING btree (origin);
 
-CREATE INDEX idx_project_answers_prompt_id ON public.project_answers USING btree (prompt_id);
+CREATE INDEX IF NOT EXISTS idx_project_answers_prompt_id ON public.project_answers USING btree (prompt_id);
 
-CREATE INDEX idx_project_answers_research_question ON public.project_answers USING btree (project_id, research_question_id);
+CREATE INDEX IF NOT EXISTS idx_project_answers_research_question ON public.project_answers USING btree (project_id, research_question_id);
 
-alter table "public"."evidence" add constraint "evidence_project_answer_id_fkey" FOREIGN KEY (project_answer_id) REFERENCES project_answers(id) ON DELETE SET NULL not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'evidence_project_answer_id_fkey') then
+    execute 'alter table public.evidence add constraint evidence_project_answer_id_fkey foreign key (project_answer_id) references project_answers(id) on delete set null not valid';
+  end if;
+end $$;
 
-alter table "public"."evidence" validate constraint "evidence_project_answer_id_fkey";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'evidence_project_answer_id_fkey') then
+    execute 'alter table public.evidence validate constraint evidence_project_answer_id_fkey';
+  end if;
+end $$;
 
-alter table "public"."project_answers" add constraint "project_answers_decision_question_id_fkey" FOREIGN KEY (decision_question_id) REFERENCES decision_questions(id) ON DELETE SET NULL not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'project_answers_decision_question_id_fkey') then
+    execute 'alter table public.project_answers add constraint project_answers_decision_question_id_fkey foreign key (decision_question_id) references decision_questions(id) on delete set null not valid';
+  end if;
+end $$;
 
-alter table "public"."project_answers" validate constraint "project_answers_decision_question_id_fkey";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'project_answers_decision_question_id_fkey') then
+    execute 'alter table public.project_answers validate constraint project_answers_decision_question_id_fkey';
+  end if;
+end $$;
 
-alter table "public"."project_answers" add constraint "project_answers_followup_of_answer_id_fkey" FOREIGN KEY (followup_of_answer_id) REFERENCES project_answers(id) ON DELETE SET NULL not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'project_answers_followup_of_answer_id_fkey') then
+    execute 'alter table public.project_answers add constraint project_answers_followup_of_answer_id_fkey foreign key (followup_of_answer_id) references project_answers(id) on delete set null not valid';
+  end if;
+end $$;
 
-alter table "public"."project_answers" validate constraint "project_answers_followup_of_answer_id_fkey";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'project_answers_followup_of_answer_id_fkey') then
+    execute 'alter table public.project_answers validate constraint project_answers_followup_of_answer_id_fkey';
+  end if;
+end $$;
 
-alter table "public"."project_answers" add constraint "project_answers_origin_check" CHECK ((origin = ANY (ARRAY['scripted'::text, 'ad_hoc'::text, 'retro'::text]))) not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'project_answers_origin_check') then
+    execute 'alter table public.project_answers add constraint project_answers_origin_check check ((origin = ANY (ARRAY[''scripted''::text, ''ad_hoc''::text, ''retro''::text]))) not valid';
+  end if;
+end $$;
 
-alter table "public"."project_answers" validate constraint "project_answers_origin_check";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'project_answers_origin_check') then
+    execute 'alter table public.project_answers validate constraint project_answers_origin_check';
+  end if;
+end $$;
 
-alter table "public"."project_answers" add constraint "project_answers_prompt_id_fkey" FOREIGN KEY (prompt_id) REFERENCES interview_prompts(id) ON DELETE SET NULL not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'project_answers_prompt_id_fkey') then
+    execute 'alter table public.project_answers add constraint project_answers_prompt_id_fkey foreign key (prompt_id) references interview_prompts(id) on delete set null not valid';
+  end if;
+end $$;
 
-alter table "public"."project_answers" validate constraint "project_answers_prompt_id_fkey";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'project_answers_prompt_id_fkey') then
+    execute 'alter table public.project_answers validate constraint project_answers_prompt_id_fkey';
+  end if;
+end $$;
 
-alter table "public"."project_answers" add constraint "project_answers_research_question_id_fkey" FOREIGN KEY (research_question_id) REFERENCES research_questions(id) ON DELETE SET NULL not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'project_answers_research_question_id_fkey') then
+    execute 'alter table public.project_answers add constraint project_answers_research_question_id_fkey foreign key (research_question_id) references research_questions(id) on delete set null not valid';
+  end if;
+end $$;
 
-alter table "public"."project_answers" validate constraint "project_answers_research_question_id_fkey";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'project_answers_research_question_id_fkey') then
+    execute 'alter table public.project_answers validate constraint project_answers_research_question_id_fkey';
+  end if;
+end $$;
 
-alter table "public"."project_answers" add constraint "project_answers_status_check" CHECK ((status = ANY (ARRAY['planned'::text, 'asked'::text, 'answered'::text, 'skipped'::text, 'ad_hoc'::text]))) not valid;
+do $$
+begin
+  if not exists (select 1 from pg_constraint where conname = 'project_answers_status_check') then
+    execute 'alter table public.project_answers add constraint project_answers_status_check check ((status = ANY (ARRAY[''planned''::text, ''asked''::text, ''answered''::text, ''skipped''::text, ''ad_hoc''::text]))) not valid';
+  end if;
+end $$;
 
-alter table "public"."project_answers" validate constraint "project_answers_status_check";
+do $$
+begin
+  if exists (select 1 from pg_constraint where conname = 'project_answers_status_check') then
+    execute 'alter table public.project_answers validate constraint project_answers_status_check';
+  end if;
+end $$;
 
 create or replace view "public"."project_answer_metrics" as  SELECT pa.project_id,
     pa.id AS project_answer_id,
@@ -119,6 +191,3 @@ create or replace view "public"."decision_question_summary" as  SELECT dq.projec
      LEFT JOIN project_answer_metrics m ON ((m.project_answer_id = pa.id)))
      LEFT JOIN people_personas pp ON (((pp.person_id = pa.respondent_person_id) AND (pp.project_id = dq.project_id))))
   GROUP BY dq.project_id, dq.id, dq.text;
-
-
-

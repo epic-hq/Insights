@@ -673,6 +673,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					cleanupMediaStreams()
 					setShowCompletionDialog(true)
 
+					// Upload media to storage on Supabase
 					let mediaUrl: string | undefined
 					const id = assignedInterviewId
 					if (blob.size > 0 && id) {
@@ -752,38 +753,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		[saveAISuggestionAsAnnotation]
 	)
 
-	const generateAISuggestion = useCallback(async () => {
-		const suggestions = [
-			{
-				type: "probe_deeper" as const,
-				text: "Ask them to elaborate on the specific tools they mentioned. What works and what doesn't?",
-				confidence: 0.92,
-			},
-			{
-				type: "follow_up" as const,
-				text: "This sounds like a communication issue. Ask about their current meeting cadence.",
-				confidence: 0.78,
-			},
-			{
-				type: "redirect" as const,
-				text: "They're focusing on tools, but consider asking about team culture and relationships.",
-				confidence: 0.85,
-			},
-		]
-
-		const randomSuggestion = suggestions[Math.floor(Math.random() * suggestions.length)]
-		const newSuggestion: AISuggestion = {
-			id: `suggestion_${Date.now()}`,
-			...randomSuggestion,
-			timestamp: new Date(),
-		}
-
-		setAiSuggestions((prev) => [newSuggestion, ...prev.slice(0, 4)])
-
-		// Save AI suggestion as annotation
-		await saveAISuggestionAsAnnotation(newSuggestion)
-	}, [saveAISuggestionAsAnnotation])
-
 	// Toggle recording using realtime streaming
 	const toggleRecording = useCallback(() => {
 		setIsRecording((prev) => !prev)
@@ -797,12 +766,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			pauseStreaming()
 		}
 	}, [isRecording, pauseStreaming, resumeStreaming, startStreaming, streamStatus])
-
-	const handleStop = useCallback(() => {
-		setIsFinishing(true)
-		// Explicit stop finalizes and navigates
-		stopStreaming()
-	}, [stopStreaming])
 
 	// Replay: show last 15 seconds of transcript for 15s
 	const replayLast30s = useCallback(() => {
@@ -885,32 +848,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
 	}
 
-	const getSuggestionIcon = (type: AISuggestion["type"]) => {
-		switch (type) {
-			case "follow_up":
-				return <MessageSquare className="h-4 w-4" />
-			case "probe_deeper":
-				return <Lightbulb className="h-4 w-4" />
-			case "redirect":
-				return <Users className="h-4 w-4" />
-			case "wrap_up":
-				return <Play className="h-4 w-4" />
-		}
-	}
-
-	const getSuggestionColor = (type: AISuggestion["type"]) => {
-		switch (type) {
-			case "follow_up":
-				return "bg-blue-100 text-blue-800"
-			case "probe_deeper":
-				return "bg-purple-100 text-purple-800"
-			case "redirect":
-				return "bg-orange-100 text-orange-800"
-			case "wrap_up":
-				return "bg-green-100 text-green-800"
-		}
-	}
-
 	const handleCancel = useCallback(() => {
 		setShowCancelDialog(true)
 	}, [])
@@ -969,13 +906,9 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const handleRecordAnother = useCallback(() => {
 		setShowCompletionDialog(false)
 		setCompletedInterviewId(undefined)
-		// Reset recording state and stay on the same page
-		setRecordingDuration(0)
-		setIsFinishing(false)
-		// Clear any existing recording state
-		setStreamStatus("idle")
-		setIsRecording(false)
-	}, [])
+		// Reset recording state and REDIRECT to new interview
+		navigate(routes.interviews.index())
+	}, [navigate, routes])
 
 	const handleGoHome = useCallback(() => {
 		setShowCompletionDialog(false)

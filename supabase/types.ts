@@ -1306,31 +1306,61 @@ export type Database = {
       }
       interview_prompts: {
         Row: {
+          category: string | null
           created_at: string
           created_by: string | null
+          estimated_time_minutes: number | null
           id: string
+          is_must_have: boolean | null
+          is_selected: boolean | null
+          order_index: number | null
           plan_id: string | null
           project_id: string
+          rationale: string | null
+          scores: Json | null
+          selected_order: number | null
+          source: string | null
+          status: string | null
           text: string
           updated_at: string
           updated_by: string | null
         }
         Insert: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
+          estimated_time_minutes?: number | null
           id?: string
+          is_must_have?: boolean | null
+          is_selected?: boolean | null
+          order_index?: number | null
           plan_id?: string | null
           project_id: string
+          rationale?: string | null
+          scores?: Json | null
+          selected_order?: number | null
+          source?: string | null
+          status?: string | null
           text: string
           updated_at?: string
           updated_by?: string | null
         }
         Update: {
+          category?: string | null
           created_at?: string
           created_by?: string | null
+          estimated_time_minutes?: number | null
           id?: string
+          is_must_have?: boolean | null
+          is_selected?: boolean | null
+          order_index?: number | null
           plan_id?: string | null
           project_id?: string
+          rationale?: string | null
+          scores?: Json | null
+          selected_order?: number | null
+          source?: string | null
+          status?: string | null
           text?: string
           updated_at?: string
           updated_by?: string | null

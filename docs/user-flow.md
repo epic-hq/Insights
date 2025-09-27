@@ -387,6 +387,10 @@ The `KeyDecisionsCard` component displays a summary of Decision Questions (DQs),
   - Table: `evidence`
   - Linked to answer via: `project_answer_id`
   - Contains verbatim, support, anchors, etc.
+- **Analysis Snapshots:**
+  - Table: `project_research_analysis_runs`
+  - Table: `project_question_analysis`
+  - Store AI-generated summaries, confidence, and next steps for each DQ/RQ run
 
 **Data Assembly:**
 - For each DQ, find all RQs (`research_questions` where `decision_question_id` matches).

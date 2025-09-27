@@ -378,10 +378,45 @@ export interface DecisionQuestionOut {
   
 }
 
+export interface EvidenceAnalysisResponse {
+  evidence_results: EvidenceLinkResult[]
+  question_summaries: QuestionAnalysisSummary[]
+  global_goal_summary?: string | null
+  recommended_actions: string[]
+  
+}
+
+export interface EvidenceItem {
+  id: string
+  verbatim: string
+  support: "supports" | "refutes" | "neutral"
+  interview_id?: string | null
+  context_summary?: string | null
+  
+}
+
 export interface EvidenceLinkProposal {
   evidence_id: string
   rationale: string
   confidence: number
+  
+}
+
+export interface EvidenceLinkResult {
+  evidence_id: string
+  links: EvidenceQuestionLink[]
+  
+}
+
+export interface EvidenceQuestionLink {
+  question_id: string
+  question_kind: "decision" | "research"
+  decision_question_id?: string | null
+  relationship: "supports" | "refutes" | "neutral"
+  confidence: number
+  answer_summary: string
+  rationale: string
+  next_steps?: string | null
   
 }
 
@@ -753,6 +788,26 @@ export interface Question {
   source: "llm" | "curated" | "custom"
   displayOrder?: number | null
   externalRef?: string | null
+  
+}
+
+export interface QuestionAnalysisSummary {
+  question_id: string
+  question_kind: "decision" | "research"
+  decision_question_id?: string | null
+  confidence: number
+  summary: string
+  goal_achievement_summary?: string | null
+  next_steps?: string | null
+  
+}
+
+export interface QuestionContext {
+  id: string
+  kind: "decision" | "research"
+  decision_question_id?: string | null
+  text: string
+  rationale?: string | null
   
 }
 

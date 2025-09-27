@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceLinkProposal,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceQuestionLink,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -98,10 +98,37 @@ export namespace partial_types {
       key_metrics: string[]
       risks_if_wrong: string[]
     }
+    export interface EvidenceAnalysisResponse {
+      evidence_results: EvidenceLinkResult[]
+      question_summaries: QuestionAnalysisSummary[]
+      global_goal_summary?: string | null
+      recommended_actions: string[]
+    }
+    export interface EvidenceItem {
+      id?: string | null
+      verbatim?: string | null
+      support?: "supports" | "refutes" | "neutral" | null
+      interview_id?: string | null
+      context_summary?: string | null
+    }
     export interface EvidenceLinkProposal {
       evidence_id?: string | null
       rationale?: string | null
       confidence?: number | null
+    }
+    export interface EvidenceLinkResult {
+      evidence_id?: string | null
+      links: EvidenceQuestionLink[]
+    }
+    export interface EvidenceQuestionLink {
+      question_id?: string | null
+      question_kind?: "decision" | "research" | null
+      decision_question_id?: string | null
+      relationship?: "supports" | "refutes" | "neutral" | null
+      confidence?: number | null
+      answer_summary?: string | null
+      rationale?: string | null
+      next_steps?: string | null
     }
     export interface EvidenceSet {
       facts: string[]
@@ -413,6 +440,22 @@ export namespace partial_types {
       source?: "llm" | "curated" | "custom" | null
       displayOrder?: number | null
       externalRef?: string | null
+    }
+    export interface QuestionAnalysisSummary {
+      question_id?: string | null
+      question_kind?: "decision" | "research" | null
+      decision_question_id?: string | null
+      confidence?: number | null
+      summary?: string | null
+      goal_achievement_summary?: string | null
+      next_steps?: string | null
+    }
+    export interface QuestionContext {
+      id?: string | null
+      kind?: "decision" | "research" | null
+      decision_question_id?: string | null
+      text?: string | null
+      rationale?: string | null
     }
     export interface QuestionEvaluation {
       overall_quality?: "green" | "yellow" | "red" | null

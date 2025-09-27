@@ -1,7 +1,7 @@
 import consola from "consola"
 import { ArrowRight, Check, ChevronRight, Edit3, HelpCircle, Plus, Sparkles, X } from "lucide-react"
 import { useCallback, useEffect, useState } from "react"
-import { Link } from "react-router"
+import { Link, Navigate, useNavigate } from "react-router"
 import { toast } from "sonner"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -66,6 +66,7 @@ export function ResearchStructureManager({
 	const [editingRQ, setEditingRQ] = useState<string | null>(null)
 	const [editText, setEditText] = useState("")
 	const [editRationale, setEditRationale] = useState("")
+	const navigate = useNavigate()
 
 	// Generate initial structure
 	const generateStructure = useCallback(async () => {
@@ -291,6 +292,7 @@ export function ResearchStructureManager({
 
 		onStructureValidated?.(structure)
 		toast.success("Research structure validated! Ready to generate interview questions.")
+		navigate(routes.questions.index())
 	}
 
 	// Load existing structure on mount

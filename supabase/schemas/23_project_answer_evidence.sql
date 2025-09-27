@@ -25,6 +25,7 @@ create index if not exists idx_pae_interview          on public.project_answer_e
 create index if not exists idx_pae_source             on public.project_answer_evidence(source);
 create index if not exists idx_pae_times              on public.project_answer_evidence(start_seconds, end_seconds);
 create index if not exists idx_pae_payload_gin        on public.project_answer_evidence using gin (payload);
+create unique index if not exists idx_pae_unique_answer_evidence on public.project_answer_evidence(project_id, answer_id, evidence_id);
 
 -- Triggers -----------------------------------------------------------------
 create trigger set_project_answer_evidence_timestamp

@@ -455,7 +455,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 								{/* Tab Content */}
 								{activeTab === "pains-gains" && (
-									<div className="grid gap-6 lg:grid-cols-2">
+									<div className="grid gap-6 md:grid-cols-2">
 										{/* Pains Column */}
 										<div className="rounded-lg border border-red-200/50 bg-white/50 p-4 dark:border-red-800/30 dark:bg-black/10">
 											<div className="mb-3 flex items-center gap-2">
@@ -513,7 +513,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								{activeTab === "user-actions" && (
 									<div className="space-y-4">
 										{/* First Row: Says & Does */}
-										<div className="grid gap-4 lg:grid-cols-2">
+										<div className="grid gap-4 md:grid-cols-2">
 											{/* Says Section */}
 											<div className="rounded-lg border border-green-200/50 bg-white/50 p-4 dark:border-green-800/30 dark:bg-black/10">
 												<div className="mb-3 flex items-center gap-2">
