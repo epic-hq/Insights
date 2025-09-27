@@ -33,6 +33,12 @@ export type TablesUpdate<TName extends keyof Database["public"]["Tables"]> =
 
 export type Enums<EName extends keyof Database["public"]["Enums"]> = Database["public"]["Enums"][EName]
 
+// RPC function argument helper
+export type RpcArgs<RpcName extends keyof Database["public"]["Functions"]> = Database["public"]["Functions"][RpcName]["Args"]
+
+// RPC function return type helper
+export type RpcReturns<RpcName extends keyof Database["public"]["Functions"]> = Database["public"]["Functions"][RpcName]["Returns"]
+
 // Re-export account types
 export type { AcceptInvitationResponse, CreateAccountResponse, CreateInvitationResponse, CurrentUserAccountRoleResponse, GetAccountBillingStatusResponse, GetAccountInvitesResponse, GetAccountMembersResponse, GetAccountResponse, GetAccountsResponse, GetBillingPlansResponse, LookupInvitationResponse, UpdateAccountResponse } from "./types-accounts"
 
