@@ -1,0 +1,1 @@
+ALTER TYPE accounts.account_role ADD VALUE 'viewer';
