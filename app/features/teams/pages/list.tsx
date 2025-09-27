@@ -25,9 +25,6 @@ export default function TeamsList({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="container mx-auto flex h-full flex-col">
 			<h1>Teams</h1>
-			{/* {loaderData.teams?.map((team) => (
-				<div key={team.account_id}>{team.name}</div>
-			))} */}
 			<div className="max-w-lg flex-1 space-y-3">
 				{loaderData.teams?.map((team) => (
 					<Link to={`/a/${team.account_id}/projects`} key={team.account_id}>

@@ -104,6 +104,11 @@ export interface RouteDefinitions {
 		dashboard: (id: string) => string
 	}
 
+	// Teams
+	team: {
+		members: () => string
+	}
+
 	// Authentication
 	auth: {
 		login: () => string
@@ -233,6 +238,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			// Deprecated old edit path; point to project-scoped settings
 			edit: (id: string) => `${projectPath}/settings`,
 			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,
+		},
+
+		// Teams
+		team: {
+			members: () => `/a/${extractAccountId(projectPath)}/team/manage`,
 		},
 
 		// Authentication
