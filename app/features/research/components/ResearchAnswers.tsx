@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface ResearchAnswerEvidence {
 	id: string
@@ -84,6 +85,7 @@ export interface ResearchAnswersData {
 interface ResearchAnswersProps {
 	projectId: string
 	className?: string
+	projectRoutes?: RouteDefinitions
 	onMetrics?: (metrics: { answered: number; open: number; total: number }) => void
 	onData?: (data: ResearchAnswersData | null) => void
 }
@@ -137,8 +139,18 @@ function MetricBadge({ label, value }: { label: string; value: number }) {
 	)
 }
 
-function AnswerRow({ answer, projectId }: { answer: ResearchAnswerNode; projectId: string }) {
-	const interview_link = answer.interview.id ? `/a/${projectId}/interviews/${answer.interview.id}` : null
+function AnswerRow({
+	answer,
+	projectRoutes,
+}: {
+	answer: ResearchAnswerNode
+	projectRoutes?: RouteDefinitions
+}) {
+	const firstEvidenceId = answer.evidence[0]?.id
+	const evidenceLink = firstEvidenceId && projectRoutes ? projectRoutes.evidence.detail(firstEvidenceId) : null
+	const interviewLink = answer.interview.id && projectRoutes ? projectRoutes.interviews.detail(answer.interview.id) : null
+	const detailLink = evidenceLink ?? interviewLink
+	const detailLabel = evidenceLink ? "View evidence" : "View interview"
 
 	const evidence_list = useMemo(() => {
 		return [...answer.evidence].sort((a, b) => {
@@ -183,9 +195,9 @@ function AnswerRow({ answer, projectId }: { answer: ResearchAnswerNode; projectI
 					{answer.respondent.name ? answer.respondent.name : "Unknown participant"}
 					{answer.answered_at ? ` · ${new Date(answer.answered_at).toLocaleDateString()}` : null}
 				</span>
-				{interview_link ? (
-					<Link to={interview_link} className="inline-flex items-center gap-1 text-primary">
-						View interview <ChevronRight className="h-3 w-3" />
+				{detailLink ? (
+					<Link to={detailLink} className="inline-flex items-center gap-1 text-primary">
+						{detailLabel} <ChevronRight className="h-3 w-3" />
 					</Link>
 				) : null}
 			</div>
@@ -193,7 +205,13 @@ function AnswerRow({ answer, projectId }: { answer: ResearchAnswerNode; projectI
 	)
 }
 
-function ResearchQuestionSection({ question, projectId }: { question: ResearchQuestionNode; projectId: string }) {
+function ResearchQuestionSection({
+	question,
+	projectRoutes,
+}: {
+	question: ResearchQuestionNode
+	projectRoutes?: RouteDefinitions
+}) {
 	return (
 		<div className="space-y-3 rounded-lg border border-border/60 bg-muted/20 p-4">
 			<div className="flex items-center justify-between">
@@ -211,14 +229,22 @@ function ResearchQuestionSection({ question, projectId }: { question: ResearchQu
 				{question.answers.length === 0 ? (
 					<p className="text-muted-foreground text-sm">No interview answers linked yet.</p>
 				) : (
-					question.answers.map((answer) => <AnswerRow key={answer.id} answer={answer} projectId={projectId} />)
+					question.answers.map((answer) => (
+						<AnswerRow key={answer.id} answer={answer} projectRoutes={projectRoutes} />
+					))
 				)}
 			</div>
 		</div>
 	)
 }
 
-function DecisionQuestionSection({ decision, projectId }: { decision: DecisionQuestionNode; projectId: string }) {
+function DecisionQuestionSection({
+	decision,
+	projectRoutes,
+}: {
+	decision: DecisionQuestionNode
+	projectRoutes?: RouteDefinitions
+}) {
 	return (
 		<div className="space-y-4 rounded-xl border border-border bg-card">
 			<div className="flex items-center justify-between gap-2 border-border/60 border-b px-4 py-3">
@@ -237,7 +263,7 @@ function DecisionQuestionSection({ decision, projectId }: { decision: DecisionQu
 					<p className="text-muted-foreground text-sm">No research questions linked yet.</p>
 				) : (
 					decision.research_questions.map((rq) => (
-						<ResearchQuestionSection key={rq.id} question={rq} projectId={projectId} />
+						<ResearchQuestionSection key={rq.id} question={rq} projectRoutes={projectRoutes} />
 					))
 				)}
 			</div>
@@ -245,7 +271,7 @@ function DecisionQuestionSection({ decision, projectId }: { decision: DecisionQu
 	)
 }
 
-export function ResearchAnswers({ projectId, className, onMetrics, onData }: ResearchAnswersProps) {
+export function ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onData }: ResearchAnswersProps) {
 	const [data, setData] = useState<ResearchAnswersData | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)
@@ -343,7 +369,11 @@ export function ResearchAnswers({ projectId, className, onMetrics, onData }: Res
 				) : null}
 
 				{sections.decision_questions.map((decision) => (
-					<DecisionQuestionSection key={decision.id} decision={decision} projectId={projectId} />
+					<DecisionQuestionSection
+						key={decision.id}
+						decision={decision}
+						projectRoutes={projectRoutes}
+					/>
 				))}
 
 				{sections.research_questions_without_decision.length > 0 && (
@@ -354,7 +384,7 @@ export function ResearchAnswers({ projectId, className, onMetrics, onData }: Res
 						</div>
 						<div className="space-y-4">
 							{sections.research_questions_without_decision.map((rq) => (
-								<ResearchQuestionSection key={rq.id} question={rq} projectId={projectId} />
+								<ResearchQuestionSection key={rq.id} question={rq} projectRoutes={projectRoutes} />
 							))}
 						</div>
 					</div>
@@ -368,7 +398,7 @@ export function ResearchAnswers({ projectId, className, onMetrics, onData }: Res
 						</div>
 						<div className="space-y-3">
 							{sections.orphan_answers.map((answer) => (
-								<AnswerRow key={answer.id} answer={answer} projectId={projectId} />
+								<AnswerRow key={answer.id} answer={answer} projectRoutes={projectRoutes} />
 							))}
 						</div>
 					</div>

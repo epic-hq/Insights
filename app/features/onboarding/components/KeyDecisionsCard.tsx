@@ -1,9 +1,6 @@
-import { AlertCircle, ArrowRight, CheckCircle, ChevronDown, Lightbulb, XCircle } from "lucide-react"
-import { useState } from "react"
+import { AlertCircle, CheckCircle, Lightbulb, XCircle } from "lucide-react"
 import { Badge } from "~/components/ui/badge"
-import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Collapsible, CollapsibleContent } from "~/components/ui/collapsible"
 import type { DecisionQuestionNode, ResearchQuestionNode } from "~/features/research/components/ResearchAnswers"
 
 export interface DecoratedResearchQuestion extends ResearchQuestionNode {
@@ -30,8 +27,6 @@ export function KeyDecisionsCard({
 	topResearchQuestions,
 	analysisResults = [],
 }: KeyDecisionsCardProps) {
-	const [expandedDecision, setExpandedDecision] = useState<string | null>(null)
-
 	const getDirectionIcon = (confidence: number) => {
 		if (confidence >= 0.8) return <CheckCircle className="h-4 w-4 text-success" />
 		if (confidence >= 0.5) return <AlertCircle className="h-4 w-4 text-warning" />
@@ -70,89 +65,89 @@ export function KeyDecisionsCard({
 								analysisResult?.goal_achievement_summary ?? decision.analysis?.goal_achievement_summary ?? null,
 							confidence: analysisResult?.confidence ?? decision.analysis?.confidence ?? null,
 						}
-						const isExpanded = expandedDecision === decision.id
 						const confidence = analysis.confidence ?? 0
+						const answeredCount = decision.metrics.answered_answer_count ?? 0
+						const openCount = decision.metrics.open_answer_count ?? 0
+						const researchInsights = decision.research_questions.map((rq) => {
+							const rqAnalysisResult = analysisMap.get(`research:${rq.id}`)
+							return {
+								id: rq.id,
+								text: rq.text,
+								summary: rqAnalysisResult?.summary ?? rq.analysis?.summary ?? null,
+								next_steps: rqAnalysisResult?.next_steps ?? rq.analysis?.next_steps ?? null,
+								confidence: rqAnalysisResult?.confidence ?? rq.analysis?.confidence ?? null,
+								metrics: rq.metrics,
+							}
+						})
 
 						return (
 							<Card key={decision.id} className="transition-all">
-								<CardHeader className="pb-3">
-									<div className="flex items-start justify-between">
+								<CardHeader className="space-y-2 pb-0">
+									<div className="flex items-start justify-between gap-3">
 										<div className="flex flex-1 items-start gap-3">
 											{getDirectionIcon(confidence)}
 											<div className="flex-1">
 												<CardTitle className="pr-4 text-base">{decision.text}</CardTitle>
-												<p className="mt-1 text-muted-foreground text-sm">
-													{analysis.summary || analysis.goal_achievement_summary ||
-														`${decision.metrics.answered_answer_count ?? 0} answered · ${decision.metrics.open_answer_count ?? 0} open`}
-												</p>
+												{analysis.summary ? (
+													<p className="mt-1 text-muted-foreground text-sm">{analysis.summary}</p>
+												) : (
+													<p className="mt-1 text-muted-foreground text-sm">
+														{answeredCount} answered · {openCount} open
+													</p>
+												)}
 											</div>
 										</div>
-
-										<div className="flex flex-col items-end gap-2">
-											<Badge variant="secondary" className={`text-xs ${getConfidenceColor(confidence)}`}>
-												{getDirectionLabel(confidence)}
-											</Badge>
-											{decision.research_questions.length > 0 && (
-												<Button
-													variant="ghost"
-													size="sm"
-													className="text-xs hover:bg-muted"
-													onClick={() => setExpandedDecision(isExpanded ? null : decision.id)}
-												>
-													({Math.min(decision.research_questions.length, 4)})
-													<ChevronDown
-														className={`ml-1 h-4 w-4 transition-transform ${isExpanded ? "rotate-180" : ""}`}
-													/>
-												</Button>
-											)}
-										</div>
+										<Badge variant="secondary" className={`text-xs ${getConfidenceColor(confidence)}`}>
+											{getDirectionLabel(confidence)}
+										</Badge>
+									</div>
+									<div className="text-muted-foreground text-xs">
+										{decision.metrics.research_question_count ?? 0} research questions · {answeredCount} answered ·{" "}
+										{openCount} open ·{decision.metrics.evidence_count ?? 0} evidence
 									</div>
 								</CardHeader>
+								<CardContent className="space-y-4 pt-4">
+									{analysis.goal_achievement_summary && (
+										<div className="rounded-md bg-muted/40 p-3 text-muted-foreground text-sm">
+											{analysis.goal_achievement_summary}
+										</div>
+									)}
 
-											{decision.research_questions.length > 0 && (
-												<Collapsible open={isExpanded}>
-										<CollapsibleContent>
-											<div className="mx-6 border-border border-t" />
-											<CardContent className="space-y-4 pt-4">
-												<div>
-													<p className="mb-3 font-medium text-sm">Research Question Learnings</p>
-													<div className="space-y-3">
-														{decision.research_questions.slice(0, 3).map((rq) => {
-															const rqAnalysisResult = analysisMap.get(`research:${rq.id}`)
-															const rqAnalysis = {
-																summary: rqAnalysisResult?.summary ?? rq.analysis?.summary ?? null,
-																next_steps: rqAnalysisResult?.next_steps ?? rq.analysis?.next_steps ?? null,
-																confidence: rqAnalysisResult?.confidence ?? rq.analysis?.confidence ?? null,
-															}
-															return (
-																<div
-																	key={rq.id}
-																	className="group cursor-pointer rounded-lg border border-border bg-muted/50 p-3 transition-colors hover:bg-muted/70"
-																>
-																	<div className="flex items-start justify-between">
-																		<div className="flex-1">
-																			<p className="mb-1 font-medium text-foreground text-sm">{rq.text}</p>
-																			<p className="text-muted-foreground text-sm">
-																				{rqAnalysis.summary || `${rq.metrics.answered_answer_count ?? 0} answered`}
-																			</p>
-																	</div>
-																		<ArrowRight className="mt-0.5 ml-2 h-4 w-4 text-muted-foreground transition-colors group-hover:text-foreground" />
-																	</div>
-																</div>
-															)
-														})}
+									{researchInsights.length > 0 && (
+										<div>
+											{/* <p className="mb-2 font-medium text-sm">Research Question Learnings</p> */}
+											<div className="space-y-3">
+												{researchInsights.map((rq) => (
+													<div key={rq.id} className="rounded-lg border border-border bg-muted/40 p-3">
+														<div className="flex items-start justify-between gap-3">
+															<div className="flex-1 space-y-1">
+																<p className="font-medium text-foreground text-sm">{rq.text}</p>
+																{rq.summary && <p className="text-muted-foreground text-sm">{rq.summary}</p>}
+																{rq.next_steps && (
+																	<p className="text-muted-foreground text-xs">
+																		<span className="font-medium">Next steps:</span> {rq.next_steps}
+																	</p>
+																)}
+															</div>
+															<div className="flex flex-col items-end gap-1 text-muted-foreground text-xs">
+																<span>{rq.metrics.answered_answer_count ?? 0} answered</span>
+																<span>{rq.metrics.open_answer_count ?? 0} open</span>
+																<span>{rq.metrics.evidence_count ?? 0} evidence</span>
+															</div>
+														</div>
 													</div>
-												</div>
-												{analysis.next_steps && (
-													<div>
-														<p className="mb-2 font-medium text-sm">Next Steps</p>
-														<p className="text-muted-foreground text-sm">{analysis.next_steps}</p>
-													</div>
-												)}
-											</CardContent>
-										</CollapsibleContent>
-									</Collapsible>
-								)}
+												))}
+											</div>
+										</div>
+									)}
+
+									{analysis.next_steps && (
+										<div>
+											<p className="mb-1 font-medium text-sm">Recommended Next Step</p>
+											<p className="text-muted-foreground text-sm">{analysis.next_steps}</p>
+										</div>
+									)}
+								</CardContent>
 							</Card>
 						)
 					})
@@ -161,7 +156,7 @@ export function KeyDecisionsCard({
 				{topResearchQuestions.length > 0 && (
 					<div className="mt-4">
 						<div className="mb-2 flex items-center gap-2 text-muted-foreground/50 text-xs">
-							<Lightbulb className="h-4 w-4" /> Supporting Research Questions
+							<Lightbulb className="h-4 w-4" /> Additional Research Questions
 						</div>
 						<div className="space-y-2">
 							{topResearchQuestions.map((rq) => (
@@ -173,9 +168,6 @@ export function KeyDecisionsCard({
 										<CheckCircle className="mt-0.5 h-3 w-3 flex-shrink-0 text-green-600" />
 										<div className="flex-1">
 											<p className="font-medium text-foreground text-xs">{rq.text}</p>
-											{rq.decisionText && (
-												<p className="text-[11px] text-muted-foreground">Supports: {rq.decisionText}</p>
-											)}
 											<p className="mt-1 text-[11px] text-muted-foreground">
 												{rq.metrics.answered_answer_count ?? 0} answered · {rq.metrics.open_answer_count ?? 0} open ·{" "}
 												{rq.metrics.evidence_count ?? 0} evidence

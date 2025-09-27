@@ -5,15 +5,40 @@ import { Card } from "~/components/ui/card"
 import { userContext } from "~/server/user-context"
 import type { Evidence } from "~/types"
 
-export async function loader({ context, params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const projectId = params.projectId
 	if (!projectId) throw new Response("Missing projectId", { status: 400 })
-	const { data, error } = await supabase
+	
+	// Check for research question filter
+	const url = new URL(request.url)
+	const rqId = url.searchParams.get("rq_id")
+	
+	let query = supabase
 		.from("evidence")
 		.select("id, verbatim, context_summary, support, confidence, created_at")
 		.eq("project_id", projectId)
-		.order("created_at", { ascending: false })
+	
+	// If filtering by research question, join through project_answer_evidence -> project_answers
+	if (rqId) {
+		const { data: evidenceIds, error: linkError } = await supabase
+			.from("project_answer_evidence")
+			.select("evidence_id, project_answers!inner(research_question_id)")
+			.eq("project_answers.research_question_id", rqId)
+			.eq("project_id", projectId)
+		
+		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
+		
+		const ids = evidenceIds?.map(link => link.evidence_id).filter((id): id is string => Boolean(id)) || []
+		if (ids.length === 0) {
+			// No evidence linked to this research question
+			return { evidence: [], filteredByRQ: rqId }
+		}
+		
+		query = query.in("id", ids)
+	}
+	
+	const { data, error } = await query.order("created_at", { ascending: false })
 	if (error) throw new Error(`Failed to load evidence: ${error.message}`)
 	const evidence = (data ?? []) as (Pick<Evidence, "id" | "verbatim" | "support" | "confidence" | "created_at"> & {
 		context_summary?: string | null
@@ -89,14 +114,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	>
 
-	return { evidence: enriched }
+	return { evidence: enriched, filteredByRQ: rqId }
 }
 
 export default function EvidenceIndex() {
-	const { evidence } = useLoaderData<typeof loader>()
+	const { evidence, filteredByRQ } = useLoaderData<typeof loader>()
 	return (
 		<div className="space-y-4 p-4">
-			<h1 className="font-semibold text-xl">Evidence</h1>
+			<div className="flex items-center justify-between">
+				<h1 className="font-semibold text-xl">Evidence</h1>
+				{filteredByRQ && (
+					<Badge variant="outline" className="text-sm">
+						Filtered by Research Question
+					</Badge>
+				)}
+			</div>
 			<ul className="divide-y divide-gray-200">
 				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
 					{evidence?.length > 0 ? (
@@ -126,9 +158,9 @@ export default function EvidenceIndex() {
 														<div className="flex flex-wrap gap-1">
 															{e.people
 																.flatMap((p) => p.personas || [])
-																.map((persona, i) => (
+																.map((persona) => (
 																	<Badge
-																		key={i}
+																		key={persona.id}
 																		variant="outline"
 																		className="border-green-200 bg-green-50 text-green-800 text-xs"
 																	>

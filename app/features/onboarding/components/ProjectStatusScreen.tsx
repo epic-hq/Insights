@@ -38,12 +38,7 @@ import { InterviewAnalysisCard } from "~/features/onboarding/components/Intervie
 import { type DecoratedResearchQuestion, KeyDecisionsCard } from "~/features/onboarding/components/KeyDecisionsCard"
 import { ThemesSection } from "~/features/onboarding/components/ThemesSection"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
-import {
-	type ResearchAnswerNode,
-	ResearchAnswers,
-	type ResearchAnswersData,
-	type ResearchQuestionNode,
-} from "~/features/research/components/ResearchAnswers"
+import { CleanResearchAnswers } from "~/features/research/components/CleanResearchAnswers"
 import {
 	type AnsweredQuestionSummary,
 	calculateResearchMetrics,
@@ -113,6 +108,11 @@ export default function ProjectStatusScreen({
 
 	const handleResearchMetrics = useCallback((metrics: { answered: number; open: number; total: number }) => {
 		setResearchMetrics(metrics)
+	}, [])
+
+	const handleResearchData = useCallback((data: any) => {
+		// Handle research data if needed
+		console.log("Research data received:", data)
 	}, [])
 
 	const handleResearchRollup = useCallback((data: ResearchAnswersData | null) => {
@@ -259,20 +259,16 @@ export default function ProjectStatusScreen({
 
 	const decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup])
 
-	const decoratedResearchQuestions = useMemo<DecoratedResearchQuestion[]>(() => {
+	const standaloneResearchQuestions = useMemo<DecoratedResearchQuestion[]>(() => {
 		if (!researchRollup) return []
-		const withDecisions = researchRollup.decision_questions.flatMap((decision) =>
-			decision.research_questions.map((rq) => ({ ...rq, decisionText: decision.text }))
-		)
-		const withoutDecisions = researchRollup.research_questions_without_decision.map((rq) => ({
+		return researchRollup.research_questions_without_decision.map((rq) => ({
 			...rq,
 			decisionText: null,
 		}))
-		return [...withDecisions, ...withoutDecisions]
 	}, [researchRollup])
 
 	const topResearchQuestions = useMemo(() => {
-		return decoratedResearchQuestions
+		return standaloneResearchQuestions
 			.filter((rq) => (rq.metrics.answered_answer_count ?? 0) + (rq.metrics.open_answer_count ?? 0) > 0)
 			.sort(
 				(a, b) =>
@@ -280,9 +276,8 @@ export default function ProjectStatusScreen({
 					(b.metrics.open_answer_count ?? 0) - (a.metrics.open_answer_count ?? 0)
 			)
 			.slice(0, 3)
-	}, [decoratedResearchQuestions])
+	}, [standaloneResearchQuestions])
 
-	type DecoratedResearchQuestion = ResearchQuestionNode & { decisionText: string | null }
 
 	const allResearchAnswers = useMemo<ResearchAnswerNode[]>(() => {
 		if (!researchRollup) return []
@@ -723,26 +718,18 @@ export default function ProjectStatusScreen({
 								</div>
 
 								{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
-								<KeyDecisionsCard
-									decisionSummaries={decisionSummaries}
-									topResearchQuestions={topResearchQuestions}
-									analysisResults={researchRollup?.analysis_results}
-								/>
-								{/* Research Answers - Detailed DQ & RQ Answers */}
+								{/* <KeyDecisionsCard
+								{/* Research Findings */}
 								{projectId && (
-									<div className="mt-6">
-										<ResearchAnswers
+									<div className="mt-12">
+										<CleanResearchAnswers
 											projectId={projectId as string}
+											projectRoutes={routes}
 											onMetrics={handleResearchMetrics}
-											onData={handleResearchRollup}
+											onData={handleResearchData}
 										/>
 									</div>
 								)}
-
-								{/* Themes */}
-								{/* <div>
-									<ThemesSection routes={routes} projectId={projectId} />
-								</div> */}
 
 								{/* 4. Recommended Next Steps */}
 								<div className="mb-3 flex items-center gap-2">
