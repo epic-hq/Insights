@@ -28,6 +28,8 @@ create table if not exists accounts.invitations
     created_at         timestamp with time zone,
     -- what type of invitation is this
     invitation_type    accounts.invitation_type                                 not null,
+    -- the email of the invitee
+    invitee_email      text,
     primary key (id)
 );
 
@@ -228,24 +230,27 @@ grant execute on function public.lookup_invitation(text) to authenticated;
 /**
   Allows a user to create a new invitation if they are an owner of an account
  */
-create or replace function public.create_invitation(account_id uuid, account_role accounts.account_role,
-                                                    invitation_type accounts.invitation_type)
-    returns json
-    language plpgsql
-as
-$$
-declare
-    new_invitation accounts.invitations;
-begin
-    insert into accounts.invitations (account_id, account_role, invitation_type, invited_by_user_id)
-    values (account_id, account_role, invitation_type, auth.uid())
-    returning * into new_invitation;
+CREATE FUNCTION public.create_invitation(
+  account_id uuid,
+  account_role accounts.account_role,
+  invitation_type accounts.invitation_type,
+  invitee_email text DEFAULT NULL
+)
+RETURNS json
+LANGUAGE plpgsql
+AS $$
+DECLARE
+  new_invitation accounts.invitations;
+BEGIN
+  INSERT INTO accounts.invitations (account_id, account_role, invitation_type, invited_by_user_id, invitee_email)
+  VALUES (account_id, account_role, invitation_type, auth.uid(), invitee_email)
+  RETURNING * INTO new_invitation;
 
-    return json_build_object('token', new_invitation.token);
-end
+  RETURN json_build_object('token', new_invitation.token);
+END;
 $$;
 
-grant execute on function public.create_invitation(uuid, accounts.account_role, accounts.invitation_type) to authenticated;
+grant execute on function public.create_invitation(uuid, accounts.account_role, accounts.invitation_type, text) to authenticated;
 
 /**
   Allows an owner to delete an existing invitation

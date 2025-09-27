@@ -14,7 +14,7 @@ import type { SupabaseClient as UntypedSupabaseClient } from "@supabase/supabase
 // These come from `supabase/types.ts`, generated via the
 // Supabase CLI. They include generic helper utilities
 // `Tables`, `TablesInsert`, `TablesUpdate`, `Enums`, etc.
-import type { Database as SupabaseDB } from "~/../supabase/types"
+import type { Database as SupabaseDB } from "~/types-db-override" // NOTE: WE ARE USING THE OVERRIDDEN TYPES HERE
 import type { PersonaSlice } from "~/components/charts/PersonaDonut"
 
 // Helper generics --------------------------------------------------
@@ -32,6 +32,15 @@ export type TablesUpdate<TName extends keyof Database["public"]["Tables"]> =
 	Database["public"]["Tables"][TName]["Update"]
 
 export type Enums<EName extends keyof Database["public"]["Enums"]> = Database["public"]["Enums"][EName]
+
+// RPC function argument helper
+export type RpcArgs<RpcName extends keyof Database["public"]["Functions"]> = Database["public"]["Functions"][RpcName]["Args"]
+
+// RPC function return type helper
+export type RpcReturns<RpcName extends keyof Database["public"]["Functions"]> = Database["public"]["Functions"][RpcName]["Returns"]
+
+// Re-export account types
+export type { AcceptInvitationResponse, CreateAccountResponse, CreateInvitationResponse, CurrentUserAccountRoleResponse, GetAccountBillingStatusResponse, GetAccountInvitesResponse, GetAccountMembersResponse, GetAccountResponse, GetAccountsResponse, GetBillingPlansResponse, LookupInvitationResponse, UpdateAccountResponse } from "./types-accounts"
 
 // 2. Domain aliases (Row representations)
 // --------------------------------------

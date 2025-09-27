@@ -14,6 +14,7 @@ import projectChatRoutes from "./features/project-chat/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
+import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes"
 import themesRoutes from "./features/themes/routes"
 import voiceRoutes from "./features/voice/routes"
 
@@ -28,11 +29,14 @@ const routes = [
 	layout("./routes/_ProtectedLayout.tsx", [
 		// Home dashboard for logged-in users
 		...homeRoutes,
+		...teamsRoutes,
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
 			// Projects under account - REMOVED duplicate layout
 			...projectsRoutes,
+			// Account-scoped team routes
+			...teamRoutes,
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
@@ -76,7 +80,6 @@ const routes = [
 
 				// Project-setup agent chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
-
 			]),
 
 			// Account-scoped quick record API: creates project + interview

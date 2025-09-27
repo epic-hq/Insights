@@ -1152,7 +1152,8 @@ BEGIN
                                    'account_role', i.account_role,
                                    'created_at', i.created_at,
                                    'invitation_type', i.invitation_type,
-                                   'invitation_id', i.id
+                                   'invitation_id', i.id,
+                                   'email', i.invitee_email
                                )
                        )
             from accounts.invitations i
@@ -2058,5 +2059,3 @@ CREATE TRIGGER set_personas_user_tracking BEFORE INSERT OR UPDATE ON public.pers
 CREATE TRIGGER set_projects_timestamp BEFORE INSERT OR UPDATE ON public.projects FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_timestamps();
 
 CREATE TRIGGER set_projects_user_tracking BEFORE INSERT OR UPDATE ON public.projects FOR EACH ROW EXECUTE FUNCTION accounts.trigger_set_user_tracking();
-
-

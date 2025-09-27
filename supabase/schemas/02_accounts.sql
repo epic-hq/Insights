@@ -33,7 +33,7 @@ $$
                                JOIN pg_namespace n ON n.oid = t.typnamespace
                       WHERE t.typname = 'account_role'
                         AND n.nspname = 'accounts') THEN
-            CREATE TYPE accounts.account_role AS ENUM ('owner', 'member');
+            CREATE TYPE accounts.account_role AS ENUM ('owner', 'member', 'viewer');
         end if;
     end;
 $$;
