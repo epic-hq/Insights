@@ -10,6 +10,10 @@ export const CreateInvitationSchema = z.object({
 	account_role: z.enum(["owner", "member"]).default("member"),
 	invitation_type: z.enum(["one_time", "24_hour"]).default("one_time"),
 })
+/**
+ * @description
+ * Allow team owner to create an invitation
+ */
 export const createInvitation = async ({
 	supabase,
 	account_id,
@@ -27,11 +31,19 @@ export const lookupInvitation = async ({ supabase, lookup_invitation_token }: { 
 }
 
 export type AcceptInvitationRequest = RpcArgs<'accept_invitation'>
+/**
+ * @description
+ * Allow user to accept an invitation
+ */
 export const acceptInvitation = async ({ supabase, lookup_invitation_token }: { supabase: SupabaseClient } & AcceptInvitationRequest) => {
 	return await supabase.rpc("accept_invitation", { lookup_invitation_token })
 }
 
 export type DeleteInvitationRequest = RpcArgs<'delete_invitation'>
+/**
+ * @description
+ * Allow admin to delete an invitation
+ */
 export const deleteInvitation = async ({ supabase, invitation_id }: { supabase: SupabaseClient } & DeleteInvitationRequest) => {
 	return await supabase.rpc("delete_invitation", { invitation_id })
 }

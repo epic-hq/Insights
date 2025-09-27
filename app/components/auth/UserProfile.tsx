@@ -1,5 +1,5 @@
 import consola from "consola"
-import { FolderOpen, LogOut, User } from "lucide-react"
+import { FolderOpen, LogOut, Mail, User } from "lucide-react"
 import { Link } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import {
@@ -89,6 +89,12 @@ export function UserProfile() {
 					<Link to={routes.projects.index()} className="flex items-center">
 						<FolderOpen className="mr-2 h-4 w-4" />
 						<span>Switch Project</span>
+					</Link>
+				</DropdownMenuItem>
+				<DropdownMenuItem asChild className="cursor-pointer text-foreground hover:bg-accent">
+					<Link to={routes.team.members()} className="flex items-center">
+						<Mail className="mr-2 h-4 w-4" />
+						<span>Invite Team Members</span>
 					</Link>
 				</DropdownMenuItem>
 				<DropdownMenuSeparator className="bg-border/50" />

@@ -23,67 +23,67 @@ import { motion, AnimatePresence } from "motion/react";
 export type PermissionLevel = "can-view" | "can-edit" | "admin";
 
 export interface TeamMember {
-id: string;
-name: string;
-email: string;
-avatar?: string;
-role: PermissionLevel;
-isOwner?: boolean;
+  id: string;
+  name: string;
+  email: string;
+  avatar?: string;
+  role: PermissionLevel;
+  isOwner?: boolean;
 }
 
 export interface TeamInviteProps {
-className?: string;
-teamName: string;
-teamLogo?: string;
-totalMembers: number;
-members?: TeamMember[];
-onInvite?: (email: string, permission: PermissionLevel) => void;
-onUpdateMemberPermission?: (
-  memberId: string,
-  permission: PermissionLevel
-) => void;
-onCancel?: () => void;
+  className?: string;
+  teamName: string;
+  teamLogo?: string;
+  totalMembers: number;
+  members?: TeamMember[];
+  onInvite?: (email: string, permission: PermissionLevel) => void;
+  onUpdateMemberPermission?: (
+    memberId: string,
+    permission: PermissionLevel
+  ) => void;
+  onCancel?: () => void;
 }
 
 const permissionOptions = [
-{
-  value: "can-view" as const,
-  label: "Can view",
-  description: "View only access",
-  icon: Eye,
-},
-{
-  value: "can-edit" as const,
-  label: "Can edit",
-  description: "Edit and view access",
-  icon: Edit3,
-},
+  {
+    value: "can-view" as const,
+    label: "Can view",
+    description: "View only access",
+    icon: Eye,
+  },
+  {
+    value: "can-edit" as const,
+    label: "Can edit",
+    description: "Edit and view access",
+    icon: Edit3,
+  },
 ] as const;
 
 const getPermissionIcon = (permission: PermissionLevel) => {
-switch (permission) {
-  case "can-view":
-    return Eye;
-  case "can-edit":
-    return Edit3;
-  case "admin":
-    return Crown;
-  default:
-    return Eye;
-}
+  switch (permission) {
+    case "can-view":
+      return Eye;
+    case "can-edit":
+      return Edit3;
+    case "admin":
+      return Crown;
+    default:
+      return Eye;
+  }
 };
 
 const getPermissionLabel = (permission: PermissionLevel) => {
-switch (permission) {
-  case "can-view":
-    return "Can view";
-  case "can-edit":
-    return "Can edit";
-  case "admin":
-    return "Admin";
-  default:
-    return "Can view";
-}
+  switch (permission) {
+    case "can-view":
+      return "Can view";
+    case "can-edit":
+      return "Can edit";
+    case "admin":
+      return "Admin";
+    default:
+      return "Can view";
+  }
 };
 
 const getPermissionColor = (permission: PermissionLevel) => {
@@ -110,6 +110,8 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
     onInvite,
     onUpdateMemberPermission,
     onCancel,
+    useActions = false,
+    formAction,
     ...props
   },
   ref
@@ -153,7 +155,7 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
       <CardHeader className="pb-4">
         <div className="flex items-center gap-3">
           <div className="flex-shrink-0">
-            <Avatar size="lg">
+            <Avatar className="size-10">
               <AvatarImage src={teamLogo} alt={teamName} />
               <AvatarFallback className="bg-primary text-primary-foreground">
                 {getInitials(teamName)}
@@ -215,21 +217,20 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
             </div>
           </div>
 
-          <div className="flex gap-2 w-fit justify-end ml-auto">
+          <div className="ml-auto flex w-fit gap-2 justify-end">
             <Button
               variant="outline"
               size={"sm"}
               onClick={onCancel}
-              className="flex-1 h-9"
+              className="h-9 flex-1"
             >
               Cancel
             </Button>
             <Button
               onClick={handleInvite}
-              loading={isLoading}
               size={"sm"}
-              disabled={!inviteEmail.trim()}
-              className="flex-1 h-9"
+              disabled={!inviteEmail.trim() || isLoading}
+              className="h-9 flex-1"
             >
               Send Invite
             </Button>
@@ -255,9 +256,9 @@ const TeamInvite = React.forwardRef<HTMLDivElement, TeamInviteProps>(
                         animate={{ opacity: 1, y: 0 }}
                         exit={{ opacity: 0, y: -10 }}
                         transition={{ duration: 0.2 }}
-                        className="flex items-center gap-3 p-2 rounded-ele hover:bg-accent transition-colors"
+                        className="flex items-center gap-3 rounded-ele p-2 transition-colors hover:bg-accent"
                       >
-                        <Avatar size="sm">
+                        <Avatar className="size-6">
                           <AvatarImage
                             src={member.avatar}
                             alt={member.name}
