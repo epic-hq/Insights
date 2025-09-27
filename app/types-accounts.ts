@@ -45,21 +45,21 @@ type GetAccountsResponse = {
 	updated_at: Date;
 }[];
 type GetAccountMembersResponse = {
-	user_id: string;
 	name: string;
 	account_role: Database["accounts"]["Tables"]["account_user"]["Row"]["account_role"];
 	is_primary_owner: boolean;
 }[];
 type GetAccountInvitesResponse = {
-	account_role: Database["accounts"]["Tables"]["account_user"]["Row"]["account_role"];
-	invitation_type: Database["accounts"]["Tables"]["invitations"]["Row"]["invitation_type"];
-	created_at: Date;
+    invitation_id: string;
+    account_role: Database["accounts"]["Tables"]["account_user"]["Row"]["account_role"];
+    invitation_type: Database["accounts"]["Tables"]["invitations"]["Row"]["invitation_type"];
+    created_at: Date;
+    email?: string | null;
 }[];
 type CreateInvitationResponse = {
 	token: string;
 };
 type GetAccountBillingStatusResponse = {
-	subscription_id: string;
 	subscription_active: boolean;
 	status: Database["accounts"]["Tables"]["billing_subscriptions"]["Row"]["status"];
 	billing_email?: string;

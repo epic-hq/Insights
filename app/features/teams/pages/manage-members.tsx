@@ -5,55 +5,61 @@ import { data, useLoaderData } from "react-router"
 import { useFetcher } from "react-router-dom"
 import { z } from "zod"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
-// import { useNotification } from "~/contexts/NotificationContext"
-// import { getSupabaseClient } from "~/lib/supabase/client"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import type { GetAccountInvitesResponse } from "~/types-accounts"
 import {
 	getAccount as dbGetAccount,
 	getAccountMembers as dbGetAccountMembers,
 	updateAccountUserRole as dbUpdateAccountUserRole,
 } from "../db/accounts"
-import { createInvitation as dbCreateInvitation } from "../db/invitations"
+import {
+	createInvitation as dbCreateInvitation,
+	getAccountInvitations as dbGetAccountInvitations,
+} from "../db/invitations"
 
+type MembersRow = {
+	user_id: string
+	name: string
+	email: string
+	account_role: "owner" | "member" | "viewer"
+	is_primary_owner: boolean
+}
+
+type LoaderData = {
+	account: { account_id: string; name: string; account_role: "owner" | "member" | "viewer" } | null
+	members: MembersRow[]
+	invitations: GetAccountInvitesResponse
+}
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client } = getServerClient(request)
 	const user = await getAuthenticatedUser(request)
-
-	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
-	}
+	if (!user) throw new Response("Unauthorized", { status: 401 })
 
 	const accountId = params.accountId as string | undefined
-	if (!accountId) {
-		throw new Response("Missing accountId", { status: 400 })
-	}
+	if (!accountId) throw new Response("Missing accountId", { status: 400 })
 
-	// Fetch account context first to know user role
 	const { data: account, error: accountError } = await dbGetAccount({ supabase: client, account_id: accountId })
+	if (accountError) throw new Response(accountError.message, { status: 500 })
 
-	if (accountError) {
-		throw new Response(accountError.message, { status: 500 })
-	}
-
-	let members = []
-	// Only owners can access members via RPC; if not owner, we still render page with limited capabilities
+	let members: MembersRow[] = []
+	let invitations: GetAccountInvitesResponse = []
 	if (account?.account_role === "owner") {
 		const { data: membersData, error: membersError } = await dbGetAccountMembers({
 			supabase: client,
 			account_id: accountId,
 		})
-		if (membersError) {
-			// Surface error to client; helps debug RLS
-			throw new Response(membersError.message, { status: 500 })
-		}
-		members = (membersData) ?? []
+		if (membersError) throw new Response(membersError.message, { status: 500 })
+		members = (membersData as MembersRow[] | null) ?? []
+
+		const { data: invitationsData, error: invitationsError } = await dbGetAccountInvitations({
+			supabase: client,
+			account_id: accountId,
+		})
+		if (invitationsError) throw new Response(invitationsError.message, { status: 500 })
+		invitations = (invitationsData as GetAccountInvitesResponse | null) ?? []
 	}
 
-	const data = {
-		account: account ?? null,
-		members,
-	}
-
+	const data: LoaderData = { account: account ?? null, members, invitations }
 	return data
 }
 
@@ -91,6 +97,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			account_id: accountId,
 			account_role: mapPermissionToAccountRoleForRpc(permission),
 			invitation_type: "one_time",
+			invitee_email: email,
 		})
 		if (result.error) return data({ ok: false, message: result.error.message }, { status: 500 })
 		const token =
@@ -118,9 +125,8 @@ export async function action({ request, params }: ActionFunctionArgs) {
 
 	return new Response("Bad Request", { status: 400 })
 }
-
 export default function ManageTeamMembers() {
-	const { account, members } = useLoaderData()
+	const { account, members, invitations } = useLoaderData() as LoaderData
 	const inviteFetcher = useFetcher()
 	const updateRoleFetcher = useFetcher()
 	const [localMembers, setLocalMembers] = useState<TeamMember[]>(() =>
@@ -133,53 +139,35 @@ export default function ManageTeamMembers() {
 		}))
 	)
 
+	const canManage = account?.account_role === "owner"
+	const teamName = account?.name ?? "Team"
 	const totalMembers = localMembers.length
 
-	const teamName = account?.name ?? "Team"
-
 	const handleInvite = useCallback(
-		async (email: string, permission: PermissionLevel) => {
+		(email: string, permission: PermissionLevel) => {
 			if (!account?.account_id) return
-			inviteFetcher.submit(
-				{
-					intent: "invite",
-					email,
-					permission,
-				},
-				{ method: "post" }
-			)
+			inviteFetcher.submit({ intent: "invite", email, permission }, { method: "post" })
 		},
 		[account?.account_id, inviteFetcher]
 	)
 
 	const handleUpdateMemberPermission = useCallback(
-		async (memberId: string, permission: PermissionLevel) => {
+		(memberId: string, permission: PermissionLevel) => {
 			if (!account?.account_id) return
-			updateRoleFetcher.submit(
-				{
-					intent: "updateRole",
-					memberId,
-					permission,
-				},
-				{ method: "post" }
-			)
-			// Optimistic update
+			updateRoleFetcher.submit({ intent: "updateRole", memberId, permission }, { method: "post" })
 			setLocalMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: permission } : m)))
 		},
 		[account?.account_id, updateRoleFetcher]
 	)
-
-	const canManage = account?.account_role === "owner"
 
 	return (
 		<div className="container mx-auto max-w-3xl py-6">
 			<div className="mb-6">
 				<h1 className="font-semibold text-2xl">Team Members</h1>
 				<p className="text-muted-foreground text-sm">Manage access and invite collaborators to your team.</p>
-				{!canManage && (
+				{invitations.length > 0 && (
 					<p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:bg-amber-950/40 dark:text-amber-300">
-						You are not an owner of this account. You can view members but cannot manage permissions or create
-						invitations.
+						You have {invitations.length} pending invitation{invitations.length === 1 ? "" : "s"}.
 					</p>
 				)}
 			</div>
@@ -191,6 +179,24 @@ export default function ManageTeamMembers() {
 				onInvite={canManage ? handleInvite : undefined}
 				onUpdateMemberPermission={canManage ? handleUpdateMemberPermission : undefined}
 			/>
+
+			{invitations.length > 0 && (
+				<div className="mt-6">
+					<h2 className="font-semibold text-lg">Pending invitations</h2>
+					<ul className="mt-2 space-y-2">
+						{invitations.map((inv, idx) => (
+							<li key={inv.invitation_id ?? idx} className="flex items-center justify-between rounded-md border p-3">
+								<span className="text-sm">
+									{inv.email ? <strong>{inv.email}</strong> : "(no email)"} • Role: {inv.account_role}
+								</span>
+								<span className="text-muted-foreground text-xs">
+									{new Date(String(inv.created_at)).toLocaleString()}
+								</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
 		</div>
 	)
 }
@@ -206,7 +212,6 @@ function mapAccountRoleToPermission(role: "owner" | "member" | "viewer"): Permis
 			return "can-view"
 	}
 }
-
 // For RPCs that only accept 'owner' | 'member'
 function mapPermissionToAccountRoleForRpc(permission: PermissionLevel): "owner" | "member" {
 	switch (permission) {
