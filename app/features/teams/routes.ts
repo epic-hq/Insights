@@ -1,4 +1,12 @@
-import { index, prefix, RouteConfig } from "@react-router/dev/routes";
+import { index, prefix, type RouteConfig } from "@react-router/dev/routes";
+
+export const teamsApiRoutes = [
+
+] satisfies RouteConfig
+
+export const teamsAccountRoutes = [
+
+] satisfies RouteConfig
 
 export default [
 	...prefix("/teams", [
