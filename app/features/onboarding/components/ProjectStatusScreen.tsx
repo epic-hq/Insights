@@ -724,7 +724,6 @@ export default function ProjectStatusScreen({
 									<div className="mt-12">
 										<CleanResearchAnswers
 											projectId={projectId as string}
-											projectRoutes={routes}
 											onMetrics={handleResearchMetrics}
 											onData={handleResearchData}
 										/>

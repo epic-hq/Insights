@@ -1,9 +1,7 @@
-import { ArrowRight, CheckCircle, CircleHelp } from "lucide-react"
+import { CheckCircle, CircleHelp } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent } from "~/components/ui/card"
-import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface ResearchAnswerEvidence {
 	id: string
@@ -85,12 +83,11 @@ export interface ResearchAnswersData {
 interface CleanResearchAnswersProps {
 	projectId: string
 	className?: string
-	projectRoutes?: RouteDefinitions
 	onMetrics?: (metrics: { answered: number; open: number; total: number }) => void
 	onData?: (data: ResearchAnswersData | null) => void
 }
 
-function DecisionCard({ decision, projectRoutes }: { decision: DecisionQuestionNode; projectRoutes?: RouteDefinitions }) {
+function DecisionCard({ decision }: { decision: DecisionQuestionNode }) {
 	const hasAnswers = decision.metrics.answered_answer_count > 0
 	const confidenceLevel = decision.metrics.answered_answer_count >= 3 ? "high" :
 		decision.metrics.answered_answer_count >= 1 ? "medium" : "low"
@@ -101,10 +98,7 @@ function DecisionCard({ decision, projectRoutes }: { decision: DecisionQuestionN
 		.filter(answer => answer.answer_text && answer.answer_text.length > 50)
 		.sort((a, b) => (b.metrics.evidence_count || 0) - (a.metrics.evidence_count || 0))[0]
 
-	// Fix evidence link to use research question IDs, not decision ID
-	const getEvidenceLink = (rqId: string) => projectRoutes 
-		? `${projectRoutes.evidence.index()}?rq_id=${rqId}`
-		: null
+	// Evidence links temporarily disabled to fix bundling issue
 
 	return (
 		<Card className="mb-6 border border-gray-200">
@@ -150,8 +144,6 @@ function DecisionCard({ decision, projectRoutes }: { decision: DecisionQuestionN
 											.filter(a => a.answer_text && a.answer_text.length > 30)
 											.sort((a, b) => (b.metrics.evidence_count || 0) - (a.metrics.evidence_count || 0))[0]
 
-										const evidenceLink = getEvidenceLink(rq.id)
-
 										return (
 											<div key={rq.id} className="rounded-lg bg-gray-50 p-4">
 												<div className="flex items-start justify-between">
@@ -165,14 +157,6 @@ function DecisionCard({ decision, projectRoutes }: { decision: DecisionQuestionN
 															</p>
 														)}
 													</div>
-													{evidenceLink && (
-														<Link
-															to={evidenceLink}
-															className="ml-4 text-gray-400 hover:text-gray-600"
-														>
-															<ArrowRight className="h-4 w-4" />
-														</Link>
-													)}
 												</div>
 											</div>
 										)
@@ -189,7 +173,6 @@ function DecisionCard({ decision, projectRoutes }: { decision: DecisionQuestionN
 export function CleanResearchAnswers({ 
 	projectId, 
 	className, 
-	projectRoutes, 
 	onData 
 }: CleanResearchAnswersProps) {
 	const [data, setData] = useState<ResearchAnswersData | null>(null)
@@ -237,7 +220,6 @@ export function CleanResearchAnswers({
 				<DecisionCard
 					key={decision.id}
 					decision={decision}
-					projectRoutes={projectRoutes}
 				/>
 			))}
 		</div>
