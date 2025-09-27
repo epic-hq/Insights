@@ -7,6 +7,7 @@ create table if not exists public.project_answer_evidence (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   answer_id uuid not null references public.project_answers(id) on delete cascade,
+  evidence_id uuid references public.evidence(id) on delete cascade,
   interview_id uuid references public.interviews(id) on delete set null,
   source text not null,                      -- 'transcript' | 'note' | 'file' | 'email' | 'survey' | 'manual'
   text text,                                 -- short excerpt (optional)
@@ -21,11 +22,12 @@ create table if not exists public.project_answer_evidence (
 -- Indexes ------------------------------------------------------------------
 create index if not exists idx_pae_project            on public.project_answer_evidence(project_id);
 create index if not exists idx_pae_answer             on public.project_answer_evidence(answer_id);
+create index if not exists idx_pae_evidence_id        on public.project_answer_evidence(evidence_id);
 create index if not exists idx_pae_interview          on public.project_answer_evidence(interview_id);
 create index if not exists idx_pae_source             on public.project_answer_evidence(source);
 create index if not exists idx_pae_times              on public.project_answer_evidence(start_seconds, end_seconds);
 create index if not exists idx_pae_payload_gin        on public.project_answer_evidence using gin (payload);
-create unique index if not exists idx_pae_unique_answer_evidence on public.project_answer_evidence(project_id, answer_id, evidence_id);
+create unique index if not exists idx_pae_unique_project_answer_evidence on public.project_answer_evidence(project_id, answer_id, evidence_id);
 
 -- Triggers -----------------------------------------------------------------
 create trigger set_project_answer_evidence_timestamp

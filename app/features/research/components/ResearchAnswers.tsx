@@ -71,6 +71,14 @@ export interface ResearchAnswersData {
 	decision_questions: DecisionQuestionNode[]
 	research_questions_without_decision: ResearchQuestionNode[]
 	orphan_answers: ResearchAnswerNode[]
+	analysis_results?: Array<{
+		question_type: "decision" | "research"
+		question_id: string
+		summary: string
+		confidence: number
+		next_steps: string | null
+		goal_achievement_summary: string | null
+	}>
 }
 
 interface ResearchAnswersProps {

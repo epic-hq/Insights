@@ -4,6 +4,8 @@ import consola from "consola"
 import type { Database } from "~/types"
 
 const DEFAULT_MIN_CONFIDENCE = 0.6
+const PROJECT_RESEARCH_ANALYSIS_RUNS_TABLE = "project_research_analysis_runs"
+const PROJECT_QUESTION_ANALYSIS_TABLE = "project_question_analysis"
 
 type QuestionKind = "decision" | "research"
 
@@ -216,7 +218,7 @@ export async function runEvidenceAnalysis({
 	)
 
 	const { data: runRow, error: runError } = await supabase
-		.from("project_research_analysis_runs")
+		.from(PROJECT_RESEARCH_ANALYSIS_RUNS_TABLE)
 		.insert({
 			project_id: projectId,
 			custom_instructions: customInstructions || null,
@@ -521,7 +523,9 @@ export async function runEvidenceAnalysis({
 			goal_achievement_summary: summary.goal_achievement_summary ?? null,
 		}))
 
-		const { error: questionInsertError } = await supabase.from("project_question_analysis").insert(questionRows)
+		const { error: questionInsertError } = await supabase
+			.from(PROJECT_QUESTION_ANALYSIS_TABLE)
+			.insert(questionRows)
 
 		if (questionInsertError) throw questionInsertError
 	}

@@ -222,6 +222,7 @@ export type Database = {
           id: string
           invitation_type: Database["accounts"]["Enums"]["invitation_type"]
           invited_by_user_id: string
+          invitee_email: string | null
           token: string
           updated_at: string | null
         }
@@ -233,6 +234,7 @@ export type Database = {
           id?: string
           invitation_type: Database["accounts"]["Enums"]["invitation_type"]
           invited_by_user_id: string
+          invitee_email?: string | null
           token?: string
           updated_at?: string | null
         }
@@ -244,6 +246,7 @@ export type Database = {
           id?: string
           invitation_type?: Database["accounts"]["Enums"]["invitation_type"]
           invited_by_user_id?: string
+          invitee_email?: string | null
           token?: string
           updated_at?: string | null
         }
@@ -287,7 +290,7 @@ export type Database = {
       }
     }
     Enums: {
-      account_role: "owner" | "member"
+      account_role: "owner" | "member" | "viewer"
       invitation_type: "one_time" | "24_hour"
       subscription_status:
         | "trialing"
@@ -2337,6 +2340,7 @@ export type Database = {
           answer_id: string
           created_at: string
           end_seconds: number | null
+          evidence_id: string | null
           id: string
           interview_id: string | null
           payload: Json | null
@@ -2351,6 +2355,7 @@ export type Database = {
           answer_id: string
           created_at?: string
           end_seconds?: number | null
+          evidence_id?: string | null
           id?: string
           interview_id?: string | null
           payload?: Json | null
@@ -2365,6 +2370,7 @@ export type Database = {
           answer_id?: string
           created_at?: string
           end_seconds?: number | null
+          evidence_id?: string | null
           id?: string
           interview_id?: string | null
           payload?: Json | null
@@ -2391,6 +2397,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "project_answer_evidence_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "project_answer_evidence_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
@@ -2408,6 +2421,10 @@ export type Database = {
       }
       project_answers: {
         Row: {
+          analysis_next_steps: string | null
+          analysis_rationale: string | null
+          analysis_run_metadata: Json | null
+          analysis_summary: string | null
           answer_text: string | null
           answered_at: string | null
           asked_at: string | null
@@ -2435,6 +2452,10 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          analysis_next_steps?: string | null
+          analysis_rationale?: string | null
+          analysis_run_metadata?: Json | null
+          analysis_summary?: string | null
           answer_text?: string | null
           answered_at?: string | null
           asked_at?: string | null
@@ -2462,6 +2483,10 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          analysis_next_steps?: string | null
+          analysis_rationale?: string | null
+          analysis_run_metadata?: Json | null
+          analysis_summary?: string | null
           answer_text?: string | null
           answered_at?: string | null
           asked_at?: string | null
@@ -2618,6 +2643,107 @@ export type Database = {
           },
         ]
       }
+      project_question_analysis: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          goal_achievement_summary: string | null
+          id: string
+          next_steps: string | null
+          project_id: string
+          question_id: string
+          question_type: Database["public"]["Enums"]["research_analysis_question_kind"]
+          run_id: string
+          summary: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          goal_achievement_summary?: string | null
+          id?: string
+          next_steps?: string | null
+          project_id: string
+          question_id: string
+          question_type: Database["public"]["Enums"]["research_analysis_question_kind"]
+          run_id: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          goal_achievement_summary?: string | null
+          id?: string
+          next_steps?: string | null
+          project_id?: string
+          question_id?: string
+          question_type?: Database["public"]["Enums"]["research_analysis_question_kind"]
+          run_id?: string
+          summary?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_question_analysis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_question_analysis_run_id_fkey"
+            columns: ["run_id"]
+            isOneToOne: false
+            referencedRelation: "project_research_analysis_runs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_research_analysis_runs: {
+        Row: {
+          created_at: string
+          custom_instructions: string | null
+          id: string
+          min_confidence: number | null
+          project_id: string
+          recommended_actions: Json | null
+          run_summary: string | null
+          triggered_by: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_instructions?: string | null
+          id?: string
+          min_confidence?: number | null
+          project_id: string
+          recommended_actions?: Json | null
+          run_summary?: string | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_instructions?: string | null
+          id?: string
+          min_confidence?: number | null
+          project_id?: string
+          recommended_actions?: Json | null
+          run_summary?: string | null
+          triggered_by?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_research_analysis_runs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       project_research_plans: {
         Row: {
           created_at: string
@@ -2664,15 +2790,12 @@ export type Database = {
       }
       project_section_kinds: {
         Row: {
-          Goal: string | null
           id: string
         }
         Insert: {
-          Goal?: string | null
           id: string
         }
         Update: {
-          Goal?: string | null
           id?: string
         }
         Relationships: []
@@ -3559,6 +3682,7 @@ export type Database = {
           account_id: string
           account_role: Database["accounts"]["Enums"]["account_role"]
           invitation_type: Database["accounts"]["Enums"]["invitation_type"]
+          invitee_email?: string
         }
         Returns: Json
       }
@@ -3711,7 +3835,7 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
+        Returns: string
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
@@ -3841,6 +3965,7 @@ export type Database = {
         | "archived"
         | "error"
       job_status: "pending" | "in_progress" | "done" | "error" | "retry"
+      research_analysis_question_kind: "decision" | "research"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -3968,7 +4093,7 @@ export type CompositeTypes<
 export const Constants = {
   accounts: {
     Enums: {
-      account_role: ["owner", "member"],
+      account_role: ["owner", "member", "viewer"],
       invitation_type: ["one_time", "24_hour"],
       subscription_status: [
         "trialing",
@@ -3997,6 +4122,7 @@ export const Constants = {
         "error",
       ],
       job_status: ["pending", "in_progress", "done", "error", "retry"],
+      research_analysis_question_kind: ["decision", "research"],
     },
   },
 } as const

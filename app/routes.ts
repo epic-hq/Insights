@@ -113,6 +113,7 @@ const routes = [
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
 	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
+	route("api/analyze-research-evidence", "./routes/api.analyze-research-evidence.tsx"),
 	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),

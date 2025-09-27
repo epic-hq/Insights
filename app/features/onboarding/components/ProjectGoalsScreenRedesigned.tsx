@@ -98,6 +98,7 @@ export default function ProjectGoalsScreen({
 	const [newAssumption, setNewAssumption] = useState("")
 	const [newUnknown, setNewUnknown] = useState("")
 	const [custom_instructions, setCustomInstructions] = useState("")
+	const [target_conversations, setTargetConversations] = useState(10)
 	const [isLoading, setIsLoading] = useState(false)
 	const [contextLoaded, setContextLoaded] = useState(false)
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
@@ -157,6 +158,7 @@ export default function ProjectGoalsScreen({
 		saveUnknowns,
 		saveDecisionQuestions,
 		saveCustomInstructions,
+		saveProjectSection,
 		isSaving,
 	} = useAutoSave({
 		projectId: currentProjectId || "",
@@ -170,6 +172,16 @@ export default function ProjectGoalsScreen({
 			consola.error("❌ Auto-save error:", error, { projectId: currentProjectId })
 		},
 	})
+
+	// Save target conversations function
+	const saveTargetConversations = useCallback(
+		(conversations: number) => {
+			if (conversations > 0) {
+				saveProjectSection("settings", { target_conversations: conversations })
+			}
+		},
+		[saveProjectSection]
+	)
 
 	const createProjectIfNeeded = useCallback(async () => {
 		if (currentProjectId || isCreatingProject) return currentProjectId
@@ -259,6 +271,7 @@ export default function ProjectGoalsScreen({
 					setDecisionQuestions((m.decision_questions as string[]) ?? [])
 					setUnknowns((m.unknowns as string[]) ?? [])
 					setCustomInstructions((m.custom_instructions as string) ?? "")
+					setTargetConversations((m.target_conversations as number) ?? 10)
 					populatedFromContext = true
 					consola.log("Loaded project context from project_sections (merged)")
 				}
@@ -277,6 +290,7 @@ export default function ProjectGoalsScreen({
 					setDecisionQuestions(data.decision_questions || [])
 					setUnknowns(data.unknowns || [])
 					setCustomInstructions(data.custom_instructions || "")
+					setTargetConversations(data.target_conversations || 10)
 					consola.log("Loaded project goals via API fallback")
 				}
 			}
@@ -1254,6 +1268,45 @@ export default function ProjectGoalsScreen({
 							</CardContent>
 						</Card>
 					)}
+				</div>
+
+				{/* Target Conversations Section */}
+				<div className="mx-auto max-w-4xl">
+					<Card>
+						<CardHeader className="p-4">
+							<div className="flex items-center gap-2">
+								<Target className="h-5 w-5 text-green-600" />
+								<h2 className="font-semibold text-lg">How many conversations to have?</h2>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<span className="inline-flex">
+											<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+										</span>
+									</TooltipTrigger>
+									<TooltipContent className="max-w-xs">
+										<p>Set your target number of interviews to conduct for this research project.</p>
+									</TooltipContent>
+								</Tooltip>
+							</div>
+						</CardHeader>
+						<CardContent className="p-6 pt-0">
+							<div className="flex items-center gap-4">
+								<Input
+									type="number"
+									min="1"
+									max="100"
+									value={target_conversations}
+									onChange={(e) => {
+										const value = Number.parseInt(e.target.value) || 10
+										setTargetConversations(value)
+									}}
+									onBlur={() => saveTargetConversations(target_conversations)}
+									className="w-24 text-center"
+								/>
+								<span className="text-gray-600 text-sm">interviews</span>
+							</div>
+						</CardContent>
+					</Card>
 				</div>
 
 				{showNextButton && (

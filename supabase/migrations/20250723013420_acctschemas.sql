@@ -1,3 +1,5 @@
+create extension if not exists pgcrypto;
+SET search_path = public, extensions, accounts;
 create schema if not exists "accounts";
 
 create type "accounts"."account_role" as enum ('owner', 'member');

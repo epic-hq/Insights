@@ -173,24 +173,21 @@ export async function refreshInterviewQuestions(
     }
   })
 
-  // NEVER delete project_answers - preserve all collected data
-  // Instead, mark questions not in current plan as "archived" or "legacy"
+  // Remove questions that are no longer in the current plan
+  // This keeps the data clean and up-to-date with current research structure
   const currentQuestionIds = new Set(plan.map(q => q.id))
   const legacyAnswers = existingAnswers?.filter(answer => 
     answer.question_id && !currentQuestionIds.has(answer.question_id)
   ) || []
 
-  // Mark legacy questions but preserve the data
+  // Delete outdated questions that are no longer in the current plan
   for (const legacyAnswer of legacyAnswers) {
-    const { error: updateError } = await supabase
+    const { error: deleteError } = await supabase
       .from("project_answers")
-      .update({ 
-        // Mark as legacy but preserve all data
-        origin: "legacy_plan" 
-      })
+      .delete()
       .eq("id", legacyAnswer.id)
     
-    if (updateError) console.warn("Failed to mark legacy answer:", updateError)
+    if (deleteError) console.warn("Failed to delete outdated answer:", deleteError)
   }
 
   // Update or insert questions based on current plan

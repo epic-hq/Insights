@@ -9,12 +9,14 @@ import {
 	Headphones,
 	Info,
 	Lightbulb,
+	ListTree,
 	Loader2,
 	MessageCircleQuestionIcon,
 	Mic2Icon,
 	MicIcon,
 	PlusCircle,
 	Search,
+	Settings,
 	Settings2,
 	Square,
 	SquareCheckBig,
@@ -25,6 +27,7 @@ import {
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link, useRevalidator } from "react-router"
 import { Streamdown } from "streamdown"
+import RadialProgress from "~/components/charts/RadialProgress"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -99,6 +102,8 @@ export default function ProjectStatusScreen({
 		total: 0,
 	})
 	const [researchRollup, setResearchRollup] = useState<ResearchAnswersData | null>(null)
+	const [analysisError, setAnalysisError] = useState<string | null>(null)
+	const [targetConversations, setTargetConversations] = useState<number>(10)
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
 	const projectPath =
@@ -121,6 +126,12 @@ export default function ProjectStatusScreen({
 	useEffect(() => {
 		if (initialSections && initialSections.length >= 0) {
 			setLoading(false)
+			// Extract target_conversations from settings section
+			const settingsSection = initialSections.find((section) => section.kind === "settings")
+			if (settingsSection?.meta) {
+				const meta = settingsSection.meta as any
+				setTargetConversations(meta.target_conversations || 10)
+			}
 			return
 		}
 		const fetchProjectSections = async () => {
@@ -132,7 +143,15 @@ export default function ProjectStatusScreen({
 					.eq("project_id", projectId)
 					.order("position", { ascending: true, nullsFirst: false })
 					.order("created_at", { ascending: false })
-				if (data) setProjectSections(data)
+				if (data) {
+					setProjectSections(data)
+					// Extract target_conversations from settings section
+					const settingsSection = data.find((section) => section.kind === "settings")
+					if (settingsSection?.meta) {
+						const meta = settingsSection.meta as any
+						setTargetConversations(meta.target_conversations || 10)
+					}
+				}
 			} finally {
 				setLoading(false)
 			}
@@ -153,27 +172,56 @@ export default function ProjectStatusScreen({
 	const runCustomAnalysis = async () => {
 		if (!projectId) return
 		setIsAnalyzing(true)
+		setAnalysisError(null)
 		try {
-			const response = await fetch("/api/analyze-project-status", {
+			// Build FormData because the analysis endpoint expects formData
+			const form = new FormData()
+			form.append("projectId", projectId)
+			if (customInstructions) form.append("customInstructions", customInstructions)
+			// You can make minConfidence configurable; use default 0.6 for now
+			form.append("minConfidence", String(0.6))
+
+			const response = await fetch("/api/analyze-research-evidence", {
 				method: "POST",
-				headers: {
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					projectId,
-					customInstructions: customInstructions || undefined,
-					analysisVersion: "1.0",
-				}),
+				body: form,
 			})
 
-			if (response.ok) {
-				setCustomInstructions("")
-				revalidator.revalidate()
-				// Auto-open gap analysis once data is available
-				// Analysis complete
+			const body = await response.json().catch(() => ({}))
+			if (!response.ok) {
+				const msg = body?.error || body?.details || "Analysis failed"
+				setAnalysisError(msg)
+				consola.error("[research-analysis] analysis failed", msg, body)
+				return
 			}
-		} catch (_error) {
-			// Handle error silently
+
+			// Clear the instructions input
+			setCustomInstructions("")
+			// Revalidate any loader data (if applicable)
+			revalidator.revalidate()
+
+			// Fetch fresh research rollup so KeyDecisionsCard and ResearchAnswers show updated data
+			try {
+				const rrResp = await fetch(`/api.research-answers?projectId=${encodeURIComponent(projectId)}`)
+				if (rrResp.ok) {
+					const rrBody = await rrResp.json().catch(() => ({}))
+					// rrBody expected shape: { data: ResearchAnswersData }
+					const newRollup = rrBody?.data ?? null
+					setResearchRollup(newRollup)
+					handleResearchRollup(newRollup)
+					// update metrics derived from rollup
+					const metrics = calculateResearchMetrics(newRollup)
+					handleResearchMetrics(metrics)
+				} else {
+					// Non-fatal: log but continue
+					const rb = await rrResp.json().catch(() => ({}))
+					consola.warn("[research-analysis] failed to refresh research rollup", rb)
+				}
+			} catch (err) {
+				consola.warn("[research-analysis] error fetching research rollup", err)
+			}
+		} catch (error) {
+			consola.error("[research-analysis] analysis failed", error)
+			setAnalysisError(error instanceof Error ? error.message : "Analysis request failed")
 		} finally {
 			setIsAnalyzing(false)
 		}
@@ -207,9 +255,7 @@ export default function ProjectStatusScreen({
 		criticalUnknowns: [],
 		questionAnswers: [],
 	}
-	if (!projectId) {
-		return
-	}
+	const hasProjectId = Boolean(projectId)
 
 	const decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup])
 
@@ -257,7 +303,7 @@ export default function ProjectStatusScreen({
 		const gs = getGoalSections()
 		if (gs.length === 0) return ""
 		const section = gs[0]
-		const meta = section.meta || {}
+		const meta = (section.meta || {}) as any
 		return meta.research_goal || meta.customGoal || section.content_md || ""
 	})()
 
@@ -265,7 +311,7 @@ export default function ProjectStatusScreen({
 		const gs = getGoalSections()
 		if (gs.length === 0) return "low"
 		const section = gs[0]
-		const meta = section.meta || {}
+		const meta = (section.meta || {}) as any
 		return meta.confidence || "low"
 	})()
 
@@ -333,7 +379,7 @@ export default function ProjectStatusScreen({
 								<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
 							</Button>
 						)}
-						<ProjectEditButton project={{ id: projectId }} />
+						<ProjectEditButton projectId={projectId} />
 					</div>
 				</div>
 			</div>
@@ -368,7 +414,11 @@ export default function ProjectStatusScreen({
 								<motion.div
 									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-green-200 bg-green-50 p-6 text-center transition-all hover:shadow-lg dark:border-green-800 dark:bg-green-950/20"
 									whileHover={{ scale: 1.02 }}
-									onClick={() => routes && (window.location.href = routes.interviews.index())}
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.interviews.index()
+										}
+									}}
 								>
 									<Headphones className="mx-auto mb-3 h-8 w-8 text-green-600" />
 									<h3 className="mb-2 font-semibold text-green-800 text-xl dark:text-green-300">Interviews</h3>
@@ -381,7 +431,11 @@ export default function ProjectStatusScreen({
 								<motion.div
 									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-purple-200 bg-purple-50 p-6 text-center transition-all hover:shadow-lg dark:border-purple-800 dark:bg-purple-950/20"
 									whileHover={{ scale: 1.02 }}
-									onClick={() => routes && (window.location.href = routes.evidence.index())}
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.evidence.index()
+										}
+									}}
 								>
 									<BookOpen className="mx-auto mb-3 h-8 w-8 text-purple-600" />
 									<h3 className="mb-2 font-semibold text-purple-800 text-xl dark:text-purple-300">Evidence</h3>
@@ -394,7 +448,11 @@ export default function ProjectStatusScreen({
 								<motion.div
 									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-orange-200 bg-orange-50 p-6 text-center transition-all hover:shadow-lg dark:border-orange-800 dark:bg-orange-950/20"
 									whileHover={{ scale: 1.02 }}
-									onClick={() => routes && (window.location.href = routes.personas.index())}
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.personas.index()
+										}
+									}}
 								>
 									<Users className="mx-auto mb-3 h-8 w-8 text-orange-600" />
 									<h3 className="mb-2 font-semibold text-orange-800 text-xl dark:text-orange-300">Personas</h3>
@@ -409,7 +467,11 @@ export default function ProjectStatusScreen({
 								<motion.div
 									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-indigo-200 bg-indigo-50 p-6 text-center transition-all hover:shadow-lg dark:border-indigo-800 dark:bg-indigo-950/20"
 									whileHover={{ scale: 1.02 }}
-									onClick={() => routes && (window.location.href = routes.insights.index())}
+									onClick={() => {
+										if (routes) {
+											window.location.href = routes.insights.index()
+										}
+									}}
 								>
 									<Lightbulb className="mx-auto mb-3 h-8 w-8 text-indigo-600" />
 									<h3 className="mb-2 font-semibold text-indigo-800 text-xl dark:text-indigo-300">Insights</h3>
@@ -559,31 +621,22 @@ export default function ProjectStatusScreen({
 													}
 												}}
 											>
+												<Settings className="h-4 w-4" />
 												Edit
 											</Button>{" "}
-											<TooltipProvider>
-												<Tooltip>
-													<TooltipTrigger asChild>
-														<Button
-															variant="outline"
-															onClick={() => setShowCustomAnalysis(true)}
-															disabled={isAnalyzing}
-															className="hover:bg-blue-700 hover:text-background"
-															size="sm"
-														>
-															{isAnalyzing ? (
-																<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-															) : (
-																<Zap className="mr-2 h-4 w-4" />
-															)}
-															Custom Analysis
-														</Button>
-													</TooltipTrigger>
-													<TooltipContent>
-														<p>Run analysis with custom instructions to focus on specific aspects</p>
-													</TooltipContent>
-												</Tooltip>
-											</TooltipProvider>
+											{/* Research Workflow Link */}
+											<Button
+												variant="outline"
+												size="sm"
+												onClick={() => {
+													if (routes) {
+														window.location.href = routes.questions.researchWorkflow()
+													}
+												}}
+											>
+												<ListTree className="h-4 w-4" />
+												Plan
+											</Button>
 										</div>
 									</div>
 									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
@@ -592,12 +645,21 @@ export default function ProjectStatusScreen({
 											{getGoalSections().length > 0 && (
 												<div className="flex items-center justify-between">
 													{getGoalSections().map((goalSection) => (
-														<div key={goalSection.id} className="flex items-start gap-3 font-medium text-foreground text-md">
+														<div
+															key={goalSection.id}
+															className="flex items-start gap-3 font-medium text-foreground text-md"
+														>
 															{goalSection.content_md}
 														</div>
 													))}
 													<Badge
-														variant={goalConfidence === "high" ? "default" : goalConfidence === "medium" ? "secondary" : "outline"}
+														variant={
+															goalConfidence === "high"
+																? "default"
+																: goalConfidence === "medium"
+																	? "secondary"
+																	: "outline"
+														}
 														className={getConfidenceColor(goalConfidence)}
 													>
 														{goalConfidence.charAt(0).toUpperCase() + goalConfidence.slice(1)}
@@ -606,21 +668,56 @@ export default function ProjectStatusScreen({
 											)}
 										</CardHeader>
 										<CardContent className="space-y-6 p-3 sm:p-4">
-
-
-											{/* Research Workflow Link */}
-											<div className="mt-4">
-												<Link
-													to={routes.questions.researchWorkflow()}
-													className="inline-flex items-center gap-2 font-medium text-blue-600 text-sm hover:text-blue-800 hover:underline"
-												>
-													<MessageCircleQuestionIcon className="h-4 w-4" />
-													Manage Research Structure & Questions
-													<ArrowRight className="h-3 w-3" />
-												</Link>
+											<div className="w-[75%] space-y-2">
+												<div className="flex items-center justify-start gap-4 text-sm">
+													<span className="">Interview Progress</span>
+													<span className="text-muted-foreground">
+														{displayData.totalInterviews} of {targetConversations}
+													</span>
+												</div>
+												<div className="h-2 w-[75%] rounded-full bg-muted">
+													<div
+														className="h-2 rounded-full bg-primary transition-all duration-300"
+														style={{ width: `${(displayData.totalInterviews / targetConversations) * 100}%` }}
+													/>
+												</div>
+											</div>
+											{/* Interview Progress */}
+											<div className="flex w-max-[120px] flex-col items-center justify-center">
+												{/* <RadialProgress
+													current={displayData.totalInterviews}
+													target={targetConversations}
+													label="interviews"
+													size={180}
+													color="#16a34a"
+												/> */}
 											</div>
 
-
+											<TooltipProvider>
+												<Tooltip>
+													<TooltipTrigger asChild>
+														<div className="flex flex-row items-end justify-end">
+															<Button
+																variant="outline"
+																onClick={() => setShowCustomAnalysis(true)}
+																disabled={isAnalyzing}
+																className="hover:bg-blue-700 "
+																size="sm"
+															>
+																{isAnalyzing ? (
+																	<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+																) : (
+																	<Zap className="mr-2 h-4 w-4" />
+																)}
+																Analyze...
+															</Button>
+														</div>
+													</TooltipTrigger>
+													<TooltipContent>
+														<p>Run analysis with custom instructions to focus on specific aspects</p>
+													</TooltipContent>
+												</Tooltip>
+											</TooltipProvider>
 										</CardContent>
 									</Card>
 								</div>
@@ -629,14 +726,15 @@ export default function ProjectStatusScreen({
 								<KeyDecisionsCard
 									decisionSummaries={decisionSummaries}
 									topResearchQuestions={topResearchQuestions}
+									analysisResults={researchRollup?.analysis_results}
 								/>
 								{/* Research Answers - Detailed DQ & RQ Answers */}
-								{researchRollup && (
+								{projectId && (
 									<div className="mt-6">
 										<ResearchAnswers
-											projectId={projectId}
-											onMetricsChange={handleResearchMetrics}
-											onDataChange={handleResearchRollup}
+											projectId={projectId as string}
+											onMetrics={handleResearchMetrics}
+											onData={handleResearchRollup}
 										/>
 									</div>
 								)}
@@ -726,7 +824,11 @@ export default function ProjectStatusScreen({
 										</Button>
 
 										<Button
-											onClick={() => routes && (window.location.href = routes.evidence.index())}
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.evidence.index()
+												}
+											}}
 											variant="outline"
 											className="flex max-w-64 justify-start"
 										>
@@ -736,7 +838,11 @@ export default function ProjectStatusScreen({
 
 										<Button
 											variant="outline"
-											onClick={() => routes && (window.location.href = routes.interviews.index())}
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.interviews.index()
+												}
+											}}
 											className="flex max-w-64 justify-start"
 										>
 											<Mic2Icon className="mr-2 h-4 w-4" />
@@ -786,21 +892,22 @@ export default function ProjectStatusScreen({
 
 					{/* Custom Analysis Modal - Dark Mode Fixed */}
 					{showCustomAnalysis && (
-						<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
-							<div className="w-full max-w-md rounded-2xl border border-gray-700 bg-gray-900 p-8 shadow-xl">
-								<h3 className="mb-6 font-light text-white text-xl">Custom Analysis</h3>
+						<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50 p-4">
+							<div className="w-full max-w-md rounded-2xl border border-gray-700 bg-background p-4 shadow-xl">
+								<h3 className="mb-6 font-light text-foreground text-xl">Update Analysis</h3>
 								<div className="space-y-6">
 									<div>
-										<label className="mb-3 block font-medium text-gray-300 text-sm">
-											Custom Instructions (Optional)
+										<label className="mb-3 block text-foreground text-sm">
+											Optional Instructions
 										</label>
 										<Input
 											value={customInstructions}
 											onChange={(e) => setCustomInstructions(e.target.value)}
 											placeholder="e.g., Focus on pain points, Look for feature gaps..."
-											className="border-gray-600 bg-gray-800 text-white placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
+											className="border-gray-600 bg-background text-foreground placeholder-gray-400 focus:border-blue-500 focus:ring-blue-500"
 										/>
 									</div>
+									{analysisError && <p className="text-destructive text-sm">{analysisError}</p>}
 									<div className="flex gap-3">
 										<Button
 											onClick={runCustomAnalysis}

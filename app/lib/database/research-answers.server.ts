@@ -406,6 +406,14 @@ export async function getResearchAnswerRollup(
     research_questions_without_decision,
     orphan_answers,
     latest_analysis_run: latestAnalysis,
+    analysis_results: questionAnalysisRows.map(row => ({
+      question_type: row.question_type,
+      question_id: row.question_id,
+      summary: row.summary ?? "",
+      confidence: safeNumber(row.confidence) ?? 0,
+      next_steps: row.next_steps,
+      goal_achievement_summary: row.goal_achievement_summary,
+    })),
   }
 }
 

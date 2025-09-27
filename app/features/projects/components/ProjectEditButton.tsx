@@ -6,16 +6,26 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import type { Project } from "~/types"
 
-export const ProjectEditButton = ({ project }: { project: Project }) => {
-	const { projectId, projectPath } = useCurrentProject()
+type ProjectEditButtonProps = {
+	project?: Pick<Project, "id">
+	projectId?: string | null
+}
+
+export const ProjectEditButton = ({ project, projectId: projectIdProp }: ProjectEditButtonProps) => {
+	const { projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+	const projectId = project?.id ?? projectIdProp ?? contextProjectId
+
+	if (!projectId) {
+		return null
+	}
 
 	return (
 		<TooltipProvider>
 			<Tooltip>
 				<TooltipTrigger asChild>
 					<Link
-						to={routes.projects.edit(project.id)}
+						to={routes.projects.edit(projectId)}
 						onClickCapture={(e) => e.stopPropagation()}
 						className="z-20 border border-gray-200"
 						aria-label="Edit project"

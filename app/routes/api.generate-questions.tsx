@@ -14,6 +14,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 	try {
 		const formData = await request.formData()
+		const { client: supabase } = getServerClient(request)
+
 		// Prefer explicit project_id from form, else fall back to server currentProjectContext (if available)
 		let ctxProjectId: string | null = null
 		try {
@@ -25,6 +27,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			// context not provided for this route; ignore
 		}
 		const project_id = ((formData.get("project_id") as string) || ctxProjectId || null) as string | null
+		if (!project_id) {
+			return Response.json(
+				{ error: "Project ID is required to generate and save interview questions" },
+				{ status: 400 }
+			)
+		}
+
 		let target_orgs = formData.get("target_orgs") as string
 		let target_roles = formData.get("target_roles") as string
 		let research_goal = formData.get("research_goal") as string
@@ -37,65 +46,69 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		let questionCount: number | null = null
 		const interview_time_limit = Number(formData.get("interview_time_limit") ?? 30)
 		let existingQuestions: string[] = []
+		let existingSectionMeta: any = null
+		let existingSectionContent: string | null = null
+		let existingSectionPosition: number | null = null
 
 		// If project_id is provided, load project context from database
-		if (project_id) {
-			const { client: supabase } = getServerClient(request)
+		try {
+			const projectContext = await getProjectContextGeneric(supabase, project_id)
 
-			try {
-				const projectContext = await getProjectContextGeneric(supabase, project_id)
+			consola.log("projectContext:", projectContext)
 
-				consola.log("projectContext:", projectContext)
-
-				if (!projectContext) {
-					return Response.json(
-						{
-							error: "Project context not found in database. Please complete project setup first.",
-						},
-						{ status: 400 }
-					)
-				}
-
-				const meta = projectContext.merged as any
-				// Load from database, keep custom_instructions from request
-				target_orgs = meta.target_orgs?.join?.(", ") || meta.target_orgs || target_orgs || ""
-				target_roles = meta.target_roles?.join?.(", ") || meta.target_roles || target_roles || ""
-				research_goal = meta.research_goal || research_goal || ""
-				research_goal_details = meta.research_goal_details || research_goal_details || ""
-				assumptions = meta.assumptions?.join?.(", ") || meta.assumptions || assumptions || ""
-				unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
-
-				// Fallback to project-level custom instructions when request provides none
-				if (!custom_instructions || custom_instructions.length === 0) {
-					custom_instructions = meta.custom_instructions || meta.settings?.customInstructions || ""
-				}
-
-				// Load existing questions to influence dedupe and limit count
-				try {
-					const { data: questionsSection } = await supabase
-						.from("project_sections")
-						.select("meta")
-						.eq("project_id", project_id)
-						.eq("kind", "questions")
-						.order("updated_at", { ascending: false })
-						.limit(1)
-						.single()
-					const metaQ: any = questionsSection?.meta || {}
-					const qs: any[] = Array.isArray(metaQ.questions) ? metaQ.questions : []
-					existingQuestions = qs.map((q: any) => (typeof q === "string" ? q : q?.text)).filter(Boolean)
-					if (existingQuestions.length > 0) {
-						// Respect front-end provided questionCount; do not override here.
-						// Append a dedupe instruction to custom_instructions regardless
-						const dedupeList = existingQuestions.slice(0, 25).join("; ")
-						const dedupeNote = `Avoid repeating or rephrasing these existing questions: ${dedupeList}. Generate complementary questions.`
-						custom_instructions = `${custom_instructions ? custom_instructions + "\n" : ""}${dedupeNote}`
-					}
-				} catch (e) {
-					// Non-fatal
-				}
-			} catch (error) {
-				consola.warn("Could not load project context from database:", error)
+			if (!projectContext) {
+				return Response.json(
+					{
+						error: "Project context not found in database. Please complete project setup first.",
+					},
+					{ status: 400 }
+				)
 			}
+
+			const meta = projectContext.merged as any
+			// Load from database, keep custom_instructions from request
+			target_orgs = meta.target_orgs?.join?.(", ") || meta.target_orgs || target_orgs || ""
+			target_roles = meta.target_roles?.join?.(", ") || meta.target_roles || target_roles || ""
+			research_goal = meta.research_goal || research_goal || ""
+			research_goal_details = meta.research_goal_details || research_goal_details || ""
+			assumptions = meta.assumptions?.join?.(", ") || meta.assumptions || assumptions || ""
+			unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
+
+			// Fallback to project-level custom instructions when request provides none
+			if (!custom_instructions || custom_instructions.length === 0) {
+				custom_instructions = meta.custom_instructions || meta.settings?.customInstructions || ""
+			}
+
+			// Load existing questions/section meta to influence dedupe and persistence
+			try {
+				const { data: questionsSection } = await supabase
+					.from("project_sections")
+					.select("meta, content_md, position")
+					.eq("project_id", project_id)
+					.eq("kind", "questions")
+					.order("updated_at", { ascending: false })
+					.limit(1)
+					.single()
+
+				existingSectionMeta = questionsSection?.meta ?? null
+				existingSectionContent = questionsSection?.content_md ?? null
+				existingSectionPosition = questionsSection?.position ?? null
+
+				const metaQ: any = existingSectionMeta || {}
+				const qs: any[] = Array.isArray(metaQ.questions) ? metaQ.questions : []
+				existingQuestions = qs.map((q: any) => (typeof q === "string" ? q : q?.text)).filter(Boolean)
+				if (existingQuestions.length > 0) {
+					// Respect front-end provided questionCount; do not override here.
+					// Append a dedupe instruction to custom_instructions regardless
+					const dedupeList = existingQuestions.slice(0, 25).join("; ")
+					const dedupeNote = `Avoid repeating or rephrasing these existing questions: ${dedupeList}. Generate complementary questions.`
+					custom_instructions = `${custom_instructions ? custom_instructions + "\n" : ""}${dedupeNote}`
+				}
+			} catch (e) {
+				// Non-fatal
+			}
+		} catch (error) {
+			consola.warn("Could not load project context from database:", error)
 		}
 
 		// Decide on questionCount default now that we know if this is first-time
@@ -109,24 +122,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			questionCount = firstTime ? 8 : 10
 		}
 
-		// Validate required fields (only when not loading from database)
-		// Only the core trio are required: target_orgs, target_roles, research_goal
-		if (!project_id) {
-			const missing: string[] = []
-
-			if (!target_roles?.trim()) missing.push("target_roles")
-			if (!research_goal?.trim()) missing.push("research_goal")
-			// Soft-optional: details/assumptions/unknowns (default to empty if missing)
-			research_goal_details = research_goal_details || ""
-			assumptions = assumptions || ""
-			unknowns = unknowns || ""
-			if (missing.length > 0) {
-				return Response.json({ error: `Missing required fields: ${missing.join(", ")}` }, { status: 400 })
-			}
-		}
-
 		// Final validation after potentially loading from database
-		// Require only the core trio; default the rest to empty strings
 		const coreMissing: string[] = []
 		if (!target_roles?.trim()) coreMissing.push("target_roles")
 		if (!research_goal?.trim()) coreMissing.push("research_goal")
@@ -135,19 +131,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		unknowns = unknowns || ""
 		if (coreMissing.length > 0) {
 			const baseMsg = `Missing required fields: ${coreMissing.join(", ")}`
-			return Response.json({ error: project_id ? `${baseMsg} in project context` : baseMsg }, { status: 400 })
+			return Response.json({ error: `${baseMsg} in project context` }, { status: 400 })
 		}
-
-		// consola.log("Generating questions for:", {
-		// 	project_id,
-		// 	target_orgs,
-		// 	target_roles,
-		// 	research_goal,
-		// 	research_goal_details,
-		// 	assumptions,
-		// 	unknowns,
-		// 	custom_instructions,
-		// })
 
 		consola.log("Generating questions (canonical) for:", {
 			target_orgs,
@@ -174,7 +159,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			return t
 		}
 
-		// Try canonical BAML QuestionSet generation; on validation failure, fall back.
+		// Try canonical BAML QuestionSet generation
 		let questionSet: any
 		const computedSessionId = `session_${Date.now()}`
 		try {
@@ -215,8 +200,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					text: sanitizeQuestion(q.text),
 				}))
 			}
-
-			// No non-AI top-up; use canonical result as-is
 		} catch (e) {
 			consola.error("[BAML ERROR] Canonical generation failed:", {
 				error: e,
@@ -232,87 +215,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					custom_instructions,
 				},
 			})
-			// AI-only mode: do not use text fallbacks
 			throw e
-
-			// Fallback: use legacy suggestions and adapt to QuestionSet shape expected by UI.
-			consola.log("[BAML DEBUG] Attempting fallback generateResearchQuestions...")
-			const { generateResearchQuestions } = await import("~/utils/research-analysis.server")
-			const suggestions = await generateResearchQuestions(
-				target_orgs,
-				target_roles,
-				research_goal,
-				research_goal_details,
-				assumptions,
-				unknowns,
-				custom_instructions
-			)
-			consola.log("[BAML DEBUG] Fallback suggestions result:", suggestions)
-
-			const categories = [
-				{ id: "core", label: "Core" },
-				{ id: "behavior", label: "Behavior" },
-				{ id: "pain", label: "Pain" },
-				{ id: "solutions", label: "Solutions" },
-				{ id: "context", label: "Context" },
-			]
-
-			const toQuestion = (categoryId: string) => (q: any, idx: number) => ({
-				id: randomUUID(),
-				text: sanitizeQuestion(q.question),
-				categoryId,
-				rationale: q.rationale || undefined,
-				tags: [],
-				scores: {
-					importance: q.priority === 1 ? 0.9 : q.priority === 2 ? 0.7 : 0.55,
-					goalMatch: 0.65,
-					novelty: 0.6,
-				},
-				estimatedMinutes: 4.5,
-				status: "proposed" as const,
-				source: "llm" as const,
-				displayOrder: idx + 1,
-			})
-
-			// Build balanced pool then select up to requested count
-			const corePool = (suggestions.core_questions || []).map(toQuestion("goals"))
-			const behaviorPool = (suggestions.behavioral_questions || []).map(toQuestion("workflow"))
-			const painPool = (suggestions.pain_point_questions || []).map(toQuestion("pain"))
-			const solutionsPool = (suggestions.solution_questions || []).map(toQuestion("willingness"))
-			const contextPool = (suggestions.context_questions || []).map(toQuestion("context"))
-
-			const perCategoryCap = 3
-			const picks: any[] = []
-			const pickers = [corePool, painPool, behaviorPool, contextPool, solutionsPool]
-			const caps = new Map<string, number>()
-			let idx = 0
-			while (picks.length < (Number(questionCount) || 10) && pickers.some((p) => p.length > 0)) {
-				const pool = pickers[idx % pickers.length]
-				idx++
-				if (pool.length === 0) continue
-				const q = pool.shift() as any
-				if (!q) continue
-				const cat = q.categoryId || "other"
-				const used = caps.get(cat) || 0
-				if (used >= perCategoryCap) continue
-				caps.set(cat, used + 1)
-				picks.push(q)
-			}
-
-			questionSet = {
-				sessionId: computedSessionId,
-				policy: {
-					totalPerRound: questionCount || 10,
-					perCategoryMin: 1,
-					perCategoryMax: 3,
-					dedupeWindowRounds: 2,
-					balanceBy: ["category", "novelty"],
-				},
-				categories,
-				questions: picks,
-				history: [],
-				round: 1,
-			}
 		}
 
 		// Final guard: ensure we return at least the requested number of questions
@@ -405,11 +308,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		}
 
 		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
-			// Ensure all question IDs are unique to prevent drag/drop issues
 			const usedIds = new Set<string>()
 			questionSet.questions = questionSet.questions.map((question: any) => {
-				let id = question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
-				// If ID is already used, generate a new unique one
+				let id =
+					question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
 				while (usedIds.has(id)) {
 					id = randomUUID()
 				}
@@ -422,9 +324,138 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			})
 		}
 
+		const generatedQuestions = Array.isArray(questionSet?.questions) ? questionSet.questions : []
+		if (generatedQuestions.length === 0) {
+			return Response.json(
+				{ error: "No questions were generated. Please adjust your inputs and try again." },
+				{ status: 500 }
+			)
+		}
+
+		const estimatedMinutesFallback = Math.max(
+			1,
+			Math.round(interview_time_limit / Math.max(generatedQuestions.length, 1))
+		)
+
+		const promptPayloads = generatedQuestions.map((question: any, index: number) => {
+			const id =
+				typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
+			const categoryId =
+				typeof question.categoryId === "string" && question.categoryId.length > 0
+					? question.categoryId
+					: "context"
+			const scores =
+				typeof question.scores === "object" && question.scores !== null
+					? question.scores
+					: { importance: 0.65, goalMatch: 0.65, novelty: 0.55 }
+			const estimatedMinutes =
+				typeof question.estimatedMinutes === "number" && Number.isFinite(question.estimatedMinutes)
+					? Math.max(1, Math.round(question.estimatedMinutes))
+					: estimatedMinutesFallback
+
+			return {
+				id,
+				project_id,
+				text: String(question.text ?? ""),
+				category: categoryId,
+				estimated_time_minutes: estimatedMinutes,
+				is_must_have: Boolean(question.isMustHave),
+				status: typeof question.status === "string" && question.status.length > 0 ? question.status : "selected",
+				order_index: index + 1,
+				scores,
+				source: typeof question.source === "string" && question.source.length > 0 ? question.source : "ai",
+				rationale: question.rationale ?? null,
+				is_selected: true,
+				selected_order: index,
+			}
+		})
+
+		const { data: upsertedPrompts, error: promptError } = await supabase
+			.from("interview_prompts")
+			.upsert(promptPayloads, { onConflict: "id" })
+			.select("id")
+
+		if (promptError) {
+			consola.error("[api.generate-questions] Failed to persist interview prompts", promptError)
+			return Response.json(
+				{
+					error: "Failed to save generated questions",
+					details: promptError.message,
+				},
+				{ status: 500 }
+			)
+		}
+
+		type PromptPayload = (typeof promptPayloads)[number]
+		const newQuestionIds = new Set(promptPayloads.map((p: PromptPayload) => p.id))
+		const existingSectionQuestions = Array.isArray(existingSectionMeta?.questions)
+			? existingSectionMeta.questions
+			: []
+		const filteredExistingSectionQuestions = existingSectionQuestions.filter(
+			(q: any) => q && typeof q.id === "string" && !newQuestionIds.has(q.id)
+		)
+
+		const sectionQuestionEntries = promptPayloads.map((payload: PromptPayload, index: number) => ({
+			id: payload.id,
+			text: payload.text,
+			categoryId: payload.category,
+			scores: payload.scores,
+			rationale: payload.rationale || "",
+			status: payload.status,
+			timesAnswered: 0,
+			source: payload.source,
+			isMustHave: payload.is_must_have,
+			estimatedMinutes: payload.estimated_time_minutes,
+			selectedOrder: payload.selected_order,
+			isSelected: true,
+		}))
+
+		const sectionQuestions = [...filteredExistingSectionQuestions, ...sectionQuestionEntries]
+
+		const sectionMetaSettings = {
+			...(existingSectionMeta?.settings ?? {}),
+			timeMinutes: interview_time_limit,
+			customInstructions: custom_instructions,
+			lastGeneratedAt: new Date().toISOString(),
+			lastGeneratedCount: generatedQuestions.length,
+		}
+
+		const updatedSectionMeta = {
+			...(existingSectionMeta ?? {}),
+			questions: sectionQuestions,
+			settings: sectionMetaSettings,
+		}
+
+		const { error: sectionError } = await supabase
+			.from("project_sections")
+			.upsert(
+				{
+					project_id,
+					kind: "questions",
+					position: existingSectionPosition ?? 2,
+					content_md:
+						existingSectionContent ??
+						`# Questions\n\nGenerated ${generatedQuestions.length} interview questions via AI.`,
+					meta: updatedSectionMeta,
+				},
+				{ onConflict: "project_id,kind" }
+			)
+
+		if (sectionError) {
+			consola.error("[api.generate-questions] Failed to update project section meta", sectionError)
+			return Response.json(
+				{
+					error: "Failed to update project question metadata",
+					details: sectionError.message,
+				},
+				{ status: 500 }
+			)
+		}
+
 		return Response.json({
 			success: true,
 			questionSet,
+			savedPromptIds: upsertedPrompts?.map((row) => row.id) ?? [],
 		})
 	} catch (error) {
 		consola.error("Failed to generate questions:", error)

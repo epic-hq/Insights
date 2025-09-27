@@ -84,6 +84,16 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "
 			}
 			break
 
+		case "settings":
+			if (typeof data === "object" && data) {
+				const formatted = {
+					content_md: JSON.stringify(data),
+					meta: data,
+				}
+				return { kind, ...formatted }
+			}
+			break
+
 		default:
 			// Log unknown section types for debugging
 			console.log(`Unknown section type: ${kind}, data:`, data)

@@ -37,7 +37,6 @@ export async function action({ request }: ActionFunctionArgs) {
 		})
 
 		return {
-			success: true,
 			...result,
 		}
 	} catch (error) {
