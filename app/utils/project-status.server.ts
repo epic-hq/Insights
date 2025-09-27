@@ -27,6 +27,39 @@ interface BamlProjectAnalysis {
 	next_steps?: string[]
 }
 
+function toStringArray(value: unknown): string[] {
+	if (!value) return []
+	if (Array.isArray(value)) {
+		return value
+			.filter((item): item is string => typeof item === "string")
+			.map((item) => item.trim())
+			.filter((item) => item.length > 0)
+	}
+	if (typeof value === "string") {
+		return value
+			.split("\n")
+			.map((item) => item.trim())
+			.filter((item) => item.length > 0)
+	}
+	return []
+}
+
+function normalizeStep(step: string): string | null {
+	if (typeof step !== "string") return null
+	const cleaned = step.replace(/^\s*(?:[\u2022*-]|\d+\.?|\(\d+\))\s*/, "").trim()
+	return cleaned.length > 0 ? cleaned : null
+}
+
+function addSteps(target: Set<string>, values: string[] | undefined) {
+	if (!values) return
+	for (const value of values) {
+		const normalized = normalizeStep(value)
+		if (normalized) {
+			target.add(normalized)
+		}
+	}
+}
+
 export interface ProjectQaItem {
 	question: string
 	answer_summary?: string
@@ -105,11 +138,27 @@ export async function getProjectStatusData(
 			.limit(1)
 			.maybeSingle()
 
-		// Fetch basic counts
-		const [interviewsResult, insightsResult, evidenceResult] = await Promise.all([
+		// Fetch basic counts and related research data
+		const [
+			interviewsResult,
+			insightsResult,
+			evidenceResult,
+			researchQuestionsResult,
+			decisionQuestionsResult,
+			analysisRunResult,
+		] = await Promise.all([
 			supabase.from("interviews").select("id").eq("project_id", projectId),
 			supabase.from("insights").select("id,name").eq("project_id", projectId),
 			supabase.from("evidence").select("id").eq("project_id", projectId),
+			supabase.from("research_questions").select("id").eq("project_id", projectId).limit(1),
+			supabase.from("decision_questions").select("id").eq("project_id", projectId).limit(1),
+			supabase
+				.from("project_research_analysis_runs")
+				.select("recommended_actions")
+				.eq("project_id", projectId)
+				.order("created_at", { ascending: false })
+				.limit(1)
+				.maybeSingle(),
 		])
 
 		const totalInterviews = interviewsResult.data?.length || 0
@@ -117,6 +166,13 @@ export async function getProjectStatusData(
 		const totalEvidence = evidenceResult.data?.length || 0
 		const totalPersonas = Math.min(Math.ceil(totalInterviews / 2), 5)
 		const totalThemes = Math.min(Math.ceil(totalInsights / 2), 8)
+
+		if (researchQuestionsResult.error) throw researchQuestionsResult.error
+		if (decisionQuestionsResult.error) throw decisionQuestionsResult.error
+		if (analysisRunResult.error) throw analysisRunResult.error
+
+		const hasResearchStructure =
+			(researchQuestionsResult.data?.length || 0) > 0 || (decisionQuestionsResult.data?.length || 0) > 0
 
 		// Base data structure
 		const baseData = {
@@ -130,8 +186,30 @@ export async function getProjectStatusData(
 			lastUpdated: new Date(proj.updated_at || proj.created_at || new Date().toISOString()),
 		}
 
-		// If we have analysis results, use them
+		const latestRun = analysisRunResult.data
+		let answeredQuestions: string[] = []
+		let openQuestions: string[] = []
+		let keyInsights: string[] = []
+		let keyDiscoveries: string[] = []
+		let answeredInsights: string[] = []
+		let unanticipatedDiscoveries: string[] = []
+		let criticalUnknowns: string[] = []
+		let questionAnswers: ProjectQaItem[] = []
+		let followUpRecommendations: string[] = []
+		let suggestedInterviewTopics: string[] = []
+		let nextAction: string | undefined
+		let confidenceScore: number | undefined
+		let confidenceLevel: number | undefined
+		let analysisId: string | undefined
+		let hasAnalysis = false
+		let completionScore = Math.min(totalInterviews * 25, 100)
+		let analysisDerivedNextSteps: string[] = []
+
+		const stepSet = new Set<string>()
+
 		if (latestAnalysis?.metadata) {
+			hasAnalysis = true
+			analysisId = latestAnalysis.id
 			const metadata = latestAnalysis.metadata as Record<string, unknown>
 			const fullAnalysis = (metadata.full_analysis as Record<string, unknown>) || {}
 			const quickInsights = (fullAnalysis.quick_insights as Record<string, unknown>) || {}
@@ -143,12 +221,33 @@ export async function getProjectStatusData(
 				name: (i as any).name as string | undefined,
 			}))
 
-			const questionAnswers: ProjectQaItem[] = qaRaw.map((qa) => {
+			answeredQuestions = toStringArray(metadata.answered_questions)
+			openQuestions = toStringArray(metadata.open_questions)
+			keyInsights = toStringArray(metadata.key_insights)
+			keyDiscoveries = toStringArray(projectAnalysis.key_discoveries)
+			analysisDerivedNextSteps = toStringArray(projectAnalysis.next_steps)
+			followUpRecommendations = toStringArray(gapAnalysis.follow_up_recommendations)
+			suggestedInterviewTopics = toStringArray(gapAnalysis.suggested_interview_topics)
+			confidenceScore = typeof projectAnalysis.confidence_score === "number" ? projectAnalysis.confidence_score : undefined
+			nextAction = typeof quickInsights.next_action === "string" ? quickInsights.next_action : undefined
+			confidenceLevel = typeof quickInsights.confidence === "number" ? quickInsights.confidence : undefined
+			completionScore = typeof metadata.completion_score === "number" ? metadata.completion_score : completionScore
+			answeredInsights =
+				toStringArray(metadata.key_insights) ||
+				toStringArray(quickInsights.answered_insights)
+			unanticipatedDiscoveries =
+				toStringArray(metadata.unanticipated_discoveries) ||
+				toStringArray(quickInsights.unanticipated_discoveries)
+			criticalUnknowns =
+				toStringArray(metadata.critical_unknowns) ||
+				toStringArray(quickInsights.critical_unknowns)
+
+			const insightsByName = allInsights
+			questionAnswers = qaRaw.map((qa) => {
 				const insights_found = Array.isArray(qa?.insights_found) ? qa.insights_found : []
-				// Fuzzy match insight names to ids
 				const related_insight_ids: string[] = []
 				const targets = insights_found.map((s) => (s || "").toLowerCase())
-				for (const ins of allInsights) {
+				for (const ins of insightsByName) {
 					const nm = (ins.name || "").toLowerCase()
 					if (!nm) continue
 					if (targets.some((t) => t && (nm.includes(t) || t.includes(nm)))) {
@@ -164,52 +263,48 @@ export async function getProjectStatusData(
 					related_insight_ids,
 				}
 			})
+		}
 
-			return {
-				...baseData,
-				answeredQuestions: (metadata.answered_questions as string[]) || [],
-				openQuestions: (metadata.open_questions as string[]) || [],
-				keyInsights: (metadata.key_insights as string[]) || [],
-				completionScore: (metadata.completion_score as number) || 0,
-				analysisId: latestAnalysis.id,
-				hasAnalysis: true,
-				// Enhanced data from full BAML analysis
-				nextSteps: (projectAnalysis.next_steps as string[]) || [],
-				nextAction: quickInsights.next_action as string | undefined,
-				keyDiscoveries: (projectAnalysis.key_discoveries as string[]) || [],
-				confidenceScore: projectAnalysis.confidence_score as number | undefined,
-				confidenceLevel: quickInsights.confidence as number | undefined,
-				followUpRecommendations: (gapAnalysis.follow_up_recommendations as string[]) || [],
-				suggestedInterviewTopics: (gapAnalysis.suggested_interview_topics as string[]) || [],
-				// New structured insights from updated BAML
-				answeredInsights: (metadata.key_insights as string[]) || (quickInsights.answered_insights as string[]) || [],
-				unanticipatedDiscoveries:
-					(metadata.unanticipated_discoveries as string[]) ||
-					(quickInsights.unanticipated_discoveries as string[]) ||
-					[],
-				criticalUnknowns:
-					(metadata.critical_unknowns as string[]) || (quickInsights.critical_unknowns as string[]) || [],
-				// Rich Q&A
-				questionAnswers,
+		const recommendedActions = toStringArray(latestRun?.recommended_actions)
+		addSteps(stepSet, analysisDerivedNextSteps)
+		addSteps(stepSet, followUpRecommendations)
+		addSteps(stepSet, recommendedActions)
+
+		if (stepSet.size === 0) {
+			if (!hasResearchStructure) {
+				stepSet.add("Generate your research plan to create decision and research questions.")
+			}
+			if (totalInterviews === 0) {
+				stepSet.add("Schedule and run your first interviews to start collecting evidence.")
+			} else if (totalEvidence === 0) {
+				stepSet.add("Upload transcripts or tag interview evidence so the AI can analyze it.")
+			}
+			if (stepSet.size === 0) {
+				stepSet.add("Run the AI evidence analysis to synthesize findings and surface next steps.")
 			}
 		}
 
-		// Fallback data when no analysis exists
+		const nextSteps = Array.from(stepSet)
+
 		return {
 			...baseData,
-			answeredQuestions: [],
-			openQuestions: [],
-			keyInsights: [],
-			completionScore: Math.min(totalInterviews * 25, 100),
-			hasAnalysis: false,
-			nextSteps: [],
-			keyDiscoveries: [],
-			followUpRecommendations: [],
-			suggestedInterviewTopics: [],
-			answeredInsights: [],
-			unanticipatedDiscoveries: [],
-			criticalUnknowns: [],
-			questionAnswers: [],
+			answeredQuestions,
+			openQuestions,
+			keyInsights,
+			completionScore,
+			analysisId,
+			hasAnalysis,
+			nextSteps,
+			nextAction,
+			keyDiscoveries,
+			confidenceScore,
+			confidenceLevel,
+			followUpRecommendations,
+			suggestedInterviewTopics,
+			answeredInsights,
+			unanticipatedDiscoveries,
+			criticalUnknowns,
+			questionAnswers,
 		}
 	} catch {
 		// Error fetching project status - logged for debugging

@@ -110,6 +110,7 @@ export async function createPlannedAnswersForInterview(
       project_id: projectId,
       interview_id: interviewId,
       question_id: item.id,
+      prompt_id: item.id, // Link to the interview_prompts record
       question_text: item.text,
       question_category: item.categoryId,
       estimated_time_minutes: item.estimatedMinutes ?? undefined,
@@ -199,12 +200,13 @@ export async function refreshInterviewQuestions(
     const existing = existingByQuestionId.get(item.id)
 
     if (existing) {
-      // Update existing answer with new question text and order
+      // Update existing answer with new question text and order, and set prompt_id if missing
       const payload: Tables["project_answers"]["Update"] = {
         question_text: item.text,
         question_category: item.categoryId,
         estimated_time_minutes: item.estimatedMinutes ?? undefined,
         order_index: orderIndex,
+        prompt_id: item.id, // Ensure prompt_id is set for existing records too
       }
       updates.push({ id: existing.id, payload })
     } else {
@@ -213,6 +215,7 @@ export async function refreshInterviewQuestions(
         project_id: projectId,
         interview_id: interviewId,
         question_id: item.id,
+        prompt_id: item.id, // Link to the interview_prompts record
         question_text: item.text,
         question_category: item.categoryId,
         estimated_time_minutes: item.estimatedMinutes ?? undefined,

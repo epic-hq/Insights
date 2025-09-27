@@ -40,7 +40,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		let research_goal_details = formData.get("research_goal_details") as string
 		let assumptions = formData.get("assumptions") as string
 		let unknowns = formData.get("unknowns") as string
-		let custom_instructions = ((formData.get("custom_instructions") as string) || "").trim()
+		const initialCustomInstructions = ((formData.get("custom_instructions") as string) || "").trim()
+		const customInstructionParts: string[] = []
+		if (initialCustomInstructions) {
+			customInstructionParts.push(initialCustomInstructions)
+		}
 		// Determine questionCount later once we know if this is a first-time generation
 		const questionCountRaw = formData.get("questionCount")
 		let questionCount: number | null = null
@@ -75,8 +79,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
 
 			// Fallback to project-level custom instructions when request provides none
-			if (!custom_instructions || custom_instructions.length === 0) {
-				custom_instructions = meta.custom_instructions || meta.settings?.customInstructions || ""
+			if (!initialCustomInstructions) {
+				const projectLevelInstructions =
+					(typeof meta.custom_instructions === "string" && meta.custom_instructions.trim()) ||
+					(typeof meta.settings?.customInstructions === "string" && meta.settings?.customInstructions.trim()) ||
+					""
+				if (projectLevelInstructions) {
+					customInstructionParts.push(projectLevelInstructions)
+				}
 			}
 
 			// Load existing questions/section meta to influence dedupe and persistence
@@ -102,7 +112,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					// Append a dedupe instruction to custom_instructions regardless
 					const dedupeList = existingQuestions.slice(0, 25).join("; ")
 					const dedupeNote = `Avoid repeating or rephrasing these existing questions: ${dedupeList}. Generate complementary questions.`
-					custom_instructions = `${custom_instructions ? custom_instructions + "\n" : ""}${dedupeNote}`
+					customInstructionParts.push(dedupeNote)
 				}
 			} catch (e) {
 				// Non-fatal
@@ -110,6 +120,55 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		} catch (error) {
 			consola.warn("Could not load project context from database:", error)
 		}
+
+		let decisionQuestionTexts: string[] = []
+		let researchQuestionTexts: string[] = []
+		try {
+			const [decisionQuery, researchQuery] = await Promise.all([
+				supabase
+					.from("decision_questions")
+					.select("text")
+					.eq("project_id", project_id)
+					.order("created_at", { ascending: true, nullsFirst: false }),
+				supabase
+					.from("research_questions")
+					.select("text")
+					.eq("project_id", project_id)
+					.order("created_at", { ascending: true, nullsFirst: false }),
+			])
+
+			if (!decisionQuery.error) {
+				decisionQuestionTexts = (decisionQuery.data || [])
+					.map((row) => (typeof row?.text === "string" ? row.text.trim() : ""))
+					.filter(Boolean)
+			}
+			if (!researchQuery.error) {
+				researchQuestionTexts = (researchQuery.data || [])
+					.map((row) => (typeof row?.text === "string" ? row.text.trim() : ""))
+					.filter(Boolean)
+			}
+		} catch (error) {
+			consola.warn("Failed to load research structure for question generation:", error)
+		}
+
+		const structureNotes: string[] = []
+		if (decisionQuestionTexts.length > 0) {
+			structureNotes.push("Anchor the interview plan to these decisions:")
+			decisionQuestionTexts.slice(0, 5).forEach((text, idx) => {
+				structureNotes.push(`${idx + 1}. ${text}`)
+			})
+		}
+		if (researchQuestionTexts.length > 0) {
+			structureNotes.push("Ensure questions help answer these research questions:")
+			researchQuestionTexts.slice(0, 6).forEach((text, idx) => {
+				structureNotes.push(`${idx + 1}. ${text}`)
+			})
+		}
+		if (structureNotes.length > 0) {
+			customInstructionParts.push(structureNotes.join("\n"))
+		}
+
+		const combinedCustomInstructions = customInstructionParts.filter(Boolean).join("\n\n")
 
 		// Decide on questionCount default now that we know if this is first-time
 		// Priority: explicit request value > inferred default (8 if first-time else 10)
@@ -143,7 +202,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			unknowns,
 			questionCount,
 			interview_time_limit,
-			custom_instructions,
+			custom_instructions: combinedCustomInstructions,
 		})
 
 		// Helper: sanitize square‑bracket placeholders that sometimes slip through LLMs
@@ -175,7 +234,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				research_goal_details: ensure(research_goal_details, ""),
 				assumptions: ensure(assumptions, ""),
 				unknowns: ensure(unknowns, ""),
-				custom_instructions: ensure(custom_instructions, ""),
+				custom_instructions: ensure(combinedCustomInstructions, ""),
 				session_id: ensure(computedSessionId),
 				round: 1,
 				total_per_round: questionCount || 10,
@@ -212,7 +271,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					research_goal_details,
 					assumptions,
 					unknowns,
-					custom_instructions,
+					custom_instructions: combinedCustomInstructions,
 				},
 			})
 			throw e
@@ -415,7 +474,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const sectionMetaSettings = {
 			...(existingSectionMeta?.settings ?? {}),
 			timeMinutes: interview_time_limit,
-			customInstructions: custom_instructions,
+			customInstructions: combinedCustomInstructions,
 			lastGeneratedAt: new Date().toISOString(),
 			lastGeneratedCount: generatedQuestions.length,
 		}

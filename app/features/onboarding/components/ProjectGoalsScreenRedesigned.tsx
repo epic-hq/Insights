@@ -1,5 +1,5 @@
 import consola from "consola"
-import { ChevronDown, ChevronRight, HelpCircle, Info, Plus, Target, TargetIcon, Users, X } from "lucide-react"
+import { ChevronDown, ChevronRight, HelpCircle, Info, Loader2, Plus, Target, TargetIcon, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 import { z } from "zod"
@@ -18,6 +18,7 @@ import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
 import ContextualSuggestions from "./ContextualSuggestions"
+import { toast } from "sonner"
 
 type TemplatePrefill = {
 	template_key: string
@@ -103,6 +104,7 @@ export default function ProjectGoalsScreen({
 	const [contextLoaded, setContextLoaded] = useState(false)
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
 	const [isCreatingProject, setIsCreatingProject] = useState(false)
+	const [ensuringStructure, setEnsuringStructure] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
 	// Removed showGoalSuggestions state - no longer using fallback suggestions
 	const [showDecisionQuestionSuggestions, setShowDecisionQuestionSuggestions] = useState(false)
@@ -181,6 +183,71 @@ export default function ProjectGoalsScreen({
 			}
 		},
 		[saveProjectSection]
+	)
+
+	const ensureResearchStructure = useCallback(
+		async (projectIdToUse: string | undefined) => {
+			if (!projectIdToUse) return projectIdToUse
+			if (ensuringStructure) return projectIdToUse
+			if (!research_goal.trim() || target_roles.length === 0) return projectIdToUse
+
+			setEnsuringStructure(true)
+			try {
+				const checkResponse = await fetch(`/api/check-research-structure?project_id=${projectIdToUse}`)
+				const checkBody = await checkResponse.json()
+				if (!checkResponse.ok) {
+					throw new Error(checkBody.error || checkBody.details || "Failed to check research structure")
+				}
+
+				const summary = (checkBody.summary as Record<string, unknown>) || {}
+				const hasExistingStructure = Boolean(summary.has_decision_questions && summary.has_research_questions)
+				if (hasExistingStructure) {
+					return projectIdToUse
+				}
+
+				const formData = new FormData()
+				formData.append("project_id", projectIdToUse)
+				formData.append("research_goal", research_goal)
+				if (research_goal_details.trim()) formData.append("research_goal_details", research_goal_details)
+				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
+				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
+				if (assumptions.length > 0) formData.append("assumptions", assumptions.join("\n"))
+				if (unknowns.length > 0) formData.append("unknowns", unknowns.join("\n"))
+				if (custom_instructions.trim()) formData.append("custom_instructions", custom_instructions)
+
+				const generateResponse = await fetch("/api/generate-research-structure", {
+					method: "POST",
+					body: formData,
+				})
+				const generateBody = await generateResponse.json()
+				if (!generateResponse.ok || !generateBody?.success) {
+					throw new Error(generateBody?.details || generateBody?.error || "Failed to generate research structure")
+				}
+
+				consola.log("[ProjectGoals] Automatically generated research structure", {
+					projectId: projectIdToUse,
+					decisionQuestions: generateBody?.structure?.decision_questions?.length ?? 0,
+					researchQuestions: generateBody?.structure?.research_questions?.length ?? 0,
+				})
+				return projectIdToUse
+			} catch (error) {
+				consola.error("[ProjectGoals] ensureResearchStructure failed", error)
+				toast.error(error instanceof Error ? error.message : "Failed to generate research structure")
+				throw error
+			} finally {
+				setEnsuringStructure(false)
+			}
+		},
+		[
+			assumptions,
+			custom_instructions,
+			ensuringStructure,
+			research_goal,
+			research_goal_details,
+			target_orgs,
+			target_roles,
+			unknowns,
+		]
 	)
 
 	const createProjectIfNeeded = useCallback(async () => {
@@ -465,23 +532,47 @@ export default function ProjectGoalsScreen({
 		saveUnknowns(newUnknowns)
 	}
 
-	const handleNext = () => {
-		// Align with isValid: do not require target_orgs to proceed
+	const handleNext = useCallback(async () => {
 		if (target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
-			saveResearchGoal(research_goal, research_goal_details, false)
-			onNext({
-				target_orgs,
-				target_roles,
-				research_goal,
-				research_goal_details,
+			try {
+				const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
+				if (!resolvedProjectId) {
+					toast.error("Unable to determine project. Please try again.")
+					return
+				}
+
+				await ensureResearchStructure(resolvedProjectId)
+				saveResearchGoal(research_goal, research_goal_details, false)
+				onNext({
+					target_orgs,
+					target_roles,
+					research_goal,
+					research_goal_details,
 				decision_questions,
 				assumptions,
 				unknowns,
 				custom_instructions: custom_instructions || undefined,
-				projectId: currentProjectId,
+				projectId: resolvedProjectId,
 			})
+			} catch (error) {
+				consola.error("[ProjectGoals] Unable to proceed to questions", error)
+			}
 		}
-	}
+	}, [
+		assumptions,
+		createProjectIfNeeded,
+		currentProjectId,
+		custom_instructions,
+		decision_questions,
+		ensureResearchStructure,
+		onNext,
+		research_goal,
+		research_goal_details,
+		saveResearchGoal,
+		target_orgs,
+		target_roles,
+		unknowns,
+	])
 
 	const handleResearchGoalBlur = async () => {
 		if (!research_goal.trim()) return
@@ -1312,9 +1403,23 @@ export default function ProjectGoalsScreen({
 				{showNextButton && (
 					<div className="mt-8 border-gray-200 border-t pt-8">
 						<div className="flex items-center justify-center">
-							<Button onClick={handleNext} disabled={!isValid || isLoading} size="lg" className="px-8 py-3">
-								Next
-								<ChevronRight className="ml-2 h-4 w-4" />
+							<Button
+								onClick={handleNext}
+								disabled={!isValid || isLoading || ensuringStructure}
+								size="lg"
+								className="px-8 py-3"
+							>
+								{ensuringStructure ? (
+									<>
+										<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+										Generating plan...
+									</>
+								) : (
+									<>
+										Next
+										<ChevronRight className="ml-2 h-4 w-4" />
+									</>
+								)}
 							</Button>
 						</div>
 					</div>

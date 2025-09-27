@@ -74,6 +74,11 @@ export interface ResearchAnswersData {
 	decision_questions: DecisionQuestionNode[]
 	research_questions_without_decision: ResearchQuestionNode[]
 	orphan_answers: ResearchAnswerNode[]
+	latest_analysis_run?: {
+		id: string
+		run_summary: string | null
+		recommended_actions: string[]
+	} | null
 	analysis_results?: Array<{
 		question_type: "decision" | "research"
 		question_id: string

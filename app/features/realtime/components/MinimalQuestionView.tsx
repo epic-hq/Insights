@@ -18,6 +18,7 @@ type MinimalQuestion = {
 	text: string
 	status: AnswerStatus
 	orderIndex: number | null
+	isMustHave: boolean
 }
 
 interface MinimalQuestionViewProps {
@@ -40,7 +41,15 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 				setLoading(true)
 				const { data, error } = await supabase
 					.from("project_answers")
-					.select("id, question_id, question_text, status, order_index")
+					.select(`
+						id, 
+						question_id, 
+						question_text, 
+						status, 
+						order_index,
+						prompt_id,
+						interview_prompts(is_must_have)
+					`)
 					.eq("project_id", projectId)
 					.eq("interview_id", interviewId)
 					.order("order_index", { ascending: true, nullsFirst: true })
@@ -54,6 +63,7 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 					text: row.question_text ?? `Question ${idx + 1}`,
 					status: (row.status as AnswerStatus) ?? "planned",
 					orderIndex: row.order_index ?? null,
+					isMustHave: row.interview_prompts?.is_must_have ?? false,
 				}))
 
 				setAllQuestions(mapped)
@@ -161,7 +171,12 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 									}}
 									className="h-4 w-4 border-2 border-gray-600 data-[state=checked]:border-primary data-[state=checked]:bg-primary dark:border-gray-300"
 								/>
-								<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
+								<div className="flex items-center gap-1">
+									<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
+									{q.isMustHave && (
+										<div className="h-2 w-2 rounded-full bg-red-500" title="Must-have question" />
+									)}
+								</div>
 							</div>
 							<div className="min-w-0 flex-1">
 								<div

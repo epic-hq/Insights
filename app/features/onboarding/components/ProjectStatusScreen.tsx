@@ -284,6 +284,48 @@ export default function ProjectStatusScreen({
 	const openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
 	const researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup])
 
+	const recommendedNextSteps = useMemo(() => {
+		const steps = new Set<string>()
+		const addStep = (value?: string | null) => {
+			if (!value) return
+			const cleaned = value.replace(/^\s*(?:[\u2022*-]|\d+\.?|\(\d+\))\s*/, "").trim()
+			if (cleaned) steps.add(cleaned)
+		}
+		const addList = (items?: string[] | null) => {
+			if (!items) return
+			for (const item of items) addStep(item)
+		}
+
+		addList(displayData.nextSteps)
+		addList(statusData?.followUpRecommendations)
+		addList(researchRollup?.latest_analysis_run?.recommended_actions)
+		researchRollup?.analysis_results?.forEach((result) => {
+			if (result?.next_steps) addStep(result.next_steps)
+		})
+
+		if (steps.size === 0) {
+			const hasStructure = Boolean(
+				(researchRollup?.decision_questions?.length || 0) > 0 ||
+				(researchRollup?.research_questions_without_decision?.length || 0) > 0
+			)
+			if (!hasStructure) {
+				addStep("Generate your research plan to create decision and research questions.")
+			}
+			if ((displayData.totalInterviews || 0) === 0) {
+				addStep("Schedule and run your first interviews to start collecting evidence.")
+			} else if ((displayData.totalEvidence || 0) === 0) {
+				addStep("Upload transcripts or tag interview evidence so the AI can analyze it.")
+			}
+			if (steps.size === 0) {
+				addStep("Run the AI evidence analysis to synthesize findings and surface next steps.")
+			}
+		}
+
+		return Array.from(steps)
+	}, [displayData.nextSteps, displayData.totalEvidence, displayData.totalInterviews, researchRollup, statusData?.followUpRecommendations])
+
+	const nextStepsToShow = useMemo(() => recommendedNextSteps.slice(0, 3), [recommendedNextSteps])
+
 	// Derive a single-line research goal for display
 	const researchGoalText = (() => {
 		const gs = getGoalSections()
@@ -714,10 +756,10 @@ export default function ProjectStatusScreen({
 									<ArrowRight className="h-5 w-5 text-blue-600" />
 									Recommended Next Steps
 								</div>
-								{statusData && displayData.nextSteps?.length > 0 ? (
+								{nextStepsToShow.length > 0 ? (
 									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 										<CardContent className="space-y-3 p-3 sm:p-4">
-											{displayData.nextSteps.slice(0, 3).map((step: string, index: number) => (
+											{nextStepsToShow.map((step: string, index: number) => (
 												<div key={`action-${index}`} className="flex items-start gap-3">
 													<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
 														{index + 1}
@@ -728,13 +770,11 @@ export default function ProjectStatusScreen({
 										</CardContent>
 									</Card>
 								) : (
-									<div>
-										<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-											<CardContent className="space-y-3 p-3 sm:p-4">
-												<p className="text-foreground text-sm">Pending</p>
-											</CardContent>
-										</Card>
-									</div>
+									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+										<CardContent className="space-y-3 p-3 sm:p-4">
+											<p className="text-foreground text-sm">Pending</p>
+										</CardContent>
+									</Card>
 								)}
 							</div>
 
