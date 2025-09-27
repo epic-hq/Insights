@@ -19,27 +19,27 @@ alter table if exists public.interview_prompts
   add column if not exists selected_order int;
 
 -- Drop existing constraint if it exists and add new one with extended values
-alter table public.interview_prompts 
+alter table public.interview_prompts
   drop constraint if exists interview_prompts_status_check;
 
-alter table public.interview_prompts 
-  add constraint interview_prompts_status_check 
+alter table public.interview_prompts
+  add constraint interview_prompts_status_check
   check (status in ('proposed', 'rejected', 'selected', 'backup', 'deleted'));
 
 -- Add source constraint
-alter table public.interview_prompts 
+alter table public.interview_prompts
   drop constraint if exists interview_prompts_source_check;
 
-alter table public.interview_prompts 
-  add constraint interview_prompts_source_check 
+alter table public.interview_prompts
+  add constraint interview_prompts_source_check
   check (source in ('ai', 'user'));
 
 -- Indexes for performance
-create index if not exists idx_prompts_project_status 
+create index if not exists idx_prompts_project_status
   on public.interview_prompts(project_id, status);
-create index if not exists idx_prompts_project_order 
+create index if not exists idx_prompts_project_order
   on public.interview_prompts(project_id, order_index);
-create index if not exists idx_prompts_must_have 
+create index if not exists idx_prompts_must_have
   on public.interview_prompts(project_id, is_must_have) where is_must_have = true;
 
 -- ============================================================================
@@ -48,19 +48,19 @@ create index if not exists idx_prompts_must_have
 -- The project_answers table already exists, just ensure proper constraints
 
 -- Update status constraint to include 'derived' for AI-generated responses
-alter table public.project_answers 
+alter table public.project_answers
   drop constraint if exists project_answers_status_check;
 
-alter table public.project_answers 
-  add constraint project_answers_status_check 
+alter table public.project_answers
+  add constraint project_answers_status_check
   check (status in ('planned', 'asked', 'answered', 'skipped', 'derived', 'ad_hoc'));
 
 -- Ensure prompt_id foreign key exists (links to interview_prompts)
-alter table public.project_answers 
+alter table public.project_answers
   drop constraint if exists project_answers_prompt_id_fkey;
 
-alter table public.project_answers 
-  add constraint project_answers_prompt_id_fkey 
+alter table public.project_answers
+  add constraint project_answers_prompt_id_fkey
   foreign key (prompt_id) references interview_prompts(id) on delete set null;
 
 -- ============================================================================
@@ -90,7 +90,7 @@ order by project_id, order_index nulls last;
 
 -- View linking prompts to their answers across interviews
 create or replace view prompt_answer_summary as
-select 
+select
   p.id as prompt_id,
   p.project_id,
   p.text as prompt_text,

@@ -1,6 +1,15 @@
 import consola from "consola"
+import { type LoaderFunctionArgs, redirect } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
+import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { PATHS } from "~/paths"
+
+export async function loader({ request }: LoaderFunctionArgs) {
+	const user = await getAuthenticatedUser(request)
+	if (user) {
+		throw redirect("/home")
+	}
+}
 
 export default function AuthPage() {
 	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`

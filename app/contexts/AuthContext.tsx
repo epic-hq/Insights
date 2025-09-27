@@ -2,6 +2,7 @@ import type { JwtPayload } from "@supabase/supabase-js"
 import consola from "consola"
 import { createContext, useContext, useMemo } from "react"
 import { useParams } from "react-router"
+import { getSupabaseClient } from "~/lib/supabase/client"
 import { PATHS } from "~/paths"
 import type { AccountSettings, UserSettings } from "~/types"
 
@@ -18,7 +19,7 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType>({
 	user: null,
 	loading: true,
-	signOut: async () => {},
+	signOut: async () => { },
 	accountId: "",
 	projectId: "",
 	account_settings: null,
@@ -71,11 +72,11 @@ export function AuthProvider({ children, user, account_settings, user_settings }
 		window.location.assign(PATHS.AUTH.LOGIN) // redirect to login page
 	}
 	// const signOut = async () => {
-	// 	const supabase = createClient()
-	// 	await supabase.auth.signOut()
+	// 	const supabase = getSupabaseClient()
+	// 	await supabase.auth.signOut()+
 	// 	consola.log("after signOut")
 	// 	// Redirect to dashboard after sign-out
-	// 	window.location.assign(PATHS.DASHBOARD)
+	// 	window.location.assign(PATHS.HOME)
 	// }
 
 	const value = {

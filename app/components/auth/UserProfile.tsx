@@ -23,7 +23,6 @@ export function UserProfile() {
 
 	const handleSignOut = async () => {
 		try {
-			consola.log("click signout")
 			await signOut()
 		} catch {
 			// Error handling is managed by the AuthContext

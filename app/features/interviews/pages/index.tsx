@@ -94,7 +94,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			role: primaryParticipant?.role || "participant",
 			persona: participant?.segment || "No segment",
 			date: interview.interview_date || interview.created_at || "",
-			duration: interview.duration_sec ? `${Math.round(interview.duration_sec / 60, 1)} min` : "Unknown",
+			duration: interview.duration_sec ? `${Math.round(interview.duration_sec / 60 * 10) / 10} min` : "Unknown",
 			insightCount: insightCountMap.get(interview.id) || 0,
 		}
 	})

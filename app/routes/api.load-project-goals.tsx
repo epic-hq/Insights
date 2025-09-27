@@ -22,6 +22,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			"assumptions",
 			"unknowns",
 			"custom_instructions",
+
 		]
 		const sectionsData: Record<string, any> = {}
 

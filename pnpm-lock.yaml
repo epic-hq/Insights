@@ -10,7 +10,7 @@ importers:
     dependencies:
       '@ag-ui/mastra':
         specifier: 0.0.10
-        version: 0.0.10(@copilotkit/runtime@1.10.3(62f0e5daea6ae52e89c4a304c819e969))(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
+        version: 0.0.10(@copilotkit/runtime@1.10.3(f9e9dfc8064ee342e6b17f758a39a920))(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@ai-sdk/assemblyai':
         specifier: 1.0.8
         version: 1.0.8(zod@4.1.5)
@@ -154,16 +154,16 @@ importers:
         version: 2.2.1
       '@supabase/auth-ui-react':
         specifier: 0.4.7
-        version: 0.4.7(@supabase/supabase-js@2.52.0)
+        version: 0.4.7(@supabase/supabase-js@2.58.0)
       '@supabase/auth-ui-shared':
         specifier: 0.1.8
-        version: 0.1.8(@supabase/supabase-js@2.52.0)
+        version: 0.1.8(@supabase/supabase-js@2.58.0)
       '@supabase/ssr':
-        specifier: 0.6.1
-        version: 0.6.1(@supabase/supabase-js@2.52.0)
+        specifier: 0.7.0
+        version: 0.7.0(@supabase/supabase-js@2.58.0)
       '@supabase/supabase-js':
-        specifier: 2.52.0
-        version: 2.52.0
+        specifier: 2.58.0
+        version: 2.58.0
       '@tanstack/react-table':
         specifier: 8.21.3
         version: 8.21.3(react-dom@19.1.0(react@19.1.0))(react@19.1.0)
@@ -4605,8 +4605,8 @@ packages:
       typescript:
         optional: true
 
-  '@supabase/auth-js@2.71.1':
-    resolution: {integrity: sha512-mMIQHBRc+SKpZFRB2qtupuzulaUhFYupNyxqDj5Jp/LyPvcWvjaJzZzObv6URtL/O6lPxkanASnotGtNpS3H2Q==}
+  '@supabase/auth-js@2.72.0':
+    resolution: {integrity: sha512-4+bnUrtTDK1YD0/FCx2YtMiQH5FGu9Jlf4IQi5kcqRwRwqp2ey39V61nHNdH86jm3DIzz0aZKiWfTW8qXk1swQ==}
 
   '@supabase/auth-ui-react@0.4.7':
     resolution: {integrity: sha512-Lp4FQGFh7BMX1Y/BFaUKidbryL7eskj1fl6Lby7BeHrTctbdvDbCMjVKS8wZ2rxuI8FtPS2iU900fSb70FHknQ==}
@@ -4618,29 +4618,29 @@ packages:
     peerDependencies:
       '@supabase/supabase-js': ^2.21.0
 
-  '@supabase/functions-js@2.4.5':
-    resolution: {integrity: sha512-v5GSqb9zbosquTo6gBwIiq7W9eQ7rE5QazsK/ezNiQXdCbY+bH8D9qEaBIkhVvX4ZRW5rP03gEfw5yw9tiq4EQ==}
+  '@supabase/functions-js@2.5.0':
+    resolution: {integrity: sha512-SXBx6Jvp+MOBekeKFu+G11YLYPeVeGQl23eYyAG9+Ro0pQ1aIP0UZNIBxHKNHqxzR0L0n6gysNr2KT3841NATw==}
 
   '@supabase/node-fetch@2.6.15':
     resolution: {integrity: sha512-1ibVeYUacxWYi9i0cf5efil6adJ9WRyZBLivgjs+AUpewx1F3xPi7gLgaASI2SmIQxPoCEjAsLAzKPgMJVgOUQ==}
     engines: {node: 4.x || >=6.0.0}
 
-  '@supabase/postgrest-js@1.19.4':
-    resolution: {integrity: sha512-O4soKqKtZIW3olqmbXXbKugUtByD2jPa8kL2m2c1oozAO11uCcGrRhkZL0kVxjBLrXHE0mdSkFsMj7jDSfyNpw==}
+  '@supabase/postgrest-js@1.21.4':
+    resolution: {integrity: sha512-TxZCIjxk6/dP9abAi89VQbWWMBbybpGWyvmIzTd79OeravM13OjR/YEYeyUOPcM1C3QyvXkvPZhUfItvmhY1IQ==}
 
-  '@supabase/realtime-js@2.11.15':
-    resolution: {integrity: sha512-HQKRnwAqdVqJW/P9TjKVK+/ETpW4yQ8tyDPPtRMKOH4Uh3vQD74vmj353CYs8+YwVBKubeUOOEpI9CT8mT4obw==}
+  '@supabase/realtime-js@2.15.5':
+    resolution: {integrity: sha512-/Rs5Vqu9jejRD8ZeuaWXebdkH+J7V6VySbCZ/zQM93Ta5y3mAmocjioa/nzlB6qvFmyylUgKVS1KpE212t30OA==}
 
-  '@supabase/ssr@0.6.1':
-    resolution: {integrity: sha512-QtQgEMvaDzr77Mk3vZ3jWg2/y+D8tExYF7vcJT+wQ8ysuvOeGGjYbZlvj5bHYsj/SpC0bihcisnwPrM4Gp5G4g==}
+  '@supabase/ssr@0.7.0':
+    resolution: {integrity: sha512-G65t5EhLSJ5c8hTCcXifSL9Q/ZRXvqgXeNo+d3P56f4U1IxwTqjB64UfmfixvmMcjuxnq2yGqEWVJqUcO+AzAg==}
     peerDependencies:
       '@supabase/supabase-js': ^2.43.4
 
-  '@supabase/storage-js@2.7.1':
-    resolution: {integrity: sha512-asYHcyDR1fKqrMpytAS1zjyEfvxuOIp1CIXX7ji4lHHcJKqyk+sLl/Vxgm4sN6u8zvuUtae9e4kDxQP2qrwWBA==}
+  '@supabase/storage-js@2.12.2':
+    resolution: {integrity: sha512-SiySHxi3q7gia7NBYpsYRu8gyI0NhFwSORMxbZIxJ/zAVkN6QpwDRan158CJ+UdzD4WB/rQMAGRqIJQP+7ccAQ==}
 
-  '@supabase/supabase-js@2.52.0':
-    resolution: {integrity: sha512-jbs3CV1f2+ge7sgBeEduboT9v/uGjF22v0yWi/5/XFn5tbM8MfWRccsMtsDwAwu24XK8H6wt2LJDiNnZLtx/bg==}
+  '@supabase/supabase-js@2.58.0':
+    resolution: {integrity: sha512-Tm1RmQpoAKdQr4/8wiayGti/no+If7RtveVZjHR8zbO7hhQjmPW2Ok5ZBPf1MGkt5c+9R85AVMsTfSaqAP1sUg==}
 
   '@swc/helpers@0.5.17':
     resolution: {integrity: sha512-5IKx/Y13RsYd+sauPb2x+U/xZikHjolzfuDgTAl/Tdf3Q8rslRvC19NKDLgAJQ6wsqADk10ntlv08nPFw/gO/A==}
@@ -7306,11 +7306,6 @@ packages:
   isexe@3.1.1:
     resolution: {integrity: sha512-LpB/54B+/2J5hqQ7imZHfdU31OlgQqx7ZicVlkm9kzg9/w8GKLEcFfJl/t7DCEDueOyBAD6zCCwTO6Fzs0NoEQ==}
     engines: {node: '>=16'}
-
-  isows@1.0.7:
-    resolution: {integrity: sha512-I1fSfDCZL5P0v33sVqeTDSpcstAg/N+wF5HS033mogOVIp4B+oHC7oOCsA3axAbBSGTJ8QubbNmnIRN/h8U7hg==}
-    peerDependencies:
-      ws: '*'
 
   isstream@0.1.2:
     resolution: {integrity: sha512-Yljz7ffyPbrLpLngrMtZ7NduUgVvi6wG9RJ9IUcyCd59YQ911PBJphODUcbOVbqYfxe1wuYf/LJ8PauMRwsM/g==}
@@ -10386,11 +10381,11 @@ snapshots:
       - react
       - react-dom
 
-  '@ag-ui/mastra@0.0.10(@copilotkit/runtime@1.10.3(62f0e5daea6ae52e89c4a304c819e969))(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)':
+  '@ag-ui/mastra@0.0.10(@copilotkit/runtime@1.10.3(f9e9dfc8064ee342e6b17f758a39a920))(@mastra/core@0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5))(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)':
     dependencies:
       '@ag-ui/client': 0.0.36
       '@ai-sdk/ui-utils': 1.2.11(zod@4.1.5)
-      '@copilotkit/runtime': 1.10.3(62f0e5daea6ae52e89c4a304c819e969)
+      '@copilotkit/runtime': 1.10.3(f9e9dfc8064ee342e6b17f758a39a920)
       '@mastra/client-js': 0.10.21(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       '@mastra/core': 0.16.2(openapi-types@12.1.3)(react@19.1.0)(zod@4.1.5)
       rxjs: 7.8.1
@@ -11569,7 +11564,7 @@ snapshots:
       '@conform-to/dom': 1.8.2
       zod: 4.1.5
 
-  '@copilotkit/runtime@1.10.3(62f0e5daea6ae52e89c4a304c819e969)':
+  '@copilotkit/runtime@1.10.3(f9e9dfc8064ee342e6b17f758a39a920)':
     dependencies:
       '@ag-ui/client': 0.0.36
       '@ag-ui/core': 0.0.36
@@ -11580,7 +11575,7 @@ snapshots:
       '@copilotkit/shared': 1.10.3
       '@graphql-yoga/plugin-defer-stream': 3.15.1(graphql-yoga@5.15.1(graphql@16.11.0))(graphql@16.11.0)
       '@langchain/aws': 0.1.13(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.1.0(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3)(zod@3.25.74)))
-      '@langchain/community': 0.3.50(38d454ced43a683702a32b4bd6ca639b)
+      '@langchain/community': 0.3.50(9f16e7e69aa989e55286070fcf10111d)
       '@langchain/core': 0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.1.0(@opentelemetry/api@1.9.0))(openai@5.12.2(ws@8.18.3)(zod@4.1.5))
       '@langchain/google-gauth': 0.1.8(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.1.0(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3)(zod@3.25.74)))(zod@3.25.74)
       '@langchain/langgraph-sdk': 0.0.70(@langchain/core@0.3.68(@opentelemetry/api@1.9.0)(@opentelemetry/exporter-trace-otlp-proto@0.204.0(@opentelemetry/api@1.9.0))(@opentelemetry/sdk-trace-base@2.1.0(@opentelemetry/api@1.9.0))(openai@4.104.0(ws@8.18.3)(zod@3.25.74)))(react@19.1.0)
@@ -12421,7 +12416,7 @@ snapshots:
     transitivePeerDependencies:
       - aws-crt
 
-  '@langchain/community@0.3.50(38d454ced43a683702a32b4bd6ca639b)':
+  '@langchain/community@0.3.50(9f16e7e69aa989e55286070fcf10111d)':
     dependencies:
       '@browserbasehq/stagehand': 1.14.0(@playwright/test@1.54.2)(deepmerge@4.3.1)(dotenv@16.6.1)(openai@5.12.2(ws@8.18.3)(zod@4.1.5))(zod@4.1.5)
       '@ibm-cloud/watsonx-ai': 1.6.10
@@ -12446,7 +12441,7 @@ snapshots:
       '@aws-sdk/credential-provider-node': 3.864.0
       '@browserbasehq/sdk': 2.6.0
       '@smithy/util-utf8': 2.3.0
-      '@supabase/supabase-js': 2.52.0
+      '@supabase/supabase-js': 2.58.0
       '@upstash/redis': 1.35.3
       assemblyai: 4.16.1
       fast-xml-parser: 5.2.5
@@ -15713,24 +15708,24 @@ snapshots:
     optionalDependencies:
       typescript: 5.8.3
 
-  '@supabase/auth-js@2.71.1':
+  '@supabase/auth-js@2.72.0':
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
-  '@supabase/auth-ui-react@0.4.7(@supabase/supabase-js@2.52.0)':
+  '@supabase/auth-ui-react@0.4.7(@supabase/supabase-js@2.58.0)':
     dependencies:
       '@stitches/core': 1.2.8
-      '@supabase/auth-ui-shared': 0.1.8(@supabase/supabase-js@2.52.0)
-      '@supabase/supabase-js': 2.52.0
+      '@supabase/auth-ui-shared': 0.1.8(@supabase/supabase-js@2.58.0)
+      '@supabase/supabase-js': 2.58.0
       prop-types: 15.8.1
       react: 18.3.1
       react-dom: 18.3.1(react@18.3.1)
 
-  '@supabase/auth-ui-shared@0.1.8(@supabase/supabase-js@2.52.0)':
+  '@supabase/auth-ui-shared@0.1.8(@supabase/supabase-js@2.58.0)':
     dependencies:
-      '@supabase/supabase-js': 2.52.0
+      '@supabase/supabase-js': 2.58.0
 
-  '@supabase/functions-js@2.4.5':
+  '@supabase/functions-js@2.5.0':
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
@@ -15738,38 +15733,37 @@ snapshots:
     dependencies:
       whatwg-url: 5.0.0
 
-  '@supabase/postgrest-js@1.19.4':
+  '@supabase/postgrest-js@1.21.4':
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
-  '@supabase/realtime-js@2.11.15':
+  '@supabase/realtime-js@2.15.5':
     dependencies:
       '@supabase/node-fetch': 2.6.15
       '@types/phoenix': 1.6.6
       '@types/ws': 8.18.1
-      isows: 1.0.7(ws@8.18.3)
       ws: 8.18.3
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
 
-  '@supabase/ssr@0.6.1(@supabase/supabase-js@2.52.0)':
+  '@supabase/ssr@0.7.0(@supabase/supabase-js@2.58.0)':
     dependencies:
-      '@supabase/supabase-js': 2.52.0
+      '@supabase/supabase-js': 2.58.0
       cookie: 1.0.2
 
-  '@supabase/storage-js@2.7.1':
+  '@supabase/storage-js@2.12.2':
     dependencies:
       '@supabase/node-fetch': 2.6.15
 
-  '@supabase/supabase-js@2.52.0':
+  '@supabase/supabase-js@2.58.0':
     dependencies:
-      '@supabase/auth-js': 2.71.1
-      '@supabase/functions-js': 2.4.5
+      '@supabase/auth-js': 2.72.0
+      '@supabase/functions-js': 2.5.0
       '@supabase/node-fetch': 2.6.15
-      '@supabase/postgrest-js': 1.19.4
-      '@supabase/realtime-js': 2.11.15
-      '@supabase/storage-js': 2.7.1
+      '@supabase/postgrest-js': 1.21.4
+      '@supabase/realtime-js': 2.15.5
+      '@supabase/storage-js': 2.12.2
     transitivePeerDependencies:
       - bufferutil
       - utf-8-validate
@@ -18710,10 +18704,6 @@ snapshots:
   isexe@2.0.0: {}
 
   isexe@3.1.1: {}
-
-  isows@1.0.7(ws@8.18.3):
-    dependencies:
-      ws: 8.18.3
 
   isstream@0.1.2: {}
 

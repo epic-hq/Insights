@@ -52,7 +52,7 @@ export default function QuestionsIndex() {
 					onClick={handleRecordNow}
 					variant="default"
 					disabled={isRecording}
-					className="mx-auto w-full max-w-sm justify-center border-red-600 bg-red-700/50 hover:bg-red-700"
+					className="mx-auto max-w-sm justify-center border-red-600 bg-red-700 hover:bg-red-700"
 				>
 					<Mic className="mr-2 h-4 w-4" />
 					Record Live
@@ -65,7 +65,7 @@ export default function QuestionsIndex() {
 					}}
 					variant="default"
 					// disabled={questionPack.questions.length === 0}
-					className="mx-auto w-full max-w-sm justify-center border-red-600 bg-blue-700/50 hover:bg-blue-700"
+					className="mx-auto max-w-sm justify-center border-red-600 bg-blue-700 hover:bg-blue-700"
 				>
 					<UploadCloud className="mr-2 h-4 w-4" />
 					Upload Audio / Transcript

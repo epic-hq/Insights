@@ -25,7 +25,7 @@ import {
 	Zap,
 } from "lucide-react"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
-import { Link } from "react-router"
+import { Link, useFetcher } from "react-router"
 import { toast } from "sonner"
 import { z } from "zod"
 import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
@@ -81,7 +81,7 @@ interface Question {
 	categoryId: string
 	scores: { importance: number; goalMatch: number; novelty: number }
 	rationale?: string
-	status: "proposed" | "asked" | "answered" | "skipped" | "rejected"
+	status: "proposed" | "asked" | "answered" | "skipped" | "rejected" | "selected" | "backup" | "deleted"
 	timesAnswered: number
 	source?: "ai" | "user" // Track whether question is AI-generated or user-created
 	isMustHave?: boolean // Track if question is marked as must-have
@@ -294,6 +294,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [showInlineAdd, setShowInlineAdd] = useState(false)
 	const [inlineQuestionText, setInlineQuestionText] = useState("")
 	const [inlineQuestionCategory, setInlineQuestionCategory] = useState("context")
+
+	// Fetcher for soft delete operations
+	const deleteFetcher = useFetcher()
 
 	// Interview sync
 	const [syncingInterviews, setSyncingInterviews] = useState(false)
@@ -535,9 +538,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				const [promptRes, sectionRes, answerRes] = await Promise.all([
 					supabase
 						.from("interview_prompts")
-						.select(
-							"id, text, category, estimated_time_minutes, is_must_have, status, order_index, scores, source, rationale, is_selected, selected_order"
-						)
+						.select("*")
 						.eq("project_id", projectId)
 						.order("order_index", { ascending: true, nullsFirst: true })
 						.order("created_at", { ascending: true }),
@@ -580,9 +581,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				let formattedQuestions: Question[] = []
 				let selectedIds: string[] = []
 
-				const promptRows = promptRes.data ?? []
+				const promptRows: any[] = Array.isArray(promptRes.data) ? (promptRes.data as any[]) : []
 				if (promptRows.length > 0) {
-					formattedQuestions = promptRows.map((row) => ({
+					formattedQuestions = promptRows
+						.filter((row: any) => row.status !== "deleted" && row.status !== "rejected")
+						.map((row: any) => ({
 						id: row.id,
 						text: row.text,
 						categoryId: row.category || "context",
@@ -597,14 +600,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						isSelected: row.is_selected ?? false,
 					}))
 					selectedIds = promptRows
-						.filter((row) => row.is_selected || typeof row.selected_order === "number")
+						.filter((row: any) => (row.status !== "deleted" && row.status !== "rejected") && (row.is_selected || typeof row.selected_order === "number"))
 						.sort(
 							(a, b) => (a.selected_order ?? Number.POSITIVE_INFINITY) - (b.selected_order ?? Number.POSITIVE_INFINITY)
 						)
 						.map((row) => row.id)
 				} else {
 					existingPromptIdsRef.current = []
-					const legacyQuestions = (meta.questions as QuestionInput[] | undefined) || []
+					const legacyQuestions = ((meta.questions as QuestionInput[] | undefined) || []).filter(
+						(q) => (q.status as Question["status"]) !== "deleted" && (q.status as Question["status"]) !== "rejected"
+					)
 					const resolvedIds = legacyQuestions.map((q) => q.id || crypto.randomUUID())
 					formattedQuestions = legacyQuestions.map((q, idx) => ({
 						id: resolvedIds[idx],
@@ -1107,16 +1112,30 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	// Removed: category allocation auto-persist to avoid network loops
 
 	const removeQuestion = useCallback(
-		async (id: string) => {
+		(id: string) => {
 			const baseIds = getBaseSelectedIds().filter((qId) => qId !== id)
 			commitSelection(baseIds)
-			setSkipDebounce(true)
-			await saveQuestionsToDatabase(questions, baseIds)
-			// Reset the flag after a delay to allow debounced saves for other changes
-			setTimeout(() => setSkipDebounce(false), 1500)
+
+			// Create form data for the API
+			const formData = new FormData()
+			formData.append("intent", "delete")
+			
+			// Use fetcher to submit the delete intent
+			deleteFetcher.submit(formData, {
+				method: "post",
+				action: `/api/questions/${id}`,
+				encType: "application/x-www-form-urlencoded",
+			})
+			
+			// Optimistic UI update: remove from local state entirely
+			setQuestions(qs => qs.filter(q => q.id !== id))
+			
+			// Show toast notification
+			toast.success("Question deleted", {
+				description: "The question has been moved to deleted status",
+			})
 		},
-		[getBaseSelectedIds, commitSelection, markQuestionAsRecentlyAdded, questions, saveQuestionsToDatabase]
-	)
+		[getBaseSelectedIds, commitSelection, deleteFetcher, setQuestions])
 
 	const moveQuestion = useCallback(
 		async (fromIndex: number, toIndex: number) => {
