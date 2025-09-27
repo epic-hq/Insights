@@ -1,6 +1,10 @@
-import { CheckCircle, CircleHelp } from "lucide-react"
+import { ArrowRight, ChevronDownIcon } from "lucide-react"
 import { useEffect, useState } from "react"
-import { Badge } from "~/components/ui/badge"
+import {
+	ConfidenceBarChart,
+	type ConfidenceVariant,
+	getConfidenceLevelFromAnswerCount,
+} from "~/components/ui/ConfidenceBarChart"
 import { Card, CardContent } from "~/components/ui/card"
 
 export interface ResearchAnswerEvidence {
@@ -83,80 +87,104 @@ export interface ResearchAnswersData {
 interface CleanResearchAnswersProps {
 	projectId: string
 	className?: string
+	projectRoutes?: { evidence: { index: () => string } }
 	onMetrics?: (metrics: { answered: number; open: number; total: number }) => void
 	onData?: (data: ResearchAnswersData | null) => void
+	confidenceVariant?: ConfidenceVariant
 }
 
-function DecisionCard({ decision }: { decision: DecisionQuestionNode }) {
-	const hasAnswers = decision.metrics.answered_answer_count > 0
-	const confidenceLevel = decision.metrics.answered_answer_count >= 3 ? "high" :
-		decision.metrics.answered_answer_count >= 1 ? "medium" : "low"
+function DecisionCard({
+	decision,
+	projectRoutes,
+	confidenceVariant = "bars",
+}: {
+	decision: DecisionQuestionNode
+	projectRoutes?: { evidence: { index: () => string } }
+	confidenceVariant?: ConfidenceVariant
+}) {
+	const confidenceLevel = getConfidenceLevelFromAnswerCount(decision.metrics.answered_answer_count)
 
 	// Get the best answer summary
 	const bestAnswer = decision.research_questions
-		.flatMap(rq => rq.answers)
-		.filter(answer => answer.answer_text && answer.answer_text.length > 50)
+		.flatMap((rq) => rq.answers)
+		.filter((answer) => answer.answer_text && answer.answer_text.length > 50)
 		.sort((a, b) => (b.metrics.evidence_count || 0) - (a.metrics.evidence_count || 0))[0]
 
-	// Evidence links temporarily disabled to fix bundling issue
+	// Generate evidence link for research questions
+	const getEvidenceLink = (rqId: string) => (projectRoutes ? `${projectRoutes.evidence.index()}?rq_id=${rqId}` : null)
 
 	return (
-		<Card className="mb-6 border border-gray-200">
-			<CardContent className="p-6">
-				<div className="flex items-start justify-between">
+		<Card className="mb-4 border border-gray-200 sm:mb-6">
+			<CardContent className="p-4 sm:p-6">
+				<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 					<div className="flex items-start gap-3">
-						{hasAnswers ? (
-							<CheckCircle className="mt-1 h-5 w-5 text-green-600" />
-						) : (
-							<CircleHelp className="mt-1 h-5 w-5 text-orange-500" />
-						)}
-						<div className="flex-1">
-							<h3 className="font-medium text-gray-900 text-lg">
-								{decision.text}
-							</h3>
+						<ConfidenceBarChart level={confidenceLevel} variant={confidenceVariant} className="mt-1 flex-shrink-0" />
+						<div className="min-w-0 flex-1">
+							<h3 className="font-medium text-base text-gray-900 sm:text-lg">{decision.text}</h3>
 							{bestAnswer?.answer_text && (
-								<p className="mt-2 text-gray-600">
-									{bestAnswer.answer_text}
-								</p>
+								<div className="mt-2 text-gray-600 text-sm sm:text-base">
+									{bestAnswer.answer_text.split('\n').map((line, index) => (
+										<p key={index} className={index > 0 ? 'mt-1' : ''}>
+											{line.trim()}
+										</p>
+									))}
+								</div>
 							)}
 						</div>
 					</div>
 					<div className="flex items-center gap-2">
-						<Badge variant={confidenceLevel === "high" ? "default" : confidenceLevel === "medium" ? "secondary" : "destructive"}>
+						{/* <Badge variant={confidenceLevel === "high" ? "default" : confidenceLevel === "medium" ? "secondary" : "destructive"}>
 							{confidenceLevel}
 						</Badge>
-						<span className="text-gray-500 text-sm">({decision.metrics.answered_answer_count})</span>
+						<span className="text-gray-500 text-sm">({decision.metrics.answered_answer_count})</span> */}
 					</div>
 				</div>
 
 				{decision.research_questions.length > 0 && (
-					<div className="mt-6">
+					<div className="mx-4 mt-6 md:mx-8">
 						<details className="group">
-							<summary className="cursor-pointer font-medium text-gray-700 text-sm">
-								Research Question Learnings
+							<summary className="flex cursor-pointer items-center justify-between font-medium text-gray-700 text-sm">
+								<div className="hidden md:block">Details</div>
+								<div className="flex items-center gap-2">
+									<span className="text-gray-500 text-xs">{decision.metrics.evidence_count}</span>
+									<ChevronDownIcon className="h-4 w-4 text-gray-400 transition-transform duration-200 group-open:rotate-180" />
+								</div>
 							</summary>
-							<div className="mt-3 space-y-3">
+							<div className="mt-3 space-y-2 sm:space-y-3">
 								{decision.research_questions
-									.filter(rq => rq.answers.some(a => a.answer_text && a.answer_text.length > 30))
+									.filter((rq) => rq.answers.some((a) => a.answer_text && a.answer_text.length > 30))
 									.slice(0, 3)
 									.map((rq) => {
 										const bestRQAnswer = rq.answers
-											.filter(a => a.answer_text && a.answer_text.length > 30)
+											.filter((a) => a.answer_text && a.answer_text.length > 30)
 											.sort((a, b) => (b.metrics.evidence_count || 0) - (a.metrics.evidence_count || 0))[0]
 
+										const evidenceLink = getEvidenceLink(rq.id)
+
 										return (
-											<div key={rq.id} className="rounded-lg bg-gray-50 p-4">
-												<div className="flex items-start justify-between">
-													<div className="flex-1">
-														<h5 className="font-medium text-gray-900 text-sm">
-															{rq.text}
-														</h5>
+											<div key={rq.id} className="rounded-lg bg-gray-50 p-3 sm:p-4">
+												<div className="flex items-start justify-between gap-3">
+													<div className="flex-1 min-w-0">
+														<h5 className="font-medium text-gray-900 text-sm">{rq.text}</h5>
 														{bestRQAnswer?.answer_text && (
-															<p className="mt-1 text-gray-600 text-sm">
-																{bestRQAnswer.answer_text}
-															</p>
+															<div className="mt-1 text-gray-600 text-sm">
+																{bestRQAnswer.answer_text.split('\n').map((line, index) => (
+																	<p key={index} className={index > 0 ? 'mt-1' : ''}>
+																		{line.trim()}
+																	</p>
+																))}
+															</div>
 														)}
 													</div>
+													{evidenceLink && (
+														<a
+															href={evidenceLink}
+															className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+															title="View related evidence"
+														>
+															<ArrowRight className="h-4 w-4" />
+														</a>
+													)}
 												</div>
 											</div>
 										)
@@ -170,10 +198,12 @@ function DecisionCard({ decision }: { decision: DecisionQuestionNode }) {
 	)
 }
 
-export function CleanResearchAnswers({ 
-	projectId, 
-	className, 
-	onData 
+export function CleanResearchAnswers({
+	projectId,
+	className,
+	projectRoutes,
+	onData,
+	confidenceVariant = "bars",
 }: CleanResearchAnswersProps) {
 	const [data, setData] = useState<ResearchAnswersData | null>(null)
 	const [loading, setLoading] = useState(true)
@@ -197,7 +227,9 @@ export function CleanResearchAnswers({
 			}
 		}
 		void fetchData()
-		return () => { cancelled = true }
+		return () => {
+			cancelled = true
+		}
 	}, [projectId, onData])
 
 	if (loading) {
@@ -215,13 +247,12 @@ export function CleanResearchAnswers({
 
 	return (
 		<div className={className}>
-			<h2 className="mb-6 font-semibold text-gray-900 text-xl">Decision Analysis</h2>
+			<h2 className="mb-4 font-semibold text-gray-900 text-lg sm:mb-6 sm:text-xl">Decision Analysis</h2>
 			{data.decision_questions.map((decision) => (
-				<DecisionCard
-					key={decision.id}
-					decision={decision}
-				/>
+				<DecisionCard key={decision.id} decision={decision} projectRoutes={projectRoutes} confidenceVariant={confidenceVariant} />
 			))}
 		</div>
 	)
 }
+
+export default CleanResearchAnswers

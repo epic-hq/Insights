@@ -35,17 +35,17 @@ export default defineConfig({
 	plugins: [
 		tailwindcss(),
 		devtoolsJson(),
-		// Run the react-compiler on .tsx files only when bundling
-		{
-			...babel({
-				filter: /\.tsx?$/,
-				babelConfig: {
-					presets: ["@babel/preset-typescript"],
-					plugins: ["babel-plugin-react-compiler"],
-				},
-			}),
-			apply: "build",
-		},
+		// React Compiler disabled - uncomment and install babel-plugin-react-compiler if needed
+		// {
+		// 	...babel({
+		// 		filter: /\.tsx?$/,
+		// 		babelConfig: {
+		// 			presets: ["@babel/preset-typescript"],
+		// 			plugins: ["babel-plugin-react-compiler"],
+		// 		},
+		// 	}),
+		// 	apply: "build",
+		// },
 		reactRouterDevTools(),
 		reactRouter(),
 		reactRouterHonoServer({

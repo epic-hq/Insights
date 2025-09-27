@@ -423,15 +423,18 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					}))
 					setShowPendingModal(true)
 
+					// Reload questions from database to get the freshly saved data
+					await loadQuestions()
+
 					if (autoGenerateInitial) {
 						setAutoGenerateInitial(false)
 						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
-							description: "Review each new question to decide how it should be added.",
+							description: "Questions have been saved and loaded from database.",
 							duration: 5000,
 						})
 					} else {
 						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
-							description: "Review the new questions and choose where to add them.",
+							description: "Questions have been saved and loaded from database.",
 							duration: 4000,
 						})
 					}
@@ -509,6 +512,150 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[mustHavesOnly, questions]
 	)
 
+	// Extract loadQuestions as a standalone function so it can be called from generateQuestions
+	const loadQuestions = useCallback(async () => {
+		if (!projectId) {
+			setLoading(false)
+			return
+		}
+		try {
+			setLoading(true)
+			const [promptRes, sectionRes, answerRes] = await Promise.all([
+				supabase
+					.from("interview_prompts")
+					.select("*")
+					.eq("project_id", projectId)
+					.order("order_index", { ascending: true, nullsFirst: true })
+					.order("created_at", { ascending: true }),
+				supabase
+					.from("project_sections")
+					.select("meta")
+					.eq("project_id", projectId)
+					.eq("kind", "questions")
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.maybeSingle(),
+				supabase.from("project_answers").select("question_id, status").eq("project_id", projectId),
+			])
+
+			if (promptRes.error) consola.warn("Failed to load interview_prompts", promptRes.error.message)
+			if (sectionRes.error && sectionRes.error.code !== "PGRST116") throw sectionRes.error
+			if (answerRes.error) consola.warn("Failed to load project_answers", answerRes.error.message)
+
+			existingPromptIdsRef.current = (promptRes.data ?? []).map((row) => row.id)
+
+			const answerCountMap = new Map<string, number>()
+			for (const row of answerRes.data ?? []) {
+				if (row.question_id && row.status === "answered") {
+					const current = answerCountMap.get(row.question_id) || 0
+					answerCountMap.set(row.question_id, current + 1)
+				}
+			}
+
+			const meta = (sectionRes.data?.meta as Record<string, unknown>) || {}
+			const settings = (meta.settings as Record<string, unknown> | undefined) || {}
+			if (typeof settings.timeMinutes === "number") setTimeMinutes(settings.timeMinutes)
+			if (typeof settings.purpose === "string") setPurpose(settings.purpose as Purpose)
+			if (typeof settings.familiarity === "string") setFamiliarity(settings.familiarity as Familiarity)
+			if (typeof settings.goDeepMode === "boolean") setGoDeepMode(settings.goDeepMode)
+			if (typeof settings.customInstructions === "string") setCustomInstructions(settings.customInstructions)
+			const catTimesRaw = (settings as { categoryTimeAllocations?: Record<string, unknown> } | undefined)
+				?.categoryTimeAllocations
+			setCategoryTimeAllocations(sanitizeAllocations(catTimesRaw))
+
+			let formattedQuestions: Question[] = []
+			let selectedIds: string[] = []
+
+			const promptRows: any[] = Array.isArray(promptRes.data) ? (promptRes.data as any[]) : []
+			if (promptRows.length > 0) {
+				formattedQuestions = promptRows
+					.filter((row: any) => row.status !== "deleted" && row.status !== "rejected")
+					.map((row: any) => ({
+					id: row.id,
+					text: row.text,
+					categoryId: row.category || "context",
+					scores: parseScores(row.scores),
+					rationale: row.rationale || "",
+					status: (row.status as Question["status"]) || "proposed",
+					timesAnswered: answerCountMap.get(row.id) || 0,
+					source: (row.source as Question["source"]) || "ai",
+					isMustHave: row.is_must_have ?? false,
+					estimatedMinutes: row.estimated_time_minutes ?? undefined,
+					selectedOrder: typeof row.selected_order === "number" ? row.selected_order : null,
+					isSelected: row.is_selected ?? false,
+				}))
+				selectedIds = promptRows
+					.filter((row: any) => (row.status !== "deleted" && row.status !== "rejected") && (row.is_selected || typeof row.selected_order === "number"))
+					.sort(
+						(a, b) => (a.selected_order ?? Number.POSITIVE_INFINITY) - (b.selected_order ?? Number.POSITIVE_INFINITY)
+					)
+					.map((row) => row.id)
+			} else {
+				existingPromptIdsRef.current = []
+				const legacyQuestions = ((meta.questions as QuestionInput[] | undefined) || []).filter(
+					(q) => (q.status as Question["status"]) !== "deleted" && (q.status as Question["status"]) !== "rejected"
+				)
+				const resolvedIds = legacyQuestions.map((q) => q.id || crypto.randomUUID())
+				formattedQuestions = legacyQuestions.map((q, idx) => ({
+					id: resolvedIds[idx],
+					text: q.text || q.question || "",
+					categoryId: q.categoryId || q.category || "context",
+					scores: parseScores(
+						q.scores ?? {
+							importance: q.importance,
+							goalMatch: q.goalMatch,
+							novelty: q.novelty,
+						}
+					),
+					rationale: q.rationale || "",
+					status: (q.status as Question["status"]) || "proposed",
+					timesAnswered: answerCountMap.get(resolvedIds[idx]) || 0,
+					source: (q as QuestionInput & { source?: "ai" | "user" }).source || "ai",
+					isMustHave: (q as QuestionInput & { isMustHave?: boolean }).isMustHave || false,
+					estimatedMinutes: (q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes,
+					selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
+					isSelected: (q as QuestionInput & { isSelected?: boolean }).isSelected ?? false,
+				}))
+				selectedIds = legacyQuestions
+					.map((q, idx) => ({ q, idx }))
+					.filter(
+						({ q }) =>
+							q && ((q as QuestionInput & { isSelected?: boolean }).isSelected || typeof q.selectedOrder === "number")
+					)
+					.sort(
+						(a, b) =>
+							((a.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY) -
+							((b.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY)
+					)
+					.map(({ idx }) => resolvedIds[idx])
+			}
+
+			const seen = new Set<string>()
+			const deduped = formattedQuestions.map((q) => {
+				if (seen.has(q.id)) {
+					const newId = crypto.randomUUID()
+					seen.add(newId)
+					return { ...q, id: newId }
+				}
+				seen.add(q.id)
+				return q
+			})
+
+			setQuestions(deduped)
+			if (selectedIds.length > 0) {
+				setSelectedQuestionIds(selectedIds)
+				commitSelection(selectedIds)
+				setHasInitialized(true)
+			} else {
+				setSelectedQuestionIds([])
+			}
+		} catch (error) {
+			consola.error("Error loading questions:", error)
+		} finally {
+			setLoading(false)
+		}
+	}, [projectId, supabase, commitSelection])
+
 	const markQuestionAsRecentlyAdded = useCallback((id: string) => {
 		setRecentlyAddedQuestionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
 		if (recentlyAddedTimeoutsRef.current[id]) {
@@ -528,149 +675,6 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 	// Load canonical interview prompts when projectId is provided
 	useEffect(() => {
-		const loadQuestions = async () => {
-			if (!projectId) {
-				setLoading(false)
-				return
-			}
-			try {
-				setLoading(true)
-				const [promptRes, sectionRes, answerRes] = await Promise.all([
-					supabase
-						.from("interview_prompts")
-						.select("*")
-						.eq("project_id", projectId)
-						.order("order_index", { ascending: true, nullsFirst: true })
-						.order("created_at", { ascending: true }),
-					supabase
-						.from("project_sections")
-						.select("meta")
-						.eq("project_id", projectId)
-						.eq("kind", "questions")
-						.order("created_at", { ascending: false })
-						.limit(1)
-						.maybeSingle(),
-					supabase.from("project_answers").select("question_id, status").eq("project_id", projectId),
-				])
-
-				if (promptRes.error) consola.warn("Failed to load interview_prompts", promptRes.error.message)
-				if (sectionRes.error && sectionRes.error.code !== "PGRST116") throw sectionRes.error
-				if (answerRes.error) consola.warn("Failed to load project_answers", answerRes.error.message)
-
-				existingPromptIdsRef.current = (promptRes.data ?? []).map((row) => row.id)
-
-				const answerCountMap = new Map<string, number>()
-				for (const row of answerRes.data ?? []) {
-					if (row.question_id && row.status === "answered") {
-						const current = answerCountMap.get(row.question_id) || 0
-						answerCountMap.set(row.question_id, current + 1)
-					}
-				}
-
-				const meta = (sectionRes.data?.meta as Record<string, unknown>) || {}
-				const settings = (meta.settings as Record<string, unknown> | undefined) || {}
-				if (typeof settings.timeMinutes === "number") setTimeMinutes(settings.timeMinutes)
-				if (typeof settings.purpose === "string") setPurpose(settings.purpose as Purpose)
-				if (typeof settings.familiarity === "string") setFamiliarity(settings.familiarity as Familiarity)
-				if (typeof settings.goDeepMode === "boolean") setGoDeepMode(settings.goDeepMode)
-				if (typeof settings.customInstructions === "string") setCustomInstructions(settings.customInstructions)
-				const catTimesRaw = (settings as { categoryTimeAllocations?: Record<string, unknown> } | undefined)
-					?.categoryTimeAllocations
-				setCategoryTimeAllocations(sanitizeAllocations(catTimesRaw))
-
-				let formattedQuestions: Question[] = []
-				let selectedIds: string[] = []
-
-				const promptRows: any[] = Array.isArray(promptRes.data) ? (promptRes.data as any[]) : []
-				if (promptRows.length > 0) {
-					formattedQuestions = promptRows
-						.filter((row: any) => row.status !== "deleted" && row.status !== "rejected")
-						.map((row: any) => ({
-						id: row.id,
-						text: row.text,
-						categoryId: row.category || "context",
-						scores: parseScores(row.scores),
-						rationale: row.rationale || "",
-						status: (row.status as Question["status"]) || "proposed",
-						timesAnswered: answerCountMap.get(row.id) || 0,
-						source: (row.source as Question["source"]) || "ai",
-						isMustHave: row.is_must_have ?? false,
-						estimatedMinutes: row.estimated_time_minutes ?? undefined,
-						selectedOrder: typeof row.selected_order === "number" ? row.selected_order : null,
-						isSelected: row.is_selected ?? false,
-					}))
-					selectedIds = promptRows
-						.filter((row: any) => (row.status !== "deleted" && row.status !== "rejected") && (row.is_selected || typeof row.selected_order === "number"))
-						.sort(
-							(a, b) => (a.selected_order ?? Number.POSITIVE_INFINITY) - (b.selected_order ?? Number.POSITIVE_INFINITY)
-						)
-						.map((row) => row.id)
-				} else {
-					existingPromptIdsRef.current = []
-					const legacyQuestions = ((meta.questions as QuestionInput[] | undefined) || []).filter(
-						(q) => (q.status as Question["status"]) !== "deleted" && (q.status as Question["status"]) !== "rejected"
-					)
-					const resolvedIds = legacyQuestions.map((q) => q.id || crypto.randomUUID())
-					formattedQuestions = legacyQuestions.map((q, idx) => ({
-						id: resolvedIds[idx],
-						text: q.text || q.question || "",
-						categoryId: q.categoryId || q.category || "context",
-						scores: parseScores(
-							q.scores ?? {
-								importance: q.importance,
-								goalMatch: q.goalMatch,
-								novelty: q.novelty,
-							}
-						),
-						rationale: q.rationale || "",
-						status: (q.status as Question["status"]) || "proposed",
-						timesAnswered: answerCountMap.get(resolvedIds[idx]) || 0,
-						source: (q as QuestionInput & { source?: "ai" | "user" }).source || "ai",
-						isMustHave: (q as QuestionInput & { isMustHave?: boolean }).isMustHave || false,
-						estimatedMinutes: (q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes,
-						selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
-						isSelected: (q as QuestionInput & { isSelected?: boolean }).isSelected ?? false,
-					}))
-					selectedIds = legacyQuestions
-						.map((q, idx) => ({ q, idx }))
-						.filter(
-							({ q }) =>
-								q && ((q as QuestionInput & { isSelected?: boolean }).isSelected || typeof q.selectedOrder === "number")
-						)
-						.sort(
-							(a, b) =>
-								((a.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY) -
-								((b.q.selectedOrder as number | undefined) ?? Number.POSITIVE_INFINITY)
-						)
-						.map(({ idx }) => resolvedIds[idx])
-				}
-
-				const seen = new Set<string>()
-				const deduped = formattedQuestions.map((q) => {
-					if (seen.has(q.id)) {
-						const newId = crypto.randomUUID()
-						seen.add(newId)
-						return { ...q, id: newId }
-					}
-					seen.add(q.id)
-					return q
-				})
-
-				setQuestions(deduped)
-				if (selectedIds.length > 0) {
-					setSelectedQuestionIds(selectedIds)
-					commitSelection(selectedIds)
-					setHasInitialized(true)
-				} else {
-					setSelectedQuestionIds([])
-				}
-			} catch (error) {
-				consola.error("Error loading questions:", error)
-			} finally {
-				setLoading(false)
-			}
-		}
-
 		if (isLoadingRef.current) return
 		const now = Date.now()
 		if (lastLoadedRef.current.projectId === projectId && now - lastLoadedRef.current.ts < 1500) return
@@ -679,7 +683,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			lastLoadedRef.current = { projectId, ts: Date.now() }
 			isLoadingRef.current = false
 		})
-	}, [projectId, supabase, commitSelection])
+	}, [projectId, loadQuestions])
 
 	const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
 		const baseTimes = { exploratory: 3.5, validation: 2.5, followup: 2.0 }

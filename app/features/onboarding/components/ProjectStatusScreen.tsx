@@ -25,10 +25,10 @@ import {
 	Zap,
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
-import { Link, useRevalidator } from "react-router"
+import { useRevalidator } from "react-router"
 import { Streamdown } from "streamdown"
-import RadialProgress from "~/components/charts/RadialProgress"
 import { Badge } from "~/components/ui/badge"
+import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
@@ -38,13 +38,11 @@ import { InterviewAnalysisCard } from "~/features/onboarding/components/Intervie
 import { type DecoratedResearchQuestion, KeyDecisionsCard } from "~/features/onboarding/components/KeyDecisionsCard"
 import { ThemesSection } from "~/features/onboarding/components/ThemesSection"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
-import { CleanResearchAnswers } from "~/features/research/components/CleanResearchAnswers"
+import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers"
 import {
-	type AnsweredQuestionSummary,
 	calculateResearchMetrics,
 	getAnsweredQuestions,
 	getOpenQuestions,
-	type OpenQuestionSummary,
 } from "~/features/research/utils/research-data-mappers"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -194,8 +192,9 @@ export default function ProjectStatusScreen({
 				return
 			}
 
-			// Clear the instructions input
+			// Clear the instructions input and close modal
 			setCustomInstructions("")
+			setShowCustomAnalysis(false)
 			// Revalidate any loader data (if applicable)
 			revalidator.revalidate()
 
@@ -279,14 +278,6 @@ export default function ProjectStatusScreen({
 	}, [standaloneResearchQuestions])
 
 
-	const allResearchAnswers = useMemo<ResearchAnswerNode[]>(() => {
-		if (!researchRollup) return []
-		const fromDecisions = researchRollup.decision_questions.flatMap((decision) =>
-			decision.research_questions.flatMap((rq) => rq.answers)
-		)
-		const fromStandalone = researchRollup.research_questions_without_decision.flatMap((rq) => rq.answers)
-		return [...fromDecisions, ...fromStandalone, ...researchRollup.orphan_answers]
-	}, [researchRollup])
 
 	// Use helper functions to extract data from research rollup
 	const answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
@@ -339,13 +330,13 @@ export default function ProjectStatusScreen({
 				</div>
 			)}
 
-			{/* Compact Header */}
-			<div className="border-border border-b bg-background px-6 py-4">
-				<div className="mx-auto flex max-w-6xl items-center justify-between">
+			{/* Compact Header - Mobile Responsive */}
+			<div className="border-border border-b bg-background px-4 py-4 sm:px-6">
+				<div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<p className="font-semibold text-foreground text-xl">Project: {displayData.projectName}</p>
+						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
 					</div>
-					<div className="flex items-center gap-3">
+					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
 						{/* Flow View Toggle Button */}
 						{/* <Button
 							variant={showFlowView ? "default" : "outline"}
@@ -380,12 +371,12 @@ export default function ProjectStatusScreen({
 			</div>
 
 			{showFlowView ? (
-				/* Flow View - Two Column Layout */
+				/* Flow View - Mobile Responsive Layout */
 				<div className="min-h-screen flex-1 bg-background">
-					<div className="mx-auto max-w-7xl px-6 py-8">
-						<div className="grid min-h-[80vh] grid-cols-2 gap-12">
-							{/* Left Side: Flow Diagram */}
-							<div className="flex flex-col items-center justify-center space-y-6 pr-8">
+					<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+						<div className="grid min-h-[80vh] grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+							{/* Left Side: Flow Diagram - Mobile Responsive */}
+							<div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 lg:pr-8">
 								{/* Research Goals */}
 								<motion.div
 									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-blue-200 bg-blue-50 p-6 text-center transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/20"
@@ -476,8 +467,8 @@ export default function ProjectStatusScreen({
 								</motion.div>
 							</div>
 
-							{/* Right Side: Data Details */}
-							<div className="space-y-8 overflow-y-auto border-gray-200 border-l pl-8 dark:border-gray-700">
+							{/* Right Side: Data Details - Mobile Responsive */}
+							<div className="space-y-6 overflow-y-auto sm:space-y-8 lg:border-gray-200 lg:border-l lg:pl-8 lg:dark:border-gray-700">
 								<div className="space-y-6">
 									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Target className="h-6 w-6 text-blue-600" />
@@ -593,20 +584,20 @@ export default function ProjectStatusScreen({
 				<div>
 					{/* Prominent Analysis Action */}
 
-					{/* Main Research Framework */}
-					<div className="mx-auto max-w-6xl px-6 py-6">
-						<div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
-							{/* Left Column: Reorganized Layout */}
-							<div className="space-y-6 lg:col-span-2">
+					{/* Main Research Framework - Mobile Responsive */}
+					<div className="mx-auto max-w-6xl px-4 py-4 sm:px-6 sm:py-6">
+						<div className="grid grid-cols-1 gap-4 sm:gap-6 lg:grid-cols-3">
+							{/* Left Column: Reorganized Layout - Mobile Responsive */}
+							<div className="space-y-4 sm:space-y-6 lg:col-span-2">
 								{/* 1. Goal and Key Decisions at Top */}
 								<div>
-									<div className="mb-3 flex items-center justify-between">
+									<div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 										<div className="flex items-center gap-2">
 											<Target className="h-5 w-5 text-blue-600" />
 											Goal
 											{/* Progress indicator moved here */}
 										</div>
-										<div className="ml-4 flex flex-row gap-2">
+										<div className="flex flex-row gap-2">
 											<Button
 												variant="outline"
 												size="sm"
@@ -638,39 +629,30 @@ export default function ProjectStatusScreen({
 										<CardHeader>
 											{/* Research Goals */}
 											{getGoalSections().length > 0 && (
-												<div className="flex items-center justify-between">
-													{getGoalSections().map((goalSection) => (
-														<div
-															key={goalSection.id}
-															className="flex items-start gap-3 font-medium text-foreground text-md"
-														>
-															{goalSection.content_md}
-														</div>
-													))}
-													<Badge
-														variant={
-															goalConfidence === "high"
-																? "default"
-																: goalConfidence === "medium"
-																	? "secondary"
-																	: "outline"
-														}
-														className={getConfidenceColor(goalConfidence)}
-													>
-														{goalConfidence.charAt(0).toUpperCase() + goalConfidence.slice(1)}
-													</Badge>
+												<div className="flex items-start justify-between gap-4">
+													<div className="flex items-start gap-3">
+														<ConfidenceBarChart level={goalConfidence} className="mt-1 flex-shrink-0" />
+														{getGoalSections().map((goalSection) => (
+															<div
+																key={goalSection.id}
+																className="flex-1 font-medium text-foreground text-md"
+															>
+																{goalSection.content_md}
+															</div>
+														))}
+													</div>
 												</div>
 											)}
 										</CardHeader>
-										<CardContent className="space-y-6 p-3 sm:p-4">
-											<div className="w-[75%] space-y-2">
-												<div className="flex items-center justify-start gap-4 text-sm">
-													<span className="">Interview Progress</span>
-													<span className="text-muted-foreground">
+										<CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-4">
+											<div className="w-full space-y-2 sm:w-[75%]">
+												<div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-start sm:gap-4">
+													<span className="">Interview Progress {Math.round((displayData.totalInterviews / targetConversations) * 100)}%</span>
+													<div className="text-muted-foreground">
 														{displayData.totalInterviews} of {targetConversations}
-													</span>
+													</div>
 												</div>
-												<div className="h-2 w-[75%] rounded-full bg-muted">
+												<div className="h-2 w-full rounded-full bg-muted sm:w-[75%]">
 													<div
 														className="h-2 rounded-full bg-primary transition-all duration-300"
 														style={{ width: `${(displayData.totalInterviews / targetConversations) * 100}%` }}
@@ -678,15 +660,7 @@ export default function ProjectStatusScreen({
 												</div>
 											</div>
 											{/* Interview Progress */}
-											<div className="flex w-max-[120px] flex-col items-center justify-center">
-												{/* <RadialProgress
-													current={displayData.totalInterviews}
-													target={targetConversations}
-													label="interviews"
-													size={180}
-													color="#16a34a"
-												/> */}
-											</div>
+
 
 											<TooltipProvider>
 												<Tooltip>
@@ -695,7 +669,7 @@ export default function ProjectStatusScreen({
 															<Button
 																variant="outline"
 																onClick={() => setShowCustomAnalysis(true)}
-																disabled={isAnalyzing}
+																disabled={isAnalyzing || displayData.totalInterviews === 0}
 																className="hover:bg-blue-700 "
 																size="sm"
 															>
@@ -709,7 +683,11 @@ export default function ProjectStatusScreen({
 														</div>
 													</TooltipTrigger>
 													<TooltipContent>
-														<p>Run analysis with custom instructions to focus on specific aspects</p>
+														{displayData.totalInterviews === 0 ? (
+															<p>Add interviews to see emerging insights.</p>
+														) : (
+															<p>Analyze latest conversations and see how they align with your goals and questions.</p>
+														)}
 													</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>
@@ -721,9 +699,10 @@ export default function ProjectStatusScreen({
 								{/* <KeyDecisionsCard
 								{/* Research Findings */}
 								{projectId && (
-									<div className="mt-12">
+									<div className="mt-6">
 										<CleanResearchAnswers
 											projectId={projectId as string}
+											projectRoutes={routes}
 											onMetrics={handleResearchMetrics}
 											onData={handleResearchData}
 										/>
@@ -759,13 +738,12 @@ export default function ProjectStatusScreen({
 								)}
 							</div>
 
-							{/* Right Column: Quick Actions */}
-
+							{/* Right Column: Quick Actions - Mobile Responsive */}
 							<div className="space-y-4">
-								<h2 className="">Quick Actions</h2>
+								<h2 className="text-base sm:text-lg">Quick Actions</h2>
 								{/* Quick Actions */}
 								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-									<CardContent className="flex w-full max-w-sm flex-col gap-2 p-3 lg:max-w-md">
+									<CardContent className="flex w-full flex-col gap-2 p-3 sm:max-w-sm lg:max-w-md">
 										<Button
 											// TODO: Temporarily just go to upload instead of naming the interview. it's quicker and we have a small DB insert blocker.
 											onClick={() => {
@@ -774,7 +752,7 @@ export default function ProjectStatusScreen({
 												}
 											}}
 											// onClick={() => routes && (window.location.href = routes.interviews.new())}
-											className="flex max-w-64 justify-start border-green-600 bg-green-600 text-white hover:bg-green-700"
+											className="flex w-full justify-start border-green-600 bg-green-600 text-white hover:bg-green-700 sm:max-w-64"
 											variant="default"
 										>
 											<PlusCircle className="mr-2 h-4 w-4" />
@@ -787,7 +765,7 @@ export default function ProjectStatusScreen({
 														window.location.href = routes.interviews.new()
 													}
 												}}
-												className="max-w-64 justify-start"
+												className="w-full justify-start sm:max-w-64"
 												variant="default"
 											>
 												<Target className="mr-2 h-4 w-4" />
@@ -802,7 +780,7 @@ export default function ProjectStatusScreen({
 													window.location.href = routes.questions.index()
 												}
 											}}
-											className="flex max-w-64 justify-start"
+											className="flex w-full justify-start sm:max-w-64"
 											variant="outline"
 										>
 											<BookOpen className="mr-2 h-4 w-4" />
@@ -816,7 +794,7 @@ export default function ProjectStatusScreen({
 												}
 											}}
 											variant="outline"
-											className="flex max-w-64 justify-start"
+											className="flex w-full justify-start sm:max-w-64"
 										>
 											<Eye className="mr-2 h-4 w-4" />
 											Explore All Evidence
@@ -829,7 +807,7 @@ export default function ProjectStatusScreen({
 													window.location.href = routes.interviews.index()
 												}
 											}}
-											className="flex max-w-64 justify-start"
+											className="flex w-full justify-start sm:max-w-64"
 										>
 											<Mic2Icon className="mr-2 h-4 w-4" />
 											Interviews ({statusData?.totalInterviews})
@@ -876,10 +854,10 @@ export default function ProjectStatusScreen({
 						</div>
 					</div>
 
-					{/* Custom Analysis Modal - Dark Mode Fixed */}
+					{/* Custom Analysis Modal - Mobile Responsive */}
 					{showCustomAnalysis && (
 						<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50 p-4">
-							<div className="w-full max-w-md rounded-2xl border border-gray-700 bg-background p-4 shadow-xl">
+							<div className="w-full max-w-sm rounded-2xl border border-gray-700 bg-background p-4 shadow-xl sm:max-w-md">
 								<h3 className="mb-6 font-light text-foreground text-xl">Update Analysis</h3>
 								<div className="space-y-6">
 									<div>

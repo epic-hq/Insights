@@ -587,3 +587,96 @@ This system provides a complete research structure management experience with:
 - **Scalable architecture** supporting complex research workflows
 
 The implementation follows established patterns in the codebase and maintains consistency with existing authentication, routing, and data management approaches.
+
+---
+
+## Clean Research Answers Component (2025 Update)
+
+### Overview
+A redesigned Decision Analysis interface that provides a clean, modern view of research progress with improved user experience and performance.
+
+### Key Learnings from Implementation
+
+#### 1. React Version Compatibility Issues
+**Problem:** Encountered `Cannot read properties of null (reading 'useContext')` error during development.
+
+**Root Cause:** The app was using React 19.1.0 which has breaking changes that aren't fully compatible with React Router 7.6.3.
+
+**Solution:** 
+- Downgraded to React 18.3.1 (stable, well-tested version)
+- Updated compatible dependencies (`@testing-library/react`, `vitest-browser-react`)
+- Removed React 19 specific features (`babel-plugin-react-compiler`)
+
+**Key Insight:** Always use stable React versions in production apps. React 19 introduced breaking changes to context handling that can cause hydration errors.
+
+#### 2. Vite Bundling and Import Conflicts
+**Problem:** `Cannot read properties of undefined (reading 'S')` bundling error causing infinite loading states.
+
+**Root Cause:** Complex import chains and circular dependencies between:
+- `RouteDefinitions` type imports
+- `Link` component from react-router
+- Multiple UI component imports in a single file
+
+**Solution:**
+- Simplified imports by removing problematic dependencies
+- Used native HTML `<details>` element instead of Radix UI Accordion
+- Temporarily removed evidence links to isolate bundling issues
+- Cleared Vite cache (`rm -rf node_modules/.vite`)
+
+**Key Insight:** When facing bundling errors, simplify imports first. Complex import chains can cause circular dependencies that break Vite's optimization.
+
+#### 3. Component Design Patterns
+**Successful Patterns:**
+- ✅ **Native HTML Elements**: Using `<details>` for collapsible content avoids React hook issues
+- ✅ **Simplified Props**: Removing complex type dependencies reduces bundling conflicts
+- ✅ **Progressive Enhancement**: Start with basic functionality, add features incrementally
+- ✅ **Error Boundaries**: Silent failures with graceful degradation for API calls
+
+**Anti-Patterns to Avoid:**
+- ❌ **Complex Import Chains**: Multiple UI library imports in single components
+- ❌ **Tight Coupling**: Components depending on complex route definition types
+- ❌ **Hook Overuse**: Using React hooks when native HTML provides the functionality
+
+#### 4. Development Workflow Insights
+**Best Practices Learned:**
+1. **Version Lock Critical Dependencies**: React, React Router, and core UI libraries should use stable versions
+2. **Incremental Development**: Build components in isolation before integrating
+3. **Bundle Analysis**: Monitor Vite output for optimization warnings
+4. **Cache Management**: Clear build caches when encountering unexplained errors
+5. **Graceful Degradation**: Always provide fallbacks for complex features
+
+### Technical Implementation
+
+#### CleanResearchAnswers Component Features
+- **Clean Design**: Modern card-based layout with proper typography hierarchy
+- **Decision Cards**: Visual indicators (✓ for answered, ? for pending) with confidence badges
+- **Collapsible Details**: Native HTML `<details>` for research question learnings
+- **Loading States**: Skeleton animations during data fetching
+- **Error Handling**: Silent failures with graceful UI degradation
+
+#### Database Integration
+- Fetches from `/api.research-answers` endpoint
+- Uses proper TypeScript interfaces for type safety
+- Implements proper loading and error states
+- Follows established authentication patterns
+
+#### Performance Optimizations
+- **Lazy Loading**: Component only renders when data is available
+- **Efficient Queries**: Single API call for all decision question data
+- **Minimal Re-renders**: Proper useEffect dependencies
+- **Bundle Optimization**: Simplified imports reduce bundle size
+
+### Files Created/Modified
+1. **`CleanResearchAnswers.tsx`** - New clean research answers component
+2. **`ProjectStatusScreen.tsx`** - Updated to use CleanResearchAnswers
+3. **`package.json`** - Downgraded React to stable version
+4. **`user-flow.md`** - This documentation update
+
+### Lessons for Future Development
+1. **Stability Over Features**: Choose stable dependencies over cutting-edge versions
+2. **Simplicity Over Complexity**: Native HTML often beats complex React components
+3. **Incremental Integration**: Build and test components in isolation first
+4. **Monitor Bundle Health**: Watch for Vite optimization warnings and errors
+5. **Document Learnings**: Capture technical decisions and their reasoning
+
+This implementation demonstrates the importance of balancing modern development practices with stability and maintainability in production applications.
