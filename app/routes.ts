@@ -98,6 +98,7 @@ const routes = [
 	route("register", "./routes/(auth)+/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
 	route("accept-invite", "./routes/accept-invite.tsx"),
+	route("invites", "./routes/invites.tsx"),
 
 	// New Auth
 	route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
