@@ -386,6 +386,12 @@ export interface EvidenceAnalysisResponse {
   
 }
 
+export interface EvidenceExtraction {
+  people: EvidenceParticipant[]
+  evidence: EvidenceUnit[]
+  
+}
+
 export interface EvidenceItem {
   id: string
   verbatim: string
@@ -405,6 +411,19 @@ export interface EvidenceLinkProposal {
 export interface EvidenceLinkResult {
   evidence_id: string
   links: EvidenceQuestionLink[]
+  
+}
+
+export interface EvidenceParticipant {
+  person_key: string
+  display_name?: string | null
+  inferred_name?: string | null
+  role?: string | null
+  personas?: string[] | null
+  segments?: string[] | null
+  organization?: string | null
+  summary?: string | null
+  notes?: string | null
   
 }
 
@@ -432,7 +451,11 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceUnit {
-  person_role: string
+  person_key: string
+  person_role?: string | null
+  topic?: string | null
+  gist: string
+  chunk: string
   verbatim: string
   support: string
   kind_tags: KindTags

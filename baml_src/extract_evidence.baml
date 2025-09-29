@@ -19,9 +19,24 @@ class KindTags {
   artifact string[]? @description(#" items, data, places, things, documents, etc."#)
 }
 
-class EvidenceUnit {
+class EvidenceParticipant {
+  person_key string @description("Stable identifier referenced by evidence units")
+  display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2'")
+  inferred_name string? @description("Preferred name if confidently inferred from context")
+  role string? @description("participant | interviewer | observer | moderator")
+  personas string[]? @description("Persona labels that apply to this human")
+  segments string[]? @description("Segment labels that apply to this human")
+  organization string? @description("Employer, school, or affiliation if mentioned")
+  summary string? @description("Short descriptor of this participant's identity in the session")
+  notes string? @description("Free-form clarifying notes for analysts")
+}
 
-	person_role string @description("interviewer | interviewee")
+class EvidenceUnit {
+  person_key string @description("Reference to EvidenceParticipant.person_key for the primary speaker")
+  person_role string? @description("Legacy helper; prefer participant.role")
+  topic string? @description("Optional short label for the thematic focus of this chunk")
+  gist string @description("≤12-word essence of the chunk; write like a slide headline")
+  chunk string @description("Multi-sentence excerpt capturing the participant's full thought")
   verbatim string @description("Exact quote or concise snippet. Keep short and citable.")
   support string @description("supports | refutes | neutral")
   kind_tags KindTags @description("Canonical tag buckets for clustering")
@@ -31,7 +46,7 @@ class EvidenceUnit {
   anchors Anchor[] @description("At least one deep-link anchor to source")
   confidence string @description("low | medium | high")
   context_summary string? @description("1–2 sentences: who/where/what; why it matters")
-  independence_key string? @description("Stable signature for dedupe (e.g., normalized quote + main tag)")
+  independence_key string? @description("Stable signature for dedupe (e.g., normalized gist + main tag)")
 
   // Empathy map facets: short, succinct phrases categorized for UX synthesis
   says string[]? @description("Short quotes the user says out loud; keep each entry under ~120 characters.")
@@ -40,6 +55,11 @@ class EvidenceUnit {
   feels string[]? @description("Emotions with brief context; e.g., 'Frustrated with long load times'.")
   pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases in specific context.")
   gains string[]? @description("Goals, desires, positive outcomes/benefits/success factors; short phrases in specific context.")
+}
+
+class EvidenceExtraction {
+  people EvidenceParticipant[] @description("Unique participants detected in the transcript")
+  evidence EvidenceUnit[] @description("Chronological evidence units for downstream storage")
 }
 
 class Chapter {
@@ -53,33 +73,35 @@ function ExtractEvidenceFromTranscript(
   transcript: string,
   chapters: Chapter[],
   language: string
-) -> EvidenceUnit[] {
+) -> EvidenceExtraction {
   client "CustomGPT4o"
   prompt #"
    You are an expert UX researcher.
 Your task is to extract sequential evidence from an interview transcript so the reader can easily follow what happened, moment by moment.
 
 ## Steps
-Identify who is the interviewer and who is the interviewee.
-For each segment, capture the interviewee’s statements relevant to context, behavior, pains, goals, decision process, or emotions.
-Capture interviewer questions or comments clearly marked as such.
-Output in a chronological list, so each evidence unit is ordered as it occurred.
+1. Identify every human speaker. Populate the `people` array once with the transcript label, inferred name (if safe), role (participant vs interviewer), personas/segments, and a short descriptor.
+2. Slice the transcript into coherent, chronological chunks that express a single point of view (usually 2–5 sentences from one speaker).
+3. For each chunk, produce an `EvidenceUnit` anchored to the correct `person_key`, with chunk, gist, verbatim quote, tags, anchors, and empathy facets.
+4. Only create a unit when it adds analytical value (pain, goal, motivation, workaround, evaluation criteria, decision factor, emotion, etc.).
 
 ## Selection Priorities
 High-severity pains, frequent behaviors, explicit goals, success criteria.
 Workarounds, hacks, switching triggers, evaluation criteria, blockers, willingness-to-pay signals.
+Moments that reveal motivations, anxieties, decision criteria, or definitions of success.
 Skip generic opinions or filler unless tied to a concrete outcome.
 
 ## Evidence Unit Schema
-Each evidence unit must include:
-
-verbatim: Short quote, aim for ≤15 words (trim filler, keep crisp).
-anchors: Start time (ms for av), speaker, and chapter_title if available.
-kind_tags: problem | goal | behavior | emotion | context | artifact.
-support: supports | refutes | neutral relative to statement.
-confidence: low | medium | high.
-context_summary: 1–2 sentences on who said it, in what situation, and why it matters.
-independence_key: Stable signature (normalized quote + main tag).
+- person_key: matches one participant from `people` (exact string match required).
+- gist: punchy ≤12-word headline (no leading labels like "Quote:").
+- chunk: 2–5 sentences capturing the participant’s full thought in their own words.
+- verbatim: crisp ≤15-word quote pulled from the chunk.
+- anchors: start_time (ms for av), speaker label, chapter_title when provided.
+- kind_tags: problem | goal | behavior | emotion | context | artifact (multiple allowed).
+- support: supports | refutes | neutral relative to the belief or hypothesis.
+- confidence: low | medium | high (be honest—only use high when unequivocal).
+- context_summary: 1–2 sentences summarising who said it, where in the journey, why it matters.
+- independence_key: Stable signature (recommend normalized gist + main tag).
 
 ## EMPATHY MAP FACETS (always fill, ≤12 words each)
 
@@ -91,7 +113,8 @@ pains: Biggest frustrations/obstacles (e.g., “tools deliver unqualified contac
 gains: Desired positive outcomes (e.g., “save time with pre-qualified leads”).
 
 ## Guardrails
-Only infer persona/segment/journey_stage when obvious.
+Only infer persona/segment/journey_stage when obvious. If unsure, omit.
+Keep `chunk` faithful to the participant’s voice (light edits for clarity are OK, no inventions).
 Prefer fewer, higher-quality units over many weak ones.
 
     Transcript (language={{ language }})
@@ -100,7 +123,7 @@ Prefer fewer, higher-quality units over many weak ones.
     Chapters (optional; may help anchoring)
     {{ chapters }}
 
-    Output strictly as an array of EvidenceUnit respecting {{ ctx.output_format }}
+    Output strictly as EvidenceExtraction respecting {{ ctx.output_format }}
   "#
 }
 

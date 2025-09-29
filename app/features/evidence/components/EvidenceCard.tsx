@@ -1,179 +1,306 @@
 import { motion } from "framer-motion"
-import { Quote } from "lucide-react"
-import { useState } from "react"
+import { Clock, Quote } from "lucide-react"
+import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
-import { ConfidenceBars, ConfidencePill } from "~/components/Confidence"
 import { Badge } from "~/components/ui/badge"
-import { Card, CardContent } from "~/components/ui/card"
+import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
+import { EnhancedMediaPlayer } from "~/components/ui/EnhancedMediaPlayer"
 import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
 
+type EvidenceSnippet = Pick<
+	Evidence,
+	| "id"
+	| "verbatim"
+	| "gist"
+	| "chunk"
+	| "topic"
+	| "support"
+	| "confidence"
+	| "created_at"
+	| "journey_stage"
+	| "kind_tags"
+	| "method"
+	| "anchors"
+	| "interview_id"
+> & { context_summary?: string | null }
+
 interface EvidenceCardProps {
-	evidence: Evidence
+	evidence: EvidenceSnippet
+	variant?: "mini" | "expanded"
+	people?: EvidencePerson[]
+	interview?: EvidenceInterview | null
 	showInterviewLink?: boolean
-	interviewTitle?: string
 	projectPath?: string
 	className?: string
 }
 
+type EvidencePerson = {
+	id: string
+	name: string | null
+	role: string | null
+	personas: Array<{ id: string; name: string }>
+}
+
+type EvidenceInterview = {
+	id: string
+	title?: string | null
+	media_url?: string | null
+	duration_sec?: number | null
+}
+
+type EvidenceAnchor = {
+	type?: string
+	start?: string | number | null
+	end?: string | number | null
+	title?: string | null
+	chapter_title?: string | null
+	speaker?: string | null
+	target?: string | { url?: string | null } | null
+}
+
 export function EvidenceCard({
 	evidence,
+	variant = "expanded",
+	people = [],
+	interview,
 	showInterviewLink = false,
-	interviewTitle,
 	projectPath,
 	className = "",
 }: EvidenceCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
-	const interviewUrl =
-		projectPath && evidence.interview_id ? `${projectPath}/interviews/${evidence.interview_id}` : null
+	const interviewId = evidence.interview_id ?? interview?.id ?? null
+	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null
 
-	// Get theme color based on journey stage or default to blue
+	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as EvidenceAnchor[]) : []
+	const mediaAnchors = anchors.filter((anchor) => {
+		if (!anchor || typeof anchor !== "object") return false
+		const type = anchor.type?.toLowerCase()
+		return type === "audio" || type === "video" || type === "av" || type === "media" || type === "clip"
+	})
+	const resolvedMediaUrl = interview?.media_url ?? null
+
+	const primarySpeaker = useMemo(() => {
+		if (!people?.length) return null
+		const explicitSpeaker = people.find((person) => person.role?.toLowerCase() === "speaker")
+		return explicitSpeaker ?? people[0]
+	}, [people])
+
+	const speakerLabel = useMemo(() => {
+		if (!primarySpeaker) return null
+		const base = primarySpeaker.name ?? "Unknown speaker"
+		return primarySpeaker.role ? `${base} (${primarySpeaker.role})` : base
+	}, [primarySpeaker])
+
+	const personaBadges = primarySpeaker?.personas ?? []
+
+	const supportLevel = getSupportConfidenceLevel(evidence.support)
+	const supportLabel = formatSupportLabel(evidence.support)
+	const createdLabel = evidence.created_at ? new Date(evidence.created_at).toLocaleString() : null
+
 	const getStageColor = (stage?: string) => {
-		if (!stage) return "#3b82f6" // blue-500
+		if (!stage) return "#3b82f6"
 		switch (stage.toLowerCase()) {
 			case "awareness":
-				return "#f59e0b" // amber-500
+				return "#f59e0b"
 			case "consideration":
-				return "#8b5cf6" // violet-500
+				return "#8b5cf6"
 			case "decision":
-				return "#10b981" // emerald-500
+				return "#10b981"
 			case "onboarding":
-				return "#06b6d4" // cyan-500
+				return "#06b6d4"
 			case "retention":
-				return "#6366f1" // indigo-500
+				return "#6366f1"
 			default:
-				return "#3b82f6" // blue-500
+				return "#3b82f6"
 		}
 	}
 
 	const themeColor = getStageColor(evidence.journey_stage)
 
+	const gist = evidence.gist ?? evidence.verbatim
+	const chunk = evidence.chunk ?? evidence.verbatim
+	const topic = evidence.topic ?? null
+	const contextSummary = evidence.context_summary ?? null
+	const hasMediaReplay = mediaAnchors.length > 0 && Boolean(resolvedMediaUrl)
+
+	const miniView = (
+		<div className="flex items-start gap-3">
+			<div
+				className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
+				style={{ backgroundColor: `${themeColor}22` }}
+			>
+				<Quote className="h-5 w-5" style={{ color: themeColor }} />
+			</div>
+			<div className="flex-1 space-y-2">
+				{topic && (
+					<Badge variant="outline" className="text-xs uppercase tracking-wide">
+						{topic}
+					</Badge>
+				)}
+				<p className="font-semibold text-foreground text-sm leading-5">{gist}</p>
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground text-xs">
+					<div className="flex items-center gap-2">
+						<ConfidenceBarChart level={supportLevel} size="sm" />
+						<span className="capitalize">{supportLabel}</span>
+					</div>
+					{speakerLabel && (
+						<>
+							<span>•</span>
+							<span className="truncate">{speakerLabel}</span>
+						</>
+					)}
+				</div>
+			</div>
+		</div>
+	)
+
+	const expandedView = (
+		<div className="space-y-4">
+			<div className="flex items-start gap-4">
+				<div
+					className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
+					style={{ backgroundColor: `${themeColor}22` }}
+				>
+					<Quote className="h-5 w-5" style={{ color: themeColor }} />
+				</div>
+				<div className="flex-1 space-y-3">
+					<div className="flex flex-wrap items-center justify-between gap-3">
+						<div className="space-y-2">
+							{topic && (
+								<Badge variant="outline" className="text-xs uppercase tracking-wide">
+									{topic}
+								</Badge>
+							)}
+							<h3 className="font-semibold text-lg leading-6 text-foreground">{gist}</h3>
+						</div>
+					<div className="flex flex-wrap items-center gap-2 text-xs">
+						<ConfidenceBarChart level={supportLevel} />
+						<Badge variant="secondary" className="text-xs capitalize">
+								{supportLabel}
+							</Badge>
+							{evidence.confidence && (
+								<Badge variant="outline" className="text-xs capitalize">
+									{`Confidence: ${evidence.confidence}`}
+								</Badge>
+							)}
+						</div>
+					</div>
+						{chunk && (
+							<blockquote
+								className="border-muted border-l-4 pl-4 text-muted-foreground"
+								style={{ borderLeftColor: themeColor }}
+							>
+							“{chunk}”
+							</blockquote>
+						)}
+						{contextSummary && <p className="text-muted-foreground text-sm">{contextSummary}</p>}
+				</div>
+			</div>
+
+				<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
+				{speakerLabel && <span className="truncate">Speaker: {speakerLabel}</span>}
+				{personaBadges.length > 0 && (
+					<div className="flex flex-wrap items-center gap-1">
+						{personaBadges.map((persona) => (
+							<Badge key={persona.id} variant="outline" className="bg-emerald-50 text-emerald-800 text-xs">
+								{persona.name}
+							</Badge>
+						))}
+					</div>
+				)}
+				{evidence.method && <span>Method: {evidence.method}</span>}
+				{evidence.journey_stage && <span>Journey: {evidence.journey_stage}</span>}
+				{createdLabel && <span>Captured {createdLabel}</span>}
+			</div>
+
+			{people?.length > 1 && (
+				<div className="flex flex-wrap items-center gap-2 text-muted-foreground text-xs">
+					<span className="font-medium text-foreground">Other participants:</span>
+					{people
+						.filter((person) => !primarySpeaker || person.id !== primarySpeaker.id)
+						.map((person) => (
+							<Badge key={person.id} variant="outline" className="text-xs">
+								{person.name ?? "Unknown"}
+								{person.role ? ` (${person.role})` : ""}
+							</Badge>
+						))}
+				</div>
+			)}
+
+			{evidence.kind_tags && evidence.kind_tags.length > 0 && (
+				<div className="flex flex-wrap gap-2">
+					{evidence.kind_tags.map((tag, index) => (
+						<Badge key={`${tag}-${index}`} variant="outline" className="rounded-full px-3 py-1 text-xs">
+							{tag}
+						</Badge>
+					))}
+				</div>
+			)}
+
+			{hasMediaReplay && resolvedMediaUrl && (
+				<div className="space-y-3">
+					<p className="font-semibold text-muted-foreground text-xs uppercase">Media replay</p>
+					<div className="space-y-3">
+						{mediaAnchors.map((anchor, index) => {
+							const mediaUrl = resolveAnchorMediaUrl(anchor, resolvedMediaUrl)
+							if (!mediaUrl) return null
+							return (
+								<div key={`anchor-${index}`} className="space-y-2 rounded-lg border border-muted border-dashed p-3">
+									<div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
+										<span className="font-medium text-foreground">
+											{anchor.title ?? anchor.chapter_title ?? `Clip ${index + 1}`}
+										</span>
+										<div className="flex items-center gap-1">
+											<Clock className="h-3.5 w-3.5" />
+											<span>{formatAnchorTime(anchor.start, anchor.end)}</span>
+										</div>
+									</div>
+									{anchor.speaker && (
+										<p className="text-muted-foreground text-xs">Speaker: {anchor.speaker}</p>
+									)}
+									<EnhancedMediaPlayer
+										mediaUrl={mediaUrl}
+										startTime={anchor.start ?? undefined}
+										endTime={anchor.end ?? undefined}
+										size="sm"
+										title={anchor.title ?? `Clip ${index + 1}`}
+										duration_sec={interview?.duration_sec ?? undefined}
+									/>
+								</div>
+							)
+						})}
+					</div>
+				</div>
+			)}
+
+			{showInterviewLink && interviewUrl && (
+				<div className="flex items-center justify-between border-muted border-t pt-3">
+					<div className="text-xs text-muted-foreground">Linked interview</div>
+					<Link to={interviewUrl} className="text-xs font-medium text-primary hover:underline">
+						{interview?.title ?? "View interview"}
+					</Link>
+				</div>
+			)}
+		</div>
+	)
+
 	return (
 		<motion.div
 			className={cn(
-				"group relative cursor-default overflow-hidden rounded-2xl border border-gray-400 bg-background transition-all duration-300 ease-out hover:shadow-black/5 hover:shadow-lg dark:border-gray-400 dark:bg-gray-900 dark:hover:shadow-white/5",
-				className
+				"group relative flex w-full cursor-default overflow-hidden rounded-2xl border border-gray-300 bg-background transition-all duration-300 ease-out hover:shadow-black/5 hover:shadow-lg dark:border-gray-400 dark:bg-gray-900 dark:hover:shadow-white/5",
+				className,
 			)}
 			onMouseEnter={() => setIsHovered(true)}
 			onMouseLeave={() => setIsHovered(false)}
 			whileHover={{ y: -2, scale: 1.01 }}
 			transition={{ duration: 0.3, ease: "easeOut" }}
 		>
-			{/* Clean Metro-style Layout */}
-			<div className="p-4">
-				{/* Header Section - Quote Icon and Content */}
-				<div className="flex items-start gap-4">
-					{/* Quote Icon - More Prominent */}
-					<motion.div
-						className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full"
-						style={{ backgroundColor: `${themeColor}15` }}
-						whileHover={{ scale: 1.05 }}
-						transition={{ duration: 0.2 }}
-					>
-						<Quote className="h-6 w-6" style={{ color: themeColor }} />
-					</motion.div>
-
-					{/* Main Content */}
-					<div className="flex-1">
-						{/* Main verbatim quote - Clean Typography */}
-						<motion.blockquote
-							className="mb-2 text-base text-gray-900 leading-relaxed dark:text-white"
-							style={{ borderLeftColor: themeColor }}
-						>
-							"{evidence.verbatim}"
-						</motion.blockquote>
-
-						{/* Context summary if present */}
-						{(evidence as any).context_summary && (
-							<p className="mb-3 text-muted-foreground text-sm">
-								{(evidence as any).context_summary}
-							</p>
-						)}
-
-						{/* Journey Stage with Theme Color Accent */}
-						{evidence.journey_stage && (
-							<div className="mb-3 flex items-center gap-2">
-								<motion.div
-									className="h-1 w-8 rounded-full transition-all duration-300"
-									style={{ backgroundColor: themeColor }}
-									animate={{ width: isHovered ? "2.5rem" : "2rem" }}
-								/>
-								<Badge
-									variant="secondary"
-									className="rounded-full px-3 py-1 font-medium text-xs"
-									style={{
-										backgroundColor: `${themeColor}10`,
-										color: themeColor,
-										borderColor: `${themeColor}20`,
-									}}
-								>
-									{evidence.journey_stage}
-								</Badge>
-							</div>
-						)}
-
-						{/* Tags - Cleaner Layout */}
-						{evidence.kind_tags && evidence.kind_tags.length > 0 && (
-							<div className="mb-4 flex flex-wrap gap-2">
-								{evidence.kind_tags.map((tag, index) => (
-									<Badge
-										key={index}
-										variant="outline"
-										className="rounded-full px-3 py-1 font-medium text-xs transition-colors hover:bg-gray-100 dark:hover:bg-gray-800"
-									>
-										{tag}
-									</Badge>
-								))}
-							</div>
-						)}
-					</div>
-				</div>
-
-				{/* Footer - Interview Link and Metadata */}
-				{showInterviewLink && interviewUrl && (
-					<div className="flex items-center justify-between border-gray-100 border-t pt-1 dark:border-gray-800">
-						<div className="flex items-center gap-3">
-							{/* Method */}
-							{evidence.method && (
-								<span className="font-medium text-gray-600 text-sm dark:text-gray-400">{evidence.method}</span>
-							)}
-							<Link to={interviewUrl}>
-								<Badge
-									variant="outline"
-									className="rounded-full px-3 py-1 font-medium text-xs transition-colors hover:bg-blue-50 hover:text-blue-700 dark:hover:bg-blue-900/20"
-								>
-									{interviewTitle || "Interview"}
-								</Badge>
-							</Link>
-						</div>
-
-						{/* Right side metadata */}
-						<div className="flex items-center gap-3">
-							{/* Support/context */}
-							{evidence.support && <p className="text-gray-600 text-sm dark:text-gray-400">{evidence.support}</p>}
-
-							{/* Confidence badge */}
-							{evidence.confidence && <ConfidencePill value={evidence.confidence} />}
-
-							{/* Subtle Hover Indicator */}
-							<motion.div
-								className="h-2 w-2 rounded-full transition-all duration-300"
-								style={{ backgroundColor: themeColor }}
-								animate={{
-									scale: isHovered ? 1.5 : 1,
-									opacity: isHovered ? 1 : 0.5,
-								}}
-							/>
-						</div>
-					</div>
-				)}
-			</div>
-
-			{/* Subtle Gradient Overlay on Hover */}
+			<div className="w-full p-4">{variant === "mini" ? miniView : expandedView}</div>
 			<motion.div
 				className="pointer-events-none absolute inset-0 rounded-2xl opacity-0"
 				style={{
-					background: `linear-gradient(135deg, ${themeColor}05 0%, ${themeColor}02 100%)`,
+					background: `linear-gradient(135deg, ${themeColor}10 0%, ${themeColor}05 100%)`,
 				}}
 				animate={{ opacity: isHovered ? 1 : 0 }}
 				transition={{ duration: 0.3 }}
@@ -183,3 +310,55 @@ export function EvidenceCard({
 }
 
 export default EvidenceCard
+
+function getSupportConfidenceLevel(support?: string | null) {
+	const normalized = support?.toLowerCase()
+	if (normalized === "supports") return "high"
+	if (normalized === "neutral") return "medium"
+	return "low"
+}
+
+function formatSupportLabel(support?: string | null) {
+	if (!support) return "Unknown"
+	return support.charAt(0).toUpperCase() + support.slice(1)
+}
+
+function resolveAnchorMediaUrl(anchor: EvidenceAnchor, fallback: string) {
+	if (typeof anchor.target === "string" && anchor.target.length > 0) return anchor.target
+	if (anchor.target && typeof anchor.target === "object" && anchor.target.url) return anchor.target.url
+	return fallback
+}
+
+function formatAnchorTime(start?: string | number | null, end?: string | number | null) {
+	const formattedStart = formatSingleTime(start)
+	const formattedEnd = formatSingleTime(end)
+	if (formattedStart && formattedEnd) return `${formattedStart} – ${formattedEnd}`
+	if (formattedStart) return formattedStart
+	return "Unknown"
+}
+
+function formatSingleTime(value?: string | number | null) {
+	if (value === null || value === undefined) return null
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return secondsToTimestamp(value)
+	}
+	if (typeof value === "string") {
+		if (value.includes(":")) return value
+		const asNumber = Number.parseFloat(value)
+		if (!Number.isNaN(asNumber)) {
+			return secondsToTimestamp(asNumber)
+		}
+	}
+	return null
+}
+
+function secondsToTimestamp(seconds: number) {
+	const totalSeconds = Math.max(0, Math.floor(seconds))
+	const h = Math.floor(totalSeconds / 3600)
+	const m = Math.floor((totalSeconds % 3600) / 60)
+	const s = totalSeconds % 60
+	if (h > 0) {
+		return `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+	}
+	return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
+}

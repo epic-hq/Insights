@@ -19,9 +19,10 @@ create table if not exists evidence (
   -- semantics
   support text check (support in ('supports','refutes','neutral')) default 'supports',
   kind_tags text[] default '{}', -- e.g., {pain, goal, motivation, usability_issue}
-  personas text[] default '{}',
-  segments text[] default '{}',
+  personas text[] default '{}', -- todo deprecate
+  segments text[] default '{}', -- todo deprecate
   journey_stage text,
+  topic text,
 
   -- weighting / quality (MVP defaults)
   weight_quality numeric default 0.8,
@@ -30,6 +31,8 @@ create table if not exists evidence (
   confidence text check (confidence in ('low','medium','high')) default 'medium',
 
   -- content
+  chunk text,
+  gist text,
   verbatim text not null,
   anchors jsonb not null default '[]'::jsonb, -- [{type, target, start?, end?}]
   context_summary text, -- 1–2 sentence situational summary and relevance
@@ -54,7 +57,10 @@ comment on table evidence is 'Normalized evidence snippets (verbatim + anchors) 
 comment on column evidence.account_id   is 'Owning account (tenant). Cascades on delete.';
 comment on column evidence.project_id   is 'Owning project.';
 comment on column evidence.interview_id is 'Source interview if applicable.';
+comment on column evidence.topic        is 'Optional thematic label for the evidence chunk.';
 comment on column evidence.verbatim     is 'Quoted text or descriptive evidence.';
+comment on column evidence.chunk        is 'Multi-sentence excerpt capturing the participants full thought.';
+comment on column evidence.gist         is 'Pithy headline conveying the most important takeaway at a glance.';
 comment on column evidence.anchors      is 'JSONB array of deep-link anchors. Each: {type, target, start?, end?}.';
 comment on column evidence.context_summary is '1–2 sentences to situate the quote and explain why it matters.';
 

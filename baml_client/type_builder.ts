@@ -49,17 +49,21 @@ export default class TypeBuilder {
     
     EvidenceAnalysisResponse: ClassViewer<'EvidenceAnalysisResponse', "evidence_results" | "question_summaries" | "global_goal_summary" | "recommended_actions">;
     
+    EvidenceExtraction: ClassViewer<'EvidenceExtraction', "people" | "evidence">;
+    
     EvidenceItem: ClassViewer<'EvidenceItem', "id" | "verbatim" | "support" | "interview_id" | "context_summary">;
     
     EvidenceLinkProposal: ClassViewer<'EvidenceLinkProposal', "evidence_id" | "rationale" | "confidence">;
     
     EvidenceLinkResult: ClassViewer<'EvidenceLinkResult', "evidence_id" | "links">;
     
+    EvidenceParticipant: ClassViewer<'EvidenceParticipant', "person_key" | "display_name" | "inferred_name" | "role" | "personas" | "segments" | "organization" | "summary" | "notes">;
+    
     EvidenceQuestionLink: ClassViewer<'EvidenceQuestionLink', "question_id" | "question_kind" | "decision_question_id" | "relationship" | "confidence" | "answer_summary" | "rationale" | "next_steps">;
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
-    EvidenceUnit: ClassViewer<'EvidenceUnit', "person_role" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
+    EvidenceUnit: ClassViewer<'EvidenceUnit', "person_key" | "person_role" | "topic" | "gist" | "chunk" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
@@ -168,7 +172,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -220,6 +224,10 @@ export default class TypeBuilder {
           "evidence_results","question_summaries","global_goal_summary","recommended_actions",
         ]);
         
+        this.EvidenceExtraction = this.tb.classViewer("EvidenceExtraction", [
+          "people","evidence",
+        ]);
+        
         this.EvidenceItem = this.tb.classViewer("EvidenceItem", [
           "id","verbatim","support","interview_id","context_summary",
         ]);
@@ -232,6 +240,10 @@ export default class TypeBuilder {
           "evidence_id","links",
         ]);
         
+        this.EvidenceParticipant = this.tb.classViewer("EvidenceParticipant", [
+          "person_key","display_name","inferred_name","role","personas","segments","organization","summary","notes",
+        ]);
+        
         this.EvidenceQuestionLink = this.tb.classViewer("EvidenceQuestionLink", [
           "question_id","question_kind","decision_question_id","relationship","confidence","answer_summary","rationale","next_steps",
         ]);
@@ -241,7 +253,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
-          "person_role","verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key","says","does","thinks","feels","pains","gains",
+          "person_key","person_role","topic","gist","chunk","verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key","says","does","thinks","feels","pains","gains",
         ]);
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [

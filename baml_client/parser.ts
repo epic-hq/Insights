@@ -23,7 +23,7 @@ import { toBamlError } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
 import type TypeBuilder from "./type_builder"
 
 export class LlmResponseParser {
@@ -240,7 +240,7 @@ export class LlmResponseParser {
   ExtractEvidenceFromTranscript(
       llmResponse: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
-  ): types.EvidenceUnit[] {
+  ): types.EvidenceExtraction {
     try {
       const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
       const env: Record<string, string> = Object.fromEntries(
@@ -254,7 +254,7 @@ export class LlmResponseParser {
         __baml_options__?.tb?.__tb(),
         __baml_options__?.clientRegistry,
         env,
-      ) as types.EvidenceUnit[]
+      ) as types.EvidenceExtraction
     } catch (error) {
       throw toBamlError(error);
     }
@@ -844,7 +844,7 @@ export class LlmStreamParser {
   ExtractEvidenceFromTranscript(
       llmResponse: string,
       __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
-  ): partial_types.EvidenceUnit[] {
+  ): partial_types.EvidenceExtraction {
     try {
       const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
       const env: Record<string, string> = Object.fromEntries(
@@ -858,7 +858,7 @@ export class LlmStreamParser {
         __baml_options__?.tb?.__tb(),
         __baml_options__?.clientRegistry,
         env,
-      ) as partial_types.EvidenceUnit[]
+      ) as partial_types.EvidenceExtraction
     } catch (error) {
       throw toBamlError(error);
     }

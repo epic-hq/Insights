@@ -17,6 +17,7 @@ import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path
 // Supabase table types
 type Tables = Database["public"]["Tables"]
 type PeopleInsert = Tables["people"]["Insert"]
+type PeopleUpdate = Tables["people"]["Update"]
 type InterviewPeopleInsert = Tables["interview_people"]["Insert"]
 type EvidenceInsert = Tables["evidence"]["Insert"]
 
@@ -91,10 +92,433 @@ function stringHash(input: string): string {
 }
 
 function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
-  const normQuote = verbatim.toLowerCase().replace(/\s+/g, " ").trim()
-  const mainTag = (kindTags[0] || "").toLowerCase().trim()
-  const basis = `${normQuote.slice(0, 160)}|${mainTag}`
-  return stringHash(basis)
+	const normQuote = verbatim.toLowerCase().replace(/\s+/g, " ").trim()
+	const mainTag = (kindTags[0] || "").toLowerCase().trim()
+	const basis = `${normQuote.slice(0, 160)}|${mainTag}`
+	return stringHash(basis)
+}
+
+function generateFallbackPersonName(metadata: InterviewMetadata): string {
+	if (metadata.fileName) {
+		const nameFromFile = metadata.fileName
+			.replace(/\.[^/.]+$/, "")
+			.replace(/[_-]/g, " ")
+			.replace(/\b\w/g, (l) => l.toUpperCase())
+			.trim()
+
+		if (nameFromFile.length > 0) return nameFromFile
+	}
+	if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) return metadata.interviewTitle
+	const timestamp = new Date().toISOString().split("T")[0]
+	return timestamp
+}
+
+type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscript>>
+
+interface ProcessEvidenceOptions {
+	db: SupabaseClient<Database>
+	metadata: InterviewMetadata
+	interviewRecord: Interview
+	transcriptData: Record<string, unknown>
+	language: string
+	fullTranscript: string
+}
+
+interface ProcessEvidenceResult {
+	personData: { id: string }
+	primaryPersonName: string | null
+	primaryPersonRole: string | null
+	primaryPersonDescription: string | null
+	primaryPersonOrganization: string | null
+	primaryPersonSegments: string[]
+	insertedEvidenceIds: string[]
+	evidenceUnits: EvidenceFromBaml["evidence"]
+}
+
+async function processEvidencePhase({
+	db,
+	metadata,
+	interviewRecord,
+	transcriptData,
+	language,
+	fullTranscript,
+}: ProcessEvidenceOptions): Promise<ProcessEvidenceResult> {
+	type RawChapter = {
+		start_ms?: number
+		end_ms?: number
+		start?: number
+		end?: number
+		summary?: string
+		gist?: string
+		title?: string
+	}
+
+	let chapters: Array<{ start_ms: number; end_ms?: number; summary?: string; title?: string }> = []
+	try {
+		const rawChapters =
+			((transcriptData as Record<string, unknown>).chapters as RawChapter[] | undefined) ||
+			((transcriptData as Record<string, unknown>).segments as RawChapter[] | undefined) ||
+			[]
+		if (Array.isArray(rawChapters)) {
+			chapters = rawChapters
+				.map((c: RawChapter) => ({
+					start_ms: typeof c.start_ms === "number" ? c.start_ms : typeof c.start === "number" ? c.start : 0,
+					end_ms: typeof c.end_ms === "number" ? c.end_ms : typeof c.end === "number" ? c.end : undefined,
+					summary: c.summary ?? c.gist ?? undefined,
+					title: c.title ?? undefined,
+				}))
+				.filter((c) => typeof c.start_ms === "number")
+		}
+	} catch (chapterErr) {
+		consola.warn("Failed to normalize chapters for evidence extraction", chapterErr)
+	}
+
+	let evidenceUnits: EvidenceFromBaml["evidence"] = []
+	let evidencePeople: EvidenceFromBaml["people"] = []
+	let insertedEvidenceIds: string[] = []
+	const personKeyForEvidence: (string | null)[] = []
+	const personRoleByKey = new Map<string, string | null>()
+
+	const evidenceResponse = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language)
+	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
+	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
+	evidencePeople = Array.isArray(evidenceResponse?.people) ? evidenceResponse.people : []
+
+	if (!evidenceUnits.length) {
+		return {
+			personData: { id: await ensureFallbackPerson(db, metadata, interviewRecord) },
+			primaryPersonName: null,
+			primaryPersonRole: null,
+			primaryPersonDescription: null,
+			primaryPersonOrganization: null,
+			primaryPersonSegments: [],
+			insertedEvidenceIds,
+			evidenceUnits,
+		}
+	}
+
+	const empathyStats = { says: 0, does: 0, thinks: 0, feels: 0, pains: 0, gains: 0 }
+	const empathySamples: Record<keyof typeof empathyStats, string[]> = {
+		says: [],
+		does: [],
+		thinks: [],
+		feels: [],
+		pains: [],
+		gains: [],
+	}
+
+	const evidenceRows: EvidenceInsert[] = []
+	for (const ev of evidenceUnits) {
+		const personKey = typeof (ev as any).person_key === "string" ? (ev as any).person_key.trim() : null
+		const verb = sanitizeVerbatim((ev as { verbatim?: string }).verbatim)
+		if (!verb) continue
+		const chunk = sanitizeVerbatim((ev as { chunk?: string }).chunk) ?? verb
+		const gist = sanitizeVerbatim((ev as { gist?: string }).gist) ?? verb
+		const topic = sanitizeVerbatim((ev as { topic?: string }).topic)
+		const support = normalizeSupport((ev as { support?: string }).support)
+		const kind_tags = Array.isArray(ev.kind_tags)
+			? (ev.kind_tags as string[])
+			: Object.values(ev.kind_tags ?? {})
+				.flat()
+				.filter((x): x is string => typeof x === "string")
+		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
+		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
+		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
+		const providedIndKey = (ev as { independence_key?: string }).independence_key
+		const independence_key = providedIndKey && providedIndKey.trim().length > 0
+			? providedIndKey.trim()
+			: computeIndependenceKey(gist ?? verb, kind_tags)
+		const row: EvidenceInsert = {
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			interview_id: interviewRecord.id,
+			source_type: "primary",
+			method: "interview",
+			modality: "qual",
+			support,
+			kind_tags,
+			personas: (ev.personas ?? []) as string[],
+			segments: (ev.segments ?? []) as string[],
+			journey_stage: ev.journey_stage || null,
+			chunk,
+			gist,
+			topic: topic || null,
+			weight_quality,
+			weight_relevance,
+			independence_key,
+			confidence: confidenceStr,
+			verbatim: verb,
+			anchors: (ev.anchors ?? []) as unknown as Json,
+		}
+
+		const _says = Array.isArray((ev as any).says) ? ((ev as any).says as string[]) : []
+		const _does = Array.isArray((ev as any).does) ? ((ev as any).does as string[]) : []
+		const _thinks = Array.isArray((ev as any).thinks) ? ((ev as any).thinks as string[]) : []
+		const _feels = Array.isArray((ev as any).feels) ? ((ev as any).feels as string[]) : []
+		const _pains = Array.isArray((ev as any).pains) ? ((ev as any).pains as string[]) : []
+		const _gains = Array.isArray((ev as any).gains) ? ((ev as any).gains as string[]) : []
+		;(row as Record<string, unknown>)["says"] = _says
+		;(row as Record<string, unknown>)["does"] = _does
+		;(row as Record<string, unknown>)["thinks"] = _thinks
+		;(row as Record<string, unknown>)["feels"] = _feels
+		;(row as Record<string, unknown>)["pains"] = _pains
+		;(row as Record<string, unknown>)["gains"] = _gains
+
+		empathyStats.says += _says.length
+		empathyStats.does += _does.length
+		empathyStats.thinks += _thinks.length
+		empathyStats.feels += _feels.length
+		empathyStats.pains += _pains.length
+		empathyStats.gains += _gains.length
+		for (const [k, arr] of Object.entries({ says: _says, does: _does, thinks: _thinks, feels: _feels, pains: _pains, gains: _gains }) as Array<[keyof typeof empathyStats, string[]]>) {
+			for (const v of arr) {
+				if (typeof v === "string" && v.trim() && empathySamples[k].length < 3) empathySamples[k].push(v.trim())
+			}
+		}
+		const context_summary = (ev as { context_summary?: string }).context_summary
+		if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
+			;(row as Record<string, unknown>)["context_summary"] = context_summary.trim()
+		}
+
+		evidenceRows.push(row)
+		personKeyForEvidence.push(personKey && personKey.length ? personKey : null)
+	}
+
+	if (!evidenceRows.length) {
+		return {
+			personData: { id: await ensureFallbackPerson(db, metadata, interviewRecord) },
+			primaryPersonName: null,
+			primaryPersonRole: null,
+			primaryPersonDescription: null,
+			primaryPersonOrganization: null,
+			primaryPersonSegments: [],
+			insertedEvidenceIds,
+			evidenceUnits,
+		}
+	}
+
+	const { data: insertedEvidence, error: evidenceInsertError } = await db
+		.from("evidence")
+		.insert(evidenceRows)
+		.select("id, kind_tags")
+	if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
+	insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
+
+	try {
+		const tagsSet = new Set<string>()
+		const insertedEvidenceTyped = (insertedEvidence ?? []) as Array<{ id: string; kind_tags: string[] | null }>
+		insertedEvidenceTyped.forEach((ev) => {
+			for (const t of ev.kind_tags || []) {
+				if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
+			}
+		})
+		const tags = Array.from(tagsSet)
+
+		const tagIdByName = new Map<string, string>()
+		for (const tagName of tags) {
+			const { data: tagRow, error: tagErr } = await db
+				.from("tags")
+				.upsert(
+					{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
+					{ onConflict: "account_id,tag" }
+				)
+				.select("id")
+				.single()
+			if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
+		}
+
+		for (const ev of insertedEvidenceTyped) {
+			for (const tagName of ev.kind_tags || []) {
+				const tagId = tagIdByName.get(tagName)
+				if (!tagId) continue
+				const { error: etErr } = await db
+					.from("evidence_tag")
+					.insert({
+						evidence_id: ev.id,
+						tag_id: tagId,
+						account_id: metadata.accountId,
+						project_id: metadata.projectId,
+					})
+					.select("id")
+					.single()
+			if (etErr && !etErr.message?.includes("duplicate")) {
+				consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+			}
+		}
+		}
+	} catch (linkErr) {
+		consola.warn("Failed to create/link tags for evidence", linkErr)
+	}
+
+	const personIdByKey = new Map<string, string>()
+	const personRoleById = new Map<string, string | null>()
+
+	const resolveName = (
+		participant: EvidenceFromBaml["people"][number],
+		index: number
+	): string => {
+		const candidates = [participant.inferred_name, participant.display_name, participant.person_key && humanizeKey(participant.person_key)]
+		for (const candidate of candidates) {
+			if (typeof candidate === "string" && candidate.trim().length) return candidate.trim()
+		}
+		return `Participant ${index + 1}`
+	}
+
+	const humanizeKey = (value?: string | null): string | null => {
+		if (!value) return null
+		const cleaned = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ")
+		return cleaned.replace(/\b\w/g, (char) => char.toUpperCase()).trim()
+	}
+
+	const upsertPerson = async (
+		name: string,
+		overrides: Partial<PeopleInsert> = {}
+	): Promise<{ id: string; name: string }> => {
+		const payload: PeopleInsert = {
+			account_id: metadata.accountId,
+			project_id: metadata.projectId,
+			name: name.trim(),
+			description: overrides.description ?? null,
+			segment: overrides.segment ?? metadata.segment ?? null,
+			contact_info: overrides.contact_info ?? null,
+			company: overrides.company ?? null,
+			role: overrides.role ?? null,
+		}
+		const { data: upserted, error: upsertErr } = await db
+			.from("people")
+			.upsert(payload, { onConflict: "account_id,name_hash" })
+			.select("id, name")
+			.single()
+		if (upsertErr) throw new Error(`Failed to upsert person ${name}: ${upsertErr.message}`)
+		if (!upserted?.id) throw new Error(`Person upsert returned no id for ${name}`)
+		return { id: upserted.id, name: upserted.name ?? name.trim() }
+	}
+
+	let primaryPersonId: string | null = null
+	let primaryPersonName: string | null = null
+	let primaryPersonRole: string | null = null
+	let primaryPersonDescription: string | null = null
+	let primaryPersonOrganization: string | null = null
+	let primaryPersonSegments: string[] = []
+
+	if (Array.isArray(evidencePeople) && evidencePeople.length) {
+		for (const [index, participant] of evidencePeople.entries()) {
+			const participantKey = participant?.person_key?.trim()
+			if (participantKey) {
+				personRoleByKey.set(participantKey, participant.role ?? null)
+			}
+			const resolvedName = resolveName(participant, index)
+			const segments = Array.isArray(participant?.segments)
+				? participant.segments!.filter((seg): seg is string => typeof seg === "string" && seg.trim().length > 0)
+				: []
+			const participantOverrides: Partial<PeopleInsert> = {
+				description: participant.summary?.trim() || null,
+				segment: segments[0] || metadata.segment || null,
+				company: participant.organization?.trim() || null,
+				role: participant.role?.trim() || null,
+			}
+			const personRecord = await upsertPerson(resolvedName, participantOverrides)
+			const key = participantKey && participantKey.length ? participantKey : `participant-${index}`
+			personIdByKey.set(key, personRecord.id)
+			personRoleById.set(personRecord.id, participant.role?.trim() || null)
+
+			const isPrimary = (participant.role || "").toLowerCase().includes("participant") || !primaryPersonId
+			if (isPrimary) {
+				primaryPersonId = personRecord.id
+				primaryPersonName = personRecord.name
+				primaryPersonRole = participant.role?.trim() || null
+				primaryPersonDescription = participantOverrides.description ?? null
+				primaryPersonOrganization = participantOverrides.company ?? null
+				primaryPersonSegments = segments
+			}
+		}
+	}
+
+	if (!primaryPersonId) {
+		const fallback = await upsertPerson(generateFallbackPersonName(metadata))
+		primaryPersonId = fallback.id
+		primaryPersonName = fallback.name
+	}
+
+	if (!primaryPersonId) throw new Error("Failed to resolve primary person for interview")
+
+	personRoleById.set(primaryPersonId, primaryPersonRole ?? "participant")
+
+	const ensuredPersonIds = new Set<string>([primaryPersonId])
+	for (const id of personIdByKey.values()) ensuredPersonIds.add(id)
+	for (const personId of ensuredPersonIds) {
+		const role = personRoleById.get(personId) ?? (personId === primaryPersonId ? "participant" : null)
+		const linkPayload: InterviewPeopleInsert = {
+			interview_id: interviewRecord.id,
+			person_id: personId,
+			project_id: metadata.projectId ?? null,
+			role,
+		}
+		const { error: linkErr } = await db
+			.from("interview_people")
+			.upsert(linkPayload, { onConflict: "interview_id,person_id" })
+		if (linkErr && !linkErr.message?.includes("duplicate")) {
+			consola.warn(`Failed linking person ${personId} to interview ${interviewRecord.id}`, linkErr.message)
+		}
+	}
+
+	if (insertedEvidenceIds.length) {
+		for (let idx = 0; idx < insertedEvidenceIds.length; idx++) {
+			const evId = insertedEvidenceIds[idx]
+			const key = personKeyForEvidence[idx]
+			const targetPersonId = (key && personIdByKey.get(key)) || primaryPersonId
+			if (!targetPersonId) continue
+			const role = targetPersonId ? personRoleById.get(targetPersonId) : null
+			const { error: epErr } = await db.from("evidence_people").insert({
+				evidence_id: evId,
+				person_id: targetPersonId,
+				account_id: metadata.accountId,
+				project_id: metadata.projectId,
+				role: role || "speaker",
+			})
+			if (epErr && !epErr.message?.includes("duplicate")) {
+				consola.warn(`Failed linking evidence ${evId} to person ${targetPersonId}: ${epErr.message}`)
+			}
+		}
+	}
+
+	return {
+		personData: { id: primaryPersonId },
+		primaryPersonName,
+		primaryPersonRole,
+		primaryPersonDescription,
+		primaryPersonOrganization,
+		primaryPersonSegments,
+		insertedEvidenceIds,
+		evidenceUnits,
+	}
+}
+
+async function ensureFallbackPerson(
+	db: SupabaseClient<Database>,
+	metadata: InterviewMetadata,
+	interviewRecord: Interview
+): Promise<string> {
+	const fallbackName = generateFallbackPersonName(metadata)
+	const payload: PeopleInsert = {
+		account_id: metadata.accountId,
+		project_id: metadata.projectId,
+		name: fallbackName,
+	}
+	const { data, error } = await db
+		.from("people")
+		.upsert(payload, { onConflict: "account_id,name_hash" })
+		.select("id")
+		.single()
+	if (error || !data?.id) throw new Error(`Failed to ensure fallback person: ${error?.message}`)
+	const linkPayload: InterviewPeopleInsert = {
+		interview_id: interviewRecord.id,
+		person_id: data.id,
+		project_id: metadata.projectId ?? null,
+		role: "participant",
+	}
+	await db.from("interview_people").upsert(linkPayload, { onConflict: "interview_id,person_id" })
+	return data.id
 }
 
 /**
@@ -165,7 +589,7 @@ export async function processInterviewTranscriptWithAdminClient({
 /**
  * Internal implementation shared by both public functions
  */
-async function processInterviewTranscriptWithClient({
+export async function processInterviewTranscriptWithClient({
 	metadata,
 	mediaUrl,
 	transcriptData,
@@ -274,162 +698,23 @@ async function processInterviewTranscriptWithClient({
 
 	const language = (transcriptData as any).language || (transcriptData as any).detected_language || "en"
 
-	// Use the exact return type from BAML to avoid drift
-	type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscript>>
-	let evidenceUnits: EvidenceFromBaml | null = []
-	// Track inserted evidence IDs to link to people later
-	let insertedEvidenceIds: string[] = []
-
-	try {
-		consola.log("ExtractEvidence starting")
-		evidenceUnits = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language)
-		consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceUnits, null, 2))
-
-		if (evidenceUnits?.length) {
-			// Map BAML EvidenceUnit -> DB rows
-			const empathyStats = { says: 0, does: 0, thinks: 0, feels: 0, pains: 0, gains: 0 }
-			const empathySamples: Record<keyof typeof empathyStats, string[]> = {
-				says: [], does: [], thinks: [], feels: [], pains: [], gains: [],
-			}
-
-			const evidenceRows: EvidenceInsert[] = (evidenceUnits as EvidenceFromBaml["evidence"]).map((ev) => {
-				const verb = sanitizeVerbatim((ev as unknown as { verbatim?: string })?.verbatim)
-				if (!verb) return null
-				const support = normalizeSupport((ev as unknown as { support?: string })?.support)
-				const kind_tags = Array.isArray(ev.kind_tags)
-					? (ev.kind_tags as string[])
-					: Object.values(ev.kind_tags ?? {})
-						.flat()
-						.filter((x): x is string => typeof x === "string")
-				const confidenceStr = (ev as unknown as { confidence?: EvidenceInsert["confidence"] })?.confidence ?? "medium"
-				const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
-				const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
-				const providedIndKey = (ev as unknown as { independence_key?: string })?.independence_key
-				const independence_key = providedIndKey && providedIndKey.trim().length > 0
-				  ? providedIndKey.trim()
-				  : computeIndependenceKey(verb, kind_tags)
-				const row: EvidenceInsert = {
-					account_id: metadata.accountId,
-					project_id: metadata.projectId,
-					interview_id: interviewRecord.id,
-					source_type: "primary",
-					method: "interview",
-					modality: "qual",
-					support,
-					kind_tags,
-					personas: (ev.personas ?? []) as string[],
-					segments: (ev.segments ?? []) as string[],
-					journey_stage: ev.journey_stage || null,
-					weight_quality,
-					weight_relevance,
-					independence_key,
-					confidence: confidenceStr,
-					verbatim: verb,
-					anchors: (ev.anchors ?? []) as unknown as Json,
-				}
-
-				// Empathy map facets (optional arrays)
-				const _says = Array.isArray((ev as any).says) ? (ev as any).says as string[] : []
-				const _does = Array.isArray((ev as any).does) ? (ev as any).does as string[] : []
-				const _thinks = Array.isArray((ev as any).thinks) ? (ev as any).thinks as string[] : []
-				const _feels = Array.isArray((ev as any).feels) ? (ev as any).feels as string[] : []
-				const _pains = Array.isArray((ev as any).pains) ? (ev as any).pains as string[] : []
-				const _gains = Array.isArray((ev as any).gains) ? (ev as any).gains as string[] : []
-				;(row as unknown as Record<string, unknown>)["says"] = _says
-				;(row as unknown as Record<string, unknown>)["does"] = _does
-				;(row as unknown as Record<string, unknown>)["thinks"] = _thinks
-				;(row as unknown as Record<string, unknown>)["feels"] = _feels
-				;(row as unknown as Record<string, unknown>)["pains"] = _pains
-				;(row as unknown as Record<string, unknown>)["gains"] = _gains
-
-				// Update empathy stats + capture a few samples
-				empathyStats.says += _says.length; empathyStats.does += _does.length
-				empathyStats.thinks += _thinks.length; empathyStats.feels += _feels.length
-				empathyStats.pains += _pains.length; empathyStats.gains += _gains.length
-				for (const [k, arr] of Object.entries({ says: _says, does: _does, thinks: _thinks, feels: _feels, pains: _pains, gains: _gains }) as Array<[keyof typeof empathyStats, string[]]>) {
-					for (const v of arr) {
-						if (typeof v === "string" && v.trim() && empathySamples[k].length < 3) empathySamples[k].push(v.trim())
-					}
-				}
-				const context_summary = (ev as unknown as { context_summary?: string })?.context_summary
-				if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
-					;(row as unknown as Record<string, unknown>)["context_summary"] = context_summary.trim()
-				}
-				return row
-			})
-			.filter((row): row is EvidenceInsert => row !== null)
-
-			if (evidenceRows.length === 0) {
-				consola.warn("No valid evidence rows after sanitization; skipping evidence insert")
-			} else {
-				try {
-					const { data: insertedEvidence, error: evidenceInsertError } = await db
-						.from("evidence")
-						.insert(evidenceRows)
-						.select("id, kind_tags")
-					if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
-					insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
-					// Log empathy stats snapshot for observability
-					consola.info("🧠 Empathy facets extracted", {
-						counts: empathyStats,
-						samples: empathySamples,
-					})
-					// Optionally upsert tags from kind_tags and link via evidence_tag
-					try {
-						// Build unique tag list
-						const tagsSet = new Set<string>()
-						const insertedEvidenceTyped = (insertedEvidence ?? []) as Array<{ id: string; kind_tags: string[] | null }>
-						insertedEvidenceTyped.forEach((ev) => {
-							for (const t of ev.kind_tags || []) {
-								if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
-							}
-						})
-						const tags = Array.from(tagsSet)
-
-						const tagIdByName = new Map<string, string>()
-						for (const tagName of tags) {
-							const { data: tagRow, error: tagErr } = await db
-								.from("tags")
-								.upsert(
-									{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
-									{ onConflict: "account_id,tag" }
-								)
-								.select("id")
-								.single()
-							if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
-						}
-
-						// Link evidence -> tags
-						for (const ev of insertedEvidenceTyped) {
-							for (const tagName of ev.kind_tags || []) {
-								const tagId = tagIdByName.get(tagName)
-								if (!tagId) continue
-								const { error: etErr } = await db
-									.from("evidence_tag")
-									.insert({
-										evidence_id: ev.id,
-										tag_id: tagId,
-										account_id: metadata.accountId,
-										project_id: metadata.projectId,
-									})
-									.select()
-									.single()
-								if (etErr && !etErr.message?.includes("duplicate")) {
-									consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
-								}
-							}
-						}
-					} catch (linkErr) {
-						consola.warn("Failed to create/link tags for evidence", linkErr)
-					}
-				} catch (evidenceInsertErr) {
-					consola.warn("Evidence insert phase failed; continuing", evidenceInsertErr)
-				}
-			}
-		}
-	} catch (evidenceExtractErr) {
-		consola.warn("Evidence extraction phase failed; continuing", evidenceExtractErr)
-	}
+	const {
+		personData: primaryPersonData,
+		primaryPersonName,
+		primaryPersonRole,
+		primaryPersonDescription,
+		primaryPersonOrganization,
+		primaryPersonSegments,
+		insertedEvidenceIds,
+		evidenceUnits,
+	} = await processEvidencePhase({
+		db,
+		metadata,
+		interviewRecord,
+		transcriptData,
+		language,
+		fullTranscript,
+	})
 
 	// 3. Auto-generate themes from accumulated evidence before insights
 	try {
@@ -526,40 +811,24 @@ async function processInterviewTranscriptWithClient({
 		return `${timestamp}`
 	}
 
-	const personName = interviewee?.name?.trim() || generateFallbackName()
-	const personInsertData: PeopleInsert = {
-		account_id: metadata.accountId,
-		project_id: metadata.projectId,
-		name: personName,
-		description: interviewee?.participantDescription?.trim() || null,
-		segment: interviewee?.segment?.trim() || metadata.segment || null,
-		contact_info: interviewee?.contactInfo || null,
-	}
-
-	consola.log("Creating person with data:", personInsertData)
-	const { data: personData, error: personError } = await db
+	const personData = primaryPersonData
+	const personName = interviewee?.name?.trim() || primaryPersonName || generateFallbackName()
+const personUpdatePayload: PeopleUpdate = {
+	name: personName,
+	description: interviewee?.participantDescription?.trim() || primaryPersonDescription || null,
+	segment: interviewee?.segment?.trim() || primaryPersonSegments[0] || metadata.segment || null,
+	contact_info: interviewee?.contactInfo || null,
+	company: primaryPersonOrganization || null,
+	role: primaryPersonRole || null,
+}
+	const { error: personUpdateErr } = await db
 		.from("people")
-		.upsert(personInsertData, { onConflict: "account_id,name_hash" })
-		.select("id")
-		.single()
-	if (personError) throw new Error(`Failed to upsert person: ${personError.message}`)
-	if (!personData?.id) throw new Error("Person upsert succeeded but no ID returned")
-
-	// Link evidence -> person via evidence_people for this interview's participant
-	if (insertedEvidenceIds.length) {
-		for (const evId of insertedEvidenceIds) {
-			const { error: epErr } = await db.from("evidence_people").insert({
-				evidence_id: evId,
-				person_id: personData.id,
-				account_id: metadata.accountId,
-				project_id: metadata.projectId,
-				role: "speaker",
-			})
-			if (epErr && !epErr.message?.includes("duplicate")) {
-				consola.warn(`Failed linking evidence ${evId} to person ${personData.id}: ${epErr.message}`)
-			}
-		}
-	}
+		.update(personUpdatePayload)
+		.eq("id", personData.id)
+if (personUpdateErr) {
+	consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
+}
+primaryPersonName = personName
 
 	// Heuristic: Map evidence -> answers by category against latest questions set
 	try {

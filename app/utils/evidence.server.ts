@@ -1,6 +1,10 @@
 export type EvidenceUnit = {
+	person_key?: string
 	verbatim: string
 	support: "supports" | "refutes" | "neutral"
+	chunk?: string
+	gist?: string
+	topic?: string
 	kind_tags: {
 		problem?: string[]
 		goal?: string[]
@@ -28,6 +32,9 @@ export async function persistEvidence(
 		account_id,
 		project_id,
 		interview_id,
+		chunk: u.chunk ?? u.verbatim,
+		gist: u.gist ?? u.verbatim,
+		topic: u.topic ?? null,
 		verbatim: u.verbatim,
 		support: u.support,
 		kind_tags: [

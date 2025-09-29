@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, BamlAbortError, Collector } from "@boundaryml/
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceQuestionLink, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -499,7 +499,7 @@ export class BamlAsyncClient {
   async ExtractEvidenceFromTranscript(
       transcript: string,chapters: types.Chapter[],language: string,
       __baml_options__?: BamlCallOptions
-  ): Promise<types.EvidenceUnit[]> {
+  ): Promise<types.EvidenceExtraction> {
     try {
       const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
       const signal = options.signal;
@@ -535,7 +535,7 @@ export class BamlAsyncClient {
         env,
         signal,
       )
-      return raw.parsed(false) as types.EvidenceUnit[]
+      return raw.parsed(false) as types.EvidenceExtraction
     } catch (error) {
       throw toBamlError(error);
     }
@@ -1845,7 +1845,7 @@ class BamlStreamClient {
   ExtractEvidenceFromTranscript(
       transcript: string,chapters: types.Chapter[],language: string,
       __baml_options__?: BamlCallOptions
-  ): BamlStream<partial_types.EvidenceUnit[], types.EvidenceUnit[]> {
+  ): BamlStream<partial_types.EvidenceExtraction, types.EvidenceExtraction> {
     try {
       const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
       const signal = options.signal;
@@ -1893,10 +1893,10 @@ class BamlStreamClient {
         signal,
         onTickWrapper,
       )
-      return new BamlStream<partial_types.EvidenceUnit[], types.EvidenceUnit[]>(
+      return new BamlStream<partial_types.EvidenceExtraction, types.EvidenceExtraction>(
         raw,
-        (a): partial_types.EvidenceUnit[] => a,
-        (a): types.EvidenceUnit[] => a,
+        (a): partial_types.EvidenceExtraction => a,
+        (a): types.EvidenceExtraction => a,
         this.ctxManager.cloneContext(),
         options.signal,
       )

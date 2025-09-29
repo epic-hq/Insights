@@ -305,6 +305,31 @@ export type Database = {
       [_ in never]: never
     }
   }
+  graphql_public: {
+    Tables: {
+      [_ in never]: never
+    }
+    Views: {
+      [_ in never]: never
+    }
+    Functions: {
+      graphql: {
+        Args: {
+          extensions?: Json
+          operationName?: string
+          query?: string
+          variables?: Json
+        }
+        Returns: Json
+      }
+    }
+    Enums: {
+      [_ in never]: never
+    }
+    CompositeTypes: {
+      [_ in never]: never
+    }
+  }
   public: {
     Tables: {
       account_settings: {
@@ -723,6 +748,7 @@ export type Database = {
         Row: {
           account_id: string
           anchors: Json
+          chunk: string | null
           citation: string | null
           confidence: string | null
           context_summary: string | null
@@ -731,6 +757,7 @@ export type Database = {
           does: string[] | null
           feels: string[] | null
           gains: string[] | null
+          gist: string | null
           id: string
           independence_key: string | null
           interview_id: string | null
@@ -747,6 +774,7 @@ export type Database = {
           source_type: string | null
           support: string | null
           thinks: string[] | null
+          topic: string | null
           updated_at: string
           updated_by: string | null
           verbatim: string
@@ -756,6 +784,7 @@ export type Database = {
         Insert: {
           account_id: string
           anchors?: Json
+          chunk?: string | null
           citation?: string | null
           confidence?: string | null
           context_summary?: string | null
@@ -764,6 +793,7 @@ export type Database = {
           does?: string[] | null
           feels?: string[] | null
           gains?: string[] | null
+          gist?: string | null
           id?: string
           independence_key?: string | null
           interview_id?: string | null
@@ -780,6 +810,7 @@ export type Database = {
           source_type?: string | null
           support?: string | null
           thinks?: string[] | null
+          topic?: string | null
           updated_at?: string
           updated_by?: string | null
           verbatim: string
@@ -789,6 +820,7 @@ export type Database = {
         Update: {
           account_id?: string
           anchors?: Json
+          chunk?: string | null
           citation?: string | null
           confidence?: string | null
           context_summary?: string | null
@@ -797,6 +829,7 @@ export type Database = {
           does?: string[] | null
           feels?: string[] | null
           gains?: string[] | null
+          gist?: string | null
           id?: string
           independence_key?: string | null
           interview_id?: string | null
@@ -813,6 +846,7 @@ export type Database = {
           source_type?: string | null
           support?: string | null
           thinks?: string[] | null
+          topic?: string | null
           updated_at?: string
           updated_by?: string | null
           verbatim?: string
@@ -4105,6 +4139,9 @@ export const Constants = {
         "unpaid",
       ],
     },
+  },
+  graphql_public: {
+    Enums: {},
   },
   public: {
     Enums: {

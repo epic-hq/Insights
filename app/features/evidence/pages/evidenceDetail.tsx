@@ -2,8 +2,11 @@ import { Clock, FileText, Play } from "lucide-react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
+import { BackButton } from "~/components/ui/BackButton"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { EnhancedMediaPlayer } from "~/components/ui/EnhancedMediaPlayer"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Evidence } from "~/types"
 import {
@@ -57,6 +60,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function EvidenceDetail() {
 	const { evidence } = useLoaderData<typeof loader>()
+	const currentProject = useCurrentProject()
+	const routes = useProjectRoutes(currentProject?.projectPath || "")
 	const anchors = Array.isArray(evidence.anchors) ? evidence.anchors : []
 	const interview = evidence.interview
 
@@ -76,6 +81,9 @@ export default function EvidenceDetail() {
 
 	return (
 		<div className="space-y-6 p-6">
+			<div className="relative">
+				<BackButton to={routes.evidence.index()} label="Back" position="absolute" />
+			</div>
 			<div>
 				<h1 className="font-semibold text-xl">Evidence Detail</h1>
 				{interview && <p className="text-muted-foreground text-sm">From interview: {interview.title}</p>}
