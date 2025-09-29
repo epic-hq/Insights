@@ -19,6 +19,9 @@ const envSchema = z.object({
 	LANGFUSE_PUBLIC_KEY: z.string().optional(),
 	LANGFUSE_SECRET_KEY: z.string().optional(),
 	LANGFUSE_HOST: z.string().optional(),
+	RESEND_API_KEY: z.string().optional(),
+	DEFAULT_FROM_EMAIL: z.email().optional(),
+	DEFAULT_FROM_EMAIL_NAME: z.string().optional(),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>
@@ -30,7 +33,15 @@ let env: ServerEnv
  */
 function initEnv() {
 	// This should be the only place to use process.env directly
-	const envData = envSchema.safeParse(process.env)
+	const rawEnv = {
+		...process.env,
+		// Backward-compatibility: allow either DEFAULT_FROM_EMAIL / DEFAULT_FROM_EMAIL_NAME
+		// or the previously used DEFAULT_EMAIL_FROM / DEFAULT_EMAIL_FROM_NAME
+		DEFAULT_FROM_EMAIL: process.env.DEFAULT_FROM_EMAIL ?? process.env.DEFAULT_EMAIL_FROM,
+		DEFAULT_FROM_EMAIL_NAME: process.env.DEFAULT_FROM_EMAIL_NAME ?? process.env.DEFAULT_EMAIL_FROM_NAME,
+	}
+
+	const envData = envSchema.safeParse(rawEnv)
 
 	if (!envData.success) {
 		throw new Error("Invalid environment variables")

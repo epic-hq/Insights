@@ -1,25 +1,27 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, redirect } from "react-router"
+import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { PATHS } from "~/paths"
 
 export async function loader({ request }: LoaderFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
-	if (user) {
-		throw redirect("/home")
-	}
-
+    const user = await getAuthenticatedUser(request)
+    if (user) {
+        throw redirect("/home")
+    }
 }
 
 export default function AuthPage() {
-	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`
-	consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`)
-	return (
-		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
-			<div className="container relative flex min-h-screen flex-col items-center justify-center">
-				{/* Logo/Branding */}
-				<div className="mb-8">
+    const location = useLocation()
+    const params = new URLSearchParams(location.search)
+    const next = params.get("next") || "/home"
+    const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
+    consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`)
+    return (
+        <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
+            <div className="container relative flex min-h-screen flex-col items-center justify-center">
+                {/* Logo/Branding */}
+                <div className="mb-8">
 					<div className="flex items-center gap-3 font-bold text-3xl">
 						<div className="flex h-10 w-10 items-center justify-center rounded-xl bg-gradient-to-br from-blue-500 to-blue-600 font-bold text-lg text-white shadow-lg">
 							U
