@@ -1,12 +1,27 @@
 import { parseWithZod } from "@conform-to/zod/v4"
+import consola from "consola"
 import { useCallback, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, useLoaderData } from "react-router"
 import { useFetcher } from "react-router-dom"
 import { z } from "zod"
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+} from "~/components/ui/alert-dialog"
+import { Button } from "~/components/ui/button"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
+// import { sendEmail } from "~/emails/clients.server"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { PATHS } from "~/paths"
 import type { GetAccountInvitesResponse } from "~/types-accounts"
+import InvitationEmail from "../../../../emails/team-invitation"
 import {
 	getAccount as dbGetAccount,
 	getAccountMembers as dbGetAccountMembers,
@@ -14,6 +29,7 @@ import {
 } from "../db/accounts"
 import {
 	createInvitation as dbCreateInvitation,
+	deleteInvitation as dbDeleteInvitation,
 	getAccountInvitations as dbGetAccountInvitations,
 } from "../db/invitations"
 
@@ -76,6 +92,11 @@ const UpdateRoleSchema = z.object({
 	permission: z.enum(["can-view", "can-edit", "admin"]),
 })
 
+const DeleteInviteSchema = z.object({
+	intent: z.literal("deleteInvite"),
+	invitationId: z.string().uuid(),
+})
+
 export async function action({ request, params }: ActionFunctionArgs) {
 	const { client } = getServerClient(request)
 	const user = await getAuthenticatedUser(request)
@@ -104,6 +125,54 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			typeof (result.data as { token?: unknown } | null)?.token === "string"
 				? (result.data as { token: string }).token
 				: undefined
+
+		// Attempt to send invitation email if we have both email and token
+		if (email && token) {
+			try {
+				// Build absolute invite URL that preserves token through auth
+				const host = PATHS.AUTH.HOST
+				const inviteUrl = `${host}/accept-invite?token=${encodeURIComponent(token)}`
+
+				consola.info("[INVITE] Prepared invite", {
+					accountId,
+					to: email,
+					inviteUrl,
+					token,
+				})
+
+				// Optionally fetch account name for nicer subject
+				let teamName = "your team"
+				try {
+					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
+					teamName = (accountData as any)?.name || teamName
+				} catch { }
+				const { sendEmail } = await import("~/emails/clients.server")
+
+				const sendResult = await sendEmail({
+					to: email,
+					subject: `You’re invited to join ${teamName} on Upsight`,
+					react: (
+						<InvitationEmail
+							appName="Upsight"
+							inviterName={user.email || "A teammate"}
+							teamName={teamName}
+							inviteUrl={inviteUrl}
+							inviteeEmail={email}
+						/>
+					),
+				})
+				consola.success("[INVITE] Email send attempted", {
+					to: email,
+					resultId: (sendResult as unknown as { id?: string })?.id,
+				})
+			} catch (err) {
+				consola.error("[INVITE] Failed to send invitation email", {
+					to: email,
+					error: err,
+				})
+			}
+		}
+
 		return data({ ok: true, token, email })
 	}
 
@@ -123,12 +192,27 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		return data({ ok: true })
 	}
 
+	if (intent === "deleteInvite") {
+		const submission = parseWithZod(formData, { schema: DeleteInviteSchema })
+		if (submission.status !== "success") {
+			return data({ ok: false, errors: submission.error }, { status: 400 })
+		}
+		const { invitationId } = submission.value
+		const result = await dbDeleteInvitation({
+			supabase: client,
+			invitation_id: invitationId,
+		})
+		if (result.error) return data({ ok: false, message: result.error.message }, { status: 500 })
+		return data({ ok: true })
+	}
+
 	return new Response("Bad Request", { status: 400 })
 }
 export default function ManageTeamMembers() {
 	const { account, members, invitations } = useLoaderData() as LoaderData
 	const inviteFetcher = useFetcher()
 	const updateRoleFetcher = useFetcher()
+	const deleteInviteFetcher = useFetcher()
 	const [localMembers, setLocalMembers] = useState<TeamMember[]>(() =>
 		(members || []).map((m) => ({
 			id: m.user_id,
@@ -138,6 +222,11 @@ export default function ManageTeamMembers() {
 			isOwner: m.is_primary_owner,
 		}))
 	)
+	const [localInvitations, setLocalInvitations] = useState<GetAccountInvitesResponse>(() => invitations)
+
+	const [isRevokeOpen, setIsRevokeOpen] = useState(false)
+	const [selectedInviteId, setSelectedInviteId] = useState<string | null>(null)
+	const [selectedInviteEmail, setSelectedInviteEmail] = useState<string | null>(null)
 
 	const canManage = account?.account_role === "owner"
 	const teamName = account?.name ?? "Team"
@@ -160,14 +249,23 @@ export default function ManageTeamMembers() {
 		[account?.account_id, updateRoleFetcher]
 	)
 
+	const handleDeleteInvitation = useCallback(
+		(invitationId: string) => {
+			if (!account?.account_id) return
+			deleteInviteFetcher.submit({ intent: "deleteInvite", invitationId }, { method: "post" })
+			setLocalInvitations((prev) => prev.filter((inv) => inv.invitation_id !== invitationId))
+		},
+		[account?.account_id, deleteInviteFetcher]
+	)
+
 	return (
 		<div className="container mx-auto max-w-3xl py-6">
 			<div className="mb-6">
 				<h1 className="font-semibold text-2xl">Team Members</h1>
 				<p className="text-muted-foreground text-sm">Manage access and invite collaborators to your team.</p>
-				{invitations.length > 0 && (
+				{localInvitations.length > 0 && (
 					<p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:bg-amber-950/40 dark:text-amber-300">
-						You have {invitations.length} pending invitation{invitations.length === 1 ? "" : "s"}.
+						You have {localInvitations.length} pending invitation{localInvitations.length === 1 ? "" : "s"}.
 					</p>
 				)}
 			</div>
@@ -180,22 +278,84 @@ export default function ManageTeamMembers() {
 				onUpdateMemberPermission={canManage ? handleUpdateMemberPermission : undefined}
 			/>
 
-			{invitations.length > 0 && (
-				<div className="mt-6">
-					<h2 className="font-semibold text-lg">Pending invitations</h2>
-					<ul className="mt-2 space-y-2">
-						{invitations.map((inv, idx) => (
-							<li key={inv.invitation_id ?? idx} className="flex items-center justify-between rounded-md border p-3">
-								<span className="text-sm">
-									{inv.email ? <strong>{inv.email}</strong> : "(no email)"} • Role: {inv.account_role}
-								</span>
-								<span className="text-muted-foreground text-xs">
-									{new Date(String(inv.created_at)).toLocaleString()}
-								</span>
-							</li>
-						))}
-					</ul>
-				</div>
+			{localInvitations.length > 0 && (
+				<>
+					<div className="mt-6">
+						<h2 className="font-semibold text-lg">Pending invitations</h2>
+						<ul className="mt-2 space-y-2">
+							{localInvitations.map((inv, idx) => (
+								<li key={inv.invitation_id ?? idx} className="flex items-center justify-between rounded-md border p-3">
+									<span className="text-sm">
+										{inv.email ? <strong>{inv.email}</strong> : "(no email)"} • Role: {inv.account_role}
+									</span>
+									<div className="flex items-center gap-2">
+										<span className="text-muted-foreground text-xs">
+											{new Date(String(inv.created_at)).toLocaleString()}
+										</span>
+										{canManage && (
+											<Button
+												variant="outline"
+												size="sm"
+												className="border-red-200 text-red-600 hover:bg-red-50 dark:border-red-800 dark:text-red-400"
+												onClick={() => {
+													setSelectedInviteId(inv.invitation_id)
+													setSelectedInviteEmail(inv.email ?? null)
+													setIsRevokeOpen(true)
+												}}
+											>
+												Revoke
+											</Button>
+										)}
+									</div>
+								</li>
+							))}
+						</ul>
+					</div>
+
+					{/* Revoke confirmation dialog */}
+					<AlertDialog
+						open={isRevokeOpen}
+						onOpenChange={(open) => {
+							setIsRevokeOpen(open)
+							if (!open) {
+								setSelectedInviteId(null)
+								setSelectedInviteEmail(null)
+							}
+						}}
+					>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Revoke invitation</AlertDialogTitle>
+								<AlertDialogDescription>
+									{selectedInviteEmail ? (
+										<span>
+											Are you sure you want to revoke the invitation for <strong>{selectedInviteEmail}</strong>?
+										</span>
+									) : (
+										<span>Are you sure you want to revoke this invitation?</span>
+									)}
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel>Cancel</AlertDialogCancel>
+								<AlertDialogAction
+									className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+									disabled={deleteInviteFetcher.state === "submitting" || !selectedInviteId}
+									onClick={() => {
+										if (selectedInviteId) {
+											handleDeleteInvitation(selectedInviteId)
+											setIsRevokeOpen(false)
+											setSelectedInviteId(null)
+											setSelectedInviteEmail(null)
+										}
+									}}
+								>
+									Revoke invitation
+								</AlertDialogAction>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
+				</>
 			)}
 		</div>
 	)

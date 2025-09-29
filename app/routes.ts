@@ -94,6 +94,11 @@ const routes = [
 	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
 	route("register", "./routes/(auth)+/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
+	route("accept-invite", "./routes/accept-invite.tsx"),
+
+	// New Auth
+	route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
+	route("/auth-new/oauth", "./routes/(auth-new)+/oauth/route.ts"),
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
