@@ -61,8 +61,7 @@ export default function LandingPage() {
 							</h1>
 
 							<p className="mx-auto max-w-3xl text-white/90 text-xl leading-relaxed md:text-2xl">
-								Plan customer interviews, qualify real buyers, and extract insights — all in one simple workflow. From
-								question planning to interview execution to analysis.
+								Plan customer interviews, qualify real buyers, and extract insights — all in one simple workflow.
 							</p>
 
 							<div className="flex flex-col items-center gap-6 sm:flex-row sm:justify-center">

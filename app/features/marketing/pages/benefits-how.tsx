@@ -105,7 +105,7 @@ export function KeyBenefits({
 	benefits?: Benefit[]
 }) {
 	return (
-		<section className="space-y-12">
+		<section id="benefits" className="space-y-12">
 			<motion.div
 				initial={{ opacity: 0, y: 18 }}
 				whileInView={{ opacity: 1, y: 0 }}
@@ -233,7 +233,7 @@ export function HowItWorks({
 								{step.ctaLabel ? (
 									<Button
 										variant="ghost"
-										className="mt-4 rounded-sm px-0 text-primary hover:bg-transparent"
+										className="mt-4 rounded-sm bg-amber-500 px-0 text-primary hover:bg-transparent"
 										onClick={step.onClick}
 									>
 										{step.ctaLabel} →
@@ -254,7 +254,7 @@ export function HowItWorks({
 			>
 				<Button
 					size="lg"
-					className="group hover:-translate-y-0.5 rounded-sm bg-primary px-8 py-6 font-medium text-base shadow-primary/20 transition-all duration-300 hover:bg-primary/90 hover:shadow-lg"
+					className="group hover:-translate-y-0.5 rounded-sm bg-yellow-500 px-8 py-6 font-medium text-base shadow-primary/20 transition-all duration-300 hover:bg-amber-500 hover:shadow-lg"
 					onClick={onCtaClick}
 				>
 					<span className="flex items-center gap-2">

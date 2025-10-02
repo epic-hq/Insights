@@ -67,8 +67,8 @@ export default function MainNav() {
 
 	// Public marketing links for non-authenticated users
 	const marketingLinks = [
+		{ key: "benefits", label: "Why", link: "#benefits" },
 		{ key: "features", label: "Features", link: "#features" },
-		{ key: "about", label: "About", link: "/about" },
 	]
 
 	return (
