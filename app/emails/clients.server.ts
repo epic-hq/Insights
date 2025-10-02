@@ -6,9 +6,7 @@ export const resend = new Resend(getServerEnv().RESEND_API_KEY)
 
 export const DEFAULT_FROM_EMAIL = getServerEnv().DEFAULT_FROM_EMAIL
 export const DEFAULT_FROM_NAME = getServerEnv().DEFAULT_FROM_EMAIL_NAME
-export const DEFAULT_FROM = DEFAULT_FROM_NAME
-	? `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>`
-	: DEFAULT_FROM_EMAIL
+export const DEFAULT_FROM = DEFAULT_FROM_NAME ? `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>` : DEFAULT_FROM_EMAIL
 
 if (!DEFAULT_FROM_EMAIL) {
 	consola.error("Missing DEFAULT_FROM_EMAIL")

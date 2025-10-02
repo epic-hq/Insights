@@ -12,12 +12,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function AuthPage() {
-    const location = useLocation()
-    const params = new URLSearchParams(location.search)
-    const next = params.get("next") || "/home"
-    const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
-    consola.log(`register redirectTo: ${redirectTo}`)
-    return (
+	const location = useLocation()
+	const params = new URLSearchParams(location.search)
+	const next = params.get("next") || "/home"
+	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
+	consola.log(`register redirectTo: ${redirectTo}`)
+	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
 			<div className="container relative flex min-h-screen flex-col items-center justify-center">
 				{/* Logo/Branding */}
