@@ -1,7 +1,7 @@
-import { redirect } from "next/navigation"
+import { redirect } from "react-router"
 
 import { LogoutButton } from "~/components/logout-button"
-import { createClient } from "~/lib/supabase/server"
+import { createClient } from "~/lib/supabase/client"
 
 export default async function ProtectedPage() {
 	const supabase = await createClient()
@@ -14,7 +14,7 @@ export default async function ProtectedPage() {
 	return (
 		<div className="flex h-svh w-full items-center justify-center gap-2">
 			<p>
-				Hello <span>{data.claims.email}</span>
+				Hello <span>{data?.claims.email}</span>
 			</p>
 			<LogoutButton />
 		</div>
