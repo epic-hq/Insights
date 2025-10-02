@@ -1,5 +1,5 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, redirect } from "react-router"
+import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { PATHS } from "~/paths"
@@ -12,9 +12,12 @@ export async function loader({ request }: LoaderFunctionArgs) {
 }
 
 export default function AuthPage() {
-	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`
-	consola.log(`register redirectTo: ${redirectTo}`)
-	return (
+    const location = useLocation()
+    const params = new URLSearchParams(location.search)
+    const next = params.get("next") || "/home"
+    const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
+    consola.log(`register redirectTo: ${redirectTo}`)
+    return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
 			<div className="container relative flex min-h-screen flex-col items-center justify-center">
 				{/* Logo/Branding */}
@@ -34,7 +37,6 @@ export default function AuthPage() {
 					{/* Main Auth Card */}
 					<div className="rounded-2xl border-0 bg-white/80 p-8 shadow-2xl backdrop-blur-sm dark:bg-slate-900/80">
 						<div className="mb-6 text-center">
-							<h1 className="font-bold text-2xl text-slate-900 dark:text-slate-100">Create your account</h1>
 							<p className="mt-2 text-slate-600 text-sm dark:text-slate-400">Start your journey with UpSight today</p>
 						</div>
 

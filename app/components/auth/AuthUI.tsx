@@ -1,8 +1,8 @@
 import { Auth } from "@supabase/auth-ui-react"
-import { ThemeSupa, type ThemeVariables } from "@supabase/auth-ui-shared"
+import { ThemeSupa } from "@supabase/auth-ui-shared"
 import consola from "consola"
 import { useEffect, useRef } from "react"
-import { useNavigate } from "react-router"
+import { useLocation, useNavigate } from "react-router"
 import { getSupabaseClient } from "~/lib/supabase/client"
 
 interface AuthUIProps {
@@ -17,6 +17,9 @@ interface AuthUIProps {
 export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps) {
 	// const { clientEnv } = useRouteLoaderData("root") as { clientEnv: Env }
 	const navigate = useNavigate()
+	const location = useLocation()
+	const searchParams = new URLSearchParams(location.search)
+	const next = searchParams.get("next") || "/home"
 	const isLoginAttempt = useRef(false)
 
 	consola.log("AuthUI props:", { redirectTo, view })
@@ -34,26 +37,31 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 	useEffect(() => {
 		const {
 			data: { subscription },
-		} = supabase.auth.onAuthStateChange(async (event, session) => {
+		} = supabase.auth.onAuthStateChange(async (event, _session) => {
 			consola.log("[AUTH STATE CHANGE]", event, "isLoginAttempt:", isLoginAttempt.current)
 
 			// Only redirect on SIGNED_IN if we're actively attempting to login
 			// This prevents auto-redirect when user lands on login page with existing session
 			if (event === "SIGNED_IN" && isLoginAttempt.current) {
-				// Use secure getUser() instead of session data for security
-				const {
-					data: { user },
-					error,
-				} = await supabase.auth.getUser()
-
-				if (user && !error) {
-					const targetUrl = "/home"
-					consola.log("[AUTH] Login successful, user authenticated, redirecting to:", targetUrl)
-					isLoginAttempt.current = false // Reset the flag
-					navigate(targetUrl)
-				} else {
-					consola.error("[AUTH] User authentication failed:", error)
-					isLoginAttempt.current = false // Reset the flag
+				try {
+					// Post tokens to server to sync cookies, then navigate via login_success
+					const { data: sessionData } = await supabase.auth.getSession()
+					const access_token = sessionData.session?.access_token
+					const refresh_token = sessionData.session?.refresh_token
+					if (access_token && refresh_token) {
+						await fetch(`/auth.session?next=${encodeURIComponent(next)}`, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({ access_token, refresh_token }),
+						})
+					}
+					consola.log("[AUTH] Login successful, redirecting to login_success with next:", next)
+					isLoginAttempt.current = false
+					navigate(`/login_success?next=${encodeURIComponent(next)}`)
+				} catch (err) {
+					consola.error("[AUTH] Post-auth cookie sync failed:", err)
+					isLoginAttempt.current = false
+					navigate(next)
 				}
 			} else if (event === "SIGNED_OUT") {
 				// Reset login attempt flag on sign out
@@ -64,8 +72,7 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 		return () => {
 			subscription.unsubscribe()
 		}
-	}, [supabase, navigate, redirectTo])
-
+	}, [supabase, navigate, next])
 	// Handle clicks for both auth buttons and navigation links
 	useEffect(() => {
 		const handleClick = (e: MouseEvent) => {
@@ -82,22 +89,21 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 				}
 			}
 
-			// Handle navigation link clicks
+			// Handle navigation link clicks, preserving ?next=
 			if (anchor && anchor.textContent) {
 				if (anchor.textContent.includes("Don't have an account") || anchor.textContent.includes("Sign up")) {
 					e.preventDefault()
-					navigate("/register")
+					navigate(`/register?next=${encodeURIComponent(next)}`)
 				} else if (anchor.textContent.includes("Already have an account") || anchor.textContent.includes("Sign in")) {
 					e.preventDefault()
-					navigate("/login")
+					navigate(`/login?next=${encodeURIComponent(next)}`)
 				}
 			}
 		}
 
 		document.addEventListener("click", handleClick)
 		return () => document.removeEventListener("click", handleClick)
-	}, [navigate])
-
+	}, [navigate, next])
 	return (
 		<Auth
 			supabaseClient={supabase}

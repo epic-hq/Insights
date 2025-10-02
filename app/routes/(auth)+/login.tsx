@@ -1,5 +1,5 @@
 import consola from "consola"
-import { type LoaderFunctionArgs, redirect } from "react-router"
+import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { PATHS } from "~/paths"
@@ -9,10 +9,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	if (user) {
 		throw redirect("/home")
 	}
+	const user = await getAuthenticatedUser(request)
+	if (user) {
+		throw redirect("/home")
+	}
 }
 
 export default function AuthPage() {
-	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}`
+	const location = useLocation()
+	const params = new URLSearchParams(location.search)
+	const next = params.get("next") || "/home"
+	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
 	consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`)
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
