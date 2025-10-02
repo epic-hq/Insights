@@ -33,31 +33,32 @@ export function LazyTranscriptResults({
 }: LazyTranscriptResultsProps) {
 	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
 	const [loading, setLoading] = useState(false)
-	const [error, setError] = useState<string | null>(null)
 	const [isLoaded, setIsLoaded] = useState(false)
-	const { projectId } = useCurrentProject()
+	const [error, setError] = useState<string | null>(null)
+	const currentProject = useCurrentProject()
+	const projectId = currentProject?.projectId
 
 	const loadTranscript = async () => {
 		setLoading(true)
 		setError(null)
-
+		
 		try {
+			if (!projectId || !currentProject) {
+				throw new Error("Project context required for transcript access")
+			}
+
 			const params = new URLSearchParams({
 				interviewId,
 			})
 
-			// Add projectId if available
-			if (projectId) {
-				params.set("projectId", projectId)
-			}
-
-			const response = await fetch(`/api/interview-transcript?${params}`)
+			const response = await fetch(`/a/${currentProject.accountId}/${projectId}/api/interview-transcript?${params}`)
 
 			if (!response.ok) {
 				throw new Error(`Failed to load transcript: ${response.statusText}`)
 			}
 
 			const data: TranscriptApiResponse = await response.json()
+			
 			const processedData: TranscriptData = {
 				text: data.transcript || "",
 				utterances: data.transcript_formatted?.speaker_transcripts || [],

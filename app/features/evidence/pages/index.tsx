@@ -1,9 +1,10 @@
+import { ChevronLeft, Grid3X3, List } from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom"
-import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
@@ -110,9 +111,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				interview_id,
 				interview:interview_id (
 					id,
-					title,
-					media_url,
-					duration_sec
+					title
 				)
 			`
 		)
@@ -239,101 +238,115 @@ export default function EvidenceIndex() {
 	}
 
 	return (
-		<div className="space-y-6 p-4">
-			<div className="relative">
-				<BackButton to={routes.insights.index()} label="Back" position="absolute" />
-			</div>
-			<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-				<div className="space-y-2">
+		<div className="space-y-4 p-4 sm:p-6">
+			{/* Mobile-friendly header */}
+			<div className="flex items-center gap-3">
+				<Button variant="ghost" size="sm" onClick={() => window.history.back()} className="h-8 w-8 p-0">
+					<ChevronLeft className="h-4 w-4" />
+				</Button>
+				<div className="flex-1">
 					<h1 className="font-semibold text-xl">Evidence</h1>
 					{filteredByRQ && (
-						<Badge variant="outline" className="w-fit text-sm">
+						<Badge variant="outline" className="mt-1 w-fit text-xs">
 							Filtered by Research Question
 						</Badge>
 					)}
 				</div>
-				<div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-					{/* Sort & Filters */}
-					<div className="flex flex-wrap items-center gap-2 rounded-md border border-border p-2">
-						<label className="text-muted-foreground text-xs">Sort by</label>
-						<select
-							value={sortBy}
-							onChange={(e) => updateParam("sort_by", e.target.value)}
-							className="rounded border bg-background p-1 text-sm"
-						>
-							<option value="created_at">Created</option>
-							<option value="confidence">Confidence</option>
-						</select>
-						<select
-							value={sortDir}
-							onChange={(e) => updateParam("sort_dir", e.target.value)}
-							className="rounded border bg-background p-1 text-sm"
-						>
-							<option value="desc">Desc</option>
-							<option value="asc">Asc</option>
-						</select>
+			</div>
 
-						<label className="ml-2 text-muted-foreground text-xs">Support</label>
+			{/* Modern controls */}
+			<div className="space-y-3">
+				{/* View mode and regenerate */}
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<ToggleGroup
+						type="single"
+						value={viewMode}
+						onValueChange={(value) => value && setViewMode(value as "mini" | "expanded")}
+						variant="outline"
+						size="sm"
+					>
+						<ToggleGroupItem value="mini" className="flex items-center gap-2">
+							<Grid3X3 className="h-4 w-4" />
+							<span className="hidden sm:inline">Mini</span>
+						</ToggleGroupItem>
+						<ToggleGroupItem value="expanded" className="flex items-center gap-2">
+							<List className="h-4 w-4" />
+							<span className="hidden sm:inline">Expanded</span>
+						</ToggleGroupItem>
+					</ToggleGroup>
+
+					<fetcher.Form method="post">
+						<input type="hidden" name="intent" value="regenerate" />
+						<Button type="submit" variant="secondary" size="sm" disabled={isRegenerating}>
+							{isRegenerating ? "Regenerating…" : "Regenerate Evidence"}
+						</Button>
+					</fetcher.Form>
+				</div>
+
+				{/* Modern filters */}
+				<div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
+					<div className="space-y-1">
+						<label className="font-medium text-muted-foreground text-xs">Sort by</label>
+						<div className="flex gap-1">
+							<select
+								value={sortBy}
+								onChange={(e) => updateParam("sort_by", e.target.value)}
+								className="flex-1 rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+							>
+								<option value="created_at">Created</option>
+								<option value="confidence">Confidence</option>
+							</select>
+							<select
+								value={sortDir}
+								onChange={(e) => updateParam("sort_dir", e.target.value)}
+								className="rounded-md border border-input bg-background px-2 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
+							>
+								<option value="desc">↓</option>
+								<option value="asc">↑</option>
+							</select>
+						</div>
+					</div>
+
+					<div className="space-y-1">
+						<label className="font-medium text-muted-foreground text-xs">Support</label>
 						<select
 							value={support}
 							onChange={(e) => updateParam("support", e.target.value)}
-							className="rounded border bg-background p-1 text-sm"
+							className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 						>
 							<option value="">All</option>
 							<option value="supports">Supports</option>
 							<option value="neutral">Neutral</option>
 							<option value="refutes">Refutes</option>
 						</select>
+					</div>
 
-						<label className="ml-2 text-muted-foreground text-xs">Confidence</label>
+					<div className="space-y-1">
+						<label className="font-medium text-muted-foreground text-xs">Confidence</label>
 						<select
 							value={confidence}
 							onChange={(e) => updateParam("confidence", e.target.value)}
-							className="rounded border bg-background p-1 text-sm"
+							className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 						>
 							<option value="">All</option>
 							<option value="high">High</option>
 							<option value="medium">Medium</option>
 							<option value="low">Low</option>
 						</select>
+					</div>
 
-						<label className="ml-2 text-muted-foreground text-xs">Method</label>
+					<div className="space-y-1">
+						<label className="font-medium text-muted-foreground text-xs">Method</label>
 						<select
 							value={method}
 							onChange={(e) => updateParam("method", e.target.value)}
-							className="rounded border bg-background p-1 text-sm"
+							className="w-full rounded-md border border-input bg-background px-3 py-1.5 text-sm ring-offset-background focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2"
 						>
 							<option value="">All</option>
 							<option value="interview">Interview</option>
 							<option value="secondary">Secondary</option>
 						</select>
 					</div>
-					<div className="flex items-center gap-2 rounded-md border border-border p-1">
-						<Button
-							type="button"
-							variant={viewMode === "mini" ? "default" : "ghost"}
-							size="sm"
-							onClick={() => setViewMode("mini")}
-							aria-pressed={viewMode === "mini"}
-						>
-							Mini view
-						</Button>
-						<Button
-							type="button"
-							variant={viewMode === "expanded" ? "default" : "ghost"}
-							size="sm"
-							onClick={() => setViewMode("expanded")}
-							aria-pressed={viewMode === "expanded"}
-						>
-							Expanded view
-						</Button>
-					</div>
-					<fetcher.Form method="post" className="flex items-center">
-						<input type="hidden" name="intent" value="regenerate" />
-						<Button type="submit" variant="secondary" size="sm" disabled={isRegenerating}>
-							{isRegenerating ? "Regenerating…" : "Regenerate Evidence"}
-						</Button>
-					</fetcher.Form>
 				</div>
 			</div>
 			{fetcher.data?.ok && (

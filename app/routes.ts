@@ -80,6 +80,9 @@ const routes = [
 
 				// Project-setup agent chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
+				
+				// Interview transcript API (project-scoped)
+				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 			]),
 
 			// Account-scoped quick record API: creates project + interview
@@ -100,7 +103,6 @@ const routes = [
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
-	route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 	// route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),

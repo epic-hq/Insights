@@ -1,7 +1,7 @@
 // Soft import baml client (works even if new function not generated yet)
 import { b } from "baml_client"
 import type { LoaderFunctionArgs } from "react-router"
-import { useLoaderData, useNavigate } from "react-router-dom"
+import { useLoaderData, useNavigate } from "react-router"
 import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"

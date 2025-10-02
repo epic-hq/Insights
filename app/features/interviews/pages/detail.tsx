@@ -20,13 +20,15 @@ import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 function normalizeMultilineText(value: unknown): string {
 	try {
 		if (Array.isArray(value)) {
-			return value.filter((v) => typeof v === "string" && v.trim()).join("\n")
+			const lines = value.filter((v) => typeof v === "string" && v.trim()) as string[]
+			return lines.map((line) => `• ${line.trim()}`).join("\n")
 		}
 		if (typeof value === "string") {
 			// Try to parse stringified JSON arrays: "[\"a\",\"b\"]"
 			const parsed = JSON.parse(value)
 			if (Array.isArray(parsed)) {
-				return parsed.filter((v) => typeof v === "string" && v.trim()).join("\n")
+				const lines = parsed.filter((v) => typeof v === "string" && v.trim()) as string[]
+				return lines.map((line) => `• ${line.trim()}`).join("\n")
 			}
 			return value
 		}
@@ -402,6 +404,66 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
+
+					{/* Key Takeaways Section */}
+					<div className="space-y-4">
+						<div>
+							<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
+							<InlineEdit
+								textClassName="text-foreground"
+								value={normalizeMultilineText(interview.high_impact_themes)}
+								multiline
+								markdown
+								placeholder="What are the most important insights from this interview?"
+								onSubmit={(value) => {
+									try {
+										fetcher.submit(
+											{
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "high_impact_themes",
+												fieldValue: value,
+											},
+											{ method: "post", action: "/api/update-field" }
+										)
+									} catch (error) {
+										consola.error("❌ Failed to update high_impact_themes:", error)
+									}
+								}}
+							/>
+						</div>
+
+						<div>
+							<label className="mb-2 block font-semibold text-foreground text-lg">Research Notes</label>
+							<InlineEdit
+								textClassName="text-foreground"
+								value={normalizeMultilineText(interview.observations_and_notes)}
+								multiline
+								markdown
+								placeholder="Your observations and analysis notes"
+								onSubmit={(value) => {
+									try {
+										fetcher.submit(
+											{
+												entity: "interview",
+												entityId: interview.id,
+												accountId,
+												projectId,
+												fieldName: "observations_and_notes",
+												fieldValue: value,
+											},
+											{ method: "post", action: "/api/update-field" }
+										)
+									} catch (error) {
+										consola.error("❌ Failed to update observations_and_notes:", error)
+									}
+								}}
+							/>
+						</div>
+					</div>
+
 					{/* Tabbed Interface: Pains & Gains / User Actions */}
 					{(empathyMap.pains.length > 0 ||
 						empathyMap.gains.length > 0 ||
@@ -626,65 +688,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							</div>
 						)}
 
-					{/* Key Takeaways Section */}
-					<div className="space-y-4">
-						<div>
-							<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
-							<InlineEdit
-								textClassName="text-foreground"
-								value={normalizeMultilineText(interview.high_impact_themes)}
-								multiline
-								markdown
-								placeholder="What are the most important insights from this interview?"
-								onSubmit={(value) => {
-									try {
-										fetcher.submit(
-											{
-												entity: "interview",
-												entityId: interview.id,
-												accountId,
-												projectId,
-												fieldName: "high_impact_themes",
-												fieldValue: value,
-											},
-											{ method: "post", action: "/api/update-field" }
-										)
-									} catch (error) {
-										consola.error("❌ Failed to update high_impact_themes:", error)
-									}
-								}}
-							/>
-						</div>
-
-						<div>
-							<label className="mb-2 block font-semibold text-foreground text-lg">Research Notes</label>
-							<InlineEdit
-								textClassName="text-foreground"
-								value={normalizeMultilineText(interview.observations_and_notes)}
-								multiline
-								markdown
-								placeholder="Your observations and analysis notes"
-								onSubmit={(value) => {
-									try {
-										fetcher.submit(
-											{
-												entity: "interview",
-												entityId: interview.id,
-												accountId,
-												projectId,
-												fieldName: "observations_and_notes",
-												fieldValue: value,
-											},
-											{ method: "post", action: "/api/update-field" }
-										)
-									} catch (error) {
-										consola.error("❌ Failed to update observations_and_notes:", error)
-									}
-								}}
-							/>
-						</div>
-					</div>
-
 					{/* Evidence Timeline Section */}
 					{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-6" />}
 
@@ -721,6 +724,54 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</div>
 				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
 					<div className="space-y-4">
+						{/* Evidence Summary */}
+						{/* {evidence.length > 0 && (
+							<div className="rounded-lg border bg-background p-4">
+								<div className="mb-3 flex items-center justify-between">
+									<h3 className="font-semibold text-foreground">Evidence</h3>
+									<Badge variant="secondary" className="text-xs">
+										{evidence.length}
+									</Badge>
+								</div>
+								<div className="space-y-2">
+									{evidence.slice(0, 4).map((evidenceItem) => (
+										<Link
+											key={evidenceItem.id}
+											to={routes.evidence.detail(evidenceItem.id)}
+											className="block rounded-md border bg-muted/30 p-3 text-sm hover:bg-muted/50"
+										>
+											<div className="line-clamp-2 font-medium text-foreground">
+												{evidenceItem.verbatim || evidenceItem.summary || "Evidence item"}
+											</div>
+											<div className="mt-1 flex items-center gap-2">
+												{evidenceItem.support && (
+													<Badge
+														variant={evidenceItem.support === 'supports' ? 'default' : evidenceItem.support === 'refutes' ? 'destructive' : 'secondary'}
+														className="text-xs"
+													>
+														{evidenceItem.support}
+													</Badge>
+												)}
+												{evidenceItem.modality && (
+													<Badge variant="outline" className="text-xs">
+														{evidenceItem.modality}
+													</Badge>
+												)}
+											</div>
+										</Link>
+									))}
+									{evidence.length > 4 && (
+										<Link
+											to={routes.evidence.index()}
+											className="block text-center text-muted-foreground text-xs hover:text-foreground"
+										>
+											+{evidence.length - 4} more evidence items
+										</Link>
+									)}
+								</div>
+							</div>
+						)} */}
+
 						{/* Simplified Insights Summary */}
 						{insights.length > 0 && (
 							<div className="rounded-lg border bg-background p-4">

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion"
-import { Clock, Quote } from "lucide-react"
+import { Clock, ExternalLink, Play, Quote } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
@@ -172,11 +172,11 @@ export function EvidenceCard({
 									{topic}
 								</Badge>
 							)}
-							<h3 className="font-semibold text-lg leading-6 text-foreground">{gist}</h3>
+							<h3 className="font-semibold text-foreground text-lg leading-6">{gist}</h3>
 						</div>
-					<div className="flex flex-wrap items-center gap-2 text-xs">
-						<ConfidenceBarChart level={supportLevel} />
-						<Badge variant="secondary" className="text-xs capitalize">
+						<div className="flex flex-wrap items-center gap-2 text-xs">
+							<ConfidenceBarChart level={supportLevel} />
+							<Badge variant="secondary" className="text-xs capitalize">
 								{supportLabel}
 							</Badge>
 							{evidence.confidence && (
@@ -186,19 +186,19 @@ export function EvidenceCard({
 							)}
 						</div>
 					</div>
-						{chunk && (
-							<blockquote
-								className="border-muted border-l-4 pl-4 text-muted-foreground"
-								style={{ borderLeftColor: themeColor }}
-							>
+					{chunk && (
+						<blockquote
+							className="border-muted border-l-4 pl-4 text-muted-foreground"
+							style={{ borderLeftColor: themeColor }}
+						>
 							“{chunk}”
-							</blockquote>
-						)}
-						{contextSummary && <p className="text-muted-foreground text-sm">{contextSummary}</p>}
+						</blockquote>
+					)}
+					{contextSummary && <p className="text-muted-foreground text-sm">{contextSummary}</p>}
 				</div>
 			</div>
 
-				<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
+			<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
 				{speakerLabel && <span className="truncate">Speaker: {speakerLabel}</span>}
 				{personaBadges.length > 0 && (
 					<div className="flex flex-wrap items-center gap-1">
@@ -256,17 +256,22 @@ export function EvidenceCard({
 											<span>{formatAnchorTime(anchor.start, anchor.end)}</span>
 										</div>
 									</div>
-									{anchor.speaker && (
-										<p className="text-muted-foreground text-xs">Speaker: {anchor.speaker}</p>
+									{anchor.speaker && <p className="text-muted-foreground text-xs">Speaker: {anchor.speaker}</p>}
+									{variant === "expanded" ? (
+										<EnhancedMediaPlayer
+											mediaUrl={mediaUrl}
+											startTime={anchor.start ?? undefined}
+											endTime={anchor.end ?? undefined}
+											size="sm"
+											title={anchor.title ?? `Clip ${index + 1}`}
+											duration_sec={interview?.duration_sec ?? undefined}
+										/>
+									) : (
+										<div className="flex items-center gap-2 text-muted-foreground text-xs">
+											<Play className="h-3 w-3" />
+											<span>Click to view details and play media</span>
+										</div>
 									)}
-									<EnhancedMediaPlayer
-										mediaUrl={mediaUrl}
-										startTime={anchor.start ?? undefined}
-										endTime={anchor.end ?? undefined}
-										size="sm"
-										title={anchor.title ?? `Clip ${index + 1}`}
-										duration_sec={interview?.duration_sec ?? undefined}
-									/>
 								</div>
 							)
 						})}
@@ -276,8 +281,8 @@ export function EvidenceCard({
 
 			{showInterviewLink && interviewUrl && (
 				<div className="flex items-center justify-between border-muted border-t pt-3">
-					<div className="text-xs text-muted-foreground">Linked interview</div>
-					<Link to={interviewUrl} className="text-xs font-medium text-primary hover:underline">
+					<div className="text-muted-foreground text-xs">Linked interview</div>
+					<Link to={interviewUrl} className="font-medium text-primary text-xs hover:underline">
 						{interview?.title ?? "View interview"}
 					</Link>
 				</div>
@@ -289,7 +294,7 @@ export function EvidenceCard({
 		<motion.div
 			className={cn(
 				"group relative flex w-full cursor-default overflow-hidden rounded-2xl border border-gray-300 bg-background transition-all duration-300 ease-out hover:shadow-black/5 hover:shadow-lg dark:border-gray-400 dark:bg-gray-900 dark:hover:shadow-white/5",
-				className,
+				className
 			)}
 			onMouseEnter={() => setIsHovered(true)}
 			onMouseLeave={() => setIsHovered(false)}

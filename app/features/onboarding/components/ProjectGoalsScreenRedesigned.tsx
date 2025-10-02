@@ -2,6 +2,7 @@ import consola from "consola"
 import { ChevronDown, ChevronRight, HelpCircle, Info, Loader2, Plus, Target, TargetIcon, Users, X } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
+import { toast } from "sonner"
 import { z } from "zod"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
@@ -18,7 +19,6 @@ import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
 import { useAutoSave } from "../hooks/useAutoSave"
 import ContextualSuggestions from "./ContextualSuggestions"
-import { toast } from "sonner"
 
 type TemplatePrefill = {
 	template_key: string
@@ -548,12 +548,12 @@ export default function ProjectGoalsScreen({
 					target_roles,
 					research_goal,
 					research_goal_details,
-				decision_questions,
-				assumptions,
-				unknowns,
-				custom_instructions: custom_instructions || undefined,
-				projectId: resolvedProjectId,
-			})
+					decision_questions,
+					assumptions,
+					unknowns,
+					custom_instructions: custom_instructions || undefined,
+					projectId: resolvedProjectId,
+				})
 			} catch (error) {
 				consola.error("[ProjectGoals] Unable to proceed to questions", error)
 			}
@@ -1322,7 +1322,49 @@ export default function ProjectGoalsScreen({
 							</CollapsibleContent>
 						</Card>
 					</Collapsible>
+
+					{/* Target Conversations Section */}
+					<div className="mx-auto max-w-4xl">
+						<Card>
+							<CardHeader className="p-4">
+								<div className="flex items-center gap-2">
+									<Target className="h-5 w-5 text-green-600" />
+									<h2 className="font-semibold text-lg">How many conversations to have?</h2>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>Set your target number of interviews to conduct for this research project.</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</CardHeader>
+
+
+							<CardContent className="p-6 pt-0">
+								<div className="flex items-center gap-4">
+									<Input
+										type="number"
+										min="1"
+										max="100"
+										value={target_conversations}
+										onChange={(e) => {
+											const value = Number.parseInt(e.target.value) || 10
+											setTargetConversations(value)
+										}}
+										onBlur={() => saveTargetConversations(target_conversations)}
+										className="w-24 text-center"
+									/>
+									<span className="text-gray-600 text-sm">interviews</span>
+								</div>
+							</CardContent>
+						</Card>
+					</div>
 				</div>
+
 
 				{/* Custom Instructions Collapsible Section */}
 				<div className="mb-8">
@@ -1344,7 +1386,6 @@ export default function ProjectGoalsScreen({
 							</TooltipContent>
 						</Tooltip>
 					</Button>
-
 					{showCustomInstructions && (
 						<Card className="mt-4">
 							<CardContent className="p-4">
@@ -1361,44 +1402,7 @@ export default function ProjectGoalsScreen({
 					)}
 				</div>
 
-				{/* Target Conversations Section */}
-				<div className="mx-auto max-w-4xl">
-					<Card>
-						<CardHeader className="p-4">
-							<div className="flex items-center gap-2">
-								<Target className="h-5 w-5 text-green-600" />
-								<h2 className="font-semibold text-lg">How many conversations to have?</h2>
-								<Tooltip>
-									<TooltipTrigger asChild>
-										<span className="inline-flex">
-											<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-										</span>
-									</TooltipTrigger>
-									<TooltipContent className="max-w-xs">
-										<p>Set your target number of interviews to conduct for this research project.</p>
-									</TooltipContent>
-								</Tooltip>
-							</div>
-						</CardHeader>
-						<CardContent className="p-6 pt-0">
-							<div className="flex items-center gap-4">
-								<Input
-									type="number"
-									min="1"
-									max="100"
-									value={target_conversations}
-									onChange={(e) => {
-										const value = Number.parseInt(e.target.value) || 10
-										setTargetConversations(value)
-									}}
-									onBlur={() => saveTargetConversations(target_conversations)}
-									className="w-24 text-center"
-								/>
-								<span className="text-gray-600 text-sm">interviews</span>
-							</div>
-						</CardContent>
-					</Card>
-				</div>
+
 
 				{showNextButton && (
 					<div className="mt-8 border-gray-200 border-t pt-8">
@@ -1425,6 +1429,6 @@ export default function ProjectGoalsScreen({
 					</div>
 				)}
 			</div>
-		</TooltipProvider>
+		</TooltipProvider >
 	)
 }

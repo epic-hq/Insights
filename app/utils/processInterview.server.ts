@@ -828,7 +828,7 @@ const personUpdatePayload: PeopleUpdate = {
 if (personUpdateErr) {
 	consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
 }
-primaryPersonName = personName
+// personName already contains the updated value, no need to reassign
 
 	// Heuristic: Map evidence -> answers by category against latest questions set
 	try {
