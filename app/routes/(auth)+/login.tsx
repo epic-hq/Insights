@@ -9,10 +9,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	if (user) {
 		throw redirect("/home")
 	}
-	const user = await getAuthenticatedUser(request)
-	if (user) {
-		throw redirect("/home")
-	}
 }
 
 export default function AuthPage() {
