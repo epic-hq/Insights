@@ -18290,7 +18290,7 @@ snapshots:
     dependencies:
       '@types/node': 24.0.10
       tapable: 2.2.1
-      webpack: 5.101.3(esbuild@0.25.9)
+      webpack: 5.101.3(esbuild@0.25.0)
     transitivePeerDependencies:
       - '@swc/core'
       - esbuild
@@ -24279,7 +24279,7 @@ snapshots:
       schema-utils: 4.3.2
       serialize-javascript: 6.0.2
       terser: 5.44.0
-      webpack: 5.101.3(esbuild@0.25.9)
+      webpack: 5.101.3(esbuild@0.25.0)
     optionalDependencies:
       esbuild: 0.25.0
 
@@ -24903,7 +24903,7 @@ snapshots:
 
   webpack-virtual-modules@0.6.2: {}
 
-  webpack@5.101.3(esbuild@0.25.9):
+  webpack@5.101.3(esbuild@0.25.0):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.8
