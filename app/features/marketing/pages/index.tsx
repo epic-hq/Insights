@@ -48,7 +48,7 @@ export default function LandingPage() {
 							<div className="flex justify-center">
 								<Badge className="border-white/20 bg-white/10 px-4 py-2 font-medium text-white backdrop-blur-sm">
 									<Sparkles className="mr-2 h-4 w-4" />
-									Customer Discovery Platform
+									Customer Intelligence
 								</Badge>
 							</div>
 

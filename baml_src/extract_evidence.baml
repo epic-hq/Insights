@@ -19,6 +19,53 @@ class KindTags {
   artifact string[]? @description(#" items, data, places, things, documents, etc."#)
 }
 
+class FacetCatalogKind {
+  slug string @description("Kind identifier, e.g., goal | pain | task | tool | value")
+  label string @description("Display label for the kind")
+}
+
+class FacetCatalogEntry {
+  facet_ref string @description("Stable reference like g:12 or a:45")
+  kind_slug string @description("Kind slug this facet belongs to")
+  label string @description("Preferred display label")
+  alias string? @description("Project-level alias to show instead of label when present")
+  synonyms string[]? @description("Known synonyms and aliases")
+}
+
+class FacetCatalog {
+  kinds FacetCatalogKind[] @description("Merged catalog of facet kinds (project ▶ account ▶ global)")
+  facets FacetCatalogEntry[] @description("Merged facet entries available to this project")
+  version string @description("Opaque version string for caching and diffing")
+}
+
+class FacetCandidatePayload {
+  kind_slug string @description("Kind slug such as goal | pain | task | tool | differentiator")
+  label string @description("Human-readable label to review (≤5 words, Title Case)")
+  synonyms string[]? @description("Optional synonyms observed in transcript")
+  notes string[]? @description("Short bullets justifying why this term matters")
+}
+
+class PersonFacetObservation {
+  facet_ref string? @description("Existing facet reference when confidently matched")
+  candidate FacetCandidatePayload? @description("Populate when no facet_ref confidently matches")
+  kind_slug string @description("Kind slug describing the dimension (goal, pain, etc.)")
+  value string @description("Short phrase capturing the participant's wording")
+  source string @description("interview | survey | telemetry | inferred | manual")
+  evidence_unit_index int? @description("Index of the evidence unit supporting this observation")
+  confidence float? @description("0.0-1.0 confidence that this facet applies")
+  notes string[]? @description("Optional bullets with rationale or clarifications")
+}
+
+class PersonScaleObservation {
+  kind_slug string @description("Scale identifier, e.g., price_sensitivity")
+  score float @description("0.0-1.0 normalized score along the spectrum")
+  band string? @description("low | medium | high banding for UI")
+  source string @description("interview | survey | telemetry | inferred | manual")
+  evidence_unit_index int? @description("Index of the evidence unit used for this assessment")
+  confidence float? @description("0.0-1.0 confidence in the score")
+  rationale string? @description("Short justification for the assigned score")
+}
+
 class EvidenceParticipant {
   person_key string @description("Stable identifier referenced by evidence units")
   display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2'")
@@ -29,6 +76,8 @@ class EvidenceParticipant {
   organization string? @description("Employer, school, or affiliation if mentioned")
   summary string? @description("Short descriptor of this participant's identity in the session")
   notes string? @description("Free-form clarifying notes for analysts")
+  facets PersonFacetObservation[]? @description("Facet observations derived from catalog matching")
+  scales PersonScaleObservation[]? @description("Scale observations with normalized scores")
 }
 
 class EvidenceUnit {
@@ -60,6 +109,7 @@ class EvidenceUnit {
 class EvidenceExtraction {
   people EvidenceParticipant[] @description("Unique participants detected in the transcript")
   evidence EvidenceUnit[] @description("Chronological evidence units for downstream storage")
+  facet_catalog_version string? @description("Echo the catalog version to ensure downstream joins match")
 }
 
 class Chapter {
@@ -72,7 +122,8 @@ class Chapter {
 function ExtractEvidenceFromTranscript(
   transcript: string,
   chapters: Chapter[],
-  language: string
+  language: string,
+  facet_catalog: FacetCatalog
 ) -> EvidenceExtraction {
   client "CustomGPT4o"
   prompt #"
@@ -84,6 +135,7 @@ Your task is to extract sequential evidence from an interview transcript so the 
 2. Slice the transcript into coherent, chronological chunks that express a single point of view (usually 2–5 sentences from one speaker).
 3. For each chunk, produce an `EvidenceUnit` anchored to the correct `person_key`, with chunk, gist, verbatim quote, tags, anchors, and empathy facets.
 4. Only create a unit when it adds analytical value (pain, goal, motivation, workaround, evaluation criteria, decision factor, emotion, etc.).
+5. For each participant, synthesize high-signal facet + scale observations using the provided `facet_catalog`; link each observation back to the supporting evidence.
 
 ## Selection Priorities
 High-severity pains, frequent behaviors, explicit goals, success criteria.
@@ -112,6 +164,22 @@ feels: Emotions with context (e.g., “frustrated wasting evenings on prospectin
 pains: Biggest frustrations/obstacles (e.g., “tools deliver unqualified contacts”).
 gains: Desired positive outcomes (e.g., “save time with pre-qualified leads”).
 
+## Facet & Scale Mapping
+- The `facet_catalog` already merges project ▶ account ▶ global terms. Respect aliases when generating analyst-facing text, but match by label or synonyms case-insensitively.
+- Populate `people[].facets` with distinct, high-signal observations. Set `source` to "interview" and point `evidence_unit_index` to the supporting evidence (0-based).
+- When you find a confident match, set `facet_ref` (e.g., `g:12` or `a:45`) and reuse the catalog’s `kind_slug`. When unsure, keep `facet_ref` empty and supply a `candidate` with Title Case `label`, ≤5 words, plus any synonyms.
+- Use `value` to capture the participant’s own wording (≤12 words). Avoid duplicating the same facet multiple times for similar statements.
+- Emit `people[].scales` only when the transcript clearly indicates direction or intensity. Map scores on 0.0–1.0, add a `band` (low <0.34, medium 0.34–0.66, high >0.66), and include a tight `rationale`.
+- Set `facets[].confidence` / `scales[].confidence` to a float between 0.0 and 1.0 (e.g., 0.9 for explicit signals, 0.6 when inferred but plausible).
+- Echo the provided `facet_catalog.version` into `facet_catalog_version` for downstream caching.
+
+## Facet Catalog (read-only context)
+- Available kinds with labels:
+  {{ facet_catalog.kinds }}
+- Enabled facets (already scoped to this project):
+  {{ facet_catalog.facets }}
+- Treat the catalog as authoritative: do not invent new kinds; prefer existing terms whenever confident.
+
 ## Guardrails
 Only infer persona/segment/journey_stage when obvious. If unsure, omit.
 Keep `chunk` faithful to the participant’s voice (light edits for clarity are OK, no inventions).
@@ -123,7 +191,10 @@ Prefer fewer, higher-quality units over many weak ones.
     Chapters (optional; may help anchoring)
     {{ chapters }}
 
-    Output strictly as EvidenceExtraction respecting {{ ctx.output_format }}
+    Facet catalog (merged project ▶ account ▶ global view)
+    {{ facet_catalog }}
+
+    Output strictly as EvidenceExtraction respecting {{ ctx.output_format }} and set `facet_catalog_version` = `facet_catalog.version`
   "#
 }
 
@@ -146,6 +217,11 @@ PARTICIPANT: I want to feel confident that I can find anything I need within sec
     "#
     chapters []
     language "en"
+    facet_catalog {
+      kinds []
+      facets []
+      version "test"
+    }
   }
 }
 
@@ -385,6 +461,11 @@ I do not. No, I don't pay for any of them. I just mainly utilize the free ones.
     "#
     chapters [ { start_ms 0, end_ms 60000, title "Onboarding" } ]
     language "en"
+    facet_catalog {
+      kinds []
+      facets []
+      version "test"
+    }
   }
 }
 
