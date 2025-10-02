@@ -369,8 +369,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		if (questionSet?.questions && Array.isArray(questionSet.questions)) {
 			const usedIds = new Set<string>()
 			questionSet.questions = questionSet.questions.map((question: any) => {
-				let id =
-					question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
+				let id = question.id && typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
 				while (usedIds.has(id)) {
 					id = randomUUID()
 				}
@@ -397,12 +396,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		)
 
 		const promptPayloads = generatedQuestions.map((question: any, index: number) => {
-			const id =
-				typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
+			const id = typeof question.id === "string" && question.id.length > 0 ? question.id : randomUUID()
 			const categoryId =
-				typeof question.categoryId === "string" && question.categoryId.length > 0
-					? question.categoryId
-					: "context"
+				typeof question.categoryId === "string" && question.categoryId.length > 0 ? question.categoryId : "context"
 			const scores =
 				typeof question.scores === "object" && question.scores !== null
 					? question.scores
@@ -447,9 +443,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 		type PromptPayload = (typeof promptPayloads)[number]
 		const newQuestionIds = new Set(promptPayloads.map((p: PromptPayload) => p.id))
-		const existingSectionQuestions = Array.isArray(existingSectionMeta?.questions)
-			? existingSectionMeta.questions
-			: []
+		const existingSectionQuestions = Array.isArray(existingSectionMeta?.questions) ? existingSectionMeta.questions : []
 		const filteredExistingSectionQuestions = existingSectionQuestions.filter(
 			(q: any) => q && typeof q.id === "string" && !newQuestionIds.has(q.id)
 		)
@@ -485,20 +479,17 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			settings: sectionMetaSettings,
 		}
 
-		const { error: sectionError } = await supabase
-			.from("project_sections")
-			.upsert(
-				{
-					project_id,
-					kind: "questions",
-					position: existingSectionPosition ?? 2,
-					content_md:
-						existingSectionContent ??
-						`# Questions\n\nGenerated ${generatedQuestions.length} interview questions via AI.`,
-					meta: updatedSectionMeta,
-				},
-				{ onConflict: "project_id,kind" }
-			)
+		const { error: sectionError } = await supabase.from("project_sections").upsert(
+			{
+				project_id,
+				kind: "questions",
+				position: existingSectionPosition ?? 2,
+				content_md:
+					existingSectionContent ?? `# Questions\n\nGenerated ${generatedQuestions.length} interview questions via AI.`,
+				meta: updatedSectionMeta,
+			},
+			{ onConflict: "project_id,kind" }
+		)
 
 		if (sectionError) {
 			consola.error("[api.generate-questions] Failed to update project section meta", sectionError)

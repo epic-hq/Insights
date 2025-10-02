@@ -109,21 +109,21 @@ async function saveResearchStructure(supabase: any, projectId: string, structure
 	try {
 		// Generate proper UUIDs for all items since BAML might generate simple numeric IDs
 		const idMapping = new Map<string, string>()
-		
+
 		// Generate UUID mappings for decision questions
 		structure.decision_questions.forEach((dq: any) => {
 			if (!idMapping.has(dq.id)) {
 				idMapping.set(dq.id, randomUUID())
 			}
 		})
-		
+
 		// Generate UUID mappings for research questions
 		structure.research_questions.forEach((rq: any) => {
 			if (!idMapping.has(rq.id)) {
 				idMapping.set(rq.id, randomUUID())
 			}
 		})
-		
+
 		// Generate UUID mappings for interview prompts
 		structure.interview_prompts.forEach((ip: any) => {
 			if (!idMapping.has(ip.id)) {

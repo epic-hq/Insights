@@ -93,16 +93,16 @@ export async function generateQuestionSetCanonical(params: {
 		per_category_max: per_category_max ?? 3,
 		interview_time_limit: interview_time_limit ?? 30,
 	}
-	
+
 	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs)
-	
+
 	try {
 		const questionSet = await b.GenerateQuestionSet(bamlInputs)
 		consola.log("[BAML DEBUG] GenerateQuestionSet result:", {
 			success: true,
 			hasQuestions: Array.isArray(questionSet?.questions),
 			questionCount: questionSet?.questions?.length || 0,
-			result: questionSet
+			result: questionSet,
 		})
 		return questionSet
 	} catch (error) {
@@ -110,7 +110,7 @@ export async function generateQuestionSetCanonical(params: {
 			error,
 			errorMessage: error instanceof Error ? error.message : String(error),
 			errorStack: error instanceof Error ? error.stack : undefined,
-			inputs: bamlInputs
+			inputs: bamlInputs,
 		})
 		throw error
 	}

@@ -1,7 +1,7 @@
-import consola from "consola"
 import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
 import type { Database } from "~/../supabase/types"
-import { processInterviewTranscriptWithClient, type InterviewMetadata } from "~/utils/processInterview.server"
+import { type InterviewMetadata, processInterviewTranscriptWithClient } from "~/utils/processInterview.server"
 
 interface RegenerateEvidenceOptions {
 	supabase: SupabaseClient<Database>
@@ -28,9 +28,7 @@ export async function regenerateEvidenceForProject({
 
 	const { data: interviews, error: interviewsError } = await supabase
 		.from("interviews")
-		.select(
-			"id, transcript, transcript_formatted, media_url, title, interview_date, participant_pseudonym, segment"
-		)
+		.select("id, transcript, transcript_formatted, media_url, title, interview_date, participant_pseudonym, segment")
 		.eq("project_id", projectId)
 
 	if (interviewsError) {
@@ -45,9 +43,10 @@ export async function regenerateEvidenceForProject({
 		try {
 			const rawTranscriptData = (interview.transcript_formatted as Record<string, unknown> | null) ?? {}
 			const transcriptData: Record<string, unknown> = { ...rawTranscriptData }
-			const fullTranscript = typeof transcriptData.full_transcript === "string" && transcriptData.full_transcript.trim().length
-				? transcriptData.full_transcript
-				: interview.transcript ?? ""
+			const fullTranscript =
+				typeof transcriptData.full_transcript === "string" && transcriptData.full_transcript.trim().length
+					? transcriptData.full_transcript
+					: (interview.transcript ?? "")
 
 			if (!fullTranscript.trim().length) {
 				skipped += 1
@@ -66,7 +65,9 @@ export async function regenerateEvidenceForProject({
 				projectId,
 				userId,
 				interviewTitle: interview.title || undefined,
-				interviewDate: interview.interview_date ? new Date(interview.interview_date).toISOString().split("T")[0] : undefined,
+				interviewDate: interview.interview_date
+					? new Date(interview.interview_date).toISOString().split("T")[0]
+					: undefined,
 				participantName: interview.participant_pseudonym || undefined,
 				segment: interview.segment || undefined,
 			}

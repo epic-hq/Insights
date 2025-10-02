@@ -41,7 +41,7 @@ export function LazyTranscriptResults({
 	const loadTranscript = async () => {
 		setLoading(true)
 		setError(null)
-		
+
 		try {
 			if (!projectId || !currentProject) {
 				throw new Error("Project context required for transcript access")
@@ -58,7 +58,7 @@ export function LazyTranscriptResults({
 			}
 
 			const data: TranscriptApiResponse = await response.json()
-			
+
 			const processedData: TranscriptData = {
 				text: data.transcript || "",
 				utterances: data.transcript_formatted?.speaker_transcripts || [],

@@ -9,7 +9,6 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	if (user) {
 		throw redirect("/home")
 	}
-
 }
 
 export default function AuthPage() {

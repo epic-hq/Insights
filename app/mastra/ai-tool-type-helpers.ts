@@ -1,6 +1,6 @@
-import type { Tool as AITool, InferUITools } from 'ai'
-import type { z } from 'zod'
-import type { Tool as MastraTool } from '@mastra/core/tools'
+import type { Tool as MastraTool } from "@mastra/core/tools"
+import type { Tool as AITool, InferUITools } from "ai"
+import type { z } from "zod"
 
 /**
  * Infer a Zod schema to its TypeScript type, or fall back to unknown if not provided.

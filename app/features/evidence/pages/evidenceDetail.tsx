@@ -44,18 +44,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const data = {
 		...evidenceData,
-		people: peopleData || []
+		people: peopleData || [],
 	}
 
 	// Transform the data to match EvidenceCard expectations
 	const transformedEvidence = {
 		...data,
-		people: data.people?.map((ep: any) => ({
-			id: ep.person.id,
-			name: ep.person.name,
-			role: ep.person.role,
-			personas: [], // No personas data needed for now
-		})) || [],
+		people:
+			data.people?.map((ep: any) => ({
+				id: ep.person.id,
+				name: ep.person.name,
+				role: ep.person.role,
+				personas: [], // No personas data needed for now
+			})) || [],
 	}
 
 	return {
@@ -71,12 +72,7 @@ export default function EvidenceDetail() {
 		<div className="space-y-4 p-4 sm:p-6">
 			{/* Mobile-friendly header */}
 			<div className="flex items-center gap-3">
-				<Button
-					variant="ghost"
-					size="sm"
-					onClick={() => window.history.back()}
-					className="h-8 w-8 p-0"
-				>
+				<Button variant="ghost" size="sm" onClick={() => window.history.back()} className="h-8 w-8 p-0">
 					<ChevronLeft className="h-4 w-4" />
 				</Button>
 				<div className="flex-1">
@@ -86,12 +82,7 @@ export default function EvidenceDetail() {
 			</div>
 
 			{/* Full Evidence Card */}
-			<EvidenceCard
-				evidence={evidence}
-				people={evidence.people || []}
-				variant="expanded"
-				showInterviewLink={true}
-			/>
+			<EvidenceCard evidence={evidence} people={evidence.people || []} variant="expanded" showInterviewLink={true} />
 		</div>
 	)
 }

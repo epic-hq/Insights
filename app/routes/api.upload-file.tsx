@@ -2,9 +2,9 @@ import type { UUID } from "node:crypto"
 import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
+import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
-import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 
@@ -67,7 +67,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			)
 		} else {
 			// Handle audio/video files - store file and transcribe
-			
+
 			// First create interview record to get ID for storage
 			const { data: interview, error: insertError } = await supabase
 				.from("interviews")
@@ -137,10 +137,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			}
 
 			// Update interview with media URL
-			await supabase
-				.from("interviews")
-				.update({ media_url: mediaUrl, status: "transcribed" })
-				.eq("id", interview.id)
+			await supabase.from("interviews").update({ media_url: mediaUrl, status: "transcribed" }).eq("id", interview.id)
 		}
 
 		const metadata = {

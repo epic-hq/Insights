@@ -6,32 +6,32 @@ import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/server"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
+import { navigateToPageTool } from "../tools/navigate-to-page"
 import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
 import { signupCompletionGuardTool } from "../tools/signup-completion-guard"
-import { navigateToPageTool } from "../tools/navigate-to-page"
 
 export const AgentState = z.object({
-  signupChatData: z
-    .object({
-      problem: z.string().optional(),
-      need_to_learn: z.string().optional(),
-      content_types: z.string().optional(),
-      challenges: z.string().optional(),
-      other_feedback: z.string().optional(),
-      completed: z.boolean().optional(),
-    })
-    .optional(),
+	signupChatData: z
+		.object({
+			problem: z.string().optional(),
+			need_to_learn: z.string().optional(),
+			content_types: z.string().optional(),
+			challenges: z.string().optional(),
+			other_feedback: z.string().optional(),
+			completed: z.boolean().optional(),
+		})
+		.optional(),
 })
 
 export const signupAgent = new Agent({
-  name: "signupAgent",
-  instructions: async ({ runtimeContext }) => {
-    const { data } = await supabaseAdmin
-      .from("user_settings")
-      .select("signup_data")
-      .eq("user_id", runtimeContext.get("user_id"))
-      .single()
-    return `
+	name: "signupAgent",
+	instructions: async ({ runtimeContext }) => {
+		const { data } = await supabaseAdmin
+			.from("user_settings")
+			.select("signup_data")
+			.eq("user_id", runtimeContext.get("user_id"))
+			.single()
+		return `
 You are an onboarding prescreen assistant for the waitlist. Ask short, targeted questions and collect the minimum to judge fit.
 
 Flow:
@@ -54,16 +54,16 @@ Company:
 Current signup_data snapshot:
 ${JSON.stringify(data)}
 `
-  },
-  model: openai("gpt-4.1"),
-  tools: {
-    // Validation guard to ensure the agent never prematurely completes
-    // signupCompletionGuardTool,
-    // Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
-    saveUserSettingsData: saveUserSettingsDataTool,
-    navigateToPage: navigateToPageTool,
-    displayUserQuestions: displayUserQuestionsTool,
-  },
+	},
+	model: openai("gpt-4.1"),
+	tools: {
+		// Validation guard to ensure the agent never prematurely completes
+		// signupCompletionGuardTool,
+		// Native Mastra tool to persist signup chat data (fallback in case Copilot action isn't used)
+		saveUserSettingsData: saveUserSettingsDataTool,
+		navigateToPage: navigateToPageTool,
+		displayUserQuestions: displayUserQuestionsTool,
+	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
 		options: {

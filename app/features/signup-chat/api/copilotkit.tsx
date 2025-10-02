@@ -51,7 +51,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	// 	consola.error("MASTRA_URL is not set")
 	// 	return new Response("MASTRA_URL is not set", { status: 500 })
 	// }
-    // Removed Copilot runtime wiring
+	// Removed Copilot runtime wiring
 
 	// Log the context for debugging
 	// consola.log("CopilotKit received headers:", {

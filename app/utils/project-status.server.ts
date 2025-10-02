@@ -228,19 +228,15 @@ export async function getProjectStatusData(
 			analysisDerivedNextSteps = toStringArray(projectAnalysis.next_steps)
 			followUpRecommendations = toStringArray(gapAnalysis.follow_up_recommendations)
 			suggestedInterviewTopics = toStringArray(gapAnalysis.suggested_interview_topics)
-			confidenceScore = typeof projectAnalysis.confidence_score === "number" ? projectAnalysis.confidence_score : undefined
+			confidenceScore =
+				typeof projectAnalysis.confidence_score === "number" ? projectAnalysis.confidence_score : undefined
 			nextAction = typeof quickInsights.next_action === "string" ? quickInsights.next_action : undefined
 			confidenceLevel = typeof quickInsights.confidence === "number" ? quickInsights.confidence : undefined
 			completionScore = typeof metadata.completion_score === "number" ? metadata.completion_score : completionScore
-			answeredInsights =
-				toStringArray(metadata.key_insights) ||
-				toStringArray(quickInsights.answered_insights)
+			answeredInsights = toStringArray(metadata.key_insights) || toStringArray(quickInsights.answered_insights)
 			unanticipatedDiscoveries =
-				toStringArray(metadata.unanticipated_discoveries) ||
-				toStringArray(quickInsights.unanticipated_discoveries)
-			criticalUnknowns =
-				toStringArray(metadata.critical_unknowns) ||
-				toStringArray(quickInsights.critical_unknowns)
+				toStringArray(metadata.unanticipated_discoveries) || toStringArray(quickInsights.unanticipated_discoveries)
+			criticalUnknowns = toStringArray(metadata.critical_unknowns) || toStringArray(quickInsights.critical_unknowns)
 
 			const insightsByName = allInsights
 			questionAnswers = qaRaw.map((qa) => {

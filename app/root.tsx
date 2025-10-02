@@ -25,28 +25,28 @@ import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
-  let lang = "en"
-  let clientEnv: Record<string, unknown> | undefined
+	let lang = "en"
+	let clientEnv: Record<string, unknown> | undefined
 
-  try {
-    const loadCtx = context.get(loadContext) as {
-      lang?: string
-      clientEnv?: Record<string, unknown>
-      env?: { APP_ENV: string }
-      isProductionDeployment?: boolean
-      t?: (key: string) => string
-    }
+	try {
+		const loadCtx = context.get(loadContext) as {
+			lang?: string
+			clientEnv?: Record<string, unknown>
+			env?: { APP_ENV: string }
+			isProductionDeployment?: boolean
+			t?: (key: string) => string
+		}
 
-    if (loadCtx?.lang) {
-      lang = loadCtx.lang
-    }
+		if (loadCtx?.lang) {
+			lang = loadCtx.lang
+		}
 
-    if (loadCtx?.clientEnv) {
-      clientEnv = loadCtx.clientEnv
-    }
-  } catch (error) {
-    consola.warn("[root.loader] Missing loadContext; falling back to defaults", error)
-  }
+		if (loadCtx?.clientEnv) {
+			clientEnv = loadCtx.clientEnv
+		}
+	} catch (error) {
+		consola.warn("[root.loader] Missing loadContext; falling back to defaults", error)
+	}
 
 	const hints = getHints(request)
 
@@ -95,7 +95,11 @@ export default function App({ loaderData }: Route.ComponentProps) {
 
 	// Minimal PostHog host normalization: add https:// if missing and trim trailing slash
 	const apiHost = clientEnv.POSTHOG_HOST
-		? ((clientEnv.POSTHOG_HOST.startsWith("http") ? clientEnv.POSTHOG_HOST : `https://${clientEnv.POSTHOG_HOST}`) as string).replace(/\/+$/, "")
+		? (
+				(clientEnv.POSTHOG_HOST.startsWith("http")
+					? clientEnv.POSTHOG_HOST
+					: `https://${clientEnv.POSTHOG_HOST}`) as string
+			).replace(/\/+$/, "")
 		: undefined
 
 	// Make clientEnv available globally on window.env for polyEnv pattern

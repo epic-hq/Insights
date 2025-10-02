@@ -1,10 +1,11 @@
 // CopilotKit removed
-import { useEffect, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+
 // CopilotKit UI removed
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport } from "ai"
+import { useEffect, useState } from "react"
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
+import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 
 // Add custom CSS for progress animation
 const progressStyles = `
@@ -90,16 +91,16 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 		},
 	})
 
-    const mastraBase = (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, "")
-    return data({
-        user,
-        existingChatData,
-        copilotRuntimeUrl: "/api/copilotkit",
-        mastraUrl: `${mastraBase}/copilotkit/signup`,
-        result,
-        messages: messagesV2,
-        threadId,
-    })
+	const mastraBase = (process.env.MASTRA_URL || "http://localhost:4111").replace(/\/$/, "")
+	return data({
+		user,
+		existingChatData,
+		copilotRuntimeUrl: "/api/copilotkit",
+		mastraUrl: `${mastraBase}/copilotkit/signup`,
+		result,
+		messages: messagesV2,
+		threadId,
+	})
 }
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -315,7 +316,7 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 				</div>
 
 				{/* Chat UI removed */}
-				<div className="h-[500px] flex items-center justify-center text-muted-foreground text-sm">
+				<div className="flex h-[500px] items-center justify-center text-muted-foreground text-sm">
 					Chat UI disabled (CopilotKit removed)
 				</div>
 			</div>

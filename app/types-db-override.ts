@@ -1,7 +1,19 @@
+import type { MergeDeep } from "type-fest"
 import type { Database as SupabaseDB } from "~/../supabase/types"
-import { MergeDeep } from 'type-fest'
-import type { AcceptInvitationResponse, CreateAccountResponse, CreateInvitationResponse, CurrentUserAccountRoleResponse, GetAccountBillingStatusResponse, GetAccountInvitesResponse, GetAccountMembersResponse, GetAccountResponse, GetAccountsResponse, GetBillingPlansResponse, LookupInvitationResponse, UpdateAccountResponse } from "./types-accounts"
-
+import type {
+	AcceptInvitationResponse,
+	CreateAccountResponse,
+	CreateInvitationResponse,
+	CurrentUserAccountRoleResponse,
+	GetAccountBillingStatusResponse,
+	GetAccountInvitesResponse,
+	GetAccountMembersResponse,
+	GetAccountResponse,
+	GetAccountsResponse,
+	GetBillingPlansResponse,
+	LookupInvitationResponse,
+	UpdateAccountResponse,
+} from "./types-accounts"
 
 export type Database = MergeDeep<
 	SupabaseDB,

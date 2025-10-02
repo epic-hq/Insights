@@ -50,23 +50,11 @@ export default function RadialProgress({
 							content={({ viewBox }) => {
 								if (viewBox && "cx" in viewBox && "cy" in viewBox) {
 									return (
-										<text
-											x={viewBox.cx}
-											y={(viewBox.cy || 0) - 16}
-											textAnchor="middle"
-										>
-											<tspan
-												x={viewBox.cx}
-												y={(viewBox.cy || 0) - 16}
-												className="fill-foreground font-bold text-2xl"
-											>
+										<text x={viewBox.cx} y={(viewBox.cy || 0) - 16} textAnchor="middle">
+											<tspan x={viewBox.cx} y={(viewBox.cy || 0) - 16} className="fill-foreground font-bold text-2xl">
 												{current}
 											</tspan>
-											<tspan
-												x={viewBox.cx}
-												y={(viewBox.cy || 0) + 4}
-												className="fill-muted-foreground"
-											>
+											<tspan x={viewBox.cx} y={(viewBox.cy || 0) + 4} className="fill-muted-foreground">
 												{label}
 											</tspan>
 										</text>

@@ -46,7 +46,8 @@ export function OnboardingStepper({ steps, currentStepId, className, onStepClick
 										{
 											"border-primary bg-primary text-primary-foreground": isCompleted,
 											"border-primary bg-background text-primary": isCurrent,
-											"border-muted-foreground bg-background text-muted-foreground hover:border-primary hover:text-primary": isUpcoming,
+											"border-muted-foreground bg-background text-muted-foreground hover:border-primary hover:text-primary":
+												isUpcoming,
 										}
 									)}
 								>
@@ -83,13 +84,11 @@ export function OnboardingStepper({ steps, currentStepId, className, onStepClick
 										{stepContent}
 									</button>
 								) : (
-									<div className="flex flex-col items-center">
-										{stepContent}
-									</div>
+									<div className="flex flex-col items-center">{stepContent}</div>
 								)}
 								{index < steps.length - 1 && (
 									<div
-										className={cn("ml-4 h-0.5 w-8 hidden md:ml-8 md:block md:w-16", {
+										className={cn("ml-4 hidden h-0.5 w-8 md:ml-8 md:block md:w-16", {
 											"bg-primary": index < currentIndex,
 											"bg-muted-foreground": index >= currentIndex,
 										})}

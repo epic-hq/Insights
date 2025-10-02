@@ -17,7 +17,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		if (error) {
 			// Log error for debugging but continue with redirect
 			// Even if there's an error, we should still redirect to clear client state
-			consola.log('Signout: Error ', error)
+			consola.log("Signout: Error ", error)
 		}
 
 		// Redirect to auth page

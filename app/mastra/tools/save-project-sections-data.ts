@@ -1,8 +1,8 @@
 import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
-import { supabaseAdmin } from "~/lib/supabase/server"
 import { upsertProjectSection } from "~/features/projects/db"
+import { supabaseAdmin } from "~/lib/supabase/server"
 import type { Database } from "~/types"
 
 // Helpers to format content consistently with /api/save-project-goals
@@ -27,7 +27,10 @@ type SectionInput = {
 	payload: unknown
 }
 
-function toSection(kind: string, payload: unknown): null | {
+function toSection(
+	kind: string,
+	payload: unknown
+): null | {
 	kind: string
 	content_md: string
 	meta: Record<string, unknown>
@@ -77,9 +80,11 @@ export const saveProjectSectionsDataTool = createTool({
 		success: z.boolean(),
 		message: z.string(),
 		saved: z.array(z.string()).optional(),
-		data: z.object({
-			research_goal: z.string().optional(),
-		}).optional(),
+		data: z
+			.object({
+				research_goal: z.string().optional(),
+			})
+			.optional(),
 	}),
 	execute: async ({ context }) => {
 		try {
@@ -100,7 +105,10 @@ export const saveProjectSectionsDataTool = createTool({
 
 			const candidates: SectionInput[] = []
 			if (research_goal || research_goal_details) {
-				candidates.push({ kind: "research_goal", payload: { research_goal: research_goal || "", research_goal_details } })
+				candidates.push({
+					kind: "research_goal",
+					payload: { research_goal: research_goal || "", research_goal_details },
+				})
 			}
 			if (decision_questions) candidates.push({ kind: "decision_questions", payload: decision_questions })
 			if (assumptions) candidates.push({ kind: "assumptions", payload: assumptions })
@@ -108,9 +116,11 @@ export const saveProjectSectionsDataTool = createTool({
 			if (target_orgs) candidates.push({ kind: "target_orgs", payload: target_orgs })
 			if (target_roles) candidates.push({ kind: "target_roles", payload: target_roles })
 
-			const toSave = candidates
-				.map(({ kind, payload }) => toSection(kind, payload))
-				.filter(Boolean) as { kind: string; content_md: string; meta: Record<string, unknown> }[]
+			const toSave = candidates.map(({ kind, payload }) => toSection(kind, payload)).filter(Boolean) as {
+				kind: string
+				content_md: string
+				meta: Record<string, unknown>
+			}[]
 
 			if (toSave.length === 0) {
 				return { success: false, message: "No valid sections provided" }

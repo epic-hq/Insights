@@ -571,21 +571,26 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				formattedQuestions = promptRows
 					.filter((row: any) => row.status !== "deleted" && row.status !== "rejected")
 					.map((row: any) => ({
-					id: row.id,
-					text: row.text,
-					categoryId: row.category || "context",
-					scores: parseScores(row.scores),
-					rationale: row.rationale || "",
-					status: (row.status as Question["status"]) || "proposed",
-					timesAnswered: answerCountMap.get(row.id) || 0,
-					source: (row.source as Question["source"]) || "ai",
-					isMustHave: row.is_must_have ?? false,
-					estimatedMinutes: row.estimated_time_minutes ?? undefined,
-					selectedOrder: typeof row.selected_order === "number" ? row.selected_order : null,
-					isSelected: row.is_selected ?? false,
-				}))
+						id: row.id,
+						text: row.text,
+						categoryId: row.category || "context",
+						scores: parseScores(row.scores),
+						rationale: row.rationale || "",
+						status: (row.status as Question["status"]) || "proposed",
+						timesAnswered: answerCountMap.get(row.id) || 0,
+						source: (row.source as Question["source"]) || "ai",
+						isMustHave: row.is_must_have ?? false,
+						estimatedMinutes: row.estimated_time_minutes ?? undefined,
+						selectedOrder: typeof row.selected_order === "number" ? row.selected_order : null,
+						isSelected: row.is_selected ?? false,
+					}))
 				selectedIds = promptRows
-					.filter((row: any) => (row.status !== "deleted" && row.status !== "rejected") && (row.is_selected || typeof row.selected_order === "number"))
+					.filter(
+						(row: any) =>
+							row.status !== "deleted" &&
+							row.status !== "rejected" &&
+							(row.is_selected || typeof row.selected_order === "number")
+					)
 					.sort(
 						(a, b) => (a.selected_order ?? Number.POSITIVE_INFINITY) - (b.selected_order ?? Number.POSITIVE_INFINITY)
 					)
@@ -1123,23 +1128,24 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			// Create form data for the API
 			const formData = new FormData()
 			formData.append("intent", "delete")
-			
+
 			// Use fetcher to submit the delete intent
 			deleteFetcher.submit(formData, {
 				method: "post",
 				action: `/api/questions/${id}`,
 				encType: "application/x-www-form-urlencoded",
 			})
-			
+
 			// Optimistic UI update: remove from local state entirely
-			setQuestions(qs => qs.filter(q => q.id !== id))
-			
+			setQuestions((qs) => qs.filter((q) => q.id !== id))
+
 			// Show toast notification
 			toast.success("Question deleted", {
 				description: "The question has been moved to deleted status",
 			})
 		},
-		[getBaseSelectedIds, commitSelection, deleteFetcher, setQuestions])
+		[getBaseSelectedIds, commitSelection, deleteFetcher, setQuestions]
+	)
 
 	const moveQuestion = useCallback(
 		async (fromIndex: number, toIndex: number) => {
@@ -2141,10 +2147,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																								const updated = questions.map((q) =>
 																									q.id === question.id
 																										? {
-																											...q,
-																											text: editingText,
-																											qualityFlag: quality ?? undefined,
-																										}
+																												...q,
+																												text: editingText,
+																												qualityFlag: quality ?? undefined,
+																											}
 																										: q
 																								)
 																								setQuestions(updated)
@@ -2442,8 +2448,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						// Insert after the current question
 																						const baseIds = getBaseSelectedIds()
 																						const currentIndex = baseIds.indexOf(question.id)
-																						console.log("🔍 DEBUG: Current question position:", currentIndex, "in", baseIds)
-																						
+																						console.log(
+																							"🔍 DEBUG: Current question position:",
+																							currentIndex,
+																							"in",
+																							baseIds
+																						)
+
 																						const newBaseIds = [
 																							...baseIds.slice(0, currentIndex + 1),
 																							followupQuestion.id,
@@ -2453,31 +2464,31 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 																						const updatedQuestions = [...questions, followupQuestion]
 																						console.log("🔍 DEBUG: Updated questions count:", updatedQuestions.length)
-																						
+
 																						setQuestions(updatedQuestions)
 																						commitSelection(newBaseIds)
 																						markQuestionAsRecentlyAdded(followupQuestion.id)
 
 																						// Prevent debounced save from racing this change
-															suppressDeletionRef.current = true
-															setSkipDebounce(true)
-															console.log("🔍 DEBUG: About to save to database")
-															await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
-															setTimeout(() => {
-																setSkipDebounce(false)
-																suppressDeletionRef.current = false
-															}, 3000) // longer timeout to prevent debounced save override
+																						suppressDeletionRef.current = true
+																						setSkipDebounce(true)
+																						console.log("🔍 DEBUG: About to save to database")
+																						await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+																						setTimeout(() => {
+																							setSkipDebounce(false)
+																							suppressDeletionRef.current = false
+																						}, 3000) // longer timeout to prevent debounced save override
 
 																						setFollowupInput("")
-															setShowingFollowupFor(null)
-															toast.success("Follow-up question added")
-														console.log("DEBUG: Followup addition completed")
-													} catch (error) {
-														console.error("Error adding follow-up:", error)
-														toast.error("Failed to add follow-up question")
-													} finally {
-														setAddingCustomQuestion(false)
-													}
+																						setShowingFollowupFor(null)
+																						toast.success("Follow-up question added")
+																						console.log("DEBUG: Followup addition completed")
+																					} catch (error) {
+																						console.error("Error adding follow-up:", error)
+																						toast.error("Failed to add follow-up question")
+																					} finally {
+																						setAddingCustomQuestion(false)
+																					}
 																				}}
 																				size="sm"
 																			>

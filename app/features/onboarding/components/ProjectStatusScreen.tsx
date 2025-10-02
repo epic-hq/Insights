@@ -28,8 +28,8 @@ import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRevalidator } from "react-router"
 import { Streamdown } from "streamdown"
 import { Badge } from "~/components/ui/badge"
-import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { Button } from "~/components/ui/button"
+import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
@@ -277,8 +277,6 @@ export default function ProjectStatusScreen({
 			.slice(0, 3)
 	}, [standaloneResearchQuestions])
 
-
-
 	// Use helper functions to extract data from research rollup
 	const answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
 	const openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
@@ -306,7 +304,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-				(researchRollup?.research_questions_without_decision?.length || 0) > 0
+					(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -322,7 +320,13 @@ export default function ProjectStatusScreen({
 		}
 
 		return Array.from(steps)
-	}, [displayData.nextSteps, displayData.totalEvidence, displayData.totalInterviews, researchRollup, statusData?.followUpRecommendations])
+	}, [
+		displayData.nextSteps,
+		displayData.totalEvidence,
+		displayData.totalInterviews,
+		researchRollup,
+		statusData?.followUpRecommendations,
+	])
 
 	const nextStepsToShow = useMemo(() => recommendedNextSteps.slice(0, 3), [recommendedNextSteps])
 
@@ -675,10 +679,7 @@ export default function ProjectStatusScreen({
 													<div className="flex items-start gap-3">
 														<ConfidenceBarChart level={goalConfidence} className="mt-1 flex-shrink-0" />
 														{getGoalSections().map((goalSection) => (
-															<div
-																key={goalSection.id}
-																className="flex-1 font-medium text-foreground text-md"
-															>
+															<div key={goalSection.id} className="flex-1 font-medium text-foreground text-md">
 																{goalSection.content_md}
 															</div>
 														))}
@@ -689,7 +690,9 @@ export default function ProjectStatusScreen({
 										<CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-4">
 											<div className="w-full space-y-2 sm:w-[75%]">
 												<div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-start sm:gap-4">
-													<span className="">Interview Progress {Math.round((displayData.totalInterviews / targetConversations) * 100)}%</span>
+													<span className="">
+														Interview Progress {Math.round((displayData.totalInterviews / targetConversations) * 100)}%
+													</span>
 													<div className="text-muted-foreground">
 														{displayData.totalInterviews} of {targetConversations}
 													</div>
@@ -702,7 +705,6 @@ export default function ProjectStatusScreen({
 												</div>
 											</div>
 											{/* Interview Progress */}
-
 
 											<TooltipProvider>
 												<Tooltip>
@@ -901,9 +903,7 @@ export default function ProjectStatusScreen({
 								<h3 className="mb-6 font-light text-foreground text-xl">Update Analysis</h3>
 								<div className="space-y-6">
 									<div>
-										<label className="mb-3 block text-foreground text-sm">
-											Optional Instructions
-										</label>
+										<label className="mb-3 block text-foreground text-sm">Optional Instructions</label>
 										<Input
 											value={customInstructions}
 											onChange={(e) => setCustomInstructions(e.target.value)}

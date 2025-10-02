@@ -83,8 +83,8 @@ export default function TeamsList({ loaderData }: Route.ComponentProps) {
 								</Button> */}
 							</div>
 						</div>
-
-					</Link>))}
+					</Link>
+				))}
 			</div>
 		</div>
 	)

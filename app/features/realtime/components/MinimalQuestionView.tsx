@@ -97,10 +97,7 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 				payload.skipped_at = null
 			}
 
-			const { error } = await supabase
-				.from("project_answers")
-				.update(payload)
-				.eq("id", projectAnswerId)
+			const { error } = await supabase.from("project_answers").update(payload).eq("id", projectAnswerId)
 
 			if (error) {
 				consola.warn("Failed to update project answer status", error.message)
@@ -173,23 +170,21 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 								/>
 								<div className="flex items-center gap-1">
 									<span className="font-medium text-muted-foreground text-sm">{idx + 1}</span>
-									{q.isMustHave && (
-										<div className="h-2 w-2 rounded-full bg-red-500" title="Must-have question" />
-									)}
+									{q.isMustHave && <div className="h-2 w-2 rounded-full bg-red-500" title="Must-have question" />}
 								</div>
 							</div>
 							<div className="min-w-0 flex-1">
 								<div
-									className={`text-sm leading-snug ${q.status === "answered"
+									className={`text-sm leading-snug ${
+										q.status === "answered"
 											? "text-muted-foreground line-through"
 											: q.status === "skipped"
 												? "text-muted-foreground"
 												: ""
-										}`}
+									}`}
 								>
 									{q.text}
 								</div>
-
 							</div>
 							{q.status === "skipped" && (
 								<Button

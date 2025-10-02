@@ -128,8 +128,8 @@ function DecisionCard({
 							<h3 className="font-medium text-base text-gray-900 sm:text-lg">{decision.text}</h3>
 							{bestAnswer?.answer_text && (
 								<div className="mt-2 text-gray-600 text-sm sm:text-base">
-									{bestAnswer.answer_text.split('\n').map((line, index) => (
-										<p key={index} className={index > 0 ? 'mt-1' : ''}>
+									{bestAnswer.answer_text.split("\n").map((line, index) => (
+										<p key={index} className={index > 0 ? "mt-1" : ""}>
 											{line.trim()}
 										</p>
 									))}
@@ -169,12 +169,12 @@ function DecisionCard({
 										return (
 											<div key={rq.id} className="rounded-lg bg-gray-50 p-3 sm:p-4">
 												<div className="flex items-start justify-between gap-3">
-													<div className="flex-1 min-w-0">
+													<div className="min-w-0 flex-1">
 														<h5 className="font-medium text-gray-900 text-sm">{rq.text}</h5>
 														{bestRQAnswer?.answer_text && (
 															<div className="mt-1 text-gray-600 text-sm">
-																{bestRQAnswer.answer_text.split('\n').map((line, index) => (
-																	<p key={index} className={index > 0 ? 'mt-1' : ''}>
+																{bestRQAnswer.answer_text.split("\n").map((line, index) => (
+																	<p key={index} className={index > 0 ? "mt-1" : ""}>
 																		{line.trim()}
 																	</p>
 																))}
@@ -254,7 +254,12 @@ export function CleanResearchAnswers({
 		<div className={className}>
 			<h2 className="mb-4 font-semibold text-gray-900 text-lg sm:mb-6 sm:text-xl">Decision Analysis</h2>
 			{data.decision_questions.map((decision) => (
-				<DecisionCard key={decision.id} decision={decision} projectRoutes={projectRoutes} confidenceVariant={confidenceVariant} />
+				<DecisionCard
+					key={decision.id}
+					decision={decision}
+					projectRoutes={projectRoutes}
+					confidenceVariant={confidenceVariant}
+				/>
 			))}
 		</div>
 	)

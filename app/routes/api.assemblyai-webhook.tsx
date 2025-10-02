@@ -102,10 +102,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				duration_sec: transcriptData.audio_duration ? Math.round(transcriptData.audio_duration) : null,
 			}
 
-			const { error: interviewUpdateError } = await supabase
-				.from("interviews")
-				.update(updateData)
-				.eq("id", interviewId)
+			const { error: interviewUpdateError } = await supabase.from("interviews").update(updateData).eq("id", interviewId)
 
 			if (interviewUpdateError) {
 				throw new Error(`Failed to update interview: ${interviewUpdateError.message}`)

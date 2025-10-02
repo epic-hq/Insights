@@ -1,7 +1,7 @@
 import type { ActionFunctionArgs } from "@remix-run/node"
 import { json } from "@remix-run/node"
-import { createSupabaseServerClient } from "~/lib/supabase/server"
 import { refreshInterviewQuestions } from "~/lib/database/project-answers.server"
+import { createSupabaseServerClient } from "~/lib/supabase/server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -18,7 +18,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		const supabase = createSupabaseServerClient(request)
-		
+
 		// Refresh the interview questions to sync with current interview_prompts
 		await refreshInterviewQuestions(supabase, { projectId, interviewId })
 

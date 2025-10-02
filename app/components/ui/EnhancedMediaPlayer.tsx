@@ -1,6 +1,6 @@
 import consola from "consola"
 import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
-import { useRef, useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "~/lib/utils"
 import { Button } from "./button"
 import { Slider } from "./slider"
@@ -21,7 +21,7 @@ interface EnhancedMediaPlayerProps {
 function parseTimeToSeconds(time: string | number | undefined): number {
 	if (typeof time === "number") return time
 	if (!time) return 0
-	
+
 	// Handle MM:SS format
 	if (typeof time === "string" && time.includes(":")) {
 		const parts = time.split(":")
@@ -37,7 +37,7 @@ function parseTimeToSeconds(time: string | number | undefined): number {
 			return hours * 3600 + minutes * 60 + seconds
 		}
 	}
-	
+
 	// Handle milliseconds (if > 3600, likely milliseconds)
 	if (typeof time === "string") {
 		const parsed = Number.parseFloat(time)
@@ -49,7 +49,7 @@ function parseTimeToSeconds(time: string | number | undefined): number {
 			return parsed
 		}
 	}
-	
+
 	return 0
 }
 
@@ -62,11 +62,11 @@ function formatDuration(seconds: number | null | undefined): string {
 	const hours = Math.floor(whole / 3600)
 	const minutes = Math.floor((whole % 3600) / 60)
 	const secs = whole % 60
-	
+
 	if (hours > 0) {
 		return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
 	}
-	
+
 	return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
 }
 
@@ -91,7 +91,7 @@ export function EnhancedMediaPlayer({
 	)
 	const [volume, setVolume] = useState(1)
 	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
-	
+
 	const startSeconds = parseTimeToSeconds(startTime)
 	const endSeconds = parseTimeToSeconds(endTime)
 
@@ -167,7 +167,7 @@ export function EnhancedMediaPlayer({
 		if (mediaRef.current) {
 			const current = mediaRef.current.currentTime
 			setCurrentTime(current)
-			
+
 			// Auto-pause at end time if specified
 			if (endSeconds > 0 && current >= endSeconds) {
 				mediaRef.current.pause()
@@ -186,7 +186,7 @@ export function EnhancedMediaPlayer({
 
 	const handleCanPlay = () => {
 		setIsLoading(false)
-		
+
 		// Auto-play if requested and start time is set
 		if (autoPlay && startSeconds > 0) {
 			handlePlayPause()
@@ -272,7 +272,7 @@ export function EnhancedMediaPlayer({
 				)}
 
 				{/* Time Display */}
-				<div className="flex items-center gap-1 text-xs text-muted-foreground">
+				<div className="flex items-center gap-1 text-muted-foreground text-xs">
 					<span>{formatDuration(currentTime)}</span>
 					{duration && (
 						<>
@@ -286,17 +286,9 @@ export function EnhancedMediaPlayer({
 			{/* Progress Slider */}
 			{duration && (
 				<div className="space-y-1">
-					<Slider
-						value={[progressPercentage]}
-						onValueChange={handleSeek}
-						max={100}
-						step={0.1}
-						className="w-full"
-					/>
+					<Slider value={[progressPercentage]} onValueChange={handleSeek} max={100} step={0.1} className="w-full" />
 					{timeRangeDisplay && (
-						<div className="text-center text-xs text-muted-foreground">
-							Target: {timeRangeDisplay}
-						</div>
+						<div className="text-center text-muted-foreground text-xs">Target: {timeRangeDisplay}</div>
 					)}
 				</div>
 			)}
@@ -304,13 +296,7 @@ export function EnhancedMediaPlayer({
 			{/* Volume Control */}
 			<div className="flex items-center gap-2">
 				<Volume2 className="h-3 w-3 text-muted-foreground" />
-				<Slider
-					value={[volume * 100]}
-					onValueChange={handleVolumeChange}
-					max={100}
-					step={1}
-					className="w-20"
-				/>
+				<Slider value={[volume * 100]} onValueChange={handleVolumeChange} max={100} step={1} className="w-20" />
 			</div>
 
 			{/* Debug Information */}

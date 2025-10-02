@@ -19,7 +19,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 
 	// Extract search params to check for onboarding mode
 	const url = new URL(request.url)
-	const isOnboarding = url.searchParams.get('onboarding') === 'true'
+	const isOnboarding = url.searchParams.get("onboarding") === "true"
 
 	// User is authenticated and can access project creation
 	return {

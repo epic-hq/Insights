@@ -8,8 +8,8 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { b } from "~/../baml_client"
 import type { Database, Json } from "~/../supabase/types"
-import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
+import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
@@ -83,12 +83,12 @@ function sanitizeVerbatim(input: unknown): string | null {
 // Generate a stable, short signature for dedupe/independence.
 // Not cryptographically strong; sufficient to cluster near-duplicates.
 function stringHash(input: string): string {
-  let h = 2166136261 >>> 0
-  for (let i = 0; i < input.length; i++) {
-    h ^= input.charCodeAt(i)
-    h = Math.imul(h, 16777619) >>> 0
-  }
-  return ("00000000" + h.toString(16)).slice(-8)
+	let h = 2166136261 >>> 0
+	for (let i = 0; i < input.length; i++) {
+		h ^= input.charCodeAt(i)
+		h = Math.imul(h, 16777619) >>> 0
+	}
+	return ("00000000" + h.toString(16)).slice(-8)
 }
 
 function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
@@ -219,15 +219,16 @@ async function processEvidencePhase({
 		const kind_tags = Array.isArray(ev.kind_tags)
 			? (ev.kind_tags as string[])
 			: Object.values(ev.kind_tags ?? {})
-				.flat()
-				.filter((x): x is string => typeof x === "string")
+					.flat()
+					.filter((x): x is string => typeof x === "string")
 		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
 		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
 		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
 		const providedIndKey = (ev as { independence_key?: string }).independence_key
-		const independence_key = providedIndKey && providedIndKey.trim().length > 0
-			? providedIndKey.trim()
-			: computeIndependenceKey(gist ?? verb, kind_tags)
+		const independence_key =
+			providedIndKey && providedIndKey.trim().length > 0
+				? providedIndKey.trim()
+				: computeIndependenceKey(gist ?? verb, kind_tags)
 		const row: EvidenceInsert = {
 			account_id: metadata.accountId,
 			project_id: metadata.projectId,
@@ -270,7 +271,14 @@ async function processEvidencePhase({
 		empathyStats.feels += _feels.length
 		empathyStats.pains += _pains.length
 		empathyStats.gains += _gains.length
-		for (const [k, arr] of Object.entries({ says: _says, does: _does, thinks: _thinks, feels: _feels, pains: _pains, gains: _gains }) as Array<[keyof typeof empathyStats, string[]]>) {
+		for (const [k, arr] of Object.entries({
+			says: _says,
+			does: _does,
+			thinks: _thinks,
+			feels: _feels,
+			pains: _pains,
+			gains: _gains,
+		}) as Array<[keyof typeof empathyStats, string[]]>) {
 			for (const v of arr) {
 				if (typeof v === "string" && v.trim() && empathySamples[k].length < 3) empathySamples[k].push(v.trim())
 			}
@@ -341,10 +349,10 @@ async function processEvidencePhase({
 					})
 					.select("id")
 					.single()
-			if (etErr && !etErr.message?.includes("duplicate")) {
-				consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+				if (etErr && !etErr.message?.includes("duplicate")) {
+					consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
+				}
 			}
-		}
 		}
 	} catch (linkErr) {
 		consola.warn("Failed to create/link tags for evidence", linkErr)
@@ -353,11 +361,12 @@ async function processEvidencePhase({
 	const personIdByKey = new Map<string, string>()
 	const personRoleById = new Map<string, string | null>()
 
-	const resolveName = (
-		participant: EvidenceFromBaml["people"][number],
-		index: number
-	): string => {
-		const candidates = [participant.inferred_name, participant.display_name, participant.person_key && humanizeKey(participant.person_key)]
+	const resolveName = (participant: EvidenceFromBaml["people"][number], index: number): string => {
+		const candidates = [
+			participant.inferred_name,
+			participant.display_name,
+			participant.person_key && humanizeKey(participant.person_key),
+		]
 		for (const candidate of candidates) {
 			if (typeof candidate === "string" && candidate.trim().length) return candidate.trim()
 		}
@@ -624,7 +633,7 @@ export async function processInterviewTranscriptWithClient({
 				status: "processing",
 				transcript: fullTranscript,
 				transcript_formatted: transcriptData as unknown as Json,
-				duration_sec: (transcriptData as any).audio_duration
+				duration_sec: (transcriptData as any).audio_duration,
 			})
 			.eq("id", existingInterviewId)
 			.select("*")
@@ -813,22 +822,19 @@ export async function processInterviewTranscriptWithClient({
 
 	const personData = primaryPersonData
 	const personName = interviewee?.name?.trim() || primaryPersonName || generateFallbackName()
-const personUpdatePayload: PeopleUpdate = {
-	name: personName,
-	description: interviewee?.participantDescription?.trim() || primaryPersonDescription || null,
-	segment: interviewee?.segment?.trim() || primaryPersonSegments[0] || metadata.segment || null,
-	contact_info: interviewee?.contactInfo || null,
-	company: primaryPersonOrganization || null,
-	role: primaryPersonRole || null,
-}
-	const { error: personUpdateErr } = await db
-		.from("people")
-		.update(personUpdatePayload)
-		.eq("id", personData.id)
-if (personUpdateErr) {
-	consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
-}
-// personName already contains the updated value, no need to reassign
+	const personUpdatePayload: PeopleUpdate = {
+		name: personName,
+		description: interviewee?.participantDescription?.trim() || primaryPersonDescription || null,
+		segment: interviewee?.segment?.trim() || primaryPersonSegments[0] || metadata.segment || null,
+		contact_info: interviewee?.contactInfo || null,
+		company: primaryPersonOrganization || null,
+		role: primaryPersonRole || null,
+	}
+	const { error: personUpdateErr } = await db.from("people").update(personUpdatePayload).eq("id", personData.id)
+	if (personUpdateErr) {
+		consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
+	}
+	// personName already contains the updated value, no need to reassign
 
 	// Heuristic: Map evidence -> answers by category against latest questions set
 	try {
@@ -901,10 +907,12 @@ if (personUpdateErr) {
 			for (let i = 0; i < insertedEvidenceIds.length; i++) {
 				const evId = insertedEvidenceIds[i]
 				// Safeguard: find the corresponding evidence unit's kind_tags if available
-				const evUnit = Array.isArray(evidenceUnits) ? evidenceUnits[i] as any : undefined
+				const evUnit = Array.isArray(evidenceUnits) ? (evidenceUnits[i] as any) : undefined
 				const tags: string[] = Array.isArray(evUnit?.kind_tags)
 					? evUnit.kind_tags
-					: Object.values(evUnit?.kind_tags ?? {}).flat().filter((x: unknown): x is string => typeof x === "string")
+					: Object.values(evUnit?.kind_tags ?? {})
+							.flat()
+							.filter((x: unknown): x is string => typeof x === "string")
 
 				const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
 				const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined
@@ -912,10 +920,21 @@ if (personUpdateErr) {
 
 				// See if answer already exists for (project_id, interview_id, question_id)
 				let answerId: string | null = null
-				let existingAnswer: Pick<Tables["project_answers"]["Row"], "id" | "answered_at" | "respondent_person_id" | "question_category" | "estimated_time_minutes" | "order_index" | "origin"> | null = null
+				let existingAnswer: Pick<
+					Tables["project_answers"]["Row"],
+					| "id"
+					| "answered_at"
+					| "respondent_person_id"
+					| "question_category"
+					| "estimated_time_minutes"
+					| "order_index"
+					| "origin"
+				> | null = null
 				const { data: existingAns } = await db
 					.from("project_answers")
-					.select("id, answered_at, respondent_person_id, question_category, estimated_time_minutes, order_index, origin")
+					.select(
+						"id, answered_at, respondent_person_id, question_category, estimated_time_minutes, order_index, origin"
+					)
 					.eq("project_id", metadata.projectId)
 					.eq("interview_id", interviewRecord.id)
 					.eq("question_id", qRep.id)
@@ -1001,12 +1020,11 @@ if (personUpdateErr) {
 		// Ignore duplicate unique violation explicitly; surface other errors
 		if (!junctionError.message?.toLowerCase().includes("duplicate key value")) {
 			throw new Error(`Failed to link person to interview: ${junctionError.message}`)
-		} else {
-			consola.info("interview_people already linked; skipping duplicate link", {
-				interview_id: interviewRecord.id,
-				person_id: personData.id,
-			})
 		}
+		consola.info("interview_people already linked; skipping duplicate link", {
+			interview_id: interviewRecord.id,
+			person_id: personData.id,
+		})
 	}
 
 	// Assign persona to the person using BAML client

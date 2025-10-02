@@ -33,9 +33,7 @@ export function MediaPlayer({
 	const [isPlaying, setIsPlaying] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
 	const [duration, setDuration] = useState<number | null>(
-		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0
-			? Math.floor(duration_sec)
-			: 0
+		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0 ? Math.floor(duration_sec) : 0
 	)
 	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
 

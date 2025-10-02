@@ -69,11 +69,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		// NOTE: Not sure that this is working. Agent does not seem to be picking it up.
 		context: system
 			? [
-				{
-					role: "system",
-					content: `## Context from the client's UI:\n${system}`,
-				},
-			]
+					{
+						role: "system",
+						content: `## Context from the client's UI:\n${system}`,
+					},
+				]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("onFinish", data)
@@ -87,7 +87,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		onFinish: (data) => {
 			consola.log("onFinish", data)
 			const lfTrace = langfuse.trace?.({ name: "api.signup-agent" })
-			const gen = lfTrace?.generation?.({ name: "api.signup-agent", input: data?.messages, output: data?.responseMessage })
+			const gen = lfTrace?.generation?.({
+				name: "api.signup-agent",
+				input: data?.messages,
+				output: data?.responseMessage,
+			})
 			gen?.end?.()
 		},
 		onError: (err) => {

@@ -1,5 +1,5 @@
-import { useState, useCallback, useMemo } from "react"
-import { useSearchParams, useNavigate } from "react-router"
+import { useCallback, useMemo, useState } from "react"
+import { useNavigate, useSearchParams } from "react-router"
 import { Button } from "~/components/ui/button"
 import ProcessingScreen from "./ProcessingScreen"
 import ProjectGoalsScreen from "./ProjectGoalsScreen"
@@ -57,8 +57,8 @@ export default function OnboardingFlow({
 }: OnboardingFlowProps) {
 	const [searchParams] = useSearchParams()
 	const navigate = useNavigate()
-	const isOnboarding = searchParams.get('onboarding') === 'true'
-	
+	const isOnboarding = searchParams.get("onboarding") === "true"
+
 	// Start at upload step if we have existing project context
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
 	// TODO: use form library to parse form data, and loader to fetch data
@@ -75,87 +75,93 @@ export default function OnboardingFlow({
 		projectId,
 	})
 
-	const handleWelcomeNext = useCallback(async (welcomeData: {
-		target_orgs: string[]
-		target_roles: string[]
-		research_goal: string
-		research_goal_details: string
-		decision_questions: string[]
-		assumptions: string[]
-		unknowns: string[]
-		custom_instructions?: string
-		projectId?: string
-	}) => {
-		// Update data with welcome data and projectId if provided
-		setData((prev) => ({
-			...prev,
-			...welcomeData,
-			projectId: welcomeData.projectId || prev.projectId || projectId,
-		}))
+	const handleWelcomeNext = useCallback(
+		async (welcomeData: {
+			target_orgs: string[]
+			target_roles: string[]
+			research_goal: string
+			research_goal_details: string
+			decision_questions: string[]
+			assumptions: string[]
+			unknowns: string[]
+			custom_instructions?: string
+			projectId?: string
+		}) => {
+			// Update data with welcome data and projectId if provided
+			setData((prev) => ({
+				...prev,
+				...welcomeData,
+				projectId: welcomeData.projectId || prev.projectId || projectId,
+			}))
 
-		setCurrentStep("questions")
-	}, [projectId])
+			setCurrentStep("questions")
+		},
+		[projectId]
+	)
 
 	const handleQuestionsNext = useCallback((questions: string[]) => {
 		setData((prev) => ({ ...prev, questions }))
 		setCurrentStep("upload")
 	}, [])
 
-	const handleUploadNext = useCallback(async (file: File, mediaType: string, uploadProjectId?: string) => {
-		const updatedData = { ...data, file, mediaType }
-		setData(updatedData)
-		setCurrentStep("processing")
+	const handleUploadNext = useCallback(
+		async (file: File, mediaType: string, uploadProjectId?: string) => {
+			const updatedData = { ...data, file, mediaType }
+			setData(updatedData)
+			setCurrentStep("processing")
 
-		try {
-			// Create FormData for the API call
-			const formData = new FormData()
-			formData.append("file", file)
-			formData.append(
-				"onboardingData",
-				JSON.stringify({
-					target_orgs: data.target_orgs,
-					target_roles: data.target_roles,
-					research_goal: data.research_goal,
-					research_goal_details: data.research_goal_details,
-					decision_questions: data.decision_questions,
-					assumptions: data.assumptions,
-					unknowns: data.unknowns,
-					custom_instructions: data.custom_instructions,
-					questions: data.questions,
-					mediaType,
+			try {
+				// Create FormData for the API call
+				const formData = new FormData()
+				formData.append("file", file)
+				formData.append(
+					"onboardingData",
+					JSON.stringify({
+						target_orgs: data.target_orgs,
+						target_roles: data.target_roles,
+						research_goal: data.research_goal,
+						research_goal_details: data.research_goal_details,
+						decision_questions: data.decision_questions,
+						assumptions: data.assumptions,
+						unknowns: data.unknowns,
+						custom_instructions: data.custom_instructions,
+						questions: data.questions,
+						mediaType,
+					})
+				)
+				// accountId will be retrieved from authenticated user by API
+				if (uploadProjectId) {
+					formData.append("projectId", uploadProjectId)
+				}
+
+				// Call the new onboarding-start API
+				const response = await fetch("/api/onboarding-start", {
+					method: "POST",
+					body: formData,
 				})
-			)
-			// accountId will be retrieved from authenticated user by API
-			if (uploadProjectId) {
-				formData.append("projectId", uploadProjectId)
-			}
 
-			// Call the new onboarding-start API
-			const response = await fetch("/api/onboarding-start", {
-				method: "POST",
-				body: formData,
-			})
+				if (!response.ok) {
+					const errorData = await response.json()
+					throw new Error(errorData.error || "Upload failed")
+				}
 
-			if (!response.ok) {
-				const errorData = await response.json()
-				throw new Error(errorData.error || "Upload failed")
-			}
+				const result = await response.json()
 
-			const result = await response.json()
-
-			// Store interview ID and project ID for progress tracking
-			if (result.interview?.id) {
-				setData((prev) => ({ ...prev, interviewId: result.interview.id }))
+				// Store interview ID and project ID for progress tracking
+				if (result.interview?.id) {
+					setData((prev) => ({ ...prev, interviewId: result.interview.id }))
+				}
+				if (result.project?.id) {
+					setData((prev) => ({ ...prev, projectId: result.project.id }))
+				}
+			} catch (error) {
+				// Handle error - could show error state or retry
+				const errorMessage = error instanceof Error ? error.message : "Upload failed"
+				setData((prev) => ({ ...prev, error: errorMessage }))
 			}
-			if (result.project?.id) {
-				setData((prev) => ({ ...prev, projectId: result.project.id }))
-			}
-		} catch (error) {
-			// Handle error - could show error state or retry
-			const errorMessage = error instanceof Error ? error.message : "Upload failed"
-			setData((prev) => ({ ...prev, error: errorMessage }))
-		}
-	}, [data])
+		},
+		[data]
+	)
 
 	const handleProcessingComplete = useCallback(() => {
 		setCurrentStep("complete")
@@ -188,7 +194,7 @@ export default function OnboardingFlow({
 	const handleExit = useCallback(() => {
 		if (isOnboarding) {
 			// Exit onboarding and go to home - remove onboarding param
-			navigate('/home')
+			navigate("/home")
 		} else {
 			// Regular navigation behavior
 			navigate(-1)
@@ -201,15 +207,16 @@ export default function OnboardingFlow({
 	// Render navigation controls for onboarding mode
 	const renderOnboardingHeader = useCallback(() => {
 		if (!isOnboarding) return null
-		
+
 		return (
-			<div className="flex items-center justify-between p-4 border-b">
+			<div className="flex items-center justify-between border-b p-4">
 				<div className="flex items-center gap-4">
 					<Button variant="ghost" size="sm" onClick={handleExit}>
 						← Exit Onboarding
 					</Button>
-					<div className="text-sm text-muted-foreground">
-						Step {currentStep === "welcome" ? 1 : currentStep === "questions" ? 2 : currentStep === "upload" ? 3 : 4} of 4
+					<div className="text-muted-foreground text-sm">
+						Step {currentStep === "welcome" ? 1 : currentStep === "questions" ? 2 : currentStep === "upload" ? 3 : 4} of
+						4
 					</div>
 				</div>
 			</div>
@@ -255,7 +262,18 @@ export default function OnboardingFlow({
 			default:
 				return <ProjectGoalsScreen onNext={handleWelcomeNext} projectId={currentProjectId} />
 		}
-	}, [currentStep, handleWelcomeNext, currentProjectId, data, handleQuestionsNext, handleBack, handleUploadNext, handleProcessingComplete, getProjectName, accountId])
+	}, [
+		currentStep,
+		handleWelcomeNext,
+		currentProjectId,
+		data,
+		handleQuestionsNext,
+		handleBack,
+		handleUploadNext,
+		handleProcessingComplete,
+		getProjectName,
+		accountId,
+	])
 
 	return (
 		<div className="min-h-screen bg-background">

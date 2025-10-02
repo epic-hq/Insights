@@ -11,10 +11,10 @@ interface AppLayoutProps {
 export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const { isMobile } = useDeviceDetection()
 	const [searchParams] = useSearchParams()
-	
+
 	// Check if user is in onboarding flow
-	const isOnboarding = searchParams.get('onboarding') === 'true'
-	
+	const isOnboarding = searchParams.get("onboarding") === "true"
+
 	// Hide main navigation during onboarding
 	const showMainNav = !isOnboarding
 

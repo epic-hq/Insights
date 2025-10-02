@@ -1,13 +1,13 @@
 import { CalendarIcon, ChevronDownIcon, ChevronUpIcon } from "lucide-react"
 import { useState } from "react"
+import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Timeline, type TimelineItem } from "~/components/ui/timeline"
-import { cn } from "~/lib/utils"
-import { Link } from "react-router-dom"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
 
 interface ChronologicalEvidenceListProps {
@@ -69,11 +69,11 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 	const createLinkWrapper = (item: Evidence, children: React.ReactNode) => {
 		// If we have anchors, use the first one for linking
 		const hasAnchors = item.anchors && item.anchors.length > 0
-		const anchorParam = hasAnchors ? `?anchor=${encodeURIComponent(JSON.stringify(item.anchors[0]))}` : ''
+		const anchorParam = hasAnchors ? `?anchor=${encodeURIComponent(JSON.stringify(item.anchors[0]))}` : ""
 		const url = `${routes.evidence.detail(item.id)}${anchorParam}`
-		
+
 		return (
-			<Link to={url} className="hover:no-underline no-underline text-inherit">
+			<Link to={url} className="text-inherit no-underline hover:no-underline">
 				{children}
 			</Link>
 		)
@@ -103,11 +103,7 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 					<div className="flex h-32 items-center justify-center text-muted-foreground">None</div>
 				) : (
 					<div className="px-4 py-2">
-						<Timeline
-							items={timelineItems}
-							showTimestamps={false}
-							variant="compact"
-						/>
+						<Timeline items={timelineItems} showTimestamps={false} variant="compact" />
 					</div>
 				)}
 

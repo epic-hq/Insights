@@ -1,6 +1,6 @@
 import consola from "consola"
 import { Pause, Play, SkipBack } from "lucide-react"
-import { useRef, useState, useEffect } from "react"
+import { useEffect, useRef, useState } from "react"
 import { cn } from "~/lib/utils"
 import { Button } from "./button"
 
@@ -19,23 +19,23 @@ interface TimecodeMediaPlayerProps {
 function parseTimeToSeconds(time: string | number | undefined): number {
 	if (typeof time === "number") return time
 	if (!time) return 0
-	
+
 	// Handle MM:SS format
 	if (typeof time === "string" && time.includes(":")) {
 		const parts = time.split(":")
 		if (parts.length === 2) {
-			const minutes = parseInt(parts[0], 10) || 0
-			const seconds = parseInt(parts[1], 10) || 0
+			const minutes = Number.parseInt(parts[0], 10) || 0
+			const seconds = Number.parseInt(parts[1], 10) || 0
 			return minutes * 60 + seconds
 		}
 	}
-	
+
 	// Handle string numbers
 	if (typeof time === "string") {
-		const parsed = parseFloat(time)
+		const parsed = Number.parseFloat(time)
 		return isNaN(parsed) ? 0 : parsed
 	}
-	
+
 	return 0
 }
 
@@ -64,12 +64,10 @@ export function TimecodeMediaPlayer({
 	const [isLoading, setIsLoading] = useState(false)
 	const [currentTime, setCurrentTime] = useState(0)
 	const [duration, setDuration] = useState<number | null>(
-		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0
-			? Math.floor(duration_sec)
-			: 0
+		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0 ? Math.floor(duration_sec) : 0
 	)
 	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
-	
+
 	const startSeconds = parseTimeToSeconds(startTime)
 	const endSeconds = parseTimeToSeconds(endTime)
 
@@ -114,7 +112,7 @@ export function TimecodeMediaPlayer({
 		if (mediaRef.current) {
 			const current = mediaRef.current.currentTime
 			setCurrentTime(current)
-			
+
 			// Auto-pause at end time if specified
 			if (endSeconds > 0 && current >= endSeconds) {
 				mediaRef.current.pause()
@@ -133,7 +131,7 @@ export function TimecodeMediaPlayer({
 
 	const handleCanPlay = () => {
 		setIsLoading(false)
-		
+
 		// Auto-play if requested and start time is set
 		if (autoPlay && startSeconds > 0) {
 			handlePlayPause()

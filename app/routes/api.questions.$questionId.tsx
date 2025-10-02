@@ -6,16 +6,16 @@ import { getServerClient } from "~/lib/supabase/server"
  * Intent-based API endpoint for question operations
  * POST /api/questions/:questionId - Form-based intents
  * PATCH /api/questions/:questionId - JSON-based updates
- * 
+ *
  * POST Supported intents (via formData.intent):
  * - "delete" - Set status to 'deleted'
- * - "reject" - Set status to 'rejected' 
+ * - "reject" - Set status to 'rejected'
  * - "backup" - Set status to 'backup'
  * - "select" - Set status to 'selected'
  * - "toggle-must-have" - Toggle is_must_have boolean
  * - "update-order" - Update order_index (requires 'order' field)
  * - "update-category" - Update category (requires 'category' field)
- * 
+ *
  * PATCH Supported fields (via JSON body):
  * - text - Update question text
  * - rationale - Update question rationale
@@ -36,11 +36,14 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			const { text, rationale, table } = body
 
 			if (!table || !["decision_questions", "research_questions", "interview_prompts"].includes(table)) {
-				return { error: "Valid table name required: decision_questions, research_questions, or interview_prompts", status: 400 }
+				return {
+					error: "Valid table name required: decision_questions, research_questions, or interview_prompts",
+					status: 400,
+				}
 			}
 
 			const updateData: Record<string, unknown> = {
-				updated_at: new Date().toISOString()
+				updated_at: new Date().toISOString(),
 			}
 
 			if (text !== undefined) updateData.text = text
@@ -61,7 +64,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			}
 
 			consola.info("Updated successfully:", data)
-			return { success: true, data, message: `${table.replace('_', ' ')} updated successfully` }
+			return { success: true, data, message: `${table.replace("_", " ")} updated successfully` }
 		}
 
 		// Handle POST requests with form data (existing logic)
@@ -129,37 +132,37 @@ export async function action({ params, request }: ActionFunctionArgs) {
 		// Prepare update data based on intent
 		interface UpdateData {
 			updated_at: string
-			status?: 'proposed' | 'rejected' | 'selected' | 'backup' | 'deleted'
+			status?: "proposed" | "rejected" | "selected" | "backup" | "deleted"
 			is_selected?: boolean
 			is_must_have?: boolean
 			order_index?: number
 			category?: string
 		}
 		const updateData: UpdateData = {
-			updated_at: new Date().toISOString()
+			updated_at: new Date().toISOString(),
 		}
 
 		switch (intent) {
 			case "delete": {
 				// Soft-delete: mark as deleted but keep record for negative training
-				updateData.status = 'deleted'
+				updateData.status = "deleted"
 				updateData.is_selected = false
 				updateData.is_must_have = false
 				break
 			}
 
 			case "reject": {
-				updateData.status = 'rejected'
+				updateData.status = "rejected"
 				break
 			}
 
 			case "backup": {
-				updateData.status = 'backup'
+				updateData.status = "backup"
 				break
 			}
 
 			case "select": {
-				updateData.status = 'selected'
+				updateData.status = "selected"
 				updateData.is_selected = true
 				break
 			}
@@ -188,9 +191,9 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			}
 
 			default:
-				return { 
-					error: `Unsupported intent: ${intent}. Supported: delete, reject, backup, select, toggle-must-have, update-order, update-category`, 
-					status: 400 
+				return {
+					error: `Unsupported intent: ${intent}. Supported: delete, reject, backup, select, toggle-must-have, update-order, update-category`,
+					status: 400,
 				}
 		}
 
@@ -199,7 +202,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			intent,
 			current_status: existing.status,
 			current_must_have: existing.is_must_have,
-			update_data: updateData
+			update_data: updateData,
 		})
 
 		// Perform the update
@@ -219,7 +222,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			id: data.id,
 			new_status: data.status,
 			new_must_have: data.is_must_have,
-			text: data.text.slice(0, 50) + "..."
+			text: data.text.slice(0, 50) + "...",
 		})
 
 		// Return success with updated data
@@ -227,36 +230,35 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			success: true,
 			question: data,
 			message: getSuccessMessage(intent, data),
-			intent
+			intent,
 		}
-
 	} catch (error) {
 		consola.error("Unexpected error in question operation:", error)
 		return {
 			error: "Internal server error",
-			status: 500
+			status: 500,
 		}
 	}
 }
 
 export function getSuccessMessage(intent: string, data: Record<string, unknown>): string {
-    const d = data as { is_must_have?: boolean; order_index?: number; category?: string }
-    switch (intent) {
-        case "delete":
-            return "Question deleted successfully"
-        case "reject":
-            return "Question rejected"
-        case "backup":
-            return "Question moved to backup"
-        case "select":
-            return "Question selected for interviews"
-        case "toggle-must-have":
-            return d.is_must_have ? "Question marked as must-have" : "Question removed from must-have"
-        case "update-order":
-            return `Question order updated to ${d.order_index}`
-        case "update-category":
-            return `Question category updated to ${d.category}`
-        default:
-            return "Question updated successfully"
-    }
+	const d = data as { is_must_have?: boolean; order_index?: number; category?: string }
+	switch (intent) {
+		case "delete":
+			return "Question deleted successfully"
+		case "reject":
+			return "Question rejected"
+		case "backup":
+			return "Question moved to backup"
+		case "select":
+			return "Question selected for interviews"
+		case "toggle-must-have":
+			return d.is_must_have ? "Question marked as must-have" : "Question removed from must-have"
+		case "update-order":
+			return `Question order updated to ${d.order_index}`
+		case "update-category":
+			return `Question category updated to ${d.category}`
+		default:
+			return "Question updated successfully"
+	}
 }

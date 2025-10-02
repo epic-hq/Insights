@@ -30,9 +30,9 @@ interface CurrentProjectProviderProps {
 
 export function CurrentProjectProvider({ children }: CurrentProjectProviderProps) {
 	const params = useParams()
-  const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as
-    | { auth: { accountId: string }; user_settings?: any }
-    | undefined
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as
+		| { auth: { accountId: string }; user_settings?: any }
+		| undefined
 
 	// Get accountId from organizations prop (top account) or fallback to URL params
 	const accountId = useMemo(() => {

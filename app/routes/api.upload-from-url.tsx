@@ -2,8 +2,8 @@ import type { UUID } from "node:crypto"
 import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
-import { userContext } from "~/server/user-context"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { userContext } from "~/server/user-context"
 import { transcribeRemoteFile } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
@@ -93,11 +93,11 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Update interview with media URL and transcription status
 		await supabase
 			.from("interviews")
-			.update({ 
-				media_url: finalMediaUrl, 
+			.update({
+				media_url: finalMediaUrl,
 				status: "transcribed",
 				transcript: transcriptData.full_transcript,
-				duration_sec: transcriptData.audio_duration ? Math.round(transcriptData.audio_duration) : null
+				duration_sec: transcriptData.audio_duration ? Math.round(transcriptData.audio_duration) : null,
 			})
 			.eq("id", interview.id)
 

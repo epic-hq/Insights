@@ -1,10 +1,10 @@
 import { convertMessages } from "@mastra/core/agent"
+import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useParams } from "react-router"
-import consola from "consola"
+import { Button } from "~/components/ui/button"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
 import { memory } from "~/mastra/memory"
-import { Button } from "~/components/ui/button"
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -94,9 +94,7 @@ export default function ProjectChatPage() {
 	// 	}),
 	// 	messages,
 	// })
-	return (
-		<div>TODO</div>
-	)
+	return <div>TODO</div>
 
 	return (
 		<div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:pt-4">
@@ -112,12 +110,13 @@ export default function ProjectChatPage() {
 					<div className="flex items-center gap-3">
 						<MiniDotsProgress completed={progress.completedCount} total={progress.totalCount} />
 						<Link to={`/a/${accountId}/${projectId}/setup`}>
-							<Button variant="outline" size="sm">Use Form Instead</Button>
+							<Button variant="outline" size="sm">
+								Use Form Instead
+							</Button>
 						</Link>
 					</div>
 				</div>
 			</div>
-
 		</div>
 	)
 }
@@ -129,9 +128,7 @@ function MiniDotsProgress({ completed, total }: { completed: number; total: numb
 			{dots.map((_, i) => (
 				<span
 					key={i}
-					className={
-						"h-2 w-2 rounded-full " + (i < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700")
-					}
+					className={"h-2 w-2 rounded-full " + (i < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700")}
 				/>
 			))}
 		</div>

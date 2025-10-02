@@ -139,16 +139,11 @@ function MetricBadge({ label, value }: { label: string; value: number }) {
 	)
 }
 
-function AnswerRow({
-	answer,
-	projectRoutes,
-}: {
-	answer: ResearchAnswerNode
-	projectRoutes?: RouteDefinitions
-}) {
+function AnswerRow({ answer, projectRoutes }: { answer: ResearchAnswerNode; projectRoutes?: RouteDefinitions }) {
 	const firstEvidenceId = answer.evidence[0]?.id
 	const evidenceLink = firstEvidenceId && projectRoutes ? projectRoutes.evidence.detail(firstEvidenceId) : null
-	const interviewLink = answer.interview.id && projectRoutes ? projectRoutes.interviews.detail(answer.interview.id) : null
+	const interviewLink =
+		answer.interview.id && projectRoutes ? projectRoutes.interviews.detail(answer.interview.id) : null
 	const detailLink = evidenceLink ?? interviewLink
 	const detailLabel = evidenceLink ? "View evidence" : "View interview"
 
@@ -229,9 +224,7 @@ function ResearchQuestionSection({
 				{question.answers.length === 0 ? (
 					<p className="text-muted-foreground text-sm">No interview answers linked yet.</p>
 				) : (
-					question.answers.map((answer) => (
-						<AnswerRow key={answer.id} answer={answer} projectRoutes={projectRoutes} />
-					))
+					question.answers.map((answer) => <AnswerRow key={answer.id} answer={answer} projectRoutes={projectRoutes} />)
 				)}
 			</div>
 		</div>
@@ -369,11 +362,7 @@ export function ResearchAnswers({ projectId, className, projectRoutes, onMetrics
 				) : null}
 
 				{sections.decision_questions.map((decision) => (
-					<DecisionQuestionSection
-						key={decision.id}
-						decision={decision}
-						projectRoutes={projectRoutes}
-					/>
+					<DecisionQuestionSection key={decision.id} decision={decision} projectRoutes={projectRoutes} />
 				))}
 
 				{sections.research_questions_without_decision.length > 0 && (

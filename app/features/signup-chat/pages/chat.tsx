@@ -1,6 +1,5 @@
 // CopilotKit removed
-import type { z } from "zod"
-import type { AgentState as AgentStateSchema } from "@/mastra/agents"
+
 // CopilotKit UI removed
 import {
 	ChevronDown,
@@ -22,6 +21,8 @@ import {
 import { useEffect, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router"
+import type { z } from "zod"
+import type { AgentState as AgentStateSchema } from "@/mastra/agents"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"

@@ -70,7 +70,7 @@ export function useRecordNow() {
 				setIsRecording(false)
 			}
 		},
-		[accountBase, accountId, navigate],
+		[accountBase, accountId, navigate]
 	)
 
 	return {

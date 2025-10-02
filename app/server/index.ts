@@ -1,16 +1,15 @@
 import "~/lib/instrumentation" // Must be the first import
+import { AssemblyAI } from "assemblyai"
+import consola from "consola"
 import { createHonoServer } from "react-router-hono-server/node"
 import { i18next } from "remix-hono/i18next"
 import i18nextOpts from "../localization/i18n.server"
 import { getLoadContext } from "./load-context"
-import consola from "consola"
-import { AssemblyAI } from "assemblyai"
 
 export default await createHonoServer({
 	useWebSocket: true,
 	configure(server, { upgradeWebSocket }) {
 		server.use("*", i18next(i18nextOpts))
-
 
 		// Realtime transcription proxy (browser <-> server <-> AssemblyAI)
 
@@ -42,30 +41,44 @@ export default await createHonoServer({
 
 							transcriber = client.streaming.transcriber(CONNECTION_PARAMS)
 
-						transcriber.on("open", ({ id }: { id: string }) => {
-							consola.info("[WS] upstream open", id)
-							try { ws.send(JSON.stringify({ type: "Begin", id })) } catch {}
-						})
-
-						transcriber.on("error", (error: any) => {
-							consola.error("[WS] upstream error", error)
-							try { ws.send(JSON.stringify({ type: "Error", error: String(error?.message || error) })) } catch {}
-							try { ws.close(1011, "Upstream error") } catch {}
-						})
-
-							transcriber.on("close", (code: number, reason: string) => {
-								try { ws.close(code || 1000, reason || "") } catch {}
+							transcriber.on("open", ({ id }: { id: string }) => {
+								consola.info("[WS] upstream open", id)
+								try {
+									ws.send(JSON.stringify({ type: "Begin", id }))
+								} catch {}
 							})
 
-						transcriber.on("turn", (turn: any) => {
-							try { ws.send(JSON.stringify({ type: "Turn", ...turn })) } catch {}
-						})
+							transcriber.on("error", (error: any) => {
+								consola.error("[WS] upstream error", error)
+								try {
+									ws.send(JSON.stringify({ type: "Error", error: String(error?.message || error) }))
+								} catch {}
+								try {
+									ws.close(1011, "Upstream error")
+								} catch {}
+							})
+
+							transcriber.on("close", (code: number, reason: string) => {
+								try {
+									ws.close(code || 1000, reason || "")
+								} catch {}
+							})
+
+							transcriber.on("turn", (turn: any) => {
+								try {
+									ws.send(JSON.stringify({ type: "Turn", ...turn }))
+								} catch {}
+							})
 
 							await transcriber.connect()
 							writer = transcriber.stream().getWriter()
 						} catch (e: any) {
-							try { ws.send(JSON.stringify({ type: "Error", error: e?.message || "Failed to connect" })) } catch {}
-							try { ws.close(1011, "Init failure") } catch {}
+							try {
+								ws.send(JSON.stringify({ type: "Error", error: e?.message || "Failed to connect" }))
+							} catch {}
+							try {
+								ws.close(1011, "Init failure")
+							} catch {}
 						}
 					},
 					onMessage: async (event, _ws) => {
@@ -87,13 +100,23 @@ export default await createHonoServer({
 					onClose: async () => {
 						consola.info("[WS] proxy close")
 						try {
-							if (writer) { try { await writer.close() } catch {} }
-							if (transcriber) { try { await transcriber.close() } catch {} }
+							if (writer) {
+								try {
+									await writer.close()
+								} catch {}
+							}
+							if (transcriber) {
+								try {
+									await transcriber.close()
+								} catch {}
+							}
 						} catch {}
 					},
 					onError: async (_event, ws) => {
 						consola.error("[WS] proxy error")
-						try { ws.close(1011, "Server error") } catch {}
+						try {
+							ws.close(1011, "Server error")
+						} catch {}
 					},
 				}
 			})

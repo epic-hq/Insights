@@ -353,8 +353,8 @@ export async function runEvidenceAnalysis({
 		const analysisNextSteps =
 			nextStepsSet.size > 0
 				? Array.from(nextStepsSet)
-					.map((step) => `• ${step}`)
-					.join("\n")
+						.map((step) => `• ${step}`)
+						.join("\n")
 				: null
 
 		const metadata: Record<string, any> = isObject(aggregate.existing?.analysis_run_metadata)
@@ -523,9 +523,7 @@ export async function runEvidenceAnalysis({
 			goal_achievement_summary: summary.goal_achievement_summary ?? null,
 		}))
 
-		const { error: questionInsertError } = await supabase
-			.from(PROJECT_QUESTION_ANALYSIS_TABLE)
-			.insert(questionRows)
+		const { error: questionInsertError } = await supabase.from(PROJECT_QUESTION_ANALYSIS_TABLE).insert(questionRows)
 
 		if (questionInsertError) throw questionInsertError
 	}

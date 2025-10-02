@@ -1,7 +1,7 @@
 import { randomUUID } from "node:crypto"
+import { b } from "baml_client"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { b } from "baml_client"
 import { getServerClient } from "~/lib/supabase/server"
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -29,10 +29,13 @@ export async function action({ request }: ActionFunctionArgs) {
 				.limit(1)
 
 			if (existingDQs && existingDQs.length > 0) {
-				return Response.json({
-					error: "Research structure already exists for this project",
-					suggestion: "Use force=true to regenerate"
-				}, { status: 409 })
+				return Response.json(
+					{
+						error: "Research structure already exists for this project",
+						suggestion: "Use force=true to regenerate",
+					},
+					{ status: 409 }
+				)
 			}
 		}
 
@@ -48,19 +51,26 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		// Extract project context
-		const projectContext = projectSections?.reduce((acc, section) => {
-			acc[section.kind] = section.content_md
-			return acc
-		}, {} as Record<string, string>) || {}
+		const projectContext =
+			projectSections?.reduce(
+				(acc, section) => {
+					acc[section.kind] = section.content_md
+					return acc
+				},
+				{} as Record<string, string>
+			) || {}
 
 		consola.log("[MIGRATION] Project context:", projectContext)
 
 		// Validate we have minimum required data
 		if (!projectContext.research_goal?.trim()) {
-			return Response.json({
-				error: "No research goal found in project sections",
-				suggestion: "Complete project setup first"
-			}, { status: 400 })
+			return Response.json(
+				{
+					error: "No research goal found in project sections",
+					suggestion: "Complete project setup first",
+				},
+				{ status: 400 }
+			)
 		}
 
 		// Generate research structure using BAML
@@ -89,7 +99,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Save to database
 		const { error: saveError } = await saveResearchStructure(supabase, project_id, researchStructure)
-		
+
 		if (saveError) {
 			throw saveError
 		}
@@ -104,14 +114,13 @@ export async function action({ request }: ActionFunctionArgs) {
 			},
 			message: `Successfully migrated project to research structure: ${researchStructure.decision_questions.length} decision questions, ${researchStructure.research_questions.length} research questions, ${researchStructure.interview_prompts.length} interview prompts`,
 		})
-
 	} catch (error) {
 		consola.error("[MIGRATION] Failed:", error)
 		return Response.json(
-			{ 
-				error: "Migration failed", 
-				details: error instanceof Error ? error.message : String(error) 
-			}, 
+			{
+				error: "Migration failed",
+				details: error instanceof Error ? error.message : String(error),
+			},
 			{ status: 500 }
 		)
 	}
@@ -171,7 +180,6 @@ async function saveResearchStructure(supabase: any, projectId: string, structure
 
 		consola.log("[MIGRATION] Structure saved successfully")
 		return { error: null }
-
 	} catch (error) {
 		consola.error("[MIGRATION] Database save failed:", error)
 		return { error }

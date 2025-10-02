@@ -1,6 +1,6 @@
+import { useEffect } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router"
-import { useEffect } from "react"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { userContext } from "~/server/user-context"
@@ -44,13 +44,13 @@ export default function InterviewRealtimePage() {
 			// Show confirmation dialog when user tries to leave the page
 			e.preventDefault()
 			// Note: Modern browsers ignore custom messages and show their own standard message
-			return 'Are you sure you want to leave? Any unsaved recording may be lost.'
+			return "Are you sure you want to leave? Any unsaved recording may be lost."
 		}
 
-		window.addEventListener('beforeunload', handleBeforeUnload)
+		window.addEventListener("beforeunload", handleBeforeUnload)
 
 		return () => {
-			window.removeEventListener('beforeunload', handleBeforeUnload)
+			window.removeEventListener("beforeunload", handleBeforeUnload)
 		}
 	}, [])
 

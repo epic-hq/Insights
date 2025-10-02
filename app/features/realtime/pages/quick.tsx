@@ -9,38 +9,38 @@ const CHUNK_MS = 100
 const MIN_OUT_MS = 60
 
 type TurnMsg = {
-  type: "Turn"
-  transcript: string
-  end_of_turn: boolean
-  turn_is_formatted: boolean
-  words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
+	type: "Turn"
+	transcript: string
+	end_of_turn: boolean
+	turn_is_formatted: boolean
+	words: { text: string; start: number; end: number; confidence: number; word_is_final: boolean }[]
 }
 
 type FinalTurn = {
-  key: string
-  formatted: boolean
-  turn: TurnMsg
+	key: string
+	formatted: boolean
+	turn: TurnMsg
 }
 
 export default function QuickRealtime() {
-  const { accountId, projectId } = useCurrentProject()
-  const supabase = createClient()
-  const navigate = useNavigate()
-  const basePath = `/a/${accountId}/${projectId}`
+	const { accountId, projectId } = useCurrentProject()
+	const supabase = createClient()
+	const navigate = useNavigate()
+	const basePath = `/a/${accountId}/${projectId}`
 	const [status, setStatus] = useState<"idle" | "connecting" | "streaming" | "stopped" | "error">("idle")
 	const [log, setLog] = useState<string[]>([])
-  const [finalTurns, setFinalTurns] = useState<FinalTurn[]>([])
-  const [draftTurn, setDraftTurn] = useState<TurnMsg | null>(null)
-  const [interviewId, setInterviewId] = useState<string | null>(null)
+	const [finalTurns, setFinalTurns] = useState<FinalTurn[]>([])
+	const [draftTurn, setDraftTurn] = useState<TurnMsg | null>(null)
+	const [interviewId, setInterviewId] = useState<string | null>(null)
 	const wsRef = useRef<WebSocket | null>(null)
 	const ctxRef = useRef<AudioContext | null>(null)
 	const nodeRef = useRef<AudioWorkletNode | null>(null)
 	const bufferRef = useRef<Float32Array[]>([])
 	const timerRef = useRef<number | null>(null)
-  const recRef = useRef<MediaRecorder | null>(null)
-  const recChunksRef = useRef<BlobPart[]>([])
-  const insufficientRef = useRef(false)
-  const firstSendRef = useRef(true)
+	const recRef = useRef<MediaRecorder | null>(null)
+	const recChunksRef = useRef<BlobPart[]>([])
+	const insufficientRef = useRef(false)
+	const firstSendRef = useRef(true)
 
 	function appendLog(m: string) {
 		setLog((l) => [m, ...l].slice(0, 200))
@@ -51,30 +51,30 @@ export default function QuickRealtime() {
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [])
 
-  async function start() {
-    try {
-      setStatus("connecting")
+	async function start() {
+		try {
+			setStatus("connecting")
 
-      // Create interview record on server (project-scoped)
-      const startRes = await fetch(`${basePath}/api/interviews/realtime-start`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({}),
-      })
-      const startData = await startRes.json()
-      if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview")
-      setInterviewId(startData.interviewId as string)
+			// Create interview record on server (project-scoped)
+			const startRes = await fetch(`${basePath}/api/interviews/realtime-start`, {
+				method: "POST",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({}),
+			})
+			const startData = await startRes.json()
+			if (!startRes.ok) throw new Error(startData?.error || "Failed to start interview")
+			setInterviewId(startData.interviewId as string)
 
-      // Connect to our server proxy
-      const scheme = window.location.protocol === "https:" ? "wss" : "ws"
-      const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`
-      const ws = new WebSocket(url, ["binary"]) // we send binary PCM frames
-      ws.binaryType = "arraybuffer"
-      wsRef.current = ws
+			// Connect to our server proxy
+			const scheme = window.location.protocol === "https:" ? "wss" : "ws"
+			const url = `${scheme}://${window.location.host}/ws/realtime-transcribe`
+			const ws = new WebSocket(url, ["binary"]) // we send binary PCM frames
+			ws.binaryType = "arraybuffer"
+			wsRef.current = ws
 
 			ws.onopen = async () => {
-        appendLog("WS open → starting mic")
-        setStatus("streaming")
+				appendLog("WS open → starting mic")
+				setStatus("streaming")
 
 				// 3) Setup AudioWorklet pipeline
 				const ctx = new AudioContext({ sampleRate: 48000 })
@@ -92,96 +92,98 @@ export default function QuickRealtime() {
 				// If you do not want local loopback, do not connect to destination
 				// node.connect(ctx.destination)
 
-        // Also start browser recording (webm/opus) for saving audio
-        try {
-          const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" })
-          recRef.current = rec
-          recChunksRef.current = []
-          rec.ondataavailable = (e) => { if (e.data && e.data.size > 0) recChunksRef.current.push(e.data) }
-          rec.start(500)
-        } catch {
-          appendLog("MediaRecorder unsupported; audio won't be saved")
-        }
+				// Also start browser recording (webm/opus) for saving audio
+				try {
+					const rec = new MediaRecorder(stream, { mimeType: "audio/webm;codecs=opus" })
+					recRef.current = rec
+					recChunksRef.current = []
+					rec.ondataavailable = (e) => {
+						if (e.data && e.data.size > 0) recChunksRef.current.push(e.data)
+					}
+					rec.start(500)
+				} catch {
+					appendLog("MediaRecorder unsupported; audio won't be saved")
+				}
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
 				}
 
 				const sendChunk = () => {
-          // Only send if we have enough input samples to produce >= MIN_OUT_MS at target rate
-          const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000) // e.g., 960 for 60ms
-          const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000) // e.g., 2880 for 60ms at 48k
-          const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
-          if (available < minInputSamples) {
-            insufficientRef.current = true
-            return
-          }
+					// Only send if we have enough input samples to produce >= MIN_OUT_MS at target rate
+					const minOutSamples = Math.ceil((TARGET_SAMPLE_RATE * MIN_OUT_MS) / 1000) // e.g., 960 for 60ms
+					const minInputSamples = Math.ceil((ctx.sampleRate * MIN_OUT_MS) / 1000) // e.g., 2880 for 60ms at 48k
+					const available = bufferRef.current.reduce((acc, c) => acc + c.length, 0)
+					if (available < minInputSamples) {
+						insufficientRef.current = true
+						return
+					}
 
-          const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
-          let floats = drainForSamples(Math.max(minInputSamples, inputAim))
-          if (!floats || floats.length === 0) return
+					const inputAim = Math.ceil((ctx.sampleRate * (firstSendRef.current ? CHUNK_MS * 2 : CHUNK_MS)) / 1000)
+					const floats = drainForSamples(Math.max(minInputSamples, inputAim))
+					if (!floats || floats.length === 0) return
 
-          let pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
-          if (!pcm16) return
-          if (pcm16.length < minOutSamples) {
-            // If we still fell short due to rounding, skip this tick
-            insufficientRef.current = true
-            return
-          }
-          insufficientRef.current = false
-          if (ws.readyState === WebSocket.OPEN) {
-            ws.send(pcm16.buffer)
-            firstSendRef.current = false
-          }
-        }
+					const pcm16 = downsampleTo16kPCM16(floats, ctx.sampleRate, TARGET_SAMPLE_RATE)
+					if (!pcm16) return
+					if (pcm16.length < minOutSamples) {
+						// If we still fell short due to rounding, skip this tick
+						insufficientRef.current = true
+						return
+					}
+					insufficientRef.current = false
+					if (ws.readyState === WebSocket.OPEN) {
+						ws.send(pcm16.buffer)
+						firstSendRef.current = false
+					}
+				}
 
 				timerRef.current = window.setInterval(sendChunk, CHUNK_MS)
 			}
 
-      ws.onmessage = async (evt) => {
-        try {
-          let text: string | null = null
-          if (typeof evt.data === "string") text = evt.data
-          else if (evt.data instanceof Blob) text = await evt.data.text()
-          else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data)
-          if (!text) return
-          const msg = JSON.parse(text) as { type: string }
-          if ((msg as any).type === "Turn") {
-            const t = msg as any as TurnMsg
-            if (t.end_of_turn) {
-              const key = computeTurnKey(t)
-              setFinalTurns((prev) => {
-                if (prev.length > 0 && prev[prev.length - 1].key === key) {
-                  const last = prev[prev.length - 1]
-                  if (t.turn_is_formatted && !last.formatted) {
-                    const updated = prev.slice(0, -1)
-                    updated.push({ key, formatted: true, turn: t })
-                    return updated
-                  }
-                  return prev
-                }
-                return [...prev, { key, formatted: !!t.turn_is_formatted, turn: t }]
-              })
-              setDraftTurn(null)
-            } else {
-              setDraftTurn(t)
-            }
-          } else if ((msg as any).type === "Error") {
-            appendLog(`Server error: ${text}`)
-          } else if ((msg as any).type === "Begin") {
-            setFinalTurns([])
-            setDraftTurn(null)
-            appendLog("Streaming begun")
-          }
-        } catch (e: any) {
-          // ignore non-JSON frames
-        }
-      }
+			ws.onmessage = async (evt) => {
+				try {
+					let text: string | null = null
+					if (typeof evt.data === "string") text = evt.data
+					else if (evt.data instanceof Blob) text = await evt.data.text()
+					else if (evt.data instanceof ArrayBuffer) text = new TextDecoder().decode(evt.data)
+					if (!text) return
+					const msg = JSON.parse(text) as { type: string }
+					if ((msg as any).type === "Turn") {
+						const t = msg as any as TurnMsg
+						if (t.end_of_turn) {
+							const key = computeTurnKey(t)
+							setFinalTurns((prev) => {
+								if (prev.length > 0 && prev[prev.length - 1].key === key) {
+									const last = prev[prev.length - 1]
+									if (t.turn_is_formatted && !last.formatted) {
+										const updated = prev.slice(0, -1)
+										updated.push({ key, formatted: true, turn: t })
+										return updated
+									}
+									return prev
+								}
+								return [...prev, { key, formatted: !!t.turn_is_formatted, turn: t }]
+							})
+							setDraftTurn(null)
+						} else {
+							setDraftTurn(t)
+						}
+					} else if ((msg as any).type === "Error") {
+						appendLog(`Server error: ${text}`)
+					} else if ((msg as any).type === "Begin") {
+						setFinalTurns([])
+						setDraftTurn(null)
+						appendLog("Streaming begun")
+					}
+				} catch (e: any) {
+					// ignore non-JSON frames
+				}
+			}
 
-      ws.onerror = (e: Event) => {
-        appendLog(`WS error`)
-        setStatus("error")
-      }
+			ws.onerror = (e: Event) => {
+				appendLog("WS error")
+				setStatus("error")
+			}
 
 			ws.onclose = (evt) => {
 				appendLog(`WS closed code=${evt.code} reason=${evt.reason || ""}`)
@@ -194,9 +196,9 @@ export default function QuickRealtime() {
 		}
 	}
 
-  function stop() {
-    // Snapshot current final turns before any state resets
-    const turnsSnapshot = finalTurns.map((f) => f.turn)
+	function stop() {
+		// Snapshot current final turns before any state resets
+		const turnsSnapshot = finalTurns.map((f) => f.turn)
 		if (timerRef.current) {
 			clearInterval(timerRef.current)
 			timerRef.current = null
@@ -204,80 +206,82 @@ export default function QuickRealtime() {
 		if (wsRef.current) {
 			try {
 				wsRef.current.close()
-			} catch { }
+			} catch {}
 		}
 		wsRef.current = null
 		try {
 			nodeRef.current?.disconnect()
 			ctxRef.current?.close()
-		} catch { }
+		} catch {}
 		nodeRef.current = null
 		ctxRef.current = null
-    bufferRef.current = []
-    setDraftTurn(null)
+		bufferRef.current = []
+		setDraftTurn(null)
 		setStatus("stopped")
 
-    // Stop and save recording, then finalize transcript
-    void (async () => {
-      try {
-        const rec = recRef.current
-        if (rec && rec.state !== "inactive") {
-          const stopped = new Promise<Blob>((resolve) => {
-            rec.onstop = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
-          })
-          rec.stop()
-          const blob = await stopped
-          let mediaUrl: string | undefined
-          if (blob.size > 0 && interviewId) {
-            const filename = `interviews/${projectId}/${interviewId}-${Date.now()}.webm`
-            const { error } = await supabase.storage.from("interview-recordings").upload(filename, blob, { upsert: true })
-            if (!error) {
-              const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
-              mediaUrl = data.publicUrl
-            } else {
-              appendLog(`Audio upload failed: ${error.message}`)
-            }
-          }
+		// Stop and save recording, then finalize transcript
+		void (async () => {
+			try {
+				const rec = recRef.current
+				if (rec && rec.state !== "inactive") {
+					const stopped = new Promise<Blob>((resolve) => {
+						rec.onstop = () => resolve(new Blob(recChunksRef.current, { type: "audio/webm" }))
+					})
+					rec.stop()
+					const blob = await stopped
+					let mediaUrl: string | undefined
+					if (blob.size > 0 && interviewId) {
+						const filename = `interviews/${projectId}/${interviewId}-${Date.now()}.webm`
+						const { error } = await supabase.storage
+							.from("interview-recordings")
+							.upload(filename, blob, { upsert: true })
+						if (!error) {
+							const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
+							mediaUrl = data.publicUrl
+						} else {
+							appendLog(`Audio upload failed: ${error.message}`)
+						}
+					}
 
-          if (interviewId) {
-            const transcript = turnsSnapshot.map((t) => t.transcript).join(" ")
-            await fetch(`${basePath}/api/interviews/realtime-finalize`, {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({
-                interviewId,
-                transcript,
-                transcriptFormatted: { turns: turnsSnapshot },
-                mediaUrl,
-              }),
-            })
-            // Navigate to interview detail
-            navigate(`${basePath}/interviews/${interviewId}`)
-          }
-        }
-      } catch {}
-    })()
-    // Now that we've queued finalize, clear the UI transcript state
-    setFinalTurns([])
-  }
+					if (interviewId) {
+						const transcript = turnsSnapshot.map((t) => t.transcript).join(" ")
+						await fetch(`${basePath}/api/interviews/realtime-finalize`, {
+							method: "POST",
+							headers: { "Content-Type": "application/json" },
+							body: JSON.stringify({
+								interviewId,
+								transcript,
+								transcriptFormatted: { turns: turnsSnapshot },
+								mediaUrl,
+							}),
+						})
+						// Navigate to interview detail
+						navigate(`${basePath}/interviews/${interviewId}`)
+					}
+				}
+			} catch {}
+		})()
+		// Now that we've queued finalize, clear the UI transcript state
+		setFinalTurns([])
+	}
 
-  function drainForSamples(samplesNeeded: number): Float32Array | null {
-    let have = 0
-    const chunks: Float32Array[] = []
-    while (bufferRef.current.length && have < samplesNeeded) {
-      const c = bufferRef.current.shift()!
-      chunks.push(c)
-      have += c.length
-    }
-    if (!chunks.length) return null
-    const out = new Float32Array(have)
-    let offset = 0
-    for (const c of chunks) {
-      out.set(c, offset)
-      offset += c.length
-    }
-    return out
-  }
+	function drainForSamples(samplesNeeded: number): Float32Array | null {
+		let have = 0
+		const chunks: Float32Array[] = []
+		while (bufferRef.current.length && have < samplesNeeded) {
+			const c = bufferRef.current.shift()!
+			chunks.push(c)
+			have += c.length
+		}
+		if (!chunks.length) return null
+		const out = new Float32Array(have)
+		let offset = 0
+		for (const c of chunks) {
+			out.set(c, offset)
+			offset += c.length
+		}
+		return out
+	}
 
 	function downsampleTo16kPCM16(input: Float32Array, inputRate: number, targetRate: number): Int16Array | null {
 		if (inputRate === targetRate) return floatTo16(input)
@@ -310,14 +314,14 @@ export default function QuickRealtime() {
 
 	// No base64 needed for Universal-Streaming; we send binary frames.
 
-  function computeTurnKey(t: TurnMsg): string {
-    if (t.words && t.words.length > 0) {
-      const start = t.words[0]?.start ?? 0
-      const end = t.words[t.words.length - 1]?.end ?? 0
-      return `${start}-${end}`
-    }
-    return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
-  }
+	function computeTurnKey(t: TurnMsg): string {
+		if (t.words && t.words.length > 0) {
+			const start = t.words[0]?.start ?? 0
+			const end = t.words[t.words.length - 1]?.end ?? 0
+			return `${start}-${end}`
+		}
+		return `tx-${t.transcript.length}:${t.transcript.slice(0, 32)}`
+	}
 
 	return (
 		<div className="mx-auto max-w-3xl space-y-6 p-6">

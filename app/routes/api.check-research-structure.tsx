@@ -55,16 +55,15 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				has_research_questions: (researchQuestions?.length || 0) > 0,
 				has_interview_prompts: (interviewPrompts?.length || 0) > 0,
 				has_project_sections: (projectSections?.length || 0) > 0,
-			}
+			},
 		})
-
 	} catch (error) {
 		console.error("Check research structure failed:", error)
 		return Response.json(
-			{ 
-				error: "Failed to check research structure", 
-				details: error instanceof Error ? error.message : String(error) 
-			}, 
+			{
+				error: "Failed to check research structure",
+				details: error instanceof Error ? error.message : String(error),
+			},
 			{ status: 500 }
 		)
 	}

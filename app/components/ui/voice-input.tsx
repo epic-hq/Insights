@@ -1,6 +1,6 @@
-import React from "react"
 import { Mic } from "lucide-react"
 import { AnimatePresence, motion } from "motion/react"
+import React from "react"
 
 import { cn } from "~/lib/utils"
 
@@ -50,8 +50,9 @@ export function VoiceInput({
 	return (
 		<div className={cn("flex flex-col items-center justify-center", className)}>
 			<motion.div
-				className={cn("flex p-2 border items-center justify-center rounded-full cursor-pointer",
-					status === "transcribing" && "cursor-not-allowed bg-gray-200 animate-pulse",
+				className={cn(
+					"flex cursor-pointer items-center justify-center rounded-full border p-2",
+					status === "transcribing" && "animate-pulse cursor-not-allowed bg-gray-200"
 				)}
 				layout
 				transition={{
@@ -61,10 +62,10 @@ export function VoiceInput({
 				}}
 				onClick={status === "transcribing" ? () => null : onClickHandler}
 			>
-				<div className="h-6 w-6 items-center justify-center flex ">
+				<div className="flex h-6 w-6 items-center justify-center ">
 					{_listening ? (
 						<motion.div
-							className="w-4 h-4 bg-primary rounded-sm"
+							className="h-4 w-4 rounded-sm bg-primary"
 							animate={{
 								rotate: [0, 180, 360],
 							}}
@@ -87,23 +88,21 @@ export function VoiceInput({
 							transition={{
 								duration: 0.4,
 							}}
-							className="overflow-hidden flex gap-2 items-center justify-center"
+							className="flex items-center justify-center gap-2 overflow-hidden"
 						>
 							{/* Frequency Animation */}
-							<div className="flex gap-0.5 items-center justify-center">
+							<div className="flex items-center justify-center gap-0.5">
 								{[...Array(12)].map((_, i) => (
 									<motion.div
 										key={i}
-										className="w-0.5 bg-primary rounded-full"
+										className="w-0.5 rounded-full bg-primary"
 										initial={{ height: 2 }}
 										animate={{
-											height: _listening
-												? [2, 3 + Math.random() * 10, 3 + Math.random() * 5, 2]
-												: 2,
+											height: _listening ? [2, 3 + Math.random() * 10, 3 + Math.random() * 5, 2] : 2,
 										}}
 										transition={{
 											duration: _listening ? 1 : 0.3,
-											repeat: _listening ? Infinity : 0,
+											repeat: _listening ? Number.POSITIVE_INFINITY : 0,
 											delay: _listening ? i * 0.05 : 0,
 											ease: "easeInOut",
 										}}
@@ -111,9 +110,7 @@ export function VoiceInput({
 								))}
 							</div>
 							{/* Timer */}
-							<div className="text-xs text-muted-foreground w-10 text-center">
-								{formatTime(_time)}
-							</div>
+							<div className="w-10 text-center text-muted-foreground text-xs">{formatTime(_time)}</div>
 						</motion.div>
 					)}
 				</AnimatePresence>

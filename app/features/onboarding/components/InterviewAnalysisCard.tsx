@@ -59,7 +59,7 @@ export function InterviewAnalysisCard({ answeredAnswers, openAnswers }: Intervie
 										<MessageCircleQuestionIcon className="mt-0.5 h-3 w-3 flex-shrink-0 text-amber-600" />
 										<div className="flex-1">
 											<p className="font-medium text-foreground text-xs">{answer.question_text}</p>
-											<p className="text-muted-foreground text-[11px]">Next interview: capture an answer</p>
+											<p className="text-[11px] text-muted-foreground">Next interview: capture an answer</p>
 										</div>
 									</div>
 								</div>
@@ -74,4 +74,3 @@ export function InterviewAnalysisCard({ answeredAnswers, openAnswers }: Intervie
 		</div>
 	)
 }
-

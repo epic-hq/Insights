@@ -104,7 +104,9 @@ export function UserProfile() {
 				>
 					<Link to={PATHS.PROFILE}>Profile</Link>
 				</DropdownMenuItem>
-				<DropdownMenuItem>Theme <ThemeToggle /></DropdownMenuItem>
+				<DropdownMenuItem>
+					Theme <ThemeToggle />
+				</DropdownMenuItem>
 				<DropdownMenuItem
 					onClick={handleSignOut}
 					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"

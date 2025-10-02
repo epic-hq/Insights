@@ -1,9 +1,9 @@
+import consola from "consola"
 import { Hash, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { createClient } from "~/lib/supabase/client"
-import consola from "consola"
 
 interface ThemesSectionProps {
 	projectId?: string
@@ -143,9 +143,7 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 			<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 				<CardContent className="p-3 sm:p-4">
 					{themes.length === 0 ? (
-						<p className="text-muted-foreground text-sm">
-							Pending
-						</p>
+						<p className="text-muted-foreground text-sm">Pending</p>
 					) : (
 						<div className="space-y-3">
 							{themes.slice(0, 3).map((theme) => (
@@ -154,7 +152,7 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 										<div className="flex-1">
 											<p className="font-medium text-foreground text-sm">{theme.name}</p>
 											{theme.statement && (
-												<p className="mt-1 text-muted-foreground text-xs line-clamp-2">{theme.statement}</p>
+												<p className="mt-1 line-clamp-2 text-muted-foreground text-xs">{theme.statement}</p>
 											)}
 											<div className="mt-2 flex flex-wrap gap-2">
 												<span className="rounded-full bg-orange-100 px-2 py-0.5 text-orange-800 text-xs">
@@ -175,9 +173,7 @@ export function ThemesSection({ projectId, routes }: ThemesSectionProps) {
 								</div>
 							))}
 							{themes.length > 3 && (
-								<p className="text-center text-muted-foreground text-xs">
-									+{themes.length - 3} more themes
-								</p>
+								<p className="text-center text-muted-foreground text-xs">+{themes.length - 3} more themes</p>
 							)}
 						</div>
 					)}

@@ -1,53 +1,50 @@
-import { useEffect, useMemo, useState } from 'react';
+import consola from "consola"
 
-import { ArrowUp, Check, Mic, Pause, Play, RotateCw, Settings, Trash } from 'lucide-react';
-import { usePostHog } from 'posthog-js/react';
-
-import { useAudioIntensity } from './hooks/use-audio-intensity';
-import { RecorderErrors, StatusMessages, useMediaRecorder } from './hooks/use-media-recorder';
-import { cn } from '@/lib/utils';
-
-import { Button } from '~/components/ui/button';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '~/components/ui/select';
-import consola from 'consola';
-import { VoiceInput } from '~/components/ui/voice-input';
+import { ArrowUp, Check, Mic, Pause, Play, RotateCw, Settings, Trash } from "lucide-react"
+import { usePostHog } from "posthog-js/react"
+import { useEffect, useMemo, useState } from "react"
+import { cn } from "@/lib/utils"
+import { Button } from "~/components/ui/button"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { VoiceInput } from "~/components/ui/voice-input"
+import { useAudioIntensity } from "./hooks/use-audio-intensity"
+import { RecorderErrors, StatusMessages, useMediaRecorder } from "./hooks/use-media-recorder"
 
 type AudioRecorderProps = {
-	mode?: 'default' | 'progress-bar';
-	onAfterTranscription?: (text: string) => void;
-	isMessageSending?: boolean;
-	onRecordingStart?: () => void;
-	showSettings?: boolean;
-};
+	mode?: "default" | "progress-bar"
+	onAfterTranscription?: (text: string) => void
+	isMessageSending?: boolean
+	onRecordingStart?: () => void
+	showSettings?: boolean
+}
 
 export const AudioRecorder = ({
 	onAfterTranscription,
 	isMessageSending,
-	mode = 'default',
+	mode = "default",
 	onRecordingStart,
 	showSettings = true,
 }: AudioRecorderProps) => {
-	const posthog = usePostHog();
+	const posthog = usePostHog()
 
-
-	const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
+	const [devices, setDevices] = useState<MediaDeviceInfo[]>([])
 	const [selectedDeviceId, setSelectedDeviceId] = useState<string | undefined>(
-		localStorage.getItem('selectedDeviceId') || undefined,
-	);
+		localStorage.getItem("selectedDeviceId") || undefined
+	)
 
-	const [hasDeviceAccess, setHasDeviceAccess] = useState<boolean | null>(null);
+	const [hasDeviceAccess, setHasDeviceAccess] = useState<boolean | null>(null)
 
-	const [hasStartedRecording, setHasStartedRecording] = useState(false);
+	const [hasStartedRecording, setHasStartedRecording] = useState(false)
 
 	// Add new state for browser compatibility error
-	const [browserError, setBrowserError] = useState<string | null>(null);
+	const [browserError, setBrowserError] = useState<string | null>(null)
 
 	// Add state for audio quality warnings
-	const [audioQualityWarning, setAudioQualityWarning] = useState<string | null>(null);
+	const [audioQualityWarning, setAudioQualityWarning] = useState<string | null>(null)
 
 	// Platform detection
-	const isIOS = useMemo(() => /iPhone|iPad|iPod/i.test(navigator.userAgent), []);
-	const isIOSChrome = useMemo(() => isIOS && /CriOS/i.test(navigator.userAgent), [isIOS]);
+	const isIOS = useMemo(() => /iPhone|iPad|iPod/i.test(navigator.userAgent), [])
+	const isIOSChrome = useMemo(() => isIOS && /CriOS/i.test(navigator.userAgent), [isIOS])
 
 	// Define flexible audio constraints based on platform
 	const audioConstraints = useMemo(() => {
@@ -55,7 +52,7 @@ export const AudioRecorder = ({
 			deviceId: selectedDeviceId ? { ideal: selectedDeviceId } : undefined,
 			echoCancellation: { ideal: true },
 			noiseSuppression: { ideal: true },
-		};
+		}
 
 		// Only add these constraints for non-iOS platforms
 		if (!isIOS) {
@@ -63,82 +60,82 @@ export const AudioRecorder = ({
 				...baseConstraints,
 				sampleRate: { ideal: 16000 },
 				channelCount: { ideal: 1 },
-			};
+			}
 		}
 
-		return baseConstraints;
-	}, [selectedDeviceId, isIOS]);
+		return baseConstraints
+	}, [selectedDeviceId, isIOS])
 
 	const getAudioDevices = () => {
 		navigator.mediaDevices.enumerateDevices().then((deviceInfos) => {
 			const audioDevices = deviceInfos.filter(
-				(device) => device.kind === 'audioinput' && device.deviceId && device.label,
-			);
-			setDevices(audioDevices);
-		});
-	};
+				(device) => device.kind === "audioinput" && device.deviceId && device.label
+			)
+			setDevices(audioDevices)
+		})
+	}
 
 	// useEffect(() => {
 	//   getAudioDevices();
 	// }, []);
 
 	const handleDeviceChange = (deviceId: string) => {
-		setSelectedDeviceId(deviceId);
-		localStorage.setItem('selectedDeviceId', deviceId);
-	};
+		setSelectedDeviceId(deviceId)
+		localStorage.setItem("selectedDeviceId", deviceId)
+	}
 
 	useEffect(() => {
-		let permissionStatus: PermissionStatus;
+		let permissionStatus: PermissionStatus
 
 		// Function to handle permission state changes
 		const handlePermissionChange = () => {
-			if (permissionStatus.state === 'granted') {
-				setHasDeviceAccess(true);
-				getAudioDevices();
+			if (permissionStatus.state === "granted") {
+				setHasDeviceAccess(true)
+				getAudioDevices()
 				if (posthog) {
-					posthog.capture('audio_granted');
+					posthog.capture("audio_granted")
 				}
-			} else if (permissionStatus.state === 'denied') {
+			} else if (permissionStatus.state === "denied") {
 				if (posthog) {
-					posthog.capture('audio_denied');
+					posthog.capture("audio_denied")
 				}
-				setHasDeviceAccess(false);
-				setDevices([]);
+				setHasDeviceAccess(false)
+				setDevices([])
 			}
-		};
+		}
 
 		// Query the microphone permission status
-		navigator.permissions.query({ name: 'microphone' as PermissionName }).then((status) => {
-			permissionStatus = status;
-			handlePermissionChange(); // Check initial state
-			permissionStatus.onchange = handlePermissionChange; // Listen for changes
-		});
+		navigator.permissions.query({ name: "microphone" as PermissionName }).then((status) => {
+			permissionStatus = status
+			handlePermissionChange() // Check initial state
+			permissionStatus.onchange = handlePermissionChange // Listen for changes
+		})
 
 		// Cleanup listener on unmount
 		return () => {
 			if (permissionStatus) {
-				permissionStatus.onchange = null;
+				permissionStatus.onchange = null
 			}
-		};
-	}, []);
+		}
+	}, [])
 
 	const fileType = useMemo(() => {
-		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
 		if (isMobile && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-			return 'audio/mp4'; // iOS Safari actually records in MP4 format
+			return "audio/mp4" // iOS Safari actually records in MP4 format
 		}
-		return 'audio/webm'; // Default for other browsers
-	}, []);
+		return "audio/webm" // Default for other browsers
+	}, [])
 
 	useEffect(() => {
 		if (devices.length > 0 && !selectedDeviceId) {
-			const defaultDevice = devices[0];
-			setSelectedDeviceId(defaultDevice.deviceId);
-			localStorage.setItem('selectedDeviceId', defaultDevice.deviceId);
+			const defaultDevice = devices[0]
+			setSelectedDeviceId(defaultDevice.deviceId)
+			localStorage.setItem("selectedDeviceId", defaultDevice.deviceId)
 		}
-	}, [devices, selectedDeviceId]);
+	}, [devices, selectedDeviceId])
 
-	const [status, setStatus] = useState<'listening' | 'transcribing' | 'idle'>('idle');
+	const [status, setStatus] = useState<"listening" | "transcribing" | "idle">("idle")
 
 	const {
 		status: recorderStatus,
@@ -155,32 +152,32 @@ export const AudioRecorder = ({
 		askPermissionOnMount: false,
 		stopStreamsOnStop: true,
 		onStop: async (blobUrl, blob) => {
-			setStatus('transcribing');
+			setStatus("transcribing")
 			if (posthog) {
-				posthog.capture('message-sent', { type: 'audio', $set: { no_recent_messages: false } });
+				posthog.capture("message-sent", { type: "audio", $set: { no_recent_messages: false } })
 			}
 
 			// Verify we have valid data before sending
 			if (!blob || blob.size === 0) {
-				consola.error('No audio data recorded');
-				return;
+				consola.error("No audio data recorded")
+				return
 			}
 
 			// Analyze audio quality
-			const qualityCheck = await analyzeAudioQuality(blob);
+			const qualityCheck = await analyzeAudioQuality(blob)
 			if (qualityCheck.hasIssues) {
-				setAudioQualityWarning(qualityCheck.warning);
+				setAudioQualityWarning(qualityCheck.warning)
 				// Continue with transcription but show warning
 			} else {
-				setAudioQualityWarning(null);
+				setAudioQualityWarning(null)
 			}
 
 			// Read the first few bytes to verify content
-			const firstBytes = await blob.slice(0, 32).arrayBuffer();
+			const firstBytes = await blob.slice(0, 32).arrayBuffer()
 			// setIsRunning?.(true);
 
-			return fetch('/api/transcribe', {
-				method: 'POST',
+			return fetch("/api/transcribe", {
+				method: "POST",
 				body: blob,
 			})
 				.then(async (response) => {
@@ -188,189 +185,188 @@ export const AudioRecorder = ({
 					const transcription = await response?.text()
 					consola.log("transcription response", transcription)
 
-					onAfterTranscription?.(transcription);
+					onAfterTranscription?.(transcription)
 				})
 				.catch((err) => consola.error(err))
 				.finally(() => {
 					// clearBlobUrl();
 					// setIsRunning?.(false);
-					setStatus('idle');
-				});
+					setStatus("idle")
+				})
 		},
 		audio: audioConstraints,
 		blobPropertyBag: {
 			type: fileType,
-			endings: 'native',
+			endings: "native",
 		},
-	});
+	})
 
-	const voiceIntensity = useAudioIntensity(previewAudioStream);
+	const voiceIntensity = useAudioIntensity(previewAudioStream)
 
 	// Handle recording errors
 	useEffect(() => {
 		if (recordingError) {
-			console.error('MediaRecorder error:', recordingError);
+			console.error("MediaRecorder error:", recordingError)
 			if (isIOSChrome) {
-				setBrowserError(
-					'For the best experience, please open app.sidecoach.ai in Safari browser on your iOS device.',
-				);
+				setBrowserError("For the best experience, please open app.sidecoach.ai in Safari browser on your iOS device.")
 			}
 		}
-	}, [recordingError, isIOSChrome]);
+	}, [recordingError, isIOSChrome])
 
 	const startRecording = () => {
-		setBrowserError(null); // Reset error state
-		setAudioQualityWarning(null); // Reset audio quality warning
-		clearBlobUrl();
-		_startRecording();
-		onRecordingStart?.();
-		setHasStartedRecording(true);
-	};
+		setBrowserError(null) // Reset error state
+		setAudioQualityWarning(null) // Reset audio quality warning
+		clearBlobUrl()
+		_startRecording()
+		onRecordingStart?.()
+		setHasStartedRecording(true)
+	}
 
-	const isRecording = recorderStatus === 'recording';
-	const isPaused = recorderStatus === 'paused';
+	const isRecording = recorderStatus === "recording"
+	const isPaused = recorderStatus === "paused"
 
 	const onMainButtonClick = () => {
 		if (isPaused) {
-			resumeRecording();
+			resumeRecording()
 			// startCountdown();
 		} else if (isRecording) {
 			// stopCountdown();
-			stopRecording();
+			stopRecording()
 		} else {
 			// reset elapsed time when starting a new recording
-			setElapsedTimeMs(0);
+			setElapsedTimeMs(0)
 			// startCountdown();
-			startRecording();
+			startRecording()
 		}
 	}
 
 	// Add debug info about supported formats
 	useEffect(() => {
-		if (typeof MediaRecorder !== 'undefined') {
-			consola.debug('iOS Supported MIME types:', {
-				mp4: MediaRecorder.isTypeSupported('audio/mp4'),
-				aac: MediaRecorder.isTypeSupported('audio/aac'),
-				webm: MediaRecorder.isTypeSupported('audio/webm'),
-				mp4_aac: MediaRecorder.isTypeSupported('audio/mp4;codecs=aac'),
-			});
+		if (typeof MediaRecorder !== "undefined") {
+			consola.debug("iOS Supported MIME types:", {
+				mp4: MediaRecorder.isTypeSupported("audio/mp4"),
+				aac: MediaRecorder.isTypeSupported("audio/aac"),
+				webm: MediaRecorder.isTypeSupported("audio/webm"),
+				mp4_aac: MediaRecorder.isTypeSupported("audio/mp4;codecs=aac"),
+			})
 		}
-	}, []);
+	}, [])
 
 	// Define maximum recording duration in milliseconds (e.g., 60 seconds)
-	const maxDurationMs = 60000; // 60 seconds
+	const maxDurationMs = 60000 // 60 seconds
 
 	// Use useState to track elapsed recording time in milliseconds
-	const [elapsedTimeMs, setElapsedTimeMs] = useState(0);
+	const [elapsedTimeMs, setElapsedTimeMs] = useState(0)
 
 	// Update elapsed time when recording
 	useEffect(() => {
-		let intervalId: NodeJS.Timeout | null = null;
+		let intervalId: NodeJS.Timeout | null = null
 
 		if (isRecording) {
 			intervalId = setInterval(() => {
 				setElapsedTimeMs((prevTime) => {
-					const newTime = prevTime + 100; // Update every 100ms
+					const newTime = prevTime + 100 // Update every 100ms
 					if (newTime >= maxDurationMs) {
-						return maxDurationMs;
+						return maxDurationMs
 					}
-					return newTime;
-				});
-			}, 100);
+					return newTime
+				})
+			}, 100)
 		} else if (!isRecording && elapsedTimeMs !== 0) {
-			if (intervalId) clearInterval(intervalId);
+			if (intervalId) clearInterval(intervalId)
 		}
 
 		return () => {
-			if (intervalId) clearInterval(intervalId);
-		};
-	}, [isRecording]);
+			if (intervalId) clearInterval(intervalId)
+		}
+	}, [isRecording])
 
 	// Calculate progress percentage
-	const progressPercentage = Math.min((elapsedTimeMs / maxDurationMs) * 100, 100);
+	const progressPercentage = Math.min((elapsedTimeMs / maxDurationMs) * 100, 100)
 
 	// Function to analyze audio quality
-	const analyzeAudioQuality = async (blob: Blob): Promise<{
-		hasIssues: boolean;
-		warning: string | null;
+	const analyzeAudioQuality = async (
+		blob: Blob
+	): Promise<{
+		hasIssues: boolean
+		warning: string | null
 	}> => {
 		try {
 			// Check audio duration (blob size can give us a rough estimate)
-			const duration = blob.size / 16000; // Rough estimate based on typical audio bitrate
+			const duration = blob.size / 16000 // Rough estimate based on typical audio bitrate
 			if (duration < 0.5) {
-				return { hasIssues: true, warning: 'Recording too short. Please speak for at least 1 second.' };
+				return { hasIssues: true, warning: "Recording too short. Please speak for at least 1 second." }
 			}
 
 			// Analyze audio volume using Web Audio API
-			const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-			const arrayBuffer = await blob.arrayBuffer();
-			const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+			const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)()
+			const arrayBuffer = await blob.arrayBuffer()
+			const audioBuffer = await audioContext.decodeAudioData(arrayBuffer)
 
 			// Get audio data from the first channel
-			const channelData = audioBuffer.getChannelData(0);
+			const channelData = audioBuffer.getChannelData(0)
 
 			// Calculate RMS (Root Mean Square) for volume level
-			let sum = 0;
-			let maxAmplitude = 0;
+			let sum = 0
+			let maxAmplitude = 0
 			for (let i = 0; i < channelData.length; i++) {
-				const amplitude = Math.abs(channelData[i]);
-				maxAmplitude = Math.max(maxAmplitude, amplitude);
-				sum += amplitude * amplitude;
+				const amplitude = Math.abs(channelData[i])
+				maxAmplitude = Math.max(maxAmplitude, amplitude)
+				sum += amplitude * amplitude
 			}
-			const rms = Math.sqrt(sum / channelData.length);
+			const rms = Math.sqrt(sum / channelData.length)
 
 			// Close audio context
-			audioContext.close();
+			audioContext.close()
 
 			// Check if volume is too low (threshold values may need adjustment)
 			if (maxAmplitude < 0.1 || rms < 0.01) {
 				return {
 					hasIssues: true,
-					warning: 'Low volume detected. Please speak louder or move closer to the microphone.'
-				};
+					warning: "Low volume detected. Please speak louder or move closer to the microphone.",
+				}
 			}
 
 			// Check if audio is mostly silence
-			const silentSamples = channelData.filter(sample => Math.abs(sample) < 0.01).length;
-			const silenceRatio = silentSamples / channelData.length;
+			const silentSamples = channelData.filter((sample) => Math.abs(sample) < 0.01).length
+			const silenceRatio = silentSamples / channelData.length
 			if (silenceRatio > 0.9) {
 				return {
 					hasIssues: true,
-					warning: 'Mostly silence detected. Please ensure you are speaking clearly.'
-				};
+					warning: "Mostly silence detected. Please ensure you are speaking clearly.",
+				}
 			}
 
-			return { hasIssues: false, warning: null };
+			return { hasIssues: false, warning: null }
 		} catch (error) {
-			console.error('Error analyzing audio quality:', error);
+			console.error("Error analyzing audio quality:", error)
 			// Don't block the user if analysis fails
-			return { hasIssues: false, warning: null };
+			return { hasIssues: false, warning: null }
 		}
-	};
+	}
 
 	// If there's a browser compatibility error, show the message
 	if (browserError) {
 		return (
-			<div className="w-full p-4 rounded-md bg-yellow-50 border border-yellow-200" >
-				<div className="flex items-center gap-2 text-yellow-800" >
+			<div className="w-full rounded-md border border-yellow-200 bg-yellow-50 p-4">
+				<div className="flex items-center gap-2 text-yellow-800">
 					<Settings className="size-4" />
 					<p>{browserError} </p>
 				</div>
 				<a
 					href="https://app.sidecoach.ai"
-					className="mt-2 text-sm text-blue-600 hover:underline block"
+					className="mt-2 block text-blue-600 text-sm hover:underline"
 					target="_blank"
 					rel="noopener noreferrer"
 				>
-					Current browser is not supported.Please try opening app.sidecoach.ai in Safari browser on
-					your iOS device.
+					Current browser is not supported.Please try opening app.sidecoach.ai in Safari browser on your iOS device.
 				</a>
 			</div>
-		);
+		)
 	}
 
 	return (
-		<div className="w-full flex flex-row gap-2" >
+		<div className="flex w-full flex-row gap-2">
 			<VoiceInput onStart={startRecording} onStop={stopRecording} status={status} audioIntensity={voiceIntensity} />
 		</div>
 	)
