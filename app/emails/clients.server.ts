@@ -19,6 +19,14 @@ export type EmailPayload = {
 	subject: string
 	html?: string
 	react?: React.ReactElement
+	cc?: string[]
+	bcc?: string[]
+	text?: string
+	template?: string
+	template_variables?: Record<string, unknown>
+	reply_to?: string
+	track_clicks?: boolean
+	track_opens?: boolean
 }
 
 export const sendEmail = async (payload: EmailPayload) => {
@@ -36,8 +44,8 @@ export const sendEmail = async (payload: EmailPayload) => {
 		html = await render(payload.react)
 	}
 
-	if (!html) {
-		throw new Error("Either html or react prop must be provided")
+	if (!html && !payload.template) {
+		throw new Error("Either html, react, or template prop must be provided")
 	}
 
 	try {
@@ -50,17 +58,31 @@ export const sendEmail = async (payload: EmailPayload) => {
 		// Encode credentials for Basic Auth
 		const credentials = Buffer.from(`${apiKey}:${apiSecret}`).toString("base64")
 
+		// Build request body with all optional parameters
+		const requestBody: Record<string, unknown> = {
+			subject: payload.subject,
+			from: {
+				email: DEFAULT_FROM_EMAIL,
+				name: DEFAULT_FROM_NAME || undefined,
+			},
+			to: Array.isArray(payload.to) ? payload.to : [payload.to],
+			// Enable tracking by default
+			track_clicks: payload.track_clicks ?? true,
+			track_opens: payload.track_opens ?? true,
+		}
+
+		// Add optional fields if provided
+		if (html) requestBody.html = html
+		if (payload.text) requestBody.text = payload.text
+		if (payload.cc) requestBody.cc = payload.cc
+		if (payload.bcc) requestBody.bcc = payload.bcc
+		if (payload.template) requestBody.template = payload.template
+		if (payload.template_variables) requestBody.template_variables = payload.template_variables
+		if (payload.reply_to) requestBody.reply_to = payload.reply_to
+
 		const result = await wretch("https://api.engage.so/v1/send/email")
 			.auth(`Basic ${credentials}`)
-			.post({
-				subject: payload.subject,
-				from: {
-					email: DEFAULT_FROM_EMAIL,
-					name: DEFAULT_FROM_NAME || undefined,
-				},
-				to: Array.isArray(payload.to) ? payload.to : [payload.to],
-				html: html,
-			})
+			.post(requestBody)
 			.json<{ id?: string; error?: unknown }>()
 
 		if (result && typeof result === "object" && "error" in result && result.error) {
