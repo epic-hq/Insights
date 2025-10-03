@@ -310,7 +310,8 @@ create table if not exists facet_candidate (
   reviewed_by uuid,
   reviewed_at timestamptz,
   created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now(),
+  constraint facet_candidate_unique unique (account_id, project_id, kind_slug, label)
 );
 
 CREATE INDEX IF NOT EXISTS idx_facet_candidate_account ON public.facet_candidate(account_id);
@@ -369,7 +370,7 @@ create table if not exists person_facet (
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   project_id uuid not null references projects(id) on delete cascade,
   facet_ref text not null,
-  source text not null check (source in ('interview','survey','telemetry','inferred','manual', 'document')),
+  source text not null check (source in ('interview','survey','telemetry','inferred','manual','document')),
   evidence_id uuid,
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   noted_at timestamptz default now(),

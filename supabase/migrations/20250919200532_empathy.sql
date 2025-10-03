@@ -1,13 +1,12 @@
-alter table "public"."evidence" add column "does" text[] default '{}'::text[];
+alter table "public"."evidence" add column if not exists "does" text[] default '{}'::text[];
 
-alter table "public"."evidence" add column "feels" text[] default '{}'::text[];
+alter table "public"."evidence" add column if not exists "feels" text[] default '{}'::text[];
 
-alter table "public"."evidence" add column "gains" text[] default '{}'::text[];
+alter table "public"."evidence" add column if not exists "gains" text[] default '{}'::text[];
 
-alter table "public"."evidence" add column "pains" text[] default '{}'::text[];
+alter table "public"."evidence" add column if not exists "pains" text[] default '{}'::text[];
 
-alter table "public"."evidence" add column "says" text[] default '{}'::text[];
+alter table "public"."evidence" add column if not exists "says" text[] default '{}'::text[];
 
-alter table "public"."evidence" add column "thinks" text[] default '{}'::text[];
-
+alter table "public"."evidence" add column if not exists "thinks" text[] default '{}'::text[];
 

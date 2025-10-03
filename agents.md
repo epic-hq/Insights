@@ -93,6 +93,12 @@ __RLS-first queries__
   - Auto-Insights in `baml_src/auto_insights.baml`; data aggregation in `app/utils/autoInsightsData.server.ts`.
 - Token-budget conscious: aggregate upstream to ~8k tokens when needed.
 
+## Facet Catalog
+- Declarative schema for facets lives in `supabase/schemas/12_core_tables.sql` and migrates via `20251002093000_people_facets.sql`.
+- Use `getFacetCatalog` / `persistFacetObservations` (`app/lib/database/facets.server.ts`) when ingesting interviews.
+- Facet management UI: `/a/:accountId/:projectId/facets` (see `app/features/facets`). Analysts can review candidates, auto-approve, and toggle project aliases.
+- Global seeds + sample facets reside in `_NORUN_seed.sql`; keep them in sync with migrations.
+
 
 ## Edge Functions & Env
 - Use `process.env.SUPABASE_FUNCTIONS_URL` for cloud functions (e.g., `cluster_insights`).

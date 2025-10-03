@@ -6,20 +6,34 @@
 import { createClient } from "@supabase/supabase-js"
 import type { Database } from "~/../supabase/types"
 
-// Ensure test environment variables are available
-if (!process.env.TEST_SUPABASE_URL) {
-	throw new Error("TEST_SUPABASE_URL environment variable is required for integration tests")
+// Get environment variables with browser/server compatibility
+const getEnvVar = (key: string): string => {
+	if (typeof process !== 'undefined' && process.env) {
+		return process.env[key] || ''
+	}
+	// Browser fallback - should not be used in integration tests
+	return ''
 }
-if (!process.env.TEST_SUPABASE_ANON_KEY) {
-	throw new Error("TEST_SUPABASE_ANON_KEY environment variable is required for integration tests")
+
+const SUPABASE_URL = getEnvVar('TEST_SUPABASE_URL')
+const SUPABASE_ANON_KEY = getEnvVar('TEST_SUPABASE_ANON_KEY')
+
+// Ensure test environment variables are available (server-side only)
+if (typeof process !== 'undefined' && process.env) {
+	if (!SUPABASE_URL) {
+		throw new Error("SUPABASE_URL environment variable is required for integration tests")
+	}
+	if (!SUPABASE_ANON_KEY) {
+		throw new Error("SUPABASE_ANON_KEY environment variable is required for integration tests")
+	}
 }
 
 // Test database connection using basic primitives
-export const testDb = createClient<Database>(process.env.TEST_SUPABASE_URL, process.env.TEST_SUPABASE_ANON_KEY)
+export const testDb = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // Test account for consistent seeding
-export const TEST_ACCOUNT_ID = "test-account-123"
-export const TEST_PROJECT_ID = "test-project-123"
+export const TEST_ACCOUNT_ID = `${crypto.randomUUID()}`;
+export const TEST_PROJECT_ID = `${crypto.randomUUID()}`;
 
 /**
  * Reset database to clean state
@@ -28,6 +42,11 @@ export const TEST_PROJECT_ID = "test-project-123"
 export async function resetTestDb() {
 	// Clear data in dependency order (children first)
 	const tables = [
+		"person_facet",
+		"person_scale",
+		"facet_candidate",
+		"project_facet",
+		"facet_account",
 		"interview_people",
 		"insight_tags",
 		"interview_tags",

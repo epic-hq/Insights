@@ -49,7 +49,7 @@ export default class TypeBuilder {
     
     EvidenceAnalysisResponse: ClassViewer<'EvidenceAnalysisResponse', "evidence_results" | "question_summaries" | "global_goal_summary" | "recommended_actions">;
     
-    EvidenceExtraction: ClassViewer<'EvidenceExtraction', "people" | "evidence">;
+    EvidenceExtraction: ClassViewer<'EvidenceExtraction', "people" | "evidence" | "facet_catalog_version">;
     
     EvidenceItem: ClassViewer<'EvidenceItem', "id" | "verbatim" | "support" | "interview_id" | "context_summary">;
     
@@ -57,7 +57,7 @@ export default class TypeBuilder {
     
     EvidenceLinkResult: ClassViewer<'EvidenceLinkResult', "evidence_id" | "links">;
     
-    EvidenceParticipant: ClassViewer<'EvidenceParticipant', "person_key" | "display_name" | "inferred_name" | "role" | "personas" | "segments" | "organization" | "summary" | "notes">;
+    EvidenceParticipant: ClassViewer<'EvidenceParticipant', "person_key" | "display_name" | "inferred_name" | "role" | "personas" | "segments" | "organization" | "summary" | "notes" | "facets" | "scales">;
     
     EvidenceQuestionLink: ClassViewer<'EvidenceQuestionLink', "question_id" | "question_kind" | "decision_question_id" | "relationship" | "confidence" | "answer_summary" | "rationale" | "next_steps">;
     
@@ -70,6 +70,14 @@ export default class TypeBuilder {
     ExecutiveSummary: ClassViewer<'ExecutiveSummary', "answered_insights" | "critical_unknowns" | "completion_percentage" | "confidence" | "next_action">;
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
+    
+    FacetCandidatePayload: ClassViewer<'FacetCandidatePayload', "kind_slug" | "label" | "synonyms" | "notes">;
+    
+    FacetCatalog: ClassViewer<'FacetCatalog', "kinds" | "facets" | "version">;
+    
+    FacetCatalogEntry: ClassViewer<'FacetCatalogEntry', "facet_ref" | "kind_slug" | "label" | "alias" | "synonyms">;
+    
+    FacetCatalogKind: ClassViewer<'FacetCatalogKind', "slug" | "label">;
     
     FollowUpQuestion: ClassViewer<'FollowUpQuestion', "id" | "text" | "rationale" | "estimatedMinutes" | "categoryId" | "scores">;
     
@@ -102,6 +110,10 @@ export default class TypeBuilder {
     NoteSnippet: ClassViewer<'NoteSnippet', "tag" | "text" | "speaker" | "timestamp">;
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
+    
+    PersonFacetObservation: ClassViewer<'PersonFacetObservation', "facet_ref" | "candidate" | "kind_slug" | "value" | "source" | "evidence_unit_index" | "confidence" | "notes">;
+    
+    PersonScaleObservation: ClassViewer<'PersonScaleObservation', "kind_slug" | "score" | "band" | "source" | "evidence_unit_index" | "confidence" | "rationale">;
     
     Persona: ClassViewer<'Persona', "name" | "name_and_tagline" | "description" | "role_context" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "percentage" | "goals" | "primary_goal" | "secondary_goals" | "motivations" | "values" | "success_definition" | "behaviors_habits" | "key_tasks" | "tools_used" | "frequency_of_purchase" | "frequency_of_use" | "triggers_decision_drivers" | "pain_points" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "key_quotes" | "sources" | "differentiators" | "confidence" | "evidence_count" | "hypothesis_notes" | "key_open_questions">;
     
@@ -172,7 +184,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -225,7 +237,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceExtraction = this.tb.classViewer("EvidenceExtraction", [
-          "people","evidence",
+          "people","evidence","facet_catalog_version",
         ]);
         
         this.EvidenceItem = this.tb.classViewer("EvidenceItem", [
@@ -241,7 +253,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceParticipant = this.tb.classViewer("EvidenceParticipant", [
-          "person_key","display_name","inferred_name","role","personas","segments","organization","summary","notes",
+          "person_key","display_name","inferred_name","role","personas","segments","organization","summary","notes","facets","scales",
         ]);
         
         this.EvidenceQuestionLink = this.tb.classViewer("EvidenceQuestionLink", [
@@ -266,6 +278,22 @@ export default class TypeBuilder {
         
         this.ExtractedInsight = this.tb.classBuilder("ExtractedInsight", [
           "name","pain","details","evidence","desiredOutcome","assumptionAlignment","researchQuestionAnswered","evidenceStrength","productImplication","followUpQuestions","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
+        ]);
+        
+        this.FacetCandidatePayload = this.tb.classViewer("FacetCandidatePayload", [
+          "kind_slug","label","synonyms","notes",
+        ]);
+        
+        this.FacetCatalog = this.tb.classViewer("FacetCatalog", [
+          "kinds","facets","version",
+        ]);
+        
+        this.FacetCatalogEntry = this.tb.classViewer("FacetCatalogEntry", [
+          "facet_ref","kind_slug","label","alias","synonyms",
+        ]);
+        
+        this.FacetCatalogKind = this.tb.classViewer("FacetCatalogKind", [
+          "slug","label",
         ]);
         
         this.FollowUpQuestion = this.tb.classViewer("FollowUpQuestion", [
@@ -330,6 +358,14 @@ export default class TypeBuilder {
         
         this.OpportunityRecommendation = this.tb.classViewer("OpportunityRecommendation", [
           "title","description","revenue_potential","effort_estimate","target_personas","supporting_insights","competitive_advantage","recommended_actions",
+        ]);
+        
+        this.PersonFacetObservation = this.tb.classViewer("PersonFacetObservation", [
+          "facet_ref","candidate","kind_slug","value","source","evidence_unit_index","confidence","notes",
+        ]);
+        
+        this.PersonScaleObservation = this.tb.classViewer("PersonScaleObservation", [
+          "kind_slug","score","band","source","evidence_unit_index","confidence","rationale",
         ]);
         
         this.Persona = this.tb.classViewer("Persona", [

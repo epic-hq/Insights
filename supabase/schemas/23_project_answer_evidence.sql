@@ -7,7 +7,7 @@ create table if not exists public.project_answer_evidence (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
   answer_id uuid not null references public.project_answers(id) on delete cascade,
-  evidence_id uuid references public.evidence(id) on delete cascade,
+  evidence_id uuid,
   interview_id uuid references public.interviews(id) on delete set null,
   source text not null,                      -- 'transcript' | 'note' | 'file' | 'email' | 'survey' | 'manual'
   text text,                                 -- short excerpt (optional)
@@ -28,6 +28,25 @@ create index if not exists idx_pae_source             on public.project_answer_e
 create index if not exists idx_pae_times              on public.project_answer_evidence(start_seconds, end_seconds);
 create index if not exists idx_pae_payload_gin        on public.project_answer_evidence using gin (payload);
 create unique index if not exists idx_pae_unique_project_answer_evidence on public.project_answer_evidence(project_id, answer_id, evidence_id);
+
+DO $$
+BEGIN
+  IF to_regclass('public.evidence') IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'public.project_answer_evidence'::regclass
+        AND conname = 'project_answer_evidence_evidence_id_fkey'
+    ) THEN
+      ALTER TABLE public.project_answer_evidence
+        ADD CONSTRAINT project_answer_evidence_evidence_id_fkey
+          FOREIGN KEY (evidence_id)
+          REFERENCES public.evidence(id)
+          ON DELETE CASCADE;
+    END IF;
+  ELSE
+    RAISE NOTICE 'Skipping project_answer_evidence_evidence_id_fkey; evidence table missing';
+  END IF;
+END$$;
 
 -- Triggers -----------------------------------------------------------------
 create trigger set_project_answer_evidence_timestamp

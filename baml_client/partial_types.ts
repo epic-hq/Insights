@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  PersonFacetObservation,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -107,6 +107,7 @@ export namespace partial_types {
     export interface EvidenceExtraction {
       people: EvidenceParticipant[]
       evidence: EvidenceUnit[]
+      facet_catalog_version?: string | null
     }
     export interface EvidenceItem {
       id?: string | null
@@ -134,6 +135,8 @@ export namespace partial_types {
       organization?: string | null
       summary?: string | null
       notes?: string | null
+      facets?: PersonFacetObservation[] | null
+      scales?: PersonScaleObservation[] | null
     }
     export interface EvidenceQuestionLink {
       question_id?: string | null
@@ -215,6 +218,28 @@ export namespace partial_types {
       contradictions?: string | null
       relatedTags: string[]
       [key: string]: any;
+    }
+    export interface FacetCandidatePayload {
+      kind_slug?: string | null
+      label?: string | null
+      synonyms?: string[] | null
+      notes?: string[] | null
+    }
+    export interface FacetCatalog {
+      kinds: FacetCatalogKind[]
+      facets: FacetCatalogEntry[]
+      version?: string | null
+    }
+    export interface FacetCatalogEntry {
+      facet_ref?: string | null
+      kind_slug?: string | null
+      label?: string | null
+      alias?: string | null
+      synonyms?: string[] | null
+    }
+    export interface FacetCatalogKind {
+      slug?: string | null
+      label?: string | null
     }
     export interface FollowUpQuestion {
       id?: string | null
@@ -328,6 +353,25 @@ export namespace partial_types {
       supporting_insights: string[]
       competitive_advantage?: string | null
       recommended_actions: ActionButton[]
+    }
+    export interface PersonFacetObservation {
+      facet_ref?: string | null
+      candidate?: FacetCandidatePayload | null
+      kind_slug?: string | null
+      value?: string | null
+      source?: string | null
+      evidence_unit_index?: number | null
+      confidence?: number | null
+      notes?: string[] | null
+    }
+    export interface PersonScaleObservation {
+      kind_slug?: string | null
+      score?: number | null
+      band?: string | null
+      source?: string | null
+      evidence_unit_index?: number | null
+      confidence?: number | null
+      rationale?: string | null
     }
     export interface Persona {
       name?: string | null

@@ -305,31 +305,6 @@ export type Database = {
       [_ in never]: never
     }
   }
-  graphql_public: {
-    Tables: {
-      [_ in never]: never
-    }
-    Views: {
-      [_ in never]: never
-    }
-    Functions: {
-      graphql: {
-        Args: {
-          extensions?: Json
-          operationName?: string
-          query?: string
-          variables?: Json
-        }
-        Returns: Json
-      }
-    }
-    Enums: {
-      [_ in never]: never
-    }
-    CompositeTypes: {
-      [_ in never]: never
-    }
-  }
   public: {
     Tables: {
       account_settings: {
@@ -1002,6 +977,200 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      facet_account: {
+        Row: {
+          account_id: string
+          created_at: string
+          description: string | null
+          global_facet_id: number | null
+          id: number
+          kind_id: number
+          label: string
+          slug: string
+          synonyms: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          description?: string | null
+          global_facet_id?: number | null
+          id?: number
+          kind_id: number
+          label: string
+          slug: string
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          description?: string | null
+          global_facet_id?: number | null
+          id?: number
+          kind_id?: number
+          label?: string
+          slug?: string
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facet_account_global_facet_id_fkey"
+            columns: ["global_facet_id"]
+            isOneToOne: false
+            referencedRelation: "facet_global"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facet_account_kind_id_fkey"
+            columns: ["kind_id"]
+            isOneToOne: false
+            referencedRelation: "facet_kind_global"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facet_candidate: {
+        Row: {
+          account_id: string
+          created_at: string
+          evidence_id: string | null
+          id: string
+          kind_slug: string
+          label: string
+          notes: string | null
+          person_id: string | null
+          project_id: string
+          resolved_facet_ref: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          source: string
+          status: string
+          synonyms: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          evidence_id?: string | null
+          id?: string
+          kind_slug: string
+          label: string
+          notes?: string | null
+          person_id?: string | null
+          project_id: string
+          resolved_facet_ref?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source: string
+          status?: string
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          evidence_id?: string | null
+          id?: string
+          kind_slug?: string
+          label?: string
+          notes?: string | null
+          person_id?: string | null
+          project_id?: string
+          resolved_facet_ref?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          source?: string
+          status?: string
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facet_candidate_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "facet_candidate_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facet_global: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          kind_id: number
+          label: string
+          slug: string
+          synonyms: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          kind_id: number
+          label: string
+          slug: string
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          kind_id?: number
+          label?: string
+          slug?: string
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "facet_global_kind_id_fkey"
+            columns: ["kind_id"]
+            isOneToOne: false
+            referencedRelation: "facet_kind_global"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      facet_kind_global: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: number
+          label: string
+          slug: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          label: string
+          slug: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: number
+          label?: string
+          slug?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       insight_tags: {
         Row: {
@@ -1994,15 +2163,12 @@ export type Database = {
         Row: {
           account_id: string | null
           age: number | null
-          behavior: string[] | null
           company: string | null
           contact_info: Json | null
           created_at: string
           description: string | null
           education: string | null
-          feedback: string[] | null
           gender: string | null
-          goals: string[] | null
           id: string
           image_url: string | null
           income: number | null
@@ -2022,15 +2188,12 @@ export type Database = {
         Insert: {
           account_id?: string | null
           age?: number | null
-          behavior?: string[] | null
           company?: string | null
           contact_info?: Json | null
           created_at?: string
           description?: string | null
           education?: string | null
-          feedback?: string[] | null
           gender?: string | null
-          goals?: string[] | null
           id?: string
           image_url?: string | null
           income?: number | null
@@ -2050,15 +2213,12 @@ export type Database = {
         Update: {
           account_id?: string | null
           age?: number | null
-          behavior?: string[] | null
           company?: string | null
           contact_info?: Json | null
           created_at?: string
           description?: string | null
           education?: string | null
-          feedback?: string[] | null
           gender?: string | null
-          goals?: string[] | null
           id?: string
           image_url?: string | null
           income?: number | null
@@ -2150,6 +2310,130 @@ export type Database = {
           },
           {
             foreignKeyName: "people_personas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_facet: {
+        Row: {
+          account_id: string
+          candidate_id: string | null
+          confidence: number | null
+          created_at: string
+          evidence_id: string | null
+          facet_ref: string
+          noted_at: string | null
+          person_id: string
+          project_id: string
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          candidate_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          evidence_id?: string | null
+          facet_ref: string
+          noted_at?: string | null
+          person_id: string
+          project_id: string
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          candidate_id?: string | null
+          confidence?: number | null
+          created_at?: string
+          evidence_id?: string | null
+          facet_ref?: string
+          noted_at?: string | null
+          person_id?: string
+          project_id?: string
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_facet_candidate_id_fkey"
+            columns: ["candidate_id"]
+            isOneToOne: false
+            referencedRelation: "facet_candidate"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_facet_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_facet_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      person_scale: {
+        Row: {
+          account_id: string
+          band: string | null
+          confidence: number | null
+          created_at: string
+          evidence_id: string | null
+          kind_slug: string
+          noted_at: string | null
+          person_id: string
+          project_id: string
+          score: number
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          band?: string | null
+          confidence?: number | null
+          created_at?: string
+          evidence_id?: string | null
+          kind_slug: string
+          noted_at?: string | null
+          person_id: string
+          project_id: string
+          score: number
+          source: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          band?: string | null
+          confidence?: number | null
+          created_at?: string
+          evidence_id?: string | null
+          kind_slug?: string
+          noted_at?: string | null
+          person_id?: string
+          project_id?: string
+          score?: number
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "person_scale_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "person_scale_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2616,6 +2900,62 @@ export type Database = {
             columns: ["respondent_person_id"]
             isOneToOne: false
             referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      project_facet: {
+        Row: {
+          account_id: string
+          alias: string | null
+          created_at: string
+          facet_ref: string
+          is_enabled: boolean | null
+          kind_slug: string | null
+          label: string | null
+          pinned: boolean | null
+          project_id: string
+          scope: string
+          sort_weight: number | null
+          synonyms: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          alias?: string | null
+          created_at?: string
+          facet_ref: string
+          is_enabled?: boolean | null
+          kind_slug?: string | null
+          label?: string | null
+          pinned?: boolean | null
+          project_id: string
+          scope?: string
+          sort_weight?: number | null
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          alias?: string | null
+          created_at?: string
+          facet_ref?: string
+          is_enabled?: boolean | null
+          kind_slug?: string | null
+          label?: string | null
+          pinned?: boolean | null
+          project_id?: string
+          scope?: string
+          sort_weight?: number | null
+          synonyms?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_facet_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -4139,9 +4479,6 @@ export const Constants = {
         "unpaid",
       ],
     },
-  },
-  graphql_public: {
-    Enums: {},
   },
   public: {
     Enums: {

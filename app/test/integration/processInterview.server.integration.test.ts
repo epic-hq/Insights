@@ -1,6 +1,22 @@
-import { beforeEach, describe, expect, it } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { cleanupTestData, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
-import { processInterviewTranscript } from "./processInterview.server"
+
+// Mock BAML client before importing processInterview
+vi.mock("~/../baml_client", () => ({
+	b: {
+		ExtractEvidenceFromTranscript: vi.fn(),
+		ExtractInsights: vi.fn(),
+		AssignPersonaToInterview: vi.fn(),
+	},
+}))
+
+import { processInterviewTranscript } from "~/utils/processInterview.server"
+import { b } from "~/../baml_client"
+
+// Get mocked functions after import
+const mockExtractEvidence = b.ExtractEvidenceFromTranscript as ReturnType<typeof vi.fn>
+const mockExtractInsights = b.ExtractInsights as ReturnType<typeof vi.fn>
+const mockAssignPersona = b.AssignPersonaToInterview as ReturnType<typeof vi.fn>
 
 /**
  * Integration test for processInterviewTranscript to verify:
@@ -11,13 +27,126 @@ import { processInterviewTranscript } from "./processInterview.server"
  */
 describe("processInterviewTranscript Integration", () => {
 	beforeEach(async () => {
+		mockExtractEvidence.mockReset()
+		mockExtractInsights.mockReset()
+		mockAssignPersona.mockReset()
+		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any)
+		mockExtractEvidence.mockResolvedValue({ facet_catalog_version: "test", evidence: [], people: [] } as any)
+		mockExtractInsights.mockResolvedValue({ insights: [], interviewee: null } as any)
 		await cleanupTestData()
 		await seedTestData()
 	})
 
 	it("should create people, personas, and tags from interview upload", async () => {
-		// Mock BAML response with realistic data
-		const mockBAMLResponse = {
+		// Seed facet catalog for test account/project
+		await testDb.from("facet_kind_global").upsert(
+			[
+				{ slug: "goal", label: "Goal", description: "Goals" },
+				{ slug: "pain", label: "Pain", description: "Pains" },
+				{ slug: "scale", label: "Scale", description: "Scales" },
+			],
+			{ onConflict: "slug" }
+		)
+
+		const { data: kindRows } = await testDb.from("facet_kind_global").select("id, slug")
+		const kindIdBySlug = new Map((kindRows ?? []).map((row) => [row.slug, row.id]))
+
+		await testDb.from("facet_global").upsert(
+			[
+				{
+					kind_id: kindIdBySlug.get("goal"),
+					slug: "goal_speed",
+					label: "Finish Faster",
+					synonyms: ["move faster"],
+					description: "Speed oriented",
+				},
+			],
+			{ onConflict: "slug" }
+		)
+
+		const { data: goalFacetRow } = await testDb
+			.from("facet_global")
+			.select("id, slug")
+			.eq("slug", "goal_speed")
+			.single()
+
+		if (!goalFacetRow?.id) throw new Error("Failed to seed facet_global for integration test")
+
+		await testDb.from("project_facet").upsert(
+			{
+				project_id: "test-project-id",
+				account_id: TEST_ACCOUNT_ID,
+				facet_ref: `g:${goalFacetRow.id}`,
+				scope: "catalog",
+				is_enabled: true,
+				alias: "Speed Runner",
+				pinned: true,
+				sort_weight: 5,
+			},
+			{ onConflict: "project_id,facet_ref" }
+		)
+
+		// Mock BAML responses with realistic data
+		const mockEvidenceResponse = {
+			facet_catalog_version: "acct:test-account-123:proj:test-project-id:v123",
+			evidence: [
+				{
+					person_key: "speaker-1",
+					topic: "Needs",
+					gist: "Wants to finish work faster",
+					chunk: "I just need to finish these reports so much faster than today.",
+					verbatim: "I need to finish reports faster.",
+					headers: null,
+					support: "supports",
+					confidence: "high",
+					kind_tags: { goal: ["speed"], behavior: ["reports"] },
+				},
+			],
+			people: [
+				{
+					person_key: "speaker-1",
+					display_name: "Participant",
+					role: "participant",
+					facets: [
+						{
+							facet_ref: `g:${goalFacetRow.id}`,
+							kind_slug: "goal",
+							value: "Finish reports faster",
+							source: "interview",
+							evidence_unit_index: 0,
+							confidence: 0.95,
+						},
+						{
+							facet_ref: "",
+							candidate: {
+								kind_slug: "pain",
+								label: "Manual Reporting",
+								synonyms: ["spreadsheet toil"],
+								notes: ["Spends hours on manual reporting"],
+							},
+							kind_slug: "pain",
+							value: "Manual reporting is painful",
+							source: "interview",
+							evidence_unit_index: 0,
+							confidence: 0.6,
+						},
+					],
+					scales: [
+						{
+							kind_slug: "scale:efficiency",
+							score: 0.8,
+							band: "high",
+							source: "interview",
+							evidence_unit_index: 0,
+							confidence: 0.9,
+							rationale: "Repeatedly emphasized speed",
+						},
+					],
+				},
+			],
+		}
+
+		const mockInsightsResponse = {
 			insights: [
 				{
 					name: "Navigation is confusing",
@@ -54,12 +183,9 @@ describe("processInterviewTranscript Integration", () => {
 			observationsAndNotes: "User seemed frustrated with current state",
 		}
 
-		// Mock the BAML client
-		const _originalExtractInsights = (await import("~/../baml_client")).b.ExtractInsights
-		const mockExtractInsights = vi.fn().mockResolvedValue(mockBAMLResponse)
-		vi.doMock("~/../baml_client", () => ({
-			b: { ExtractInsights: mockExtractInsights },
-		}))
+		mockExtractEvidence.mockResolvedValue(mockEvidenceResponse as any)
+		mockExtractInsights.mockResolvedValue(mockInsightsResponse as any)
+		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any)
 
 		const mockRequest = new Request("http://localhost:3000/api/upload", {
 			method: "POST",
@@ -171,12 +297,53 @@ describe("processInterviewTranscript Integration", () => {
 		expect(personaInsights).toHaveLength(2)
 		expect(personaInsights[0].relevance_score).toBe(1.0)
 
-		// Restore original function
-		vi.doUnmock("~/../baml_client")
+		// Verify facet persistence
+		const { data: personFacets } = await testDb
+			.from("person_facet")
+			.select("person_id, facet_ref, confidence")
+			.eq("account_id", TEST_ACCOUNT_ID)
+			.eq("project_id", "test-project-id")
+
+		expect(personFacets).toEqual([
+			{
+				person_id: expect.any(String),
+				facet_ref: `g:${goalFacetRow.id}`,
+				confidence: 0.95,
+			},
+		])
+
+		const { data: scaleRows } = await testDb
+			.from("person_scale")
+			.select("person_id, kind_slug, score, confidence")
+			.eq("account_id", TEST_ACCOUNT_ID)
+			.eq("project_id", "test-project-id")
+
+		expect(scaleRows).toEqual([
+			{
+				person_id: expect.any(String),
+				kind_slug: "scale:efficiency",
+				score: 0.8,
+				confidence: 0.9,
+			},
+		])
+
+		const { data: candidateRows } = await testDb
+			.from("facet_candidate")
+			.select("kind_slug, label, status")
+			.eq("account_id", TEST_ACCOUNT_ID)
+			.eq("project_id", "test-project-id")
+
+		expect(candidateRows).toEqual([
+			{
+				kind_slug: "pain",
+				label: "Manual Reporting",
+				status: "pending",
+			},
+		])
 	})
 
 	it("should handle missing persona gracefully", async () => {
-		const mockBAMLResponse = {
+		const mockInsights = {
 			insights: [
 				{
 					name: "Test insight",
@@ -186,7 +353,7 @@ describe("processInterviewTranscript Integration", () => {
 			],
 			interviewee: {
 				name: "Jane Doe",
-				persona: null, // No persona provided
+				persona: null,
 				segment: "Student",
 			},
 			highImpactThemes: null,
@@ -194,10 +361,8 @@ describe("processInterviewTranscript Integration", () => {
 			observationsAndNotes: null,
 		}
 
-		const mockExtractInsights = vi.fn().mockResolvedValue(mockBAMLResponse)
-		vi.doMock("~/../baml_client", () => ({
-			b: { ExtractInsights: mockExtractInsights },
-		}))
+		mockExtractInsights.mockResolvedValueOnce(mockInsights as any)
+		mockExtractEvidence.mockResolvedValueOnce({ facet_catalog_version: "fallback", evidence: [], people: [] } as any)
 
 		const mockRequest = new Request("http://localhost:3000/api/upload", {
 			method: "POST",
@@ -228,10 +393,8 @@ describe("processInterviewTranscript Integration", () => {
 		expect(people[0].persona_id).toBeNull() // No persona assigned
 
 		// Verify no personas were created
-		const { data: personas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID)
+			const { data: personas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID)
 
-		expect(personas).toHaveLength(0)
-
-		vi.doUnmock("~/../baml_client")
+			expect(personas).toHaveLength(0)
+		})
 	})
-})

@@ -389,6 +389,7 @@ export interface EvidenceAnalysisResponse {
 export interface EvidenceExtraction {
   people: EvidenceParticipant[]
   evidence: EvidenceUnit[]
+  facet_catalog_version?: string | null
   
 }
 
@@ -424,6 +425,8 @@ export interface EvidenceParticipant {
   organization?: string | null
   summary?: string | null
   notes?: string | null
+  facets?: PersonFacetObservation[] | null
+  scales?: PersonScaleObservation[] | null
   
 }
 
@@ -518,6 +521,36 @@ export interface ExtractedInsight {
   relatedTags: string[]
   
   [key: string]: any;
+}
+
+export interface FacetCandidatePayload {
+  kind_slug: string
+  label: string
+  synonyms?: string[] | null
+  notes?: string[] | null
+  
+}
+
+export interface FacetCatalog {
+  kinds: FacetCatalogKind[]
+  facets: FacetCatalogEntry[]
+  version: string
+  
+}
+
+export interface FacetCatalogEntry {
+  facet_ref: string
+  kind_slug: string
+  label: string
+  alias?: string | null
+  synonyms?: string[] | null
+  
+}
+
+export interface FacetCatalogKind {
+  slug: string
+  label: string
+  
 }
 
 export interface FollowUpQuestion {
@@ -662,6 +695,29 @@ export interface OpportunityRecommendation {
   supporting_insights: string[]
   competitive_advantage: string
   recommended_actions: ActionButton[]
+  
+}
+
+export interface PersonFacetObservation {
+  facet_ref?: string | null
+  candidate?: FacetCandidatePayload | null
+  kind_slug: string
+  value: string
+  source: string
+  evidence_unit_index?: number | null
+  confidence?: number | null
+  notes?: string[] | null
+  
+}
+
+export interface PersonScaleObservation {
+  kind_slug: string
+  score: number
+  band?: string | null
+  source: string
+  evidence_unit_index?: number | null
+  confidence?: number | null
+  rationale?: string | null
   
 }
 

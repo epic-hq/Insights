@@ -7,7 +7,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { b } from "~/../baml_client"
+import type { FacetCatalog, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
 import type { Database, Json } from "~/../supabase/types"
+import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
@@ -98,6 +100,30 @@ function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
 	return stringHash(basis)
 }
 
+async function resolveFacetCatalog(
+	db: SupabaseClient<Database>,
+	accountId: string,
+	projectId?: string | null,
+): Promise<FacetCatalog> {
+	if (!projectId) {
+		return {
+			kinds: [],
+			facets: [],
+			version: `account:${accountId}:no-project`,
+		}
+	}
+	try {
+		return await getFacetCatalog({ db, accountId, projectId })
+	} catch (error) {
+		consola.warn("Failed to load facet catalog", error)
+		return {
+			kinds: [],
+			facets: [],
+			version: `account:${accountId}:project:${projectId}:fallback`,
+		}
+	}
+}
+
 function generateFallbackPersonName(metadata: InterviewMetadata): string {
 	if (metadata.fileName) {
 		const nameFromFile = metadata.fileName
@@ -179,7 +205,13 @@ async function processEvidencePhase({
 	const personKeyForEvidence: (string | null)[] = []
 	const personRoleByKey = new Map<string, string | null>()
 
-	const evidenceResponse = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language)
+	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
+	const evidenceResponse = await b.ExtractEvidenceFromTranscript(
+		fullTranscript || "",
+		chapters,
+		language,
+		facetCatalog,
+	)
 	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
 	evidencePeople = Array.isArray(evidenceResponse?.people) ? evidenceResponse.people : []
@@ -488,6 +520,33 @@ async function processEvidencePhase({
 			if (epErr && !epErr.message?.includes("duplicate")) {
 				consola.warn(`Failed linking evidence ${evId} to person ${targetPersonId}: ${epErr.message}`)
 			}
+		}
+	}
+
+	if (metadata.projectId) {
+		const observationInputs = Array.isArray(evidencePeople)
+			? evidencePeople
+					.map((participant, index) => {
+						const key = typeof participant?.person_key === "string" && participant.person_key.trim().length
+							? participant.person_key.trim()
+							: `participant-${index}`
+						const personId = personIdByKey.get(key) || primaryPersonId
+						if (!personId) return null
+						const facets = Array.isArray(participant?.facets) ? (participant!.facets as PersonFacetObservation[]) : []
+						const scales = Array.isArray(participant?.scales) ? (participant!.scales as PersonScaleObservation[]) : []
+						if (!facets.length && !scales.length) return null
+						return { personId, facets, scales }
+					})
+					.filter((item): item is { personId: string; facets?: PersonFacetObservation[]; scales?: PersonScaleObservation[] } => item !== null)
+			: []
+		if (observationInputs.length) {
+			await persistFacetObservations({
+				db,
+				accountId: metadata.accountId,
+				projectId: metadata.projectId,
+				observations: observationInputs,
+				evidenceIds: insertedEvidenceIds,
+			})
 		}
 	}
 

@@ -2,6 +2,7 @@ import { index, layout, type RouteConfig, route } from "@react-router/dev/routes
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import evidenceRoutes from "./features/evidence/routes"
+import facetsRoutes from "./features/facets/routes"
 import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
@@ -54,6 +55,7 @@ const routes = [
 				...mobileRoutes,
 				...questionsRoutes,
 				...projectChatRoutes,
+				...facetsRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),

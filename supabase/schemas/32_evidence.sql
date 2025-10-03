@@ -107,6 +107,23 @@ create policy "Account owners can delete" on public.evidence
   for delete to authenticated
   using (account_id in (select accounts.get_accounts_with_role('owner')));
 
+DO $$
+BEGIN
+  IF to_regclass('public.project_answer_evidence') IS NOT NULL THEN
+    IF NOT EXISTS (
+      SELECT 1 FROM pg_constraint
+      WHERE conrelid = 'public.project_answer_evidence'::regclass
+        AND conname = 'project_answer_evidence_evidence_id_fkey'
+    ) THEN
+      ALTER TABLE public.project_answer_evidence
+        ADD CONSTRAINT project_answer_evidence_evidence_id_fkey
+          FOREIGN KEY (evidence_id)
+          REFERENCES public.evidence(id)
+          ON DELETE CASCADE;
+    END IF;
+  END IF;
+END$$;
+
 -- Evidence tags (junction to tags) ----------------------------------
 create table if not exists evidence_tag (
   id uuid primary key default gen_random_uuid(),
