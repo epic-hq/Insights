@@ -3,6 +3,7 @@ import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { getServerClient } from "~/lib/supabase/server"
 import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
@@ -16,8 +17,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	}
 
 	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
-	const accountId = ctx.account_id
+	const userId = ctx?.claims?.sub ?? null
+	const supabase = ctx?.supabase ?? getServerClient(request).client
 
 	const formData = await request.formData()
 	const file = formData.get("file") as File | null
@@ -26,11 +27,25 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	}
 	// const body = formData.get("body") as string | null
 	const projectId = formData.get("projectId") as UUID
-	consola.log(`api.upload-file accountId: ${accountId}, projectId: ${projectId}`)
 
-	if (!accountId || !projectId) {
-		return Response.json({ error: "No accountId or projectId provided" }, { status: 400 })
+	if (!projectId) {
+		return Response.json({ error: "No projectId provided" }, { status: 400 })
 	}
+
+	// Resolve the team account associated with this project to avoid using personal user IDs
+	const { data: projectRow, error: projectError } = await supabase
+		.from("projects")
+		.select("account_id")
+		.eq("id", projectId)
+		.single()
+
+	if (projectError || !projectRow?.account_id) {
+		consola.error("Unable to resolve project account", projectId, projectError)
+		return Response.json({ error: "Unable to resolve project account" }, { status: 404 })
+	}
+
+	const accountId = projectRow.account_id
+	consola.log(`api.upload-file resolved accountId: ${accountId}, projectId: ${projectId}`)
 
 	try {
 		// Check if file is text/markdown - handle directly without AssemblyAI
@@ -143,6 +158,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const metadata = {
 			accountId,
 			projectId,
+			userId: userId ?? undefined,
 			fileName: file?.name,
 			interviewTitle: isTextFile
 				? `Text Interview - ${format(new Date(), "yyyy-MM-dd")}`

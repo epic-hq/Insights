@@ -128,6 +128,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					transcriptData: formattedTranscriptData,
 					customInstructions,
 					adminClient: supabase,
+					initiatingUserId: uploadJob?.created_by ?? null,
 				})
 
 				consola.log("Successfully processed analysis for interview:", interviewId)

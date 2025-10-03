@@ -1,3 +1,4 @@
+import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
@@ -7,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea"
 import { deletePerson, getPersonById, updatePerson } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
+import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
 
@@ -31,7 +33,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	}
 
 	try {
-		const [person, { data: personas }] = await Promise.all([
+		const [person, { data: personas }, catalog] = await Promise.all([
 			getPersonById({
 				supabase,
 				accountId,
@@ -39,13 +41,14 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 				id: personId,
 			}),
 			getPersonas({ supabase, accountId, projectId }),
+			getFacetCatalog({ db: supabase, accountId, projectId }),
 		])
 
 		if (!person) {
 			throw new Response("Person not found", { status: 404 })
 		}
 
-		return { person, personas: personas || [] }
+		return { person, personas: personas || [], catalog }
 	} catch {
 		throw new Response("Failed to load person", { status: 500 })
 	}
@@ -87,6 +90,14 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const description = formData.get("description") as string
 	const segment = formData.get("segment") as string
 	const personaId = formData.get("persona_id") as string
+	const selectedFacetRefs = formData
+		.getAll("facetRefs")
+		.map((value) => value.toString())
+		.filter((value) => value.trim().length)
+	const newFacetKind = formData.get("newFacetKind")?.toString().trim() ?? ""
+	const newFacetLabel = formData.get("newFacetLabel")?.toString().trim() ?? ""
+	const newFacetSynonyms = formData.get("newFacetSynonyms")?.toString().trim() ?? ""
+	const newFacetNotes = formData.get("newFacetNotes")?.toString().trim() ?? ""
 
 	if (!name?.trim()) {
 		return { error: "Name is required" }
@@ -124,6 +135,75 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			await supabase.from("people_personas").delete().eq("person_id", personId)
 		}
 
+		// Synchronize facet assignments
+		const { data: existingFacetRows, error: existingFacetError } = await supabase
+			.from("person_facet")
+			.select("facet_ref")
+			.eq("person_id", personId)
+			.eq("project_id", projectId)
+		if (existingFacetError) {
+			return { error: `Failed to load existing facets: ${existingFacetError.message}` }
+		}
+		const existingRefs = new Set((existingFacetRows ?? []).map((row) => row.facet_ref))
+		const desiredRefs = new Set(selectedFacetRefs)
+		const toInsert = selectedFacetRefs.filter((ref) => !existingRefs.has(ref))
+		const toRemove = Array.from(existingRefs).filter((ref) => !desiredRefs.has(ref))
+
+		if (toInsert.length) {
+			const insertPayload = toInsert.map((facetRef) => ({
+				account_id: accountId,
+				project_id: projectId,
+				person_id: personId,
+				facet_ref: facetRef,
+				source: "manual",
+				confidence: 0.8,
+			}))
+			const { error: insertError } = await supabase
+				.from("person_facet")
+				.upsert(insertPayload, { onConflict: "person_id,facet_ref" })
+			if (insertError) {
+				return { error: `Failed to add facets: ${insertError.message}` }
+			}
+		}
+
+		if (toRemove.length) {
+			const { error: deleteError } = await supabase
+				.from("person_facet")
+				.delete()
+				.eq("person_id", personId)
+				.eq("project_id", projectId)
+				.in("facet_ref", toRemove)
+			if (deleteError) {
+				return { error: `Failed to remove facets: ${deleteError.message}` }
+			}
+		}
+
+		if (newFacetKind && newFacetLabel) {
+			const synonyms = newFacetSynonyms
+				.split(",")
+				.map((value) => value.trim())
+				.filter(Boolean)
+			const candidatePayload = {
+				account_id: accountId,
+				project_id: projectId,
+				person_id: personId,
+				kind_slug: newFacetKind,
+				label: newFacetLabel,
+				synonyms: synonyms.length ? synonyms : null,
+				notes: newFacetNotes || null,
+				source: "manual" as const,
+				status: "pending" as const,
+			}
+			const { error: candidateError } = await supabase
+				.from("facet_candidate")
+				.upsert(candidatePayload, {
+					onConflict: "account_id,project_id,kind_slug,label",
+				})
+			if (candidateError) {
+				return { error: `Failed to create facet candidate: ${candidateError.message}` }
+			}
+		}
+
 		return redirect(routes.people.detail(data.id))
 	} catch (error) {
 		// Log error for debugging without using console
@@ -135,12 +215,14 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 }
 
 export default function EditPerson() {
-	const { person, personas } = useLoaderData<typeof loader>()
+	const { person, personas, catalog } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 
 	// Get current persona from junction table
 	const people_personas = person.people_personas || []
 	const currentPersona = people_personas.length > 0 ? people_personas[0].personas : null
+	const selectedFacetRefs = useMemo(() => (person.person_facet ?? []).map((facet) => facet.facet_ref), [person.person_facet])
+	const totalFacetOptions = catalog.facets.length
 
 	return (
 		<div className="mx-auto max-w-2xl">
@@ -202,6 +284,74 @@ export default function EditPerson() {
 						className="mt-1"
 						rows={4}
 					/>
+				</div>
+
+				<div>
+					<Label htmlFor="facetRefs">Facets</Label>
+					<select
+						id="facetRefs"
+						name="facetRefs"
+						multiple
+						size={Math.min(10, Math.max(4, totalFacetOptions))}
+						defaultValue={selectedFacetRefs}
+						className="mt-1 block w-full rounded-md border border-input bg-background p-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+					>
+						{catalog.kinds.map((kind) => {
+							const options = catalog.facets.filter((facet) => facet.kind_slug === kind.slug)
+							if (!options.length) return null
+							return (
+								<optgroup key={kind.slug} label={kind.label}>
+									{options.map((facet) => (
+										<option key={facet.facet_ref} value={facet.facet_ref}>
+											{facet.alias || facet.label}
+										</option>
+									))}
+								</optgroup>
+							)
+						})}
+					</select>
+					<p className="mt-1 text-muted-foreground text-xs">
+						Select one or more facets to associate with this person. Hold Cmd/Ctrl to select multiple entries.
+					</p>
+				</div>
+
+				<div className="rounded-lg border border-dashed border-muted-foreground/40 p-4">
+					<h3 className="font-medium text-sm">Suggest New Facet</h3>
+					<p className="mt-1 text-muted-foreground text-xs">
+						Can't find the right facet? Add a candidate and it will appear in the review queue.
+					</p>
+					<div className="mt-4 grid gap-4 sm:grid-cols-2">
+						<div>
+							<Label htmlFor="newFacetKind">Facet Kind</Label>
+							<select
+								id="newFacetKind"
+								name="newFacetKind"
+								defaultValue=""
+								className="mt-1 block w-full rounded-md border border-input bg-background p-2 text-sm shadow-sm focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring"
+							>
+								<option value="">Select kind</option>
+								{catalog.kinds.map((kind) => (
+									<option key={kind.slug} value={kind.slug}>
+										{kind.label}
+									</option>
+								))}
+							</select>
+						</div>
+						<div>
+							<Label htmlFor="newFacetLabel">Facet Label</Label>
+							<Input id="newFacetLabel" name="newFacetLabel" placeholder="e.g., Prefers async updates" className="mt-1" />
+						</div>
+					</div>
+					<div className="mt-3 grid gap-4 sm:grid-cols-2">
+						<div>
+							<Label htmlFor="newFacetSynonyms">Synonyms</Label>
+							<Input id="newFacetSynonyms" name="newFacetSynonyms" placeholder="Comma separated" className="mt-1" />
+						</div>
+						<div>
+							<Label htmlFor="newFacetNotes">Notes</Label>
+							<Input id="newFacetNotes" name="newFacetNotes" placeholder="Optional context" className="mt-1" />
+						</div>
+					</div>
 				</div>
 
 				{actionData?.error && (

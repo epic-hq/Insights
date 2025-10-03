@@ -4,6 +4,7 @@ import { User } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardFooter, CardHeader } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -28,9 +29,18 @@ interface PersonWithPersonas {
 interface EnhancedPersonCardProps {
 	person: Person
 	className?: string
+	facets?: PersonFacetSummary[]
 }
 
-export default function EnhancedPersonCard({ person, className }: EnhancedPersonCardProps) {
+interface PersonFacetSummary {
+	facet_ref: string
+	label: string
+	kind_slug: string
+	source: string | null
+	confidence: number | null
+}
+
+export default function EnhancedPersonCard({ person, className, facets }: EnhancedPersonCardProps) {
 	const [isHovered, setIsHovered] = useState(false)
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
@@ -48,6 +58,8 @@ export default function EnhancedPersonCard({ person, className }: EnhancedPerson
 			.join("")
 			.toUpperCase()
 			.slice(0, 2) || "?"
+
+	const topFacets = facets?.slice(0, 3) ?? []
 
 	return (
 		<Link to={routes.people.detail(person.id)} tabIndex={0} aria-label={`View details for ${name}`}>
@@ -115,6 +127,15 @@ export default function EnhancedPersonCard({ person, className }: EnhancedPerson
 						</div>
 					</CardHeader>
 					<CardContent className="pt-0">
+						{topFacets.length > 0 && (
+							<div className="mb-3 flex flex-wrap gap-2">
+								{topFacets.map((facet) => (
+									<Badge key={`${person.id}-${facet.facet_ref}`} variant="secondary" className="capitalize">
+										{facet.label}
+									</Badge>
+								))}
+							</div>
+						)}
 						{/* Description, segment, etc. */}
 						<p className="mb-2 line-clamp-2 text-muted-foreground text-sm leading-relaxed">
 							{person.description || person.segment || "No additional details."}

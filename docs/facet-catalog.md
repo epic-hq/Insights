@@ -37,7 +37,11 @@ Navigate to **Project → Facets** to:
 - View the merged catalog for the current project.
 - Enable/disable facets or set project-specific aliases.
 - Review candidates generated from interviews.
-- Approve (promote) or reject suggestions individually, or auto-approve the pending queue.
+- Suggestions from the ingestion pipeline are auto-approved and enabled for the project so teams can use them immediately. You can still reject or adjust them afterwards from the management view.
+
+You can open the management screen directly from **People → Manage Facets**. The table shows
+pending candidates alongside existing account/project facets so analysts can make decisions
+without leaving the participant workflow.
 
 Approving a candidate will:
 
@@ -47,6 +51,23 @@ Approving a candidate will:
 4. Optionally attach the facet to the originating person (if known).
 
 Use the aliases/toggles to keep project language consistent without fragmenting the shared vocabulary.
+
+### Editing People Facets
+
+- Person cards now surface the top three facets so researchers can spot key traits quickly.
+- The person detail page lists all facets and scales that were inferred from interviews.
+- The **Edit Person** form includes:
+  - A multi-select of the enabled catalog entries so you can attach/remove facets manually.
+  - A "Suggest New Facet" block that creates a `facet_candidate` entry (kind, label, optional
+    synonyms/notes). Suggestions appear in the Facet Management queue for approval.
+
+### Candidate Review Actions
+
+The management page supports:
+
+- Approve / reject individual candidates (records promoted on approval, removed on rejection).
+- Auto-accept all pending candidates.
+- Inline editing of project aliases, enable toggles, pinning, and sort weights for catalog entries.
 
 ## Tables Overview
 
@@ -68,3 +89,6 @@ Use the aliases/toggles to keep project language consistent without fragmenting 
 - Seeds for global kinds/facets live in `_NORUN_seed.sql` so local resets remain deterministic.
 - UI state lives under `app/features/facets`; update that feature when adding new management flows.
 - Automated verification lives in `app/lib/database/facets.server.test.ts` (catalog merge rules) and `app/utils/processInterview.server.integration.test.ts` (ingestion pipeline + persistence) — keep them aligned with schema changes.
+- Global seed kinds now cover goals, pains, behaviors, workflows, preferences, demographics,
+  and decision criteria. Enable or promote any new kind at the project/account layer before
+  expecting BAML to emit observations for it.

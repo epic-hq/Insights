@@ -1,5 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
+import slugify from "@sindresorhus/slugify"
 import type { Database } from "~/../supabase/types"
 import type {
 	FacetCatalog,
@@ -28,6 +29,7 @@ export interface PersistFacetObservationsOptions {
 		scales?: PersonScaleObservation[] | null
 	}>
 	evidenceIds: string[]
+	reviewerId?: string | null
 }
 
 export async function getFacetCatalog({ db, accountId, projectId }: FacetCatalogOptions): Promise<FacetCatalog> {
@@ -135,6 +137,7 @@ export async function persistFacetObservations({
 	projectId,
 	observations,
 	evidenceIds,
+	reviewerId = null,
 }: PersistFacetObservationsOptions): Promise<void> {
 	const facetRows: Array<{ person_id: string; facet_ref: string; source: string; evidence_id: string | null; confidence: number; noted_at: string } & { account_id: string; project_id: string }> = []
 	const scaleRows: Array<{ person_id: string; kind_slug: string; score: number; band: string | null; source: string; evidence_id: string | null; confidence: number; noted_at: string } & { account_id: string; project_id: string }> = []
@@ -188,12 +191,12 @@ export async function persistFacetObservations({
 			for (const scale of scales) {
 				if (!scale.kind_slug) continue
 				const evidenceIndex = scale.evidence_unit_index ?? null
-				const evidenceId = evidenceIndex !== null && evidenceIndex !== undefined ? evidenceIds[evidenceIndex] ?? null : null
-				scaleRows.push({
-					account_id: accountId,
-					project_id: projectId,
-					person_id: personId,
-					kind_slug: scale.kind_slug,
+		const evidenceId = evidenceIndex !== null && evidenceIndex !== undefined ? evidenceIds[evidenceIndex] ?? null : null
+			scaleRows.push({
+				account_id: accountId,
+				project_id: projectId,
+				person_id: personId,
+				kind_slug: scale.kind_slug,
 					score: clampScore(scale.score),
 					band: scale.band ?? null,
 					source: scale.source ?? "interview",
@@ -209,10 +212,18 @@ export async function persistFacetObservations({
 		const { data: insertedCandidates, error: candidateError } = await db
 			.from("facet_candidate")
 			.upsert(candidatePayloads, { onConflict: "account_id,project_id,kind_slug,label", ignoreDuplicates: false })
-			.select("id, account_id, project_id, kind_slug, label")
+			.select("id, account_id, project_id, person_id, kind_slug, label, synonyms, notes, status, source")
 
 		if (candidateError) {
 			consola.warn("Failed to upsert facet candidates", candidateError.message)
+		}
+
+		if (insertedCandidates?.length) {
+			await autoApproveCandidates({
+				db,
+				candidates: insertedCandidates,
+				reviewerId,
+			})
 		}
 	}
 
@@ -254,6 +265,141 @@ export async function persistFacetObservations({
 				{ onConflict: "person_id,kind_slug" }
 			)
 		if (scaleError) consola.warn("Failed to upsert person scales", scaleError.message)
+	}
+}
+
+interface CandidateRow
+  extends Pick<
+	Database["public"]["Tables"]["facet_candidate"]["Row"],
+	"id" | "account_id" | "project_id" | "person_id" | "kind_slug" | "label" | "synonyms" | "notes" | "status" | "source"
+> {}
+
+interface AutoApproveOptions {
+	db: SupabaseClient<Database>
+	candidates: CandidateRow[]
+	reviewerId: string | null
+}
+
+async function autoApproveCandidates({ db, candidates, reviewerId }: AutoApproveOptions) {
+	if (!candidates.length) return
+
+	const { data: kindRows, error: kindError } = await db.from("facet_kind_global").select("id, slug")
+	if (kindError || !kindRows?.length) {
+		consola.warn("Skipping auto-approval; unable to load facet kinds", kindError?.message)
+		return
+	}
+
+	const kindMap = new Map<string, number>()
+	kindRows.forEach((row) => {
+		if (row.slug) kindMap.set(row.slug, row.id)
+	})
+
+	for (const candidate of candidates) {
+		if (candidate.status === "approved") continue
+		const kindId = kindMap.get(candidate.kind_slug)
+		if (!kindId) {
+			consola.warn("Unknown facet kind; skipping candidate", candidate.kind_slug)
+			continue
+		}
+
+		const baseSlug = slugify(candidate.label, { separator: "_" }) || `facet-${candidate.id.slice(0, 8)}`
+		let slugCandidate = baseSlug
+		let accountFacetId: number | null = null
+
+		// Check for existing account facet with same slug
+		const { data: existingFacet } = await db
+			.from("facet_account")
+			.select("id, slug")
+			.eq("account_id", candidate.account_id)
+			.eq("kind_id", kindId)
+			.eq("slug", slugCandidate)
+			.maybeSingle()
+
+		if (existingFacet?.id) {
+			accountFacetId = existingFacet.id
+			slugCandidate = existingFacet.slug
+		} else {
+			// Attempt to insert, retrying with numeric suffix if slug conflict
+			for (let attempt = 0; attempt < 5 && !accountFacetId; attempt++) {
+				const slugWithSuffix = attempt === 0 ? slugCandidate : `${slugCandidate}-${attempt + 1}`
+				const { data: insertedFacet, error: insertError } = await db
+					.from("facet_account")
+					.insert({
+						account_id: candidate.account_id,
+						kind_id: kindId,
+						slug: slugWithSuffix,
+						label: candidate.label,
+						synonyms: candidate.synonyms ?? [],
+						description: candidate.notes ?? null,
+					})
+					.select("id, slug")
+					.single()
+
+				if (insertError) {
+					if (insertError.code === "23505") {
+						continue
+					}
+					consola.warn("Failed to insert account facet", insertError.message)
+					break
+				}
+
+				if (insertedFacet?.id) {
+					accountFacetId = insertedFacet.id
+					slugCandidate = insertedFacet.slug
+				}
+			}
+		}
+
+		if (!accountFacetId) {
+			consola.warn("Unable to create or find account facet for candidate", candidate.id)
+			continue
+		}
+
+		const facetRef = `a:${accountFacetId}`
+
+		await db
+			.from("project_facet")
+			.upsert(
+				{
+					project_id: candidate.project_id,
+					account_id: candidate.account_id,
+					facet_ref: facetRef,
+					scope: "catalog",
+					is_enabled: true,
+					alias: candidate.label,
+					synonyms: candidate.synonyms ?? [],
+				},
+				{ onConflict: "project_id,facet_ref" }
+			)
+
+		await db
+			.from("facet_candidate")
+			.update({
+				status: "approved",
+				reviewed_at: new Date().toISOString(),
+				reviewed_by: reviewerId,
+				resolved_facet_ref: facetRef,
+			})
+			.eq("id", candidate.id)
+
+		if (candidate.person_id) {
+			await db
+				.from("person_facet")
+				.upsert(
+					{
+						account_id: candidate.account_id,
+						project_id: candidate.project_id,
+						person_id: candidate.person_id,
+						facet_ref: facetRef,
+						source: candidate.source ?? "interview",
+						confidence: 0.8,
+						noted_at: new Date().toISOString(),
+					},
+					{ onConflict: "person_id,facet_ref" }
+				)
+		}
+
+		consola.log("Auto-approved facet candidate", candidate.id, facetRef)
 	}
 }
 

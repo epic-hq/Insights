@@ -11,6 +11,8 @@ create table if not exists interview_people (
   person_id    uuid not null references public.people     (id) on delete cascade,
 	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
   role         text, -- participant / moderator / observer etc.
+  transcript_key text,
+  display_name text,
   created_at   timestamptz not null default now(),
   updated_at   timestamptz not null default now(),
   created_by   uuid references auth.users(id),
@@ -21,6 +23,7 @@ create table if not exists interview_people (
 -- Indexes for performance ----------------------------------------------------
 create index if not exists idx_interview_people_interview_id on public.interview_people (interview_id);
 create index if not exists idx_interview_people_person_id   on public.interview_people (person_id);
+create index if not exists idx_interview_people_transcript  on public.interview_people (transcript_key);
 
 -- Timestamp + user tracking triggers ----------------------------------------
 create trigger set_interview_people_timestamp

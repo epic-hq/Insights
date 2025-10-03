@@ -1,7 +1,7 @@
 import consola from "consola"
 import { HeartHandshake, Puzzle } from "lucide-react"
 import { useEffect, useState } from "react"
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
+import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData } from "react-router-dom"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
@@ -46,6 +46,83 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	]
 }
 
+export async function action({ context, params, request }: ActionFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
+	const accountId = params.accountId
+	const projectId = params.projectId
+	const interviewId = params.interviewId
+
+	if (!accountId || !projectId || !interviewId) {
+		return Response.json({ ok: false, error: "Account, project, and interview are required" }, { status: 400 })
+	}
+
+	const formData = await request.formData()
+	const intent = formData.get("intent")?.toString()
+
+	try {
+		switch (intent) {
+			case "assign-participant": {
+				const interviewPersonId = formData.get("interviewPersonId")?.toString()
+				if (!interviewPersonId) {
+					return Response.json({ ok: false, error: "Missing participant identifier" }, { status: 400 })
+				}
+				const personId = formData.get("personId")?.toString()
+				const role = formData.get("role")?.toString().trim() || null
+				const transcriptKey = formData.get("transcriptKey")?.toString().trim() || null
+				const displayName = formData.get("displayName")?.toString().trim() || null
+
+				if (!personId) {
+					const { error } = await supabase.from("interview_people").delete().eq("id", interviewPersonId)
+					if (error) throw new Error(error.message)
+					return Response.json({ ok: true, removed: true })
+				}
+
+				const { error } = await supabase
+					.from("interview_people")
+					.update({ person_id: personId, role, transcript_key: transcriptKey, display_name: displayName })
+					.eq("id", interviewPersonId)
+
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true })
+			}
+			case "remove-participant": {
+				const interviewPersonId = formData.get("interviewPersonId")?.toString()
+				if (!interviewPersonId) {
+					return Response.json({ ok: false, error: "Missing participant identifier" }, { status: 400 })
+				}
+				const { error } = await supabase.from("interview_people").delete().eq("id", interviewPersonId)
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true, removed: true })
+			}
+			case "add-participant": {
+				const personId = formData.get("personId")?.toString()
+				if (!personId) {
+					return Response.json({ ok: false, error: "Select a person to add" }, { status: 400 })
+				}
+				const role = formData.get("role")?.toString().trim() || null
+				const transcriptKey = formData.get("transcriptKey")?.toString().trim() || null
+				const displayName = formData.get("displayName")?.toString().trim() || null
+				const { error } = await supabase.from("interview_people").insert({
+					interview_id: interviewId,
+					project_id: projectId,
+					person_id: personId,
+					role,
+					transcript_key: transcriptKey,
+					display_name: displayName,
+				})
+				if (error) throw new Error(error.message)
+				return Response.json({ ok: true, created: true })
+			}
+			default:
+				return Response.json({ ok: false, error: "Unknown intent" }, { status: 400 })
+		}
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		consola.error("Participant action failed", message)
+		return Response.json({ ok: false, error: message }, { status: 500 })
+	}
+}
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
@@ -93,7 +170,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 
 		// Fetch participant data separately to avoid junction table query issues
-		let participants: Array<{ people?: { id?: string; name?: string | null; segment?: string | null } }> = []
+		let participants: Array<{
+			id: number
+			role: string | null
+			transcript_key: string | null
+			display_name: string | null
+			people?: { id?: string; name?: string | null; segment?: string | null }
+		}> = []
 		let primaryParticipant: { id?: string; name?: string | null; segment?: string | null } | null = null
 
 		try {
@@ -102,11 +185,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				interviewId: interviewId,
 			})
 
-			participants = participantData || []
+			participants = (participantData || []).map((row) => ({
+				id: row.id,
+				role: row.role ?? null,
+				transcript_key: row.transcript_key ?? null,
+				display_name: row.display_name ?? null,
+				people: row.people,
+			}))
 			primaryParticipant = participants[0]?.people || null
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error)
 			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
+		}
+
+		const { data: peopleOptions, error: peopleError } = await supabase
+			.from("people")
+			.select("id, name, segment")
+			.eq("project_id", projectId)
+			.order("name", { ascending: true })
+
+		if (peopleError) {
+			consola.warn("Could not load people options for participant assignment:", peopleError.message)
 		}
 
 		// Check transcript availability without loading the actual content
@@ -252,6 +351,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			insights,
 			evidence: evidence || [],
 			empathyMap,
+			peopleOptions: peopleOptions || [],
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -277,8 +377,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { accountId, projectId, interview, insights, evidence, empathyMap } = useLoaderData<typeof loader>()
+	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
+	const participantFetcher = useFetcher()
 	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
 
 	// Always call hooks at the top level
@@ -806,24 +907,161 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						)}
 
 						{/* Participants Summary */}
-						{participants.length > 0 && (
-							<div className="rounded-lg border bg-background p-4">
-								<h3 className="mb-3 font-semibold text-foreground">Participants</h3>
-								<div className="space-y-2">
-									{participants.map((participant) => (
-										<div key={participant.people?.id || participant.people?.name} className="flex items-center gap-2">
-											<div className="h-2 w-2 rounded-full bg-blue-500" />
-											<div className="text-sm">
-												<div className="font-medium text-foreground">{participant.people?.name || "Unknown"}</div>
-												{participant.people?.segment && (
-													<div className="text-muted-foreground text-xs">{participant.people.segment}</div>
+						<div className="rounded-lg border bg-background p-4">
+							<div className="mb-3 flex items-center justify-between">
+								<h3 className="font-semibold text-foreground">Participants</h3>
+								<Badge variant="outline" className="text-xs">
+									{participants.length}
+								</Badge>
+							</div>
+							<div className="space-y-4">
+								{participants.length === 0 && (
+									<p className="text-muted-foreground text-sm">No participants linked yet. Use the form below to add them.</p>
+								)}
+								{participants.map((participant) => (
+									<participantFetcher.Form
+										key={participant.id}
+										method="post"
+										className="rounded border border-dashed p-3"
+									>
+										<div className="flex flex-col gap-3">
+											<div className="flex flex-wrap items-start justify-between gap-2">
+												<div>
+													<div className="font-medium text-sm text-foreground">
+														{participant.people?.name || participant.display_name || "Unassigned"}
+													</div>
+													{participant.people?.segment && (
+														<div className="text-muted-foreground text-xs">{participant.people.segment}</div>
+													)}
+												</div>
+												{participant.transcript_key && (
+													<Badge variant="secondary" className="text-xs uppercase">
+														{participant.transcript_key}
+													</Badge>
 												)}
 											</div>
+											<input type="hidden" name="interviewPersonId" value={participant.id} />
+											<input type="hidden" name="transcriptKey" value={participant.transcript_key ?? ""} />
+											<div className="grid gap-3 sm:grid-cols-2">
+												<div className="space-y-1">
+													<label className="text-muted-foreground text-xs uppercase tracking-wide">Assigned Person</label>
+													<select
+														name="personId"
+														defaultValue={participant.people?.id ?? ""}
+														className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													>
+														<option value="">Unassigned</option>
+														{peopleOptions.map((personOption) => (
+															<option key={personOption.id} value={personOption.id}>
+																{personOption.name || "Unnamed"}
+															</option>
+														))}
+													</select>
+												</div>
+												<div className="space-y-1">
+													<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
+													<input
+														name="role"
+														type="text"
+														defaultValue={participant.role ?? ""}
+														placeholder="participant, interviewer, observer"
+														className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+													/>
+												</div>
+											</div>
+											<div className="space-y-1">
+												<label className="text-muted-foreground text-xs uppercase tracking-wide">Display Name</label>
+												<input
+													name="displayName"
+													type="text"
+													defaultValue={participant.display_name ?? ""}
+													placeholder="Transcript label"
+													className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+												/>
+											</div>
+											<div className="flex items-center gap-2">
+												<button
+													type="submit"
+													name="intent"
+													value="assign-participant"
+													className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
+												>
+													Save
+												</button>
+												<button
+													type="submit"
+													name="intent"
+													value="remove-participant"
+													className="inline-flex items-center rounded-md px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
+												>
+													Remove
+												</button>
+											</div>
 										</div>
-									))}
-								</div>
+									</participantFetcher.Form>
+								))}
+
+								<participantFetcher.Form method="post" className="rounded border border-dashed p-3">
+									<h4 className="mb-2 font-semibold text-sm">Add participant</h4>
+									<div className="grid gap-3 sm:grid-cols-2">
+										<div className="space-y-1">
+											<label className="text-muted-foreground text-xs uppercase tracking-wide">Person</label>
+											<select
+												name="personId"
+												defaultValue=""
+												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											>
+												<option value="">Select a person</option>
+												{peopleOptions.map((personOption) => (
+													<option key={personOption.id} value={personOption.id}>
+														{personOption.name || "Unnamed"}
+													</option>
+												))}
+											</select>
+										</div>
+										<div className="space-y-1">
+											<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
+											<input
+												name="role"
+												type="text"
+												placeholder="participant"
+												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											/>
+										</div>
+									</div>
+									<div className="grid gap-3 sm:grid-cols-2">
+										<div className="space-y-1">
+											<label className="text-muted-foreground text-xs uppercase tracking-wide">Transcript Key</label>
+											<input
+												name="transcriptKey"
+												type="text"
+												placeholder="optional"
+												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											/>
+										</div>
+										<div className="space-y-1">
+											<label className="text-muted-foreground text-xs uppercase tracking-wide">Display Name</label>
+											<input
+												name="displayName"
+												type="text"
+												placeholder="Transcript label"
+												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+											/>
+										</div>
+									</div>
+									<div className="flex items-center justify-end">
+										<button
+											type="submit"
+											name="intent"
+											value="add-participant"
+											className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
+										>
+											Add participant
+										</button>
+									</div>
+								</participantFetcher.Form>
 							</div>
-						)}
+						</div>
 
 						{/* Essential Metadata */}
 						<div className="rounded-lg border bg-background p-4">

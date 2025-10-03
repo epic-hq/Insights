@@ -1,11 +1,14 @@
 import { motion } from "framer-motion"
+import { useMemo } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getPersonById } from "~/features/people/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -29,24 +32,27 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	}
 
 	try {
-		const person = await getPersonById({
-			supabase,
-			accountId,
-			projectId,
-			id: personId,
-		})
+		const [person, catalog] = await Promise.all([
+			getPersonById({
+				supabase,
+				accountId,
+				projectId,
+				id: personId,
+			}),
+			getFacetCatalog({ db: supabase, accountId, projectId }),
+		])
 
 		if (!person) {
 			throw new Response("Person not found", { status: 404 })
 		}
-		return { person }
+		return { person, catalog }
 	} catch {
 		throw new Response("Failed to load person", { status: 500 })
 	}
 }
 
 export default function PersonDetail() {
-	const { person } = useLoaderData<typeof loader>()
+	const { person, catalog } = useLoaderData<typeof loader>()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
@@ -63,6 +69,55 @@ export default function PersonDetail() {
 			.join("")
 			.toUpperCase()
 			.slice(0, 2) || "?"
+
+	const facetsByRef = useMemo(() => {
+		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
+		for (const facet of catalog.facets) {
+			map.set(facet.facet_ref, {
+				label: facet.label,
+				alias: facet.alias,
+				kind_slug: facet.kind_slug,
+			})
+		}
+		return map
+	}, [catalog])
+
+const personFacets = useMemo(() => {
+	return (person.person_facet ?? []).map((row) => {
+		const meta = facetsByRef.get(row.facet_ref)
+		return {
+			facet_ref: row.facet_ref,
+			label: meta?.alias || meta?.label || row.facet_ref,
+			kind_slug: meta?.kind_slug || "",
+			source: row.source || null,
+			confidence: row.confidence ?? null,
+		}
+	})
+}, [person.person_facet, facetsByRef])
+
+const facetsGrouped = useMemo(() => {
+	const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]))
+	const groups = new Map<string, { label: string; facets: typeof personFacets }>()
+	for (const facet of personFacets) {
+		const key = facet.kind_slug || "other"
+		const label = kindLabelMap.get(facet.kind_slug) ?? (facet.kind_slug || "Other")
+		if (!groups.has(key)) {
+			groups.set(key, { label, facets: [] })
+		}
+		groups.get(key)!.facets.push(facet)
+	}
+	return Array.from(groups.entries()).map(([slug, value]) => ({ kind_slug: slug, ...value }))
+}, [personFacets, catalog.kinds])
+
+	const personScales = useMemo(() => {
+		return (person.person_scale ?? []).map((row) => ({
+			kind_slug: row.kind_slug,
+			score: row.score,
+			band: row.band || null,
+			confidence: row.confidence ?? null,
+			source: row.source || null,
+		}))
+	}, [person.person_scale])
 
 	return (
 		<div className="mx-auto max-w-4xl py-8">
@@ -107,7 +162,71 @@ export default function PersonDetail() {
 			{/* Persona Section (optional, could be expanded for more personas) */}
 			{/* Interview History & Stats */}
 			<div className="grid gap-8 lg:grid-cols-3">
-				<div className="lg:col-span-2">
+				<div className="space-y-4 lg:col-span-2">
+
+		{facetsGrouped.length > 0 ? (
+			<motion.div
+				className="rounded-xl border bg-background p-6"
+				initial={{ opacity: 0, y: 16 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ delay: 0.2, duration: 0.4 }}
+			>
+				<h3 className="mb-4 font-semibold">Facets</h3>
+				<div className="space-y-3">
+					{facetsGrouped.map((group) => (
+						<div key={group.kind_slug}>
+							<div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+								{group.label}
+							</div>
+							<div className="flex flex-wrap gap-2">
+								{group.facets.map((facet) => (
+									<Badge key={`${person.id}-${facet.facet_ref}`} variant="secondary" className="capitalize">
+										{facet.label}
+									</Badge>
+								))}
+							</div>
+						</div>
+					))}
+				</div>
+			</motion.div>
+		) : (
+			<motion.div
+				className="rounded-xl border bg-background p-6"
+				initial={{ opacity: 0, y: 16 }}
+				animate={{ opacity: 1, y: 0 }}
+				transition={{ delay: 0.2, duration: 0.4 }}
+			>
+				<h3 className="mb-4 font-semibold">Facets</h3>
+				<p className="text-sm text-muted-foreground">No facets assigned yet.</p>
+			</motion.div>
+		)}
+					<div className="h-4">
+						{personScales.length > 0 && (
+							<motion.div
+								className="rounded-xl border bg-background p-6"
+								initial={{ opacity: 0, y: 16 }}
+								animate={{ opacity: 1, y: 0 }}
+								transition={{ delay: 0.25, duration: 0.4 }}
+							>
+								<h3 className="mb-4 font-semibold">Scales</h3>
+								<div className="space-y-3">
+									{personScales.map((scale) => (
+										<div key={`${person.id}-${scale.kind_slug}`} className="rounded border px-3 py-2">
+											<div className="font-medium text-sm capitalize">{scale.kind_slug.replace(/_/g, " ")}</div>
+											<div className="text-muted-foreground text-xs">
+												Score: {Math.round((Number(scale.score) || 0) * 100)}%
+												{scale.band && <span className="ml-2 uppercase">({scale.band})</span>}
+											</div>
+										</div>
+									))}
+								</div>
+							</motion.div>
+						)}
+					</div>
+				</div>
+
+				{/* Right Sidebar */}
+				<div className="space-y-6">
 					{interviews.length > 0 && (
 						<motion.div
 							className="rounded-xl border bg-background p-6"
@@ -145,8 +264,6 @@ export default function PersonDetail() {
 							</div>
 						</motion.div>
 					)}
-				</div>
-				<div className="space-y-6">
 					<motion.div
 						className="rounded-xl border bg-background p-6"
 						initial={{ opacity: 0, y: 16 }}
@@ -155,24 +272,6 @@ export default function PersonDetail() {
 					>
 						<h3 className="mb-4 font-semibold">Statistics</h3>
 						<div className="space-y-3">
-							<div>
-								<label className="font-medium text-muted-foreground text-sm">Total Interviews</label>
-								<div className="mt-1 font-bold text-2xl text-foreground">{interviews.length}</div>
-							</div>
-							{interviews.length > 0 && (
-								<div>
-									<label className="font-medium text-muted-foreground text-sm">Latest Interview</label>
-									<div className="mt-1 text-foreground text-sm">
-										{new Date(
-											Math.max(
-												...interviews.map((ip) =>
-													new Date(ip.interviews.interview_date || ip.interviews.created_at).getTime()
-												)
-											)
-										).toLocaleDateString()}
-									</div>
-								</div>
-							)}
 							<div>
 								<label className="font-medium text-muted-foreground text-sm">Added</label>
 								<div className="mt-1 text-foreground text-sm">{new Date(person.created_at).toLocaleDateString()}</div>

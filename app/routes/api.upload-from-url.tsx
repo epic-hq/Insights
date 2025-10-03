@@ -3,6 +3,7 @@ import consola from "consola"
 import { format } from "date-fns"
 import type { ActionFunctionArgs } from "react-router"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { getServerClient } from "~/lib/supabase/server"
 import { userContext } from "~/server/user-context"
 import { transcribeRemoteFile } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
@@ -33,18 +34,31 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	}
 
 	const ctx = context.get(userContext)
-	const supabase = ctx.supabase
+	const supabase = ctx?.supabase ?? getServerClient(request).client
+	const userId = ctx?.claims?.sub ?? null
 
 	try {
 		const formData = await request.formData()
-		const accountId = formData.get("accountId") as UUID
 		const projectId = formData.get("projectId") as UUID
 		const url = formData.get("url") as string
 		consola.log("url", url)
-		if (!url || !accountId || !projectId) {
-			return Response.json({ error: "URL, accountId, and projectId are required" }, { status: 400 })
+		if (!url || !projectId) {
+			return Response.json({ error: "URL and projectId are required" }, { status: 400 })
 		}
 		const directUrl = toDirectDownloadUrl(url)
+
+		const { data: projectRow, error: projectError } = await supabase
+			.from("projects")
+			.select("account_id")
+			.eq("id", projectId)
+			.single()
+
+		if (projectError || !projectRow?.account_id) {
+			consola.error("Unable to resolve project account", projectId, projectError)
+			return Response.json({ error: "Unable to resolve project account" }, { status: 404 })
+		}
+
+		const accountId = projectRow.account_id
 
 		// First create interview record to get ID for storage
 		const { data: interview, error: insertError } = await supabase
@@ -105,6 +119,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		const metadata = {
 			accountId,
 			projectId,
+			userId: userId ?? undefined,
 			interviewTitle: `Interview - ${format(new Date(), "MM/dd")}`,
 			participantName: "TBD",
 			segment: "TBD",

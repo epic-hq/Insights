@@ -10,6 +10,7 @@ interface ProcessAnalysisParams {
 	customInstructions?: string
 	adminClient: AdminClient
 	mediaUrl?: string
+	initiatingUserId?: string | null
 }
 
 export async function createAndProcessAnalysisJob({
@@ -18,6 +19,7 @@ export async function createAndProcessAnalysisJob({
 	customInstructions = "",
 	adminClient,
 	mediaUrl = "",
+	initiatingUserId = null,
 }: ProcessAnalysisParams): Promise<void> {
 	// Create analysis job
 	const { data: analysisJob, error: analysisJobError } = await adminClient
@@ -60,7 +62,7 @@ export async function createAndProcessAnalysisJob({
 		// Construct metadata from interview record
 		const metadata = {
 			accountId: interview.account_id,
-			userId: interview.account_id,
+			userId: initiatingUserId ?? interview.updated_by ?? interview.created_by ?? undefined,
 			projectId: interview.project_id || undefined,
 			interviewTitle: interview.title || undefined,
 			interviewDate: interview.interview_date || undefined,

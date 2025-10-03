@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
 				metadata: {
 					accountId: interview.account_id,
 					projectId: interview.project_id,
+					userId: null,
 					interviewTitle: interview.title,
 					participantName: interview.participant_pseudonym,
 					fileName: transcript_data.original_filename,

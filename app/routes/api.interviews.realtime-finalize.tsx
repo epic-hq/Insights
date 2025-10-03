@@ -71,6 +71,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 					customInstructions: "",
 					adminClient,
 					mediaUrl,
+					initiatingUserId: ctx?.claims?.sub ?? null,
 				})
 
 				consola.log("Successfully processed analysis for realtime interview:", interviewId)

@@ -67,6 +67,9 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Facets
+	facets: () => string
+
 	// Personas
 	personas: {
 		index: () => string
@@ -200,6 +203,9 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (id: string) => `${base}/people/${id}`,
 			edit: (id: string) => `${base}/people/${id}/edit`,
 		},
+
+		// Facets
+		facets: () => `${base}/facets`,
 
 		// Personas
 		personas: {

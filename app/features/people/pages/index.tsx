@@ -1,9 +1,11 @@
+import { useMemo } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link, useParams } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
 import { getPeople } from "~/features/people/db"
+import { getFacetCatalog } from "~/lib/database/facets.server"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
@@ -32,23 +34,54 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response("Unauthorized", { status: 401 })
 	}
 
-	const { data: people, error } = await getPeople({ supabase, accountId, projectId })
+	const [{ data: people, error }, catalog] = await Promise.all([
+		getPeople({ supabase, accountId, projectId }),
+		getFacetCatalog({ db: supabase, accountId, projectId }),
+	])
 
 	if (error) {
 		throw new Response("Error loading people", { status: 500 })
 	}
 
-	return { people: people || [] }
+	return { people: people || [], catalog }
 }
 
 export default function PeopleIndexPage() {
-	const { people } = useLoaderData<typeof loader>()
+	const { people, catalog } = useLoaderData<typeof loader>()
 	const currentProjectContext = useCurrentProject()
 	const { accountId, projectId } = useParams()
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
+
+	const facetsByRef = useMemo(() => {
+		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
+		for (const facet of catalog.facets) {
+			map.set(facet.facet_ref, {
+				label: facet.label,
+				alias: facet.alias,
+				kind_slug: facet.kind_slug,
+			})
+		}
+		return map
+	}, [catalog])
+
+	const peopleWithFacets = useMemo(() => {
+		return people.map((person) => {
+			const personFacets = (person.person_facet ?? []).map((row) => {
+				const facetMeta = facetsByRef.get(row.facet_ref)
+				return {
+					facet_ref: row.facet_ref,
+					label: facetMeta?.alias || facetMeta?.label || row.facet_ref,
+					kind_slug: facetMeta?.kind_slug || "",
+					source: row.source || null,
+					confidence: row.confidence ?? null,
+				}
+			})
+			return { person, facets: personFacets }
+		})
+	}, [people, facetsByRef])
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -62,10 +95,13 @@ export default function PeopleIndexPage() {
 						<div>
 							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400"> </p>
 						</div>
-						<div className="flex flex-wrap gap-3">
-							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-								<Link to={routes.people.new()}>Add Person</Link>
-							</Button>
+					<div className="flex flex-wrap gap-3">
+						<Button asChild variant="secondary" className="border-gray-300 dark:border-gray-600">
+							<Link to={routes.facets()}>Manage Facets</Link>
+						</Button>
+						<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+							<Link to={routes.people.new()}>Add Person</Link>
+						</Button>
 						</div>
 					</div>
 				</div>
@@ -104,7 +140,7 @@ export default function PeopleIndexPage() {
 					</div>
 				) : (
 					<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-						{people.map((person) => (
+						{peopleWithFacets.map(({ person, facets }) => (
 							<EnhancedPersonCard
 								key={person.id}
 								person={{
@@ -114,10 +150,11 @@ export default function PeopleIndexPage() {
 											? {
 													name: pp.personas.name,
 													color_hex: pp.personas.color_hex || undefined,
-												}
+											}
 											: undefined,
 									})),
 								}}
+								facets={facets}
 							/>
 						))}
 					</div>

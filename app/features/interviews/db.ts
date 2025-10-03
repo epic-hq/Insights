@@ -82,6 +82,8 @@ export const getInterviewById = async ({
 			updated_at,
 			interview_people (
 				role,
+				transcript_key,
+				display_name,
 				people (
 					id,
 					name,
@@ -120,6 +122,9 @@ export const getInterviewParticipants = async ({
 		.from("interview_people")
 		.select(`
 			role,
+			id,
+			transcript_key,
+			display_name,
 			people(
 				id,
 				name,

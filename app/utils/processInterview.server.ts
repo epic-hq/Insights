@@ -391,6 +391,29 @@ async function processEvidencePhase({
 	}
 
 	const personIdByKey = new Map<string, string>()
+	const keyByPersonId = new Map<string, string>()
+	const displayNameByKey = new Map<string, string>()
+
+	if (metadata.projectId) {
+		const { data: existingInterviewPeople } = await db
+			.from("interview_people")
+			.select("person_id, transcript_key, display_name, role")
+			.eq("interview_id", interviewRecord.id)
+		if (Array.isArray(existingInterviewPeople)) {
+			existingInterviewPeople.forEach((row) => {
+				if (row.transcript_key && row.person_id) {
+					personIdByKey.set(row.transcript_key, row.person_id)
+					keyByPersonId.set(row.person_id, row.transcript_key)
+				}
+				if (row.display_name && row.transcript_key) {
+					displayNameByKey.set(row.transcript_key, row.display_name)
+				}
+				if (row.person_id && row.role) {
+					personRoleById.set(row.person_id, row.role)
+				}
+			})
+		}
+	}
 	const personRoleById = new Map<string, string | null>()
 
 	const resolveName = (participant: EvidenceFromBaml["people"][number], index: number): string => {
@@ -461,6 +484,10 @@ async function processEvidencePhase({
 			const personRecord = await upsertPerson(resolvedName, participantOverrides)
 			const key = participantKey && participantKey.length ? participantKey : `participant-${index}`
 			personIdByKey.set(key, personRecord.id)
+			keyByPersonId.set(personRecord.id, key)
+			if (participant?.display_name) {
+				displayNameByKey.set(key, participant.display_name.trim())
+			}
 			personRoleById.set(personRecord.id, participant.role?.trim() || null)
 
 			const isPrimary = (participant.role || "").toLowerCase().includes("participant") || !primaryPersonId
@@ -494,6 +521,10 @@ async function processEvidencePhase({
 			person_id: personId,
 			project_id: metadata.projectId ?? null,
 			role,
+			transcript_key: keyByPersonId.get(personId) ?? null,
+			display_name: keyByPersonId.get(personId)
+				? displayNameByKey.get(keyByPersonId.get(personId)!) ?? null
+				: null,
 		}
 		const { error: linkErr } = await db
 			.from("interview_people")
@@ -546,6 +577,7 @@ async function processEvidencePhase({
 				projectId: metadata.projectId,
 				observations: observationInputs,
 				evidenceIds: insertedEvidenceIds,
+				reviewerId: metadata.userId ?? null,
 			})
 		}
 	}
@@ -672,6 +704,23 @@ export async function processInterviewTranscriptWithClient({
 	client: SupabaseClient<Database>
 	existingInterviewId?: string
 }): Promise<ProcessingResult> {
+	if (metadata.projectId) {
+		const { data: projectRow } = await db
+			.from("projects")
+			.select("account_id")
+			.eq("id", metadata.projectId)
+			.single()
+		if (projectRow?.account_id) {
+			if (!metadata.accountId || metadata.accountId !== projectRow.account_id) {
+				consola.warn("Overriding metadata.accountId with project account", {
+					provided: metadata.accountId,
+					projectAccount: projectRow.account_id,
+				})
+				metadata.accountId = projectRow.account_id
+			}
+		}
+	}
+
 	// 1. Ensure we have an interview record to attach artifacts to
 	const fullTranscript = transcriptData.full_transcript as string
 	let interviewRecord: Interview

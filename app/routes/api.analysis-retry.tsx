@@ -64,7 +64,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Build metadata expected by the processor
 		const metadata = {
 			accountId: interview.account_id,
-			userId: interview.account_id,
+			userId: ctx.claims?.sub ?? undefined,
 			projectId: interview.project_id || undefined,
 			interviewTitle: interview.title || undefined,
 			interviewDate: interview.interview_date || undefined,

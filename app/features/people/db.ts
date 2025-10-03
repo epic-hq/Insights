@@ -23,6 +23,21 @@ export const getPeople = async ({
 				source,
 				assigned_at
 			),
+			person_facet (
+				facet_ref,
+				source,
+				confidence,
+				noted_at,
+				candidate_id
+			),
+			person_scale (
+				kind_slug,
+				score,
+				band,
+				source,
+				confidence,
+				noted_at
+			),
 			interview_people (
 				interviews (
 					id,
@@ -63,6 +78,21 @@ export const getPersonById = async ({
 				assigned_at,
 				interview_id,
 				project_id
+			),
+			person_facet (
+				facet_ref,
+				source,
+				confidence,
+				noted_at,
+				candidate_id
+			),
+			person_scale (
+				kind_slug,
+				score,
+				band,
+				source,
+				confidence,
+				noted_at
 			),
 			interview_people (
 				interviews (
