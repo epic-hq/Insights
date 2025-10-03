@@ -1,5 +1,6 @@
 import consola from "consola"
 import { type LoaderFunctionArgs, redirect } from "react-router"
+import { acceptInvitation } from "~/features/teams/db"
 import { getServerClient } from "~/lib/supabase/server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -43,7 +44,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}
 
 	// Accept invitation
-	const { data: accepted, error: acceptError } = await supabase.rpc("accept_invitation", {
+	const { data: accepted, error: acceptError } = await acceptInvitation({
+		supabase,
 		lookup_invitation_token: token,
 	})
 
@@ -54,11 +56,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const msg = acceptError.message || ""
 		consola.warn("[ACCEPT INVITE] accept_invitation error:", msg)
 		// Continue, destination remains default
-	} else if (accepted && typeof accepted === "object") {
-		const slug = (accepted as Record<string, unknown> | null | undefined)?.["slug"] as string | undefined
-		const account_id = (accepted as Record<string, unknown> | null | undefined)?.["account_id"] as string | undefined
-		if (slug) destination = `/accounts/${slug}`
-		else if (account_id) destination = `/accounts/${account_id}`
+	} else if (accepted && (accepted.slug || accepted.account_id)) {
+		const slug = accepted?.slug
+		const account_id = accepted?.account_id
+		if (slug) destination = `/a/${slug}`
+		else if (account_id) destination = `/a/${account_id}`
 	}
 
 	return redirect(destination, { headers: supabaseHeaders })
