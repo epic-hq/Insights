@@ -1,9 +1,11 @@
 // The client you created from the Server-Side Auth instructions
 
-import { redirect } from "react-router"
+import consola from "consola"
+import { type LoaderFunctionArgs, redirect } from "react-router"
 import { getServerClient } from "~/lib/supabase/server"
 
-export async function loader(request: Request) {
+export async function loader({ request }: LoaderFunctionArgs) {
+	consola.log(`oauth loader request: ${request.url}`)
 	const { searchParams, origin } = new URL(request.url)
 	const code = searchParams.get("code")
 	// if "next" is in param, use it as the redirect URL
@@ -12,21 +14,23 @@ export async function loader(request: Request) {
 		// if "next" is not a relative URL, use the default
 		next = "/"
 	}
+	consola.log(`redirecting to ${next}`)
 
 	if (code) {
-		const supabase = getServerClient(request)
-		const { error } = await supabase.client.auth.exchangeCodeForSession(code)
+		const { client, headers } = getServerClient(request)
+		const { error } = await client.auth.exchangeCodeForSession(code)
 		if (!error) {
-			const forwardedHost = request.headers.get("x-forwarded-host") // original origin before load balancer
+			const forwardedHost = headers.get("x-forwarded-host") // original origin before load balancer
 			const isLocalEnv = process.env.NODE_ENV === "development"
 			if (isLocalEnv) {
 				// we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-				return redirect(`${origin}${next}`)
+				consola.log(`redirecting to ${origin}${next}`)
+				return redirect(`${origin}${next}`, { headers })
 			}
 			if (forwardedHost) {
-				return redirect(`https://${forwardedHost}${next}`)
+				return redirect(`https://${forwardedHost}${next}`, { headers })
 			}
-			return redirect(`${origin}${next}`)
+			return redirect(`${origin}${next}`, { headers })
 		}
 	}
 

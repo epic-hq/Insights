@@ -18,7 +18,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: "google",
 				options: {
-					redirectTo: `${window.location.origin}/auth-new/oauth?next=/protected`,
+					redirectTo: `${window.location.origin}/auth-new/oauth?next=/home`,
 				},
 			})
 
