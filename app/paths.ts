@@ -25,4 +25,5 @@ export const PATHS = {
 	PROFILE: "/profile",
 	HOME: "/home",
 	SIGNUP_CHAT: "/signup-chat",
+	TEAMS: "/teams",
 } as const
