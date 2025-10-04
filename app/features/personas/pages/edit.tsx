@@ -1,17 +1,28 @@
 import consola from "consola"
 import { motion } from "framer-motion"
-import { Trash2 } from "lucide-react"
-import { type MetaFunction, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { ArrowLeft, Palette, Save, Trash2 } from "lucide-react"
+import { redirect } from "react-router"
+import { Form, Link, useActionData, useLoaderData } from "react-router"
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Textarea } from "~/components/ui/textarea"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/server"
 import type { Database } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
+import { deletePersona, getPersonaById, updatePersona } from "../db"
 
 type PersonaUpdate = Database["public"]["Tables"]["personas"]["Update"]
 
@@ -547,23 +558,32 @@ export default function EditPersona() {
 									Deleting this persona will permanently remove it and all associated data. This action cannot be
 									undone.
 								</p>
-								<form method="post" className="inline">
-									<input type="hidden" name="intent" value="delete" />
-									<Button
-										type="submit"
-										variant="destructive"
-										size="sm"
-										className="gap-2"
-										onClick={(e) => {
-											if (!confirm("Are you sure you want to delete this persona? This action cannot be undone.")) {
-												e.preventDefault()
-											}
-										}}
-									>
-										<Trash2 className="h-4 w-4" />
-										Delete Persona
-									</Button>
-								</form>
+								<AlertDialog>
+									<AlertDialogTrigger asChild>
+										<Button variant="destructive" size="sm" className="gap-2">
+											<Trash2 className="h-4 w-4" />
+											Delete Persona
+										</Button>
+									</AlertDialogTrigger>
+									<AlertDialogContent>
+										<AlertDialogHeader>
+											<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+											<AlertDialogDescription>
+												This action cannot be undone. This will permanently delete the persona "{persona.name}" and
+												remove all associated data from our servers.
+											</AlertDialogDescription>
+										</AlertDialogHeader>
+										<AlertDialogFooter>
+											<AlertDialogCancel>Cancel</AlertDialogCancel>
+											<Form method="post">
+												<input type="hidden" name="intent" value="delete" />
+												<AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+													Delete Persona
+												</AlertDialogAction>
+											</Form>
+										</AlertDialogFooter>
+									</AlertDialogContent>
+								</AlertDialog>
 							</div>
 						</div>
 					</CardContent>

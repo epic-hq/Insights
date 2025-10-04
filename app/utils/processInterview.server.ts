@@ -240,6 +240,7 @@ async function processEvidencePhase({
 	}
 
 	const evidenceRows: EvidenceInsert[] = []
+	const interviewMediaUrl = typeof interviewRecord.media_url === "string" ? interviewRecord.media_url : null
 	for (const ev of evidenceUnits) {
 		const personKey = typeof (ev as any).person_key === "string" ? (ev as any).person_key.trim() : null
 		const verb = sanitizeVerbatim((ev as { verbatim?: string }).verbatim)
@@ -261,6 +262,24 @@ async function processEvidencePhase({
 			providedIndKey && providedIndKey.trim().length > 0
 				? providedIndKey.trim()
 				: computeIndependenceKey(gist ?? verb, kind_tags)
+		const rawAnchors = Array.isArray((ev as { anchors?: unknown }).anchors)
+			? (((ev as { anchors?: unknown }).anchors ?? []) as Array<Record<string, any>>)
+			: []
+		const sanitizedAnchors = rawAnchors
+			.map((anchor) => {
+				if (!anchor || typeof anchor !== "object") return null
+				const targetValue = anchor.target
+				if (typeof targetValue === "string") {
+					const trimmed = targetValue.trim()
+					if (!trimmed.length) return { ...anchor, target: null }
+					if (trimmed.toLowerCase() === "transcript") {
+						return { ...anchor, target: interviewMediaUrl ?? null }
+					}
+					return { ...anchor, target: trimmed }
+				}
+				return anchor
+			})
+			.filter((anchor): anchor is Record<string, any> => Boolean(anchor))
 		const row: EvidenceInsert = {
 			account_id: metadata.accountId,
 			project_id: metadata.projectId,
@@ -281,7 +300,7 @@ async function processEvidencePhase({
 			independence_key,
 			confidence: confidenceStr,
 			verbatim: verb,
-			anchors: (ev.anchors ?? []) as unknown as Json,
+			anchors: sanitizedAnchors as unknown as Json,
 		}
 
 		const _says = Array.isArray((ev as any).says) ? ((ev as any).says as string[]) : []
@@ -393,6 +412,7 @@ async function processEvidencePhase({
 	const personIdByKey = new Map<string, string>()
 	const keyByPersonId = new Map<string, string>()
 	const displayNameByKey = new Map<string, string>()
+	const personRoleById = new Map<string, string | null>()
 
 	if (metadata.projectId) {
 		const { data: existingInterviewPeople } = await db
@@ -414,7 +434,6 @@ async function processEvidencePhase({
 			})
 		}
 	}
-	const personRoleById = new Map<string, string | null>()
 
 	const resolveName = (participant: EvidenceFromBaml["people"][number], index: number): string => {
 		const candidates = [

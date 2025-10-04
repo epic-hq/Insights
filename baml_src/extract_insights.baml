@@ -301,7 +301,7 @@ class InterviewExtraction {
 	insights ExtractedInsight[]
 	relevantAnswers string[] @description("List of relevant answers from the interview to the business goal, key decisions, and research questions.")
 	observationsAndNotes string @description("Pithy takeaways about their attitude, needs, and relevance to the research goals")
-	highImpactThemes string[] @description("List the 3 strongest takeaways from the user's comments and behavior related to your questions")
+	highImpactThemes string[] @description("List the 3 strongest takeaways and explicitly tie each to a decision or research question (e.g., 'Decision Q: Pricing — Customers balk at annual contracts')")
 	openQuestionsAndNextSteps string @description("What next steps should we take to validate our hypotheses or address our knowledge gaps? Pithy statements.")
 }
 
@@ -339,6 +339,11 @@ function ExtractInsights(transcript: string, userCustomInstructions: string) -> 
     2. Challenge or validate core product assumptions
     3. Reveal unexpected user behaviors or needs
     4. Provide actionable direction for product decisions
+
+    ## Key Takeaway Formatting
+    - `highImpactThemes` must contain up to three bullets that mention the specific decision or research question they serve (use the exact question text or a concise alias).
+    - Write each takeaway as "Question Label — conclusion" so the relationship is unambiguous.
+    - Do not restate raw facts; synthesize the implication relative to the question.
 
     Custom research focus:
     {{userCustomInstructions}}

@@ -171,7 +171,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 							to={getRouteUrl(primaryRoute)}
 							className={cn(
 								"flex min-w-0 flex-1 flex-col items-center space-y-1 rounded-lg px-3 py-2 font-medium text-xs transition-colors",
-								isActive ? "bg-primary/10 text-primary" : "text-muted-foreground hover:bg-accent hover:text-foreground"
+								isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent hover:text-foreground"
 							)}
 						>
 							<Icon className="h-5 w-5" />

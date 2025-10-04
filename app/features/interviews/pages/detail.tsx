@@ -1,12 +1,14 @@
 import consola from "consola"
-import { HeartHandshake, Puzzle } from "lucide-react"
+import { Download, Edit2, HeartHandshake, Loader2, Puzzle } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
@@ -377,15 +379,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions } = useLoaderData<typeof loader>()
+	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions } =
+		useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
+	const navigation = useNavigation()
 	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
 
 	// Always call hooks at the top level
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 	const [isProcessing, setIsProcessing] = useState(false)
+
+	// Check if any action is in progress
+	const isActionPending = navigation.state === "loading" || navigation.state === "submitting"
+	const isFetcherBusy = fetcher.state !== "idle" || participantFetcher.state !== "idle"
 
 	useEffect(() => {
 		if (!interview?.id) return
@@ -434,14 +442,26 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	}
 
 	return (
-		<div className="mx-auto max-w-6xl">
-			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
+		<div className="relative mx-auto mt-6 max-w-6xl">
+			{/* Loading Overlay */}
+			{(isActionPending || isFetcherBusy || isProcessing) && (
+				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+					<div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 shadow-lg">
+						<Loader2 className="h-8 w-8 animate-spin text-primary" />
+						<p className="font-medium text-sm">
+							{isProcessing ? "Analyzing interview..." : "Processing..."}
+						</p>
+					</div>
+				</div>
+			)}
+			
+			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8 ">
 				<div className="flex-1 space-y-6">
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
-								<div className="mb-2 flex items-center gap-2 font-bold text-3xl leading-tight">
+								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
 									<BackButton to={routes.interviews.index()} label="" position="relative" />
 									{interview.title || "Untitled Interview"}
 								</div>
@@ -571,155 +591,95 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						empathyMap.does.length > 0 ||
 						empathyMap.thinks.length > 0 ||
 						empathyMap.feels.length > 0) && (
-						<div
-						// className={`mb-8 rounded-xl border p-6 transition-all duration-300 ${activeTab === "pains-gains"
-						// 	? "border-orange-200/50 bg-gradient-to-br from-red-50 to-green-50 dark:border-orange-800/20 dark:from-red-950/20 dark:to-green-950/20"
-						// 	: "border-blue-200/50 bg-gradient-to-br from-blue-50 to-indigo-50 dark:border-blue-800/20 dark:from-blue-950/20 dark:to-indigo-950/20"
-						// 	}`}
-						>
-							{/* Tab Navigation */}
-							<div className="mb-6 flex space-x-1 rounded-lg bg-gray-100/50 p-1 dark:bg-gray-900/50">
-								<button
-									onClick={() => setActiveTab("pains-gains")}
-									className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${
-										activeTab === "pains-gains"
+							<div
+							// className={`mb-8 rounded-xl border p-6 transition-all duration-300 ${activeTab === "pains-gains"
+							// 	? "border-orange-200/50 bg-gradient-to-br from-red-50 to-green-50 dark:border-orange-800/20 dark:from-red-950/20 dark:to-green-950/20"
+							// 	: "border-blue-200/50 bg-gradient-to-br from-blue-50 to-indigo-50 dark:border-blue-800/20 dark:from-blue-950/20 dark:to-indigo-950/20"
+							// 	}`}
+							>
+								{/* Tab Navigation */}
+								<div className="mb-6 flex space-x-1 rounded-lg bg-gray-100/50 p-1 dark:bg-gray-900/50">
+									<button
+										onClick={() => setActiveTab("pains-gains")}
+										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "pains-gains"
 											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
 											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-									}`}
-								>
-									<div className="flex items-center justify-center gap-2">
-										{/* <span>😣</span> */}
-										<Puzzle className="h-5 w-5 text-accent" />
-										<span>Pains & Goals</span>
-										{/* <Badge variant="secondary" className="text-xs">
+											}`}
+									>
+										<div className="flex items-center justify-center gap-2">
+											{/* <span>😣</span> */}
+											<Puzzle className="h-5 w-5 text-accent" />
+											<span>Pains & Goals</span>
+											{/* <Badge variant="secondary" className="text-xs">
 												{empathyMap.pains.length + empathyMap.gains.length}
 											</Badge> */}
-									</div>
-								</button>
-								<button
-									onClick={() => setActiveTab("user-actions")}
-									className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${
-										activeTab === "user-actions"
+										</div>
+									</button>
+									<button
+										onClick={() => setActiveTab("user-actions")}
+										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "user-actions"
 											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
 											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-									}`}
-								>
-									<div className="flex items-center justify-center gap-2">
-										<HeartHandshake className="h-5 w-5 text-accent" />
-										<span>Empathy Map</span>
-										{/* <Badge variant="secondary" className="text-xs">
+											}`}
+									>
+										<div className="flex items-center justify-center gap-2">
+											<HeartHandshake className="h-5 w-5 text-accent" />
+											<span>Empathy Map</span>
+											{/* <Badge variant="secondary" className="text-xs">
 												{empathyMap.says.length +
 													empathyMap.does.length +
 													empathyMap.thinks.length +
 													empathyMap.feels.length}
 											</Badge> */}
-									</div>
-								</button>
-							</div>
-
-							{/* Tab Content */}
-							{activeTab === "pains-gains" && (
-								<div className="grid gap-6 md:grid-cols-2">
-									{/* Pains Column */}
-									<div className="rounded-lg border border-red-200/50 bg-white/50 p-4 dark:border-red-800/30 dark:bg-black/10">
-										<div className="mb-3 flex items-center gap-2">
-											<span className="text-lg">😣</span>
-											<div className="font-semibold text-foreground">Pain Points</div>
-											<Badge variant="secondary" className="ml-auto text-xs">
-												{empathyMap.pains.length}
-											</Badge>
 										</div>
-										{empathyMap.pains.length === 0 ? (
-											<div className="text-muted-foreground text-sm italic">No pain points identified</div>
-										) : (
-											<div className="space-y-2">
-												{empathyMap.pains.map((item, i) => (
-													<Link
-														key={`pain-${item.evidenceId}-${i}`}
-														to={routes.evidence.detail(item.evidenceId)}
-														className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-													>
-														{item.text}
-													</Link>
-												))}
-											</div>
-										)}
-									</div>
-
-									{/* Gains Column */}
-									<div className="rounded-lg border border-green-200/50 bg-white/50 p-4 dark:border-green-800/30 dark:bg-black/10">
-										<div className="mb-3 flex items-center gap-2">
-											<span className="text-lg">🎯</span>
-											<div className="font-semibold text-foreground">Goals</div>
-											<Badge variant="secondary" className="ml-auto text-xs">
-												{empathyMap.gains.length}
-											</Badge>
-										</div>
-										{empathyMap.gains.length === 0 ? (
-											<div className="text-muted-foreground text-sm italic">No gains identified</div>
-										) : (
-											<div className="space-y-2">
-												{empathyMap.gains.map((item, i) => (
-													<Link
-														key={`gain-${item.evidenceId}-${i}`}
-														to={routes.evidence.detail(item.evidenceId)}
-														className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-													>
-														{item.text}
-													</Link>
-												))}
-											</div>
-										)}
-									</div>
+									</button>
 								</div>
-							)}
 
-							{activeTab === "user-actions" && (
-								<div className="space-y-4">
-									{/* First Row: Says & Does */}
-									<div className="grid gap-4 md:grid-cols-2">
-										{/* Says Section */}
+								{/* Tab Content */}
+								{activeTab === "pains-gains" && (
+									<div className="grid gap-6 md:grid-cols-2">
+										{/* Pains Column */}
+										<div className="rounded-lg border border-red-200/50 bg-white/50 p-4 dark:border-red-800/30 dark:bg-black/10">
+											<div className="mb-3 flex items-center gap-2">
+												<span className="text-lg">😣</span>
+												<div className="font-semibold text-foreground">Pain Points</div>
+												<Badge variant="secondary" className="ml-auto text-xs">
+													{empathyMap.pains.length}
+												</Badge>
+											</div>
+											{empathyMap.pains.length === 0 ? (
+												<div className="text-muted-foreground text-sm italic">No pain points identified</div>
+											) : (
+												<div className="space-y-2">
+													{empathyMap.pains.map((item, i) => (
+														<Link
+															key={`pain-${item.evidenceId}-${i}`}
+															to={routes.evidence.detail(item.evidenceId)}
+															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+														>
+															{item.text}
+														</Link>
+													))}
+												</div>
+											)}
+										</div>
+
+										{/* Gains Column */}
 										<div className="rounded-lg border border-green-200/50 bg-white/50 p-4 dark:border-green-800/30 dark:bg-black/10">
 											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">💬</span>
-												<div className="font-semibold text-foreground">Says</div>
+												<span className="text-lg">🎯</span>
+												<div className="font-semibold text-foreground">Goals</div>
 												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.says.length}
+													{empathyMap.gains.length}
 												</Badge>
 											</div>
-											{empathyMap.says.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No quotes captured</div>
+											{empathyMap.gains.length === 0 ? (
+												<div className="text-muted-foreground text-sm italic">No gains identified</div>
 											) : (
 												<div className="space-y-2">
-													{empathyMap.says.map((item, i) => (
+													{empathyMap.gains.map((item, i) => (
 														<Link
-															key={`says-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-														>
-															"{item.text}"
-														</Link>
-													))}
-												</div>
-											)}
-										</div>
-
-										{/* Does Section */}
-										<div className="rounded-lg border border-blue-200/50 bg-white/50 p-4 dark:border-blue-800/30 dark:bg-black/10">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">⚡</span>
-												<div className="font-semibold text-foreground">Does</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.does.length}
-												</Badge>
-											</div>
-											{empathyMap.does.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No behaviors captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.does.map((item, i) => (
-														<Link
-															key={`does-${item.evidenceId}-${i}`}
+															key={`gain-${item.evidenceId}-${i}`}
 															to={routes.evidence.detail(item.evidenceId)}
 															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 														>
@@ -730,65 +690,123 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											)}
 										</div>
 									</div>
+								)}
 
-									{/* Second Row: Thinks & Feels */}
-									<div className="grid gap-4 lg:grid-cols-2">
-										{/* Thinks Section */}
-										<div className="rounded-lg border border-purple-200/50 bg-white/50 p-4 dark:border-purple-800/30 dark:bg-black/10">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">💭</span>
-												<div className="font-semibold text-foreground">Thinks</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.thinks.length}
-												</Badge>
-											</div>
-											{empathyMap.thinks.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No thoughts captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.thinks.map((item, i) => (
-														<Link
-															key={`thinks-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-														>
-															{item.text}
-														</Link>
-													))}
+								{activeTab === "user-actions" && (
+									<div className="space-y-4">
+										{/* First Row: Says & Does */}
+										<div className="grid gap-4 md:grid-cols-2">
+											{/* Says Section */}
+											<div className="rounded-lg border border-green-200/50 bg-white/50 p-4 dark:border-green-800/30 dark:bg-black/10">
+												<div className="mb-3 flex items-center gap-2">
+													<span className="text-lg">💬</span>
+													<div className="font-semibold text-foreground">Says</div>
+													<Badge variant="secondary" className="ml-auto text-xs">
+														{empathyMap.says.length}
+													</Badge>
 												</div>
-											)}
+												{empathyMap.says.length === 0 ? (
+													<div className="text-muted-foreground text-sm italic">No quotes captured</div>
+												) : (
+													<div className="space-y-2">
+														{empathyMap.says.map((item, i) => (
+															<Link
+																key={`says-${item.evidenceId}-${i}`}
+																to={routes.evidence.detail(item.evidenceId)}
+																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+															>
+																"{item.text}"
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
+
+											{/* Does Section */}
+											<div className="rounded-lg border border-blue-200/50 bg-white/50 p-4 dark:border-blue-800/30 dark:bg-black/10">
+												<div className="mb-3 flex items-center gap-2">
+													<span className="text-lg">⚡</span>
+													<div className="font-semibold text-foreground">Does</div>
+													<Badge variant="secondary" className="ml-auto text-xs">
+														{empathyMap.does.length}
+													</Badge>
+												</div>
+												{empathyMap.does.length === 0 ? (
+													<div className="text-muted-foreground text-sm italic">No behaviors captured</div>
+												) : (
+													<div className="space-y-2">
+														{empathyMap.does.map((item, i) => (
+															<Link
+																key={`does-${item.evidenceId}-${i}`}
+																to={routes.evidence.detail(item.evidenceId)}
+																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+															>
+																{item.text}
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
 										</div>
 
-										{/* Feels Section */}
-										<div className="rounded-lg border border-yellow-200/50 bg-white/50 p-4 dark:border-yellow-800/30 dark:bg-black/10">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">❤️</span>
-												<div className="font-semibold text-foreground">Feels</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.feels.length}
-												</Badge>
-											</div>
-											{empathyMap.feels.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No emotions captured</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.feels.map((item, i) => (
-														<Link
-															key={`feels-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
-															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-														>
-															{item.text}
-														</Link>
-													))}
+										{/* Second Row: Thinks & Feels */}
+										<div className="grid gap-4 lg:grid-cols-2">
+											{/* Thinks Section */}
+											<div className="rounded-lg border border-purple-200/50 bg-white/50 p-4 dark:border-purple-800/30 dark:bg-black/10">
+												<div className="mb-3 flex items-center gap-2">
+													<span className="text-lg">💭</span>
+													<div className="font-semibold text-foreground">Thinks</div>
+													<Badge variant="secondary" className="ml-auto text-xs">
+														{empathyMap.thinks.length}
+													</Badge>
 												</div>
-											)}
+												{empathyMap.thinks.length === 0 ? (
+													<div className="text-muted-foreground text-sm italic">No thoughts captured</div>
+												) : (
+													<div className="space-y-2">
+														{empathyMap.thinks.map((item, i) => (
+															<Link
+																key={`thinks-${item.evidenceId}-${i}`}
+																to={routes.evidence.detail(item.evidenceId)}
+																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+															>
+																{item.text}
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
+
+											{/* Feels Section */}
+											<div className="rounded-lg border border-yellow-200/50 bg-white/50 p-4 dark:border-yellow-800/30 dark:bg-black/10">
+												<div className="mb-3 flex items-center gap-2">
+													<span className="text-lg">❤️</span>
+													<div className="font-semibold text-foreground">Feels</div>
+													<Badge variant="secondary" className="ml-auto text-xs">
+														{empathyMap.feels.length}
+													</Badge>
+												</div>
+												{empathyMap.feels.length === 0 ? (
+													<div className="text-muted-foreground text-sm italic">No emotions captured</div>
+												) : (
+													<div className="space-y-2">
+														{empathyMap.feels.map((item, i) => (
+															<Link
+																key={`feels-${item.evidenceId}-${i}`}
+																to={routes.evidence.detail(item.evidenceId)}
+																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
+															>
+																{item.text}
+															</Link>
+														))}
+													</div>
+												)}
+											</div>
 										</div>
 									</div>
-								</div>
-							)}
-						</div>
-					)}
+								)}
+							</div>
+						)}
 
 					{/* Evidence Timeline Section */}
 					{evidence.length > 0 && <PlayByPlayTimeline evidence={evidence} className="mb-6" />}
@@ -796,24 +814,24 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{/* Transcript Section - Collapsed by default */}
 					<h3 className="font-semibold text-foreground text-lg">Raw Recording Details</h3>
 
-					<div className="flex items-center gap-2">
-						{interview.media_url && (
+					{interview.media_url && (
+						<div className="mb-4 flex items-center gap-2">
 							<MediaPlayer
 								mediaUrl={interview.media_url}
 								title="Play Recording"
 								size="sm"
 								duration_sec={interview.duration_sec || undefined}
 							/>
-						)}
-						{/* <svg
-							className="h-5 w-5 text-muted-foreground transition-transform group-open:rotate-180"
-							fill="none"
-							viewBox="0 0 24 24"
-							stroke="currentColor"
-						>
-							<path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-						</svg> */}
-					</div>
+							<a
+								href={interview.media_url}
+								download
+								className="inline-flex h-9 items-center justify-center rounded-md px-3 font-medium text-blue-600 text-sm transition-colors hover:bg-blue-50 dark:hover:bg-blue-950"
+								title="Download recording"
+							>
+								<Download className="h-4 w-4" />
+							</a>
+						</div>
+					)}
 
 					<div className="mt-4">
 						<LazyTranscriptResults
@@ -906,160 +924,234 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							</div>
 						)}
 
-						{/* Participants Summary */}
+						{/* Participants Summary - Clean Display */}
 						<div className="rounded-lg border bg-background p-4">
 							<div className="mb-3 flex items-center justify-between">
 								<h3 className="font-semibold text-foreground">Participants</h3>
-								<Badge variant="outline" className="text-xs">
-									{participants.length}
-								</Badge>
-							</div>
-							<div className="space-y-4">
-								{participants.length === 0 && (
-									<p className="text-muted-foreground text-sm">No participants linked yet. Use the form below to add them.</p>
-								)}
-								{participants.map((participant) => (
-									<participantFetcher.Form
-										key={participant.id}
-										method="post"
-										className="rounded border border-dashed p-3"
-									>
-										<div className="flex flex-col gap-3">
-											<div className="flex flex-wrap items-start justify-between gap-2">
-												<div>
-													<div className="font-medium text-sm text-foreground">
-														{participant.people?.name || participant.display_name || "Unassigned"}
+								<Popover>
+									<PopoverTrigger asChild>
+										<button className="inline-flex items-center gap-1 rounded-md border border-input px-2 py-1 text-xs hover:bg-accent">
+											<Edit2 className="h-3 w-3" />
+											Edit
+										</button>
+									</PopoverTrigger>
+									<PopoverContent className="max-h-[600px] w-[500px] overflow-y-auto" align="end">
+										<div className="space-y-4">
+											<h4 className="font-semibold text-sm">Manage Participants</h4>
+
+											{participants.length === 0 && (
+												<p className="text-muted-foreground text-sm">No participants linked yet.</p>
+											)}
+
+											{participants.map((participant) => (
+												<participantFetcher.Form
+													key={participant.id}
+													method="post"
+													className="space-y-3 rounded border p-3"
+												>
+													<input type="hidden" name="interviewPersonId" value={participant.id} />
+													<input type="hidden" name="transcriptKey" value={participant.transcript_key ?? ""} />
+
+													<div className="space-y-2">
+														<label className="text-muted-foreground text-xs uppercase tracking-wide">Person</label>
+														<select
+															name="personId"
+															defaultValue={participant.people?.id ?? ""}
+															className="w-full rounded-md border border-input bg-background p-2 text-sm"
+														>
+															<option value="">Unassigned</option>
+															{peopleOptions.map((personOption) => (
+																<option key={personOption.id} value={personOption.id}>
+																	{personOption.name || "Unnamed"}
+																</option>
+															))}
+														</select>
 													</div>
-													{participant.people?.segment && (
-														<div className="text-muted-foreground text-xs">{participant.people.segment}</div>
-													)}
+
+													<div className="grid grid-cols-2 gap-2">
+														<div className="space-y-1">
+															<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
+															<input
+																name="role"
+																type="text"
+																defaultValue={participant.role ?? ""}
+																placeholder="participant"
+																className="w-full rounded-md border border-input bg-background p-2 text-sm"
+															/>
+														</div>
+														<div className="space-y-1">
+															<label className="text-muted-foreground text-xs uppercase tracking-wide">Speaker</label>
+															<select
+																name="transcriptKey"
+																defaultValue={participant.transcript_key ?? ""}
+																className="w-full rounded-md border border-input bg-background p-2 text-sm"
+															>
+																<option value="">None</option>
+																<option value="A">A</option>
+																<option value="B">B</option>
+																<option value="C">C</option>
+																<option value="D">D</option>
+															</select>
+														</div>
+													</div>
+
+													<div className="space-y-1">
+														<label className="text-muted-foreground text-xs uppercase tracking-wide">
+															Display Name (Optional)
+														</label>
+														<input
+															name="displayName"
+															type="text"
+															defaultValue={participant.display_name ?? ""}
+															placeholder="Override transcript label"
+															className="w-full rounded-md border border-input bg-background p-2 text-sm"
+														/>
+													</div>
+
+													<div className="flex items-center gap-2">
+														<button
+															type="submit"
+															name="intent"
+															value="assign-participant"
+															className="flex-1 rounded-md border border-input px-3 py-1.5 font-medium text-sm hover:bg-accent"
+														>
+															Save
+														</button>
+														<button
+															type="submit"
+															name="intent"
+															value="remove-participant"
+															className="rounded-md px-3 py-1.5 text-red-600 text-sm hover:bg-red-50"
+														>
+															Remove
+														</button>
+													</div>
+												</participantFetcher.Form>
+											))}
+
+											<div className="border-t pt-4">
+												<participantFetcher.Form method="post" className="space-y-3">
+													<h4 className="font-semibold text-sm">Add Participant</h4>
+
+													<div className="space-y-2">
+														<label className="text-muted-foreground text-xs uppercase tracking-wide">Person</label>
+														<select
+															name="personId"
+															defaultValue=""
+															className="w-full rounded-md border border-input bg-background p-2 text-sm"
+														>
+															<option value="">Select a person</option>
+															{peopleOptions.map((personOption) => (
+																<option key={personOption.id} value={personOption.id}>
+																	{personOption.name || "Unnamed"}
+																</option>
+															))}
+														</select>
+													</div>
+
+													<div className="grid grid-cols-2 gap-2">
+														<div className="space-y-1">
+															<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
+															<input
+																name="role"
+																type="text"
+																placeholder="participant"
+																className="w-full rounded-md border border-input bg-background p-2 text-sm"
+															/>
+														</div>
+														<div className="space-y-1">
+															<label className="text-muted-foreground text-xs uppercase tracking-wide">Speaker</label>
+															<select
+																name="transcriptKey"
+																defaultValue=""
+																className="w-full rounded-md border border-input bg-background p-2 text-sm"
+															>
+																<option value="">None</option>
+																<option value="A">A</option>
+																<option value="B">B</option>
+																<option value="C">C</option>
+																<option value="D">D</option>
+															</select>
+														</div>
+													</div>
+
+													<div className="space-y-1">
+														<label className="text-muted-foreground text-xs uppercase tracking-wide">
+															Display Name (Optional)
+														</label>
+														<input
+															name="displayName"
+															type="text"
+															placeholder="Override transcript label"
+															className="w-full rounded-md border border-input bg-background p-2 text-sm"
+														/>
+													</div>
+
+													<button
+														type="submit"
+														name="intent"
+														value="add-participant"
+														className="w-full rounded-md border border-input px-3 py-2 font-medium text-sm hover:bg-accent"
+													>
+														Add Participant
+													</button>
+												</participantFetcher.Form>
+											</div>
+										</div>
+									</PopoverContent>
+								</Popover>
+							</div>
+
+							{/* Clean participant list display */}
+							<div className="space-y-2">
+								{participants.length === 0 ? (
+									<p className="text-muted-foreground text-sm">No participants linked yet.</p>
+								) : (
+									participants.map((participant) => {
+										const personId = participant.people?.id
+										const personName = participant.people?.name || participant.display_name || "Unassigned"
+										const primaryPersona = participant.people?.people_personas?.[0]?.personas
+
+										return personId ? (
+											<Link
+												key={participant.id}
+												to={routes.people.detail(personId)}
+												className="flex items-center justify-between rounded-md border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
+											>
+												<div className="flex items-center gap-3">
+													<div>
+														<div className="font-medium text-foreground text-sm">{personName}</div>
+														{primaryPersona && (
+															<div className="text-muted-foreground text-xs">{primaryPersona.name}</div>
+														)}
+													</div>
 												</div>
 												{participant.transcript_key && (
 													<Badge variant="secondary" className="text-xs uppercase">
-														{participant.transcript_key}
+														Speaker {participant.transcript_key}
+													</Badge>
+												)}
+											</Link>
+										) : (
+											<div
+												key={participant.id}
+												className="flex items-center justify-between rounded-md border border-dashed bg-muted/20 p-3"
+											>
+												<div className="flex items-center gap-3">
+													<div>
+														<div className="font-medium text-muted-foreground text-sm">{personName}</div>
+														<div className="text-muted-foreground text-xs">Not linked</div>
+													</div>
+												</div>
+												{participant.transcript_key && (
+													<Badge variant="outline" className="text-xs uppercase">
+														Speaker {participant.transcript_key}
 													</Badge>
 												)}
 											</div>
-											<input type="hidden" name="interviewPersonId" value={participant.id} />
-											<input type="hidden" name="transcriptKey" value={participant.transcript_key ?? ""} />
-											<div className="grid gap-3 sm:grid-cols-2">
-												<div className="space-y-1">
-													<label className="text-muted-foreground text-xs uppercase tracking-wide">Assigned Person</label>
-													<select
-														name="personId"
-														defaultValue={participant.people?.id ?? ""}
-														className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-													>
-														<option value="">Unassigned</option>
-														{peopleOptions.map((personOption) => (
-															<option key={personOption.id} value={personOption.id}>
-																{personOption.name || "Unnamed"}
-															</option>
-														))}
-													</select>
-												</div>
-												<div className="space-y-1">
-													<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
-													<input
-														name="role"
-														type="text"
-														defaultValue={participant.role ?? ""}
-														placeholder="participant, interviewer, observer"
-														className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-													/>
-												</div>
-											</div>
-											<div className="space-y-1">
-												<label className="text-muted-foreground text-xs uppercase tracking-wide">Display Name</label>
-												<input
-													name="displayName"
-													type="text"
-													defaultValue={participant.display_name ?? ""}
-													placeholder="Transcript label"
-													className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-												/>
-											</div>
-											<div className="flex items-center gap-2">
-												<button
-													type="submit"
-													name="intent"
-													value="assign-participant"
-													className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
-												>
-													Save
-												</button>
-												<button
-													type="submit"
-													name="intent"
-													value="remove-participant"
-													className="inline-flex items-center rounded-md px-3 py-1.5 text-sm text-red-600 hover:bg-red-50"
-												>
-													Remove
-												</button>
-											</div>
-										</div>
-									</participantFetcher.Form>
-								))}
-
-								<participantFetcher.Form method="post" className="rounded border border-dashed p-3">
-									<h4 className="mb-2 font-semibold text-sm">Add participant</h4>
-									<div className="grid gap-3 sm:grid-cols-2">
-										<div className="space-y-1">
-											<label className="text-muted-foreground text-xs uppercase tracking-wide">Person</label>
-											<select
-												name="personId"
-												defaultValue=""
-												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											>
-												<option value="">Select a person</option>
-												{peopleOptions.map((personOption) => (
-													<option key={personOption.id} value={personOption.id}>
-														{personOption.name || "Unnamed"}
-													</option>
-												))}
-											</select>
-										</div>
-										<div className="space-y-1">
-											<label className="text-muted-foreground text-xs uppercase tracking-wide">Role</label>
-											<input
-												name="role"
-												type="text"
-												placeholder="participant"
-												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											/>
-										</div>
-									</div>
-									<div className="grid gap-3 sm:grid-cols-2">
-										<div className="space-y-1">
-											<label className="text-muted-foreground text-xs uppercase tracking-wide">Transcript Key</label>
-											<input
-												name="transcriptKey"
-												type="text"
-												placeholder="optional"
-												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											/>
-										</div>
-										<div className="space-y-1">
-											<label className="text-muted-foreground text-xs uppercase tracking-wide">Display Name</label>
-											<input
-												name="displayName"
-												type="text"
-												placeholder="Transcript label"
-												className="w-full rounded-md border border-input bg-background p-2 text-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-											/>
-										</div>
-									</div>
-									<div className="flex items-center justify-end">
-										<button
-											type="submit"
-											name="intent"
-											value="add-participant"
-											className="inline-flex items-center rounded-md border border-input px-3 py-1.5 text-sm font-medium shadow-sm hover:bg-accent"
-										>
-											Add participant
-										</button>
-									</div>
-								</participantFetcher.Form>
+										)
+									})
+								)}
 							</div>
 						</div>
 

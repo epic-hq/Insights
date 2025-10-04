@@ -131,11 +131,19 @@ function ExtractEvidenceFromTranscript(
 Your task is to extract sequential evidence from an interview transcript so the reader can easily follow what happened, moment by moment.
 
 ## Steps
-1. Identify every human speaker. Populate the `people` array once with the transcript label, inferred name (if safe), role (participant vs interviewer), personas/segments, and a short descriptor.
+1. Identify every human speaker. Populate the `people` array once with the transcript label, inferred name (if safe), role (participant vs interviewer), personas/segments, organization, and a short descriptor that captures their responsibilities.
 2. Slice the transcript into coherent, chronological chunks that express a single point of view (usually 2–5 sentences from one speaker).
 3. For each chunk, produce an `EvidenceUnit` anchored to the correct `person_key`, with chunk, gist, verbatim quote, tags, anchors, and empathy facets.
 4. Only create a unit when it adds analytical value (pain, goal, motivation, workaround, evaluation criteria, decision factor, emotion, etc.).
 5. For each participant, synthesize high-signal facet + scale observations using the provided `facet_catalog`; link each observation back to the supporting evidence.
+
+## Participant Profiles & Demographics
+- Capture explicit demographic attributes for each participant: job title, seniority, team/discipline, tenure, geography, pronouns/gender (only when stated), and organization.
+- Populate `people[].summary` with a 1–2 sentence snapshot describing who they are, the work they do, and the context of their responsibilities.
+- Use `people[].personas` and `people[].segments` to reflect any persona or segment labels mentioned or implied by the transcript.
+- When the transcript reveals responsibilities or repeated activities, add `task` facets capturing those workflows.
+- Prefer matching existing catalog entries for demographic/task facets (`kind_slug` such as `demographic`, `task`, `workflow`, `preference`, `value`). Emit new `candidate` entries only when no confident match exists.
+- Record gender, pronouns, or other sensitive attributes only when the participant states them explicitly.
 
 ## Selection Priorities
 High-severity pains, frequent behaviors, explicit goals, success criteria.
@@ -166,7 +174,8 @@ gains: Desired positive outcomes (e.g., “save time with pre-qualified leads”
 
 ## Facet & Scale Mapping
 - The `facet_catalog` already merges project ▶ account ▶ global terms. Respect aliases when generating analyst-facing text, but match by label or synonyms case-insensitively.
-- Populate `people[].facets` with distinct, high-signal observations. Set `source` to "interview" and point `evidence_unit_index` to the supporting evidence (0-based).
+- Populate `people[].facets` with distinct, high-signal observations. Capture demographic descriptors (role, title, team, tenure, location, pronouns) under the `demographic` kind. Capture responsibilities, repeated jobs, and tools under `task`, `workflow`, or `tool` kinds as appropriate.
+- Always set `source` to "interview" and point `evidence_unit_index` to the supporting evidence (0-based).
 - When you find a confident match, set `facet_ref` (e.g., `g:12` or `a:45`) and reuse the catalog’s `kind_slug`. When unsure, keep `facet_ref` empty and supply a `candidate` with Title Case `label`, ≤5 words, plus any synonyms.
 - Use `value` to capture the participant’s own wording (≤12 words). Avoid duplicating the same facet multiple times for similar statements.
 - Emit `people[].scales` only when the transcript clearly indicates direction or intensity. Map scores on 0.0–1.0, add a `band` (low <0.34, medium 0.34–0.66, high >0.66), and include a tight `rationale`.

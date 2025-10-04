@@ -8,6 +8,13 @@ interface LazyTranscriptResultsProps {
 	interviewId: string
 	hasTranscript: boolean
 	hasFormattedTranscript: boolean
+	participants?: Array<{
+		id: number
+		role: string | null
+		transcript_key: string | null
+		display_name: string | null
+		people?: { id?: string; name?: string | null; segment?: string | null }
+	}>
 }
 
 interface TranscriptApiResponse {
@@ -30,6 +37,7 @@ export function LazyTranscriptResults({
 	interviewId,
 	hasTranscript,
 	hasFormattedTranscript,
+	participants = [],
 }: LazyTranscriptResultsProps) {
 	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
 	const [loading, setLoading] = useState(false)
@@ -146,6 +154,7 @@ export function LazyTranscriptResults({
 				sentiment_analysis_results: transcriptData.sentiment_analysis_results,
 			}}
 			rawTranscript={transcriptData.text || undefined}
+			participants={participants}
 		/>
 	)
 }

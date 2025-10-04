@@ -8,11 +8,20 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
+	consola.log("Analysis retry API called ", request)
 	const formData = await request.formData()
 	const interviewId = formData.get("interview_id")
 	const customInstructions = formData.get("custom_instructions")
 
 	try {
+		// Get user ID from JWT claims (fast) with DB fallback
+		const { getAuthenticatedUser } = await import("~/lib/supabase/server")
+		const claims = await getAuthenticatedUser(request)
+		if (!claims?.sub) {
+			return Response.json({ error: "Unauthorized" }, { status: 401 })
+		}
+		const userId = claims.sub
+		
 		const { client: userDb } = getServerClient(request)
 
 		consola.log("Analysis retry API called ", interviewId, customInstructions)
@@ -64,7 +73,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Build metadata expected by the processor
 		const metadata = {
 			accountId: interview.account_id,
-			userId: ctx.claims?.sub ?? undefined,
+			userId,
 			projectId: interview.project_id || undefined,
 			interviewTitle: interview.title || undefined,
 			interviewDate: interview.interview_date || undefined,

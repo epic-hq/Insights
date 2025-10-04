@@ -1,6 +1,18 @@
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router-dom"
+import { Loader2, Trash2 } from "lucide-react"
+import {
+	AlertDialog,
+	AlertDialogAction,
+	AlertDialogCancel,
+	AlertDialogContent,
+	AlertDialogDescription,
+	AlertDialogFooter,
+	AlertDialogHeader,
+	AlertDialogTitle,
+	AlertDialogTrigger,
+} from "~/components/ui/alert-dialog"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -217,6 +229,10 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 export default function EditPerson() {
 	const { person, personas, catalog } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const navigation = useNavigation()
+
+	const isSubmitting = navigation.state === "submitting"
+	const isDeleting = navigation.state === "submitting" && navigation.formData?.get("intent") === "delete"
 
 	// Get current persona from junction table
 	const people_personas = person.people_personas || []
@@ -361,30 +377,66 @@ export default function EditPerson() {
 				)}
 
 				<div className="flex gap-4">
-					<Button type="submit">Update Person</Button>
-					<Button type="button" variant="outline" onClick={() => window.history.back()}>
+					<Button type="submit" disabled={isSubmitting}>
+						{isSubmitting && !isDeleting ? (
+							<>
+								<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+								Updating...
+							</>
+						) : (
+							"Update Person"
+						)}
+					</Button>
+					<Button type="button" variant="outline" onClick={() => window.history.back()} disabled={isSubmitting}>
 						Cancel
 					</Button>
 				</div>
 			</Form>
 
 			<div className="mt-12 border-t pt-8">
-				<h2 className="font-semibold text-lg text-red-600">Danger Zone</h2>
-				<p className="mt-2 text-gray-600 text-sm">Permanently delete this person. This action cannot be undone.</p>
-				<Form method="post" className="mt-4">
-					<input type="hidden" name="intent" value="delete" />
-					<Button
-						type="submit"
-						variant="destructive"
-						onClick={(e) => {
-							if (!confirm("Are you sure you want to delete this person? This action cannot be undone.")) {
-								e.preventDefault()
-							}
-						}}
-					>
-						Delete Person
-					</Button>
-				</Form>
+				<div className="rounded-lg border border-red-200 bg-red-50 p-4">
+					<h3 className="mb-2 font-medium text-red-900">Danger Zone</h3>
+					<p className="mb-4 text-red-700 text-sm">
+						Deleting this person will permanently remove them and all associated data. This action cannot be undone.
+					</p>
+					<AlertDialog>
+						<AlertDialogTrigger asChild>
+							<Button variant="destructive" size="sm" className="gap-2" disabled={isSubmitting}>
+								<Trash2 className="h-4 w-4" />
+								Delete Person
+							</Button>
+						</AlertDialogTrigger>
+						<AlertDialogContent>
+							<AlertDialogHeader>
+								<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+								<AlertDialogDescription>
+									This action cannot be undone. This will permanently delete "{person.name}" and remove all
+									associated data from our servers.
+								</AlertDialogDescription>
+							</AlertDialogHeader>
+							<AlertDialogFooter>
+								<AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+								<Form method="post">
+									<input type="hidden" name="intent" value="delete" />
+									<AlertDialogAction
+										type="submit"
+										className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+										disabled={isDeleting}
+									>
+										{isDeleting ? (
+											<>
+												<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+												Deleting...
+											</>
+										) : (
+											"Delete Person"
+										)}
+									</AlertDialogAction>
+								</Form>
+							</AlertDialogFooter>
+						</AlertDialogContent>
+					</AlertDialog>
+				</div>
 			</div>
 		</div>
 	)

@@ -53,10 +53,27 @@ interface TranscriptData {
 interface TranscriptResultsProps {
 	data: TranscriptData
 	rawTranscript?: string // Fallback raw transcript when formatted data is not available
+	participants?: Array<{
+		id: number
+		role: string | null
+		transcript_key: string | null
+		display_name: string | null
+		people?: { id?: string; name?: string | null; segment?: string | null }
+	}>
 }
 
-export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProps) {
+export function TranscriptResults({ data, rawTranscript, participants = [] }: TranscriptResultsProps) {
 	const [copiedStates, setCopiedStates] = useState<Record<string, boolean>>({})
+
+	// Create speaker name mapping from participants
+	const getSpeakerName = (speakerKey: string): string => {
+		const normalizedKey = speakerKey.toUpperCase()
+		const participant = participants.find((p) => p.transcript_key?.toUpperCase() === normalizedKey)
+		if (participant) {
+			return participant.people?.name || participant.display_name || `Speaker ${normalizedKey}`
+		}
+		return `Speaker ${normalizedKey}`
+	}
 
 	const formatTime = (seconds: number) => {
 		const minutes = Math.floor(seconds / 60)
@@ -202,10 +219,11 @@ export function TranscriptResults({ data, rawTranscript }: TranscriptResultsProp
 								<div className="space-y-4">
 									{(data?.utterances || []).map((utterance, index) => {
 										const colors = getSpeakerColor(utterance.speaker)
+										const speakerName = getSpeakerName(utterance.speaker)
 										return (
 											<div key={index} className={`${colors.border} border-l-4 py-3 pl-4`}>
 												<div className="mb-2 flex items-start justify-between">
-													<Badge className={`${colors.badge} mb-2`}>Speaker {utterance.speaker}</Badge>
+													<Badge className={`${colors.badge} mb-2`}>{speakerName}</Badge>
 													<div className="text-right text-foreground text-xs">
 														<div>
 															{formatTime(utterance.start)} - {formatTime(utterance.end)}

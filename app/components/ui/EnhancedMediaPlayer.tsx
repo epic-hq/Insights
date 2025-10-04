@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Pause, Play, SkipBack, SkipForward, Volume2 } from "lucide-react"
+import { Download, FastForward, Pause, Play, Rewind, Volume2 } from "lucide-react"
 import { useEffect, useRef, useState } from "react"
 import { cn } from "~/lib/utils"
 import { Button } from "./button"
@@ -90,7 +90,19 @@ export function EnhancedMediaPlayer({
 			: null
 	)
 	const [volume, setVolume] = useState(1)
+	const [shouldLoad, setShouldLoad] = useState(false) // Lazy load media
 	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
+
+	// Cleanup when component unmounts or URL changes
+	useEffect(() => {
+		return () => {
+			if (mediaRef.current) {
+				mediaRef.current.pause()
+				mediaRef.current.src = ""
+				mediaRef.current.load()
+			}
+		}
+	}, [mediaUrl])
 
 	const startSeconds = parseTimeToSeconds(startTime)
 	const endSeconds = parseTimeToSeconds(endTime)
@@ -102,6 +114,30 @@ export function EnhancedMediaPlayer({
 	const mediaType = isVideo ? "video" : "audio"
 
 	const handlePlayPause = async () => {
+		// Load media on first play
+		if (!shouldLoad) {
+			setShouldLoad(true)
+			setIsLoading(true)
+			// Wait for next render cycle when media element exists
+			setTimeout(async () => {
+				if (mediaRef.current) {
+					try {
+						if (startSeconds > 0) {
+							mediaRef.current.currentTime = startSeconds
+						}
+						await mediaRef.current.play()
+						setIsPlaying(true)
+					} catch (error) {
+						consola.error("Error playing media:", error)
+						alert("Unable to play media. Please check the file format and try again.")
+					} finally {
+						setIsLoading(false)
+					}
+				}
+			}, 100)
+			return
+		}
+
 		if (!mediaRef.current) return
 
 		try {
@@ -163,6 +199,16 @@ export function EnhancedMediaPlayer({
 		}
 	}
 
+	const handleDownload = () => {
+		const link = document.createElement("a")
+		link.href = mediaUrl
+		link.download = mediaUrl.split("/").pop() || "media-file"
+		link.setAttribute("download", link.download)
+		document.body.appendChild(link)
+		link.click()
+		document.body.removeChild(link)
+	}
+
 	const handleTimeUpdate = () => {
 		if (mediaRef.current) {
 			const current = mediaRef.current.currentTime
@@ -200,6 +246,17 @@ export function EnhancedMediaPlayer({
 		}
 	}
 
+	const handleError = (e: React.SyntheticEvent<HTMLMediaElement, Event>) => {
+		setIsLoading(false)
+		const error = (e.target as HTMLMediaElement).error
+		consola.error("Media load error:", {
+			code: error?.code,
+			message: error?.message,
+			mediaUrl,
+		})
+		alert(`Failed to load media: ${error?.message || "Unknown error"}. Check console for details.`)
+	}
+
 	// Calculate progress percentage
 	const progressPercentage = duration ? (currentTime / duration) * 100 : 0
 
@@ -219,9 +276,14 @@ export function EnhancedMediaPlayer({
 	const timeRangeDisplay = getTimeRangeDisplay()
 
 	return (
-		<div className={cn("w-full max-w-md space-y-2", className)}>
-			{/* Main Controls */}
-			<div className="flex items-center gap-2">
+		<div className={cn("relative w-full max-w-md space-y-3", className)}>
+			{/* Target time in upper right */}
+			{/* {timeRangeDisplay && (
+				<div className="-top-5 absolute right-0 text-muted-foreground text-xs">{timeRangeDisplay}</div>
+			)} */}
+
+			{/* Main Controls Row */}
+			<div className="flex items-center gap-3">
 				<Button
 					onClick={handlePlayPause}
 					size={size}
@@ -238,15 +300,15 @@ export function EnhancedMediaPlayer({
 					)}
 				</Button>
 
-				{/* Skip Controls */}
+				{/* Rewind/Fast-forward Controls */}
 				<Button
 					onClick={handleSkipBackward}
 					size="sm"
 					variant="ghost"
 					className="text-blue-600 hover:bg-blue-50"
-					title="Skip back 10s"
+					title="Rewind 10s"
 				>
-					<SkipBack className="h-3 w-3" />
+					<Rewind className="h-3 w-3" />
 				</Button>
 
 				<Button
@@ -254,25 +316,13 @@ export function EnhancedMediaPlayer({
 					size="sm"
 					variant="ghost"
 					className="text-blue-600 hover:bg-blue-50"
-					title="Skip forward 10s"
+					title="Fast-forward 10s"
 				>
-					<SkipForward className="h-3 w-3" />
+					<FastForward className="h-3 w-3" />
 				</Button>
 
-				{startSeconds > 0 && (
-					<Button
-						onClick={handleSeekToStart}
-						size="sm"
-						variant="ghost"
-						className="text-blue-600 hover:bg-blue-50"
-						title="Jump to start time"
-					>
-						{formatDuration(startSeconds)}
-					</Button>
-				)}
-
-				{/* Time Display */}
-				<div className="flex items-center gap-1 text-muted-foreground text-xs">
+				{/* Current Time / Total Duration */}
+				<div className="flex flex-1 items-center justify-center gap-1 text-muted-foreground text-xs">
 					<span>{formatDuration(currentTime)}</span>
 					{duration && (
 						<>
@@ -281,22 +331,28 @@ export function EnhancedMediaPlayer({
 						</>
 					)}
 				</div>
+
+				{/* Download button */}
+				<Button
+					onClick={handleDownload}
+					size="sm"
+					variant="ghost"
+					className="text-blue-600 hover:bg-blue-50"
+					title="Download media file"
+				>
+					<Download className="h-3 w-3" />
+				</Button>
 			</div>
 
 			{/* Progress Slider */}
 			{duration && (
-				<div className="space-y-1">
-					<Slider value={[progressPercentage]} onValueChange={handleSeek} max={100} step={0.1} className="w-full" />
-					{timeRangeDisplay && (
-						<div className="text-center text-muted-foreground text-xs">Target: {timeRangeDisplay}</div>
-					)}
-				</div>
+				<Slider value={[progressPercentage]} onValueChange={handleSeek} max={100} step={0.1} className="w-full" />
 			)}
 
 			{/* Volume Control */}
 			<div className="flex items-center gap-2">
 				<Volume2 className="h-3 w-3 text-muted-foreground" />
-				<Slider value={[volume * 100]} onValueChange={handleVolumeChange} max={100} step={1} className="w-20" />
+				<Slider value={[volume * 100]} onValueChange={handleVolumeChange} max={100} step={1} className="w-24" />
 			</div>
 
 			{/* Debug Information */}
@@ -315,33 +371,37 @@ export function EnhancedMediaPlayer({
 				</details>
 			)}
 
-			{mediaType === "video" ? (
-				<video
-					ref={mediaRef as React.RefObject<HTMLVideoElement>}
-					src={mediaUrl}
-					onEnded={handleEnded}
-					onLoadStart={handleLoadStart}
-					onCanPlay={handleCanPlay}
-					onLoadedMetadata={handleLoadedMetadata}
-					onTimeUpdate={handleTimeUpdate}
-					className="hidden"
-					preload="metadata"
-					controls={false}
-				/>
-			) : (
-				<audio
-					ref={mediaRef as React.RefObject<HTMLAudioElement>}
-					src={mediaUrl}
-					onEnded={handleEnded}
-					onLoadStart={handleLoadStart}
-					onCanPlay={handleCanPlay}
-					onLoadedMetadata={handleLoadedMetadata}
-					onTimeUpdate={handleTimeUpdate}
-					className="hidden"
-					preload="metadata"
-					controls={false}
-				/>
-			)}
+			{/* Only load media when user clicks play - lazy loading for memory management */}
+			{shouldLoad &&
+				(mediaType === "video" ? (
+					<video
+						ref={mediaRef as React.RefObject<HTMLVideoElement>}
+						src={mediaUrl}
+						onEnded={handleEnded}
+						onLoadStart={handleLoadStart}
+						onCanPlay={handleCanPlay}
+						onLoadedMetadata={handleLoadedMetadata}
+						onTimeUpdate={handleTimeUpdate}
+						onError={handleError}
+						className="hidden"
+						preload="metadata"
+						controls={false}
+					/>
+				) : (
+					<audio
+						ref={mediaRef as React.RefObject<HTMLAudioElement>}
+						src={mediaUrl}
+						onEnded={handleEnded}
+						onLoadStart={handleLoadStart}
+						onCanPlay={handleCanPlay}
+						onLoadedMetadata={handleLoadedMetadata}
+						onTimeUpdate={handleTimeUpdate}
+						onError={handleError}
+						className="hidden"
+						preload="metadata"
+						controls={false}
+					/>
+				))}
 		</div>
 	)
 }

@@ -76,7 +76,10 @@ export function EvidenceCard({
 	const mediaAnchors = anchors.filter((anchor) => {
 		if (!anchor || typeof anchor !== "object") return false
 		const type = anchor.type?.toLowerCase()
-		return type === "audio" || type === "video" || type === "av" || type === "media" || type === "clip"
+		// Accept media types OR doc types that have time-based start values (not paragraph refs)
+		const isMediaType = type === "audio" || type === "video" || type === "av" || type === "media" || type === "clip"
+		const isDocWithTime = type === "doc" && anchor.start && typeof anchor.start === "string" && anchor.start.includes(":")
+		return isMediaType || isDocWithTime
 	})
 	const resolvedMediaUrl = interview?.media_url ?? null
 
@@ -125,7 +128,7 @@ export function EvidenceCard({
 	const hasMediaReplay = mediaAnchors.length > 0 && Boolean(resolvedMediaUrl)
 
 	const miniView = (
-		<div className="flex items-start gap-3">
+		<div className="flex max-w-sm items-start gap-3">
 			<div
 				className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full"
 				style={{ backgroundColor: `${themeColor}22` }}
@@ -156,19 +159,19 @@ export function EvidenceCard({
 	)
 
 	const expandedView = (
-		<div className="space-y-4">
+		<div className="max-w-xl space-y-4">
 			<div className="flex items-start gap-4">
-				<div
+				{/* <div
 					className="flex h-11 w-11 flex-shrink-0 items-center justify-center rounded-full"
 					style={{ backgroundColor: `${themeColor}22` }}
 				>
 					<Quote className="h-5 w-5" style={{ color: themeColor }} />
-				</div>
+				</div> */}
 				<div className="flex-1 space-y-3">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div className="space-y-2">
 							{topic && (
-								<Badge variant="outline" className="text-xs uppercase tracking-wide">
+								<Badge variant="outline" className="text-xs capitalize tracking-wide">
 									{topic}
 								</Badge>
 							)}
@@ -188,15 +191,25 @@ export function EvidenceCard({
 					</div>
 					{chunk && (
 						<blockquote
-							className="border-muted border-l-4 pl-4 text-muted-foreground"
+							className="border-muted border-l-4 pl-4 text-foreground/80"
 							style={{ borderLeftColor: themeColor }}
 						>
 							“{chunk}”
 						</blockquote>
 					)}
-					{contextSummary && <p className="text-muted-foreground text-sm">{contextSummary}</p>}
+					{contextSummary && <p className="text-foreground text-sm">{contextSummary}</p>}
 				</div>
 			</div>
+
+			{evidence.kind_tags && evidence.kind_tags.length > 0 && (
+				<div className="flex flex-wrap gap-2">
+					{evidence.kind_tags.map((tag, index) => (
+						<Badge key={`${tag}-${index}`} variant="outline" className="rounded-full px-3 py-1 text-xs">
+							{tag}
+						</Badge>
+					))}
+				</div>
+			)}
 
 			<div className="flex flex-wrap items-center gap-x-3 gap-y-2 text-muted-foreground text-xs">
 				{speakerLabel && <span className="truncate">Speaker: {speakerLabel}</span>}
@@ -228,46 +241,39 @@ export function EvidenceCard({
 				</div>
 			)}
 
-			{evidence.kind_tags && evidence.kind_tags.length > 0 && (
-				<div className="flex flex-wrap gap-2">
-					{evidence.kind_tags.map((tag, index) => (
-						<Badge key={`${tag}-${index}`} variant="outline" className="rounded-full px-3 py-1 text-xs">
-							{tag}
-						</Badge>
-					))}
-				</div>
-			)}
-
 			{hasMediaReplay && resolvedMediaUrl && (
-				<div className="space-y-3">
+				<div className="space-y-3 ">
 					<p className="font-semibold text-muted-foreground text-xs uppercase">Media replay</p>
-					<div className="space-y-3">
+					<div className="space-y-3 rounded-md border-2 border-blue-400">
 						{mediaAnchors.map((anchor, index) => {
 							const mediaUrl = resolveAnchorMediaUrl(anchor, resolvedMediaUrl)
 							if (!mediaUrl) return null
+							// Extract filename from URL for better labeling
+							const filename = mediaUrl.split('/').pop()?.split('?')[0] || 'Recording'
+							const displayTitle = anchor.title ?? anchor.chapter_title ?? filename
+							
 							return (
-								<div key={`anchor-${index}`} className="space-y-2 rounded-lg border border-muted border-dashed p-3">
-									<div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
+								<div key={`anchor-${index}`} className="space-y-2 rounded-lg border border-dashed border-muted p-3">
+									<div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
 										<span className="font-medium text-foreground">
-											{anchor.title ?? anchor.chapter_title ?? `Clip ${index + 1}`}
+											{displayTitle}
 										</span>
 										<div className="flex items-center gap-1">
 											<Clock className="h-3.5 w-3.5" />
 											<span>{formatAnchorTime(anchor.start, anchor.end)}</span>
 										</div>
 									</div>
-									{anchor.speaker && <p className="text-muted-foreground text-xs">Speaker: {anchor.speaker}</p>}
 									{variant === "expanded" ? (
 										<EnhancedMediaPlayer
 											mediaUrl={mediaUrl}
 											startTime={anchor.start ?? undefined}
 											endTime={anchor.end ?? undefined}
 											size="sm"
-											title={anchor.title ?? `Clip ${index + 1}`}
+											title={displayTitle}
 											duration_sec={interview?.duration_sec ?? undefined}
 										/>
 									) : (
-										<div className="flex items-center gap-2 text-muted-foreground text-xs">
+										<div className="flex items-center gap-2 text-xs text-muted-foreground">
 											<Play className="h-3 w-3" />
 											<span>Click to view details and play media</span>
 										</div>
@@ -293,7 +299,7 @@ export function EvidenceCard({
 	return (
 		<motion.div
 			className={cn(
-				"group relative flex w-full cursor-default overflow-hidden rounded-2xl border border-gray-300 bg-background transition-all duration-300 ease-out hover:shadow-black/5 hover:shadow-lg dark:border-gray-400 dark:bg-gray-900 dark:hover:shadow-white/5",
+				"group relative flex w-max-xl cursor-default overflow-hidden rounded-2xl border border-gray-300 bg-background transition-all duration-300 ease-out hover:shadow-black/5 hover:shadow-lg dark:border-gray-400 dark:bg-gray-900 dark:hover:shadow-white/5",
 				className
 			)}
 			onMouseEnter={() => setIsHovered(true)}
@@ -301,7 +307,7 @@ export function EvidenceCard({
 			whileHover={{ y: -2, scale: 1.01 }}
 			transition={{ duration: 0.3, ease: "easeOut" }}
 		>
-			<div className="w-full p-4">{variant === "mini" ? miniView : expandedView}</div>
+			<div className="w-max-xl p-4">{variant === "mini" ? miniView : expandedView}</div>
 			<motion.div
 				className="pointer-events-none absolute inset-0 rounded-2xl opacity-0"
 				style={{
@@ -329,8 +335,18 @@ function formatSupportLabel(support?: string | null) {
 }
 
 function resolveAnchorMediaUrl(anchor: EvidenceAnchor, fallback: string) {
-	if (typeof anchor.target === "string" && anchor.target.length > 0) return anchor.target
-	if (anchor.target && typeof anchor.target === "object" && anchor.target.url) return anchor.target.url
+	// If target is a string and looks like a URL, use it
+	if (
+		typeof anchor.target === "string" &&
+		(anchor.target.startsWith("http://") || anchor.target.startsWith("https://"))
+	) {
+		return anchor.target
+	}
+	// If target is an object with a url property, use that
+	if (anchor.target && typeof anchor.target === "object" && anchor.target.url) {
+		return anchor.target.url
+	}
+	// Otherwise use the fallback (interview media_url)
 	return fallback
 }
 

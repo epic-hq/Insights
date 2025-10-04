@@ -111,7 +111,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				interview_id,
 				interview:interview_id (
 					id,
-					title
+					title,
+					media_url,
+					duration_sec
 				)
 			`
 		)
