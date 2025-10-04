@@ -268,6 +268,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [autoGenerateInitial, setAutoGenerateInitial] = useState(false)
 	const [showingFollowupFor, setShowingFollowupFor] = useState<string | null>(null)
 	const [followupInput, setFollowupInput] = useState("")
+	const [followupCategory, setFollowupCategory] = useState("context")
 	const [mustHavesOnly, setMustHavesOnly] = useState(false)
 	const [showHelp, setShowHelp] = useState(false)
 	const [improvingId, setImprovingId] = useState<string | null>(null)
@@ -1055,7 +1056,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 								novelty: (q.scores?.novelty ?? 0.5) as number,
 							},
 							rationale: q.rationale || "",
-							status: "proposed",
+							status: "selected",
 							timesAnswered: 0,
 							source: "ai",
 							isMustHave: false,
@@ -1569,14 +1570,14 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						text: savedQuestion.text,
 						categoryId: (savedQuestion as any).category || "context",
 						scores: { importance: 3, goalMatch: 3, novelty: 3 },
-						status: "proposed",
+						status: "selected",
 						timesAnswered: 0,
 					} as Question,
 					purpose,
 					familiarity
 				),
 				isMustHave: false,
-				status: "proposed",
+				status: "selected",
 				source: "user",
 				scores: { importance: 3, goalMatch: 3, novelty: 3 },
 				isSelected: true,
@@ -1688,6 +1689,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				})
 
 				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+
+																						// Reload from database to ensure UI reflects actual DB state
+																						await loadQuestions()
 				toast.success("Question added", {
 					description:
 						mode === "after"
@@ -2307,7 +2311,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																					<DropdownMenuItem
 																						onClick={() => {
 																							setShowingFollowupFor(question.id)
+																							setFollowupCategory(question.categoryId)
 																							setFollowupInput("")
+																				setFollowupCategory(question.categoryId)
 																						}}
 																					>
 																						<ArrowDownFromLine className="mr-2 h-4 w-4" />
@@ -2399,6 +2405,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																			onClick={() => {
 																				setShowingFollowupFor(null)
 																				setFollowupInput("")
+																				setFollowupCategory(question.categoryId)
 																			}}
 																			className="h-6 w-6 p-0 text-blue-600 hover:text-blue-800"
 																		>
@@ -2406,14 +2413,26 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																		</Button>
 																	</div>
 
-																	<div className="mb-3">
+																	<div className="mb-3 space-y-2">
 																		<Textarea
 																			placeholder="e.g., Can you walk me through a specific example of that challenge?"
 																			value={followupInput}
 																			onChange={(e) => setFollowupInput(e.target.value)}
-																			className="mb-2 resize-none"
+																			className="resize-none"
 																			rows={2}
 																		/>
+																		<Select value={followupCategory} onValueChange={setFollowupCategory}>
+																			<SelectTrigger className="w-full">
+																				<SelectValue placeholder="Select category" />
+																			</SelectTrigger>
+																			<SelectContent>
+																				{questionCategories.map((cat) => (
+																					<SelectItem key={cat.id} value={cat.id}>
+																						{cat.name}
+																					</SelectItem>
+																				))}
+																			</SelectContent>
+																		</Select>
 																		<div className="flex items-center gap-2">
 																			<Button
 																				onClick={async () => {
@@ -2428,15 +2447,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						const followupQuestion: Question = {
 																							id: crypto.randomUUID(),
 																							text: followupInput.trim(),
-																							categoryId: question.categoryId, // Use same category as parent question
+																							categoryId: followupCategory,
 																							scores: { importance: 0.7, goalMatch: 0.8, novelty: 0.6 },
 																							rationale: `Follow-up to: ${question.text}`,
-																							status: "proposed",
+																							status: "selected",
 																							timesAnswered: 0,
 																							source: "user",
 																							isMustHave: false,
 																							estimatedMinutes: estimateMinutesPerQuestion(
-																								{ categoryId: question.categoryId } as Question,
+																								{ categoryId: followupCategory } as Question,
 																								purpose,
 																								familiarity
 																							),
@@ -2474,12 +2493,16 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						setSkipDebounce(true)
 																						console.log("🔍 DEBUG: About to save to database")
 																						await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+
+																						// Reload from database to ensure UI reflects actual DB state
+																						await loadQuestions()
 																						setTimeout(() => {
 																							setSkipDebounce(false)
 																							suppressDeletionRef.current = false
 																						}, 3000) // longer timeout to prevent debounced save override
 
 																						setFollowupInput("")
+																				setFollowupCategory(question.categoryId)
 																						setShowingFollowupFor(null)
 																						toast.success("Follow-up question added")
 																						console.log("DEBUG: Followup addition completed")
