@@ -57,6 +57,24 @@ interface BamlEvidenceLink {
 	}>
 }
 
+interface BamlResearchQuestionAnswer {
+	research_question_id: string
+	findings: string[]
+	evidence_ids: string[]
+	confidence: number
+	reasoning: string
+}
+
+interface BamlDecisionQuestionAnswer {
+	decision_question_id: string
+	strategic_insight: string
+	supporting_findings: string[]
+	research_question_ids: string[]
+	confidence: number
+	reasoning: string
+	recommended_actions: string[]
+}
+
 interface BamlQuestionSummary {
 	question_id: string
 	question_kind: QuestionKind
@@ -69,7 +87,8 @@ interface BamlQuestionSummary {
 
 interface BamlAnalysisResponse {
 	evidence_results?: BamlEvidenceLink[]
-	question_summaries?: BamlQuestionSummary[]
+	research_question_answers?: BamlResearchQuestionAnswer[]
+	decision_question_answers?: BamlDecisionQuestionAnswer[]
 	global_goal_summary?: string | null
 	recommended_actions?: string[] | null
 }
@@ -212,10 +231,30 @@ export async function runEvidenceAnalysis({
 	)) as BamlAnalysisResponse
 
 	const evidenceResults = bamlResponse.evidence_results ?? []
-	const questionSummariesRaw = bamlResponse.question_summaries ?? []
-	const questionSummaries = questionSummariesRaw.filter((summary) =>
-		summary.question_kind === "decision" ? decisionMap.has(summary.question_id) : researchMap.has(summary.question_id)
-	)
+	const researchQuestionAnswers = bamlResponse.research_question_answers ?? []
+	const decisionQuestionAnswers = bamlResponse.decision_question_answers ?? []
+	
+	// Build question summaries from the new hierarchical structure
+	const questionSummaries: BamlQuestionSummary[] = [
+		...researchQuestionAnswers.map(rqa => ({
+			question_id: rqa.research_question_id,
+			question_kind: "research" as const,
+			decision_question_id: researchMap.get(rqa.research_question_id)?.decision_question_id ?? null,
+			confidence: rqa.confidence,
+			summary: rqa.findings.join("\n• "),
+			goal_achievement_summary: null,
+			next_steps: null,
+		})),
+		...decisionQuestionAnswers.map(dqa => ({
+			question_id: dqa.decision_question_id,
+			question_kind: "decision" as const,
+			decision_question_id: dqa.decision_question_id,
+			confidence: dqa.confidence,
+			summary: dqa.strategic_insight,
+			goal_achievement_summary: dqa.reasoning,
+			next_steps: dqa.recommended_actions.join("\n• "),
+		}))
+	]
 
 	const { data: runRow, error: runError } = await supabase
 		.from(PROJECT_RESEARCH_ANALYSIS_RUNS_TABLE)
@@ -275,20 +314,17 @@ export async function runEvidenceAnalysis({
 			totalLinksConsidered += 1
 			if (confidence < minConfidence) continue
 
+			// Evidence should only link to research questions, not decision questions directly
 			const questionKind = link.question_kind
-			if (questionKind === "decision" && !decisionMap.has(link.question_id)) continue
-			if (questionKind === "research" && !researchMap.has(link.question_id)) continue
+			if (questionKind === "decision") {
+				consola.warn("[research-analysis] Evidence linked directly to decision question - skipping", link.question_id)
+				continue
+			}
+			if (!researchMap.has(link.question_id)) continue
 
-			const researchQuestionId = questionKind === "research" ? link.question_id : null
-			const decisionQuestionId =
-				questionKind === "decision"
-					? link.question_id
-					: (link.decision_question_id ?? researchMap.get(link.question_id)?.decision_question_id ?? null)
-
-			const questionText =
-				questionKind === "decision"
-					? (decisionMap.get(link.question_id)?.text ?? "Untitled decision question")
-					: (researchMap.get(link.question_id)?.text ?? "Untitled research question")
+			const researchQuestionId = link.question_id
+			const decisionQuestionId = researchMap.get(link.question_id)?.decision_question_id ?? null
+			const questionText = researchMap.get(link.question_id)?.text ?? "Untitled research question"
 
 			const aggregateKey = buildAnswerKey({
 				questionKind,

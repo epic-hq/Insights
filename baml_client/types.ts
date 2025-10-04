@@ -362,6 +362,17 @@ export interface ContextualSuggestions {
   
 }
 
+export interface DecisionQuestionAnswer {
+  decision_question_id: string
+  strategic_insight: string
+  supporting_findings: string[]
+  research_question_ids: string[]
+  confidence: number
+  reasoning: string
+  recommended_actions: string[]
+  
+}
+
 export interface DecisionQuestionItem {
   id: string
   text: string
@@ -380,7 +391,8 @@ export interface DecisionQuestionOut {
 
 export interface EvidenceAnalysisResponse {
   evidence_results: EvidenceLinkResult[]
-  question_summaries: QuestionAnalysisSummary[]
+  research_question_answers: ResearchQuestionAnswer[]
+  decision_question_answers: DecisionQuestionAnswer[]
   global_goal_summary?: string | null
   recommended_actions: string[]
   
@@ -954,6 +966,15 @@ export interface ResearchPlanOut {
 export interface ResearchQuestion {
   question: string
   priority: number
+  
+}
+
+export interface ResearchQuestionAnswer {
+  research_question_id: string
+  findings: string[]
+  evidence_ids: string[]
+  confidence: number
+  reasoning: string
   
 }
 

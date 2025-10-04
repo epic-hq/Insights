@@ -6,6 +6,8 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "~/components/ui/tabs"
 
+const MAX_TOPIC_RESULTS = 120
+
 interface TranscriptData {
 	id: string
 	text: string
@@ -142,7 +144,8 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 			.join("\n")
 
 		result += "\n\nDetailed Results:\n"
-		result += data?.iab_categories_result?.results
+		result += (data?.iab_categories_result?.results || [])
+			.slice(0, MAX_TOPIC_RESULTS)
 			.map((item) => {
 				const labels = item.labels
 					.slice(0, 5)
@@ -158,6 +161,9 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 	const topCategories = Object.entries(data?.iab_categories_result?.summary || {})
 		.sort(([, a], [, b]) => b - a)
 		.slice(0, 10)
+	const topicResults = (data?.iab_categories_result?.results || []).slice(0, MAX_TOPIC_RESULTS)
+	const totalTopicResults = data?.iab_categories_result?.results?.length || 0
+	const truncatedTopics = totalTopicResults > topicResults.length
 
 	// Check if we have formatted data or need to fall back to raw transcript
 	const hasFormattedData = data?.utterances && data.utterances.length > 0
@@ -297,7 +303,7 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 										</div>
 									</div>
 
-									{(data?.iab_categories_result?.results || []).map((result, index) => (
+									{topicResults.map((result, index) => (
 										<div key={index} className="rounded-lg border p-4">
 											<p className="mb-3 text-foreground">{result.text}</p>
 											<div className="flex flex-wrap gap-2">
@@ -309,6 +315,11 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 											</div>
 										</div>
 									))}
+									{truncatedTopics && (
+										<p className="text-muted-foreground text-xs">
+											Showing first {topicResults.length.toLocaleString()} of {totalTopicResults.toLocaleString()} topic matches.
+										</p>
+									)}
 								</div>
 							</CardContent>
 						</Card>

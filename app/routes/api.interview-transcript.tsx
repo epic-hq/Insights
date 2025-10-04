@@ -1,6 +1,7 @@
 import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
 import { getServerClient } from "~/lib/supabase/server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
@@ -42,10 +43,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			throw new Response("Interview not found", { status: 404 })
 		}
 
+		const sanitizedFormatted = transcriptData.transcript_formatted
+			? safeSanitizeTranscriptPayload(transcriptData.transcript_formatted, { omitFullTranscript: true })
+			: safeSanitizeTranscriptPayload(null, { omitFullTranscript: true })
+
 		// Return only transcript data to minimize payload
 		const response = {
 			transcript: transcriptData.transcript,
-			transcript_formatted: transcriptData.transcript_formatted,
+			transcript_formatted: sanitizedFormatted,
 		}
 
 		consola.info("Returning transcript response:", {

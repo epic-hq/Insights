@@ -69,9 +69,28 @@ export function LazyTranscriptResults({
 
 			const processedData: TranscriptData = {
 				text: data.transcript || "",
-				utterances: data.transcript_formatted?.speaker_transcripts || [],
+				utterances: (data.transcript_formatted?.speaker_transcripts || []).map((item: any) => ({
+					speaker: typeof item.speaker === "string" ? item.speaker : "",
+					text: typeof item.text === "string" ? item.text : "",
+					confidence: typeof item.confidence === "number" ? item.confidence : 0,
+					start:
+						typeof item.start === "number"
+							? item.start
+							: typeof item.start_time === "number"
+								? item.start_time
+								: 0,
+					end:
+						typeof item.end === "number"
+							? item.end
+							: typeof item.end_time === "number"
+								? item.end_time
+								: typeof item.start === "number"
+								?
+									item.start
+								: 0,
+				})),
 				iab_categories_result: data.transcript_formatted?.topic_detection,
-				sentiment_analysis_results: data.transcript_formatted?.sentiment_analysis,
+				sentiment_analysis_results: data.transcript_formatted?.sentiment_analysis_results,
 			}
 			setTranscriptData(processedData)
 			setIsLoaded(true)

@@ -9,6 +9,7 @@ import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 // Accept both legacy (icp/role/goal) and new snake_case onboarding payloads
 type LegacyOnboardingData = {
@@ -263,14 +264,14 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "Text file is empty" }, { status: 400 })
 			}
 
-			const transcriptData = {
+			const transcriptData = safeSanitizeTranscriptPayload({
 				full_transcript: textContent.trim(),
 				confidence: 1.0,
 				audio_duration: null,
 				processing_duration: 0,
 				file_type: "text",
 				original_filename: file.name,
-			}
+			})
 
 			// Skip upload queue, go directly to analysis - use admin client to bypass RLS
 			const { error: analysisJobError } = await supabaseAdmin.from("analysis_jobs").insert({

@@ -63,6 +63,24 @@ class EvidenceQuestionLink {
   next_steps string?
 }
 
+class ResearchQuestionAnswer {
+  research_question_id string
+  findings string[] @description("2-5 specific findings from evidence, each a clear statement")
+  evidence_ids string[] @description("IDs of evidence that support these findings")
+  confidence float
+  reasoning string @description("Brief explanation of how evidence supports these findings")
+}
+
+class DecisionQuestionAnswer {
+  decision_question_id string
+  strategic_insight string @description("High-level strategic answer synthesized from research findings")
+  supporting_findings string[] @description("Key findings from research questions that inform this decision")
+  research_question_ids string[] @description("IDs of research questions that contributed to this answer")
+  confidence float
+  reasoning string @description("How the research findings lead to this strategic insight")
+  recommended_actions string[] @description("Specific next steps based on this insight")
+}
+
 class EvidenceLinkResult {
   evidence_id string
   links EvidenceQuestionLink[]
@@ -80,7 +98,8 @@ class QuestionAnalysisSummary {
 
 class EvidenceAnalysisResponse {
   evidence_results EvidenceLinkResult[]
-  question_summaries QuestionAnalysisSummary[]
+  research_question_answers ResearchQuestionAnswer[] @description("Evidence-based findings for each research question")
+  decision_question_answers DecisionQuestionAnswer[] @description("Strategic insights synthesized from research findings")
   global_goal_summary string?
   recommended_actions string[]
 }
@@ -164,22 +183,35 @@ function LinkEvidenceToResearchStructure(
     {{ custom_instructions }}
 
     TASK REQUIREMENTS:
-    1. For each evidence item, evaluate which questions it meaningfully addresses.
-       - Allow multiple matches per evidence when justified.
-       - Provide relationship (supports/refutes/neutral) and a numeric confidence 0.0 – 1.0.
-       - Summarize the answer in plain language (<= 2 sentences) tied to the evidence.
-       - Include a concise rationale referencing key phrases from the evidence (<= 220 chars).
-       - Suggest targeted next steps when helpful (follow-up interviews, data sources, personas, etc.). Use null when none.
-
-    2. Produce per-question rollups combining all evidence impacts:
-       - Give an overall confidence 0.0 – 1.0 based on coverage and agreement of evidence.
-       - Provide a short summary of what we now know.
-       - For decision questions, optionally populate goal_achievement_summary (how close we are to answering the decision).
-       - Suggest next steps (or null) to close remaining gaps.
-
-    3. Provide project-wide guidance:
-       - global_goal_summary: status of overall goal confidence.
-       - recommended_actions: 1-3 bullet strings for the project team.
+    
+    PHASE 1 - EVIDENCE TO RESEARCH QUESTIONS:
+    1. For each evidence item, link it to relevant RESEARCH questions only (not decision questions):
+       - Provide relationship (supports/refutes/neutral) and confidence 0.0 – 1.0
+       - Summarize what this evidence tells us (<= 2 sentences)
+       - Include rationale referencing key phrases from evidence (<= 220 chars)
+       - Suggest next steps when helpful
+    
+    PHASE 2 - RESEARCH QUESTION ANSWERS:
+    2. For each research question, synthesize all linked evidence into findings:
+       - Generate 2-5 specific, evidence-based findings (clear statements, not questions)
+       - List evidence IDs that support each finding
+       - Provide overall confidence based on evidence strength and agreement
+       - Explain reasoning: how the evidence supports these findings
+       - Example finding: "Users are willing to pay for interview assistance tools (5 mentions across 3 interviews)"
+    
+    PHASE 3 - DECISION QUESTION SYNTHESIS:
+    3. For each decision question, synthesize insights from its research questions:
+       - Create ONE strategic insight that answers the decision (not a list of evidence)
+       - Extract key findings from research questions that inform this decision
+       - List research question IDs that contributed
+       - Provide confidence based on research question coverage
+       - Explain reasoning: how research findings lead to this strategic answer
+       - Recommend 2-4 specific actions based on this insight
+       - Example insight: "Adopt freemium model with premium interview features" (NOT "Users mentioned tools" - that's RQ-level)
+    
+    4. Provide project-wide guidance:
+       - global_goal_summary: overall progress toward research goal
+       - recommended_actions: 2-4 high-level actions for the project team
 
     OUTPUT RULES:
     - Return valid JSON matching EvidenceAnalysisResponse exactly.

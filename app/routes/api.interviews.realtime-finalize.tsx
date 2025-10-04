@@ -1,6 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { userContext } from "~/server/user-context"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	try {
@@ -23,7 +24,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		}
 
 		// Create transcript data object matching expected format
-		const formattedTranscriptData = {
+		const formattedTranscriptData = safeSanitizeTranscriptPayload({
 			full_transcript: transcript || "",
 			confidence: 0.8, // Default confidence for realtime
 			audio_duration: audioDuration || null,
@@ -32,15 +33,18 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			original_filename: `realtime-${interviewId}`,
 			speaker_transcripts: [],
 			topic_detection: {},
-		}
+		})
+		const incomingSanitized = transcriptFormatted
+			? safeSanitizeTranscriptPayload(transcriptFormatted)
+			: null
 
 		const update: Record<string, any> = {
 			status: "transcribed",
 			updated_at: new Date().toISOString(),
 		}
 		if (typeof transcript === "string") update.transcript = transcript
-		if (transcriptFormatted) {
-			update.transcript_formatted = transcriptFormatted
+		if (incomingSanitized) {
+			update.transcript_formatted = incomingSanitized
 		} else if (transcript) {
 			update.transcript_formatted = formattedTranscriptData
 		}
@@ -67,7 +71,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 				await createAndProcessAnalysisJob({
 					interviewId,
-					transcriptData: update.transcript_formatted || formattedTranscriptData,
+					transcriptData: incomingSanitized ?? formattedTranscriptData,
 					customInstructions: "",
 					adminClient,
 					mediaUrl,

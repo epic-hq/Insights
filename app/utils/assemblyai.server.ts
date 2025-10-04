@@ -1,6 +1,8 @@
 import { env } from "node:process"
 import consola from "consola"
 
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+
 const ASSEMBLY_API_URL = "https://api.assemblyai.com/v2"
 
 // Upload a remote file to AssemblyAI then transcribe
@@ -81,22 +83,29 @@ export async function transcribeAudioFromUrl(url: string): Promise<Record<string
 		const data = (await statusResp.json()) as any
 		if (data.status === "completed") {
 			// consola.log("AssemblyAI transcription completed")
-			const transcriptionData = {
+			const sanitized = safeSanitizeTranscriptPayload({
 				assembly_id: data.id,
 				full_transcript: data.text || "",
 				speaker_transcripts: data.utterances || [],
-				sentiment_analysis: data.sentiment_analysis_results || [],
+				sentiment_analysis_results: data.sentiment_analysis_results || [],
 				topic_detection: data.iab_categories_result || {},
 				language_code: data.language_code,
 				confidence: data.confidence,
 				audio_duration: data.audio_duration,
 				word_count: data.words?.length || 0,
-				speaker_count: data.utterances ? new Set(data.utterances.map((u) => u.speaker)).size : 0,
+				speaker_count: data.utterances ? new Set(data.utterances.map((u: any) => u.speaker)).size : 0,
 				is_processed: true, // Mark as successfully processed
 				processed_at: new Date().toISOString(), // Set processing timestamp
-			}
-			consola.log("Transcription completed", transcriptionData)
-			return transcriptionData
+				auto_chapters: data.auto_chapters || data.chapters || [],
+				original_filename: data.audio_url || null,
+			})
+			consola.log("Transcription completed", {
+				audio_duration: sanitized.audio_duration,
+				word_count: sanitized.word_count,
+				speaker_segments: sanitized.speaker_transcripts.length,
+				topic_results: sanitized.topic_detection?.results?.length ?? 0,
+			})
+			return sanitized
 		}
 		if (data.status === "error") {
 			throw new Error(`Transcription error: ${data.error}`)

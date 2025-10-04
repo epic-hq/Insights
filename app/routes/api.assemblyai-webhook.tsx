@@ -2,6 +2,7 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import type { Database, Json } from "~/../supabase/types"
 import { createSupabaseAdminClient } from "~/lib/supabase/server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 interface AssemblyAIWebhookPayload {
 	transcript_id: string
@@ -82,17 +83,20 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.log("Audio file already stored during upload - skipping AssemblyAI download")
 
 			// Create transcript data object matching expected format
-			const formattedTranscriptData = {
+			const formattedTranscriptData = safeSanitizeTranscriptPayload({
 				full_transcript: transcriptData.text,
 				confidence: transcriptData.confidence,
 				audio_duration: transcriptData.audio_duration,
 				processing_duration: 0,
 				file_type: "audio",
-				assemblyai_id: payload.transcript_id,
+				assembly_id: payload.transcript_id,
 				original_filename: uploadJob.file_name,
 				speaker_transcripts: transcriptData.utterances || [],
 				topic_detection: transcriptData.iab_categories_result || {},
-			}
+				sentiment_analysis_results: transcriptData.sentiment_analysis_results || [],
+				auto_chapters: transcriptData.auto_chapters || transcriptData.chapters || [],
+				language_code: transcriptData.language_code,
+			})
 
 			// Update interview with transcript data - set to transcribed first
 			const updateData: Database["public"]["Tables"]["interviews"]["Update"] = {

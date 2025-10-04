@@ -9,6 +9,7 @@ import consola from "consola"
 import { b } from "~/../baml_client"
 import type { FacetCatalog, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
 import type { Database, Json } from "~/../supabase/types"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
@@ -711,7 +712,7 @@ export async function processInterviewTranscriptWithAdminClient({
 export async function processInterviewTranscriptWithClient({
 	metadata,
 	mediaUrl,
-	transcriptData,
+	transcriptData: rawTranscriptData,
 	userCustomInstructions,
 	client: db,
 	existingInterviewId,
@@ -723,6 +724,8 @@ export async function processInterviewTranscriptWithClient({
 	client: SupabaseClient<Database>
 	existingInterviewId?: string
 }): Promise<ProcessingResult> {
+	const sanitizedTranscriptData = safeSanitizeTranscriptPayload(rawTranscriptData)
+	const transcriptData = sanitizedTranscriptData as unknown as Record<string, unknown>
 	if (metadata.projectId) {
 		const { data: projectRow } = await db
 			.from("projects")
@@ -741,9 +744,9 @@ export async function processInterviewTranscriptWithClient({
 	}
 
 	// 1. Ensure we have an interview record to attach artifacts to
-	const fullTranscript = transcriptData.full_transcript as string
+	const fullTranscript = (sanitizedTranscriptData.full_transcript ?? "") as string
 	let interviewRecord: Interview
-	consola.log("assembly audio_duration ", (transcriptData as any).audio_duration)
+	consola.log("assembly audio_duration ", sanitizedTranscriptData.audio_duration)
 	if (existingInterviewId) {
 		// Update existing interview and reuse it
 		const { data: existing, error: fetchErr } = await db
@@ -759,8 +762,8 @@ export async function processInterviewTranscriptWithClient({
 			.update({
 				status: "processing",
 				transcript: fullTranscript,
-				transcript_formatted: transcriptData as unknown as Json,
-				duration_sec: (transcriptData as any).audio_duration,
+				transcript_formatted: sanitizedTranscriptData as unknown as Json,
+				duration_sec: sanitizedTranscriptData.audio_duration ?? null,
 			})
 			.eq("id", existingInterviewId)
 			.select("*")
@@ -780,8 +783,8 @@ export async function processInterviewTranscriptWithClient({
 			segment: metadata.segment || null,
 			media_url: mediaUrl || null,
 			transcript: fullTranscript,
-			transcript_formatted: transcriptData as unknown as Json,
-			duration_sec: (transcriptData as any).audio_duration,
+			transcript_formatted: sanitizedTranscriptData as unknown as Json,
+			duration_sec: sanitizedTranscriptData.audio_duration ?? null,
 			status: "processing" as const,
 		} as InterviewInsert
 

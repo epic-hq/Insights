@@ -2,6 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { Database } from "~/../supabase/types"
 import { type InterviewMetadata, processInterviewTranscriptWithClient } from "~/utils/processInterview.server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 interface RegenerateEvidenceOptions {
 	supabase: SupabaseClient<Database>
@@ -41,21 +42,22 @@ export async function regenerateEvidenceForProject({
 
 	for (const interview of interviews as Array<Database["public"]["Tables"]["interviews"]["Row"]>) {
 		try {
-			const rawTranscriptData = (interview.transcript_formatted as Record<string, unknown> | null) ?? {}
-			const transcriptData: Record<string, unknown> = { ...rawTranscriptData }
-			const fullTranscript =
-				typeof transcriptData.full_transcript === "string" && transcriptData.full_transcript.trim().length
-					? transcriptData.full_transcript
-					: (interview.transcript ?? "")
+			const sanitized = safeSanitizeTranscriptPayload(interview.transcript_formatted)
+			const fullTranscriptCandidate =
+				typeof sanitized.full_transcript === "string" && sanitized.full_transcript.trim().length
+					? sanitized.full_transcript
+					: interview.transcript ?? ""
 
-			if (!fullTranscript.trim().length) {
+			if (!fullTranscriptCandidate.trim().length) {
 				skipped += 1
 				continue
 			}
 
-			transcriptData.full_transcript = fullTranscript
-			if (!transcriptData.language) {
-				transcriptData.language = (transcriptData as { detected_language?: string }).detected_language || "en"
+			const transcriptData: Record<string, unknown> = {
+				...sanitized,
+				full_transcript: fullTranscriptCandidate,
+				language:
+					sanitized.language || sanitized.language_code || (sanitized as unknown as { detected_language?: string }).detected_language || "en",
 			}
 
 			await supabase.from("evidence").delete().eq("interview_id", interview.id)

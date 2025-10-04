@@ -43,11 +43,13 @@ export default class TypeBuilder {
     
     ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles" | "interview_questions">;
     
+    DecisionQuestionAnswer: ClassViewer<'DecisionQuestionAnswer', "decision_question_id" | "strategic_insight" | "supporting_findings" | "research_question_ids" | "confidence" | "reasoning" | "recommended_actions">;
+    
     DecisionQuestionItem: ClassViewer<'DecisionQuestionItem', "id" | "text" | "rationale">;
     
     DecisionQuestionOut: ClassViewer<'DecisionQuestionOut', "id" | "text" | "rationale" | "key_metrics" | "risks_if_wrong">;
     
-    EvidenceAnalysisResponse: ClassViewer<'EvidenceAnalysisResponse', "evidence_results" | "question_summaries" | "global_goal_summary" | "recommended_actions">;
+    EvidenceAnalysisResponse: ClassViewer<'EvidenceAnalysisResponse', "evidence_results" | "research_question_answers" | "decision_question_answers" | "global_goal_summary" | "recommended_actions">;
     
     EvidenceExtraction: ClassViewer<'EvidenceExtraction', "people" | "evidence" | "facet_catalog_version">;
     
@@ -153,6 +155,8 @@ export default class TypeBuilder {
     
     ResearchQuestion: ClassViewer<'ResearchQuestion', "question" | "priority">;
     
+    ResearchQuestionAnswer: ClassViewer<'ResearchQuestionAnswer', "research_question_id" | "findings" | "evidence_ids" | "confidence" | "reasoning">;
+    
     ResearchQuestionItem: ClassViewer<'ResearchQuestionItem', "id" | "text" | "rationale" | "decision_question_id">;
     
     ResearchQuestionOut: ClassViewer<'ResearchQuestionOut', "id" | "dq_id" | "text" | "rationale" | "evidence_types" | "suggested_methods">;
@@ -184,7 +188,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -224,6 +228,10 @@ export default class TypeBuilder {
           "decision_questions","assumptions","unknowns","organizations","roles","interview_questions",
         ]);
         
+        this.DecisionQuestionAnswer = this.tb.classViewer("DecisionQuestionAnswer", [
+          "decision_question_id","strategic_insight","supporting_findings","research_question_ids","confidence","reasoning","recommended_actions",
+        ]);
+        
         this.DecisionQuestionItem = this.tb.classViewer("DecisionQuestionItem", [
           "id","text","rationale",
         ]);
@@ -233,7 +241,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceAnalysisResponse = this.tb.classViewer("EvidenceAnalysisResponse", [
-          "evidence_results","question_summaries","global_goal_summary","recommended_actions",
+          "evidence_results","research_question_answers","decision_question_answers","global_goal_summary","recommended_actions",
         ]);
         
         this.EvidenceExtraction = this.tb.classViewer("EvidenceExtraction", [
@@ -442,6 +450,10 @@ export default class TypeBuilder {
         
         this.ResearchQuestion = this.tb.classViewer("ResearchQuestion", [
           "question","priority",
+        ]);
+        
+        this.ResearchQuestionAnswer = this.tb.classViewer("ResearchQuestionAnswer", [
+          "research_question_id","findings","evidence_ids","confidence","reasoning",
         ]);
         
         this.ResearchQuestionItem = this.tb.classViewer("ResearchQuestionItem", [

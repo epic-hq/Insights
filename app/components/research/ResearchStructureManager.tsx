@@ -330,13 +330,13 @@ export function ResearchStructureManager({
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<div>
-							<Label className="font-medium text-sm">Research Goal</Label>
-							<p className="text-muted-foreground text-sm">{research_goal}</p>
+							<Label className="font-medium text-muted-foreground text-sm">Research Goal</Label>
+							<p className="text-foreground text-md">{research_goal}</p>
 						</div>
 						{target_roles && (
 							<div>
-								<Label className="font-medium text-sm">Target Roles</Label>
-								<p className="text-muted-foreground text-sm">{target_roles}</p>
+								<Label className="font-medium text-muted-foreground text-sm">Target Roles</Label>
+								<p className="text-foreground text-md">{target_roles}</p>
 							</div>
 						)}
 					</CardContent>

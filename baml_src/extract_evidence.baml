@@ -138,12 +138,11 @@ Your task is to extract sequential evidence from an interview transcript so the 
 5. For each participant, synthesize high-signal facet + scale observations using the provided `facet_catalog`; link each observation back to the supporting evidence.
 
 ## Participant Profiles & Demographics
-- Capture explicit demographic attributes for each participant: job title, seniority, team/discipline, tenure, geography, pronouns/gender (only when stated), and organization.
+- Capture explicit demographic attributes for each participant: job title, role, seniority, team/discipline, tenure, geography, and organization.
 - Populate `people[].summary` with a 1–2 sentence snapshot describing who they are, the work they do, and the context of their responsibilities.
 - Use `people[].personas` and `people[].segments` to reflect any persona or segment labels mentioned or implied by the transcript.
 - When the transcript reveals responsibilities or repeated activities, add `task` facets capturing those workflows.
 - Prefer matching existing catalog entries for demographic/task facets (`kind_slug` such as `demographic`, `task`, `workflow`, `preference`, `value`). Emit new `candidate` entries only when no confident match exists.
-- Record gender, pronouns, or other sensitive attributes only when the participant states them explicitly.
 
 ## Selection Priorities
 High-severity pains, frequent behaviors, explicit goals, success criteria.

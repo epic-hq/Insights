@@ -448,13 +448,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
 					<div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 shadow-lg">
 						<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						<p className="font-medium text-sm">
-							{isProcessing ? "Analyzing interview..." : "Processing..."}
-						</p>
+						<p className="font-medium text-sm">{isProcessing ? "Analyzing interview..." : "Processing..."}</p>
 					</div>
 				</div>
 			)}
-			
+
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8 ">
 				<div className="flex-1 space-y-6">
 					{/* Streamlined Header */}
@@ -602,8 +600,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<button
 										onClick={() => setActiveTab("pains-gains")}
 										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "pains-gains"
-											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
@@ -618,8 +616,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<button
 										onClick={() => setActiveTab("user-actions")}
 										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "user-actions"
-											? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-											: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
+												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
+												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
 											}`}
 									>
 										<div className="flex items-center justify-center gap-2">
@@ -1127,8 +1125,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													</div>
 												</div>
 												{participant.transcript_key && (
-													<Badge variant="secondary" className="text-xs uppercase">
-														Speaker {participant.transcript_key}
+													<Badge variant="secondary" className="text-foreground/60 text-xs">
+														{participant.transcript_key}
 													</Badge>
 												)}
 											</Link>

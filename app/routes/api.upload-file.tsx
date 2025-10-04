@@ -8,6 +8,7 @@ import { userContext } from "~/server/user-context"
 import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 // Remix action to handle multipart/form-data file uploads, stream the file to
 // AssemblyAI's /upload endpoint, then run the existing transcript->insights pipeline.
@@ -68,12 +69,12 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			}
 
 			// Create transcript data object matching expected format
-			transcriptData = {
+			transcriptData = safeSanitizeTranscriptPayload({
 				full_transcript: textContent.trim(),
 				audio_duration: null, // No audio duration for text files
 				file_type: "text",
 				original_filename: file.name,
-			}
+			})
 			mediaUrl = "" // No media URL for text files
 
 			consola.log(

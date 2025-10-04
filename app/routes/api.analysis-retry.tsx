@@ -2,13 +2,14 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import type { Json } from "~/../supabase/types"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/server"
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
-	consola.log("Analysis retry API called ", request)
+	consola.log("Analysis retry API called ")
 	const formData = await request.formData()
 	const interviewId = formData.get("interview_id")
 	const customInstructions = formData.get("custom_instructions")
@@ -21,7 +22,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })
 		}
 		const userId = claims.sub
-		
+
 		const { client: userDb } = getServerClient(request)
 
 		consola.log("Analysis retry API called ", interviewId, customInstructions)
@@ -47,7 +48,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			)
 		}
 
-		const formattedTranscriptData = interview.transcript_formatted as Record<string, unknown>
+		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted)
 
 		// Create a new analysis job
 		const admin = createSupabaseAdminClient()
@@ -89,7 +90,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			await processInterviewTranscriptWithAdminClient({
 				metadata,
 				mediaUrl: interview.media_url || "",
-				transcriptData: formattedTranscriptData,
+				transcriptData: formattedTranscriptData as unknown as Record<string, unknown>,
 				userCustomInstructions: customInstructions,
 				adminClient: admin,
 				existingInterviewId: interviewId,
