@@ -2,7 +2,7 @@ import { RuntimeContext } from "@mastra/core/di"
 import { Memory } from "@mastra/memory"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getLangfuseClient } from "~/lib/langfuse"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { mastra } from "~/mastra"
 import { memory } from "~/mastra/memory"
@@ -66,11 +66,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		clientTools: tools ? frontendTools(tools) : undefined,
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 		onFinish: (data) => consola.log("project-setup onFinish", data),
 	})

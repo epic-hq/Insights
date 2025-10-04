@@ -1,4 +1,4 @@
-import { getLangfuseClient } from "~/lib/langfuse"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 
 type Input = Parameters<typeof fetch>[0]
 type Init = Parameters<typeof fetch>[1]
@@ -20,6 +20,6 @@ export async function observedFetch(input: Input, init?: Init) {
 		throw e
 	} finally {
 		gen?.end?.()
-		;(trace as any).end?.()
+			; (trace as any).end?.()
 	}
 }

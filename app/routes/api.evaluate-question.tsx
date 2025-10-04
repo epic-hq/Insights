@@ -1,5 +1,5 @@
 import type { ActionFunctionArgs } from "react-router"
-import { getLangfuseClient } from "~/lib/langfuse"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { b } from "../../baml_client"
 
 export const action = async ({ request }: ActionFunctionArgs) => {

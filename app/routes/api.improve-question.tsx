@@ -1,7 +1,7 @@
 import { b } from "baml_client"
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
-import { getLangfuseClient } from "~/lib/langfuse"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/server"
 
 export async function action({ request }: ActionFunctionArgs) {

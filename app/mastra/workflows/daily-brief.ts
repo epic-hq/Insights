@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { getInsights } from "~/features/insights/db"
-import { getLangfuseClient } from "~/lib/langfuse"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import type { SupabaseClient } from "~/types"
 import { llmAgent } from "../agents/llmAgent"
 

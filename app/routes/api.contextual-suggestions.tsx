@@ -1,6 +1,6 @@
 import { b } from "baml_client"
 import type { ActionFunctionArgs } from "react-router"
-import { getLangfuseClient } from "~/lib/langfuse"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { userContext } from "~/server/user-context"
 
 export async function action({ request, context }: ActionFunctionArgs) {
