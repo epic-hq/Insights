@@ -1,10 +1,11 @@
 import consola from "consola"
-import { Eye, X } from "lucide-react"
+import { Eye, Filter, X } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { Link } from "react-router"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Checkbox } from "~/components/ui/checkbox"
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
@@ -31,6 +32,7 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 	const [allQuestions, setAllQuestions] = useState<MinimalQuestion[]>([])
 	const [loading, setLoading] = useState(true)
 	const [savingIds, setSavingIds] = useState<Set<string>>(new Set())
+	const [mustHavesOnly, setMustHavesOnly] = useState(false)
 
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
@@ -141,11 +143,19 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 		[updateStatus]
 	)
 
-	const answeredCount = allQuestions.filter((q) => q.status === "answered").length
-	const totalCount = allQuestions.length
+	const filteredQuestions = useMemo(() => {
+		if (mustHavesOnly) {
+			return allQuestions.filter((q) => q.isMustHave)
+		}
+		return allQuestions
+	}, [allQuestions, mustHavesOnly])
+
+	const answeredCount = filteredQuestions.filter((q) => q.status === "answered").length
+	const totalCount = filteredQuestions.length
+	const mustHaveCount = allQuestions.filter((q) => q.isMustHave).length
 
 	const renderedQuestions = useMemo<JSX.Element[]>(() => {
-		return allQuestions.map((q, idx) => {
+		return filteredQuestions.map((q, idx) => {
 			const isUpdating = savingIds.has(q.projectAnswerId)
 			return (
 				<div
@@ -213,20 +223,42 @@ export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionV
 				</div>
 			)
 		})
-	}, [allQuestions, markDone, savingIds, skip, unhide, unmarkDone])
+	}, [filteredQuestions, markDone, savingIds, skip, unhide, unmarkDone])
 
 	return (
 		<Card className="flex h-full flex-col border-0 px-0 md:border md:px-4">
 			<CardHeader className="flex-shrink-0 px-2 sm:px-2 md:px-2">
-				<CardTitle className="flex items-center justify-between pr-2">
+				<CardTitle className="flex items-center justify-between gap-2 pr-2">
 					<span>Prompts</span>
-					<div className="flex items-center gap-2 text-muted-foreground text-sm">
-						{savingIds.size > 0 && <span>Saving…</span>}
-						{totalCount > 0 && (
-							<span>
-								{answeredCount} of {totalCount}
-							</span>
+					<div className="flex items-center gap-2">
+						{mustHaveCount > 0 && (
+							<TooltipProvider>
+								<Tooltip>
+									<TooltipTrigger asChild>
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => setMustHavesOnly(!mustHavesOnly)}
+											className={mustHavesOnly ? "border-orange-200 bg-orange-50" : ""}
+										>
+											<Filter className="h-4 w-4" />
+											<span className="ml-1 hidden sm:inline">{mustHavesOnly ? "Show All" : "Filter"}</span>
+										</Button>
+									</TooltipTrigger>
+									<TooltipContent>
+										{mustHavesOnly ? "Show all questions" : "Show only must-have questions"}
+									</TooltipContent>
+								</Tooltip>
+							</TooltipProvider>
 						)}
+						<div className="flex items-center gap-2 text-muted-foreground text-sm">
+							{savingIds.size > 0 && <span>Saving…</span>}
+							{totalCount > 0 && (
+								<span>
+									{answeredCount} of {totalCount}
+								</span>
+							)}
+						</div>
 					</div>
 				</CardTitle>
 			</CardHeader>
