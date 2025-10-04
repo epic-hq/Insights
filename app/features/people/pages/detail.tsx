@@ -82,32 +82,32 @@ export default function PersonDetail() {
 		return map
 	}, [catalog])
 
-const personFacets = useMemo(() => {
-	return (person.person_facet ?? []).map((row) => {
-		const meta = facetsByRef.get(row.facet_ref)
-		return {
-			facet_ref: row.facet_ref,
-			label: meta?.alias || meta?.label || row.facet_ref,
-			kind_slug: meta?.kind_slug || "",
-			source: row.source || null,
-			confidence: row.confidence ?? null,
-		}
-	})
-}, [person.person_facet, facetsByRef])
+	const personFacets = useMemo(() => {
+		return (person.person_facet ?? []).map((row) => {
+			const meta = facetsByRef.get(row.facet_ref)
+			return {
+				facet_ref: row.facet_ref,
+				label: meta?.alias || meta?.label || row.facet_ref,
+				kind_slug: meta?.kind_slug || "",
+				source: row.source || null,
+				confidence: row.confidence ?? null,
+			}
+		})
+	}, [person.person_facet, facetsByRef])
 
-const facetsGrouped = useMemo(() => {
-	const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]))
-	const groups = new Map<string, { label: string; facets: typeof personFacets }>()
-	for (const facet of personFacets) {
-		const key = facet.kind_slug || "other"
-		const label = kindLabelMap.get(facet.kind_slug) ?? (facet.kind_slug || "Other")
-		if (!groups.has(key)) {
-			groups.set(key, { label, facets: [] })
+	const facetsGrouped = useMemo(() => {
+		const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]))
+		const groups = new Map<string, { label: string; facets: typeof personFacets }>()
+		for (const facet of personFacets) {
+			const key = facet.kind_slug || "other"
+			const label = kindLabelMap.get(facet.kind_slug) ?? (facet.kind_slug || "Other")
+			if (!groups.has(key)) {
+				groups.set(key, { label, facets: [] })
+			}
+			groups.get(key)!.facets.push(facet)
 		}
-		groups.get(key)!.facets.push(facet)
-	}
-	return Array.from(groups.entries()).map(([slug, value]) => ({ kind_slug: slug, ...value }))
-}, [personFacets, catalog.kinds])
+		return Array.from(groups.entries()).map(([slug, value]) => ({ kind_slug: slug, ...value }))
+	}, [personFacets, catalog.kinds])
 
 	const personScales = useMemo(() => {
 		return (person.person_scale ?? []).map((row) => ({
@@ -163,43 +163,42 @@ const facetsGrouped = useMemo(() => {
 			{/* Interview History & Stats */}
 			<div className="grid gap-8 lg:grid-cols-3">
 				<div className="space-y-4 lg:col-span-2">
-
-		{facetsGrouped.length > 0 ? (
-			<motion.div
-				className="rounded-xl border bg-background p-6"
-				initial={{ opacity: 0, y: 16 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.2, duration: 0.4 }}
-			>
-				<h3 className="mb-4 font-semibold">Facets</h3>
-				<div className="space-y-3">
-					{facetsGrouped.map((group) => (
-						<div key={group.kind_slug}>
-							<div className="mb-1 text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-								{group.label}
-							</div>
-							<div className="flex flex-wrap gap-2">
-								{group.facets.map((facet) => (
-									<Badge key={`${person.id}-${facet.facet_ref}`} variant="secondary" className="capitalize">
-										{facet.label}
-									</Badge>
+					{facetsGrouped.length > 0 ? (
+						<motion.div
+							className="rounded-xl border bg-background p-6"
+							initial={{ opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.2, duration: 0.4 }}
+						>
+							<h3 className="mb-4 font-semibold">Facets</h3>
+							<div className="space-y-3">
+								{facetsGrouped.map((group) => (
+									<div key={group.kind_slug}>
+										<div className="mb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
+											{group.label}
+										</div>
+										<div className="flex flex-wrap gap-2">
+											{group.facets.map((facet) => (
+												<Badge key={`${person.id}-${facet.facet_ref}`} variant="secondary" className="capitalize">
+													{facet.label}
+												</Badge>
+											))}
+										</div>
+									</div>
 								))}
 							</div>
-						</div>
-					))}
-				</div>
-			</motion.div>
-		) : (
-			<motion.div
-				className="rounded-xl border bg-background p-6"
-				initial={{ opacity: 0, y: 16 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ delay: 0.2, duration: 0.4 }}
-			>
-				<h3 className="mb-4 font-semibold">Facets</h3>
-				<p className="text-sm text-muted-foreground">No facets assigned yet.</p>
-			</motion.div>
-		)}
+						</motion.div>
+					) : (
+						<motion.div
+							className="rounded-xl border bg-background p-6"
+							initial={{ opacity: 0, y: 16 }}
+							animate={{ opacity: 1, y: 0 }}
+							transition={{ delay: 0.2, duration: 0.4 }}
+						>
+							<h3 className="mb-4 font-semibold">Facets</h3>
+							<p className="text-muted-foreground text-sm">No facets assigned yet.</p>
+						</motion.div>
+					)}
 					<div className="h-4">
 						{personScales.length > 0 && (
 							<motion.div

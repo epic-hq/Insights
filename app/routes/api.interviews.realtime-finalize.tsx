@@ -34,9 +34,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			speaker_transcripts: [],
 			topic_detection: {},
 		})
-		const incomingSanitized = transcriptFormatted
-			? safeSanitizeTranscriptPayload(transcriptFormatted)
-			: null
+		const incomingSanitized = transcriptFormatted ? safeSanitizeTranscriptPayload(transcriptFormatted) : null
 
 		const update: Record<string, any> = {
 			status: "transcribed",

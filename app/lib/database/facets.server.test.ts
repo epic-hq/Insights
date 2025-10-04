@@ -17,10 +17,25 @@ describe("facets.server", () => {
 				{ id: 2, slug: "pain", label: "Pain", updated_at: "2025-01-02T00:00:00.000Z" },
 			]
 			const globalRows = [
-				{ id: 11, kind_id: 1, slug: "goal_speed", label: "Speed Up", synonyms: ["faster"], updated_at: "2025-01-03T00:00:00.000Z" },
+				{
+					id: 11,
+					kind_id: 1,
+					slug: "goal_speed",
+					label: "Speed Up",
+					synonyms: ["faster"],
+					updated_at: "2025-01-03T00:00:00.000Z",
+				},
 			]
 			const accountRows = [
-				{ id: 21, kind_id: 2, global_facet_id: null, slug: "pain_manual", label: "Manual Work", synonyms: ["tedious"], updated_at: "2025-01-04T00:00:00.000Z" },
+				{
+					id: 21,
+					kind_id: 2,
+					global_facet_id: null,
+					slug: "pain_manual",
+					label: "Manual Work",
+					synonyms: ["tedious"],
+					updated_at: "2025-01-04T00:00:00.000Z",
+				},
 			]
 			const projectRows = [
 				{
@@ -273,4 +288,3 @@ describe("facets.server", () => {
 		})
 	})
 })
-

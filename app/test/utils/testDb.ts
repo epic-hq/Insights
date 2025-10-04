@@ -8,18 +8,18 @@ import type { Database } from "~/../supabase/types"
 
 // Get environment variables with browser/server compatibility
 const getEnvVar = (key: string): string => {
-	if (typeof process !== 'undefined' && process.env) {
-		return process.env[key] || ''
+	if (typeof process !== "undefined" && process.env) {
+		return process.env[key] || ""
 	}
 	// Browser fallback - should not be used in integration tests
-	return ''
+	return ""
 }
 
-const SUPABASE_URL = getEnvVar('TEST_SUPABASE_URL')
-const SUPABASE_ANON_KEY = getEnvVar('TEST_SUPABASE_ANON_KEY')
+const SUPABASE_URL = getEnvVar("TEST_SUPABASE_URL")
+const SUPABASE_ANON_KEY = getEnvVar("TEST_SUPABASE_ANON_KEY")
 
 // Ensure test environment variables are available (server-side only)
-if (typeof process !== 'undefined' && process.env) {
+if (typeof process !== "undefined" && process.env) {
 	if (!SUPABASE_URL) {
 		throw new Error("SUPABASE_URL environment variable is required for integration tests")
 	}
@@ -32,8 +32,8 @@ if (typeof process !== 'undefined' && process.env) {
 export const testDb = createClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY)
 
 // Test account for consistent seeding
-export const TEST_ACCOUNT_ID = `${crypto.randomUUID()}`;
-export const TEST_PROJECT_ID = `${crypto.randomUUID()}`;
+export const TEST_ACCOUNT_ID = `${crypto.randomUUID()}`
+export const TEST_PROJECT_ID = `${crypto.randomUUID()}`
 
 /**
  * Reset database to clean state

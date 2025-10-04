@@ -9,13 +9,13 @@ import consola from "consola"
 import { b } from "~/../baml_client"
 import type { FacetCatalog, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
 import type { Database, Json } from "~/../supabase/types"
-import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
-import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
+import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 // Supabase table types
 type Tables = Database["public"]["Tables"]
@@ -104,7 +104,7 @@ function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
 async function resolveFacetCatalog(
 	db: SupabaseClient<Database>,
 	accountId: string,
-	projectId?: string | null,
+	projectId?: string | null
 ): Promise<FacetCatalog> {
 	if (!projectId) {
 		return {
@@ -207,12 +207,7 @@ async function processEvidencePhase({
 	const personRoleByKey = new Map<string, string | null>()
 
 	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
-	const evidenceResponse = await b.ExtractEvidenceFromTranscript(
-		fullTranscript || "",
-		chapters,
-		language,
-		facetCatalog,
-	)
+	const evidenceResponse = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language, facetCatalog)
 	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
 	evidencePeople = Array.isArray(evidenceResponse?.people) ? evidenceResponse.people : []
@@ -542,9 +537,7 @@ async function processEvidencePhase({
 			project_id: metadata.projectId ?? null,
 			role,
 			transcript_key: keyByPersonId.get(personId) ?? null,
-			display_name: keyByPersonId.get(personId)
-				? displayNameByKey.get(keyByPersonId.get(personId)!) ?? null
-				: null,
+			display_name: keyByPersonId.get(personId) ? (displayNameByKey.get(keyByPersonId.get(personId)!) ?? null) : null,
 		}
 		const { error: linkErr } = await db
 			.from("interview_people")
@@ -578,9 +571,10 @@ async function processEvidencePhase({
 		const observationInputs = Array.isArray(evidencePeople)
 			? evidencePeople
 					.map((participant, index) => {
-						const key = typeof participant?.person_key === "string" && participant.person_key.trim().length
-							? participant.person_key.trim()
-							: `participant-${index}`
+						const key =
+							typeof participant?.person_key === "string" && participant.person_key.trim().length
+								? participant.person_key.trim()
+								: `participant-${index}`
 						const personId = personIdByKey.get(key) || primaryPersonId
 						if (!personId) return null
 						const facets = Array.isArray(participant?.facets) ? (participant!.facets as PersonFacetObservation[]) : []
@@ -588,7 +582,12 @@ async function processEvidencePhase({
 						if (!facets.length && !scales.length) return null
 						return { personId, facets, scales }
 					})
-					.filter((item): item is { personId: string; facets?: PersonFacetObservation[]; scales?: PersonScaleObservation[] } => item !== null)
+					.filter(
+						(
+							item
+						): item is { personId: string; facets?: PersonFacetObservation[]; scales?: PersonScaleObservation[] } =>
+							item !== null
+					)
 			: []
 		if (observationInputs.length) {
 			await persistFacetObservations({
@@ -727,11 +726,7 @@ export async function processInterviewTranscriptWithClient({
 	const sanitizedTranscriptData = safeSanitizeTranscriptPayload(rawTranscriptData)
 	const transcriptData = sanitizedTranscriptData as unknown as Record<string, unknown>
 	if (metadata.projectId) {
-		const { data: projectRow } = await db
-			.from("projects")
-			.select("account_id")
-			.eq("id", metadata.projectId)
-			.single()
+		const { data: projectRow } = await db.from("projects").select("account_id").eq("id", metadata.projectId).single()
 		if (projectRow?.account_id) {
 			if (!metadata.accountId || metadata.accountId !== projectRow.account_id) {
 				consola.warn("Overriding metadata.accountId with project account", {

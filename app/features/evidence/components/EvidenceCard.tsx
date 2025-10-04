@@ -78,7 +78,8 @@ export function EvidenceCard({
 		const type = anchor.type?.toLowerCase()
 		// Accept media types OR doc types that have time-based start values (not paragraph refs)
 		const isMediaType = type === "audio" || type === "video" || type === "av" || type === "media" || type === "clip"
-		const isDocWithTime = type === "doc" && anchor.start && typeof anchor.start === "string" && anchor.start.includes(":")
+		const isDocWithTime =
+			type === "doc" && anchor.start && typeof anchor.start === "string" && anchor.start.includes(":")
 		return isMediaType || isDocWithTime
 	})
 	const resolvedMediaUrl = interview?.media_url ?? null
@@ -249,15 +250,13 @@ export function EvidenceCard({
 							const mediaUrl = resolveAnchorMediaUrl(anchor, resolvedMediaUrl)
 							if (!mediaUrl) return null
 							// Extract filename from URL for better labeling
-							const filename = mediaUrl.split('/').pop()?.split('?')[0] || 'Recording'
+							const filename = mediaUrl.split("/").pop()?.split("?")[0] || "Recording"
 							const displayTitle = anchor.title ?? anchor.chapter_title ?? filename
-							
+
 							return (
-								<div key={`anchor-${index}`} className="space-y-2 rounded-lg border border-dashed border-muted p-3">
-									<div className="flex flex-wrap items-center justify-between gap-2 text-xs text-muted-foreground">
-										<span className="font-medium text-foreground">
-											{displayTitle}
-										</span>
+								<div key={`anchor-${index}`} className="space-y-2 rounded-lg border border-muted border-dashed p-3">
+									<div className="flex flex-wrap items-center justify-between gap-2 text-muted-foreground text-xs">
+										<span className="font-medium text-foreground">{displayTitle}</span>
 										<div className="flex items-center gap-1">
 											<Clock className="h-3.5 w-3.5" />
 											<span>{formatAnchorTime(anchor.start, anchor.end)}</span>
@@ -273,7 +272,7 @@ export function EvidenceCard({
 											duration_sec={interview?.duration_sec ?? undefined}
 										/>
 									) : (
-										<div className="flex items-center gap-2 text-xs text-muted-foreground">
+										<div className="flex items-center gap-2 text-muted-foreground text-xs">
 											<Play className="h-3 w-3" />
 											<span>Click to view details and play media</span>
 										</div>

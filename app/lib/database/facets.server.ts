@@ -1,7 +1,6 @@
+import slugify from "@sindresorhus/slugify"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import slugify from "@sindresorhus/slugify"
-import type { Database } from "~/../supabase/types"
 import type {
 	FacetCatalog,
 	FacetCatalogEntry,
@@ -9,6 +8,7 @@ import type {
 	PersonFacetObservation,
 	PersonScaleObservation,
 } from "~/../baml_client/types"
+import type { Database } from "~/../supabase/types"
 
 const GLOBAL_PREFIX = "g:"
 const ACCOUNT_PREFIX = "a:"
@@ -139,8 +139,28 @@ export async function persistFacetObservations({
 	evidenceIds,
 	reviewerId = null,
 }: PersistFacetObservationsOptions): Promise<void> {
-	const facetRows: Array<{ person_id: string; facet_ref: string; source: string; evidence_id: string | null; confidence: number; noted_at: string } & { account_id: string; project_id: string }> = []
-	const scaleRows: Array<{ person_id: string; kind_slug: string; score: number; band: string | null; source: string; evidence_id: string | null; confidence: number; noted_at: string } & { account_id: string; project_id: string }> = []
+	const facetRows: Array<
+		{
+			person_id: string
+			facet_ref: string
+			source: string
+			evidence_id: string | null
+			confidence: number
+			noted_at: string
+		} & { account_id: string; project_id: string }
+	> = []
+	const scaleRows: Array<
+		{
+			person_id: string
+			kind_slug: string
+			score: number
+			band: string | null
+			source: string
+			evidence_id: string | null
+			confidence: number
+			noted_at: string
+		} & { account_id: string; project_id: string }
+	> = []
 	const candidatePayloads: Array<{
 		account_id: string
 		project_id: string
@@ -158,7 +178,8 @@ export async function persistFacetObservations({
 			for (const obs of facets) {
 				const source = obs.source ?? "interview"
 				const evidenceIndex = obs.evidence_unit_index ?? null
-				const evidenceId = evidenceIndex !== null && evidenceIndex !== undefined ? evidenceIds[evidenceIndex] ?? null : null
+				const evidenceId =
+					evidenceIndex !== null && evidenceIndex !== undefined ? (evidenceIds[evidenceIndex] ?? null) : null
 				const confidence = normalizeConfidence(obs.confidence)
 				if (obs.facet_ref && obs.facet_ref.trim().length) {
 					facetRows.push({
@@ -191,12 +212,13 @@ export async function persistFacetObservations({
 			for (const scale of scales) {
 				if (!scale.kind_slug) continue
 				const evidenceIndex = scale.evidence_unit_index ?? null
-		const evidenceId = evidenceIndex !== null && evidenceIndex !== undefined ? evidenceIds[evidenceIndex] ?? null : null
-			scaleRows.push({
-				account_id: accountId,
-				project_id: projectId,
-				person_id: personId,
-				kind_slug: scale.kind_slug,
+				const evidenceId =
+					evidenceIndex !== null && evidenceIndex !== undefined ? (evidenceIds[evidenceIndex] ?? null) : null
+				scaleRows.push({
+					account_id: accountId,
+					project_id: projectId,
+					person_id: personId,
+					kind_slug: scale.kind_slug,
 					score: clampScore(scale.score),
 					band: scale.band ?? null,
 					source: scale.source ?? "interview",
@@ -228,51 +250,56 @@ export async function persistFacetObservations({
 	}
 
 	if (facetRows.length) {
-		const { error: facetError } = await db
-			.from("person_facet")
-			.upsert(
-				facetRows.map((row) => ({
-					account_id: row.account_id,
-					project_id: row.project_id,
-					person_id: row.person_id,
-					facet_ref: row.facet_ref,
-					source: row.source,
-					evidence_id: row.evidence_id,
-					confidence: row.confidence,
-					noted_at: row.noted_at,
-				})),
-				{ onConflict: "person_id,facet_ref" }
-			)
+		const { error: facetError } = await db.from("person_facet").upsert(
+			facetRows.map((row) => ({
+				account_id: row.account_id,
+				project_id: row.project_id,
+				person_id: row.person_id,
+				facet_ref: row.facet_ref,
+				source: row.source,
+				evidence_id: row.evidence_id,
+				confidence: row.confidence,
+				noted_at: row.noted_at,
+			})),
+			{ onConflict: "person_id,facet_ref" }
+		)
 		if (facetError) consola.warn("Failed to upsert person facets", facetError.message)
 	}
 
 	if (scaleRows.length) {
-		const { error: scaleError } = await db
-			.from("person_scale")
-			.upsert(
-				scaleRows.map((row) => ({
-					account_id: row.account_id,
-					project_id: row.project_id,
-					person_id: row.person_id,
-					kind_slug: row.kind_slug,
-					score: row.score,
-					band: row.band,
-					source: row.source,
-					evidence_id: row.evidence_id,
-					confidence: row.confidence,
-					noted_at: row.noted_at,
-				})),
-				{ onConflict: "person_id,kind_slug" }
-			)
+		const { error: scaleError } = await db.from("person_scale").upsert(
+			scaleRows.map((row) => ({
+				account_id: row.account_id,
+				project_id: row.project_id,
+				person_id: row.person_id,
+				kind_slug: row.kind_slug,
+				score: row.score,
+				band: row.band,
+				source: row.source,
+				evidence_id: row.evidence_id,
+				confidence: row.confidence,
+				noted_at: row.noted_at,
+			})),
+			{ onConflict: "person_id,kind_slug" }
+		)
 		if (scaleError) consola.warn("Failed to upsert person scales", scaleError.message)
 	}
 }
 
 interface CandidateRow
-  extends Pick<
-	Database["public"]["Tables"]["facet_candidate"]["Row"],
-	"id" | "account_id" | "project_id" | "person_id" | "kind_slug" | "label" | "synonyms" | "notes" | "status" | "source"
-> {}
+	extends Pick<
+		Database["public"]["Tables"]["facet_candidate"]["Row"],
+		| "id"
+		| "account_id"
+		| "project_id"
+		| "person_id"
+		| "kind_slug"
+		| "label"
+		| "synonyms"
+		| "notes"
+		| "status"
+		| "source"
+	> {}
 
 interface AutoApproveOptions {
 	db: SupabaseClient<Database>
@@ -357,20 +384,18 @@ async function autoApproveCandidates({ db, candidates, reviewerId }: AutoApprove
 
 		const facetRef = `a:${accountFacetId}`
 
-		await db
-			.from("project_facet")
-			.upsert(
-				{
-					project_id: candidate.project_id,
-					account_id: candidate.account_id,
-					facet_ref: facetRef,
-					scope: "catalog",
-					is_enabled: true,
-					alias: candidate.label,
-					synonyms: candidate.synonyms ?? [],
-				},
-				{ onConflict: "project_id,facet_ref" }
-			)
+		await db.from("project_facet").upsert(
+			{
+				project_id: candidate.project_id,
+				account_id: candidate.account_id,
+				facet_ref: facetRef,
+				scope: "catalog",
+				is_enabled: true,
+				alias: candidate.label,
+				synonyms: candidate.synonyms ?? [],
+			},
+			{ onConflict: "project_id,facet_ref" }
+		)
 
 		await db
 			.from("facet_candidate")
@@ -383,20 +408,18 @@ async function autoApproveCandidates({ db, candidates, reviewerId }: AutoApprove
 			.eq("id", candidate.id)
 
 		if (candidate.person_id) {
-			await db
-				.from("person_facet")
-				.upsert(
-					{
-						account_id: candidate.account_id,
-						project_id: candidate.project_id,
-						person_id: candidate.person_id,
-						facet_ref: facetRef,
-						source: candidate.source ?? "interview",
-						confidence: 0.8,
-						noted_at: new Date().toISOString(),
-					},
-					{ onConflict: "person_id,facet_ref" }
-				)
+			await db.from("person_facet").upsert(
+				{
+					account_id: candidate.account_id,
+					project_id: candidate.project_id,
+					person_id: candidate.person_id,
+					facet_ref: facetRef,
+					source: candidate.source ?? "interview",
+					confidence: 0.8,
+					noted_at: new Date().toISOString(),
+				},
+				{ onConflict: "person_id,facet_ref" }
+			)
 		}
 
 		consola.log("Auto-approved facet candidate", candidate.id, facetRef)

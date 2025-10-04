@@ -233,10 +233,10 @@ export async function runEvidenceAnalysis({
 	const evidenceResults = bamlResponse.evidence_results ?? []
 	const researchQuestionAnswers = bamlResponse.research_question_answers ?? []
 	const decisionQuestionAnswers = bamlResponse.decision_question_answers ?? []
-	
+
 	// Build question summaries from the new hierarchical structure
 	const questionSummaries: BamlQuestionSummary[] = [
-		...researchQuestionAnswers.map(rqa => ({
+		...researchQuestionAnswers.map((rqa) => ({
 			question_id: rqa.research_question_id,
 			question_kind: "research" as const,
 			decision_question_id: researchMap.get(rqa.research_question_id)?.decision_question_id ?? null,
@@ -245,7 +245,7 @@ export async function runEvidenceAnalysis({
 			goal_achievement_summary: null,
 			next_steps: null,
 		})),
-		...decisionQuestionAnswers.map(dqa => ({
+		...decisionQuestionAnswers.map((dqa) => ({
 			question_id: dqa.decision_question_id,
 			question_kind: "decision" as const,
 			decision_question_id: dqa.decision_question_id,
@@ -253,7 +253,7 @@ export async function runEvidenceAnalysis({
 			summary: dqa.strategic_insight,
 			goal_achievement_summary: dqa.reasoning,
 			next_steps: dqa.recommended_actions.join("\n• "),
-		}))
+		})),
 	]
 
 	const { data: runRow, error: runError } = await supabase

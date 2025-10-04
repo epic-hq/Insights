@@ -130,7 +130,8 @@ const sanitizeTopicDetection = (
 		.filter((item): item is SanitizedTopicResult => item !== null)
 
 	const status = typeof record.status === "string" ? record.status : undefined
-	const summary = record.summary && typeof record.summary === "object" ? (record.summary as Record<string, number>) : undefined
+	const summary =
+		record.summary && typeof record.summary === "object" ? (record.summary as Record<string, number>) : undefined
 
 	return {
 		status,
@@ -165,7 +166,8 @@ const sanitizeChapters = (value: unknown): SanitizedChapter[] => {
 			const start = coerceNumber(row.start_ms ?? row.start)
 			if (start === null) return null
 			const end = coerceNumber(row.end_ms ?? row.end ?? undefined) ?? undefined
-			const summary = typeof row.summary === "string" ? row.summary : typeof row.gist === "string" ? row.gist : undefined
+			const summary =
+				typeof row.summary === "string" ? row.summary : typeof row.gist === "string" ? row.gist : undefined
 			const title = typeof row.title === "string" ? row.title : undefined
 			return { start_ms: start, end_ms: end ?? undefined, summary, title }
 		})
@@ -176,10 +178,7 @@ const stripUndefined = (record: Record<string, unknown>) => {
 	return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined))
 }
 
-export function sanitizeTranscriptPayload(
-	payload: unknown,
-	options: SanitizeOptions = {}
-): SanitizedTranscriptPayload {
+export function sanitizeTranscriptPayload(payload: unknown, options: SanitizeOptions = {}): SanitizedTranscriptPayload {
 	if (!payload || typeof payload !== "object") {
 		return { speaker_transcripts: [], topic_detection: null, sentiment_analysis_results: [], chapters: [] }
 	}
@@ -191,7 +190,8 @@ export function sanitizeTranscriptPayload(
 
 	const raw = payload as Record<string, unknown>
 
-	const transcript = typeof raw.full_transcript === "string" ? raw.full_transcript : typeof raw.text === "string" ? raw.text : undefined
+	const transcript =
+		typeof raw.full_transcript === "string" ? raw.full_transcript : typeof raw.text === "string" ? raw.text : undefined
 	const confidence = coerceNumber(raw.confidence)
 	const audioDuration = coerceNumber(raw.audio_duration)
 	const processingDuration = coerceNumber(raw.processing_duration)
@@ -201,7 +201,7 @@ export function sanitizeTranscriptPayload(
 	const wordCount = coerceNumber(raw.word_count)
 	const speakerCount = coerceNumber(raw.speaker_count)
 	const languageCode = typeof raw.language_code === "string" ? raw.language_code : undefined
-	const language = typeof raw.language === "string" ? raw.language : languageCode ?? undefined
+	const language = typeof raw.language === "string" ? raw.language : (languageCode ?? undefined)
 	const processedFlag = typeof raw.is_processed === "boolean" ? raw.is_processed : undefined
 	const processedAt = typeof raw.processed_at === "string" ? raw.processed_at : undefined
 
@@ -237,10 +237,7 @@ export function sanitizeTranscriptPayload(
 	}
 }
 
-export function safeSanitizeTranscriptPayload(
-	payload: unknown,
-	options?: SanitizeOptions
-): SanitizedTranscriptPayload {
+export function safeSanitizeTranscriptPayload(payload: unknown, options?: SanitizeOptions): SanitizedTranscriptPayload {
 	try {
 		return sanitizeTranscriptPayload(payload, options)
 	} catch (error) {

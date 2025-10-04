@@ -317,7 +317,8 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 									))}
 									{truncatedTopics && (
 										<p className="text-muted-foreground text-xs">
-											Showing first {topicResults.length.toLocaleString()} of {totalTopicResults.toLocaleString()} topic matches.
+											Showing first {topicResults.length.toLocaleString()} of {totalTopicResults.toLocaleString()} topic
+											matches.
 										</p>
 									)}
 								</div>

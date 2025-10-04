@@ -46,7 +46,7 @@ export async function regenerateEvidenceForProject({
 			const fullTranscriptCandidate =
 				typeof sanitized.full_transcript === "string" && sanitized.full_transcript.trim().length
 					? sanitized.full_transcript
-					: interview.transcript ?? ""
+					: (interview.transcript ?? "")
 
 			if (!fullTranscriptCandidate.trim().length) {
 				skipped += 1
@@ -57,7 +57,10 @@ export async function regenerateEvidenceForProject({
 				...sanitized,
 				full_transcript: fullTranscriptCandidate,
 				language:
-					sanitized.language || sanitized.language_code || (sanitized as unknown as { detected_language?: string }).detected_language || "en",
+					sanitized.language ||
+					sanitized.language_code ||
+					(sanitized as unknown as { detected_language?: string }).detected_language ||
+					"en",
 			}
 
 			await supabase.from("evidence").delete().eq("interview_id", interview.id)

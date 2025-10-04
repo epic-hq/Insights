@@ -1,8 +1,7 @@
 import consola from "consola"
 import { motion } from "framer-motion"
 import { ArrowLeft, Palette, Save, Trash2 } from "lucide-react"
-import { redirect } from "react-router"
-import { Form, Link, useActionData, useLoaderData } from "react-router"
+import { Form, Link, redirect, useActionData, useLoaderData } from "react-router"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -577,7 +576,10 @@ export default function EditPersona() {
 											<AlertDialogCancel>Cancel</AlertDialogCancel>
 											<Form method="post">
 												<input type="hidden" name="intent" value="delete" />
-												<AlertDialogAction type="submit" className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+												<AlertDialogAction
+													type="submit"
+													className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+												>
 													Delete Persona
 												</AlertDialogAction>
 											</Form>

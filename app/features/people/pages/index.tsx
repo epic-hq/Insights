@@ -5,9 +5,9 @@ import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
 import { getPeople } from "~/features/people/db"
-import { getFacetCatalog } from "~/lib/database/facets.server"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { getFacetCatalog } from "~/lib/database/facets.server"
 import { getServerClient } from "~/lib/supabase/server"
 import { createProjectRoutes } from "~/utils/routes.server"
 
@@ -95,13 +95,13 @@ export default function PeopleIndexPage() {
 						<div>
 							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400"> </p>
 						</div>
-					<div className="flex flex-wrap gap-3">
-						<Button asChild variant="secondary" className="border-gray-300 dark:border-gray-600">
-							<Link to={routes.facets()}>Manage Facets</Link>
-						</Button>
-						<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-							<Link to={routes.people.new()}>Add Person</Link>
-						</Button>
+						<div className="flex flex-wrap gap-3">
+							<Button asChild variant="secondary" className="border-gray-300 dark:border-gray-600">
+								<Link to={routes.facets()}>Manage Facets</Link>
+							</Button>
+							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+								<Link to={routes.people.new()}>Add Person</Link>
+							</Button>
 						</div>
 					</div>
 				</div>
@@ -150,7 +150,7 @@ export default function PeopleIndexPage() {
 											? {
 													name: pp.personas.name,
 													color_hex: pp.personas.color_hex || undefined,
-											}
+												}
 											: undefined,
 									})),
 								}}

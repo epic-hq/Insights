@@ -10,8 +10,8 @@ vi.mock("~/../baml_client", () => ({
 	},
 }))
 
-import { processInterviewTranscript } from "~/utils/processInterview.server"
 import { b } from "~/../baml_client"
+import { processInterviewTranscript } from "~/utils/processInterview.server"
 
 // Get mocked functions after import
 const mockExtractEvidence = b.ExtractEvidenceFromTranscript as ReturnType<typeof vi.fn>
@@ -393,8 +393,8 @@ describe("processInterviewTranscript Integration", () => {
 		expect(people[0].persona_id).toBeNull() // No persona assigned
 
 		// Verify no personas were created
-			const { data: personas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID)
+		const { data: personas } = await testDb.from("personas").select("*").eq("account_id", TEST_ACCOUNT_ID)
 
-			expect(personas).toHaveLength(0)
-		})
+		expect(personas).toHaveLength(0)
 	})
+})

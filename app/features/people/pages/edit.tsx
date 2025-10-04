@@ -1,7 +1,7 @@
+import { Loader2, Trash2 } from "lucide-react"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router-dom"
-import { Loader2, Trash2 } from "lucide-react"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -206,11 +206,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				source: "manual" as const,
 				status: "pending" as const,
 			}
-			const { error: candidateError } = await supabase
-				.from("facet_candidate")
-				.upsert(candidatePayload, {
-					onConflict: "account_id,project_id,kind_slug,label",
-				})
+			const { error: candidateError } = await supabase.from("facet_candidate").upsert(candidatePayload, {
+				onConflict: "account_id,project_id,kind_slug,label",
+			})
 			if (candidateError) {
 				return { error: `Failed to create facet candidate: ${candidateError.message}` }
 			}
@@ -237,7 +235,10 @@ export default function EditPerson() {
 	// Get current persona from junction table
 	const people_personas = person.people_personas || []
 	const currentPersona = people_personas.length > 0 ? people_personas[0].personas : null
-	const selectedFacetRefs = useMemo(() => (person.person_facet ?? []).map((facet) => facet.facet_ref), [person.person_facet])
+	const selectedFacetRefs = useMemo(
+		() => (person.person_facet ?? []).map((facet) => facet.facet_ref),
+		[person.person_facet]
+	)
 	const totalFacetOptions = catalog.facets.length
 
 	return (
@@ -331,7 +332,7 @@ export default function EditPerson() {
 					</p>
 				</div>
 
-				<div className="rounded-lg border border-dashed border-muted-foreground/40 p-4">
+				<div className="rounded-lg border border-muted-foreground/40 border-dashed p-4">
 					<h3 className="font-medium text-sm">Suggest New Facet</h3>
 					<p className="mt-1 text-muted-foreground text-xs">
 						Can't find the right facet? Add a candidate and it will appear in the review queue.
@@ -355,7 +356,12 @@ export default function EditPerson() {
 						</div>
 						<div>
 							<Label htmlFor="newFacetLabel">Facet Label</Label>
-							<Input id="newFacetLabel" name="newFacetLabel" placeholder="e.g., Prefers async updates" className="mt-1" />
+							<Input
+								id="newFacetLabel"
+								name="newFacetLabel"
+								placeholder="e.g., Prefers async updates"
+								className="mt-1"
+							/>
 						</div>
 					</div>
 					<div className="mt-3 grid gap-4 sm:grid-cols-2">
@@ -410,8 +416,8 @@ export default function EditPerson() {
 							<AlertDialogHeader>
 								<AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
 								<AlertDialogDescription>
-									This action cannot be undone. This will permanently delete "{person.name}" and remove all
-									associated data from our servers.
+									This action cannot be undone. This will permanently delete "{person.name}" and remove all associated
+									data from our servers.
 								</AlertDialogDescription>
 							</AlertDialogHeader>
 							<AlertDialogFooter>
