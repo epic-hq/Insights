@@ -84,6 +84,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	const [isFinishing, setIsFinishing] = useState(false)
 	const [showCompletionDialog, setShowCompletionDialog] = useState(false)
 	const [completedInterviewId, setCompletedInterviewId] = useState<string | undefined>()
+	const [redirectCountdown, setRedirectCountdown] = useState(3)
 	const [showCancelDialog, setShowCancelDialog] = useState(false)
 	const [isCanceling, setIsCanceling] = useState(false)
 	const wsRef = useRef<WebSocket | null>(null)
@@ -518,16 +519,16 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch {}
+				} catch { }
 			}
-		} catch {}
+		} catch { }
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch {}
+		} catch { }
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -555,7 +556,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch {}
+				} catch { }
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -608,18 +609,18 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch {}
+							} catch { }
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch {}
+				} catch { }
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch {}
+			} catch { }
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -632,7 +633,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch {}
+			} catch { }
 
 			// finalize or abort recording
 			void (async () => {
@@ -652,13 +653,13 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									;(rec as any).onstop = handler
+									; (rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch {}
+								} catch { }
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -910,17 +911,41 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		navigate(routes.interviews.index())
 	}, [navigate, routes])
 
-	const handleGoHome = useCallback(() => {
-		setShowCompletionDialog(false)
-		navigate(routes.projects.dashboard(projectId))
-	}, [navigate, routes])
-
 	const handleViewInterview = useCallback(() => {
 		if (completedInterviewId) {
 			setShowCompletionDialog(false)
 			navigate(routes.interviews.detail(completedInterviewId))
 		}
 	}, [completedInterviewId, navigate, routes])
+
+	// Auto-redirect to interview detail after 3 seconds when analysis completes
+	useEffect(() => {
+		if (completedInterviewId && !isFinishing) {
+			// Reset countdown to 3
+			setRedirectCountdown(3)
+			
+			// Countdown timer (updates every second)
+			const countdownInterval = setInterval(() => {
+				setRedirectCountdown((prev) => {
+					if (prev <= 1) {
+						clearInterval(countdownInterval)
+						return 0
+					}
+					return prev - 1
+				})
+			}, 1000)
+			
+			// Redirect after 3 seconds
+			const redirectTimer = setTimeout(() => {
+				handleViewInterview()
+			}, 3000)
+			
+			return () => {
+				clearInterval(countdownInterval)
+				clearTimeout(redirectTimer)
+			}
+		}
+	}, [completedInterviewId, isFinishing, handleViewInterview])
 
 	// Simple waveform component with dynamic animation
 	const WaveformAnimation = ({ isRecording }: { isRecording: boolean }) => {
@@ -1164,15 +1189,26 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			<Dialog open={showCompletionDialog} onOpenChange={setShowCompletionDialog}>
 				<DialogContent className="sm:max-w-md" showCloseButton={false}>
 					<DialogHeader>
-						<DialogTitle className="flex items-center gap-2">
-							<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
-							Analyzing your recording
-						</DialogTitle>
-						<DialogDescription>This may take a minute... please standby</DialogDescription>
+						{isFinishing ? (
+							<DialogTitle className="flex items-center gap-2">
+								<Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+								Analyzing your recording
+							</DialogTitle>
+						) : (
+							<DialogTitle>Analysis Complete</DialogTitle>
+						)}
+						{isFinishing ? (
+							<DialogDescription>This may take a minute... please standby</DialogDescription>
+						) : (
+							<DialogDescription>
+								Redirecting to interview in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
+							</DialogDescription>
+						)}
 					</DialogHeader>
 
 					<DialogFooter className="flex-col gap-3 sm:flex-col">
-						<div className="flex w-full flex-col gap-2">
+						{/* <div className="flex w-full flex-col gap-2">
+
 							<Button onClick={handleRecordAnother} className="flex w-full items-center gap-2" variant="outline">
 								<Plus className="h-4 w-4" />
 								Record Another Interview
@@ -1181,14 +1217,16 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								<Home className="h-4 w-4" />
 								Go Home
 							</Button>
-						</div>
+						</div> */}
 
-						{completedInterviewId && (
-							<div className="text-center text-muted-foreground text-sm">
-								<p>Or wait for the processed interview...</p>
-								<Button onClick={handleViewInterview} variant="link" className="mt-1 h-auto p-0 text-sm">
-									View completed interview
+						{completedInterviewId && !isFinishing && (
+							<div className="text-center text-sm">
+								<Button onClick={handleViewInterview} variant="default" className="h-auto w-full p-3 text-base md:p-4">
+									View Interview Now
 								</Button>
+								<p className="mt-2 text-muted-foreground text-xs">
+									Or wait {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''} for auto-redirect
+								</p>
 							</div>
 						)}
 					</DialogFooter>
