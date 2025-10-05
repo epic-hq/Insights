@@ -20,6 +20,6 @@ export async function observedFetch(input: Input, init?: Init) {
 		throw e
 	} finally {
 		gen?.end?.()
-			; (trace as any).end?.()
+		;(trace as any).end?.()
 	}
 }

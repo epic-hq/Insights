@@ -1690,8 +1690,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
 
-																						// Reload from database to ensure UI reflects actual DB state
-																						await loadQuestions()
+				// Reload from database to ensure UI reflects actual DB state
+				await loadQuestions()
 				toast.success("Question added", {
 					description:
 						mode === "after"
@@ -2313,7 +2313,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							setShowingFollowupFor(question.id)
 																							setFollowupCategory(question.categoryId)
 																							setFollowupInput("")
-																				setFollowupCategory(question.categoryId)
+																							setFollowupCategory(question.categoryId)
 																						}}
 																					>
 																						<ArrowDownFromLine className="mr-2 h-4 w-4" />
@@ -2502,7 +2502,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																						}, 3000) // longer timeout to prevent debounced save override
 
 																						setFollowupInput("")
-																				setFollowupCategory(question.categoryId)
+																						setFollowupCategory(question.categoryId)
 																						setShowingFollowupFor(null)
 																						toast.success("Follow-up question added")
 																						console.log("DEBUG: Followup addition completed")

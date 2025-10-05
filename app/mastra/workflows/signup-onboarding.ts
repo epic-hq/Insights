@@ -78,7 +78,7 @@ const MergeAnswerStep = createStep({
 					content_types: existing.content_types,
 					other_feedback: existing.other_feedback,
 				}
-			} catch { }
+			} catch {}
 		}
 
 		const nextKey = chooseNextKey(state)
@@ -275,7 +275,7 @@ export const signupOnboardingWorkflow = createWorkflow({
 							p_user_id: user_id,
 							p_signup_data: { ...state, completed: false },
 						})
-					} catch { }
+					} catch {}
 				}
 				return { state, assigned, assigned_key, message, user_id }
 			},
