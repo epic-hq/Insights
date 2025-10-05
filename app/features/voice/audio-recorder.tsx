@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { VoiceInput } from "~/components/ui/voice-input"
 import { useAudioIntensity } from "./hooks/use-audio-intensity"
 import { RecorderErrors, StatusMessages, useMediaRecorder } from "./hooks/use-media-recorder"
+import { useScreenWakeLock } from "./hooks/use-screen-wake-lock"
 
 type AudioRecorderProps = {
 	mode?: "default" | "progress-bar"
@@ -138,6 +139,15 @@ export const AudioRecorder = ({
 	const [status, setStatus] = useState<"listening" | "transcribing" | "idle">("idle")
 
 	const {
+		enable: enableWakeLock,
+		release: releaseWakeLock,
+		state: wakeLockState,
+		error: wakeLockError,
+		shouldSuggestManualWorkaround,
+		shouldSuggestPwa,
+	} = useScreenWakeLock()
+
+	const {
 		status: recorderStatus,
 		startRecording: _startRecording,
 		stopRecording,
@@ -217,6 +227,7 @@ export const AudioRecorder = ({
 		setBrowserError(null) // Reset error state
 		setAudioQualityWarning(null) // Reset audio quality warning
 		clearBlobUrl()
+		void enableWakeLock()
 		_startRecording()
 		onRecordingStart?.()
 		setHasStartedRecording(true)
@@ -224,6 +235,17 @@ export const AudioRecorder = ({
 
 	const isRecording = recorderStatus === "recording"
 	const isPaused = recorderStatus === "paused"
+
+	useEffect(() => {
+		if (!isRecording && !isPaused) {
+			void releaseWakeLock()
+		}
+	}, [isPaused, isRecording, releaseWakeLock])
+
+	const handleStopRecording = () => {
+		void releaseWakeLock()
+		stopRecording()
+	}
 
 	const onMainButtonClick = () => {
 		if (isPaused) {
@@ -366,8 +388,33 @@ export const AudioRecorder = ({
 	}
 
 	return (
-		<div className="flex w-full flex-row gap-2">
-			<VoiceInput onStart={startRecording} onStop={stopRecording} status={status} audioIntensity={voiceIntensity} />
+		<div className="flex w-full flex-col gap-3">
+			<div className="flex w-full flex-row gap-2">
+				<VoiceInput
+					onStart={startRecording}
+					onStop={handleStopRecording}
+					status={status}
+					audioIntensity={voiceIntensity}
+				/>
+			</div>
+			{(shouldSuggestManualWorkaround || wakeLockState === "error" || wakeLockError) && (
+				<div className="rounded-md border border-yellow-200 bg-yellow-50 p-3 text-yellow-900">
+					<p className="font-medium text-sm">Keep your screen awake while recording</p>
+					<ul className="mt-2 list-disc space-y-1 pl-4 text-sm">
+						<li>
+							Temporarily set Settings -&gt; Display &amp; Brightness -&gt; Auto-Lock -&gt; Never while capturing
+							interviews.
+						</li>
+						{shouldSuggestPwa && (
+							<li>
+								Add this app to your iOS home screen and launch it from there for a more stable recording session.
+							</li>
+						)}
+						<li>Keep the tab in the foreground; locking the screen stops iOS Safari from sending microphone data.</li>
+					</ul>
+					{wakeLockError && <p className="mt-2 text-xs">Wake lock error: {wakeLockError}</p>}
+				</div>
+			)}
 		</div>
 	)
 }

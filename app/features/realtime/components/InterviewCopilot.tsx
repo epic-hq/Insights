@@ -519,16 +519,16 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch { }
+				} catch {}
 			}
-		} catch { }
+		} catch {}
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch { }
+		} catch {}
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -556,7 +556,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch { }
+				} catch {}
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -609,18 +609,18 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch { }
+							} catch {}
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch { }
+				} catch {}
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch { }
+			} catch {}
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -633,7 +633,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch { }
+			} catch {}
 
 			// finalize or abort recording
 			void (async () => {
@@ -653,13 +653,13 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									; (rec as any).onstop = handler
+									;(rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch { }
+								} catch {}
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -923,7 +923,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		if (completedInterviewId && !isFinishing) {
 			// Reset countdown to 3
 			setRedirectCountdown(3)
-			
+
 			// Countdown timer (updates every second)
 			const countdownInterval = setInterval(() => {
 				setRedirectCountdown((prev) => {
@@ -934,12 +934,12 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					return prev - 1
 				})
 			}, 1000)
-			
+
 			// Redirect after 3 seconds
 			const redirectTimer = setTimeout(() => {
 				handleViewInterview()
 			}, 3000)
-			
+
 			return () => {
 				clearInterval(countdownInterval)
 				clearTimeout(redirectTimer)
@@ -1201,7 +1201,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							<DialogDescription>This may take a minute... please standby</DialogDescription>
 						) : (
 							<DialogDescription>
-								Redirecting to interview in {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''}...
+								Redirecting to interview in {redirectCountdown} second{redirectCountdown !== 1 ? "s" : ""}...
 							</DialogDescription>
 						)}
 					</DialogHeader>
@@ -1225,7 +1225,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 									View Interview Now
 								</Button>
 								<p className="mt-2 text-muted-foreground text-xs">
-									Or wait {redirectCountdown} second{redirectCountdown !== 1 ? 's' : ''} for auto-redirect
+									Or wait {redirectCountdown} second{redirectCountdown !== 1 ? "s" : ""} for auto-redirect
 								</p>
 							</div>
 						)}
