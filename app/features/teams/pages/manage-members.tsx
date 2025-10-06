@@ -2,7 +2,7 @@ import { parseWithZod } from "@conform-to/zod/v4"
 import consola from "consola"
 import { useCallback, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, useLoaderData } from "react-router"
+import { data, useLoaderData, useRevalidator } from "react-router"
 import { useFetcher } from "react-router-dom"
 import { z } from "zod"
 import {
@@ -145,7 +145,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				try {
 					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
 					teamName = (accountData as any)?.name || teamName
-				} catch {}
+				} catch { }
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({
@@ -213,6 +213,7 @@ export default function ManageTeamMembers() {
 	const inviteFetcher = useFetcher()
 	const updateRoleFetcher = useFetcher()
 	const deleteInviteFetcher = useFetcher()
+	const revalidator = useRevalidator()
 	const [localMembers, setLocalMembers] = useState<TeamMember[]>(() =>
 		(members || []).map((m) => ({
 			id: m.user_id,
@@ -233,29 +234,32 @@ export default function ManageTeamMembers() {
 	const totalMembers = localMembers.length
 
 	const handleInvite = useCallback(
-		(email: string, permission: PermissionLevel) => {
+		async (email: string, permission: PermissionLevel) => {
 			if (!account?.account_id) return
-			inviteFetcher.submit({ intent: "invite", email, permission }, { method: "post" })
+			await inviteFetcher.submit({ intent: "invite", email, permission }, { method: "post" })
+			revalidator.revalidate()
 		},
-		[account?.account_id, inviteFetcher]
+		[account?.account_id, inviteFetcher, revalidator]
 	)
 
 	const handleUpdateMemberPermission = useCallback(
-		(memberId: string, permission: PermissionLevel) => {
+		async (memberId: string, permission: PermissionLevel) => {
 			if (!account?.account_id) return
-			updateRoleFetcher.submit({ intent: "updateRole", memberId, permission }, { method: "post" })
+			await updateRoleFetcher.submit({ intent: "updateRole", memberId, permission }, { method: "post" })
 			setLocalMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: permission } : m)))
+			revalidator.revalidate()
 		},
-		[account?.account_id, updateRoleFetcher]
+		[account?.account_id, updateRoleFetcher, revalidator]
 	)
 
 	const handleDeleteInvitation = useCallback(
-		(invitationId: string) => {
+		async (invitationId: string) => {
 			if (!account?.account_id) return
-			deleteInviteFetcher.submit({ intent: "deleteInvite", invitationId }, { method: "post" })
+			await deleteInviteFetcher.submit({ intent: "deleteInvite", invitationId }, { method: "post" })
 			setLocalInvitations((prev) => prev.filter((inv) => inv.invitation_id !== invitationId))
+			revalidator.revalidate()
 		},
-		[account?.account_id, deleteInviteFetcher]
+		[account?.account_id, deleteInviteFetcher, revalidator]
 	)
 
 	return (
