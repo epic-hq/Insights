@@ -41,9 +41,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const accountId = String(params.accountId || "")
 	const projectId = String(params.projectId || "")
 
-	// Resource is project-scoped and grouped by account + project
-	// Align with existing project-setup agent resource convention
-	const resourceId = `projectSetupAgent-${user.sub}-${projectId}`
+	// Resource is project-scoped for the analysis agent
+	const resourceId = `analysisAgent-${user.sub}-${projectId}`
 
 	// Fetch threads for this resource, newest first
 	const result = await memory.getThreadsByResourceIdPaginated({
@@ -105,7 +104,7 @@ export default function Chat() {
 
   const { status, sendMessage } = useChat({
     transport: new DefaultChatTransport({
-      api: `/a/${accountId}/${projectId}/api/chat/project?t=${encodeURIComponent(threadId)}`,
+      api: `/a/${accountId}/${projectId}/api/chat/analysis?t=${encodeURIComponent(threadId)}`,
     }),
     id: threadId,
     onFinish: () => {
@@ -191,7 +190,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
   const url = new URL(request.url)
   const accountId = String(params.accountId || "")
   const projectId = String(params.projectId || "")
-  const resourceId = `projectSetupAgent-${user.sub}-${projectId}`
+  const resourceId = `analysisAgent-${user.sub}-${projectId}`
 
   const form = await request.formData()
   const action = String(form.get("action") || "")

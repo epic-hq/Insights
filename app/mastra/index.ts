@@ -1,13 +1,11 @@
-import { MastraAgent } from "@ag-ui/mastra"
 import { chatRoute } from "@mastra/ai-sdk"
 import type { RuntimeContext } from "@mastra/core/di"
 import { Mastra } from "@mastra/core/mastra"
-import { registerApiRoute } from "@mastra/core/server"
-import { LibSQLStore } from "@mastra/libsql"
 import { PinoLogger } from "@mastra/loggers"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { LangfuseExporter } from "langfuse-vercel"
+import { analysisAgent } from "./agents/analysis-agent"
 import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
 import { projectSetupAgent } from "./agents/project-setup-agent"
@@ -32,7 +30,7 @@ export type UserContext = {
 
 export const mastra = new Mastra({
 	workflows: { dailyBriefWorkflow, weatherWorkflow, signupOnboardingWorkflow },
-	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent, projectSetupAgent },
+	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent, projectSetupAgent, analysisAgent },
 	storage: getSharedPostgresStore(),
 	logger: new PinoLogger({
 		name: "mastra",
@@ -40,15 +38,6 @@ export const mastra = new Mastra({
 	}),
 	telemetry: {
 		enabled: true,
-		// Works but doesn't have generations?
-		// serviceName: "mastra",
-		// export: {
-		// 	type: 'otlp',
-		// 	endpoint: process.env.OTEL_EXPORTER_OTLP_ENDPOINT, // or your preferred endpoint
-		// 	headers: {
-		// 		Authorization: `Basic ${process.env.LANGFUSE_AUTH_STRING}`, // Your base64-encoded auth string
-		// 	},
-		// },
 		serviceName: "ai",
 		export: {
 			type: "custom",
@@ -98,6 +87,10 @@ export const mastra = new Mastra({
 			chatRoute({
 				path: "/chat/project-setup",
 				agent: "projectSetupAgent",
+			}),
+			chatRoute({
+				path: "/chat/analysis",
+				agent: "analysisAgent",
 			}),
 			// CopilotKit routes removed
 		],
