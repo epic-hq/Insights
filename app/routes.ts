@@ -94,7 +94,7 @@ const routes = [
 
 	// Authentication routes
 	route("/auth/callback", "./routes/auth.callback.tsx"),
-	route("login", "./routes/(auth)+/login.tsx"),
+	route("login", "./routes/(auth-new)+/login.tsx"),
 	route("login_success", "./routes/(auth)+/login_success.tsx"),
 	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
 	route("register", "./routes/(auth)+/register.tsx"),
@@ -103,7 +103,7 @@ const routes = [
 	route("invites", "./routes/invites.tsx"),
 
 	// New Auth
-	route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
+	// route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
 	route("/auth-new/oauth", "./routes/(auth-new)+/oauth/route.ts"),
 
 	// API routes

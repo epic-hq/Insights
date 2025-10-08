@@ -28,9 +28,11 @@ import {
 	updateAccountUserRole as dbUpdateAccountUserRole,
 } from "../db/accounts"
 import {
+	acceptInvitation as dbAcceptInvitation,
 	createInvitation as dbCreateInvitation,
 	deleteInvitation as dbDeleteInvitation,
 	getAccountInvitations as dbGetAccountInvitations,
+	lookupInvitation as dbLookupInvitation,
 } from "../db/invitations"
 
 type MembersRow = {
@@ -41,10 +43,21 @@ type MembersRow = {
 	is_primary_owner: boolean
 }
 
+type InvitationAcceptanceState = {
+	status: "idle" | "accepted" | "inactive" | "error"
+	message?: string
+}
+
 type LoaderData = {
-	account: { account_id: string; name: string; account_role: "owner" | "member" | "viewer" } | null
+	account: {
+		account_id: string
+		name: string | null
+		personal_account: boolean
+		account_role: "owner" | "member" | "viewer"
+	} | null
 	members: MembersRow[]
 	invitations: GetAccountInvitesResponse
+	inviteAcceptance: InvitationAcceptanceState
 }
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client } = getServerClient(request)
@@ -54,12 +67,73 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const accountId = params.accountId as string | undefined
 	if (!accountId) throw new Response("Missing accountId", { status: 400 })
 
+	const url = new URL(request.url)
+	const inviteToken = url.searchParams.get("token")?.trim() || null
+	let inviteAcceptance: InvitationAcceptanceState = { status: "idle" }
+
+	if (inviteToken) {
+		const { data: lookupData, error: lookupError } = await dbLookupInvitation({
+			supabase: client,
+			lookup_invitation_token: inviteToken,
+		})
+		if (lookupError) {
+			inviteAcceptance = {
+				status: "error",
+				message: lookupError.message || "We couldn't validate this invitation.",
+			}
+		} else {
+			const lookup = (lookupData as Record<string, unknown> | null) ?? null
+			const lookupAccountId = (lookup?.["account_id"] as string | undefined) ?? null
+			const isActive = Boolean(lookup?.["active"])
+
+			if (!lookupAccountId || lookupAccountId !== accountId) {
+				inviteAcceptance = {
+					status: "error",
+					message: "This invitation doesn't match the selected team.",
+				}
+			} else if (!isActive) {
+				inviteAcceptance = {
+					status: "inactive",
+					message: "This invitation has already been used or has expired.",
+				}
+			} else {
+				const { error: acceptError } = await dbAcceptInvitation({
+					supabase: client,
+					lookup_invitation_token: inviteToken,
+				})
+				if (acceptError) {
+					inviteAcceptance = {
+						status: "error",
+						message: acceptError.message || "We couldn't accept this invitation.",
+					}
+				} else {
+					inviteAcceptance = {
+						status: "accepted",
+						message: "Invitation accepted. You're now on this team.",
+					}
+				}
+			}
+		}
+	}
+
 	const { data: account, error: accountError } = await dbGetAccount({ supabase: client, account_id: accountId })
 	if (accountError) throw new Response(accountError.message, { status: 500 })
 
+	const normalizedAccount = account
+		? {
+			account_id: accountId,
+			name: ((account as Record<string, unknown>)?.["name"] as string | null | undefined) ?? null,
+			personal_account: Boolean(
+				(account as Record<string, unknown>)?.["personal_account"] ??
+				(account as Record<string, unknown>)?.["personalAccount"]
+			),
+			account_role: (((account as Record<string, unknown>)?.["account_role"] ?? "viewer") as "owner" | "member" | "viewer"),
+		}
+		: null
+
 	let members: MembersRow[] = []
 	let invitations: GetAccountInvitesResponse = []
-	if (account?.account_role === "owner") {
+	if (normalizedAccount?.account_role === "owner") {
 		const { data: membersData, error: membersError } = await dbGetAccountMembers({
 			supabase: client,
 			account_id: accountId,
@@ -75,7 +149,12 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		invitations = (invitationsData as GetAccountInvitesResponse | null) ?? []
 	}
 
-	const data: LoaderData = { account: account ?? null, members, invitations }
+	const data: LoaderData = {
+		account: normalizedAccount,
+		members,
+		invitations,
+		inviteAcceptance,
+	}
 	return data
 }
 
@@ -209,7 +288,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 	return new Response("Bad Request", { status: 400 })
 }
 export default function ManageTeamMembers() {
-	const { account, members, invitations } = useLoaderData() as LoaderData
+	const { account, members, invitations, inviteAcceptance } = useLoaderData() as LoaderData
 	const submit = useSubmit()
 	const navigation = useNavigation()
 
@@ -247,7 +326,7 @@ export default function ManageTeamMembers() {
 	}, [invitations])
 
 	const canManage = account?.account_role === "owner"
-	const teamName = account?.name ?? "Team"
+	const teamName = getAccountDisplayName(account)
 	const totalMembers = localMembers.length
 
 	const handleInvite = useCallback(
@@ -280,9 +359,24 @@ export default function ManageTeamMembers() {
 
 	return (
 		<div className="container mx-auto max-w-3xl py-6">
-			<div className="mb-6">
+			<div className="mb-6 space-y-2">
 				<h1 className="font-semibold text-2xl">Team Members</h1>
-				<p className="text-muted-foreground text-sm">Manage access and invite collaborators to your team.</p>
+				<p className="text-muted-foreground text-sm">
+					Manage access and invite collaborators for <span className="font-medium text-foreground">{teamName}</span>.
+				</p>
+				{inviteAcceptance.status !== "idle" && inviteAcceptance.message && (
+					<div
+						className={
+							inviteAcceptance.status === "accepted"
+								? "rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
+							: inviteAcceptance.status === "inactive"
+								? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
+								: "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-600 text-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+						}
+					>
+						{inviteAcceptance.message}
+					</div>
+				)}
 				{localInvitations.length > 0 && (
 					<p className="mt-2 rounded-md bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:bg-amber-950/40 dark:text-amber-300">
 						You have {localInvitations.length} pending invitation{localInvitations.length === 1 ? "" : "s"}.
@@ -403,4 +497,13 @@ function mapPermissionToAccountRoleForRpc(permission: PermissionLevel): "owner" 
 		default:
 			return "member" // fallback to member when 'viewer' is not supported in RPC type
 	}
+}
+
+function getAccountDisplayName(account: LoaderData["account"]): string {
+	if (!account) return "Team"
+	const baseName = account.name?.trim()
+	if (account.personal_account) {
+		return baseName && baseName.length > 0 ? `${baseName} (Personal)` : "Personal Workspace"
+	}
+	return baseName && baseName.length > 0 ? baseName : "Team"
 }

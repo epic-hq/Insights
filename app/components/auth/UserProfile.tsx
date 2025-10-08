@@ -102,7 +102,7 @@ export function UserProfile() {
 					asChild
 					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"
 				>
-					<Link to={PATHS.TEAMS}>Teams</Link>
+					<Link to={routes.team.members() || PATHS.TEAMS}>Manage Team</Link>
 				</DropdownMenuItem>
 				<DropdownMenuItem
 					asChild
