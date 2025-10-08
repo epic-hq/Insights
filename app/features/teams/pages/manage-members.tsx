@@ -145,7 +145,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				try {
 					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
 					teamName = (accountData as any)?.name || teamName
-				} catch { }
+				} catch {}
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({
