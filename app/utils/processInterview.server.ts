@@ -16,6 +16,8 @@ import { createPlannedAnswersForInterview } from "~/lib/database/project-answers
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import { getLangfuseClient } from "~/lib/langfuse.server"
+import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
 
 // Supabase table types
 type Tables = Database["public"]["Tables"]
@@ -207,7 +209,92 @@ async function processEvidencePhase({
 	const personRoleByKey = new Map<string, string | null>()
 
 	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
-	const evidenceResponse = await b.ExtractEvidenceFromTranscript(fullTranscript || "", chapters, language, facetCatalog)
+	const langfuse = getLangfuseClient()
+	const lfTrace = (langfuse as any).trace?.({
+		name: "baml.extract-evidence",
+		metadata: {
+			accountId: metadata.accountId,
+			projectId: metadata.projectId ?? null,
+			interviewId: interviewRecord.id ?? null,
+		},
+	})
+	const transcriptPreviewLength = 1200
+	const transcriptPreview =
+		fullTranscript.length > transcriptPreviewLength
+			? `${fullTranscript.slice(0, transcriptPreviewLength)}...`
+			: fullTranscript
+	const lfGeneration = lfTrace?.generation?.({
+		name: "baml.ExtractEvidenceFromTranscript",
+		input: {
+			language,
+			transcriptLength: fullTranscript.length,
+			transcriptPreview,
+			chapterCount: chapters.length,
+			facetCatalogVersion: facetCatalog.version,
+		},
+	})
+	const collector = createBamlCollector("extract-evidence")
+	const promptCostPer1K = Number(process.env.BAML_EXTRACT_EVIDENCE_PROMPT_COST_PER_1K_TOKENS)
+	const completionCostPer1K = Number(process.env.BAML_EXTRACT_EVIDENCE_COMPLETION_COST_PER_1K_TOKENS)
+	const costOptions = {
+		promptCostPer1KTokens: Number.isFinite(promptCostPer1K) ? promptCostPer1K : undefined,
+		completionCostPer1KTokens: Number.isFinite(completionCostPer1K) ? completionCostPer1K : undefined,
+	}
+	const instrumentedClient = b.withOptions({ collector })
+	let evidenceResponse: EvidenceFromBaml | undefined
+	let usageSummary: ReturnType<typeof summarizeCollectorUsage> | null = null
+	let langfuseUsage: ReturnType<typeof mapUsageToLangfuse> | undefined
+	let generationEnded = false
+	try {
+		evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscript(
+			fullTranscript || "",
+			chapters,
+			language,
+			facetCatalog
+		)
+		usageSummary = summarizeCollectorUsage(collector, costOptions)
+		if (usageSummary) {
+			consola.log("[BAML usage] ExtractEvidenceFromTranscript:", usageSummary)
+		}
+		langfuseUsage = mapUsageToLangfuse(usageSummary)
+		lfGeneration?.update?.({
+			output: evidenceResponse,
+			usage: langfuseUsage,
+			metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
+		})
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		lfGeneration?.end?.({
+			level: "ERROR",
+			statusMessage: message,
+			usage: langfuseUsage,
+			metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
+		})
+		generationEnded = true
+		throw error
+	} finally {
+		if (!generationEnded) {
+			lfGeneration?.end?.({
+				usage: langfuseUsage,
+				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
+			})
+		}
+		;(lfTrace as any)?.end?.()
+	}
+
+	if (!evidenceResponse) {
+		return {
+			personData: { id: await ensureFallbackPerson(db, metadata, interviewRecord) },
+			primaryPersonName: null,
+			primaryPersonRole: null,
+			primaryPersonDescription: null,
+			primaryPersonOrganization: null,
+			primaryPersonSegments: [],
+			insertedEvidenceIds,
+			evidenceUnits,
+		}
+	}
+
 	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
 	evidencePeople = Array.isArray(evidenceResponse?.people) ? evidenceResponse.people : []

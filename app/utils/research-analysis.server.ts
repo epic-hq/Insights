@@ -3,9 +3,9 @@
  */
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { b } from "baml_client"
 import consola from "consola"
 import type { Insight, Person, Persona, Project_Section } from "~/types"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 interface ResearchGoalData {
 	icp: string
@@ -97,7 +97,14 @@ export async function generateQuestionSetCanonical(params: {
 	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs)
 
 	try {
-		const questionSet = await b.GenerateQuestionSet(bamlInputs)
+		const { result: questionSet } = await runBamlWithTracing({
+			functionName: "GenerateQuestionSet",
+			traceName: "baml.generate-question-set.canonical",
+			input: { ...bamlInputs, custom_instructions: undefined },
+			metadata: { caller: "generateQuestionSetCanonical" },
+			logUsageLabel: "GenerateQuestionSet canonical",
+			bamlCall: (client) => client.GenerateQuestionSet(bamlInputs),
+		})
 		consola.log("[BAML DEBUG] GenerateQuestionSet result:", {
 			success: true,
 			hasQuestions: Array.isArray(questionSet?.questions),
@@ -128,12 +135,26 @@ export async function generateFollowUpQuestions(
 	try {
 		consola.log("Generating follow-up questions for:", originalQuestion)
 
-		const followUpSet = await b.GenerateFollowUpQuestions(
-			originalQuestion,
-			researchContext,
-			targetRoles,
-			customInstructions || "Generate thoughtful, conversational follow-up questions that dive deeper into the topic."
-		)
+		const { result: followUpSet } = await runBamlWithTracing({
+			functionName: "GenerateFollowUpQuestions",
+			traceName: "baml.generate-follow-up-questions",
+			input: {
+				originalQuestion,
+				researchContext,
+				targetRoles,
+				customInstructions,
+			},
+			metadata: { caller: "generateFollowUpQuestions" },
+			logUsageLabel: "GenerateFollowUpQuestions",
+			bamlCall: (client) =>
+				client.GenerateFollowUpQuestions(
+					originalQuestion,
+					researchContext,
+					targetRoles,
+					customInstructions ||
+						"Generate thoughtful, conversational follow-up questions that dive deeper into the topic."
+				),
+		})
 
 		consola.log("Follow-up questions generated:", followUpSet)
 		return followUpSet
@@ -181,11 +202,23 @@ export async function analyzeProjectInsights(
 
 		consola.log("Analyzing project insights with BAML...")
 
-		const analysis = await b.AnalyzeProjectInsights(
-			bamlResearchGoal,
-			JSON.stringify(insightsData, null, 2),
-			interviewSummary || "No interview summary available"
-		)
+		const { result: analysis } = await runBamlWithTracing({
+			functionName: "AnalyzeProjectInsights",
+			traceName: "baml.analyze-project-insights",
+			input: {
+				researchGoal: bamlResearchGoal,
+				insightCount: insightsData.length,
+				interviewSummaryPresent: Boolean(interviewSummary),
+			},
+			metadata: { caller: "analyzeProjectInsights" },
+			logUsageLabel: "AnalyzeProjectInsights",
+			bamlCall: (client) =>
+				client.AnalyzeProjectInsights(
+					bamlResearchGoal,
+					JSON.stringify(insightsData, null, 2),
+					interviewSummary || "No interview summary available"
+				),
+		})
 
 		consola.log("Project analysis completed successfully")
 		return analysis
@@ -227,12 +260,25 @@ export async function generateExecutiveSummary(
 
 		consola.log("Generating executive summary...")
 
-		const quickInsights = await b.GenerateExecutiveSummary(
-			bamlResearchGoal,
-			JSON.stringify(insightsData),
-			people.length,
-			personas.map((p) => p.name)
-		)
+		const { result: quickInsights } = await runBamlWithTracing({
+			functionName: "GenerateExecutiveSummary",
+			traceName: "baml.generate-executive-summary",
+			input: {
+				researchGoal: bamlResearchGoal,
+				insightCount: insightsData.length,
+				peopleCount: people.length,
+				personaCount: personas.length,
+			},
+			metadata: { caller: "generateExecutiveSummary" },
+			logUsageLabel: "GenerateExecutiveSummary",
+			bamlCall: (client) =>
+				client.GenerateExecutiveSummary(
+					bamlResearchGoal,
+					JSON.stringify(insightsData),
+					people.length,
+					personas.map((p) => p.name)
+				),
+		})
 
 		consola.log("Quick insights generated successfully")
 		return quickInsights
@@ -305,20 +351,35 @@ export async function generateResearchQuestions(
 			const s = typeof v === "string" ? v : String(v ?? "")
 			return s.trim().length > 0 ? s : fallback
 		}
-		const questionSet = await b.GenerateQuestionSet({
-			target_org: ensure(target_orgs),
-			target_roles: ensure(target_roles),
-			research_goal: ensure(research_goal, "General research goal"),
-			research_goal_details: ensure(research_goal_details, ""),
-			assumptions: ensure(assumptions, ""),
-			unknowns: ensure(unknowns, ""),
-			custom_instructions: ensure(custom_instructions, ""),
-			session_id: `session_${Date.now()}`,
-			round: 1,
-			total_per_round: 10,
-			per_category_min: 1,
-			per_category_max: 3,
-			interview_time_limit: 60,
+		const { result: questionSet } = await runBamlWithTracing({
+			functionName: "GenerateQuestionSet",
+			traceName: "baml.generate-question-set.onboarding",
+			input: {
+				target_orgs,
+				target_roles,
+				research_goal,
+				research_goal_details,
+				assumptions,
+				unknowns,
+			},
+			metadata: { caller: "generateResearchQuestions" },
+			logUsageLabel: "GenerateQuestionSet onboarding",
+			bamlCall: (client) =>
+				client.GenerateQuestionSet({
+					target_org: ensure(target_orgs),
+					target_roles: ensure(target_roles),
+					research_goal: ensure(research_goal, "General research goal"),
+					research_goal_details: ensure(research_goal_details, ""),
+					assumptions: ensure(assumptions, ""),
+					unknowns: ensure(unknowns, ""),
+					custom_instructions: ensure(custom_instructions, ""),
+					session_id: `session_${Date.now()}`,
+					round: 1,
+					total_per_round: 10,
+					per_category_min: 1,
+				per_category_max: 3,
+				interview_time_limit: 60,
+			}),
 		})
 
 		// Convert new QuestionSet format to legacy format for backward compatibility

@@ -15,8 +15,9 @@ export default function AuthPage() {
 	const location = useLocation()
 	const params = new URLSearchParams(location.search)
 	const next = params.get("next") || "/home"
+	// CRITICAL: Include 'next' in the OAuth callback URL so it survives the OAuth roundtrip
 	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
-	consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`)
+	consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`, { next })
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
 			<div className="container relative flex min-h-screen flex-col items-center justify-center">

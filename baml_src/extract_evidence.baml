@@ -130,12 +130,21 @@ function ExtractEvidenceFromTranscript(
    You are an expert UX researcher.
 Your task is to extract sequential evidence from an interview transcript so the reader can easily follow what happened, moment by moment.
 
+IMPORTANT: Produce only valid JSON that matches the EvidenceExtraction schema. Do not include markdown fences, comments, natural language explanations, or leading/trailing text. When data is unavailable, use empty arrays or nulls instead of inventing values.
+
 ## Steps
 1. Identify every human speaker. Populate the `people` array once with the transcript label, inferred name (if safe), role (participant vs interviewer), personas/segments, organization, and a short descriptor that captures their responsibilities.
 2. Slice the transcript into coherent, chronological chunks that express a single point of view (usually 2–5 sentences from one speaker).
 3. For each chunk, produce an `EvidenceUnit` anchored to the correct `person_key`, with chunk, gist, verbatim quote, tags, anchors, and empathy facets.
 4. Only create a unit when it adds analytical value (pain, goal, motivation, workaround, evaluation criteria, decision factor, emotion, etc.).
 5. For each participant, synthesize high-signal facet + scale observations using the provided `facet_catalog`; link each observation back to the supporting evidence.
+
+## Evidence Slicing Heuristics
+- Break multi-topic passages into separate evidence units so each unit expresses one clear insight or sentiment.
+- Keep `chunk` spans tight (≈80–180 words) and produce multiple units when a speaker shifts from a pain to a workaround or to a desired outcome.
+- Preserve chronology—do not merge non-consecutive statements even if they cover the same theme.
+- When interviewer prompts uncover an explicit metric, success criterion, or blocker, capture it in its own unit.
+- If a speaker layers multiple signals (pain + workaround + goal), split into sequential units so each signal is easy to tag and link to facets.
 
 ## Participant Profiles & Demographics
 - Capture explicit demographic attributes for each participant: job title, role, seniority, team/discipline, tenure, geography, and organization.
@@ -180,6 +189,25 @@ gains: Desired positive outcomes (e.g., “save time with pre-qualified leads”
 - Emit `people[].scales` only when the transcript clearly indicates direction or intensity. Map scores on 0.0–1.0, add a `band` (low <0.34, medium 0.34–0.66, high >0.66), and include a tight `rationale`.
 - Set `facets[].confidence` / `scales[].confidence` to a float between 0.0 and 1.0 (e.g., 0.9 for explicit signals, 0.6 when inferred but plausible).
 - Echo the provided `facet_catalog.version` into `facet_catalog_version` for downstream caching.
+- Favor breadth: aim for at least three high-signal facets per participant when the transcript supports it (mix demographics, tasks, pains, goals, workflows, or preferences).
+- When the catalog lacks a confident match but the signal is strong, add a `candidate` facet instead of discarding it—briefly justify why it matters.
+- Prefer emitting a scale when the speaker states a degree of satisfaction, frequency, or urgency (e.g., “daily”, “huge blocker”, “ready to switch”) and anchor it to the clearest evidence unit.
+
+## Facet Generation Tactics
+- For every participant, scan the entire transcript end-to-end to ensure demographics, recurring workflows, frustrations, motivations, and decision criteria are all captured as facets.
+- When matching to the catalog, consider partial or synonym matches—if confidence ≥80%, link via `facet_ref`; otherwise emit a `candidate` with concise analyst notes.
+- Add at least one `task` or `workflow` facet when the participant describes routine responsibilities or tools.
+- Capture emotional states as `value` or `preference` facets when they describe what they care about or how they judge success.
+- Create `scales` whenever intensity, frequency, satisfaction, or urgency is explicitly stated; normalize to 0.0–1.0 and explain the rationale in plain language.
+
+## Output Quality Checklist
+- Every `EvidenceUnit` has empathy facets filled; keep each entry specific and ≤12 words.
+- `verbatim` quotes are succinct and differ from `gist` headlines.
+- `anchors` include the speaking label and chapter title when available.
+- `person_key` values always match an entry in `people` and remain stable across units.
+- Participants include demographic summaries and any explicit personas/segments from the transcript.
+- If an array would be empty, ensure it is emitted as `[]` (never omit required fields).
+- Always set `facet_catalog_version` to the input `facet_catalog.version`.
 
 ## Facet Catalog (read-only context)
 - Available kinds with labels:

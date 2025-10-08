@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { b } from "../../baml_client"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 export const action = async ({ request }: ActionFunctionArgs) => {
 	const langfuse = getLangfuseClient()
@@ -12,13 +12,29 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 			return Response.json({ error: "Question is required" }, { status: 400 })
 		}
 
-		const gen = lfTrace?.generation?.({ name: "baml.EvaluateInterviewQuestion" })
-		const evaluation = await b.EvaluateInterviewQuestion(
-			question.trim(),
-			research_context || "General user research interview"
-		)
-		gen?.update?.({ input: { question: question.trim(), research_context }, output: evaluation })
-		gen?.end?.()
+		const cleanedQuestion = question.trim()
+		const { result: evaluation } = await runBamlWithTracing({
+			functionName: "EvaluateInterviewQuestion",
+			traceName: "baml.evaluate-question",
+			input: {
+				question: cleanedQuestion,
+				research_context,
+			},
+			metadata: { route: "api.evaluate-question" },
+			logUsageLabel: "api.evaluate-question",
+			bamlCall: (client) =>
+				client.EvaluateInterviewQuestion(
+					cleanedQuestion,
+					research_context || "General user research interview"
+				),
+		})
+		lfTrace?.update?.({
+			metadata: {
+				research_context,
+				question: cleanedQuestion,
+			},
+			output: evaluation,
+		})
 		return Response.json(evaluation)
 	} catch (error) {
 		console.error("Question evaluation error:", error)

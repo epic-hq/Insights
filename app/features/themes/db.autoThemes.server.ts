@@ -1,5 +1,6 @@
 import { b } from "baml_client"
 import consola from "consola"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/app/types"
 
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
@@ -62,7 +63,8 @@ async function upsertTheme(
 	const { data: existing, error: findErr } = await supabase
 		.from("themes")
 		.select("*")
-		// .eq("account_id", payload.account_id)
+		.eq("account_id", payload.account_id)
+		.eq("project_id", payload.project_id ?? null)
 		.eq("name", payload.name)
 		.maybeSingle()
 	if (findErr && findErr.code !== "PGRST116") throw findErr
@@ -97,7 +99,11 @@ async function upsertTheme(
 		anti_examples: payload.anti_examples ?? [],
 	}
 
-	const { data: created, error } = await supabase.from("themes").insert(insertBody).select("*").single()
+	const { data: created, error } = await supabase
+		.from("themes")
+		.insert(insertBody)
+		.select("*")
+		.single()
 	if (error) throw error
 	return created as Theme
 }
@@ -113,7 +119,7 @@ async function upsertThemeEvidence(
 		.select("id")
 		.eq("theme_id", payload.theme_id)
 		.eq("evidence_id", payload.evidence_id)
-		// .eq("account_id", payload.account_id)
+		.eq("account_id", payload.account_id)
 		.maybeSingle()
 	if (findErr && findErr.code !== "PGRST116") throw findErr
 
@@ -126,6 +132,7 @@ async function upsertThemeEvidence(
 				project_id: payload.project_id ?? null,
 			})
 			.eq("id", existing.id)
+			.eq("account_id", payload.account_id)
 		if (error) throw error
 		return existing.id
 	}
@@ -138,7 +145,11 @@ async function upsertThemeEvidence(
 		rationale: payload.rationale ?? null,
 		confidence: payload.confidence ?? null,
 	}
-	const { data, error } = await supabase.from("theme_evidence").insert(insertBody).select("id").single()
+	const { data, error } = await supabase
+		.from("theme_evidence")
+		.insert(insertBody)
+		.select("id")
+		.single()
 	if (error) throw error
 	return data?.id as string
 }
@@ -167,7 +178,20 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	try {
 		const evidence_json = JSON.stringify(evidence)
 		consola.log("[autoGroupThemesAndApply] Calling BAML with evidence length:", evidence_json.length)
-		resp = await b.AutoGroupThemes(evidence_json, guidance)
+		const { result } = await runBamlWithTracing({
+			functionName: "AutoGroupThemes",
+			traceName: "baml.auto-group-themes",
+			input: {
+				account_id,
+				project_id,
+				evidenceCount: evidence.length,
+				guidanceLength: guidance.length,
+			},
+			metadata: { caller: "autoGroupThemesAndApply" },
+			logUsageLabel: "AutoGroupThemes",
+			bamlCall: (client) => client.AutoGroupThemes(evidence_json, guidance),
+		})
+		resp = result
 		consola.log("[autoGroupThemesAndApply] BAML response received, themes count:", resp.themes?.length || 0)
 	} catch (bamlError) {
 		consola.error("[autoGroupThemesAndApply] BAML call failed:", bamlError)
@@ -181,30 +205,55 @@ export async function autoGroupThemesAndApply(opts: AutoGroupThemesOptions): Pro
 	const themes: Theme[] = []
 	let link_count = 0
 
-	for (const t of resp.themes) {
-		const theme = await upsertTheme(supabase, {
-			account_id,
-			project_id,
-			name: t.name,
-			statement: t.statement ?? null,
-			inclusion_criteria: t.inclusion_criteria ?? null,
-			exclusion_criteria: t.exclusion_criteria ?? null,
-			synonyms: t.synonyms ?? [],
-			anti_examples: t.anti_examples ?? [],
-		})
+	const themesFromBaml = Array.isArray(resp?.themes) ? resp.themes : []
+	if (!themesFromBaml.length) {
+		consola.warn("[autoGroupThemesAndApply] BAML returned no themes")
+		return { created_theme_ids, link_count, themes }
+	}
+
+	for (const t of themesFromBaml) {
+		let theme: Theme
+		try {
+			theme = await upsertTheme(supabase, {
+				account_id,
+				project_id,
+				name: t.name,
+				statement: t.statement ?? null,
+				inclusion_criteria: t.inclusion_criteria ?? null,
+				exclusion_criteria: t.exclusion_criteria ?? null,
+				synonyms: t.synonyms ?? [],
+				anti_examples: t.anti_examples ?? [],
+			})
+		} catch (themeErr) {
+			consola.warn("[autoGroupThemesAndApply] Failed to upsert theme", {
+				name: t?.name,
+				error: themeErr instanceof Error ? themeErr.message : themeErr,
+			})
+			continue
+		}
 		themes.push(theme)
 		created_theme_ids.push(theme.id)
 
-		for (const link of t.links) {
-			await upsertThemeEvidence(supabase, {
-				account_id,
-				project_id,
-				theme_id: theme.id,
-				evidence_id: link.evidence_id,
-				rationale: link.rationale,
-				confidence: link.confidence,
-			})
-			link_count += 1
+		const links = Array.isArray(t.links) ? t.links : []
+		for (const link of links) {
+			if (!link?.evidence_id) continue
+			try {
+				await upsertThemeEvidence(supabase, {
+					account_id,
+					project_id,
+					theme_id: theme.id,
+					evidence_id: link.evidence_id,
+					rationale: link.rationale,
+					confidence: link.confidence,
+				})
+				link_count += 1
+			} catch (linkErr) {
+				consola.warn("[autoGroupThemesAndApply] Failed to link evidence", {
+					themeId: theme.id,
+					evidenceId: link?.evidence_id,
+					error: linkErr instanceof Error ? linkErr.message : linkErr,
+				})
+			}
 		}
 	}
 

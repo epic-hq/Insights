@@ -1,8 +1,8 @@
-import { b } from "baml_client"
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/server"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -34,23 +34,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		// Prefer GPT‑4o‑mini for rewrite variety (friendlier + examples)
 		let primary: string | null = null
-		const gen1 = lfTrace?.generation?.({ name: "baml.EvaluateQuestionSet" })
 		try {
-			const batch = await b.EvaluateQuestionSet([question], research_context)
-			gen1?.update?.({ input: { question, research_context }, output: batch })
+			const { result: batch } = await runBamlWithTracing({
+				functionName: "EvaluateQuestionSet",
+				traceName: "baml.evaluate-question-set.single",
+				input: { question, research_context },
+				metadata: { route: "api.improve-question" },
+				logUsageLabel: "EvaluateQuestionSet",
+				bamlCall: (client) => client.EvaluateQuestionSet([question], research_context),
+			})
 			primary = batch?.evaluations?.[0]?.improvement?.suggested_rewrite || null
-		} catch {
-			gen1?.end?.({ level: "ERROR", statusMessage: "EvaluateQuestionSet failed" })
-			const gen2 = lfTrace?.generation?.({ name: "baml.EvaluateInterviewQuestion" })
-			try {
-				const evalResult = await b.EvaluateInterviewQuestion(question, research_context)
-				gen2?.update?.({ input: { question, research_context }, output: evalResult })
-				primary = evalResult?.improvement?.suggested_rewrite || null
-			} finally {
-				gen2?.end?.()
-			}
-		} finally {
-			gen1?.end?.()
+		} catch (err) {
+			console.warn("EvaluateQuestionSet failed, falling back:", err)
+			const { result: evalResult } = await runBamlWithTracing({
+				functionName: "EvaluateInterviewQuestion",
+				traceName: "baml.evaluate-interview-question",
+				input: { question, research_context },
+				metadata: { route: "api.improve-question" },
+				logUsageLabel: "EvaluateInterviewQuestion",
+				bamlCall: (client) => client.EvaluateInterviewQuestion(question, research_context),
+			})
+			primary = evalResult?.improvement?.suggested_rewrite || null
 		}
 
 		// Provide up to 3 options (primary + open‑ended variants with context)

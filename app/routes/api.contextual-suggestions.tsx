@@ -1,7 +1,8 @@
-import { b } from "baml_client"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { userContext } from "~/server/user-context"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import { b } from "baml_client"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	const langfuse = getLangfuseClient()
@@ -54,8 +55,6 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			})
 		}
 
-		const gen = lfTrace?.generation?.({ name: "baml.GenerateContextualSuggestions" })
-
 		// Merge already-added items with suggestions already presented to the user
 		const exclude_items: string[] = Array.from(
 			new Set([
@@ -67,34 +66,50 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		// Ensure rejected_items is an array
 		const rejected_items_array: string[] = Array.isArray(rejected_items) ? rejected_items : []
 
-		const suggestions = await b.GenerateContextualSuggestions(
-			research_goal,
-			current_input || "",
-			suggestion_type,
-			exclude_items,
-			rejected_items_array,
-			project_context,
-			custom_instructions,
-			response_count,
-			question_category
-		)
-
-		console.log("Generated enhanced suggestions:", suggestions)
-		gen?.update?.({
+		const { result: suggestions } = await runBamlWithTracing({
+			functionName: "GenerateContextualSuggestions",
+			traceName: "baml.generate-contextual-suggestions",
 			input: {
 				research_goal,
 				current_input,
 				suggestion_type,
-				existing_items: exclude_items,
+				exclude_items,
 				rejected_items: rejected_items_array,
 				project_context,
 				custom_instructions,
 				response_count,
 				question_category,
 			},
+			metadata: {
+				route: "api.contextual-suggestions",
+				accountId: ctx.accountId,
+				userId: ctx.userId,
+			},
+			logUsageLabel: "GenerateContextualSuggestions",
+			bamlCall: (client) =>
+				client.GenerateContextualSuggestions(
+					research_goal,
+					current_input || "",
+					suggestion_type,
+					exclude_items,
+					rejected_items_array,
+					project_context,
+					custom_instructions,
+					response_count,
+					question_category
+				),
+		})
+
+		console.log("Generated enhanced suggestions:", suggestions)
+		lfTrace?.update?.({
+			metadata: {
+				research_goal,
+				suggestion_type,
+				rejected_items_count: rejected_items_array.length,
+				existing_items_count: exclude_items.length,
+			},
 			output: suggestions,
 		})
-		gen?.end?.()
 		return new Response(JSON.stringify(suggestions), {
 			headers: { "Content-Type": "application/json" },
 		})

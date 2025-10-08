@@ -6,7 +6,9 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
 	const code = requestUrl.searchParams.get("code")
 	const error = requestUrl.searchParams.get("error")
-	const _next = requestUrl.searchParams.get("next") || "/home"
+	const next = requestUrl.searchParams.get("next") || "/home"
+
+	consola.log("[AUTH CALLBACK] Received callback with next:", next, "code:", !!code, "error:", error)
 
 	// Handle OAuth error from provider (e.g., user cancelled Google login)
 	if (error) {
@@ -25,8 +27,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			return redirect("/login_failure")
 		}
 		const accountId = data?.user?.app_metadata?.claims?.sub || data?.user?.user_metadata?.account_id || data?.user?.id
-		consola.log("[AUTH CALLBACK] Exchange successful, user:", data?.user?.email, "accountId:", accountId)
-		const loginSuccessUrl = _next ? `/login_success?next=${encodeURIComponent(_next)}` : "/login_success"
+		consola.log("[AUTH CALLBACK] Exchange successful, user:", data?.user?.email, "accountId:", accountId, "redirecting to:", next)
+		const loginSuccessUrl = `/login_success?next=${encodeURIComponent(next)}`
 		return redirect(loginSuccessUrl, { headers })
 	}
 
@@ -37,8 +39,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	} = await supabase.auth.getUser()
 
 	if (user) {
-		consola.log("[AUTH CALLBACK] User already authenticated, redirecting to success")
-		const loginSuccessUrl = _next ? `/login_success?next=${encodeURIComponent(_next)}` : "/login_success"
+		consola.log("[AUTH CALLBACK] User already authenticated, redirecting to:", next)
+		const loginSuccessUrl = `/login_success?next=${encodeURIComponent(next)}`
 		return redirect(loginSuccessUrl, { headers })
 	}
 

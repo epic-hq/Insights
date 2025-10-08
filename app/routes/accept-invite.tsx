@@ -7,6 +7,8 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)
 	const token = url.searchParams.get("token") || null
 
+	consola.log("[ACCEPT INVITE] Received request with token:", token ? "present" : "missing")
+
 	const { client: supabase, headers: supabaseHeaders } = getServerClient(request)
 
 	// Check auth
@@ -17,8 +19,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	// If no user, set a short-lived cookie with the token (if present) and redirect to login with next
 	if (!user) {
 		const next = token ? `/accept-invite?token=${encodeURIComponent(token)}` : "/accept-invite"
+		consola.log("[ACCEPT INVITE] User not authenticated, redirecting to login with next:", next)
 		return redirect(`/login?next=${encodeURIComponent(next)}`, { headers: supabaseHeaders })
 	}
+
+	consola.log("[ACCEPT INVITE] User authenticated:", user.email, "proceeding with token:", token)
 
 	// User is authenticated; token must be present in URL
 
