@@ -1,4 +1,5 @@
 import { index, layout, type RouteConfig, route } from "@react-router/dev/routes"
+import aiChatProjectRoutes from "./features/ai-chat-project/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import evidenceRoutes from "./features/evidence/routes"
@@ -56,6 +57,7 @@ const routes = [
 				...questionsRoutes,
 				...projectChatRoutes,
 				...facetsRoutes,
+				...aiChatProjectRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
@@ -82,6 +84,8 @@ const routes = [
 
 				// Project-setup agent chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
+				// Analysis agent chat API (project-scoped)
+				route("api/chat/analysis", "./routes/api.chat.analysis.tsx"),
 
 				// Interview transcript API (project-scoped)
 				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
