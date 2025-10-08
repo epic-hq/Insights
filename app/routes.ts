@@ -1,4 +1,5 @@
 import { index, layout, type RouteConfig, route } from "@react-router/dev/routes"
+import aiChatProjectRoutes from "./features/ai-chat-project/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
 import evidenceRoutes from "./features/evidence/routes"
@@ -56,6 +57,7 @@ const routes = [
 				...questionsRoutes,
 				...projectChatRoutes,
 				...facetsRoutes,
+				...aiChatProjectRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
