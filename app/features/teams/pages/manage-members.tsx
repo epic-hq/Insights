@@ -1,9 +1,9 @@
 import { parseWithZod } from "@conform-to/zod/v4"
 import consola from "consola"
-import { useCallback, useState } from "react"
+import { useCallback, useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, useLoaderData, useRevalidator } from "react-router"
-import { useFetcher } from "react-router-dom"
+import { data, useLoaderData, useNavigation } from "react-router"
+import { useSubmit } from "react-router-dom"
 import { z } from "zod"
 import {
 	AlertDialog,
@@ -210,10 +210,9 @@ export async function action({ request, params }: ActionFunctionArgs) {
 }
 export default function ManageTeamMembers() {
 	const { account, members, invitations } = useLoaderData() as LoaderData
-	const inviteFetcher = useFetcher()
-	const updateRoleFetcher = useFetcher()
-	const deleteInviteFetcher = useFetcher()
-	const revalidator = useRevalidator()
+	const submit = useSubmit()
+	const navigation = useNavigation()
+
 	const [localMembers, setLocalMembers] = useState<TeamMember[]>(() =>
 		(members || []).map((m) => ({
 			id: m.user_id,
@@ -223,11 +222,29 @@ export default function ManageTeamMembers() {
 			isOwner: m.is_primary_owner,
 		}))
 	)
+
 	const [localInvitations, setLocalInvitations] = useState<GetAccountInvitesResponse>(() => invitations)
 
 	const [isRevokeOpen, setIsRevokeOpen] = useState(false)
 	const [selectedInviteId, setSelectedInviteId] = useState<string | null>(null)
 	const [selectedInviteEmail, setSelectedInviteEmail] = useState<string | null>(null)
+
+	// Keep local state in sync with loader data after automatic revalidation
+	useEffect(() => {
+		setLocalMembers(
+			(members || []).map((m) => ({
+				id: m.user_id,
+				name: m.name,
+				email: m.email,
+				role: mapAccountRoleToPermission(m.account_role),
+				isOwner: m.is_primary_owner,
+			}))
+		)
+	}, [members])
+
+	useEffect(() => {
+		setLocalInvitations(invitations)
+	}, [invitations])
 
 	const canManage = account?.account_role === "owner"
 	const teamName = account?.name ?? "Team"
@@ -236,30 +253,29 @@ export default function ManageTeamMembers() {
 	const handleInvite = useCallback(
 		async (email: string, permission: PermissionLevel) => {
 			if (!account?.account_id) return
-			await inviteFetcher.submit({ intent: "invite", email, permission }, { method: "post" })
-			revalidator.revalidate()
+			submit({ intent: "invite", email, permission }, { method: "post", replace: true })
 		},
-		[account?.account_id, inviteFetcher, revalidator]
+		[account?.account_id, submit]
 	)
 
 	const handleUpdateMemberPermission = useCallback(
 		async (memberId: string, permission: PermissionLevel) => {
 			if (!account?.account_id) return
-			await updateRoleFetcher.submit({ intent: "updateRole", memberId, permission }, { method: "post" })
 			setLocalMembers((prev) => prev.map((m) => (m.id === memberId ? { ...m, role: permission } : m)))
-			revalidator.revalidate()
+			submit({ intent: "updateRole", memberId, permission }, { method: "post", replace: true })
+			return null
 		},
-		[account?.account_id, updateRoleFetcher, revalidator]
+		[account?.account_id, submit]
 	)
 
 	const handleDeleteInvitation = useCallback(
 		async (invitationId: string) => {
 			if (!account?.account_id) return
-			await deleteInviteFetcher.submit({ intent: "deleteInvite", invitationId }, { method: "post" })
 			setLocalInvitations((prev) => prev.filter((inv) => inv.invitation_id !== invitationId))
-			revalidator.revalidate()
+			submit({ intent: "deleteInvite", invitationId }, { method: "post", replace: true })
+			return null
 		},
-		[account?.account_id, deleteInviteFetcher, revalidator]
+		[account?.account_id, submit]
 	)
 
 	return (
@@ -330,21 +346,21 @@ export default function ManageTeamMembers() {
 						<AlertDialogContent>
 							<AlertDialogHeader>
 								<AlertDialogTitle>Revoke invitation</AlertDialogTitle>
-								<AlertDialogDescription>
-									{selectedInviteEmail ? (
-										<span>
-											Are you sure you want to revoke the invitation for <strong>{selectedInviteEmail}</strong>?
-										</span>
-									) : (
-										<span>Are you sure you want to revoke this invitation?</span>
-									)}
-								</AlertDialogDescription>
 							</AlertDialogHeader>
+							<AlertDialogDescription>
+								{selectedInviteEmail ? (
+									<span>
+										Are you sure you want to revoke the invitation for <strong>{selectedInviteEmail}</strong>?
+									</span>
+								) : (
+									<span>Are you sure you want to revoke this invitation?</span>
+								)}
+							</AlertDialogDescription>
 							<AlertDialogFooter>
 								<AlertDialogCancel>Cancel</AlertDialogCancel>
 								<AlertDialogAction
 									className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-									disabled={deleteInviteFetcher.state === "submitting" || !selectedInviteId}
+									disabled={navigation.state === "submitting" || !selectedInviteId}
 									onClick={() => {
 										if (selectedInviteId) {
 											handleDeleteInvitation(selectedInviteId)
