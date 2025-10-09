@@ -1,6 +1,7 @@
 import { Outlet, useSearchParams } from "react-router"
+import { AppSidebar } from "~/components/navigation/AppSidebar"
 import { JourneyNav } from "~/components/navigation/JourneyNav"
-import MainNav from "~/components/navigation/MainNav"
+import { SidebarInset, SidebarProvider } from "~/components/ui/sidebar"
 import { useDeviceDetection } from "~/hooks/useDeviceDetection"
 import { cn } from "~/lib/utils"
 
@@ -16,21 +17,19 @@ export function AppLayout({ showJourneyNav = true }: AppLayoutProps) {
 	const showMainNav = !isOnboarding
 
 	return (
-		<div className="flex h-screen bg-background">
-			{showMainNav && <MainNav />}
-
-			<div className="flex min-h-0 flex-1 flex-col">
+		<SidebarProvider>
+			{showMainNav && <AppSidebar />}
+			<SidebarInset>
 				<main
 					className={cn(
-						"flex-1 overflow-y-auto",
+						"flex min-h-screen flex-1 flex-col",
 						isMobile && showJourneyNav && showMainNav ? "pb-20" : ""
 					)}
 				>
 					<Outlet />
 				</main>
-			</div>
-
-			{showJourneyNav && isMobile && showMainNav && <JourneyNav variant="bottom" />}
-		</div>
+				{showJourneyNav && isMobile && showMainNav && <JourneyNav variant="bottom" />}
+			</SidebarInset>
+		</SidebarProvider>
 	)
 }

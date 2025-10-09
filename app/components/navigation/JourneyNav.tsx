@@ -23,11 +23,9 @@ export const journeySteps: JourneyStep[] = [
 		title: "Research",
 		description: "Define goals & get evidence",
 		icon: Command,
-		routes: ["/dashboard", "/interviews"],
+		routes: ["/dashboard"],
 		subItems: [
 			{ label: "Status", route: "/dashboard", description: "Project overview & recommendations" },
-			{ label: "Interviews", route: "/interviews", description: "Transcripts & evidence collection" },
-			{ label: "Add Data", route: "/interviews/new", description: "Upload interviews & surveys" },
 		],
 	},
 	{
@@ -90,13 +88,38 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 
 	const getCurrentStep = () => {
 		const currentPath = location.pathname
-		return (
-			journeySteps.find(
-				(step) =>
-					step.routes.some((route) => currentPath.includes(route)) ||
-					step.subItems?.some((item) => currentPath.includes(item.route))
-			)?.key || "research"
-		)
+		
+		// Extract the route segment after the project path (e.g., /a/123/456/interviews -> /interviews)
+		// This handles paths like /a/:accountId/:projectId/interviews
+		const pathSegments = currentPath.split('/').filter(Boolean)
+		const routeSegment = pathSegments.length >= 3 ? `/${pathSegments.slice(3).join('/')}` : currentPath
+		
+		// Find the most specific match (longest route that matches)
+		let bestMatch: JourneyStep | undefined
+		let bestMatchLength = 0
+		
+		for (const step of journeySteps) {
+			// Check direct routes
+			for (const route of step.routes) {
+				// Match if routeSegment starts with the route pattern
+				if (routeSegment.startsWith(route) && route.length > bestMatchLength) {
+					bestMatch = step
+					bestMatchLength = route.length
+				}
+			}
+			
+			// Check sub-item routes
+			if (step.subItems) {
+				for (const item of step.subItems) {
+					if (routeSegment.startsWith(item.route) && item.route.length > bestMatchLength) {
+						bestMatch = step
+						bestMatchLength = item.route.length
+					}
+				}
+			}
+		}
+		
+		return bestMatch?.key || "research"
 	}
 
 	const currentStep = getCurrentStep()
