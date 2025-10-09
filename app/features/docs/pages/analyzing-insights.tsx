@@ -13,11 +13,11 @@ export default function AnalyzingInsights() {
 			</Link>
 
 			<h1 className="mb-4 font-bold text-4xl tracking-tight">Analyzing Insights</h1>
-			<p className="mb-8 text-muted-foreground text-lg">
+			<p className="mb-8 text-lg text-muted-foreground">
 				Learn how to discover patterns and extract actionable findings
 			</p>
 
-			<div className="prose prose-slate max-w-none dark:prose-invert">
+			<div className="prose prose-slate dark:prose-invert max-w-none">
 				<p className="lead">Coming soon: Analysis techniques and best practices</p>
 			</div>
 		</div>

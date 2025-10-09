@@ -13,11 +13,11 @@ export default function ResearchWorkflow() {
 			</Link>
 
 			<h1 className="mb-4 font-bold text-4xl tracking-tight">Research Workflow</h1>
-			<p className="mb-8 text-muted-foreground text-lg">
+			<p className="mb-8 text-lg text-muted-foreground">
 				A complete guide to conducting research from planning to insights
 			</p>
 
-			<div className="prose prose-slate max-w-none dark:prose-invert">
+			<div className="prose prose-slate dark:prose-invert max-w-none">
 				<p className="lead">Coming soon: Detailed workflow documentation</p>
 			</div>
 		</div>

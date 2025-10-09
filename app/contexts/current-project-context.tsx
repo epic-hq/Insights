@@ -1,5 +1,5 @@
 import consola from "consola"
-import { createContext, useContext, useMemo } from "react"
+import { createContext, useContext, useMemo, useState } from "react"
 import { useParams, useRouteLoaderData } from "react-router"
 
 interface CurrentProjectContextType {
@@ -7,6 +7,8 @@ interface CurrentProjectContextType {
 	projectId: string
 	accountPath: string
 	projectPath: string
+	lastProjectPath: { accountId: string; projectId: string }
+	setLastProjectPath: (path: { accountId: string; projectId: string }) => void
 }
 
 const CurrentProjectContext = createContext<CurrentProjectContextType>({
@@ -14,6 +16,8 @@ const CurrentProjectContext = createContext<CurrentProjectContextType>({
 	projectId: "",
 	accountPath: "",
 	projectPath: "",
+	lastProjectPath: { accountId: "", projectId: "" },
+	setLastProjectPath: () => { },
 })
 
 export const useCurrentProject = () => {
@@ -28,8 +32,13 @@ interface CurrentProjectProviderProps {
 	children: React.ReactNode
 }
 
+
 export function CurrentProjectProvider({ children }: CurrentProjectProviderProps) {
 	const params = useParams()
+	const [lastProjectPath, setLastProjectPath] = useState<{ accountId: string; projectId: string }>({
+		accountId: "",
+		projectId: "",
+	})
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as
 		| { auth: { accountId: string }; user_settings?: any }
 		| undefined
@@ -54,6 +63,8 @@ export function CurrentProjectProvider({ children }: CurrentProjectProviderProps
 		projectId,
 		accountPath: `/a/${accountId}`,
 		projectPath: `/a/${accountId}/${projectId}`,
+		lastProjectPath,
+		setLastProjectPath,
 	}
 
 	return <CurrentProjectContext.Provider value={value}>{children}</CurrentProjectContext.Provider>

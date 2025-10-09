@@ -17,6 +17,8 @@ export interface RouteDefinitions {
 
 	// Dashboard
 	dashboard: () => string
+	help: () => string
+	docs: () => string
 
 	// Interviews
 	interviews: {
@@ -104,7 +106,7 @@ export interface RouteDefinitions {
 		projectChat: () => string
 		detail: (id: string) => string
 		edit: (id: string) => string
-		dashboard: (id: string) => string
+		dashboard: () => string
 	}
 
 	// Teams
@@ -152,6 +154,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 
 		// Dashboard
 		dashboard: () => `${base}/dashboard`,
+		help: () => PATHS.HELP,
+		docs: () => PATHS.DOCS,
 
 		// Interviews
 		interviews: {
@@ -243,7 +247,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			// Deprecated old edit path; point to project-scoped settings
 			edit: (id: string) => `${projectPath}/settings`,
-			dashboard: (id: string) => `/a/${extractAccountId(projectPath)}/${id}/dashboard`,
+			dashboard: () => `${base}/dashboard`,
 		},
 
 		// Teams

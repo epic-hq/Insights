@@ -38,6 +38,7 @@ import { InterviewAnalysisCard } from "~/features/onboarding/components/Intervie
 import { type DecoratedResearchQuestion, KeyDecisionsCard } from "~/features/onboarding/components/KeyDecisionsCard"
 import { ThemesSection } from "~/features/onboarding/components/ThemesSection"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
+import { AnalyzeStageValidation } from "~/features/projects/pages/ValidationStatus"
 import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers"
 import {
 	calculateResearchMetrics,
@@ -89,6 +90,7 @@ export default function ProjectStatusScreen({
 	const [projectSections, setProjectSections] = useState<Project_Section[]>(initialSections || [])
 	const [loading, setLoading] = useState(!initialSections)
 	const [showFlowView, _setShowFlowView] = useState(false)
+	const [showValidationView, setShowValidationView] = useState(false)
 	const [researchMetrics, setResearchMetrics] = useState<{ answered: number; open: number; total: number }>({
 		answered: 0,
 		open: 0,
@@ -119,6 +121,8 @@ export default function ProjectStatusScreen({
 
 	// Feature flag for chat setup button
 	const { isEnabled: isSetupChatEnabled, isLoading: isFeatureFlagLoading } = usePostHogFeatureFlag("ffSetupChat")
+	// Feature flag for validation status view
+	const { isEnabled: isValidationEnabled } = usePostHogFeatureFlag("ffValidation")
 
 	// Fetch project sections client-side only if not provided by loader
 	useEffect(() => {
@@ -383,6 +387,22 @@ export default function ProjectStatusScreen({
 						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
+						{/* Validation View Toggle - Feature Flagged */}
+						{isValidationEnabled && (
+							<Button
+								variant={showValidationView ? "default" : "outline"}
+								size="sm"
+								onClick={() => setShowValidationView(!showValidationView)}
+								className={
+									showValidationView
+										? "bg-emerald-600 text-white hover:bg-emerald-700"
+										: "border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 hover:text-emerald-800 dark:from-emerald-950/20 dark:to-green-950/20 dark:text-emerald-300 dark:hover:from-emerald-900/30 dark:hover:to-green-900/30"
+								}
+							>
+								<SquareCheckBig className="mr-2 h-4 w-4" />
+								{showValidationView ? "Dashboard View" : "Validation Status"}
+							</Button>
+						)}
 						{/* Flow View Toggle Button */}
 						{/* <Button
 							variant={showFlowView ? "default" : "outline"}
@@ -416,7 +436,14 @@ export default function ProjectStatusScreen({
 				</div>
 			</div>
 
-			{showFlowView ? (
+			{showValidationView ? (
+				/* Validation View - Feature Flagged */
+				<div className="min-h-screen flex-1 bg-background">
+					<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
+						<AnalyzeStageValidation />
+					</div>
+				</div>
+			) : showFlowView ? (
 				/* Flow View - Mobile Responsive Layout */
 				<div className="min-h-screen flex-1 bg-background">
 					<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">

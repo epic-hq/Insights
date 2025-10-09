@@ -1,6 +1,7 @@
 import { index, layout, type RouteConfig, route } from "@react-router/dev/routes"
 import annotationsRoutes from "./features/annotations/routes"
 import dashboardRoutes from "./features/dashboard/routes"
+import docsRoutes from "./features/docs/routes"
 import evidenceRoutes from "./features/evidence/routes"
 import facetsRoutes from "./features/facets/routes"
 import homeRoutes from "./features/home/routes"
@@ -31,6 +32,7 @@ const routes = [
 		// Home dashboard for logged-in users
 		...homeRoutes,
 		...teamsRoutes,
+		...docsRoutes,
 
 		// Account-scoped routes
 		route("a/:accountId", "./routes/_protected/accounts.tsx", [
@@ -142,6 +144,7 @@ const routes = [
 	...voiceRoutes,
 
 	// Resource routes
+
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("healthcheck", "./routes/healthcheck.ts"),
 	route("apple-touch-icon.png", "./routes/apple-touch-icon[.]png.ts"),

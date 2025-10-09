@@ -14,7 +14,7 @@ export default function GettingStarted() {
 			</Link>
 
 			<h1 className="mb-4 font-bold text-4xl tracking-tight">Getting Started</h1>
-			<p className="mb-8 text-muted-foreground text-lg">
+			<p className="mb-8 text-lg text-muted-foreground">
 				Everything you need to set up your first research project and start gathering insights
 			</p>
 
@@ -80,11 +80,11 @@ export default function GettingStarted() {
 								<span className="text-sm">Define target personas or segments</span>
 							</div>
 						</div>
-						<div className="rounded-lg border-l-4 border-blue-500 bg-blue-50 p-3 dark:bg-blue-950/20">
+						<div className="rounded-lg border-blue-500 border-l-4 bg-blue-50 p-3 dark:bg-blue-950/20">
 							<p className="font-medium text-sm">💡 Example Research Goal</p>
 							<p className="mt-1 text-muted-foreground text-sm">
-								"Understand why enterprise customers struggle with our onboarding process and identify the top 3 friction
-								points to address in Q2."
+								"Understand why enterprise customers struggle with our onboarding process and identify the top 3
+								friction points to address in Q2."
 							</p>
 						</div>
 					</CardContent>
@@ -151,7 +151,7 @@ export default function GettingStarted() {
 								<span className="text-sm">Wait for AI analysis (usually 2-5 minutes)</span>
 							</div>
 						</div>
-						<div className="rounded-lg border-l-4 border-amber-500 bg-amber-50 p-3 dark:bg-amber-950/20">
+						<div className="rounded-lg border-amber-500 border-l-4 bg-amber-50 p-3 dark:bg-amber-950/20">
 							<p className="font-medium text-sm">⚡ Supported Formats</p>
 							<p className="mt-1 text-muted-foreground text-sm">
 								Audio: MP3, WAV, M4A • Video: MP4, MOV • Text: TXT, MD, DOCX

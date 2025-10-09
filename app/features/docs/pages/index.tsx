@@ -8,7 +8,7 @@ export default function DocsIndex() {
 			{/* Header */}
 			<div className="mb-12">
 				<h1 className="mb-4 font-bold text-4xl tracking-tight">Documentation</h1>
-				<p className="text-muted-foreground text-lg">
+				<p className="text-lg text-muted-foreground">
 					Learn how to get the most out of Insights for your research projects
 				</p>
 			</div>
@@ -59,7 +59,7 @@ export default function DocsIndex() {
 						</div>
 					</div>
 
-					<div className="rounded-lg border-l-4 border-primary bg-primary/5 p-4">
+					<div className="rounded-lg border-primary border-l-4 bg-primary/5 p-4">
 						<p className="font-medium text-foreground text-sm">💡 Pro Tip</p>
 						<p className="mt-1 text-sm">
 							Start with a clear research goal and 2-3 key decision questions. This helps the AI provide more relevant
@@ -94,9 +94,7 @@ export default function DocsIndex() {
 									<Users className="h-5 w-5" />
 									Research Workflow
 								</CardTitle>
-								<CardDescription>
-									Learn the complete research process from planning to analysis
-								</CardDescription>
+								<CardDescription>Learn the complete research process from planning to analysis</CardDescription>
 							</CardHeader>
 						</Card>
 					</Link>

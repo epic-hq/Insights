@@ -1,10 +1,10 @@
-import consola from "consola"
-import { FolderOpen, LogOut, Mail, User } from "lucide-react"
+import { ChevronsUpDown, FolderOpen, LogOut, Mail, User, Users } from "lucide-react"
 import { Link } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import {
 	DropdownMenu,
 	DropdownMenuContent,
+	DropdownMenuGroup,
 	DropdownMenuItem,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
@@ -14,110 +14,127 @@ import { ThemeToggle } from "~/components/ui/theme-toggle"
 import { useAuth } from "~/contexts/AuthContext"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { cn } from "~/lib/utils"
 import { PATHS } from "~/paths"
 
-export function UserProfile() {
+function getInitials(source: string) {
+	return source
+		.trim()
+		.split(/\s+/)
+		.map((segment) => segment[0] ?? "")
+		.join("")
+		.slice(0, 2)
+		.toUpperCase()
+}
+
+interface UserProfileProps {
+	collapsed?: boolean
+	className?: string
+}
+
+export function UserProfile({ collapsed = false, className }: UserProfileProps) {
 	const { user, signOut } = useAuth()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+
+	if (!user) return null
+
+	const displayName = user.user_metadata?.full_name?.trim() || user.email || "User"
+	const email = user.email ?? ""
+	const avatarUrl = user.user_metadata?.avatar_url ?? ""
+	const initials = getInitials(displayName || email || "U")
 
 	const handleSignOut = async () => {
 		try {
 			await signOut()
 		} catch {
-			// Error handling is managed by the AuthContext
-			// Page will reload to sync auth state
+			// Auth context already surfaces errors
 		}
 	}
-
-	if (!user) return null
-
 	return (
 		<DropdownMenu>
 			<DropdownMenuTrigger asChild>
-				<Button
-					variant="ghost"
-					size="icon"
-					className="relative h-10 w-10 rounded-full border border-border/30 bg-background transition-colors hover:border-border/70 hover:bg-accent/50 dark:bg-background/90 dark:hover:bg-accent/30"
-					aria-label="User profile menu"
-				>
-					{user.user_metadata?.avatar_url ? (
-						<img
-							className="h-8 w-8 rounded-full object-cover"
-							src={user.user_metadata.avatar_url}
-							alt={user.email || "User"}
-							onError={(e) => {
-								// Fallback to icon if image fails to load
-								const target = e.target as HTMLImageElement
-								target.style.display = "none"
-								const icon = target.nextSibling as HTMLElement
-								if (icon) icon.style.display = "block"
-							}}
-						/>
-					) : (
-						// Generate avatar from initials if no avatar URL
-						<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary font-medium text-primary-foreground text-sm">
-							{(user.user_metadata?.full_name || user.email || "U")
-								.split(" ")
-								.map((name: string) => name[0])
-								.join("")
-								.toUpperCase()
-								.slice(0, 2)}
-						</div>
+				<button
+					type="button"
+					className={cn(
+						"flex items-center gap-3 rounded-lg px-2 py-1.5 text-left text-sm transition-colors hover:bg-accent focus:outline-none data-[state=open]:bg-accent/60",
+						collapsed ? "justify-center gap-0 px-1" : "justify-start",
+						className
 					)}
-					<User
-						className="absolute h-5 w-5 text-foreground"
-						style={{ display: user.user_metadata?.avatar_url ? "none" : "none" }}
-					/>
-				</Button>
+				>
+					<Avatar className="h-9 w-9 rounded-lg">
+						<AvatarImage src={avatarUrl} alt={displayName} />
+						<AvatarFallback className="rounded-lg font-semibold text-xs uppercase">{initials}</AvatarFallback>
+					</Avatar>
+					<div
+						className={cn("min-w-0 flex-1 text-left leading-tight", collapsed ? "hidden" : "grid")}
+						data-testid="user-profile-text"
+					>
+						<span className="truncate font-medium">{displayName}</span>
+						{email && <span className="truncate text-muted-foreground text-xs">{email}</span>}
+					</div>
+					{!collapsed && <ChevronsUpDown className="ml-auto h-4 w-4 text-muted-foreground" />}
+				</button>
 			</DropdownMenuTrigger>
 			<DropdownMenuContent
-				className="w-56 rounded-md border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
+				className="w-64 rounded-lg border bg-popover p-0 shadow-lg"
 				align="end"
+				sideOffset={8}
 				forceMount
 			>
-				<DropdownMenuLabel className="font-normal">
-					<div className="flex flex-col space-y-1">
-						<p className="font-medium text-foreground text-sm leading-none">
-							{user.user_metadata?.full_name || user.email}
-						</p>
-						<p className="text-muted-foreground text-xs leading-none">{user.email}</p>
+				<DropdownMenuLabel className="px-3 py-2">
+					<div className="flex items-center gap-3">
+						<Avatar className="h-9 w-9 rounded-lg">
+							<AvatarImage src={avatarUrl} alt={displayName} />
+							<AvatarFallback className="rounded-lg font-semibold text-xs uppercase">{initials}</AvatarFallback>
+						</Avatar>
+						<div className="min-w-0 text-sm leading-tight">
+							<p className="truncate font-medium">{displayName}</p>
+							{email && <p className="truncate text-muted-foreground text-xs">{email}</p>}
+						</div>
 					</div>
 				</DropdownMenuLabel>
-				<DropdownMenuSeparator className="bg-border/50" />
-				<DropdownMenuItem asChild className="cursor-pointer text-foreground hover:bg-accent">
-					<Link to={routes.projects.index()} className="flex items-center">
-						<FolderOpen className="mr-2 h-4 w-4" />
-						<span>Switch Project</span>
+				{/* <DropdownMenuSeparator />
+				<DropdownMenuGroup>
+					<DropdownMenuItem asChild>
+						<Link to={routes.projects.index()} className="flex items-center gap-2">
+							<FolderOpen className="h-4 w-4" />
+							<span>Switch Projects</span>
+						</Link>
+					</DropdownMenuItem>
+				<DropdownMenuItem asChild>
+					<Link to={routes.team.members()} className="flex items-center gap-2">
+						<Mail className="h-4 w-4" />
+						<span>Invite Team</span>
 					</Link>
 				</DropdownMenuItem>
-				<DropdownMenuItem asChild className="cursor-pointer text-foreground hover:bg-accent">
-					<Link to={routes.team.members()} className="flex items-center">
-						<Mail className="mr-2 h-4 w-4" />
-						<span>Invite Team Members</span>
-					</Link>
+					</DropdownMenuGroup> */}
+				<DropdownMenuSeparator />
+				<DropdownMenuGroup>
+					<DropdownMenuItem asChild>
+						<Link to={routes.team.members() || PATHS.TEAMS} className="flex items-center gap-2">
+							<Users className="h-4 w-4" />
+							<span>Manage Team</span>
+						</Link>
+					</DropdownMenuItem>
+					<DropdownMenuItem asChild>
+						<Link to={PATHS.PROFILE} className="flex items-center gap-2">
+							<User className="h-4 w-4" />
+							<span>Profile</span>
+						</Link>
+					</DropdownMenuItem>
+				</DropdownMenuGroup>
+				<DropdownMenuSeparator />
+				<DropdownMenuItem className="flex items-center justify-between">
+					<span>Theme</span>
+					<ThemeToggle />
 				</DropdownMenuItem>
-				<DropdownMenuSeparator className="bg-border/50" />
-				<DropdownMenuItem
-					asChild
-					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"
-				>
-					<Link to={routes.team.members() || PATHS.TEAMS}>Manage Team</Link>
-				</DropdownMenuItem>
-				<DropdownMenuItem
-					asChild
-					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"
-				>
-					<Link to={PATHS.PROFILE}>Profile</Link>
-				</DropdownMenuItem>
-				<DropdownMenuItem>
-					Theme <ThemeToggle />
-				</DropdownMenuItem>
+				<DropdownMenuSeparator />
 				<DropdownMenuItem
 					onClick={handleSignOut}
-					className="cursor-pointer text-foreground focus:bg-destructive/10 focus:text-destructive"
+					className="flex items-center gap-2 text-destructive focus:text-destructive"
 				>
-					<LogOut className="mr-2 h-4 w-4" />
+					<LogOut className="h-4 w-4" />
 					<span>Sign out</span>
 				</DropdownMenuItem>
 			</DropdownMenuContent>
