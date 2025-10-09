@@ -141,6 +141,7 @@ const routes = [
 	route("api/signup-next-turn", "./routes/api.signup-next-turn.tsx"),
 	route("api/assemblyai-token", "./routes/api.assemblyai-token.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),
+	route("api/teams/create", "./routes/api.teams.create.tsx"),
 	...voiceRoutes,
 
 	// Resource routes

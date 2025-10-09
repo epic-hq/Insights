@@ -38,7 +38,7 @@ import { InterviewAnalysisCard } from "~/features/onboarding/components/Intervie
 import { type DecoratedResearchQuestion, KeyDecisionsCard } from "~/features/onboarding/components/KeyDecisionsCard"
 import { ThemesSection } from "~/features/onboarding/components/ThemesSection"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
-import { AnalyzeStageValidation } from "~/features/projects/pages/ValidationStatus"
+import { AnalyzeStageValidation } from "~/features/projects/pages/validationStatus"
 import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers"
 import {
 	calculateResearchMetrics,
@@ -308,7 +308,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-					(researchRollup?.research_questions_without_decision?.length || 0) > 0
+				(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")

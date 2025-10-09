@@ -1,11 +1,13 @@
-import { Check, ChevronsUpDown } from "lucide-react"
+import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate, useRouteLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "~/components/ui/command"
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { SidebarMenu, SidebarMenuItem } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { CreateTeamForm } from "~/features/teams/components/CreateTeamForm"
 import { cn } from "~/lib/utils"
 import { createRouteDefinitions } from "~/utils/route-definitions"
 
@@ -33,6 +35,7 @@ interface TeamSwitcherProps {
 
 export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	const [open, setOpen] = useState(false)
+	const [showCreateDialog, setShowCreateDialog] = useState(false)
 	const navigate = useNavigate()
 	const { accountId, projectId, setLastProjectPath } = useCurrentProject()
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
@@ -63,11 +66,22 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	const initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
 
 	const handleSelectProject = (acctId: string, projId: string) => {
+		if (!acctId || !projId) {
+			console.error("Cannot navigate: missing accountId or projectId", { acctId, projId })
+			return
+		}
 		setLastProjectPath({ accountId: acctId, projectId: projId })
 		const basePath = `/a/${acctId}/${projId}`
 		const routes = createRouteDefinitions(basePath)
 		navigate(routes.dashboard())
 		setOpen(false)
+	}
+
+	const handleTeamCreated = (newAccountId: string) => {
+		setShowCreateDialog(false)
+		setOpen(false)
+		// Navigate to new team's projects page
+		navigate(`/a/${newAccountId}/projects`)
 	}
 
 	if (accounts.length === 0) {
@@ -79,8 +93,16 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			<SidebarMenuItem>
 				<Popover open={open} onOpenChange={setOpen}>
 					<PopoverTrigger asChild>
-						<Button variant="outline" role="combobox" aria-expanded={open} className="w-full justify-start gap-2">
-							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+						<Button
+							variant="ghost"
+							role="combobox"
+							aria-expanded={open}
+							className={cn(
+								"w-full justify-start gap-2 hover:bg-sidebar-accent",
+								collapsed ? "h-10 w-10 justify-center p-0" : "px-2"
+							)}
+						>
+							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">
 								<span className="font-semibold text-sm">{initials}</span>
 							</div>
 							{!collapsed && (
@@ -114,10 +136,39 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 										})}
 									</CommandGroup>
 								))}
+								<CommandSeparator />
+								<CommandGroup>
+									<CommandItem
+										onSelect={() => {
+											setOpen(false)
+											setShowCreateDialog(true)
+										}}
+										className="text-primary"
+									>
+										<Plus className="mr-2 h-4 w-4" />
+										<span>Create Team</span>
+									</CommandItem>
+								</CommandGroup>
 							</CommandList>
 						</Command>
 					</PopoverContent>
 				</Popover>
+
+				{/* Create Team Dialog */}
+				<Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+					<DialogContent className="sm:max-w-md">
+						<DialogHeader>
+							<DialogTitle>Create a New Team</DialogTitle>
+							<DialogDescription>
+								Create a team workspace to collaborate with others on research projects.
+							</DialogDescription>
+						</DialogHeader>
+						<CreateTeamForm
+							onSuccess={handleTeamCreated}
+							onCancel={() => setShowCreateDialog(false)}
+						/>
+					</DialogContent>
+				</Dialog>
 			</SidebarMenuItem>
 		</SidebarMenu>
 	)
