@@ -121,6 +121,22 @@ async function saveSingleSection(
 		parsedData = sectionData
 	}
 
+	// For settings, merge with existing settings to avoid overwriting
+	if (sectionKind === "settings" && typeof parsedData === "object" && parsedData) {
+		const { data: existingSection } = await supabase
+			.from("project_sections")
+			.select("meta")
+			.eq("project_id", projectId)
+			.eq("kind", "settings")
+			.single()
+
+		if (existingSection?.meta) {
+			const existingMeta = existingSection.meta as Record<string, unknown>
+			parsedData = { ...existingMeta, ...parsedData }
+			consola.log("🔀 Merged settings with existing:", parsedData)
+		}
+	}
+
 	consola.log("🔄 Calling processSection with:", {
 		sectionKind,
 		parsedData,

@@ -18,12 +18,18 @@ import {
 	Zap,
 } from "lucide-react"
 import { useState } from "react"
-import { Link } from "react-router"
+import type { LoaderFunctionArgs } from "react-router"
+import { Link, useLoaderData } from "react-router"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Progress } from "~/components/ui/progress"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import EnhancedPersonCard, { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
+import { getPeopleWithValidation } from "~/features/people/db"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { userContext } from "~/server/user-context"
 
 interface ValidationParticipant {
 	id: string
@@ -42,8 +48,8 @@ interface ValidationParticipant {
 
 const mockParticipants: ValidationParticipant[] = [
 	{
-		id: "1",
-		name: "Sarah Chen",
+		id: "327f812d-07a5-4b03-bec6-592a3d0328fd",
+		name: "Ricky Chen",
 		company: "TechStart Inc",
 		outcome: 5,
 		stage: "Pay",
@@ -56,8 +62,8 @@ const mockParticipants: ValidationParticipant[] = [
 		},
 	},
 	{
-		id: "2",
-		name: "Michael Rodriguez",
+		id: "8ca9a1a8-b557-4092-8b89-fe2440399ae0",
+		name: "John Rodriguez",
 		company: "Growth Labs",
 		outcome: 5,
 		stage: "Value",
@@ -189,14 +195,91 @@ const _validationIcons = {
 	acting: Rocket,
 }
 
+/**
+ * Loader: Fetch people with validation details and project sections from database
+ * Falls back to mock data if no real data exists
+ */
+export async function loader({ context, params }: LoaderFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
+	const accountId = params.accountId
+	const projectId = params.projectId
+
+	if (!accountId || !projectId) {
+		throw new Response("Account ID and Project ID are required", { status: 400 })
+	}
+
+	// Fetch project sections (goals, etc.) - same as ProjectStatusScreen
+	const { data: projectSections } = await supabase
+		.from("project_sections")
+		.select("*")
+		.eq("project_id", projectId)
+		.order("position", { ascending: true, nullsFirst: false })
+		.order("created_at", { ascending: false })
+
+	// Fetch people with validation data
+	const { data: people, error } = await getPeopleWithValidation({
+		supabase,
+		accountId,
+		projectId,
+	})
+
+	if (error) {
+		console.error("Error loading validation participants:", error)
+	}
+
+	// Transform database people to ValidationParticipant format
+	const participants: ValidationParticipant[] = (people || [])
+		.filter((person) => {
+			// Only include people with validation data in contact_info
+			const contactInfo = person.contact_info as Record<string, any>
+			return contactInfo?.validation_outcome && contactInfo?.validation_stage
+		})
+		.map((person) => {
+			const contactInfo = person.contact_info as Record<string, any>
+			return {
+				id: person.id,
+				name: person.name || "Unknown",
+				company: person.company || "",
+				outcome: contactInfo.validation_outcome || 3,
+				stage: contactInfo.validation_stage || "Qualify",
+				keyInsight: contactInfo.key_insight || "",
+				validationDetails: contactInfo.validation_details,
+			}
+		})
+
+	return {
+		participants: participants?.length > 0 ? participants : mockParticipants,
+		projectSections: projectSections || [],
+		accountId,
+		projectId,
+	}
+}
+
 export function AnalyzeStageValidation() {
+	const { participants, projectSections } = useLoaderData<typeof loader>()
+	const currentProjectContext = useCurrentProject()
+	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 	const [selectedOutcome, setSelectedOutcome] = useState<number>(5)
 
+	// Helper functions to organize project sections - same as ProjectStatusScreen
+	const getGoalSections = () =>
+		projectSections?.filter((section) => section.kind === "goal" || section.kind === "research_goal")
+
+	// Derive research goal text from project sections
+	const researchGoalText = (() => {
+		const gs = getGoalSections()
+		if (gs?.length === 0) return ""
+		const section = gs[0]
+		const meta = (section.meta || {}) as any
+		return meta.research_goal || meta.customGoal || section.content_md || ""
+	})()
+
 	const totalInterviews = 15
-	const completedInterviews = mockParticipants.length
+	const completedInterviews = participants?.length
 	const progressPercentage = Math.round((completedInterviews / totalInterviews) * 100)
 
-	const outcomeCounts = mockParticipants.reduce(
+	const outcomeCounts = participants?.reduce(
 		(acc, p) => {
 			acc[p.outcome] = (acc[p.outcome] || 0) + 1
 			return acc
@@ -204,13 +287,13 @@ export function AnalyzeStageValidation() {
 		{} as Record<number, number>
 	)
 
-	const getParticipantsByOutcome = (outcome: number) => mockParticipants.filter((p) => p.outcome === outcome)
+	const getParticipantsByOutcome = (outcome: number) => participants?.filter((p) => p.outcome === outcome)
 
 	const qualifiedProspects = getParticipantsByOutcome(5)
-	const payingCustomers = qualifiedProspects.filter((p) => p.stage === "Pay").length
-	const activelySolving = qualifiedProspects.filter((p) => p.stage === "Behavior").length
+	const payingCustomers = qualifiedProspects?.filter((p) => p.stage === "Pay")?.length
+	const activelySolving = qualifiedProspects?.filter((p) => p.stage === "Behavior")?.length
 
-	const renderParticipantCard = (participant: ValidationParticipant, showOutcomeBadge = false) => {
+	const renderParticipantCard = (participant: ValidationParticipant) => {
 		const initials = participant.name
 			.split(" ")
 			.map((n) => n[0])
@@ -219,7 +302,7 @@ export function AnalyzeStageValidation() {
 		const isOpportunity = participant.outcome === 5 && participant.validationDetails
 
 		return (
-			<Link to={`/prospect/${participant.id}`} key={participant.id}>
+			<Link to={routes.people.detail(participant.id)} key={participant.id}>
 				<Card className="group h-full cursor-pointer overflow-hidden border shadow-sm transition-all hover:border-gray-400 hover:shadow-lg dark:border-gray-700 dark:hover:border-gray-500">
 					<div
 						className={`h-1 ${isOpportunity ? "bg-emerald-500 dark:bg-emerald-600" : "bg-gray-300 dark:bg-gray-600"}`}
@@ -227,14 +310,10 @@ export function AnalyzeStageValidation() {
 
 					<CardContent className="p-6">
 						<div className="mb-6 flex items-start gap-4">
-							<Avatar className="h-14 w-14 flex-shrink-0 ring-2 ring-gray-100 dark:ring-gray-700">
-								<AvatarImage src={`/.jpg?key=lvbvw&height=56&width=56&query=${participant.name}`} />
-								<AvatarFallback className="bg-gradient-to-br from-blue-500 to-blue-600 font-semibold text-lg text-white">
-									{initials}
-								</AvatarFallback>
-							</Avatar>
+							<EnhancedPersonCard person={participant} key={participant.id} />
 
-							<div className="min-w-0 flex-1">
+							<MiniPersonCard person={participant} initials={initials} />
+							{/* <div className="min-w-0 flex-1">
 								<h3 className="mb-1 font-bold text-foreground text-xl transition-colors group-hover:text-blue-600 dark:group-hover:text-blue-400">
 									{participant.name}
 								</h3>
@@ -257,7 +336,7 @@ export function AnalyzeStageValidation() {
 										{participant.stage}
 									</Badge>
 								</div>
-							</div>
+							</div> */}
 
 							<ChevronRight className="mt-2 h-6 w-6 flex-shrink-0 text-gray-300 transition-all group-hover:translate-x-1 group-hover:text-blue-600 dark:text-gray-600 dark:group-hover:text-blue-400" />
 						</div>
@@ -366,8 +445,7 @@ export function AnalyzeStageValidation() {
 						<div className="flex-1">
 							<h2 className="mb-2 font-semibold text-foreground text-xl">Goal</h2>
 							<p className="text-foreground text-md leading-relaxed">
-								Demo: Validate demand for AI-powered project management tool among startup founders and product
-								managers.
+								{researchGoalText || "No research goal set. Click Edit to add your project goal."}
 							</p>
 						</div>
 					</div>
@@ -397,11 +475,10 @@ export function AnalyzeStageValidation() {
 							<button
 								key={outcome}
 								onClick={() => setSelectedOutcome(outcome)}
-								className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 font-medium text-sm transition-all ${
-									isSelected
-										? `${config.color} shadow-md`
-										: "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
-								} `}
+								className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 font-medium text-sm transition-all ${isSelected
+									? `${config.color} shadow-md`
+									: "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
+									} `}
 							>
 								<span>{config.label}</span>
 								<Badge variant="secondary" className={`text-xs ${isSelected ? "bg-white/50 dark:bg-black/20" : ""}`}>
@@ -424,7 +501,7 @@ export function AnalyzeStageValidation() {
 										<div className="flex-1">
 											<h3 className="mb-2 font-semibold text-foreground">Opportunity Summary</h3>
 											<p className="text-foreground text-md leading-relaxed">
-												{qualifiedProspects.length} qualified prospects are actively addressing this problem.{" "}
+												{qualifiedProspects?.length} qualified prospects are actively addressing this problem.{" "}
 												{payingCustomers} are already paying for solutions (average $500-2K/mo), and {activelySolving}{" "}
 												have built internal tools or workarounds. All prospects have quantified the pain and are
 												motivated to find better solutions, indicating strong product-market fit potential.
@@ -435,14 +512,14 @@ export function AnalyzeStageValidation() {
 							</Card>
 
 							<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-								{qualifiedProspects.map((participant) => renderParticipantCard(participant))}
+								{qualifiedProspects?.map((participant) => renderParticipantCard(participant))}
 							</div>
 						</div>
 					)}
 
 					{selectedOutcome !== 5 && (
 						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-							{getParticipantsByOutcome(selectedOutcome).map((participant) => renderParticipantCard(participant))}
+							{getParticipantsByOutcome(selectedOutcome)?.map((participant) => renderParticipantCard(participant))}
 						</div>
 					)}
 				</div>

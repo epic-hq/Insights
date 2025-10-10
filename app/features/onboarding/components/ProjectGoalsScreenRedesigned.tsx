@@ -12,6 +12,7 @@ import { Input } from "~/components/ui/input"
 import { ProgressDots } from "~/components/ui/ProgressDots"
 import { StatusPill } from "~/components/ui/StatusPill"
 import { Textarea } from "~/components/ui/textarea"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
@@ -100,6 +101,8 @@ export default function ProjectGoalsScreen({
 	const [newUnknown, setNewUnknown] = useState("")
 	const [custom_instructions, setCustomInstructions] = useState("")
 	const [target_conversations, setTargetConversations] = useState(10)
+	const [conversation_type, setConversationType] = useState<"exploratory" | "validation" | "user_testing">("exploratory")
+	const [interview_duration, setInterviewDuration] = useState<number>(30)
 	const [isLoading, setIsLoading] = useState(false)
 	const [contextLoaded, setContextLoaded] = useState(false)
 	const [currentProjectId, setCurrentProjectId] = useState<string | undefined>(projectId)
@@ -175,12 +178,14 @@ export default function ProjectGoalsScreen({
 		},
 	})
 
-	// Save target conversations function
-	const saveTargetConversations = useCallback(
-		(conversations: number) => {
-			if (conversations > 0) {
-				saveProjectSection("settings", { target_conversations: conversations })
-			}
+	// Save settings - upserts to preserve other settings
+	const saveSettings = useCallback(
+		(updates: {
+			target_conversations?: number
+			conversation_type?: "exploratory" | "validation" | "user_testing"
+			interview_duration?: number
+		}) => {
+			saveProjectSection("settings", updates)
 		},
 		[saveProjectSection]
 	)
@@ -339,6 +344,8 @@ export default function ProjectGoalsScreen({
 					setUnknowns((m.unknowns as string[]) ?? [])
 					setCustomInstructions((m.custom_instructions as string) ?? "")
 					setTargetConversations((m.target_conversations as number) ?? 10)
+					setConversationType((m.conversation_type as "exploratory" | "validation" | "user_testing") ?? "exploratory")
+					setInterviewDuration((m.interview_duration as number) ?? 30)
 					populatedFromContext = true
 					consola.log("Loaded project context from project_sections (merged)")
 				}
@@ -358,6 +365,8 @@ export default function ProjectGoalsScreen({
 					setUnknowns(data.unknowns || [])
 					setCustomInstructions(data.custom_instructions || "")
 					setTargetConversations(data.target_conversations || 10)
+					setConversationType(data.conversation_type || "exploratory")
+					setInterviewDuration(data.interview_duration || 30)
 					consola.log("Loaded project goals via API fallback")
 				}
 			}
@@ -1325,41 +1334,197 @@ export default function ProjectGoalsScreen({
 						</Card>
 					</Collapsible>
 
-					{/* Target Conversations Section */}
+					{/* Type & Scope Section */}
 					<div className="mx-auto max-w-4xl">
-						<Card>
-							<CardHeader className="p-4">
-								<div className="flex items-center gap-2">
-									<Target className="h-5 w-5 text-green-600" />
-									<h2 className="font-semibold text-lg">How many conversations to have?</h2>
+						<Card className="border-gray-200 shadow-sm">
+							<CardHeader className="border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50 p-6">
+								<div className="flex items-center justify-between">
+									<div className="flex items-center gap-3">
+										<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
+											<Target className="h-5 w-5 text-green-700" />
+										</div>
+										<div>
+											<h2 className="font-semibold text-gray-900 text-lg">Type & Scope</h2>
+											<p className="text-muted-foreground text-sm">Configure your research approach</p>
+										</div>
+									</div>
 									<Tooltip>
 										<TooltipTrigger asChild>
-											<span className="inline-flex">
-												<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
-											</span>
+											<button type="button" className="text-gray-400 hover:text-gray-600">
+												<Info className="h-5 w-5" />
+											</button>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
-											<p>Set your target number of interviews to conduct for this research project.</p>
+											<p>Set the interview type, duration, and target number to guide question generation.</p>
 										</TooltipContent>
 									</Tooltip>
 								</div>
 							</CardHeader>
 
-							<CardContent className="p-6 pt-0">
-								<div className="flex items-center gap-4">
-									<Input
-										type="number"
-										min="1"
-										max="100"
-										value={target_conversations}
-										onChange={(e) => {
-											const value = Number.parseInt(e.target.value) || 10
-											setTargetConversations(value)
-										}}
-										onBlur={() => saveTargetConversations(target_conversations)}
-										className="w-24 text-center"
-									/>
-									<span className="text-gray-600 text-sm">interviews</span>
+							<CardContent className="p-6">
+								<div className="grid gap-8 md:grid-cols-2">
+									{/* Left Column */}
+									<div className="space-y-6">
+										{/* Interview Type */}
+										<div>
+											<label className="mb-3 block font-semibold text-gray-900 text-sm">
+												Interview Type
+												<span className="ml-2 font-normal text-gray-500 text-xs">What's your goal?</span>
+											</label>
+											<ToggleGroup
+												type="single"
+												value={conversation_type}
+												onValueChange={(value) => {
+													if (value) {
+														const newType = value as "exploratory" | "validation" | "user_testing"
+														setConversationType(newType)
+														saveSettings({ conversation_type: newType })
+													}
+												}}
+												className="grid w-full grid-cols-1 gap-2"
+											>
+												<ToggleGroupItem
+													value="exploratory"
+													aria-label="Exploratory"
+													className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+												>
+													<div className="flex w-full items-center justify-between">
+														<span className="font-medium">Exploratory</span>
+														<span className="text-muted-foreground text-xs">Discovery</span>
+													</div>
+												</ToggleGroupItem>
+												<ToggleGroupItem
+													value="validation"
+													aria-label="Validation"
+													className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-blue-500 data-[state=on]:bg-blue-50"
+												>
+													<div className="flex w-full items-center justify-between">
+														<span className="font-medium">Validation</span>
+														<span className="text-muted-foreground text-xs">Testing</span>
+													</div>
+												</ToggleGroupItem>
+												<ToggleGroupItem
+													value="user_testing"
+													aria-label="User Testing"
+													className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-purple-500 data-[state=on]:bg-purple-50"
+												>
+													<div className="flex w-full items-center justify-between">
+														<span className="font-medium">User Testing</span>
+														<span className="text-muted-foreground text-xs">Usability</span>
+													</div>
+												</ToggleGroupItem>
+											</ToggleGroup>
+											<p className="mt-2 text-muted-foreground text-xs leading-relaxed">
+												{conversation_type === "exploratory" && "🔍 Discover problems, needs, and opportunities"}
+												{conversation_type === "validation" && "✓ Test hypotheses and validate solutions"}
+												{conversation_type === "user_testing" && "👤 Evaluate usability and gather feedback"}
+											</p>
+										</div>
+									</div>
+
+									{/* Right Column */}
+									<div className="space-y-6">
+										{/* Interview Duration */}
+										<div>
+											<label className="mb-3 block font-semibold text-gray-900 text-sm">
+												Interview Duration
+												<span className="ml-2 font-normal text-gray-500 text-xs">Per session</span>
+											</label>
+											<div className="space-y-3">
+												<ToggleGroup
+													type="single"
+													value={[15, 30, 45, 60].includes(interview_duration) ? String(interview_duration) : ""}
+													onValueChange={(value) => {
+														if (value) {
+															const newDuration = Number.parseInt(value)
+															setInterviewDuration(newDuration)
+															saveSettings({ interview_duration: newDuration })
+														}
+													}}
+													className="grid w-full grid-cols-4 gap-2"
+												>
+													<ToggleGroupItem
+														value="15"
+														aria-label="15 minutes"
+														className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+													>
+														15
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="30"
+														aria-label="30 minutes"
+														className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+													>
+														30
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="45"
+														aria-label="45 minutes"
+														className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+													>
+														45
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="60"
+														aria-label="60 minutes"
+														className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+													>
+														60
+													</ToggleGroupItem>
+												</ToggleGroup>
+												<div className="flex items-center gap-2">
+													<Input
+														type="number"
+														min="5"
+														max="120"
+														placeholder="Custom"
+														value={[15, 30, 45, 60].includes(interview_duration) ? "" : String(interview_duration)}
+														onChange={(e) => {
+															const value = Number.parseInt(e.target.value)
+															if (!Number.isNaN(value) && value >= 5 && value <= 120) {
+																setInterviewDuration(value)
+															}
+														}}
+														onBlur={() => {
+															if (interview_duration >= 5 && interview_duration <= 120) {
+																saveSettings({ interview_duration })
+															}
+														}}
+														className="w-20 text-center text-sm"
+													/>
+													<span className="text-muted-foreground text-xs">minutes (custom)</span>
+												</div>
+											</div>
+										</div>
+
+										{/* Target Conversations */}
+										<div>
+											<label className="mb-3 block font-semibold text-gray-900 text-sm">
+												Target Conversations
+												<span className="ml-2 font-normal text-gray-500 text-xs">How many?</span>
+											</label>
+											<div className="flex items-center gap-3">
+												<Input
+													type="number"
+													min="1"
+													max="100"
+													value={target_conversations}
+													onChange={(e) => {
+														const value = Number.parseInt(e.target.value) || 10
+														setTargetConversations(value)
+													}}
+													onBlur={() => saveSettings({ target_conversations })}
+													className="w-24 text-center font-semibold text-lg"
+												/>
+												<div className="flex flex-col">
+													<span className="font-medium text-gray-700 text-sm">interviews</span>
+													<span className="text-muted-foreground text-xs">
+														~{Math.round((target_conversations * interview_duration) / 60)} hours total
+													</span>
+												</div>
+											</div>
+										</div>
+									</div>
 								</div>
 							</CardContent>
 						</Card>

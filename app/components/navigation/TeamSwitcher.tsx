@@ -2,7 +2,15 @@ import { Check, ChevronsUpDown, Plus } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate, useRouteLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList, CommandSeparator } from "~/components/ui/command"
+import {
+	Command,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+	CommandSeparator,
+} from "~/components/ui/command"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { SidebarMenu, SidebarMenuItem } from "~/components/ui/sidebar"
@@ -43,7 +51,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	const accounts = useMemo<AccountRecord[]>(() => {
 		if (!protectedData?.accounts) return []
 		let accountsList: AccountRecord[] = []
-		
+
 		if (typeof protectedData.accounts === "string") {
 			try {
 				const parsed = JSON.parse(protectedData.accounts)
@@ -55,7 +63,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 		} else if (Array.isArray(protectedData.accounts)) {
 			accountsList = protectedData.accounts
 		}
-		
+
 		// Filter out personal accounts from the team switcher dropdown
 		return accountsList.filter((acct) => !acct.personal_account)
 	}, [protectedData?.accounts])
@@ -103,7 +111,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 							role="combobox"
 							aria-expanded={open}
 							className={cn(
-								"w-full justify-start gap-2 hover:bg-sidebar-accent",
+								"w-full justify-start gap-2 overflow-hidden hover:bg-sidebar-accent",
 								collapsed ? "h-10 w-10 justify-center p-0" : "px-2"
 							)}
 						>
@@ -168,10 +176,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 								Create a team workspace to collaborate with others on research projects.
 							</DialogDescription>
 						</DialogHeader>
-						<CreateTeamForm
-							onSuccess={handleTeamCreated}
-							onCancel={() => setShowCreateDialog(false)}
-						/>
+						<CreateTeamForm onSuccess={handleTeamCreated} onCancel={() => setShowCreateDialog(false)} />
 					</DialogContent>
 				</Dialog>
 			</SidebarMenuItem>

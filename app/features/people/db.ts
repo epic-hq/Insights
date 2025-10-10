@@ -188,3 +188,55 @@ export const deletePerson = async ({
 }) => {
 	return await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
 }
+
+/**
+ * Get people with validation details for the validation status page
+ * Returns people who have validation-related data (outcome, stage, etc.)
+ */
+export const getPeopleWithValidation = async ({
+	supabase,
+	accountId,
+	projectId,
+}: {
+	supabase: SupabaseClient<Database>
+	accountId: string
+	projectId: string
+}) => {
+	// Query people with their interview data and insights
+	// We'll use the contact_info JSONB field to store validation details
+	const { data, error } = await supabase
+		.from("people")
+		.select(`
+			id,
+			name,
+			company,
+			contact_info,
+			person_facet (
+				facet_ref,
+				source,
+				confidence
+			),
+			person_scale (
+				kind_slug,
+				score,
+				band
+			),
+			interview_people (
+				interviews (
+					id,
+					title,
+					insights (
+						id,
+						name,
+						category,
+						pain,
+						journey_stage
+					)
+				)
+			)
+		`)
+		.eq("project_id", projectId)
+		.order("created_at", { ascending: false })
+
+	return { data, error }
+}

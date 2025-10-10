@@ -1,9 +1,5 @@
 import { useMemo } from "react"
 import { NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
-import { useCurrentProject } from "~/contexts/current-project-context"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { UserProfile } from "../auth/UserProfile"
-import { Logo, LogoBrand } from "../branding"
 import {
 	Sidebar,
 	SidebarContent,
@@ -19,9 +15,13 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "~/components/ui/sidebar"
+import { useCurrentProject } from "~/contexts/current-project-context"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { UserProfile } from "../auth/UserProfile"
+import { Logo, LogoBrand } from "../branding"
+import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
 import { InviteTeamModal } from "./InviteTeamModal"
 import { TeamSwitcher } from "./TeamSwitcher"
-import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
 
 interface ProjectRecord {
 	id: string
@@ -69,12 +69,10 @@ export function AppSidebar() {
 
 	const effectiveAccountId = accountId || fallbackAccount?.account_id || ""
 	const effectiveProjectId = fallbackProject?.id || ""
-	
+
 	// Construct proper project path
 	const effectiveProjectPath =
-		effectiveAccountId && effectiveProjectId
-			? `/a/${effectiveAccountId}/${effectiveProjectId}`
-			: projectPath || ""
+		effectiveAccountId && effectiveProjectId ? `/a/${effectiveAccountId}/${effectiveProjectId}` : projectPath || ""
 
 	const routes = useProjectRoutes(effectiveProjectPath)
 	const canNavigate = Boolean(effectiveAccountId && effectiveProjectId)
@@ -86,18 +84,16 @@ export function AppSidebar() {
 		<Sidebar collapsible="icon" variant="sidebar">
 			<SidebarHeader>
 				<div className="flex items-center justify-between gap-2 px-2">
-					<div className="flex items-center gap-2">
-						{isCollapsed ? <Logo /> : <LogoBrand />}
-					</div>
+					<div className="flex items-center gap-2">{isCollapsed ? <Logo /> : <LogoBrand />}</div>
 					<SidebarTrigger className="ml-auto" />
 				</div>
-				<TeamSwitcher collapsed={isCollapsed} />
+				<TeamSwitcher accounts={accounts} collapsed={isCollapsed} />
 			</SidebarHeader>
 
 			<SidebarContent>
 				{APP_SIDEBAR_SECTIONS.map((section) => (
 					<SidebarGroup key={section.key}>
-						<SidebarGroupLabel>{section.title}</SidebarGroupLabel>
+						{section.key !== "home" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
 						<SidebarGroupContent>
 							<SidebarMenu>
 								{section.items.map((item) => {
@@ -107,11 +103,7 @@ export function AppSidebar() {
 									return (
 										<SidebarMenuItem key={item.key}>
 											{href ? (
-												<SidebarMenuButton
-													asChild
-													isActive={isActive}
-													tooltip={buildTooltip(item.title)}
-												>
+												<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
 													<NavLink to={href}>
 														<item.icon />
 														<span>{item.title}</span>
@@ -130,7 +122,6 @@ export function AppSidebar() {
 						</SidebarGroupContent>
 					</SidebarGroup>
 				))}
-
 			</SidebarContent>
 
 			<SidebarFooter>
@@ -149,11 +140,7 @@ export function AppSidebar() {
 						return (
 							<SidebarMenuItem key={item.key}>
 								{href ? (
-									<SidebarMenuButton
-										asChild
-										isActive={isActive}
-										tooltip={buildTooltip(item.title)}
-									>
+									<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
 										<NavLink to={href}>
 											<item.icon />
 											<span>{item.title}</span>
@@ -171,7 +158,7 @@ export function AppSidebar() {
 				</SidebarMenu>
 
 				{/* User Profile at bottom */}
-				<UserProfile collapsed={isCollapsed} className="w-full" />
+				<UserProfile />
 			</SidebarFooter>
 
 			<SidebarRail />

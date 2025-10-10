@@ -1,19 +1,14 @@
 import type { LucideIcon } from "lucide-react"
 import {
-	BadgeQuestionMarkIcon,
 	BookOpen,
-	Compass,
 	File,
-	FolderOpen,
+	Home,
 	Lightbulb,
 	ListChecks,
 	Mic,
 	Sparkles,
 	Target,
-	TargetIcon,
-	UploadCloud,
 	UserCircle,
-	UserCog,
 	Users,
 } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
@@ -33,6 +28,18 @@ export interface AppSidebarSection {
 }
 
 export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
+	{
+		key: "home",
+		title: "Home",
+		items: [
+			{
+				key: "dashboard",
+				title: "Home",
+				icon: Home,
+				to: (routes) => routes.dashboard(),
+			},
+		],
+	},
 	{
 		key: "plan",
 		title: "Plan",
@@ -68,7 +75,6 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				key: "record-upload-media",
 				title: "Record or Upload",
 				description: "Import calls, clips & decks",
-				// icon: UploadCloud,
 				icon: Mic,
 				to: (routes) => routes.interviews.upload(),
 			},
@@ -76,7 +82,6 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				key: "interactions",
 				title: "Interactions",
 				description: "See what you recorded",
-				// icon: UploadCloud,
 				icon: File,
 				to: (routes) => routes.interviews.index(),
 			},
@@ -86,13 +91,6 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		key: "analyze",
 		title: "Analyze",
 		items: [
-			{
-				key: "status",
-				title: "Status",
-				description: "See validation status",
-				icon: Compass,
-				to: (routes) => routes.projects.dashboard(),
-			},
 			{
 				key: "personas",
 				title: "Personas",
