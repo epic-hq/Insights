@@ -3,9 +3,9 @@
 // Supports both project goals setup and interview question generation
 
 class ContextualSuggestions {
-  decision_questions string[] @description("Contextual decision questions")
+  decision_questions string[] @description("Contextual decision that the user needs to make in order to best achieve their goal. ")
   assumptions string[] @description("Relevant assumptions")
-  unknowns string[] @description("Key unknowns")
+  unknowns string[] @description("Key research questions/unknowns and what must be learned to help make a decision.")
   organizations string[] @description("Target organization types")
   roles string[] @description("Target user roles")
   interview_questions string[] @description("Interview questions for specific categories")
@@ -48,16 +48,17 @@ function GenerateContextualSuggestions(
     GENERATE SUGGESTIONS FOR: {{ suggestion_type }}
 
     {% if suggestion_type == "decision_questions" %}
-    Generate specific, actionable research questions that would have clear business impact. Focus on:
-    - Questions that would directly influence business decisions or strategy
-    - Customer behavior insights that could change how you build or market
-    - Specific outcomes that could be measured and validated
-    - Questions that, once answered, would reduce uncertainty about what to build next
+   Generate specific, actionable decisions that the user could make to advance their business goal. Each decision should:
+		- Directly influence product, marketing, or customer strategy
+		- Be informed by customer behavior or insights
+		- Lead to measurable outcomes that can validate success
+		- Reduce uncertainty about what to build, whom to target, or how to position the product
 
     Format examples:
-    - "What specific job-to-be-done causes customers to switch from competitors?"
-    - "Which onboarding steps predict long-term retention?"
-    - "What pricing threshold makes customers choose premium over basic?"
+		- "Prioritize building automated cash-flow projections over manual expense tracking"
+		- "Focus on milestone-based progress tracking instead of daily streaks"
+		- "Gate collaboration tools behind premium plans instead of storage limits"
+		- "Launch a loyalty program rewarding clients for re-booking the same freelancer"
     {% endif %}
 
     {% if suggestion_type == "assumptions" %}
@@ -75,8 +76,9 @@ function GenerateContextualSuggestions(
     {% endif %}
 
     {% if suggestion_type == "unknowns" %}
-    Generate critical unknowns that create uncertainty in decision-making. Focus on:
+    Generate research questions that are critical unknowns that create uncertainty in decision-making. Focus on:
     - Knowledge gaps that could dramatically change your strategy if filled
+		- Customer context, goals, friction and pain points that could influence the user's decision
     - Customer behavior patterns that you're unsure about
     - Market dynamics that could affect adoption or success
     - Competitive threats or advantages that remain unclear

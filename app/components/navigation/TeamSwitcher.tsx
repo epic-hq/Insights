@@ -42,19 +42,22 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 
 	const accounts = useMemo<AccountRecord[]>(() => {
 		if (!protectedData?.accounts) return []
+		let accountsList: AccountRecord[] = []
+		
 		if (typeof protectedData.accounts === "string") {
 			try {
 				const parsed = JSON.parse(protectedData.accounts)
-				return Array.isArray(parsed) ? parsed : []
+				accountsList = Array.isArray(parsed) ? parsed : []
 			} catch (error) {
 				console.error("Failed to parse accounts from protected loader data", error)
 				return []
 			}
+		} else if (Array.isArray(protectedData.accounts)) {
+			accountsList = protectedData.accounts
 		}
-		if (Array.isArray(protectedData.accounts)) {
-			return protectedData.accounts
-		}
-		return []
+		
+		// Filter out personal accounts from the team switcher dropdown
+		return accountsList.filter((acct) => !acct.personal_account)
 	}, [protectedData?.accounts])
 
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
@@ -80,8 +83,10 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	const handleTeamCreated = (newAccountId: string) => {
 		setShowCreateDialog(false)
 		setOpen(false)
-		// Navigate to new team's projects page
-		navigate(`/a/${newAccountId}/projects`)
+		// Navigate to create new project in the new team
+		const basePath = `/a/${newAccountId}`
+		const routes = createRouteDefinitions(basePath)
+		navigate(routes.projects.new())
 	}
 
 	if (accounts.length === 0) {
@@ -126,7 +131,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 											return (
 												<CommandItem
 													key={`${account.account_id}:${project.id}`}
-													value={`${account.account_id}-${project.id}`}
+													value={`${project.name || "Untitled project"} ${account.name || ""}`}
 													onSelect={() => handleSelectProject(account.account_id, project.id)}
 												>
 													<Check className={cn("mr-2 h-4 w-4", isActive ? "opacity-100" : "opacity-0")} />

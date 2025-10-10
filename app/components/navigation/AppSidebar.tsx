@@ -19,6 +19,7 @@ import {
 	SidebarTrigger,
 	useSidebar,
 } from "~/components/ui/sidebar"
+import { InviteTeamModal } from "./InviteTeamModal"
 import { TeamSwitcher } from "./TeamSwitcher"
 import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
 
@@ -130,43 +131,46 @@ export function AppSidebar() {
 					</SidebarGroup>
 				))}
 
-				{APP_SIDEBAR_UTILITY_LINKS.length > 0 && (
-					<SidebarGroup>
-						<SidebarGroupContent>
-							<SidebarMenu>
-								{APP_SIDEBAR_UTILITY_LINKS.map((item) => {
-									const href = canNavigate ? item.to(routes) : undefined
-									const isActive = href ? location.pathname === href : false
-
-									return (
-										<SidebarMenuItem key={item.key}>
-											{href ? (
-												<SidebarMenuButton
-													asChild
-													isActive={isActive}
-													tooltip={buildTooltip(item.title)}
-												>
-													<NavLink to={href}>
-														<item.icon />
-														<span>{item.title}</span>
-													</NavLink>
-												</SidebarMenuButton>
-											) : (
-												<SidebarMenuButton disabled tooltip={item.title}>
-													<item.icon />
-													<span>{item.title}</span>
-												</SidebarMenuButton>
-											)}
-										</SidebarMenuItem>
-									)
-								})}
-							</SidebarMenu>
-						</SidebarGroupContent>
-					</SidebarGroup>
-				)}
 			</SidebarContent>
 
 			<SidebarFooter>
+				{/* Utility Links - closer to user profile */}
+				<SidebarMenu>
+					{/* Invite Team Modal */}
+					<SidebarMenuItem>
+						<InviteTeamModal collapsed={isCollapsed} accountId={effectiveAccountId} />
+					</SidebarMenuItem>
+
+					{/* Other utility links */}
+					{APP_SIDEBAR_UTILITY_LINKS.map((item) => {
+						const href = canNavigate ? item.to(routes) : undefined
+						const isActive = href ? location.pathname === href : false
+
+						return (
+							<SidebarMenuItem key={item.key}>
+								{href ? (
+									<SidebarMenuButton
+										asChild
+										isActive={isActive}
+										tooltip={buildTooltip(item.title)}
+									>
+										<NavLink to={href}>
+											<item.icon />
+											<span>{item.title}</span>
+										</NavLink>
+									</SidebarMenuButton>
+								) : (
+									<SidebarMenuButton disabled tooltip={item.title}>
+										<item.icon />
+										<span>{item.title}</span>
+									</SidebarMenuButton>
+								)}
+							</SidebarMenuItem>
+						)
+					})}
+				</SidebarMenu>
+
+				{/* User Profile at bottom */}
 				<UserProfile collapsed={isCollapsed} className="w-full" />
 			</SidebarFooter>
 
