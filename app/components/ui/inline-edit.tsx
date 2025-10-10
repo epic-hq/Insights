@@ -65,7 +65,7 @@ export default function InlineEdit({
 			inputRef.current.style.height = "auto"
 			inputRef.current.style.height = `${inputRef.current.scrollHeight + 1}px`
 		}
-	}, [multiline, autoSize])
+	}, [multiline, autoSize, value])
 
 	const minRows = 3
 

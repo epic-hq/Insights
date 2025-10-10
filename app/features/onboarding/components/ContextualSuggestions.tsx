@@ -163,7 +163,6 @@ export default function ContextualSuggestions({
 									<button
 										onClick={() => {
 											onSuggestionClick(suggestion)
-											setConsumed((prev) => new Set(prev).add(suggestion))
 										}}
 										disabled={isConsumed || isRejected}
 										className={

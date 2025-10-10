@@ -18,6 +18,7 @@ import { getProjectContextGeneric } from "~/features/questions/db"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { createClient } from "~/lib/supabase/client"
 import type { Project } from "~/types"
+import type { ResearchMode } from "~/types/research"
 import { useAutoSave } from "../hooks/useAutoSave"
 import ContextualSuggestions from "./ContextualSuggestions"
 
@@ -101,7 +102,7 @@ export default function ProjectGoalsScreen({
 	const [newUnknown, setNewUnknown] = useState("")
 	const [custom_instructions, setCustomInstructions] = useState("")
 	const [target_conversations, setTargetConversations] = useState(10)
-	const [conversation_type, setConversationType] = useState<"exploratory" | "validation" | "user_testing">("exploratory")
+	const [researchMode, setResearchMode] = useState<ResearchMode>("exploratory")
 	const [interview_duration, setInterviewDuration] = useState<number>(30)
 	const [isLoading, setIsLoading] = useState(false)
 	const [contextLoaded, setContextLoaded] = useState(false)
@@ -125,13 +126,12 @@ export default function ProjectGoalsScreen({
 
 	// Accordion state - only one section can be open at a time
 	const [openAccordion, setOpenAccordion] = useState<string | null>("research-goal")
-
 	// Reset active suggestion type when accordion changes
 	useEffect(() => {
 		setActiveSuggestionType(null)
 	}, [openAccordion])
 
-	// Refs for input fields to handle focus after suggestion selection
+	// Refs for input fields
 	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
 	const orgInputRef = useRef<HTMLTextAreaElement>(null)
 	const roleInputRef = useRef<HTMLTextAreaElement>(null)
@@ -143,17 +143,6 @@ export default function ProjectGoalsScreen({
 		accountId && currentProjectId
 			? `/a/${accountId}/${currentProjectId}/api/contextual-suggestions`
 			: "/api/contextual-suggestions" // fallback
-
-	// Helper function to focus input and set cursor at end
-	const focusInputAtEnd = (inputRef: React.RefObject<HTMLTextAreaElement | null>) => {
-		setTimeout(() => {
-			if (inputRef.current) {
-				inputRef.current.focus()
-				const length = inputRef.current.value.length
-				inputRef.current.setSelectionRange(length, length)
-			}
-		}, 0)
-	}
 
 	const {
 		saveTargetOrgs,
@@ -180,12 +169,9 @@ export default function ProjectGoalsScreen({
 
 	// Save settings - upserts to preserve other settings
 	const saveSettings = useCallback(
-		(updates: {
-			target_conversations?: number
-			conversation_type?: "exploratory" | "validation" | "user_testing"
-			interview_duration?: number
-		}) => {
-			saveProjectSection("settings", updates)
+		(updates: { target_conversations?: number; research_mode?: ResearchMode; interview_duration?: number }) => {
+			const payload = updates.research_mode ? { ...updates, conversation_type: updates.research_mode } : updates
+			saveProjectSection("settings", payload)
 		},
 		[saveProjectSection]
 	)
@@ -213,6 +199,7 @@ export default function ProjectGoalsScreen({
 				const formData = new FormData()
 				formData.append("project_id", projectIdToUse)
 				formData.append("research_goal", research_goal)
+				formData.append("research_mode", researchMode)
 				if (research_goal_details.trim()) formData.append("research_goal_details", research_goal_details)
 				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
 				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
@@ -249,6 +236,7 @@ export default function ProjectGoalsScreen({
 			ensuringStructure,
 			research_goal,
 			research_goal_details,
+			researchMode,
 			target_orgs,
 			target_roles,
 			unknowns,
@@ -344,7 +332,9 @@ export default function ProjectGoalsScreen({
 					setUnknowns((m.unknowns as string[]) ?? [])
 					setCustomInstructions((m.custom_instructions as string) ?? "")
 					setTargetConversations((m.target_conversations as number) ?? 10)
-					setConversationType((m.conversation_type as "exploratory" | "validation" | "user_testing") ?? "exploratory")
+					const mergedMode =
+						(m.research_mode as ResearchMode | undefined) ?? (m.conversation_type as ResearchMode | undefined)
+					setResearchMode(mergedMode ?? "exploratory")
 					setInterviewDuration((m.interview_duration as number) ?? 30)
 					populatedFromContext = true
 					consola.log("Loaded project context from project_sections (merged)")
@@ -365,7 +355,9 @@ export default function ProjectGoalsScreen({
 					setUnknowns(data.unknowns || [])
 					setCustomInstructions(data.custom_instructions || "")
 					setTargetConversations(data.target_conversations || 10)
-					setConversationType(data.conversation_type || "exploratory")
+					const fallbackMode =
+						(data.research_mode as ResearchMode | undefined) ?? (data.conversation_type as ResearchMode | undefined)
+					setResearchMode(fallbackMode || "exploratory")
 					setInterviewDuration(data.interview_duration || 30)
 					consola.log("Loaded project goals via API fallback")
 				}
@@ -619,16 +611,14 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-											}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-											}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
 										>
 											{step.title}
 										</span>
@@ -841,9 +831,13 @@ export default function ProjectGoalsScreen({
 													apiPath={apiPath}
 													shownSuggestions={shownSuggestionsByType["organizations"] || []}
 													isActive={activeSuggestionType === null || activeSuggestionType === "organizations"}
-													onSuggestionClick={(suggestion) => {
-														setNewOrg(suggestion)
-														focusInputAtEnd(orgInputRef)
+													onSuggestionClick={async (suggestion) => {
+														if (!target_orgs.includes(suggestion.trim())) {
+															await createProjectIfNeeded()
+															const newOrgs = [...target_orgs, suggestion.trim()]
+															setTargetOrgs(newOrgs)
+															saveTargetOrgs(newOrgs)
+														}
 													}}
 													onSuggestionShown={(suggestions) => {
 														if (activeSuggestionType === null) {
@@ -939,9 +933,13 @@ export default function ProjectGoalsScreen({
 													apiPath={apiPath}
 													shownSuggestions={shownSuggestionsByType["roles"] || []}
 													isActive={activeSuggestionType === null || activeSuggestionType === "roles"}
-													onSuggestionClick={(suggestion) => {
-														setNewRole(suggestion)
-														focusInputAtEnd(roleInputRef)
+													onSuggestionClick={async (suggestion) => {
+														if (!target_roles.includes(suggestion.trim())) {
+															await createProjectIfNeeded()
+															const newRoles = [...target_roles, suggestion.trim()]
+															setTargetRoles(newRoles)
+															saveTargetRoles(newRoles)
+														}
 													}}
 													onSuggestionShown={(suggestions) => {
 														if (activeSuggestionType === null) {
@@ -1011,7 +1009,8 @@ export default function ProjectGoalsScreen({
 												<InlineEdit
 													value={question}
 													onSubmit={(val) => updateDecisionQuestion(index, val)}
-													multiline={false}
+													multiline={true}
+													autoSize={true}
 													textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
 													inputClassName="text-sm"
 													showEditButton={true}
@@ -1082,9 +1081,13 @@ export default function ProjectGoalsScreen({
 												apiPath={apiPath}
 												shownSuggestions={shownSuggestionsByType["decision_questions"] || []}
 												isActive={activeSuggestionType === null || activeSuggestionType === "decision_questions"}
-												onSuggestionClick={(suggestion) => {
-													setNewDecisionQuestion(suggestion)
-													focusInputAtEnd(decisionQuestionInputRef)
+												onSuggestionClick={async (suggestion) => {
+													if (!decision_questions.includes(suggestion.trim())) {
+														await createProjectIfNeeded()
+														const newQuestions = [...decision_questions, suggestion.trim()]
+														setDecisionQuestions(newQuestions)
+														saveDecisionQuestions(newQuestions)
+													}
 												}}
 												onSuggestionShown={(suggestions) => {
 													if (activeSuggestionType === null) {
@@ -1248,7 +1251,8 @@ export default function ProjectGoalsScreen({
 														<InlineEdit
 															value={unknown}
 															onSubmit={(val) => updateUnknown(index, val)}
-															multiline={false}
+															multiline={true}
+															autoSize={true}
 															textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
 															inputClassName="text-sm"
 															showEditButton={true}
@@ -1311,9 +1315,13 @@ export default function ProjectGoalsScreen({
 														apiPath={apiPath}
 														shownSuggestions={shownSuggestionsByType["unknowns"] || []}
 														isActive={activeSuggestionType === null || activeSuggestionType === "unknowns"}
-														onSuggestionClick={(suggestion) => {
-															setNewUnknown(suggestion)
-															focusInputAtEnd(unknownInputRef)
+														onSuggestionClick={async (suggestion) => {
+															if (!unknowns.includes(suggestion.trim())) {
+																await createProjectIfNeeded()
+																const newUnknowns = [...unknowns, suggestion.trim()]
+																setUnknowns(newUnknowns)
+																saveUnknowns(newUnknowns)
+															}
 														}}
 														onSuggestionShown={(suggestions) => {
 															if (activeSuggestionType === null) {
@@ -1337,7 +1345,7 @@ export default function ProjectGoalsScreen({
 					{/* Type & Scope Section */}
 					<div className="mx-auto max-w-4xl">
 						<Card className="border-gray-200 shadow-sm">
-							<CardHeader className="border-b border-gray-100 bg-gradient-to-r from-green-50 to-blue-50 p-6">
+							<CardHeader className="border-gray-100 border-b bg-gradient-to-r from-green-50 to-blue-50 p-6">
 								<div className="flex items-center justify-between">
 									<div className="flex items-center gap-3">
 										<div className="flex h-10 w-10 items-center justify-center rounded-lg bg-green-100">
@@ -1373,12 +1381,12 @@ export default function ProjectGoalsScreen({
 											</label>
 											<ToggleGroup
 												type="single"
-												value={conversation_type}
+												value={researchMode}
 												onValueChange={(value) => {
 													if (value) {
-														const newType = value as "exploratory" | "validation" | "user_testing"
-														setConversationType(newType)
-														saveSettings({ conversation_type: newType })
+														const newType = value as ResearchMode
+														setResearchMode(newType)
+														saveSettings({ research_mode: newType })
 													}
 												}}
 												className="grid w-full grid-cols-1 gap-2"
@@ -1415,9 +1423,9 @@ export default function ProjectGoalsScreen({
 												</ToggleGroupItem>
 											</ToggleGroup>
 											<p className="mt-2 text-muted-foreground text-xs leading-relaxed">
-												{conversation_type === "exploratory" && "🔍 Discover problems, needs, and opportunities"}
-												{conversation_type === "validation" && "✓ Test hypotheses and validate solutions"}
-												{conversation_type === "user_testing" && "👤 Evaluate usability and gather feedback"}
+												{researchMode === "exploratory" && "🔍 Discover problems, needs, and opportunities"}
+												{researchMode === "validation" && "✓ Test hypotheses and validate solutions"}
+												{researchMode === "user_testing" && "👤 Evaluate usability and gather feedback"}
 											</p>
 										</div>
 									</div>

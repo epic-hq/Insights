@@ -48,8 +48,9 @@ import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import type { QuestionInput } from "~/types"
+import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 
-export type Purpose = "exploratory" | "validation" | "followup"
+type ManagerResearchMode = ResearchMode
 export type Familiarity = "cold" | "warm"
 
 export interface InterviewQuestionsManagerProps {
@@ -64,7 +65,7 @@ export interface InterviewQuestionsManagerProps {
 	// When true (default), auto-generates an initial question set for empty projects
 	autoGenerateOnEmpty?: boolean
 	defaultTimeMinutes?: 15 | 30 | 45 | 60
-	defaultPurpose?: Purpose
+	defaultResearchMode?: ManagerResearchMode
 	defaultFamiliarity?: Familiarity
 	defaultGoDeep?: boolean
 	onSelectionChange?: (ids: string[]) => void
@@ -231,7 +232,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		unknowns,
 		autoGenerateOnEmpty = true,
 		defaultTimeMinutes = 30,
-		defaultPurpose = "exploratory",
+		defaultResearchMode = "exploratory",
 		defaultFamiliarity = "cold",
 		defaultGoDeep = false,
 		onSelectionChange,
@@ -245,9 +246,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	// Suppress deletions during critical saves (e.g., adding a follow-up)
 	const suppressDeletionRef = useRef(false)
 	const [timeMinutes, setTimeMinutes] = useState<number>(defaultTimeMinutes)
-	const [purpose, setPurpose] = useState<Purpose>(defaultPurpose)
+	const [researchMode, setResearchMode] = useState<ManagerResearchMode>(defaultResearchMode)
 	const [familiarity, setFamiliarity] = useState<Familiarity>(defaultFamiliarity)
 	const [goDeepMode, setGoDeepMode] = useState<boolean>(defaultGoDeep)
+	const researchModeLabel = useMemo(() => {
+		if (researchMode === "user_testing") return "user testing"
+		return researchMode.replace(/_/g, " ")
+	}, [researchMode])
 	const [customInstructions, setCustomInstructions] = useState("")
 	const [loading, setLoading] = useState(true)
 	const [generating, setGenerating] = useState(false)
@@ -362,6 +367,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const count = autoGenerateInitial ? initialTarget : moreCount
 			formData.append("questionCount", String(count))
 			formData.append("interview_time_limit", timeMinutes.toString())
+			formData.append("research_mode", fromManagerResearchMode(researchMode))
 
 			// Add optional fields from props (for onboarding flow)
 			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
@@ -401,7 +407,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							...baseQuestion,
 							estimatedMinutes:
 								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
-								estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+								estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
 							isSelected: true, // Auto-select all generated questions
 							status: "selected" as const, // Set status to selected
@@ -521,13 +527,23 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 		try {
 			setLoading(true)
-			const [promptRes, sectionRes, answerRes] = await Promise.all([
+			const [promptRes, settingsRes, questionsRes, answerRes] = await Promise.all([
 				supabase
 					.from("interview_prompts")
 					.select("*")
 					.eq("project_id", projectId)
 					.order("order_index", { ascending: true, nullsFirst: true })
 					.order("created_at", { ascending: true }),
+				// Load settings from kind="settings" (source of truth from Goals page)
+				supabase
+					.from("project_sections")
+					.select("meta")
+					.eq("project_id", projectId)
+					.eq("kind", "settings")
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.maybeSingle(),
+				// Also load questions section for legacy question data
 				supabase
 					.from("project_sections")
 					.select("meta")
@@ -540,7 +556,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			])
 
 			if (promptRes.error) consola.warn("Failed to load interview_prompts", promptRes.error.message)
-			if (sectionRes.error && sectionRes.error.code !== "PGRST116") throw sectionRes.error
+			if (settingsRes.error && settingsRes.error.code !== "PGRST116") throw settingsRes.error
+			if (questionsRes.error && questionsRes.error.code !== "PGRST116") throw questionsRes.error
 			if (answerRes.error) consola.warn("Failed to load project_answers", answerRes.error.message)
 
 			existingPromptIdsRef.current = (promptRes.data ?? []).map((row) => row.id)
@@ -553,16 +570,39 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				}
 			}
 
-			const meta = (sectionRes.data?.meta as Record<string, unknown>) || {}
-			const settings = (meta.settings as Record<string, unknown> | undefined) || {}
-			if (typeof settings.timeMinutes === "number") setTimeMinutes(settings.timeMinutes)
-			if (typeof settings.purpose === "string") setPurpose(settings.purpose as Purpose)
-			if (typeof settings.familiarity === "string") setFamiliarity(settings.familiarity as Familiarity)
-			if (typeof settings.goDeepMode === "boolean") setGoDeepMode(settings.goDeepMode)
-			if (typeof settings.customInstructions === "string") setCustomInstructions(settings.customInstructions)
-			const catTimesRaw = (settings as { categoryTimeAllocations?: Record<string, unknown> } | undefined)
+			// Load settings from kind="settings" (Goals page is source of truth)
+			const settingsMeta = (settingsRes.data?.meta as Record<string, unknown>) || {}
+
+			// Support both interview_duration (new standard) and timeMinutes (legacy)
+			const interviewDuration =
+				(settingsMeta.interview_duration as number | undefined) ?? (settingsMeta.timeMinutes as number | undefined)
+			if (typeof interviewDuration === "number") setTimeMinutes(interviewDuration)
+
+			// Load research_mode from settings
+			const storedModeRaw =
+				typeof settingsMeta.research_mode === "string"
+					? toManagerResearchMode(settingsMeta.research_mode as string)
+					: typeof settingsMeta.conversation_type === "string"
+						? toManagerResearchMode(settingsMeta.conversation_type as string)
+						: undefined
+			// Convert legacy "followup" to "user_testing"
+			if (storedModeRaw) {
+				const storedMode: ResearchMode = storedModeRaw === "followup" ? "user_testing" : storedModeRaw
+				setResearchMode(storedMode)
+			}
+
+			// Load other settings if present
+			if (typeof settingsMeta.familiarity === "string") setFamiliarity(settingsMeta.familiarity as Familiarity)
+			if (typeof settingsMeta.goDeepMode === "boolean") setGoDeepMode(settingsMeta.goDeepMode)
+			if (typeof settingsMeta.customInstructions === "string") setCustomInstructions(settingsMeta.customInstructions)
+			if (typeof settingsMeta.custom_instructions === "string") setCustomInstructions(settingsMeta.custom_instructions)
+
+			const catTimesRaw = (settingsMeta as { categoryTimeAllocations?: Record<string, unknown> } | undefined)
 				?.categoryTimeAllocations
 			setCategoryTimeAllocations(sanitizeAllocations(catTimesRaw))
+
+			// Use questionsRes for legacy question data
+			const questionsMeta = (questionsRes.data?.meta as Record<string, unknown>) || {}
 
 			let formattedQuestions: Question[] = []
 			let selectedIds: string[] = []
@@ -598,7 +638,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					.map((row) => row.id)
 			} else {
 				existingPromptIdsRef.current = []
-				const legacyQuestions = ((meta.questions as QuestionInput[] | undefined) || []).filter(
+				const legacyQuestions = ((questionsMeta.questions as QuestionInput[] | undefined) || []).filter(
 					(q) => (q.status as Question["status"]) !== "deleted" && (q.status as Question["status"]) !== "rejected"
 				)
 				const resolvedIds = legacyQuestions.map((q) => q.id || crypto.randomUUID())
@@ -691,8 +731,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		})
 	}, [projectId, loadQuestions])
 
-	const estimateMinutesPerQuestion = useCallback((q: Question, p: Purpose, f: Familiarity): number => {
-		const baseTimes = { exploratory: 3.5, validation: 2.5, followup: 2.0 }
+	const estimateMinutesPerQuestion = useCallback((q: Question, mode: ManagerResearchMode, f: Familiarity): number => {
+		const baseTimes = { exploratory: 3.5, validation: 2.5, user_testing: 2.0 }
 		const categoryAdjustments: Record<string, number> = {
 			pain: 0.5,
 			workflow: 0.5,
@@ -702,7 +742,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			context: 0,
 		}
 		const familiarityAdjustment = f === "warm" ? -0.5 : f === "cold" ? 0.5 : 0
-		const baseTime = baseTimes[p]
+		const baseTime = baseTimes[mode]
 		const categoryAdj = categoryAdjustments[q.categoryId] || 0
 		return Math.max(1.0, Math.min(4.0, baseTime + categoryAdj + familiarityAdjustment))
 	}, [])
@@ -722,17 +762,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 
 		const tc = targetCounts[timeMinutes]
-		const targetCount = Math.max(
-			4,
-			tc.base + (purpose === "validation" ? tc.validation : 0) + (familiarity === "cold" ? tc.cold : 0)
-		)
+		const validationBoost = researchMode === "validation" ? tc.validation : 0
+		const targetCount = Math.max(4, tc.base + validationBoost + (familiarity === "cold" ? tc.cold : 0))
 
 		const allQuestionsWithScores = questions
 			.filter((q) => q.status === "proposed") // Only include proposed questions, exclude rejected
 			.map((q) => ({
 				...q,
 				compositeScore: calculateCompositeScore(q),
-				estimatedMinutes: estimateMinutesPerQuestion(q, purpose, familiarity),
+				estimatedMinutes: estimateMinutesPerQuestion(q, researchMode, familiarity),
 			}))
 
 		// Quick lookup map for id → question
@@ -821,7 +859,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}, [
 		timeMinutes,
-		purpose,
+		researchMode,
 		familiarity,
 		goDeepMode,
 		questions,
@@ -892,7 +930,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 				const withOrder = questionsToSave.map((q, index) => {
 					const selectedIndex = selectedIds.indexOf(q.id)
-					const estimated = q.estimatedMinutes ?? estimateMinutesPerQuestion(q, purpose, familiarity)
+					const estimated = q.estimatedMinutes ?? estimateMinutesPerQuestion(q, researchMode, familiarity)
 					return {
 						...q,
 						estimatedMinutes: estimated,
@@ -910,7 +948,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						text: q.text,
 						category: q.categoryId,
 						estimated_time_minutes: Math.round(
-							q.estimatedMinutes ?? estimateMinutesPerQuestion(q, purpose, familiarity)
+							q.estimatedMinutes ?? estimateMinutesPerQuestion(q, researchMode, familiarity)
 						),
 						is_must_have: q.isMustHave ?? false,
 						status: q.status,
@@ -982,7 +1020,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							questions: withOrder,
 							settings: {
 								timeMinutes,
-								purpose,
+								research_mode: fromManagerResearchMode(researchMode),
+								purpose: fromManagerResearchMode(researchMode),
 								familiarity,
 								goDeepMode,
 								customInstructions,
@@ -1003,7 +1042,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			projectId,
 			supabase,
 			timeMinutes,
-			purpose,
+			researchMode,
 			familiarity,
 			goDeepMode,
 			customInstructions,
@@ -1065,7 +1104,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							...baseQuestion,
 							estimatedMinutes:
 								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
-								estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+								estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 							selectedOrder: null,
 							isSelected: true, // Auto-select generated questions
 							status: "selected" as const, // Set status to selected
@@ -1221,7 +1260,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				} as Question
 				const customQuestion: Question = {
 					...baseQuestion,
-					estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+					estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 					selectedOrder: null,
 					isSelected: true,
 				}
@@ -1300,7 +1339,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			} as Question
 			const customQuestion: Question = {
 				...baseQuestion,
-				estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+				estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 				selectedOrder: null,
 				isSelected: true,
 			}
@@ -1341,7 +1380,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			} as Question
 			const customQuestion: Question = {
 				...fallbackQuestion,
-				estimatedMinutes: estimateMinutesPerQuestion(fallbackQuestion, purpose, familiarity),
+				estimatedMinutes: estimateMinutesPerQuestion(fallbackQuestion, researchMode, familiarity),
 				selectedOrder: null,
 				isSelected: true,
 			}
@@ -1485,7 +1524,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 
 			const customQuestion: Question = {
 				...baseQuestion,
-				estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, purpose, familiarity),
+				estimatedMinutes: estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 				selectedOrder: null,
 				isSelected: true,
 			}
@@ -1518,7 +1557,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		markQuestionAsRecentlyAdded,
 		saveQuestionsToDatabase,
 		estimateMinutesPerQuestion,
-		purpose,
+		researchMode,
 		familiarity,
 	])
 
@@ -1573,7 +1612,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						status: "selected",
 						timesAnswered: 0,
 					} as Question,
-					purpose,
+					researchMode,
 					familiarity
 				),
 				isMustHave: false,
@@ -1607,7 +1646,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		contextualCategory,
 		questions,
 		projectId,
-		purpose,
+		researchMode,
 		familiarity,
 		estimateMinutesPerQuestion,
 		supabase,
@@ -1792,7 +1831,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						className="flex items-center gap-2 whitespace-nowrap"
 					>
 						<Settings className="h-4 w-4" />
-						{purpose.charAt(0).toUpperCase() + purpose.slice(1)} • {timeMinutes}m
+						{researchModeLabel.charAt(0).toUpperCase() + researchModeLabel.slice(1)} • {timeMinutes}m
 					</Button>
 
 					{/* Filter Group - Moved here */}
@@ -1858,7 +1897,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			{showSettings && (
 				<Card className="border-blue-100">
 					<CardContent className="p-3">
-						<div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+						<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 							<div>
 								<label className="mb-3 block font-medium text-sm">Interview Time: {timeMinutes} minutes</label>
 								<Slider
@@ -1878,20 +1917,20 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							</div>
 
 							<div>
-								<label className="mb-2 block font-medium text-sm">Interview Purpose</label>
-								<Select value={purpose} onValueChange={(v: Purpose) => setPurpose(v)}>
+								<label className="mb-2 block font-medium text-sm">Interview Mode</label>
+								<Select value={researchMode} onValueChange={(v: ManagerResearchMode) => setResearchMode(v)}>
 									<SelectTrigger>
 										<SelectValue />
 									</SelectTrigger>
 									<SelectContent>
 										<SelectItem value="exploratory">Exploratory (open-ended)</SelectItem>
 										<SelectItem value="validation">Validation (hypothesis testing)</SelectItem>
-										<SelectItem value="followup">Follow-up (specific topics)</SelectItem>
+										<SelectItem value="user_testing">User Testing (product feedback)</SelectItem>
 									</SelectContent>
 								</Select>
 							</div>
 
-							<div>
+							{/* <div>
 								<label className="mb-2 block font-medium text-sm">Participant Familiarity</label>
 								<Select value={familiarity} onValueChange={(v: Familiarity) => setFamiliarity(v)}>
 									<SelectTrigger>
@@ -1902,7 +1941,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										<SelectItem value="warm">Warm (established rapport)</SelectItem>
 									</SelectContent>
 								</Select>
-							</div>
+							</div> */}
 						</div>
 					</CardContent>
 				</Card>
@@ -1914,7 +1953,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					<p className="text-blue-800">
 						<strong>Interview Plan:</strong> I want to conduct a{" "}
 						<strong>
-							{timeMinutes}-minute {purpose}
+							{timeMinutes}-minute {researchModeLabel}
 						</strong>{" "}
 						interview with <strong>{familiarity === "cold" ? "new" : "familiar"}</strong> participants to gather
 						insights for my research.
@@ -2151,10 +2190,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																								const updated = questions.map((q) =>
 																									q.id === question.id
 																										? {
-																												...q,
-																												text: editingText,
-																												qualityFlag: quality ?? undefined,
-																											}
+																											...q,
+																											text: editingText,
+																											qualityFlag: quality ?? undefined,
+																										}
 																										: q
 																								)
 																								setQuestions(updated)
@@ -2456,7 +2495,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							isMustHave: false,
 																							estimatedMinutes: estimateMinutesPerQuestion(
 																								{ categoryId: followupCategory } as Question,
-																								purpose,
+																								researchMode,
 																								familiarity
 																							),
 																							selectedOrder: null,
