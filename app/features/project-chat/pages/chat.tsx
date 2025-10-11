@@ -1,14 +1,24 @@
+import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
+import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useParams } from "react-router"
+import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
+import { Message, MessageContent } from "~/components/ai-elements/message"
+import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
+import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Button } from "~/components/ui/button"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { TextShimmer } from "~/components/ui/text-shimmer"
+import { cn } from "~/lib/utils"
 import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
+import { userContext } from "~/server/user-context"
 
-export async function loader({ request, params }: LoaderFunctionArgs) {
-	const user = await getAuthenticatedUser(request)
-	if (!user) throw new Response("Unauthorized", { status: 401 })
+export async function loader({ context, params }: LoaderFunctionArgs) {
+	const ctx = context.get(userContext)
+	const supabase = ctx.supabase
 
 	const projectId = params.projectId as string
 	const accountId = params.accountId as string
@@ -17,7 +27,6 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	}
 
 	// Progress: fetch current project_sections
-	const { client: supabase } = getServerClient(request)
 	const { data: sections } = await supabase
 		.from("project_sections")
 		.select("kind, meta, content_md")
@@ -53,7 +62,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	const completedCount = keys.reduce((acc, k) => acc + (isFilled(k) ? 1 : 0), 0)
 	const totalCount = keys.length
 
-	const resourceId = `projectSetupAgent-${user.sub}-${projectId}`
+	const userId = ctx.claims.sub
+	const resourceId = `projectSetupAgent-${userId}-${projectId}`
 	const result = await memory.getThreadsByResourceIdPaginated({
 		resourceId,
 		orderBy: "createdAt",
@@ -67,7 +77,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		const newThread = await memory.createThread({
 			resourceId,
 			title: `Project Setup ${projectId}`,
-			metadata: { user_id: user.sub, project_id: projectId, account_id: accountId },
+			metadata: { user_id: userId, project_id: projectId, account_id: accountId },
 		})
 		consola.log("New project-setup thread created: ", newThread)
 		threadId = newThread.id
@@ -79,22 +89,32 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		threadId,
 		selectBy: { last: 50 },
 	})
-	const aiv5Messages = convertMessages(messagesV2).to("AIV5.UI")
+	const aiv5Messages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
 
-	return data({ messages: aiv5Messages, progress: { completedCount, totalCount } })
+	return data({ messages: aiv5Messages, progress: { completedCount, totalCount }, threadId })
 }
 
 export default function ProjectChatPage() {
-	const { messages, progress } = useLoaderData<typeof loader>()
+	const { messages: initialMessages, progress } = useLoaderData<typeof loader>()
 	const { accountId, projectId } = useParams()
+	const [input, setInput] = useState("")
 
-	// const runtime = useChatRuntime({
-	// 	transport: new AssistantChatTransport({
-	// 		api: `/a/${accountId}/${projectId}/api/chat/project-setup`,
-	// 	}),
-	// 	messages,
-	// })
-	return <div>TODO</div>
+	// AI SDK chat with modern pattern
+	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+		transport: new DefaultChatTransport({
+			api: `/a/${accountId}/${projectId}/api/chat/project-setup`,
+		}),
+		messages: initialMessages,
+		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+	})
+
+	const handleSubmit = (e: React.FormEvent) => {
+		e.preventDefault()
+		if (input.trim()) {
+			sendMessage({ text: input })
+			setInput("")
+		}
+	}
 
 	return (
 		<div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:pt-4">
@@ -116,6 +136,59 @@ export default function ProjectChatPage() {
 						</Link>
 					</div>
 				</div>
+			</div>
+
+			{/* Chat Interface */}
+			<div className="mx-auto flex h-full w-full max-w-[var(--thread-max-width,44rem)] flex-col">
+				<Conversation>
+					<ConversationContent>
+						{messages?.map((message) => (
+							<Message from={message.role} key={message.id}>
+								<MessageContent>
+									{message?.parts?.map((part, i) => {
+										switch (part.type) {
+											case "text":
+												return <AiResponse key={`${message.id}-${i}`}>{part.text}</AiResponse>
+											default:
+												return null
+										}
+									})}
+								</MessageContent>
+							</Message>
+						))}
+					</ConversationContent>
+					<ConversationScrollButton />
+				</Conversation>
+
+				<div className="flex flex-row justify-between gap-2">
+					<span>
+						<TextShimmer
+							className={cn(
+								"mt-1 hidden font-mono text-sm",
+								status === "streaming" || (status === "submitted" && "block")
+							)}
+							duration={3}
+						>
+							Thinking...
+						</TextShimmer>
+						<div className={cn("mt-1 hidden font-mono text-destructive text-sm", status === "error" && "block")}>
+							Error
+						</div>
+					</span>
+				</div>
+				<PromptInput onSubmit={handleSubmit} className="relative mx-auto mt-1 mb-6 w-full">
+					<PromptInputTextarea
+						value={input}
+						placeholder="Ask about your project setup..."
+						onChange={(e) => setInput(e.currentTarget.value)}
+						className="pr-12"
+					/>
+					<PromptInputSubmit
+						status={status === "streaming" ? "streaming" : "ready"}
+						disabled={!input.trim()}
+						className="absolute right-1 bottom-1"
+					/>
+				</PromptInput>
 			</div>
 		</div>
 	)

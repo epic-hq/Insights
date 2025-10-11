@@ -2,7 +2,6 @@ import { RuntimeContext } from "@mastra/core/di"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { mastra } from "~/mastra"
 import { memory } from "~/mastra/memory"
 import { userContext } from "~/server/user-context"
@@ -11,13 +10,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return new Response("Method Not Allowed", { status: 405 })
 	}
-	const user = await getAuthenticatedUser(request)
-	if (!user) {
-		throw new Response("Unauthorized", { status: 401 })
-	}
 	const ctx = context.get(userContext)
 	const accountId = String(params.accountId || ctx?.account_id || "")
 	const projectId = String(params.projectId || "")
+	const userId = ctx.claims.sub
 
 	if (!projectId) {
 		return new Response(JSON.stringify({ error: "Missing projectId" }), {
@@ -26,10 +22,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 	}
 
-	const { messages, tools, system } = await request.json()
+	const { messages, system } = await request.json()
 
 	// Reuse latest thread for this project-scoped agent
-	const resourceId = `projectSetupAgent-${user.sub}-${projectId}`
+	const resourceId = `projectSetupAgent-${userId}-${projectId}`
 	const threads = await memory.getThreadsByResourceIdPaginated({
 		resourceId,
 		orderBy: "createdAt",
@@ -43,7 +39,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		const newThread = await memory.createThread({
 			resourceId,
 			title: `Project Setup ${projectId}`,
-			metadata: { user_id: user.sub, project_id: projectId, account_id: accountId },
+			metadata: { user_id: userId, project_id: projectId, account_id: accountId },
 		})
 		threadId = newThread.id
 	} else {
@@ -51,18 +47,17 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	const runtimeContext = new RuntimeContext()
-	runtimeContext.set("user_id", user.sub)
+	runtimeContext.set("user_id", userId)
 	runtimeContext.set("account_id", accountId)
 	runtimeContext.set("project_id", projectId)
 
 	const agent = mastra.getAgent("projectSetupAgent")
-	const result = await agent.streamVNext(messages, {
-		format: "aisdk",
-		resourceId,
-		threadId,
+	const result = await agent.stream(messages, {
+		memory: {
+			thread: threadId,
+			resource: resourceId,
+		},
 		runtimeContext,
-		// @ts-expect-error tools passthrough
-		clientTools: tools ? frontendTools(tools) : undefined,
 		context: system
 			? [
 					{
@@ -71,19 +66,21 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 					},
 				]
 			: undefined,
-		onFinish: (data) => consola.log("project-setup onFinish", data),
+		onFinish: (data) => {
+			consola.log("project-setup onFinish", data)
+			// Log to Langfuse
+			const langfuse = getLangfuseClient()
+			const lfTrace = langfuse.trace?.({ name: "api.chat.project-setup" })
+			const gen = lfTrace?.generation?.({
+				name: "api.chat.project-setup",
+				input: messages,
+				output: data,
+			})
+			gen?.end?.()
+		},
 	})
 
-	const langfuse = getLangfuseClient()
-	void result
-		.getFullOutput()
-		.then((full) => {
-			consola.log("Project-setup full output:", full)
-			const lfTrace = langfuse.trace?.({ name: "api.chat.project-setup" })
-			const gen = lfTrace?.generation?.({ name: "api.chat.project-setup", input: messages, output: full?.content })
-			gen?.end?.()
-		})
-		.catch((err) => consola.error("getFullOutput failed:", err))
-
-	return result.toUIMessageStreamResponse()
+	// Return AI SDK v5 compatible stream response
+	// @ts-expect-error - toDataStreamResponse is added at runtime by attachStreamResultAliases
+	return result.toDataStreamResponse()
 }

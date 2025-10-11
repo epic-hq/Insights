@@ -8,13 +8,13 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useRecordNow } from "~/hooks/useRecordNow"
-import { createSupabaseServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/server"
 
-export async function loader({ params }: LoaderFunctionArgs) {
+export async function loader({ params, request }: LoaderFunctionArgs) {
 	const { projectId } = params
 	if (!projectId) return { research_goal: null }
 
-	const { supabase } = createSupabaseServerClient()
+	const { client: supabase } = getServerClient(request)
 
 	// Load research_goal from project_sections
 	const { data } = await supabase
