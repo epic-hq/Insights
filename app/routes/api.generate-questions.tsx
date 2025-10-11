@@ -6,6 +6,7 @@ import { getProjectContextGeneric } from "~/features/questions/db"
 import { getServerClient } from "~/lib/supabase/server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { generateQuestionSetCanonical } from "~/utils/research-analysis.server"
+import { fromManagerResearchMode, toManagerResearchMode, type ResearchMode } from "~/types/research"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -40,6 +41,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		let research_goal_details = formData.get("research_goal_details") as string
 		let assumptions = formData.get("assumptions") as string
 		let unknowns = formData.get("unknowns") as string
+		const requestedResearchMode = formData.get("research_mode") as string | null
+		const coerceResearchMode = (value: unknown): ResearchMode | null => {
+			if (typeof value !== "string") return null
+			const managerMode = toManagerResearchMode(value)
+			if (!managerMode) return null
+			return fromManagerResearchMode(managerMode)
+		}
+		let research_mode: ResearchMode = coerceResearchMode(requestedResearchMode) ?? "exploratory"
 		const initialCustomInstructions = ((formData.get("custom_instructions") as string) || "").trim()
 		const customInstructionParts: string[] = []
 		if (initialCustomInstructions) {
@@ -77,6 +86,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			research_goal_details = meta.research_goal_details || research_goal_details || ""
 			assumptions = meta.assumptions?.join?.(", ") || meta.assumptions || assumptions || ""
 			unknowns = meta.unknowns?.join?.(", ") || meta.unknowns || unknowns || ""
+			if (!requestedResearchMode) {
+				const metaMode =
+					coerceResearchMode(meta.research_mode) ||
+					coerceResearchMode(meta.conversation_type) ||
+					coerceResearchMode(meta.settings?.research_mode)
+				if (metaMode) research_mode = metaMode
+			}
 
 			// Fallback to project-level custom instructions when request provides none
 			if (!initialCustomInstructions) {
@@ -113,6 +129,13 @@ export async function action({ request, context }: ActionFunctionArgs) {
 					const dedupeList = existingQuestions.slice(0, 25).join("; ")
 					const dedupeNote = `Avoid repeating or rephrasing these existing questions: ${dedupeList}. Generate complementary questions.`
 					customInstructionParts.push(dedupeNote)
+				}
+				if (!requestedResearchMode) {
+					const settingsMode =
+						coerceResearchMode(metaQ?.settings?.research_mode) ||
+						coerceResearchMode(metaQ?.settings?.conversation_type) ||
+						coerceResearchMode(metaQ?.settings?.purpose)
+					if (settingsMode) research_mode = settingsMode
 				}
 			} catch (e) {
 				// Non-fatal
@@ -166,6 +189,16 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		}
 		if (structureNotes.length > 0) {
 			customInstructionParts.push(structureNotes.join("\n"))
+		}
+		if (research_mode === "validation") {
+			customInstructionParts.push(
+				"Validation mode: create prompts that gather evidence for Pain Exists, Awareness, Quantified Impact, and Acting. Prefer using categoryId values pain, awareness, quantified, acting when appropriate, and keep questions outcome-oriented."
+			)
+		}
+		if (research_mode === "user_testing") {
+			customInstructionParts.push(
+				"User testing mode: focus on usability tasks, comprehension, adoption signals, and points of friction when people interact with the solution."
+			)
 		}
 
 		const combinedCustomInstructions = customInstructionParts.filter(Boolean).join("\n\n")
@@ -241,6 +274,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 				per_category_min: 1,
 				per_category_max: 3,
 				interview_time_limit,
+				research_mode,
 			}
 
 			consola.log("[BAML DEBUG] Calling generateQuestionSetCanonical with params:", canonicalParams)
@@ -471,6 +505,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			customInstructions: combinedCustomInstructions,
 			lastGeneratedAt: new Date().toISOString(),
 			lastGeneratedCount: generatedQuestions.length,
+			research_mode,
+			purpose: research_mode,
 		}
 
 		const updatedSectionMeta = {

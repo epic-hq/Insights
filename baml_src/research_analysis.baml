@@ -183,14 +183,14 @@ function LinkEvidenceToResearchStructure(
     {{ custom_instructions }}
 
     TASK REQUIREMENTS:
-    
+
     PHASE 1 - EVIDENCE TO RESEARCH QUESTIONS:
     1. For each evidence item, link it to relevant RESEARCH questions only (not decision questions):
        - Provide relationship (supports/refutes/neutral) and confidence 0.0 – 1.0
        - Summarize what this evidence tells us (<= 2 sentences)
        - Include rationale referencing key phrases from evidence (<= 220 chars)
        - Suggest next steps when helpful
-    
+
     PHASE 2 - RESEARCH QUESTION ANSWERS:
     2. For each research question, synthesize all linked evidence into findings:
        - Generate 2-5 specific, evidence-based findings (clear statements, not questions)
@@ -198,7 +198,7 @@ function LinkEvidenceToResearchStructure(
        - Provide overall confidence based on evidence strength and agreement
        - Explain reasoning: how the evidence supports these findings
        - Example finding: "Users are willing to pay for interview assistance tools (5 mentions across 3 interviews)"
-    
+
     PHASE 3 - DECISION QUESTION SYNTHESIS:
     3. For each decision question, synthesize insights from its research questions:
        - Create ONE strategic insight that answers the decision (not a list of evidence)
@@ -208,7 +208,7 @@ function LinkEvidenceToResearchStructure(
        - Explain reasoning: how research findings lead to this strategic answer
        - Recommend 2-4 specific actions based on this insight
        - Example insight: "Adopt freemium model with premium interview features" (NOT "Users mentioned tools" - that's RQ-level)
-    
+
     4. Provide project-wide guidance:
        - global_goal_summary: overall progress toward research goal
        - recommended_actions: 2-4 high-level actions for the project team
@@ -491,6 +491,7 @@ class GenerateInputs {
   assumptions string? @description("Key assumptions the team currently holds.")
   unknowns string? @description("Open questions and uncertainties to investigate.")
   custom_instructions string? @description("Optional caller-provided guidance that overrides defaults.")
+  research_mode string? @description("Study mode. Expected: 'exploratory', 'validation', or 'user_testing'.")
   session_id string @description("Session identifier to embed into the returned QuestionSet.sessionId.")
   round int @description("1-based round number provided by the caller.")
   total_per_round int? @description("Default 25: number of questions to show per round.")
@@ -509,6 +510,7 @@ function GenerateResearchStructure(
 
   RESEARCH GOAL: {{ inputs.research_goal }}
   DETAILS: {{ inputs.research_goal_details }}
+  RESEARCH MODE: {{ inputs.research_mode or "exploratory" }}
   TARGET ROLES: {{ inputs.target_roles }}
   TARGET ORGS: {{ inputs.target_org }}
   ASSUMPTIONS: {{ inputs.assumptions }}
@@ -540,6 +542,13 @@ function GenerateResearchStructure(
   - Avoid leading questions or yes/no questions
   - Generate unique IDs for all items (use crypto.randomUUID() style)
   - Ensure all items have proper relationships (research questions link to decision questions, etc.)
+  - If the research mode is "validation":
+      * Create exactly four research questions aligned to validation gates: Pain Exists, Awareness, Quantified Impact, Taking Action.
+      * Use deterministic IDs for those research questions: "pain_exists", "awareness", "quantified", "acting".
+      * Craft decision questions that frame the business need for validating assumptions.
+      * For each validation research question, include 2-3 interview prompts that directly probe evidence for that gate; including pain awareness, acting on it, Willingness to pay.
+      * When research mode is not "validation", follow the general exploratory guidance and choose research question counts based on context.
+  - If research mode is "user_testing", emphasise prompts seeking to understand if the user is aware of what is possible and expected ofthem. What actions do they want to take and why? How easy to understand and how usable is it.
 
   QUALITY REQUIREMENTS:
   - Decision questions should be strategic and business-focused
@@ -584,6 +593,16 @@ function GenerateQuestionSet(
   - Goal Details: {{ inputs.research_goal_details }}
   - Assumptions: {{ inputs.assumptions }}
   - Unknowns: {{ inputs.unknowns }}
+
+  RESEARCH MODE: {{ inputs.research_mode or "exploratory" }}
+  MODE-SPECIFIC GUIDANCE:
+    - If research mode is "validation":
+        * Prioritise questions that surface evidence for the four validation gates (Pain Exists, Awareness, Quantified Impact, Acting/Next Steps).
+        * Ensure categories favour these gates (e.g., use categoryId values of "pain", "awareness", "quantified", "acting" when relevant).
+        * Keep prompts crisp and outcome-focused so answers can be mapped to go/no-go decisions.
+    - If research mode is "user_testing":
+        * Focus categories on usability, comprehension, task completion, and adoption.
+    - Otherwise keep a balanced exploratory mix across context, goals, pain, workflow, constraints, willingness, and demographics.
 
   IMPORTANT: Pay special attention to the TARGET ROLES/SEGMENTS above. Create questions that are:
   1) Highly specific to their daily work, creative processes, and unique challenges

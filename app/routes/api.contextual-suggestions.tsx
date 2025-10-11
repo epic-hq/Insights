@@ -1,8 +1,8 @@
+import { b } from "baml_client"
 import type { ActionFunctionArgs } from "react-router"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { userContext } from "~/server/user-context"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
-import { b } from "baml_client"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	const langfuse = getLangfuseClient()

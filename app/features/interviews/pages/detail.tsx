@@ -750,7 +750,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									</div>
 
 									{/* Second Row: Thinks & Feels */}
-									<div className="grid gap-4 lg:grid-cols-2">
+									<div className="grid gap-4 md:grid-cols-2">
 										{/* Thinks Section */}
 										<div className="rounded-lg border border-purple-200/50 bg-white/50 p-4 dark:border-purple-800/30 dark:bg-black/10">
 											<div className="mb-3 flex items-center gap-2">

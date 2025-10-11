@@ -89,7 +89,7 @@ export default class TypeBuilder {
     
     GapAnalysis: ClassViewer<'GapAnalysis', "unanswered_questions" | "partially_answered_questions" | "follow_up_recommendations" | "suggested_interview_topics">;
     
-    GenerateInputs: ClassViewer<'GenerateInputs', "target_org" | "target_roles" | "research_goal" | "research_goal_details" | "assumptions" | "unknowns" | "custom_instructions" | "session_id" | "round" | "total_per_round" | "per_category_min" | "per_category_max" | "interview_time_limit">;
+    GenerateInputs: ClassViewer<'GenerateInputs', "target_org" | "target_roles" | "research_goal" | "research_goal_details" | "assumptions" | "unknowns" | "custom_instructions" | "research_mode" | "session_id" | "round" | "total_per_round" | "per_category_min" | "per_category_max" | "interview_time_limit">;
     
     HistoryItem: ClassViewer<'HistoryItem', "questionId" | "action" | "ts" | "interviewId">;
     
@@ -321,7 +321,7 @@ export default class TypeBuilder {
         ]);
         
         this.GenerateInputs = this.tb.classViewer("GenerateInputs", [
-          "target_org","target_roles","research_goal","research_goal_details","assumptions","unknowns","custom_instructions","session_id","round","total_per_round","per_category_min","per_category_max","interview_time_limit",
+          "target_org","target_roles","research_goal","research_goal_details","assumptions","unknowns","custom_instructions","research_mode","session_id","round","total_per_round","per_category_min","per_category_max","interview_time_limit",
         ]);
         
         this.HistoryItem = this.tb.classViewer("HistoryItem", [

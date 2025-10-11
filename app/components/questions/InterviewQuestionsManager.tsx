@@ -2295,18 +2295,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				</span>
 																			)}
 																			<DropdownMenu>
-																				<TooltipProvider>
-																					<Tooltip>
-																						<TooltipTrigger asChild>
-																							<DropdownMenuTrigger asChild>
-																								<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-																									<MoreHorizontal className="h-4 w-4" />
-																								</Button>
-																							</DropdownMenuTrigger>
-																						</TooltipTrigger>
-																						<TooltipContent>Refine & Manage questions</TooltipContent>
-																					</Tooltip>
-																				</TooltipProvider>
+																			<DropdownMenuTrigger asChild>
+																				<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+																					<MoreHorizontal className="h-4 w-4" />
+																				</Button>
+																			</DropdownMenuTrigger>
 																				<DropdownMenuContent align="end">
 																					<DropdownMenuItem
 																						onClick={async () => {

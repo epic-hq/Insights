@@ -5,6 +5,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { Insight, Person, Persona, Project_Section } from "~/types"
+import type { ResearchMode } from "~/types/research"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 interface ResearchGoalData {
@@ -54,6 +55,7 @@ export async function generateQuestionSetCanonical(params: {
 	per_category_min?: number
 	per_category_max?: number
 	interview_time_limit?: number
+	research_mode?: ResearchMode
 }) {
 	const {
 		target_orgs,
@@ -69,6 +71,7 @@ export async function generateQuestionSetCanonical(params: {
 		per_category_min,
 		per_category_max,
 		interview_time_limit,
+		research_mode,
 	} = params
 
 	consola.log("[generateQuestionSetCanonical] Calling BAML GenerateQuestionSet with canonical params")
@@ -78,6 +81,21 @@ export async function generateQuestionSetCanonical(params: {
 	// includes top-level sessionId, policy, and round with exact values.
 	const enforcedShapeNote = `\n\nSTRUCTURE REQUIREMENTS (non-negotiable):\n- Always return valid JSON matching QuestionSet.\n- You MUST include top-level keys: sessionId, policy, categories, questions, history, round.\n- Set sessionId exactly to: ${session_id || ""}\n- Set round exactly to: ${round ?? 1}\n- policy object MUST be present with EXACT keys and values:\n  {\n    "totalPerRound": ${total_per_round ?? 10},\n    "perCategoryMin": ${per_category_min ?? 1},\n    "perCategoryMax": ${per_category_max ?? 3},\n    "dedupeWindowRounds": 2,\n    "balanceBy": ["category","novelty"]\n  }\nReturn only the JSON object — no prose.`
 
+	const normalizedResearchMode: ResearchMode =
+		research_mode && ["exploratory", "validation", "user_testing"].includes(research_mode)
+			? research_mode
+			: "exploratory"
+
+	const modeInstructionNote = (() => {
+		if (normalizedResearchMode === "validation") {
+			return `Validation mode: focus on the four evidence gates (Pain Exists, Awareness, Quantified Impact, Acting). Create questions that elicit proof for each gate and use categoryId values pain, awareness, quantified, acting when appropriate.`
+		}
+		if (normalizedResearchMode === "user_testing") {
+			return "User testing mode: emphasise usability tasks, comprehension checks, and adoption signals."
+		}
+		return "Exploratory mode: balance discovery across context, goals, pain, workflow, constraints, willingness, and demographics."
+	})()
+
 	const bamlInputs = {
 		target_org: target_orgs,
 		target_roles,
@@ -85,13 +103,16 @@ export async function generateQuestionSetCanonical(params: {
 		research_goal_details,
 		assumptions,
 		unknowns,
-		custom_instructions: [custom_instructions || "", enforcedShapeNote].filter(Boolean).join("\n\n"),
+		custom_instructions: [custom_instructions || "", modeInstructionNote, enforcedShapeNote]
+			.filter(Boolean)
+			.join("\n\n"),
 		session_id: session_id || `session_${Date.now()}`,
 		round: round ?? 1,
 		total_per_round: total_per_round ?? 10,
 		per_category_min: per_category_min ?? 1,
 		per_category_max: per_category_max ?? 3,
 		interview_time_limit: interview_time_limit ?? 30,
+		research_mode: normalizedResearchMode,
 	}
 
 	consola.log("[BAML DEBUG] GenerateQuestionSet inputs:", bamlInputs)

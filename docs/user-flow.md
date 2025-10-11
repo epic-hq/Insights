@@ -87,6 +87,20 @@ Looking at your current **flow** (Goal → Key Decisions → What to Learn → Q
 
 ---
 
+## Validation Mode Flow (Pain → Awareness → Quantified → Acting)
+
+When a project switches to validation mode we tighten the pipeline so every interview explicitly feeds the four gates.
+
+1. **Structure generation** – `GenerateResearchStructure` produces the four canonical research questions (`pain_exists`, `awareness`, `quantified`, `acting`). We map those slugs to real UUIDs and persist the mapping in `project_sections.questions.meta.validation_gate_map`.
+2. **Prompt creation** – `api.generate-questions` forwards the `research_mode` flag to BAML. Interview prompts inherit the gate slug in their `category`, so prompts, questions, and downstream analytics stay aligned.
+3. **Evidence analysis** – `runEvidenceAnalysis` detects validation mode, injects the gate mapping into the LLM prompt, and records `respondent_person_id` on each synthesized `project_answer`. Every answer now points back to the correct validation gate.
+4. **Dashboard** – the Validation Status screen reads the gate map, pulls the latest `project_answers`, and renders real findings per participant instead of the legacy mock data / regex heuristic. Outcome badges walk the funnel from “No Signal” to “Taking Action”.
+5. **Fallbacks** – when a project isn’t in validation mode (or the gate map hasn’t been generated yet) we gracefully fall back to the heuristic view so the page still loads.
+
+Result: generating a validation plan → running interviews → opening the validation dashboard now shows live, per-gate evidence with zero manual stitching.
+
+---
+
 💡 **For getting the *users*** (your question):
 Add a **“Recruit Participants” button** next to Encounters. When clicked:
 

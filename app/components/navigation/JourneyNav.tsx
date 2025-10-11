@@ -1,8 +1,20 @@
-import { ChevronRight, Command, Lightbulb, Mic, Search, TrendingUp, Users } from "lucide-react"
-import { NavLink, useLocation } from "react-router"
+import { ChevronRight, Command, Lightbulb, Mic, TrendingUp, Users } from "lucide-react"
+import { useState } from "react"
+import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router"
+import { Button } from "~/components/ui/button"
+import {
+	Command as CommandPrimitive,
+	CommandEmpty,
+	CommandGroup,
+	CommandInput,
+	CommandItem,
+	CommandList,
+} from "~/components/ui/command"
+import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
+import { createRouteDefinitions } from "~/utils/route-definitions"
 
 export interface JourneyStep {
 	key: string
@@ -81,10 +93,45 @@ interface JourneyNavProps {
 	className?: string
 }
 
+interface ProjectRecord {
+	id: string
+	account_id: string
+	name?: string | null
+	slug?: string | null
+}
+
+interface AccountRecord {
+	account_id: string
+	name?: string | null
+	personal_account?: boolean | null
+	projects?: ProjectRecord[] | null
+}
+
+interface ProtectedLayoutData {
+	accounts?: AccountRecord[] | null
+}
+
 export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) {
 	const location = useLocation()
-	const { projectPath } = useCurrentProject()
+	const navigate = useNavigate()
+	const { accountId, projectId, projectPath, setLastProjectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+	const [teamSwitcherOpen, setTeamSwitcherOpen] = useState(false)
+	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
+
+	const accounts = (protectedData?.accounts || []).filter((acct) => !acct.personal_account)
+	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
+	const currentProject = currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
+	const initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
+
+	const handleSelectProject = (acctId: string, projId: string) => {
+		if (!acctId || !projId) return
+		setLastProjectPath({ accountId: acctId, projectId: projId })
+		const basePath = `/a/${acctId}/${projId}`
+		const projectRoutes = createRouteDefinitions(basePath)
+		navigate(projectRoutes.dashboard())
+		setTeamSwitcherOpen(false)
+	}
 
 	const getCurrentStep = () => {
 		const currentPath = location.pathname
@@ -183,6 +230,47 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 					className
 				)}
 			>
+				{/* Team/Project Switcher */}
+				<Popover open={teamSwitcherOpen} onOpenChange={setTeamSwitcherOpen}>
+					<PopoverTrigger asChild>
+						<Button
+							variant="ghost"
+							className="flex min-w-0 flex-1 flex-col items-center space-y-1 rounded-lg px-3 py-2 font-medium text-xs transition-colors hover:bg-accent"
+						>
+							<div className="flex h-5 w-5 items-center justify-center rounded bg-sidebar-accent text-sidebar-accent-foreground">
+								<span className="font-semibold text-[10px]">{initials}</span>
+							</div>
+							<span className="truncate">Project</span>
+						</Button>
+					</PopoverTrigger>
+					<PopoverContent align="center" side="top" className="mb-2 w-72 p-0">
+						<CommandPrimitive>
+							<CommandInput placeholder="Search projects..." />
+							<CommandList>
+								<CommandEmpty>No projects found.</CommandEmpty>
+								{accounts.map((account) => (
+									<CommandGroup key={account.account_id} heading={account.name || "Untitled account"}>
+										{(account.projects ?? []).map((project) => {
+											const isActive = account.account_id === accountId && project.id === projectId
+											return (
+												<CommandItem
+													key={`${account.account_id}:${project.id}`}
+													value={`${project.name || "Untitled project"} ${account.name || ""}`}
+													onSelect={() => handleSelectProject(account.account_id, project.id)}
+													className={isActive ? "bg-accent" : ""}
+												>
+													<span className="truncate">{project.name || "Untitled project"}</span>
+												</CommandItem>
+											)
+										})}
+									</CommandGroup>
+								))}
+							</CommandList>
+						</CommandPrimitive>
+					</PopoverContent>
+				</Popover>
+
+				{/* Journey Steps */}
 				{journeySteps.map((step) => {
 					const isActive = step.key === currentStep
 					const Icon = step.icon

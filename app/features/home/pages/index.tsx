@@ -182,7 +182,7 @@ export default function Index() {
 	}
 
 	return (
-		<div className="mx-auto max-w-6xl px-6 py-8">
+		<div className="mx-auto w-full max-w-7xl px-6 py-8">
 			<div className="mb-4 flex items-center gap-2">
 				<House className="h-6 w-6" />
 				<h1 className="font-semibold text-2xl">Home</h1>

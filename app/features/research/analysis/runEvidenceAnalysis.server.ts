@@ -2,10 +2,17 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import { b } from "baml_client"
 import consola from "consola"
 import type { Database } from "~/types"
+import type { ResearchMode } from "~/types/research"
 
 const DEFAULT_MIN_CONFIDENCE = 0.6
 const PROJECT_RESEARCH_ANALYSIS_RUNS_TABLE = "project_research_analysis_runs"
 const PROJECT_QUESTION_ANALYSIS_TABLE = "project_question_analysis"
+const VALIDATION_GATE_LABELS: Record<string, string> = {
+	pain_exists: "Pain Exists",
+	awareness: "Awareness",
+	quantified: "Quantified Impact",
+	acting: "Taking Action",
+}
 
 type QuestionKind = "decision" | "research"
 
@@ -22,6 +29,7 @@ type ExistingAnswer = {
 	analysis_next_steps: string | null
 	answer_text: string | null
 	confidence: number | null
+	respondent_person_id: string | null
 }
 
 interface EvidenceLinkAggregate {
@@ -30,6 +38,7 @@ interface EvidenceLinkAggregate {
 	researchQuestionId: string | null
 	decisionQuestionId: string | null
 	interviewId: string | null
+	personId: string | null
 	questionText: string
 	existing?: ExistingAnswer
 	evidenceLinks: Array<{
@@ -150,20 +159,56 @@ export async function runEvidenceAnalysis({
 	customInstructions,
 	minConfidence = DEFAULT_MIN_CONFIDENCE,
 }: RunEvidenceAnalysisArgs): Promise<EvidenceAnalysisResult> {
-	const [{ data: decisionQuestions, error: decisionError }, { data: researchQuestions, error: researchError }] =
-		await Promise.all([
-			supabase.from("decision_questions").select("id, text, rationale").eq("project_id", projectId),
-			supabase
-				.from("research_questions")
-				.select("id, text, rationale, decision_question_id")
-				.eq("project_id", projectId),
-		])
+	const [
+		{ data: decisionQuestions, error: decisionError },
+		{ data: researchQuestions, error: researchError },
+		{ data: questionSection, error: questionSectionError },
+	] = await Promise.all([
+		supabase.from("decision_questions").select("id, text, rationale").eq("project_id", projectId),
+		supabase
+			.from("research_questions")
+			.select("id, text, rationale, decision_question_id")
+			.eq("project_id", projectId),
+		supabase
+			.from("project_sections")
+			.select("meta")
+			.eq("project_id", projectId)
+			.eq("kind", "questions")
+			.limit(1)
+			.maybeSingle(),
+	])
 
 	if (decisionError) throw decisionError
 	if (researchError) throw researchError
+	if (questionSectionError && questionSectionError.code !== "PGRST116") throw questionSectionError
+
+	const questionSectionMeta = (questionSection?.meta as Record<string, any> | null) ?? null
+	const researchMode = (questionSectionMeta?.settings?.research_mode as ResearchMode | undefined) ?? "exploratory"
+	const validationGateMeta =
+		questionSectionMeta?.validation_gate_map as
+			| Record<
+				string,
+				{
+					research_question_id?: string
+					research_question_text?: string
+				}
+			>
+			| undefined
 
 	const decisionMap = new Map(decisionQuestions?.map((dq) => [dq.id, dq]) ?? [])
 	const researchMap = new Map(researchQuestions?.map((rq) => [rq.id, rq]) ?? [])
+	const gateByResearchQuestionId = new Map<string, { slug: string; label: string }>()
+	if (validationGateMeta) {
+		for (const [slug, meta] of Object.entries(validationGateMeta)) {
+			const rqId = meta?.research_question_id
+			if (rqId) {
+				gateByResearchQuestionId.set(rqId, {
+					slug,
+					label: VALIDATION_GATE_LABELS[slug] ?? slug,
+				})
+			}
+		}
+	}
 
 	const evidenceQuery = supabase
 		.from("evidence")
@@ -200,6 +245,29 @@ export async function runEvidenceAnalysis({
 		context_summary: row.context_summary ?? undefined,
 	}))
 
+	const interviewIds = Array.from(
+		new Set(
+			evidenceRows
+				.map((row) => row.interview_id)
+				.filter((value): value is string => typeof value === "string" && value.length > 0)
+		)
+	)
+	const interviewPersonMap = new Map<string, string>()
+	if (interviewIds.length > 0) {
+		const { data: interviewPeopleRows, error: interviewPeopleError } = await supabase
+			.from("interview_people")
+			.select("interview_id, person_id")
+			.in("interview_id", interviewIds)
+
+		if (interviewPeopleError) throw interviewPeopleError
+
+		for (const row of interviewPeopleRows ?? []) {
+			if (!interviewPersonMap.has(row.interview_id)) {
+				interviewPersonMap.set(row.interview_id, row.person_id)
+			}
+		}
+	}
+
 	const questionPayload = [
 		...(decisionQuestions ?? []).map((dq) => ({
 			id: dq.id,
@@ -212,7 +280,13 @@ export async function runEvidenceAnalysis({
 			id: rq.id,
 			kind: "research" as const,
 			text: rq.text,
-			rationale: rq.rationale ?? undefined,
+			rationale: (() => {
+				const gate = gateByResearchQuestionId.get(rq.id)
+				const parts = [] as string[]
+				if (rq.rationale) parts.push(rq.rationale)
+				if (gate) parts.push(`Validation gate: ${gate.label}`)
+				return parts.length > 0 ? parts.join(" | ") : undefined
+			})(),
 			decision_question_id: rq.decision_question_id ?? undefined,
 		})),
 	]
@@ -224,10 +298,31 @@ export async function runEvidenceAnalysis({
 		minConfidence,
 	})
 
+	const instructionParts: string[] = []
+	if (customInstructions && customInstructions.trim().length > 0) {
+		instructionParts.push(customInstructions.trim())
+	}
+	if (researchMode === "validation" && validationGateMeta && Object.keys(validationGateMeta).length > 0) {
+		const gateLines = Object.entries(validationGateMeta)
+			.map(([slug, meta]) => {
+				const label = VALIDATION_GATE_LABELS[slug] ?? slug
+				const rqText =
+					meta?.research_question_text ||
+					researchMap.get(meta?.research_question_id ?? "")?.text ||
+					""
+				return `- ${label} (${slug}) → research_question_id=${meta?.research_question_id ?? "unknown"} :: ${rqText}`
+			})
+			.filter(Boolean)
+		instructionParts.push(
+			`Validation study: treat each research question as a gate. Maintain the mapping below when synthesizing findings. Explicitly note when a gate lacks sufficient evidence or confidence.\n${gateLines.join("\n")}`
+		)
+	}
+	const combinedInstructions = instructionParts.filter(Boolean).join("\n\n")
+
 	const bamlResponse = (await b.LinkEvidenceToResearchStructure(
 		evidencePayload,
 		questionPayload,
-		customInstructions ?? ""
+		combinedInstructions
 	)) as BamlAnalysisResponse
 
 	const evidenceResults = bamlResponse.evidence_results ?? []
@@ -274,7 +369,7 @@ export async function runEvidenceAnalysis({
 	const { data: existingAnswers, error: existingError } = await supabase
 		.from("project_answers")
 		.select(
-			"id, interview_id, research_question_id, decision_question_id, question_text, origin, analysis_run_metadata, analysis_summary, analysis_rationale, analysis_next_steps, answer_text, confidence"
+			"id, interview_id, research_question_id, decision_question_id, question_text, origin, analysis_run_metadata, analysis_summary, analysis_rationale, analysis_next_steps, answer_text, confidence, respondent_person_id"
 		)
 		.eq("project_id", projectId)
 
@@ -325,6 +420,7 @@ export async function runEvidenceAnalysis({
 			const researchQuestionId = link.question_id
 			const decisionQuestionId = researchMap.get(link.question_id)?.decision_question_id ?? null
 			const questionText = researchMap.get(link.question_id)?.text ?? "Untitled research question"
+			const personId = evidenceItem.interview_id ? interviewPersonMap.get(evidenceItem.interview_id) ?? null : null
 
 			const aggregateKey = buildAnswerKey({
 				questionKind,
@@ -340,13 +436,19 @@ export async function runEvidenceAnalysis({
 					researchQuestionId,
 					decisionQuestionId,
 					interviewId: evidenceItem.interview_id ?? null,
+					personId,
 					questionText,
 					existing: existingAnswerMap.get(aggregateKey),
 					evidenceLinks: [],
 				})
 			}
 
-			answerAggregates.get(aggregateKey)!.evidenceLinks.push({
+			const aggregate = answerAggregates.get(aggregateKey)!
+			if (!aggregate.personId && personId) {
+				aggregate.personId = personId
+			}
+
+			aggregate.evidenceLinks.push({
 				evidenceId: result.evidence_id,
 				confidence,
 				relationship: link.relationship,
@@ -427,6 +529,7 @@ export async function runEvidenceAnalysis({
 			analysis_next_steps: analysisNextSteps ?? aggregate.existing?.analysis_next_steps ?? null,
 			analysis_run_metadata: metadata,
 			confidence: confidenceMax,
+			respondent_person_id: aggregate.personId ?? aggregate.existing?.respondent_person_id ?? null,
 		}
 
 		let answerId = aggregate.existing?.id ?? null
@@ -441,6 +544,10 @@ export async function runEvidenceAnalysis({
 				confidence: payload.confidence,
 				answered_at: payload.answered_at,
 			} as Record<string, any>
+
+			if (payload.respondent_person_id && payload.respondent_person_id !== aggregate.existing.respondent_person_id) {
+				updatePayload.respondent_person_id = payload.respondent_person_id
+			}
 
 			if (allowAnswerTextUpdate) {
 				updatePayload.answer_text = payload.answer_text
@@ -473,6 +580,7 @@ export async function runEvidenceAnalysis({
 				analysis_next_steps: payload.analysis_next_steps,
 				analysis_run_metadata: payload.analysis_run_metadata,
 				confidence: payload.confidence,
+				respondent_person_id: payload.respondent_person_id,
 			}
 
 			const { data: insertResult, error: insertError } = await supabase
@@ -498,6 +606,7 @@ export async function runEvidenceAnalysis({
 				analysis_next_steps: payload.analysis_next_steps,
 				answer_text: payload.answer_text,
 				confidence: payload.confidence,
+				respondent_person_id: payload.respondent_person_id,
 			}
 
 			existingAnswerMap.set(aggregate.key, newAnswer)

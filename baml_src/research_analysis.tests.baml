@@ -94,6 +94,26 @@ test GenerateQuestionSet_Custom_Instructions {
   }
 }
 
+test GenerateQuestionSet_Validation_Mode {
+  functions [GenerateQuestionSet]
+  args { inputs {
+    target_org "Early-stage SaaS startups"
+    target_roles "Founders, Heads of Product"
+    research_goal "Validate whether the onboarding problem is painful enough to pay for"
+    research_goal_details "Focus on evidence for the four validation gates: pain, awareness, quantified impact, acting."
+    assumptions "Teams are losing trial users during onboarding and already track the impact manually."
+    unknowns "How do they measure churn today? What action do they take when onboarding fails?"
+    custom_instructions "Keep prompts short and conversational."
+    research_mode "validation"
+    session_id "validation_sample_001"
+    round 1
+    total_per_round 12
+    per_category_min 1
+    per_category_max 3
+    interview_time_limit 30
+  } }
+}
+
 test GenerateExecutiveSummary_Pizza_Basic {
   functions [GenerateExecutiveSummary]
   args {

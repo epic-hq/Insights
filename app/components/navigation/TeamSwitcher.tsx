@@ -102,7 +102,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	}
 
 	return (
-		<SidebarMenu>
+		<SidebarMenu className="">
 			<SidebarMenuItem>
 				<Popover open={open} onOpenChange={setOpen}>
 					<PopoverTrigger asChild>
@@ -112,7 +112,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 							aria-expanded={open}
 							className={cn(
 								"w-full justify-start gap-2 overflow-hidden hover:bg-sidebar-accent",
-								collapsed ? "h-10 w-10 justify-center p-0" : "px-2"
+								collapsed ? "-ml-1 h-10 w-10 justify-center p-0" : "-ml-2 px-1 "
 							)}
 						>
 							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">

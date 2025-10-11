@@ -282,6 +282,7 @@ export namespace partial_types {
       assumptions?: string | null
       unknowns?: string | null
       custom_instructions?: string | null
+      research_mode?: string | null
       session_id?: string | null
       round?: number | null
       total_per_round?: number | null

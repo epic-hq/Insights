@@ -83,9 +83,8 @@ export function AppSidebar() {
 	return (
 		<Sidebar collapsible="icon" variant="sidebar">
 			<SidebarHeader>
-				<div className="flex items-center justify-between gap-2 px-2">
-					<div className="flex items-center gap-2">{isCollapsed ? <Logo /> : <LogoBrand />}</div>
-					<SidebarTrigger className="ml-auto" />
+				<div className="flex items-center gap-2 px-2">
+					<div className="-ml-2 flex items-center gap-2">{isCollapsed ? <Logo /> : <LogoBrand />}</div>
 				</div>
 				<TeamSwitcher accounts={accounts} collapsed={isCollapsed} />
 			</SidebarHeader>
@@ -161,7 +160,9 @@ export function AppSidebar() {
 				<UserProfile />
 			</SidebarFooter>
 
-			<SidebarRail />
+			<SidebarRail>
+				<SidebarTrigger className="-right-4 absolute top-3" />
+			</SidebarRail>
 		</Sidebar>
 	)
 }

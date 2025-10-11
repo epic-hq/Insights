@@ -604,6 +604,7 @@ export interface GenerateInputs {
   assumptions?: string | null
   unknowns?: string | null
   custom_instructions?: string | null
+  research_mode?: string | null
   session_id: string
   round: number
   total_per_round?: number | null

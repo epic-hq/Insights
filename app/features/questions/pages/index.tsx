@@ -1,14 +1,38 @@
+import type { LoaderFunctionArgs } from "react-router"
 import { Mic, UploadCloud } from "lucide-react"
 import { useCallback } from "react"
-import { useSearchParams } from "react-router"
+import { useLoaderData, useSearchParams } from "react-router"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useRecordNow } from "~/hooks/useRecordNow"
+import { createSupabaseServerClient } from "~/lib/supabase/server"
+
+export async function loader({ params }: LoaderFunctionArgs) {
+	const { projectId } = params
+	if (!projectId) return { research_goal: null }
+
+	const { supabase } = createSupabaseServerClient()
+
+	// Load research_goal from project_sections
+	const { data } = await supabase
+		.from("project_sections")
+		.select("content_md")
+		.eq("project_id", projectId)
+		.eq("kind", "research_goal")
+		.order("created_at", { ascending: false })
+		.limit(1)
+		.maybeSingle()
+
+	return {
+		research_goal: data?.content_md || null,
+	}
+}
 
 export default function QuestionsIndex() {
+	const loaderData = useLoaderData<typeof loader>()
 	const { projectId, projectPath } = useCurrentProject()
 	const [params] = useSearchParams()
 	const isOnboarding = params.get("onboarding") === "1"
@@ -46,7 +70,11 @@ export default function QuestionsIndex() {
 				</div>
 			)}
 
-			<InterviewQuestionsManager projectId={projectId} projectPath={projectPath} />
+			<InterviewQuestionsManager
+				projectId={projectId}
+				projectPath={projectPath}
+				research_goal={loaderData.research_goal || undefined}
+			/>
 			<div className="flex flex-row justify-center gap-3 p-4">
 				<Button
 					onClick={handleRecordNow}
