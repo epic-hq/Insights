@@ -1,11 +1,8 @@
-import { MastraAgent } from "@ag-ui/mastra"
-// CopilotKit runtime removed
-import { MastraClient } from "@mastra/client-js"
 import { RuntimeContext } from "@mastra/core/di"
 import consola from "consola"
-import { type ActionFunctionArgs, redirect } from "react-router"
+import type { ActionFunctionArgs } from "react-router"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
-import { mastra, type UserContext } from "~/mastra"
+import type { UserContext } from "~/mastra"
 
 export const loader = () => new Response("Method Not Allowed", { status: 405 })
 
@@ -34,7 +31,7 @@ export async function action({ request }: ActionFunctionArgs) {
 	runtimeContext.set("user_id", headerUserId || user.sub || "")
 	runtimeContext.set("account_id", headerAccountId || "")
 	runtimeContext.set("project_id", headerProjectId || "")
-	const authHeader = hdr.get("authorization") || ""
+	const _authHeader = hdr.get("authorization") || ""
 	// runtimeContext.set("jwt", authHeader?.replace("Bearer ", ""))
 
 	consola.log("/api/copilotkit runtimeContext user_id", runtimeContext.get("user_id"))

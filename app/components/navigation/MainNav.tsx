@@ -4,9 +4,9 @@ import { useAuth } from "~/contexts/AuthContext"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { PATHS } from "~/paths"
+import { UserProfile } from "../auth/UserProfile"
 import { LogoBrand } from "../branding"
 import { AppSidebar } from "./AppSidebar"
-import { UserProfile } from "../auth/UserProfile"
 
 const marketingLinks = [
 	{ key: "benefits", label: "Why", link: "#benefits" },

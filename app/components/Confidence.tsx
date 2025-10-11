@@ -1,4 +1,4 @@
-import { Circle, Shield, ShieldAlert, ShieldCheck, SignalHigh, SignalLow, SignalMedium } from "lucide-react"
+import { Shield, ShieldAlert, ShieldCheck, SignalHigh, SignalLow, SignalMedium } from "lucide-react"
 import { Badge } from "~/components/ui/badge"
 
 type Confidence = "low" | "medium" | "high"

@@ -3,22 +3,15 @@ import { motion } from "framer-motion"
 import {
 	ArrowRight,
 	BookOpen,
-	CheckCircle,
-	CircleHelp,
 	Eye,
 	Headphones,
-	Info,
 	Lightbulb,
 	ListTree,
 	Loader2,
 	MessageCircleQuestionIcon,
 	Mic2Icon,
-	MicIcon,
 	PlusCircle,
-	Search,
 	Settings,
-	Settings2,
-	Square,
 	SquareCheckBig,
 	Target,
 	Users,
@@ -26,7 +19,6 @@ import {
 } from "lucide-react"
 import { useCallback, useEffect, useMemo, useState } from "react"
 import { useRevalidator } from "react-router"
-import { Streamdown } from "streamdown"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
@@ -34,9 +26,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { InterviewAnalysisCard } from "~/features/onboarding/components/InterviewAnalysisCard"
-import { type DecoratedResearchQuestion, KeyDecisionsCard } from "~/features/onboarding/components/KeyDecisionsCard"
-import { ThemesSection } from "~/features/onboarding/components/ThemesSection"
+import type { DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
 import { AnalyzeStageValidation } from "~/features/projects/pages/validationStatus"
 import { CleanResearchAnswers, type ResearchAnswersData } from "~/features/research/components/CleanResearchAnswers"
@@ -50,12 +40,12 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import type { Project_Section } from "~/types"
 
-const ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
-const OPEN_STATUSES = new Set(["planned", "asked"])
+const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
+const _OPEN_STATUSES = new Set(["planned", "asked"])
 
 import type { ProjectStatusData } from "~/utils/project-status.server"
 
-function ConfidenceBadge({ value }: { value?: number }) {
+function _ConfidenceBadge({ value }: { value?: number }) {
 	if (value === undefined || value === null) return null
 	const pct = Math.round((value || 0) * 100)
 	let color = "bg-gray-200 text-gray-800"
@@ -159,15 +149,15 @@ export default function ProjectStatusScreen({
 			}
 		}
 		fetchProjectSections()
-	}, [projectId, supabase, initialSections, isSetupChatEnabled])
+	}, [projectId, supabase, initialSections])
 
 	// Helper functions to organize project sections and match with analysis
 	const getGoalSections = () =>
 		projectSections.filter((section) => section.kind === "goal" || section.kind === "research_goal")
-	const getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market")
-	const getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
-	const getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
-	const getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
+	const _getTargetMarketSections = () => projectSections.filter((section) => section.kind === "target_market")
+	const _getAssumptionSections = () => projectSections.filter((section) => section.kind === "assumptions")
+	const _getRiskSections = () => projectSections.filter((section) => section.kind === "risks")
+	const _getQuestionsSections = () => projectSections.filter((section) => section.kind === "questions")
 
 	// Removed client-side goal/question matching. Rely on backend analysis (statusData.questionAnswers).
 
@@ -258,9 +248,9 @@ export default function ProjectStatusScreen({
 		criticalUnknowns: [],
 		questionAnswers: [],
 	}
-	const hasProjectId = Boolean(projectId)
+	const _hasProjectId = Boolean(projectId)
 
-	const decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup])
+	const _decisionSummaries = useMemo(() => researchRollup?.decision_questions ?? [], [researchRollup])
 
 	const standaloneResearchQuestions = useMemo<DecoratedResearchQuestion[]>(() => {
 		if (!researchRollup) return []
@@ -270,7 +260,7 @@ export default function ProjectStatusScreen({
 		}))
 	}, [researchRollup])
 
-	const topResearchQuestions = useMemo(() => {
+	const _topResearchQuestions = useMemo(() => {
 		return standaloneResearchQuestions
 			.filter((rq) => (rq.metrics.answered_answer_count ?? 0) + (rq.metrics.open_answer_count ?? 0) > 0)
 			.sort(
@@ -282,9 +272,9 @@ export default function ProjectStatusScreen({
 	}, [standaloneResearchQuestions])
 
 	// Use helper functions to extract data from research rollup
-	const answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
+	const _answeredQuestions = useMemo(() => getAnsweredQuestions(researchRollup), [researchRollup])
 	const openQuestions = useMemo(() => getOpenQuestions(researchRollup), [researchRollup])
-	const researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup])
+	const _researchMetricsFromRollup = useMemo(() => calculateResearchMetrics(researchRollup), [researchRollup])
 
 	const recommendedNextSteps = useMemo(() => {
 		const steps = new Set<string>()
@@ -308,7 +298,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-				(researchRollup?.research_questions_without_decision?.length || 0) > 0
+					(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -335,7 +325,7 @@ export default function ProjectStatusScreen({
 	const nextStepsToShow = useMemo(() => recommendedNextSteps.slice(0, 3), [recommendedNextSteps])
 
 	// Derive a single-line research goal for display
-	const researchGoalText = (() => {
+	const _researchGoalText = (() => {
 		const gs = getGoalSections()
 		if (gs.length === 0) return ""
 		const section = gs[0]
@@ -351,7 +341,7 @@ export default function ProjectStatusScreen({
 		return meta.confidence || "low"
 	})()
 
-	const getConfidenceColor = (confidence: string) => {
+	const _getConfidenceColor = (confidence: string) => {
 		switch (confidence) {
 			case "high":
 				return "text-success"

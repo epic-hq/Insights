@@ -2,7 +2,6 @@ import { consola } from "consola"
 import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router"
-import { InterviewQuestionsManager } from "~/components/questions/InterviewQuestionsManager"
 import { ResearchStructureManager } from "~/components/research/ResearchStructureManager"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -91,7 +90,7 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 
 export default function ResearchWorkflowPage() {
 	const data = useLoaderData<LoaderData>()
-	const [validatedStructure, setValidatedStructure] = useState<ResearchStructure | null>(null)
+	const [_validatedStructure, setValidatedStructure] = useState<ResearchStructure | null>(null)
 
 	const handleStructureValidated = (structure: ResearchStructure) => {
 		setValidatedStructure(structure)

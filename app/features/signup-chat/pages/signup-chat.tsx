@@ -8,17 +8,15 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 
 // Add custom CSS for progress animation
-const progressStyles = `
+const _progressStyles = `
 @keyframes progress {
   from { width: 0%; }
   to { width: 100%; }
 }
 `
 
-// CopilotKit hooks removed
-import { Memory } from "@mastra/memory"
 import consola from "consola"
-import { ArrowLeft, ArrowRight, CheckCircle, Mic } from "lucide-react"
+import { ArrowLeft, Mic } from "lucide-react"
 import type { z } from "zod"
 import { JsonDataCard } from "~/features/signup-chat/components/JsonDataCard"
 import { SignupDataWatcher } from "~/features/signup-chat/components/SignupDataWatcher"
@@ -147,7 +145,7 @@ export default function SignupChat() {
 	const navigate = useNavigate()
 	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
 	const [onboardingData, setOnboardingData] = useState(existingChatData)
-	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
+	const _chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
 
 	// If signup chat is not required, or it's already completed, send users home immediately.
 	useEffect(() => {
@@ -284,7 +282,7 @@ export default function SignupChat() {
 	)
 }
 
-function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
+function _ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 	// Placeholder now that CopilotKit is removed
 	const state = existingChatData
 
@@ -349,7 +347,7 @@ function ModernChatInterface({ existingChatData }: { existingChatData?: any }) {
 	)
 }
 
-function AiSdkChat() {
+function _AiSdkChat() {
 	const { error, status, sendMessage, messages, regenerate, stop } = useChat({
 		transport: new DefaultChatTransport({
 			api: "http://localhost:4111/chat/signup",

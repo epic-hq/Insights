@@ -1,6 +1,6 @@
 import consola from "consola"
 import { Pause, Play, SkipBack } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { useRef, useState } from "react"
 import { cn } from "~/lib/utils"
 import { Button } from "./button"
 
@@ -33,7 +33,7 @@ function parseTimeToSeconds(time: string | number | undefined): number {
 	// Handle string numbers
 	if (typeof time === "string") {
 		const parsed = Number.parseFloat(time)
-		return isNaN(parsed) ? 0 : parsed
+		return Number.isNaN(parsed) ? 0 : parsed
 	}
 
 	return 0
@@ -62,7 +62,7 @@ export function TimecodeMediaPlayer({
 }: TimecodeMediaPlayerProps) {
 	const [isPlaying, setIsPlaying] = useState(false)
 	const [isLoading, setIsLoading] = useState(false)
-	const [currentTime, setCurrentTime] = useState(0)
+	const [_currentTime, setCurrentTime] = useState(0)
 	const [duration, setDuration] = useState<number | null>(
 		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0 ? Math.floor(duration_sec) : 0
 	)

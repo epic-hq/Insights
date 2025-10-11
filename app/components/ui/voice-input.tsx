@@ -35,7 +35,7 @@ export function VoiceInput({
 		}
 
 		return () => clearInterval(intervalId)
-	}, [_listening])
+	}, [_listening, onStart, onStop])
 
 	const formatTime = (seconds: number) => {
 		const mins = Math.floor(seconds / 60)

@@ -55,7 +55,7 @@ export function CopilotSidebar({ expandedSection, onClose, className, projectDat
 				},
 			}))
 		}
-	}, [projectData, setState])
+	}, [projectData])
 
 	const sectionContext = expandedSection
 		? `currently viewing the ${expandedSection} section of their dashboard`
@@ -76,7 +76,7 @@ ${state.projectStatus.must_do ? `- MUST DO: ${state.projectStatus.must_do}` : ""
 `
 		: ""
 
-	const instructions = `You are an expert business analyst and user research consultant helping analyze project data.
+	const _instructions = `You are an expert business analyst and user research consultant helping analyze project data.
 
 CONTEXT: The user is ${sectionContext}.
 ${projectStatusSummary}

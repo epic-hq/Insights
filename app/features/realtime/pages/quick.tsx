@@ -30,7 +30,7 @@ export default function QuickRealtime() {
 	const [status, setStatus] = useState<"idle" | "connecting" | "streaming" | "stopped" | "error">("idle")
 	const [log, setLog] = useState<string[]>([])
 	const [finalTurns, setFinalTurns] = useState<FinalTurn[]>([])
-	const [draftTurn, setDraftTurn] = useState<TurnMsg | null>(null)
+	const [_draftTurn, setDraftTurn] = useState<TurnMsg | null>(null)
 	const [interviewId, setInterviewId] = useState<string | null>(null)
 	const wsRef = useRef<WebSocket | null>(null)
 	const ctxRef = useRef<AudioContext | null>(null)
@@ -49,7 +49,7 @@ export default function QuickRealtime() {
 	useEffect(() => {
 		return () => stop()
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
+	}, [stop])
 
 	async function start() {
 		try {
@@ -175,12 +175,12 @@ export default function QuickRealtime() {
 						setDraftTurn(null)
 						appendLog("Streaming begun")
 					}
-				} catch (e: any) {
+				} catch (_e: any) {
 					// ignore non-JSON frames
 				}
 			}
 
-			ws.onerror = (e: Event) => {
+			ws.onerror = (_e: Event) => {
 				appendLog("WS error")
 				setStatus("error")
 			}
@@ -365,7 +365,7 @@ export default function QuickRealtime() {
 
 			<section>
 				<h2 className="font-medium">Log</h2>
-				<pre className="max-h-48 overflow-auto rounded bg-gray-50 p-2 text-xs">{log.map((l, i) => `${l}\n`)}</pre>
+				<pre className="max-h-48 overflow-auto rounded bg-gray-50 p-2 text-xs">{log.map((l, _i) => `${l}\n`)}</pre>
 			</section>
 		</div>
 	)

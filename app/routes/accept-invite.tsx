@@ -41,7 +41,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		consola.error("[ACCEPT INVITE] lookup_invitation error:", lookupError)
 	}
 
-	const isActive = Boolean((lookup as Record<string, unknown> | null | undefined)?.["active"])
+	const isActive = Boolean((lookup as Record<string, unknown> | null | undefined)?.active)
 	if (!isActive) {
 		consola.warn("[ACCEPT INVITE] Invitation inactive or expired")
 		// Could render a page here. Minimal behavior: send home.

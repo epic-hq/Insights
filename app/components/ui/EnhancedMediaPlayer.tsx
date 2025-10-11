@@ -102,7 +102,7 @@ export function EnhancedMediaPlayer({
 				mediaRef.current.load()
 			}
 		}
-	}, [mediaUrl])
+	}, [])
 
 	const startSeconds = parseTimeToSeconds(startTime)
 	const endSeconds = parseTimeToSeconds(endTime)
@@ -161,7 +161,7 @@ export function EnhancedMediaPlayer({
 		}
 	}
 
-	const handleSeekToStart = () => {
+	const _handleSeekToStart = () => {
 		if (mediaRef.current && startSeconds > 0) {
 			mediaRef.current.currentTime = startSeconds
 			setCurrentTime(startSeconds)
@@ -273,7 +273,7 @@ export function EnhancedMediaPlayer({
 		return null
 	}
 
-	const timeRangeDisplay = getTimeRangeDisplay()
+	const _timeRangeDisplay = getTimeRangeDisplay()
 
 	return (
 		<div className={cn("relative w-full max-w-md space-y-3", className)}>

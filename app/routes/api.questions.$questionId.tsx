@@ -177,7 +177,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 				if (!order) {
 					return { error: "Order value required for update-order intent", status: 400 }
 				}
-				updateData.order_index = Number.parseInt(order as string)
+				updateData.order_index = Number.parseInt(order as string, 10)
 				break
 			}
 
@@ -222,7 +222,7 @@ export async function action({ params, request }: ActionFunctionArgs) {
 			id: data.id,
 			new_status: data.status,
 			new_must_have: data.is_must_have,
-			text: data.text.slice(0, 50) + "...",
+			text: `${data.text.slice(0, 50)}...`,
 		})
 
 		// Return success with updated data

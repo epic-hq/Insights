@@ -1,7 +1,7 @@
 import consola from "consola"
 import { ArrowRight, Hash, House, Mic, Target } from "lucide-react"
 import { useState } from "react"
-import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -149,12 +149,11 @@ export default function Index() {
 
 	// Choose a project: last used if available, else first project
 	const lastUsed = user_settings?.last_used_project_id || undefined
-	const selectedProjectId =
-		(projects || []).find((p) => p.id === lastUsed)?.id || (projects && projects[0]?.id) || undefined
+	const selectedProjectId = (projects || []).find((p) => p.id === lastUsed)?.id || projects?.[0]?.id || undefined
 
 	const accountBase = `/a/${auth.accountId}`
-	const projectBase = selectedProjectId ? `${accountBase}/${selectedProjectId}` : null
-	const routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
+	const _projectBase = selectedProjectId ? `${accountBase}/${selectedProjectId}` : null
+	const _routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
 
 	const navigate = useNavigate()
 	const [creating, setCreating] = useState(false)

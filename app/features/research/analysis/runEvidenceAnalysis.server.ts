@@ -143,7 +143,7 @@ function clampConfidence(value: number | null | undefined): number {
 	return Math.min(1, Math.max(0, value))
 }
 
-function safeNumber(value: number | null | undefined): number | null {
+function _safeNumber(value: number | null | undefined): number | null {
 	if (typeof value === "number" && Number.isFinite(value)) return value
 	return null
 }
@@ -165,10 +165,7 @@ export async function runEvidenceAnalysis({
 		{ data: questionSection, error: questionSectionError },
 	] = await Promise.all([
 		supabase.from("decision_questions").select("id, text, rationale").eq("project_id", projectId),
-		supabase
-			.from("research_questions")
-			.select("id, text, rationale, decision_question_id")
-			.eq("project_id", projectId),
+		supabase.from("research_questions").select("id, text, rationale, decision_question_id").eq("project_id", projectId),
 		supabase
 			.from("project_sections")
 			.select("meta")
@@ -184,18 +181,17 @@ export async function runEvidenceAnalysis({
 
 	const questionSectionMeta = (questionSection?.meta as Record<string, any> | null) ?? null
 	const researchMode = (questionSectionMeta?.settings?.research_mode as ResearchMode | undefined) ?? "exploratory"
-	const validationGateMeta =
-		questionSectionMeta?.validation_gate_map as
-			| Record<
+	const validationGateMeta = questionSectionMeta?.validation_gate_map as
+		| Record<
 				string,
 				{
 					research_question_id?: string
 					research_question_text?: string
 				}
-			>
-			| undefined
+		  >
+		| undefined
 
-	const decisionMap = new Map(decisionQuestions?.map((dq) => [dq.id, dq]) ?? [])
+	const _decisionMap = new Map(decisionQuestions?.map((dq) => [dq.id, dq]) ?? [])
 	const researchMap = new Map(researchQuestions?.map((rq) => [rq.id, rq]) ?? [])
 	const gateByResearchQuestionId = new Map<string, { slug: string; label: string }>()
 	if (validationGateMeta) {
@@ -306,10 +302,7 @@ export async function runEvidenceAnalysis({
 		const gateLines = Object.entries(validationGateMeta)
 			.map(([slug, meta]) => {
 				const label = VALIDATION_GATE_LABELS[slug] ?? slug
-				const rqText =
-					meta?.research_question_text ||
-					researchMap.get(meta?.research_question_id ?? "")?.text ||
-					""
+				const rqText = meta?.research_question_text || researchMap.get(meta?.research_question_id ?? "")?.text || ""
 				return `- ${label} (${slug}) → research_question_id=${meta?.research_question_id ?? "unknown"} :: ${rqText}`
 			})
 			.filter(Boolean)
@@ -420,7 +413,7 @@ export async function runEvidenceAnalysis({
 			const researchQuestionId = link.question_id
 			const decisionQuestionId = researchMap.get(link.question_id)?.decision_question_id ?? null
 			const questionText = researchMap.get(link.question_id)?.text ?? "Untitled research question"
-			const personId = evidenceItem.interview_id ? interviewPersonMap.get(evidenceItem.interview_id) ?? null : null
+			const personId = evidenceItem.interview_id ? (interviewPersonMap.get(evidenceItem.interview_id) ?? null) : null
 
 			const aggregateKey = buildAnswerKey({
 				questionKind,
@@ -496,7 +489,7 @@ export async function runEvidenceAnalysis({
 				: null
 
 		const metadata: Record<string, any> = isObject(aggregate.existing?.analysis_run_metadata)
-			? { ...aggregate.existing!.analysis_run_metadata }
+			? { ...aggregate.existing?.analysis_run_metadata }
 			: {}
 
 		const evidenceMetadata = isObject(metadata.evidence_links) ? { ...metadata.evidence_links } : {}

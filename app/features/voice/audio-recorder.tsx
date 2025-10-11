@@ -1,14 +1,11 @@
 import consola from "consola"
 
-import { ArrowUp, Check, Mic, Pause, Play, RotateCw, Settings, Trash } from "lucide-react"
+import { Settings } from "lucide-react"
 import { usePostHog } from "posthog-js/react"
 import { useEffect, useMemo, useState } from "react"
-import { cn } from "@/lib/utils"
-import { Button } from "~/components/ui/button"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { VoiceInput } from "~/components/ui/voice-input"
 import { useAudioIntensity } from "./hooks/use-audio-intensity"
-import { RecorderErrors, StatusMessages, useMediaRecorder } from "./hooks/use-media-recorder"
+import { useMediaRecorder } from "./hooks/use-media-recorder"
 import { useScreenWakeLock } from "./hooks/use-screen-wake-lock"
 
 type AudioRecorderProps = {
@@ -33,15 +30,15 @@ export const AudioRecorder = ({
 		localStorage.getItem("selectedDeviceId") || undefined
 	)
 
-	const [hasDeviceAccess, setHasDeviceAccess] = useState<boolean | null>(null)
+	const [_hasDeviceAccess, setHasDeviceAccess] = useState<boolean | null>(null)
 
-	const [hasStartedRecording, setHasStartedRecording] = useState(false)
+	const [_hasStartedRecording, setHasStartedRecording] = useState(false)
 
 	// Add new state for browser compatibility error
 	const [browserError, setBrowserError] = useState<string | null>(null)
 
 	// Add state for audio quality warnings
-	const [audioQualityWarning, setAudioQualityWarning] = useState<string | null>(null)
+	const [_audioQualityWarning, setAudioQualityWarning] = useState<string | null>(null)
 
 	// Platform detection
 	const isIOS = useMemo(() => /iPhone|iPad|iPod/i.test(navigator.userAgent), [])
@@ -80,7 +77,7 @@ export const AudioRecorder = ({
 	//   getAudioDevices();
 	// }, []);
 
-	const handleDeviceChange = (deviceId: string) => {
+	const _handleDeviceChange = (deviceId: string) => {
 		setSelectedDeviceId(deviceId)
 		localStorage.setItem("selectedDeviceId", deviceId)
 	}
@@ -118,7 +115,7 @@ export const AudioRecorder = ({
 				permissionStatus.onchange = null
 			}
 		}
-	}, [])
+	}, [getAudioDevices, posthog])
 
 	const fileType = useMemo(() => {
 		const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)
@@ -161,7 +158,7 @@ export const AudioRecorder = ({
 	} = useMediaRecorder({
 		askPermissionOnMount: false,
 		stopStreamsOnStop: true,
-		onStop: async (blobUrl, blob) => {
+		onStop: async (_blobUrl, blob) => {
 			setStatus("transcribing")
 			if (posthog) {
 				posthog.capture("message-sent", { type: "audio", $set: { no_recent_messages: false } })
@@ -183,7 +180,7 @@ export const AudioRecorder = ({
 			}
 
 			// Read the first few bytes to verify content
-			const firstBytes = await blob.slice(0, 32).arrayBuffer()
+			const _firstBytes = await blob.slice(0, 32).arrayBuffer()
 			// setIsRunning?.(true);
 
 			return fetch("/api/transcribe", {
@@ -247,7 +244,7 @@ export const AudioRecorder = ({
 		stopRecording()
 	}
 
-	const onMainButtonClick = () => {
+	const _onMainButtonClick = () => {
 		if (isPaused) {
 			resumeRecording()
 			// startCountdown();
@@ -301,10 +298,10 @@ export const AudioRecorder = ({
 		return () => {
 			if (intervalId) clearInterval(intervalId)
 		}
-	}, [isRecording])
+	}, [isRecording, elapsedTimeMs])
 
 	// Calculate progress percentage
-	const progressPercentage = Math.min((elapsedTimeMs / maxDurationMs) * 100, 100)
+	const _progressPercentage = Math.min((elapsedTimeMs / maxDurationMs) * 100, 100)
 
 	// Function to analyze audio quality
 	const analyzeAudioQuality = async (

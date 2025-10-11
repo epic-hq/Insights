@@ -90,7 +90,7 @@ export function AuthUI({ redirectTo, appearance, view = "sign_in" }: AuthUIProps
 			}
 
 			// Handle navigation link clicks, preserving ?next=
-			if (anchor && anchor.textContent) {
+			if (anchor?.textContent) {
 				if (anchor.textContent.includes("Don't have an account") || anchor.textContent.includes("Sign up")) {
 					e.preventDefault()
 					navigate(`/register?next=${encodeURIComponent(next)}`)

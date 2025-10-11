@@ -60,7 +60,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		}
 
 		// Create analysis job and process immediately (same as upload flow)
-		if (transcript && transcript.trim()) {
+		if (transcript?.trim()) {
 			try {
 				const { createSupabaseAdminClient } = await import("~/lib/supabase/server")
 				const { createAndProcessAnalysisJob } = await import("~/utils/processInterviewAnalysis.server")

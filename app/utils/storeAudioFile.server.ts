@@ -120,6 +120,6 @@ function getExtensionFromFilename(filename: string): string | null {
 }
 
 // Helper to get file extension from File object
-function getFileExtensionFromFile(file: File): string {
+function _getFileExtensionFromFile(file: File): string {
 	return getExtensionFromFilename(file.name) || "unknown"
 }

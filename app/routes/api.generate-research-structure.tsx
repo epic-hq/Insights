@@ -5,7 +5,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { getServerClient } from "~/lib/supabase/server"
 import { currentProjectContext } from "~/server/current-project-context"
-import { fromManagerResearchMode, toManagerResearchMode, type ResearchMode } from "~/types/research"
+import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 
 const VALIDATION_GATES = ["pain_exists", "awareness", "quantified", "acting"] as const
 type ValidationGateSlug = (typeof VALIDATION_GATES)[number]
@@ -105,7 +105,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			target_roles: target_roles || (mergedContext?.target_roles as string) || projectContext?.target_roles || "",
 			research_goal: research_goal || (mergedContext?.research_goal as string) || projectContext?.research_goal || "",
 			research_goal_details:
-				research_goal_details || (mergedContext?.research_goal_details as string) || projectContext?.research_goal_details || "",
+				research_goal_details ||
+				(mergedContext?.research_goal_details as string) ||
+				projectContext?.research_goal_details ||
+				"",
 			assumptions: assumptions || (mergedContext?.assumptions as string) || projectContext?.assumptions || "",
 			unknowns: unknowns || (mergedContext?.unknowns as string) || projectContext?.unknowns || "",
 			custom_instructions: combinedInstructions,
@@ -127,9 +130,14 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		})
 
 		// Save to database in proper structure
-		const { error: saveError, validationGateMeta } = await saveResearchStructure(supabase, project_id, researchStructure, {
-			researchMode: research_mode,
-		})
+		const { error: saveError, validationGateMeta } = await saveResearchStructure(
+			supabase,
+			project_id,
+			researchStructure,
+			{
+				researchMode: research_mode,
+			}
+		)
 
 		if (saveError) {
 			throw saveError
@@ -273,7 +281,7 @@ async function saveResearchStructure(
 		// 2. Save Research Questions
 		const researchQuestions = structure.research_questions.map((rq: any) => {
 			const mappedId = idMapping.get(rq.id)
-			const mappedDecisionId = rq.decision_question_id ? idMapping.get(rq.decision_question_id) ?? null : null
+			const mappedDecisionId = rq.decision_question_id ? (idMapping.get(rq.decision_question_id) ?? null) : null
 			const gateSlug = isValidationMode ? getValidationGateSlug(rq.id) : undefined
 			if (isValidationMode && gateSlug) {
 				registerGateMeta(gateSlug, (existing) => ({
@@ -282,7 +290,7 @@ async function saveResearchStructure(
 					research_question_text: rq.text,
 					decision_question_id: mappedDecisionId,
 					decision_question_text: mappedDecisionId
-						? decisionLookup.get(rq.decision_question_id!)?.text ?? null
+						? (decisionLookup.get(rq.decision_question_id!)?.text ?? null)
 						: null,
 					prompt_ids: existing?.prompt_ids ?? [],
 					prompt_texts: existing?.prompt_texts ?? [],
@@ -343,7 +351,7 @@ async function saveResearchStructure(
 		let gateMetaPayload: ValidationGateMeta | null = null
 		if (isValidationMode) {
 			for (const gate of VALIDATION_GATES) {
-				if (!validationGateMeta[gate] || !validationGateMeta[gate]!.research_question_id) {
+				if (!validationGateMeta[gate] || !validationGateMeta[gate]?.research_question_id) {
 					delete validationGateMeta[gate]
 				}
 			}
@@ -352,12 +360,7 @@ async function saveResearchStructure(
 			}
 		}
 
-		await persistValidationGateMeta(
-			supabase,
-			projectId,
-			gateMetaPayload,
-			options?.researchMode ?? "exploratory"
-		)
+		await persistValidationGateMeta(supabase, projectId, gateMetaPayload, options?.researchMode ?? "exploratory")
 
 		consola.log("[RESEARCH STRUCTURE] Saved successfully to database")
 		return {

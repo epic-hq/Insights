@@ -2,7 +2,6 @@ import { DragDropContext, Draggable, Droppable, type DropResult } from "@hello-p
 import consola from "consola"
 import {
 	ArrowDownFromLine,
-	Brain,
 	BriefcaseBusiness,
 	Check,
 	Clock,
@@ -16,29 +15,23 @@ import {
 	MessageCircleQuestion,
 	MoreHorizontal,
 	Plus,
-	RefreshCw,
 	Settings,
 	Star,
 	Trash2,
-	User,
 	X,
-	Zap,
 } from "lucide-react"
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useFetcher } from "react-router"
 import { toast } from "sonner"
 import { z } from "zod"
-import { AnimatedBorderCard } from "~/components/ui/AnimatedBorderCard"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
-import { Input } from "~/components/ui/input"
 import { ProgressDots } from "~/components/ui/ProgressDots"
 import { StatusPill } from "~/components/ui/StatusPill"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Separator } from "~/components/ui/separator"
 import { Slider } from "~/components/ui/slider"
 import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
@@ -263,7 +256,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [skipDebounce, setSkipDebounce] = useState(false)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
 	const [showCustomInstructions, _setShowCustomInstructions] = useState(false)
-	const [showAddCustomQuestion, setShowAddCustomQuestion] = useState(false)
+	const [_showAddCustomQuestion, setShowAddCustomQuestion] = useState(false)
 	const [newQuestionText, setNewQuestionText] = useState("")
 	const [newQuestionCategory, setNewQuestionCategory] = useState("context")
 	const [editingId, setEditingId] = useState<string | null>(null)
@@ -289,15 +282,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const recentlyAddedTimeoutsRef = React.useRef<Record<string, number>>({})
 	const [recentlyAddedQuestionIds, setRecentlyAddedQuestionIds] = useState<string[]>([])
 	const [pendingGeneratedQuestions, setPendingGeneratedQuestions] = useState<Question[]>([])
-	const [showPendingModal, setShowPendingModal] = useState(false)
+	const [_showPendingModal, setShowPendingModal] = useState(false)
 	const [pendingInsertionChoices, setPendingInsertionChoices] = useState<Record<string, string>>({})
-	const [processingPendingId, setProcessingPendingId] = useState<string | null>(null)
+	const [_processingPendingId, setProcessingPendingId] = useState<string | null>(null)
 
 	// Category/time visibility toggle
 	const [showCategoryTime, setShowCategoryTime] = useState(false)
 
 	// Inline question adding
-	const [showInlineAdd, setShowInlineAdd] = useState(false)
+	const [_showInlineAdd, setShowInlineAdd] = useState(false)
 	const [inlineQuestionText, setInlineQuestionText] = useState("")
 	const [inlineQuestionCategory, setInlineQuestionCategory] = useState("context")
 
@@ -482,7 +475,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			setAutoGenerateInitial(true)
 			generateQuestions()
 		}
-	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId])
+	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId, generateQuestions])
 
 	useEffect(() => {
 		return () => {
@@ -869,7 +862,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	])
 
 	const baseSelectedIdsForModal = useMemo(() => getBaseSelectedIds(), [getBaseSelectedIds])
-	const baseSelectedQuestionsForModal = useMemo(
+	const _baseSelectedQuestionsForModal = useMemo(
 		() =>
 			baseSelectedIdsForModal.map((id) => questions.find((q) => q.id === id)).filter((q): q is Question => Boolean(q)),
 		[baseSelectedIdsForModal, questions]
@@ -885,7 +878,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	}, [hasInitialized, selectedQuestionIds.length, questionPack.questions, commitSelection])
 
 	// Time used per category for currently selected questions
-	const usedMinutesByCategory = useMemo(() => {
+	const _usedMinutesByCategory = useMemo(() => {
 		const acc: Record<string, number> = {}
 		for (const q of questionPack.questions as Array<{ categoryId: string; estimatedMinutes: number }>) {
 			acc[q.categoryId] = (acc[q.categoryId] || 0) + (q.estimatedMinutes || 0)
@@ -928,7 +921,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					"Selected IDs Count": selectedIds.length,
 				})
 
-				const withOrder = questionsToSave.map((q, index) => {
+				const withOrder = questionsToSave.map((q, _index) => {
 					const selectedIndex = selectedIds.indexOf(q.id)
 					const estimated = q.estimatedMinutes ?? estimateMinutesPerQuestion(q, researchMode, familiarity)
 					return {
@@ -963,7 +956,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					// Log each payload for debugging
 					if (q.status === "rejected" || q.isMustHave) {
 						console.log(`🔴 CRITICAL QUESTION [${q.id.slice(0, 8)}]:`, {
-							text: q.text.slice(0, 50) + "...",
+							text: `${q.text.slice(0, 50)}...`,
 							status: q.status,
 							is_must_have: payload.is_must_have,
 							payload_status: payload.status,
@@ -1052,7 +1045,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	)
 
 	// Generate a single question focused on a specific category
-	const generateOneInCategory = useCallback(
+	const _generateOneInCategory = useCallback(
 		async (categoryId: string) => {
 			if (generating || generatingCategoryId) return
 			setGeneratingCategoryId(categoryId)
@@ -1142,6 +1135,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			research_goal_details,
 			assumptions,
 			unknowns,
+			estimateMinutesPerQuestion,
+			familiarity,
+			researchMode,
 		]
 	)
 
@@ -1184,7 +1180,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				description: "The question has been moved to deleted status",
 			})
 		},
-		[getBaseSelectedIds, commitSelection, deleteFetcher, setQuestions]
+		[getBaseSelectedIds, commitSelection, deleteFetcher]
 	)
 
 	const moveQuestion = useCallback(
@@ -1215,6 +1211,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			commitSelection,
 			questions,
 			saveQuestionsToDatabase,
+			markQuestionAsRecentlyAdded,
 		]
 	)
 
@@ -1238,7 +1235,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[getBaseSelectedIds, commitSelection, questions, saveQuestionsToDatabase]
 	)
 
-	const addCustomQuestion = useCallback(async () => {
+	const _addCustomQuestion = useCallback(async () => {
 		if (!newQuestionText.trim()) {
 			toast.error("Please enter a question")
 			return
@@ -1418,6 +1415,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		research_goal,
 		target_roles,
 		isEvalEnabled,
+		estimateMinutesPerQuestion,
+		familiarity,
+		researchMode,
 	])
 
 	// Auto-evaluate question quality when text changes are saved
@@ -1474,22 +1474,22 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		[questions, getBaseSelectedIds, commitSelection, saveQuestionsToDatabase]
 	)
 
-	const getAnsweredCountColor = (count: number) => {
+	const _getAnsweredCountColor = (count: number) => {
 		if (count === 0) return "bg-transparent text-muted-foreground"
 		if (count <= 3) return "bg-transparent text-yellow-600 dark:text-yellow-400"
 		if (count <= 10) return "bg-transparent text-green-600 dark:text-green-400"
 		return "bg-transparent text-blue-600 dark:text-blue-400"
 	}
 
-	const handlePendingInsertionChange = useCallback((questionId: string, value: string) => {
+	const _handlePendingInsertionChange = useCallback((questionId: string, value: string) => {
 		setPendingInsertionChoices((prev) => ({ ...prev, [questionId]: value }))
 	}, [])
 
-	const handlePendingCategoryChange = useCallback((questionId: string, categoryId: string) => {
+	const _handlePendingCategoryChange = useCallback((questionId: string, categoryId: string) => {
 		setPendingGeneratedQuestions((prev) => prev.map((q) => (q.id === questionId ? { ...q, categoryId } : q)))
 	}, [])
 
-	const handleRejectPendingQuestion = useCallback((questionId: string) => {
+	const _handleRejectPendingQuestion = useCallback((questionId: string) => {
 		setPendingGeneratedQuestions((prev) => prev.filter((q) => q.id !== questionId))
 		setPendingInsertionChoices((prev) => {
 			const next = { ...prev }
@@ -1502,7 +1502,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	}, [])
 
 	// Handle inline question adding
-	const handleInlineQuestionAdd = useCallback(async () => {
+	const _handleInlineQuestionAdd = useCallback(async () => {
 		if (!inlineQuestionText.trim()) {
 			toast.error("Please enter a question")
 			return
@@ -1562,7 +1562,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	])
 
 	// Handle suggestion click from ContextualSuggestions
-	const handleSuggestionClick = useCallback((suggestion: string) => {
+	const _handleSuggestionClick = useCallback((suggestion: string) => {
 		setInlineQuestionText(suggestion)
 	}, [])
 
@@ -1652,7 +1652,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		supabase,
 	])
 
-	const syncExistingInterviews = useCallback(async () => {
+	const _syncExistingInterviews = useCallback(async () => {
 		if (!projectId || syncingInterviews) return
 
 		try {
@@ -1691,7 +1691,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		}
 	}, [projectId, syncingInterviews, supabase])
 
-	const handleAcceptPendingQuestion = useCallback(
+	const _handleAcceptPendingQuestion = useCallback(
 		async (questionId: string, mode: "end" | "after") => {
 			setProcessingPendingId(questionId)
 			const pending = pendingGeneratedQuestions.find((q) => q.id === questionId)
@@ -1750,6 +1750,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			commitSelection,
 			markQuestionAsRecentlyAdded,
 			saveQuestionsToDatabase,
+			loadQuestions,
 		]
 	)
 
@@ -2190,10 +2191,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																								const updated = questions.map((q) =>
 																									q.id === question.id
 																										? {
-																											...q,
-																											text: editingText,
-																											qualityFlag: quality ?? undefined,
-																										}
+																												...q,
+																												text: editingText,
+																												qualityFlag: quality ?? undefined,
+																											}
 																										: q
 																								)
 																								setQuestions(updated)
@@ -2295,11 +2296,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																				</span>
 																			)}
 																			<DropdownMenu>
-																			<DropdownMenuTrigger asChild>
-																				<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-																					<MoreHorizontal className="h-4 w-4" />
-																				</Button>
-																			</DropdownMenuTrigger>
+																				<DropdownMenuTrigger asChild>
+																					<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+																						<MoreHorizontal className="h-4 w-4" />
+																					</Button>
+																				</DropdownMenuTrigger>
 																				<DropdownMenuContent align="end">
 																					<DropdownMenuItem
 																						onClick={async () => {

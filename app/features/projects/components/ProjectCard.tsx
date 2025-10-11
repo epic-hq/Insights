@@ -40,7 +40,7 @@ function groupLatestByKind(sections: Project_Section[]) {
 	return byKind
 }
 
-function preview(text: string, n = 140) {
+function _preview(text: string, n = 140) {
 	const t = text.replace(/[*`_#>-]+/g, " ").trim()
 	return t.length > n ? `${t.slice(0, n).trim()}…` : t
 }

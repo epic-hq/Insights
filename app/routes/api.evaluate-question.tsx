@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from "react-router"
-import { getLangfuseClient } from "~/lib/langfuse.server"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 
 export const action = async ({ request }: ActionFunctionArgs) => {
 	const langfuse = getLangfuseClient()
@@ -23,10 +23,7 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 			metadata: { route: "api.evaluate-question" },
 			logUsageLabel: "api.evaluate-question",
 			bamlCall: (client) =>
-				client.EvaluateInterviewQuestion(
-					cleanedQuestion,
-					research_context || "General user research interview"
-				),
+				client.EvaluateInterviewQuestion(cleanedQuestion, research_context || "General user research interview"),
 		})
 		lfTrace?.update?.({
 			metadata: {

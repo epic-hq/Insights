@@ -1,9 +1,6 @@
-import { MastraAgent } from "@ag-ui/mastra"
 import { chatRoute } from "@mastra/ai-sdk"
 import type { RuntimeContext } from "@mastra/core/di"
 import { Mastra } from "@mastra/core/mastra"
-import { registerApiRoute } from "@mastra/core/server"
-import { LibSQLStore } from "@mastra/libsql"
 import { PinoLogger } from "@mastra/loggers"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
@@ -11,8 +8,10 @@ import { LangfuseExporter } from "langfuse-vercel"
 import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
 import { projectSetupAgent } from "./agents/project-setup-agent"
+import { researchAssistantAgent } from "./agents/research-assistant-agent"
 import { signupAgent } from "./agents/signup-agent"
 import { weatherAgent } from "./agents/weather-agent"
+import { webLeadAgent } from "./agents/weblead-agent"
 import { getSharedPostgresStore } from "./storage/postgres-singleton"
 import { dailyBriefWorkflow } from "./workflows/daily-brief"
 import { signupOnboardingWorkflow } from "./workflows/signup-onboarding"
@@ -22,17 +21,81 @@ import { weatherWorkflow } from "./workflows/weather-workflow"
 // Create global SupabaseClient for workflows
 export const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
+const STREAM_RESULT_ALIASES_SYMBOL = Symbol("mastraStreamResultAliases")
+
+type AISDKV5Stream = {
+	toUIMessageStreamResponse?: (options?: unknown) => unknown
+	toTextStreamResponse?: (options?: unknown) => unknown
+}
+
+type StreamResultLike = {
+	aisdk?: { v5?: AISDKV5Stream }
+	toDataStreamResponse?: (options?: unknown) => unknown
+	toUIMessageStreamResponse?: (options?: unknown) => unknown
+	toTextStreamResponse?: (options?: unknown) => unknown
+	[key: string]: unknown
+}
+
+const ensureStreamResultAliases = <T extends StreamResultLike>(result: T): T => {
+	const aiSdkV5 = result.aisdk?.v5
+	if (!aiSdkV5) {
+		return result
+	}
+	if (typeof result.toDataStreamResponse !== "function" && typeof aiSdkV5.toUIMessageStreamResponse === "function") {
+		result.toDataStreamResponse = (options?: unknown) => aiSdkV5.toUIMessageStreamResponse?.(options)
+	}
+	if (
+		typeof result.toUIMessageStreamResponse !== "function" &&
+		typeof aiSdkV5.toUIMessageStreamResponse === "function"
+	) {
+		result.toUIMessageStreamResponse = (options?: unknown) => aiSdkV5.toUIMessageStreamResponse?.(options)
+	}
+	if (typeof result.toTextStreamResponse !== "function" && typeof aiSdkV5.toTextStreamResponse === "function") {
+		result.toTextStreamResponse = (options?: unknown) => aiSdkV5.toTextStreamResponse?.(options)
+	}
+	return result
+}
+
+type StreamableAgent = {
+	stream: (...args: unknown[]) => Promise<StreamResultLike>
+	[key: string]: unknown
+}
+
+const attachStreamResultAliases = <T extends StreamableAgent>(agent: T): T => {
+	const agentWithFlag = agent as Record<PropertyKey, unknown>
+	if (agentWithFlag[STREAM_RESULT_ALIASES_SYMBOL]) {
+		return agent
+	}
+	const originalStream = agent.stream.bind(agent) as (...args: unknown[]) => Promise<StreamResultLike>
+	agent.stream = (async (...args: unknown[]) => {
+		const streamResult = await originalStream(...args)
+		return ensureStreamResultAliases(streamResult)
+	}) as T["stream"]
+	agentWithFlag[STREAM_RESULT_ALIASES_SYMBOL] = true
+	return agent
+}
+
 export type UserContext = {
 	user_id: string
 	account_id: string
 	project_id: string
 	jwt: string
-	supabase?: any // Allow supabase client injection
+	supabase?: unknown // Allow supabase client injection
+}
+
+const agents = {
+	mainAgent: attachStreamResultAliases(mainAgent),
+	weatherAgent: attachStreamResultAliases(weatherAgent),
+	insightsAgent: attachStreamResultAliases(insightsAgent),
+	signupAgent: attachStreamResultAliases(signupAgent),
+	projectSetupAgent: attachStreamResultAliases(projectSetupAgent),
+	researchAssistantAgent: attachStreamResultAliases(researchAssistantAgent),
+	webLeadAgent: attachStreamResultAliases(webLeadAgent),
 }
 
 export const mastra = new Mastra({
 	workflows: { dailyBriefWorkflow, weatherWorkflow, signupOnboardingWorkflow },
-	agents: { mainAgent, weatherAgent, insightsAgent, signupAgent, projectSetupAgent },
+	agents,
 	storage: getSharedPostgresStore(),
 	logger: new PinoLogger({
 		name: "mastra",
@@ -98,6 +161,14 @@ export const mastra = new Mastra({
 			chatRoute({
 				path: "/chat/project-setup",
 				agent: "projectSetupAgent",
+			}),
+			chatRoute({
+				path: "/chat/research-assistant",
+				agent: "researchAssistantAgent",
+			}),
+			chatRoute({
+				path: "/chat/web-lead",
+				agent: "webLeadAgent",
 			}),
 			// CopilotKit routes removed
 		],

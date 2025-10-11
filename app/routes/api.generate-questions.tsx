@@ -1,12 +1,11 @@
 import { randomUUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { b } from "~/baml_client"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { getServerClient } from "~/lib/supabase/server"
 import { currentProjectContext } from "~/server/current-project-context"
+import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 import { generateQuestionSetCanonical } from "~/utils/research-analysis.server"
-import { fromManagerResearchMode, toManagerResearchMode, type ResearchMode } from "~/types/research"
 
 export async function action({ request, context }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -137,7 +136,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 						coerceResearchMode(metaQ?.settings?.purpose)
 					if (settingsMode) research_mode = settingsMode
 				}
-			} catch (e) {
+			} catch (_e) {
 				// Non-fatal
 			}
 		} catch (error) {
@@ -482,7 +481,7 @@ export async function action({ request, context }: ActionFunctionArgs) {
 			(q: any) => q && typeof q.id === "string" && !newQuestionIds.has(q.id)
 		)
 
-		const sectionQuestionEntries = promptPayloads.map((payload: PromptPayload, index: number) => ({
+		const sectionQuestionEntries = promptPayloads.map((payload: PromptPayload, _index: number) => ({
 			id: payload.id,
 			text: payload.text,
 			categoryId: payload.category,

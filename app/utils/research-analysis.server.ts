@@ -4,9 +4,9 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import type { Insight, Person, Persona, Project_Section } from "~/types"
 import type { ResearchMode } from "~/types/research"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 interface ResearchGoalData {
 	icp: string
@@ -88,7 +88,7 @@ export async function generateQuestionSetCanonical(params: {
 
 	const modeInstructionNote = (() => {
 		if (normalizedResearchMode === "validation") {
-			return `Validation mode: focus on the four evidence gates (Pain Exists, Awareness, Quantified Impact, Acting). Create questions that elicit proof for each gate and use categoryId values pain, awareness, quantified, acting when appropriate.`
+			return "Validation mode: focus on the four evidence gates (Pain Exists, Awareness, Quantified Impact, Acting). Create questions that elicit proof for each gate and use categoryId values pain, awareness, quantified, acting when appropriate."
 		}
 		if (normalizedResearchMode === "user_testing") {
 			return "User testing mode: emphasise usability tasks, comprehension checks, and adoption signals."
@@ -398,9 +398,9 @@ export async function generateResearchQuestions(
 					round: 1,
 					total_per_round: 10,
 					per_category_min: 1,
-				per_category_max: 3,
-				interview_time_limit: 60,
-			}),
+					per_category_max: 3,
+					interview_time_limit: 60,
+				}),
 		})
 
 		// Convert new QuestionSet format to legacy format for backward compatibility

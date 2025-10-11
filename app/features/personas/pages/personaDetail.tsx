@@ -1,6 +1,5 @@
 import consola from "consola"
 import { motion } from "framer-motion"
-import { Palette, Percent, Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"

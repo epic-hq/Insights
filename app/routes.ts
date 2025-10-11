@@ -145,7 +145,7 @@ const routes = [
 	...voiceRoutes,
 
 	// Resource routes
-
+	route("/link", "./routes/link.tsx"),
 	route("/resource/locales", "./routes/resource.locales.ts"),
 	route("healthcheck", "./routes/healthcheck.ts"),
 	route("apple-touch-icon.png", "./routes/apple-touch-icon[.]png.ts"),

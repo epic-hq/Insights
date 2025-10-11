@@ -1,16 +1,8 @@
-import { Check, ChevronsUpDown, FolderOpen, PlusCircle } from "lucide-react"
+import { Check, ChevronsUpDown, FolderOpen } from "lucide-react"
 import { useMemo, useState } from "react"
 import { useNavigate, useRouteLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
-import {
-	Command,
-	CommandEmpty,
-	CommandGroup,
-	CommandInput,
-	CommandItem,
-	CommandList,
-	CommandSeparator,
-} from "~/components/ui/command"
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "~/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { cn } from "~/lib/utils"
@@ -62,7 +54,8 @@ export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwit
 	}, [protectedData?.accounts])
 
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
-	const currentProject = currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
+	const currentProject =
+		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
 
 	const currentProjectLabel = currentProject?.name || "Select a project"
 	const currentAccountLabel = currentAccount?.name || "Select an account"

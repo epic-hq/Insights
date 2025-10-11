@@ -11,13 +11,13 @@ import type { FacetCatalog, PersonFacetObservation, PersonScaleObservation } fro
 import type { Database, Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
+import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
 import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
-import { getLangfuseClient } from "~/lib/langfuse.server"
-import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
 
 // Supabase table types
 type Tables = Database["public"]["Tables"]
@@ -93,7 +93,7 @@ function stringHash(input: string): string {
 		h ^= input.charCodeAt(i)
 		h = Math.imul(h, 16777619) >>> 0
 	}
-	return ("00000000" + h.toString(16)).slice(-8)
+	return `00000000${h.toString(16)}`.slice(-8)
 }
 
 function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
@@ -392,12 +392,12 @@ async function processEvidencePhase({
 		const _feels = Array.isArray((ev as any).feels) ? ((ev as any).feels as string[]) : []
 		const _pains = Array.isArray((ev as any).pains) ? ((ev as any).pains as string[]) : []
 		const _gains = Array.isArray((ev as any).gains) ? ((ev as any).gains as string[]) : []
-		;(row as Record<string, unknown>)["says"] = _says
-		;(row as Record<string, unknown>)["does"] = _does
-		;(row as Record<string, unknown>)["thinks"] = _thinks
-		;(row as Record<string, unknown>)["feels"] = _feels
-		;(row as Record<string, unknown>)["pains"] = _pains
-		;(row as Record<string, unknown>)["gains"] = _gains
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -419,11 +419,11 @@ async function processEvidencePhase({
 		}
 		const context_summary = (ev as { context_summary?: string }).context_summary
 		if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
-			;(row as Record<string, unknown>)["context_summary"] = context_summary.trim()
+			;(row as Record<string, unknown>).context_summary = context_summary.trim()
 		}
 
 		evidenceRows.push(row)
-		personKeyForEvidence.push(personKey && personKey.length ? personKey : null)
+		personKeyForEvidence.push(personKey?.length ? personKey : null)
 	}
 
 	if (!evidenceRows.length) {
@@ -575,7 +575,7 @@ async function processEvidencePhase({
 			}
 			const resolvedName = resolveName(participant, index)
 			const segments = Array.isArray(participant?.segments)
-				? participant.segments!.filter((seg): seg is string => typeof seg === "string" && seg.trim().length > 0)
+				? participant.segments?.filter((seg): seg is string => typeof seg === "string" && seg.trim().length > 0)
 				: []
 			const participantOverrides: Partial<PeopleInsert> = {
 				description: participant.summary?.trim() || null,
@@ -584,7 +584,7 @@ async function processEvidencePhase({
 				role: participant.role?.trim() || null,
 			}
 			const personRecord = await upsertPerson(resolvedName, participantOverrides)
-			const key = participantKey && participantKey.length ? participantKey : `participant-${index}`
+			const key = participantKey?.length ? participantKey : `participant-${index}`
 			personIdByKey.set(key, personRecord.id)
 			keyByPersonId.set(personRecord.id, key)
 			if (participant?.display_name) {
@@ -664,8 +664,8 @@ async function processEvidencePhase({
 								: `participant-${index}`
 						const personId = personIdByKey.get(key) || primaryPersonId
 						if (!personId) return null
-						const facets = Array.isArray(participant?.facets) ? (participant!.facets as PersonFacetObservation[]) : []
-						const scales = Array.isArray(participant?.scales) ? (participant!.scales as PersonScaleObservation[]) : []
+						const facets = Array.isArray(participant?.facets) ? (participant?.facets as PersonFacetObservation[]) : []
+						const scales = Array.isArray(participant?.scales) ? (participant?.scales as PersonScaleObservation[]) : []
 						if (!facets.length && !scales.length) return null
 						return { personId, facets, scales }
 					})
@@ -895,7 +895,7 @@ export async function processInterviewTranscriptWithClient({
 		gist?: string
 		title?: string
 	}
-	let chapters: Array<{ start_ms: number; end_ms?: number; summary?: string; title?: string }> = []
+	let _chapters: Array<{ start_ms: number; end_ms?: number; summary?: string; title?: string }> = []
 	try {
 		const rawChapters =
 			((transcriptData as Record<string, unknown>).chapters as RawChapter[] | undefined) ||
@@ -904,7 +904,7 @@ export async function processInterviewTranscriptWithClient({
 		if (Array.isArray(rawChapters)) {
 			consola.log("rawChapters: ", JSON.stringify(rawChapters))
 
-			chapters = rawChapters
+			_chapters = rawChapters
 				.map((c: RawChapter) => ({
 					start_ms: typeof c.start_ms === "number" ? c.start_ms : typeof c.start === "number" ? c.start : 0,
 					end_ms: typeof c.end_ms === "number" ? c.end_ms : typeof c.end === "number" ? c.end : undefined,

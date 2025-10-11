@@ -246,7 +246,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			projectChat: () => `${base}/project-chat`,
 			detail: (id: string) => `/a/${extractAccountId(projectPath)}/${id}`,
 			// Deprecated old edit path; point to project-scoped settings
-			edit: (id: string) => `${projectPath}/settings`,
+			edit: (_id: string) => `${projectPath}/settings`,
 			dashboard: () => `${base}/dashboard`,
 		},
 

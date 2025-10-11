@@ -222,7 +222,7 @@ export default function EvidenceIndex() {
 	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini")
 	const [searchParams, setSearchParams] = useSearchParams()
 	const currentProject = useCurrentProject()
-	const routes = useProjectRoutes(currentProject?.projectPath || "")
+	const _routes = useProjectRoutes(currentProject?.projectPath || "")
 	const listClassName = viewMode === "expanded" ? "space-y-4" : "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
 
 	// Controlled select helpers

@@ -22,7 +22,7 @@ type TemplatePrefill = {
 function fallbackPrefill(templateKey: string, projectName: string, signup: any): TemplatePrefill {
 	const goalFromSignup = (signup?.goal || "").toString().trim()
 	const challenges = (signup?.challenges || "").toString().trim()
-	const inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`
+	const _inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`
 
 	const pre: TemplatePrefill = {
 		template_key: templateKey,
@@ -96,7 +96,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				custom_instructions: filled.custom_instructions || prefill.custom_instructions,
 			}
 		}
-	} catch (e) {
+	} catch (_e) {
 		// Ignore and use fallback
 	}
 

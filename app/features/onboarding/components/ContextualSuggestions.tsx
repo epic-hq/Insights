@@ -38,7 +38,7 @@ export default function ContextualSuggestions({
 	const [suggestions, setSuggestions] = useState<string[]>([])
 	const [isLoading, setIsLoading] = useState(false)
 	const [hasGenerated, setHasGenerated] = useState(false)
-	const [consumed, setConsumed] = useState<Set<string>>(new Set())
+	const [consumed, _setConsumed] = useState<Set<string>>(new Set())
 	const [rejected, setRejected] = useState<Set<string>>(new Set())
 
 	const generateSuggestions = async () => {
@@ -106,11 +106,11 @@ export default function ContextualSuggestions({
 			}, 500)
 			return () => clearTimeout(timer)
 		}
-	}, [researchGoal, suggestionType, hasGenerated])
+	}, [researchGoal, hasGenerated, generateSuggestions])
 
 	if (!researchGoal.trim() || !isActive) return null
 
-	const suggestionTypeLabels = {
+	const _suggestionTypeLabels = {
 		decision_questions: "Decision questions",
 		assumptions: "Assumptions",
 		unknowns: "Unknowns",

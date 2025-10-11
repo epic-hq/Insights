@@ -54,9 +54,7 @@ export function summarizeCollectorUsage(
 		summary.completionCostUsd = Number(((summary.outputTokens / 1000) * completionCostRate).toFixed(6))
 	}
 	if (typeof summary.promptCostUsd === "number" || typeof summary.completionCostUsd === "number") {
-		summary.totalCostUsd = Number(
-			((summary.promptCostUsd ?? 0) + (summary.completionCostUsd ?? 0)).toFixed(6)
-		)
+		summary.totalCostUsd = Number(((summary.promptCostUsd ?? 0) + (summary.completionCostUsd ?? 0)).toFixed(6))
 	}
 	return Object.keys(summary).length ? summary : null
 }

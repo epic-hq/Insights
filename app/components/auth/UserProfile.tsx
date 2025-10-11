@@ -1,4 +1,4 @@
-import { ChevronsUpDown, FolderOpen, LogOut, Mail, User, Users } from "lucide-react"
+import { ChevronsUpDown, LogOut, User, Users } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -122,6 +122,6 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 					</DropdownMenuContent>
 				</DropdownMenu>
 			</SidebarMenuItem>
-		</SidebarMenu >
+		</SidebarMenu>
 	)
 }

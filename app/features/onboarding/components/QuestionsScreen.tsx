@@ -1,4 +1,4 @@
-import { BookOpen, ChevronLeft, ChevronRight, MessageCircleQuestionMark, Mic } from "lucide-react"
+import { ChevronLeft, ChevronRight, MessageCircleQuestionMark, Mic } from "lucide-react"
 import { useState } from "react"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"

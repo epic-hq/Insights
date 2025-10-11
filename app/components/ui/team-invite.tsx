@@ -77,7 +77,7 @@ const getPermissionLabel = (permission: PermissionLevel) => {
 	}
 }
 
-const getPermissionColor = (permission: PermissionLevel) => {
+const _getPermissionColor = (permission: PermissionLevel) => {
 	switch (permission) {
 		case "can-view":
 			return "default"

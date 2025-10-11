@@ -126,12 +126,10 @@ export function SignupDataWatcher({
 								{normalized.completed ? "Completed" : "In progress"}
 							</span>
 						</div>
-						<ChevronDown className={"size-5 transition-transform " + (isOpen ? "rotate-180" : "rotate-0")} />
+						<ChevronDown className={`size-5 transition-transform ${isOpen ? "rotate-180" : "rotate-0"}`} />
 					</button>
 					<div
-						className={
-							"transition-all duration-200 " + (isOpen ? "mt-2 max-h-[80dvh] opacity-100" : "max-h-0 opacity-0")
-						}
+						className={`transition-all duration-200 ${isOpen ? "mt-2 max-h-[80dvh] opacity-100" : "max-h-0 opacity-0"}`}
 					>
 						<div className="overflow-hidden rounded-xl border border-neutral-200/60 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
 							<div className="grid @xl:grid-cols-2 grid-cols-1 gap-5 p-4">

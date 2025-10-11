@@ -96,7 +96,6 @@ export function ConfidenceBarChart({ level, className, size = "md", variant = "b
 						<AlertCircle {...iconProps} className={cn(iconProps.className, "text-yellow-600")} />
 					</div>
 				)
-			case "low":
 			default:
 				return (
 					<div title={getTooltipText()} className="inline-block">

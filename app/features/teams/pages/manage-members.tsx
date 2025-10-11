@@ -83,8 +83,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 			}
 		} else {
 			const lookup = (lookupData as Record<string, unknown> | null) ?? null
-			const lookupAccountId = (lookup?.["account_id"] as string | undefined) ?? null
-			const isActive = Boolean(lookup?.["active"])
+			const lookupAccountId = (lookup?.account_id as string | undefined) ?? null
+			const isActive = Boolean(lookup?.active)
 
 			if (!lookupAccountId || lookupAccountId !== accountId) {
 				inviteAcceptance = {
@@ -121,14 +121,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const normalizedAccount = account
 		? {
-			account_id: accountId,
-			name: ((account as Record<string, unknown>)?.["name"] as string | null | undefined) ?? null,
-			personal_account: Boolean(
-				(account as Record<string, unknown>)?.["personal_account"] ??
-				(account as Record<string, unknown>)?.["personalAccount"]
-			),
-			account_role: (((account as Record<string, unknown>)?.["account_role"] ?? "viewer") as "owner" | "member" | "viewer"),
-		}
+				account_id: accountId,
+				name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
+				personal_account: Boolean(
+					(account as Record<string, unknown>)?.personal_account ??
+						(account as Record<string, unknown>)?.personalAccount
+				),
+				account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
+			}
 		: null
 
 	let members: MembersRow[] = []
@@ -224,7 +224,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				try {
 					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
 					teamName = (accountData as any)?.name || teamName
-				} catch { }
+				} catch {}
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({
@@ -369,9 +369,9 @@ export default function ManageTeamMembers() {
 						className={
 							inviteAcceptance.status === "accepted"
 								? "rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-emerald-700 text-sm dark:border-emerald-900/60 dark:bg-emerald-950/40 dark:text-emerald-300"
-							: inviteAcceptance.status === "inactive"
-								? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
-								: "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-600 text-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
+								: inviteAcceptance.status === "inactive"
+									? "rounded-md border border-amber-200 bg-amber-50 px-3 py-2 text-amber-700 text-sm dark:border-amber-900/60 dark:bg-amber-950/40 dark:text-amber-300"
+									: "rounded-md border border-red-200 bg-red-50 px-3 py-2 text-red-600 text-sm dark:border-red-900/60 dark:bg-red-950/40 dark:text-red-300"
 						}
 					>
 						{inviteAcceptance.message}
@@ -481,7 +481,6 @@ function mapAccountRoleToPermission(role: "owner" | "member" | "viewer"): Permis
 			return "admin"
 		case "member":
 			return "can-edit"
-		case "viewer":
 		default:
 			return "can-view"
 	}
@@ -493,7 +492,6 @@ function mapPermissionToAccountRoleForRpc(permission: PermissionLevel): "owner" 
 			return "owner"
 		case "can-edit":
 			return "member"
-		case "can-view":
 		default:
 			return "member" // fallback to member when 'viewer' is not supported in RPC type
 	}

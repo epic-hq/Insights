@@ -10,7 +10,7 @@ export const loader: LoaderFunction = async ({ context, request, params }) => {
 	const _projectCtx = context.get(currentProjectContext)
 	const supabase = ctx.supabase
 	const userId = ctx.claims?.sub
-	const accountId = params?.accountId
+	const _accountId = params?.accountId
 	const projectId = params?.projectId
 
 	if (!userId) {

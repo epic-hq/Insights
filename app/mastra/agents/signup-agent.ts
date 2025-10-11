@@ -1,6 +1,5 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
-import { createTool } from "@mastra/core/tools"
 import { Memory } from "@mastra/memory"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/server"
@@ -8,7 +7,6 @@ import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { saveUserSettingsDataTool } from "../tools/save-usersettings-data"
-import { signupCompletionGuardTool } from "../tools/signup-completion-guard"
 
 export const AgentState = z.object({
 	signupChatData: z

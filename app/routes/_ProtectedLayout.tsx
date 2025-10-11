@@ -136,7 +136,7 @@ export async function loader({ context }: Route.LoaderArgs) {
 export default function ProtectedLayout() {
 	const { auth, accounts, user_settings } = useLoaderData<typeof loader>()
 	const { clientEnv } = useRouteLoaderData("root")
-	const params = useParams()
+	const _params = useParams()
 	const navigation = useNavigation()
 	const location = useLocation()
 

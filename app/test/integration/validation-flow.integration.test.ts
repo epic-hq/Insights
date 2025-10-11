@@ -50,9 +50,7 @@ describe("Validation Flow Integration", () => {
 			slug,
 		}))
 
-		await testDb.from("research_questions").insert(
-			researchQuestions.map(({ slug, ...rest }) => rest)
-		)
+		await testDb.from("research_questions").insert(researchQuestions.map(({ slug, ...rest }) => rest))
 
 		const validationGateMeta = Object.fromEntries(
 			researchQuestions.map((rq) => [rq.slug, { research_question_id: rq.id, research_question_text: rq.text }])

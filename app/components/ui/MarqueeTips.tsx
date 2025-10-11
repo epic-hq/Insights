@@ -1,5 +1,3 @@
-import React from "react"
-
 export function MarqueeTips({ tips, className = "" }: { tips: string[]; className?: string }) {
 	if (!tips || tips.length === 0) return null
 	return (

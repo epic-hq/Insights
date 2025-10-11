@@ -1,4 +1,3 @@
-import { convertMessages } from "@mastra/core/agent"
 import type { LoaderFunctionArgs } from "react-router"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { memory } from "~/mastra/memory"

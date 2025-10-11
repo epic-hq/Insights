@@ -4,8 +4,7 @@ export function fromManagerResearchMode(mode: ResearchMode | "followup"): Resear
 	return mode === "followup" ? "user_testing" : mode
 }
 
-export function toManagerResearchMode(mode?: string | null): (ResearchMode | "followup") |
-	undefined {
+export function toManagerResearchMode(mode?: string | null): (ResearchMode | "followup") | undefined {
 	if (!mode) return undefined
 	switch (mode) {
 		case "exploratory":

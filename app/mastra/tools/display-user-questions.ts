@@ -41,7 +41,7 @@ export const displayUserQuestionsTool = createTool({
 				throw new Error("Missing Supabase configuration")
 			}
 
-			const supabase = createClient(supabaseUrl, supabaseServiceKey)
+			const _supabase = createClient(supabaseUrl, supabaseServiceKey)
 
 			// Structure the signup data
 			const signupData = {

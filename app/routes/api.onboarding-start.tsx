@@ -111,7 +111,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			("goal" in onboardingData ? onboardingData.goal : "")
 		const researchGoalDetails =
 			"research_goal_details" in onboardingData ? (onboardingData.research_goal_details ?? "") : ""
-		const customInstructionsInput =
+		const _customInstructionsInput =
 			"custom_instructions" in onboardingData ? onboardingData.custom_instructions : undefined
 		const questionsInput = onboardingData.questions || []
 		const mediaTypeInput = onboardingData.mediaType

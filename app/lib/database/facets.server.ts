@@ -181,7 +181,7 @@ export async function persistFacetObservations({
 				const evidenceId =
 					evidenceIndex !== null && evidenceIndex !== undefined ? (evidenceIds[evidenceIndex] ?? null) : null
 				const confidence = normalizeConfidence(obs.confidence)
-				if (obs.facet_ref && obs.facet_ref.trim().length) {
+				if (obs.facet_ref?.trim().length) {
 					facetRows.push({
 						account_id: accountId,
 						project_id: projectId,

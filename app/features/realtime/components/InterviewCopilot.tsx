@@ -1,19 +1,5 @@
 import consola from "consola"
-import {
-	Home,
-	Lightbulb,
-	Loader2,
-	MessageSquare,
-	Mic,
-	MicOff,
-	Pause,
-	Play,
-	Plus,
-	RotateCcw,
-	Square,
-	Users,
-} from "lucide-react"
-import posthog from "posthog-js"
+import { Loader2, Mic, MicOff, Pause, Play, RotateCcw } from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { useNavigate } from "react-router"
 import {
@@ -28,7 +14,7 @@ import {
 } from "~/components/ui/alert-dialog"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent } from "~/components/ui/card"
 import {
 	Dialog,
 	DialogContent,
@@ -59,13 +45,13 @@ interface AISuggestion {
 }
 
 export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotProps) {
-	const [selectedQuestions, setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
+	const [_selectedQuestions, _setSelectedQuestions] = useState<{ id: string; text: string }[]>([])
 	const [isRecording, setIsRecording] = useState(false)
 	// Store finalized turns with timing to support 15s replay
 	const [turns, setTurns] = useState<{ transcript: string; start: number; end: number }[]>([])
-	const [captions, setCaptions] = useState<string[]>([]) // kept for finalize consistency
+	const [_captions, setCaptions] = useState<string[]>([]) // kept for finalize consistency
 	const [currentCaption, setCurrentCaption] = useState("")
-	const [aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
+	const [_aiSuggestions, setAiSuggestions] = useState<AISuggestion[]>([])
 	const [interviewNotes, setInterviewNotes] = useState("")
 	const [notesExpanded, setNotesExpanded] = useState(false)
 	const supabase = createClient()
@@ -171,7 +157,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			stopStreaming(false)
 		}
 		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [])
+	}, [
+		cleanupMediaStreams, // On unmount, ensure we don't accidentally finalize
+		stopStreaming,
+	])
 
 	// Start duration timer
 	const startDurationTimer = useCallback(() => {
@@ -459,7 +448,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								return [t.transcript, ...prev.slice(0, 9)]
 							})
 							// Track turns with timestamps for replay (fallback if no word timings)
-							if (t.words && t.words.length) {
+							if (t.words?.length) {
 								const start = t.words[0]?.start ?? approxTimeRef.current
 								const end = t.words[t.words.length - 1]?.end ?? start
 								approxTimeRef.current = end
@@ -503,7 +492,16 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			setIsRecording(false)
 			stopStreaming()
 		}
-	}, [assignedInterviewId, getCaptureStream])
+	}, [
+		assignedInterviewId,
+		getCaptureStream,
+		computeTurnKey,
+		downsampleTo16kPCM16,
+		drainForSamples,
+		projectPath,
+		startDurationTimer,
+		stopStreaming,
+	])
 
 	// Pause without finalizing; keeps WS alive if possible
 	const pauseStreaming = useCallback(() => {
@@ -592,7 +590,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		} catch (e) {
 			consola.warn("resumeStreaming error", e)
 		}
-	}, [startStreaming, startDurationTimer, getCaptureStream])
+	}, [startStreaming, startDurationTimer, getCaptureStream, downsampleTo16kPCM16, drainForSamples])
 
 	// Process the recording
 	const stopStreaming = useCallback(
@@ -729,12 +727,21 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				}
 			})()
 		},
-		[assignedInterviewId, currentCaption, navigate, projectId, supabase, stopDurationTimer, cleanupMediaStreams]
+		[
+			assignedInterviewId,
+			currentCaption,
+			projectId,
+			supabase,
+			stopDurationTimer,
+			cleanupMediaStreams,
+			getAudioDuration,
+			projectPath,
+		]
 	)
 
 	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 
-	const handleQuestionStatusChange = useCallback(
+	const _handleQuestionStatusChange = useCallback(
 		async (_questionId: string, status: "proposed" | "asked" | "answered" | "skipped") => {
 			// Generate AI suggestion based on status
 			if (status === "answered") {
@@ -890,21 +897,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 				navigate(redirectPath)
 			}
 		}
-	}, [
-		isCanceling,
-		stopStreaming,
-		setIsRecording,
-		setRecordingDuration,
-		assignedInterviewId,
-		supabase,
-		accountId,
-		projectId,
-		navigate,
-		routes,
-	])
+	}, [isCanceling, stopStreaming, assignedInterviewId, supabase, accountId, projectId, navigate, routes])
 
 	// Dialog handlers
-	const handleRecordAnother = useCallback(() => {
+	const _handleRecordAnother = useCallback(() => {
 		setShowCompletionDialog(false)
 		setCompletedInterviewId(undefined)
 		// Reset recording state and REDIRECT to new interview

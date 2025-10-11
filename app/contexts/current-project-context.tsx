@@ -17,7 +17,7 @@ const CurrentProjectContext = createContext<CurrentProjectContextType>({
 	accountPath: "",
 	projectPath: "",
 	lastProjectPath: { accountId: "", projectId: "" },
-	setLastProjectPath: () => { },
+	setLastProjectPath: () => {},
 })
 
 export const useCurrentProject = () => {
@@ -31,7 +31,6 @@ export const useCurrentProject = () => {
 interface CurrentProjectProviderProps {
 	children: React.ReactNode
 }
-
 
 export function CurrentProjectProvider({ children }: CurrentProjectProviderProps) {
 	const params = useParams()

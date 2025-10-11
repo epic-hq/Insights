@@ -2,7 +2,6 @@ import type { JwtPayload } from "@supabase/supabase-js"
 import consola from "consola"
 import { createContext, useContext, useMemo } from "react"
 import { useParams } from "react-router"
-import { getSupabaseClient } from "~/lib/supabase/client"
 import { PATHS } from "~/paths"
 import type { AccountSettings, UserSettings } from "~/types"
 

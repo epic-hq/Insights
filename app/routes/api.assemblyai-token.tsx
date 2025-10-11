@@ -12,7 +12,7 @@ export async function loader(_args: LoaderFunctionArgs) {
 	try {
 		const ttlSeconds = Number(process.env.ASSEMBLYAI_STREAMING_TOKEN_TTL ?? 300)
 		const url = `https://streaming.assemblyai.com/v3/token?expires_in_seconds=${encodeURIComponent(
-			isFinite(ttlSeconds) && ttlSeconds > 0 ? Math.min(ttlSeconds, 3600) : 300
+			Number.isFinite(ttlSeconds) && ttlSeconds > 0 ? Math.min(ttlSeconds, 3600) : 300
 		)}`
 		const res = await fetch(url, {
 			method: "GET",

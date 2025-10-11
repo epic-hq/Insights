@@ -4,15 +4,11 @@ import type {
 	AcceptInvitationResponse,
 	CreateAccountResponse,
 	CreateInvitationResponse,
-	CurrentUserAccountRoleResponse,
-	GetAccountBillingStatusResponse,
 	GetAccountInvitesResponse,
 	GetAccountMembersResponse,
 	GetAccountResponse,
 	GetAccountsResponse,
-	GetBillingPlansResponse,
 	LookupInvitationResponse,
-	UpdateAccountResponse,
 } from "./types-accounts"
 
 export type Database = MergeDeep<

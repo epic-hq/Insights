@@ -4,17 +4,15 @@ import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } fro
 import consola from "consola"
 import { Brain, Check, Loader, Pencil, X } from "lucide-react"
 import { useEffect, useState } from "react"
-import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { data, Link, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import type { LoaderFunctionArgs } from "react-router"
+import { data, useNavigate, useRouteLoaderData } from "react-router"
 import { Streamdown } from "streamdown"
 import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
 import { Message, MessageContent } from "~/components/ai-elements/message"
 import { PromptInput, PromptInputSubmit, PromptInputTextarea } from "~/components/ai-elements/prompt-input"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Task, TaskContent, TaskTrigger } from "~/components/ai-elements/task"
-import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
 import { TextShimmer } from "~/components/ui/text-shimmer"
 import { AudioRecorder } from "~/features/voice/audio-recorder"
 import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
@@ -91,7 +89,7 @@ export async function loader({ context, request }: LoaderFunctionArgs) {
 export default function SignupChat({ loaderData }: Route.ComponentProps) {
 	const { messages: initialMessages, existingChatData, user } = loaderData
 	const [input, setInput] = useState("")
-	const [prompts, setPrompts] = useState<string[]>(["I'm on home page"])
+	const [prompts, _setPrompts] = useState<string[]>(["I'm on home page"])
 	const navigate = useNavigate()
 
 	// Ai SDK chat
@@ -126,7 +124,7 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 	})
 
 	// Onboarding data
-	const [onboardingData, setOnboardingData] = useState(existingChatData)
+	const [_onboardingData, setOnboardingData] = useState(existingChatData)
 	const [chatCompleted, setChatCompleted] = useState(Boolean(existingChatData?.completed || false))
 	const { clientEnv } = useRouteLoaderData("root")
 	const chatRequired = Boolean(clientEnv?.SIGNUP_CHAT_REQUIRED === "true")
@@ -137,7 +135,7 @@ export default function SignupChat({ loaderData }: Route.ComponentProps) {
 		} else if (chatCompleted) {
 			navigate("/signup-chat/completed")
 		}
-	}, [chatCompleted, navigate])
+	}, [chatCompleted, navigate, chatRequired])
 
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()

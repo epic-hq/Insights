@@ -1,5 +1,5 @@
 import clsx from "clsx"
-import { BadgeInfo, Contrast, Dot, GitMerge, Users } from "lucide-react"
+import { BadgeInfo, Contrast, Dot, Users } from "lucide-react"
 import React, { useCallback, useState } from "react"
 
 /** ========== Types ==========

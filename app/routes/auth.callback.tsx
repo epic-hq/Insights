@@ -27,7 +27,14 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			return redirect("/login_failure")
 		}
 		const accountId = data?.user?.app_metadata?.claims?.sub || data?.user?.user_metadata?.account_id || data?.user?.id
-		consola.log("[AUTH CALLBACK] Exchange successful, user:", data?.user?.email, "accountId:", accountId, "redirecting to:", next)
+		consola.log(
+			"[AUTH CALLBACK] Exchange successful, user:",
+			data?.user?.email,
+			"accountId:",
+			accountId,
+			"redirecting to:",
+			next
+		)
 		const loginSuccessUrl = `/login_success?next=${encodeURIComponent(next)}`
 		return redirect(loginSuccessUrl, { headers })
 	}

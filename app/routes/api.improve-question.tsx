@@ -1,8 +1,8 @@
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/server"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
@@ -68,7 +68,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const unique = Array.from(new Set(options.filter(Boolean))).slice(0, 3)
 
 		return Response.json({ success: true, options: unique })
-	} catch (error) {
+	} catch (_error) {
 		return Response.json({ error: "Failed to improve question" }, { status: 500 })
 	} finally {
 		lfTrace?.end?.()

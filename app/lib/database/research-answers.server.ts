@@ -329,7 +329,7 @@ export async function getResearchAnswerRollup(
 		if (!node) continue
 
 		if (ans.research_question_id && researchNodes.has(ans.research_question_id)) {
-			researchNodes.get(ans.research_question_id)!.answers.push(node)
+			researchNodes.get(ans.research_question_id)?.answers.push(node)
 		}
 	}
 
@@ -366,7 +366,7 @@ export async function getResearchAnswerRollup(
 		const summary = researchSummary.find((row) => row.research_question_id === rq.id)
 		const decisionId = summary?.decision_question_id ?? null
 		if (decisionId && decisionsMap.has(decisionId)) {
-			decisionsMap.get(decisionId)!.research_questions.push(rq)
+			decisionsMap.get(decisionId)?.research_questions.push(rq)
 		} else {
 			research_questions_without_decision.push(rq)
 		}

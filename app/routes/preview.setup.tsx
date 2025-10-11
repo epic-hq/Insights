@@ -20,7 +20,7 @@ type TemplatePrefill = {
 function fallbackPrefill(templateKey: string, projectName: string, signup: Record<string, unknown>): TemplatePrefill {
 	const goalFromSignup = (signup?.goal || "").toString().trim()
 	const challenges = (signup?.challenges || "").toString().trim()
-	const inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`
+	const _inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`
 
 	const pre: TemplatePrefill = {
 		template_key: templateKey,

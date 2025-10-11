@@ -111,11 +111,11 @@ export default function ProjectGoalsScreen({
 	const [ensuringStructure, setEnsuringStructure] = useState(false)
 	const [showCustomInstructions, setShowCustomInstructions] = useState(false)
 	// Removed showGoalSuggestions state - no longer using fallback suggestions
-	const [showDecisionQuestionSuggestions, setShowDecisionQuestionSuggestions] = useState(false)
+	const [_showDecisionQuestionSuggestions, _setShowDecisionQuestionSuggestions] = useState(false)
 	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
-	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
+	const [_showAssumptionSuggestions, _setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
 	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
@@ -129,13 +129,13 @@ export default function ProjectGoalsScreen({
 	// Reset active suggestion type when accordion changes
 	useEffect(() => {
 		setActiveSuggestionType(null)
-	}, [openAccordion])
+	}, [])
 
 	// Refs for input fields
 	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
 	const orgInputRef = useRef<HTMLTextAreaElement>(null)
 	const roleInputRef = useRef<HTMLTextAreaElement>(null)
-	const assumptionInputRef = useRef<HTMLTextAreaElement>(null)
+	const _assumptionInputRef = useRef<HTMLTextAreaElement>(null)
 	const unknownInputRef = useRef<HTMLTextAreaElement>(null)
 
 	// Construct the protected API path
@@ -483,7 +483,7 @@ export default function ProjectGoalsScreen({
 		saveDecisionQuestions(newQuestions)
 	}
 
-	const addAssumption = async () => {
+	const _addAssumption = async () => {
 		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
 			await createProjectIfNeeded()
 			const newAssumptions = [...assumptions, newAssumption.trim()]
@@ -493,7 +493,7 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
-	const updateAssumption = (index: number, value: string) => {
+	const _updateAssumption = (index: number, value: string) => {
 		const v = value.trim()
 		if (!v) return
 		const updated = [...assumptions]
@@ -521,7 +521,7 @@ export default function ProjectGoalsScreen({
 		saveUnknowns(updated)
 	}
 
-	const removeAssumption = (index: number) => {
+	const _removeAssumption = (index: number) => {
 		const newAssumptions = assumptions.filter((_, i) => i !== index)
 		setAssumptions(newAssumptions)
 		saveAssumptions(newAssumptions)
@@ -611,14 +611,16 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-												}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
+												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+											}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-												}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
+												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+											}`}
 										>
 											{step.title}
 										</span>
@@ -829,7 +831,7 @@ export default function ProjectGoalsScreen({
 													researchGoal={research_goal}
 													existingItems={target_orgs}
 													apiPath={apiPath}
-													shownSuggestions={shownSuggestionsByType["organizations"] || []}
+													shownSuggestions={shownSuggestionsByType.organizations || []}
 													isActive={activeSuggestionType === null || activeSuggestionType === "organizations"}
 													onSuggestionClick={async (suggestion) => {
 														if (!target_orgs.includes(suggestion.trim())) {
@@ -931,7 +933,7 @@ export default function ProjectGoalsScreen({
 													researchGoal={research_goal}
 													existingItems={target_roles}
 													apiPath={apiPath}
-													shownSuggestions={shownSuggestionsByType["roles"] || []}
+													shownSuggestions={shownSuggestionsByType.roles || []}
 													isActive={activeSuggestionType === null || activeSuggestionType === "roles"}
 													onSuggestionClick={async (suggestion) => {
 														if (!target_roles.includes(suggestion.trim())) {
@@ -1079,7 +1081,7 @@ export default function ProjectGoalsScreen({
 												researchGoal={research_goal}
 												existingItems={decision_questions}
 												apiPath={apiPath}
-												shownSuggestions={shownSuggestionsByType["decision_questions"] || []}
+												shownSuggestions={shownSuggestionsByType.decision_questions || []}
 												isActive={activeSuggestionType === null || activeSuggestionType === "decision_questions"}
 												onSuggestionClick={async (suggestion) => {
 													if (!decision_questions.includes(suggestion.trim())) {
@@ -1313,7 +1315,7 @@ export default function ProjectGoalsScreen({
 														researchGoal={research_goal}
 														existingItems={unknowns}
 														apiPath={apiPath}
-														shownSuggestions={shownSuggestionsByType["unknowns"] || []}
+														shownSuggestions={shownSuggestionsByType.unknowns || []}
 														isActive={activeSuggestionType === null || activeSuggestionType === "unknowns"}
 														onSuggestionClick={async (suggestion) => {
 															if (!unknowns.includes(suggestion.trim())) {
@@ -1444,7 +1446,7 @@ export default function ProjectGoalsScreen({
 													value={[15, 30, 45, 60].includes(interview_duration) ? String(interview_duration) : ""}
 													onValueChange={(value) => {
 														if (value) {
-															const newDuration = Number.parseInt(value)
+															const newDuration = Number.parseInt(value, 10)
 															setInterviewDuration(newDuration)
 															saveSettings({ interview_duration: newDuration })
 														}
@@ -1488,7 +1490,7 @@ export default function ProjectGoalsScreen({
 														placeholder="Custom"
 														value={[15, 30, 45, 60].includes(interview_duration) ? "" : String(interview_duration)}
 														onChange={(e) => {
-															const value = Number.parseInt(e.target.value)
+															const value = Number.parseInt(e.target.value, 10)
 															if (!Number.isNaN(value) && value >= 5 && value <= 120) {
 																setInterviewDuration(value)
 															}
@@ -1518,7 +1520,7 @@ export default function ProjectGoalsScreen({
 													max="100"
 													value={target_conversations}
 													onChange={(e) => {
-														const value = Number.parseInt(e.target.value) || 10
+														const value = Number.parseInt(e.target.value, 10) || 10
 														setTargetConversations(value)
 													}}
 													onBlur={() => saveSettings({ target_conversations })}

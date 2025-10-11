@@ -1,6 +1,5 @@
-import { assemblyai } from "@ai-sdk/assemblyai"
 import { openai } from "@ai-sdk/openai"
-import { NoContentGeneratedError, NoOutputGeneratedError, experimental_transcribe as transcribe } from "ai"
+import { NoOutputGeneratedError, experimental_transcribe as transcribe } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getAuthenticatedUser } from "~/lib/supabase/server"

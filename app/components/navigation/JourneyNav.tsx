@@ -3,12 +3,12 @@ import { useState } from "react"
 import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import {
-	Command as CommandPrimitive,
 	CommandEmpty,
 	CommandGroup,
 	CommandInput,
 	CommandItem,
 	CommandList,
+	Command as CommandPrimitive,
 } from "~/components/ui/command"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -36,9 +36,7 @@ export const journeySteps: JourneyStep[] = [
 		description: "Define goals & get evidence",
 		icon: Command,
 		routes: ["/dashboard"],
-		subItems: [
-			{ label: "Status", route: "/dashboard", description: "Project overview & recommendations" },
-		],
+		subItems: [{ label: "Status", route: "/dashboard", description: "Project overview & recommendations" }],
 	},
 	{
 		key: "interviews",
@@ -121,7 +119,8 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 
 	const accounts = (protectedData?.accounts || []).filter((acct) => !acct.personal_account)
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
-	const currentProject = currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
+	const currentProject =
+		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
 	const initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
 
 	const handleSelectProject = (acctId: string, projId: string) => {
@@ -135,16 +134,16 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 
 	const getCurrentStep = () => {
 		const currentPath = location.pathname
-		
+
 		// Extract the route segment after the project path (e.g., /a/123/456/interviews -> /interviews)
 		// This handles paths like /a/:accountId/:projectId/interviews
-		const pathSegments = currentPath.split('/').filter(Boolean)
-		const routeSegment = pathSegments.length >= 3 ? `/${pathSegments.slice(3).join('/')}` : currentPath
-		
+		const pathSegments = currentPath.split("/").filter(Boolean)
+		const routeSegment = pathSegments.length >= 3 ? `/${pathSegments.slice(3).join("/")}` : currentPath
+
 		// Find the most specific match (longest route that matches)
 		let bestMatch: JourneyStep | undefined
 		let bestMatchLength = 0
-		
+
 		for (const step of journeySteps) {
 			// Check direct routes
 			for (const route of step.routes) {
@@ -154,7 +153,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 					bestMatchLength = route.length
 				}
 			}
-			
+
 			// Check sub-item routes
 			if (step.subItems) {
 				for (const item of step.subItems) {
@@ -165,7 +164,7 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 				}
 			}
 		}
-		
+
 		return bestMatch?.key || "research"
 	}
 

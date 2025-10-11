@@ -1,11 +1,7 @@
 import consola from "consola"
 import { b } from "~/../baml_client"
 import type { BamlUsageSummary } from "~/lib/baml/collector.server"
-import {
-	createBamlCollector,
-	mapUsageToLangfuse,
-	summarizeCollectorUsage,
-} from "~/lib/baml/collector.server"
+import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 
 type InstrumentedClient = ReturnType<typeof b.withOptions>
@@ -125,11 +121,11 @@ export async function runBamlWithTracing<TResult>({
 			})
 			trace?.update?.({ usage: langfuseUsage, cost: costPayload, metadata })
 		}
-	let finalUsage = langfuseUsage ?? mapUsageToLangfuse(usageSummary)
-	const finalCost =
-		typeof usageSummary?.totalCostUsd === "number"
-			? { amount: usageSummary.totalCostUsd, currency: "USD" as const }
-			: undefined
-	trace?.end?.({ usage: finalUsage, cost: finalCost, metadata })
+		const finalUsage = langfuseUsage ?? mapUsageToLangfuse(usageSummary)
+		const finalCost =
+			typeof usageSummary?.totalCostUsd === "number"
+				? { amount: usageSummary.totalCostUsd, currency: "USD" as const }
+				: undefined
+		trace?.end?.({ usage: finalUsage, cost: finalCost, metadata })
 	}
 }

@@ -1,4 +1,15 @@
-import { AlertCircle, ChevronRight, Eye, Flame, LayoutList, LineChart, Rocket, Settings, Target, TrendingUp } from "lucide-react"
+import {
+	AlertCircle,
+	ChevronRight,
+	Eye,
+	Flame,
+	LayoutList,
+	LineChart,
+	Rocket,
+	Settings,
+	Target,
+	TrendingUp,
+} from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { Link, useLoaderData } from "react-router"
@@ -114,17 +125,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		{ data: projectAnswers, error: answersError },
 		{ data: interviewPeopleRows, error: interviewPeopleError },
 		{ data: questionAnalysisRows, error: questionAnalysisError },
-	] =
-		await Promise.all([
-			supabase
-				.from("project_sections")
-				.select("*")
-				.eq("project_id", projectId)
-				.order("position", { ascending: true, nullsFirst: false })
-				.order("created_at", { ascending: false }),
-			supabase
-				.from("people")
-				.select(`
+	] = await Promise.all([
+		supabase
+			.from("project_sections")
+			.select("*")
+			.eq("project_id", projectId)
+			.order("position", { ascending: true, nullsFirst: false })
+			.order("created_at", { ascending: false }),
+		supabase
+			.from("people")
+			.select(`
 					id,
 					name,
 					company,
@@ -137,25 +147,22 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						)
 					)
 				`)
-				.eq("project_id", projectId)
-				.order("created_at", { ascending: false }),
-			supabase
-				.from("project_answers")
-				.select(
-					"id, respondent_person_id, research_question_id, question_text, answer_text, analysis_summary, analysis_rationale, analysis_next_steps, confidence, interview_id, updated_at, status"
-				)
-				.eq("project_id", projectId)
-				.eq("status", "answered"),
-			supabase
-				.from("interview_people")
-				.select("interview_id, person_id")
-				.eq("project_id", projectId),
-			supabase
-				.from("project_question_analysis")
-				.select("question_id, question_type, summary, confidence, next_steps, goal_achievement_summary, created_at")
-				.eq("project_id", projectId)
-				.order("created_at", { ascending: false }),
-		])
+			.eq("project_id", projectId)
+			.order("created_at", { ascending: false }),
+		supabase
+			.from("project_answers")
+			.select(
+				"id, respondent_person_id, research_question_id, question_text, answer_text, analysis_summary, analysis_rationale, analysis_next_steps, confidence, interview_id, updated_at, status"
+			)
+			.eq("project_id", projectId)
+			.eq("status", "answered"),
+		supabase.from("interview_people").select("interview_id, person_id").eq("project_id", projectId),
+		supabase
+			.from("project_question_analysis")
+			.select("question_id, question_type, summary, confidence, next_steps, goal_achievement_summary, created_at")
+			.eq("project_id", projectId)
+			.order("created_at", { ascending: false }),
+	])
 
 	if (peopleError) console.error("Error loading people:", peopleError)
 	if (answersError) console.error("Error loading project answers:", answersError)
@@ -167,12 +174,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const researchMode = (questionSectionMeta?.settings?.research_mode as string | undefined) ?? "exploratory"
 	const validationGateMeta = questionSectionMeta?.validation_gate_map as
 		| Record<
-			string,
-			{
-				research_question_id?: string
-				research_question_text?: string
-			}
-		>
+				string,
+				{
+					research_question_id?: string
+					research_question_text?: string
+				}
+		  >
 		| undefined
 
 	const gateOutcomeMap: Record<ValidationGateSlug, 2 | 3 | 4 | 5> = {
@@ -191,7 +198,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	const peopleMap = new Map(
-		(people ?? []).map((person) => [person.id, { name: person.name || "Unknown", company: person.company || "", contactInfo: person.contact_info as Record<string, unknown> | null }])
+		(people ?? []).map((person) => [
+			person.id,
+			{
+				name: person.name || "Unknown",
+				company: person.company || "",
+				contactInfo: person.contact_info as Record<string, unknown> | null,
+			},
+		])
 	)
 
 	const participantsAccumulator = new Map<
@@ -204,7 +218,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	>()
 
-	const ensureParticipant = (personId: string): {
+	const ensureParticipant = (
+		personId: string
+	): {
 		id: string
 		name: string
 		company: string
@@ -230,13 +246,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		const meta = validationGateMeta?.[slug]
 		return meta?.research_question_id
 			? {
-				slug,
-				research_question_id: meta.research_question_id,
-				label: validationGateLabels[slug],
-				text: meta.research_question_text ?? "",
-			}
+					slug,
+					research_question_id: meta.research_question_id,
+					label: validationGateLabels[slug],
+					text: meta.research_question_text ?? "",
+				}
 			: null
-	}).filter(Boolean) as Array<{ slug: ValidationGateSlug; research_question_id: string; label: ValidationStage; text: string }>
+	}).filter(Boolean) as Array<{
+		slug: ValidationGateSlug
+		research_question_id: string
+		label: ValidationStage
+		text: string
+	}>
 
 	const gateByQuestionId = new Map<string, ValidationGateSlug>()
 	for (const gate of gateDefinitions) {
@@ -257,14 +278,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			const detailKey = slugToDetailKey[slug]
 			const personId =
 				answer.respondent_person_id ||
-				(answer.interview_id ? interviewPersonMap.get(answer.interview_id) ?? null : null)
+				(answer.interview_id ? (interviewPersonMap.get(answer.interview_id) ?? null) : null)
 			if (!personId) continue
 			const participant = ensureParticipant(personId)
 			const summaryCandidate =
 				[answer.analysis_summary, answer.answer_text, answer.analysis_rationale, answer.analysis_next_steps]
 					.map((value) => (typeof value === "string" ? value.trim() : ""))
-					.find((value) => value.length > 0) ||
-					""
+					.find((value) => value.length > 0) || ""
 			if (!summaryCandidate) continue
 			participant.validationDetails[detailKey] = {
 				summary: summaryCandidate,
@@ -347,21 +367,26 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 			if (hasAwareness) {
 				validationDetails.awareness = {
-					summary: extractText(/aware|know|understand|talk/i) || "Participant described the problem in their own words.",
+					summary:
+						extractText(/aware|know|understand|talk/i) || "Participant described the problem in their own words.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
 				}
 			}
 			if (hasQuantification) {
 				validationDetails.quantified = {
-					summary: extractText(/\$|cost|hour|time|save|spend|budget|price|percent|%|mins|minutes|hours/i) || "Participant put numbers behind the pain.",
+					summary:
+						extractText(/\$|cost|hour|time|save|spend|budget|price|percent|%|mins|minutes|hours/i) ||
+						"Participant put numbers behind the pain.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
 				}
 			}
 			if (hasAction) {
 				validationDetails.acting = {
-					summary: extractText(/pay|bought|purchas|subscri|tool|solution|using|current|hired|built/i) || "Participant is actively trying to solve this today.",
+					summary:
+						extractText(/pay|bought|purchas|subscri|tool|solution|using|current|hired|built/i) ||
+						"Participant is actively trying to solve this today.",
 					confidence: avgConfidence || null,
 					updatedAt: null,
 				}
@@ -375,11 +400,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 			const highestDetail = VALIDATION_GATE_ORDER.reduce<ValidationGateSlug | null>((acc, slug) => {
 				const detail = validationDetails[slugToDetailKey[slug]]
-				return detail && detail.summary ? slug : acc
+				return detail?.summary ? slug : acc
 			}, null)
 
 			const keyInsight = highestDetail
-				? validationDetails[slugToDetailKey[highestDetail]]?.summary ?? ""
+				? (validationDetails[slugToDetailKey[highestDetail]]?.summary ?? "")
 				: outcome > 1
 					? "Interview hints at pain but lacks clear quotes."
 					: "No interview data available"
@@ -404,7 +429,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			let highestGate: ValidationGateSlug | null = null
 			for (const slug of VALIDATION_GATE_ORDER) {
 				const detail = participant.validationDetails[slugToDetailKey[slug]]
-				if (detail && detail.summary) {
+				if (detail?.summary) {
 					highestGate = slug
 				}
 			}
@@ -443,7 +468,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	>()
 
 	if (questionAnalysisRows && questionAnalysisRows.length > 0 && gateDefinitions.length > 0) {
-		const latestByQuestion = new Map<string, typeof questionAnalysisRows[number]>()
+		const latestByQuestion = new Map<string, (typeof questionAnalysisRows)[number]>()
 		for (const row of questionAnalysisRows) {
 			if (row.question_type !== "research") continue
 			if (latestByQuestion.has(row.question_id)) continue
@@ -492,13 +517,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		return a.name.localeCompare(b.name)
 	})
 
-	const gateTotals = VALIDATION_GATE_ORDER.reduce((acc, slug) => {
-		acc[slug] = participants.filter((participant) => {
-			const detailKey = slugToDetailKey[slug]
-			return Boolean(participant.validationDetails[detailKey]?.summary)
-		}).length
-		return acc
-	}, Object.create(null) as Record<ValidationGateSlug, number>)
+	const gateTotals = VALIDATION_GATE_ORDER.reduce(
+		(acc, slug) => {
+			acc[slug] = participants.filter((participant) => {
+				const detailKey = slugToDetailKey[slug]
+				return Boolean(participant.validationDetails[detailKey]?.summary)
+			}).length
+			return acc
+		},
+		Object.create(null) as Record<ValidationGateSlug, number>
+	)
 
 	const participantsWithEvidence = participants.filter((p) => p.outcome > 1).length
 	const totalInterviews = people?.length ?? participants.length
@@ -528,7 +556,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export function AnalyzeStageValidation() {
 	const loaderData = useLoaderData<typeof loader>()
-	const { participants = [], projectSections = [], gateTotals, progress, researchMode, gateSummaries = [] } = loaderData || {}
+	const {
+		participants = [],
+		projectSections = [],
+		gateTotals,
+		progress,
+		researchMode,
+		gateSummaries = [],
+	} = loaderData || {}
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 	const [selectedOutcome, setSelectedOutcome] = useState<number>(5)
@@ -591,17 +626,18 @@ export function AnalyzeStageValidation() {
 
 	const renderParticipantCard = (participant: ValidationParticipant) => {
 		const stageInfo = outcomeConfig[participant.outcome]
-		const detailEntries = researchMode === "validation"
-			? VALIDATION_GATE_ORDER.map((slug) => {
-				const detailKey = slugToDetailKey[slug]
-				return {
-					slug,
-					detailKey,
-					label: validationGateLabels[slug],
-					data: participant.validationDetails[detailKey],
-				}
-			})
-			: []
+		const detailEntries =
+			researchMode === "validation"
+				? VALIDATION_GATE_ORDER.map((slug) => {
+						const detailKey = slugToDetailKey[slug]
+						return {
+							slug,
+							detailKey,
+							label: validationGateLabels[slug],
+							data: participant.validationDetails[detailKey],
+						}
+					})
+				: []
 
 		return (
 			<Link to={routes.people.detail(participant.id)} key={participant.id}>
@@ -619,10 +655,7 @@ export function AnalyzeStageValidation() {
 								<p className="mb-3 font-medium text-muted-foreground text-sm">{participant.company}</p>
 
 								<div className="flex flex-wrap items-center gap-2">
-									<Badge
-										variant="outline"
-										className={`font-semibold text-xs ${stageInfo.color} border-current`}
-									>
+									<Badge variant="outline" className={`font-semibold text-xs ${stageInfo.color} border-current`}>
 										{stageInfo.label}
 									</Badge>
 									<Badge
@@ -661,7 +694,7 @@ export function AnalyzeStageValidation() {
 														{data?.summary || "No evidence captured yet."}
 													</p>
 													{typeof data?.confidence === "number" && (
-														<p className="mt-1 text-xs text-muted-foreground">
+														<p className="mt-1 text-muted-foreground text-xs">
 															Confidence: {Math.round(data.confidence * 100)}%
 														</p>
 													)}
@@ -689,23 +722,13 @@ export function AnalyzeStageValidation() {
 			{/* Goal Card - Enhanced Styling */}
 			<Card className="relative overflow-hidden border-2 shadow-sm transition-shadow hover:shadow-md">
 				<div className="absolute top-4 right-4 flex gap-2">
-					<Button
-						variant="outline"
-						size="sm"
-						className="border-gray-300 dark:border-gray-600"
-						asChild
-					>
+					<Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600" asChild>
 						<Link to={routes?.projects.setup() || "#"}>
 							<Settings className="mr-2 h-4 w-4" />
 							Edit
 						</Link>
 					</Button>
-					<Button
-						variant="outline"
-						size="sm"
-						className="border-gray-300 dark:border-gray-600"
-						asChild
-					>
+					<Button variant="outline" size="sm" className="border-gray-300 dark:border-gray-600" asChild>
 						<Link to={routes?.questions.index() || "#"}>
 							<LayoutList className="mr-2 h-4 w-4" />
 							Plan
@@ -750,7 +773,10 @@ export function AnalyzeStageValidation() {
 							const Icon = gateIconMap[detailKey]
 
 							return (
-								<Card key={`gate-summary-${slug}`} className="border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/50">
+								<Card
+									key={`gate-summary-${slug}`}
+									className="border border-gray-200 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-900/50"
+								>
 									<CardContent className="flex h-full flex-col gap-3 p-5">
 										<div className="flex items-center gap-3">
 											<div className="rounded-md bg-gray-100 p-2 dark:bg-gray-800">
@@ -761,21 +787,23 @@ export function AnalyzeStageValidation() {
 													{validationGateLabels[slug]}
 												</p>
 												{typeof gateData.confidence === "number" && (
-													<p className="text-xs text-muted-foreground">
+													<p className="text-muted-foreground text-xs">
 														Confidence {Math.round(gateData.confidence * 100)}%
 													</p>
 												)}
 											</div>
 										</div>
 
-										<p className="flex-1 text-sm leading-relaxed text-gray-700 whitespace-pre-line dark:text-gray-200">
+										<p className="flex-1 whitespace-pre-line text-gray-700 text-sm leading-relaxed dark:text-gray-200">
 											{gateData.summary}
 										</p>
 
 										{gateData.nextSteps && (
 											<div>
-												<p className="font-semibold text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Next steps</p>
-												<p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-200">
+												<p className="font-semibold text-gray-600 text-xs uppercase tracking-wide dark:text-gray-300">
+													Next steps
+												</p>
+												<p className="mt-1 whitespace-pre-line text-gray-700 text-sm dark:text-gray-200">
 													{gateData.nextSteps}
 												</p>
 											</div>
@@ -783,8 +811,10 @@ export function AnalyzeStageValidation() {
 
 										{gateData.goalSummary && (
 											<div>
-												<p className="font-semibold text-xs uppercase tracking-wide text-gray-600 dark:text-gray-300">Goal Check-in</p>
-												<p className="mt-1 whitespace-pre-line text-sm text-gray-700 dark:text-gray-200">
+												<p className="font-semibold text-gray-600 text-xs uppercase tracking-wide dark:text-gray-300">
+													Goal Check-in
+												</p>
+												<p className="mt-1 whitespace-pre-line text-gray-700 text-sm dark:text-gray-200">
 													{gateData.goalSummary}
 												</p>
 											</div>
@@ -792,8 +822,8 @@ export function AnalyzeStageValidation() {
 									</CardContent>
 								</Card>
 							)
-							})}
-						</div>
+						})}
+					</div>
 				)}
 
 				<div className="mb-6 flex flex-wrap gap-2">
@@ -806,10 +836,11 @@ export function AnalyzeStageValidation() {
 							<button
 								key={outcome}
 								onClick={() => setSelectedOutcome(outcome)}
-								className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 font-medium text-sm transition-all ${isSelected
-									? `${config.color} shadow-md`
-									: "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
-									} `}
+								className={`flex items-center gap-2 rounded-full border-2 px-4 py-2 font-medium text-sm transition-all ${
+									isSelected
+										? `${config.color} shadow-md`
+										: "border-gray-200 bg-white text-gray-600 hover:border-gray-300 hover:shadow-sm dark:border-gray-700 dark:bg-gray-800 dark:text-gray-300 dark:hover:border-gray-600"
+								} `}
 							>
 								<span>{config.label}</span>
 								<Badge variant="secondary" className={`text-xs ${isSelected ? "bg-white/50 dark:bg-black/20" : ""}`}>
@@ -831,7 +862,9 @@ export function AnalyzeStageValidation() {
 										</div>
 										<div className="flex-1">
 											<h3 className="mb-2 font-semibold text-foreground">Opportunity Summary</h3>
-											<p className="text-foreground text-md leading-relaxed whitespace-pre-line">{opportunitySummary}</p>
+											<p className="whitespace-pre-line text-foreground text-md leading-relaxed">
+												{opportunitySummary}
+											</p>
 										</div>
 									</div>
 								</CardContent>

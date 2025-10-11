@@ -1,7 +1,6 @@
-import { b } from "baml_client"
 import consola from "consola"
-import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/app/types"
+import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
 interface EvidenceForTheme {
@@ -99,11 +98,7 @@ async function upsertTheme(
 		anti_examples: payload.anti_examples ?? [],
 	}
 
-	const { data: created, error } = await supabase
-		.from("themes")
-		.insert(insertBody)
-		.select("*")
-		.single()
+	const { data: created, error } = await supabase.from("themes").insert(insertBody).select("*").single()
 	if (error) throw error
 	return created as Theme
 }
@@ -145,11 +140,7 @@ async function upsertThemeEvidence(
 		rationale: payload.rationale ?? null,
 		confidence: payload.confidence ?? null,
 	}
-	const { data, error } = await supabase
-		.from("theme_evidence")
-		.insert(insertBody)
-		.select("id")
-		.single()
+	const { data, error } = await supabase.from("theme_evidence").insert(insertBody).select("id").single()
 	if (error) throw error
 	return data?.id as string
 }

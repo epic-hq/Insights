@@ -3,7 +3,6 @@ import { useCallback, useRef, useState } from "react"
 import { Button } from "~/components/ui/button"
 import { useRecordNow } from "~/hooks/useRecordNow"
 import { cn } from "~/lib/utils"
-import { OnboardingStepper } from "./OnboardingStepper"
 
 interface UploadScreenProps {
 	onNext: (file: File, mediaType: string, projectId?: string) => void
@@ -77,7 +76,7 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 		return <File className="h-6 w-6" />
 	}
 
-	const onboardingSteps = [
+	const _onboardingSteps = [
 		{ id: "goals", title: "Project Goals", description: "Define objectives" },
 		{ id: "questions", title: "Questions", description: "Generate questions" },
 		{ id: "upload", title: "Upload", description: "Add interviews" },
@@ -144,12 +143,13 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 
 					{/* Upload Area */}
 					<div
-						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${isDragOver
+						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${
+							isDragOver
 								? "border-blue-500 bg-blue-500/10"
 								: selectedFile
 									? "border-green-500 bg-green-500/10"
 									: "border-muted bg-muted/50 hover:bg-muted/80"
-							}`}
+						}`}
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
@@ -194,10 +194,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "interview" ? "default" : "outline"}
 								onClick={() => setMediaType("interview")}
 								size="sm"
-								className={`h-10 text-xs ${mediaType === "interview"
+								className={`h-10 text-xs ${
+									mediaType === "interview"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+								}`}
 							>
 								User Interview
 							</Button>
@@ -205,10 +206,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "focus-group" ? "default" : "outline"}
 								onClick={() => setMediaType("focus-group")}
 								size="sm"
-								className={`h-10 text-xs ${mediaType === "focus-group"
+								className={`h-10 text-xs ${
+									mediaType === "focus-group"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+								}`}
 							>
 								Focus Group
 							</Button>
@@ -216,10 +218,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "customer-call" ? "default" : "outline"}
 								onClick={() => setMediaType("customer-call")}
 								size="sm"
-								className={`h-10 text-xs ${mediaType === "customer-call"
+								className={`h-10 text-xs ${
+									mediaType === "customer-call"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+								}`}
 							>
 								Customer Call
 							</Button>
@@ -227,10 +230,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "user-testing" ? "default" : "outline"}
 								onClick={() => setMediaType("user-testing")}
 								size="sm"
-								className={`h-10 text-xs ${mediaType === "user-testing"
+								className={`h-10 text-xs ${
+									mediaType === "user-testing"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+								}`}
 							>
 								User Testing
 							</Button>
@@ -238,10 +242,11 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 								variant={mediaType === "document" ? "default" : "outline"}
 								onClick={() => setMediaType("document")}
 								size="sm"
-								className={`h-10 text-xs ${mediaType === "document"
+								className={`h-10 text-xs ${
+									mediaType === "document"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-									}`}
+								}`}
 							>
 								Background Document
 							</Button>

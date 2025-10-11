@@ -41,7 +41,7 @@ export function parseTimeToSeconds(time: string | number | undefined): number {
 	// Handle string numbers
 	if (typeof time === "string") {
 		const parsed = Number.parseFloat(time)
-		return isNaN(parsed) ? 0 : parsed
+		return Number.isNaN(parsed) ? 0 : parsed
 	}
 
 	return 0

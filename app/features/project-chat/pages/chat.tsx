@@ -39,7 +39,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		const m = (s.meta || {}) as Record<string, any>
 		switch (kind) {
 			case "research_goal":
-				return Boolean(m.research_goal || (s.content_md && s.content_md.trim()))
+				return Boolean(m.research_goal || s.content_md?.trim())
 			case "decision_questions":
 			case "assumptions":
 			case "unknowns":
@@ -128,7 +128,7 @@ function MiniDotsProgress({ completed, total }: { completed: number; total: numb
 			{dots.map((_, i) => (
 				<span
 					key={i}
-					className={"h-2 w-2 rounded-full " + (i < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700")}
+					className={`h-2 w-2 rounded-full ${i < completed ? "bg-blue-600" : "bg-gray-300 dark:bg-gray-700"}`}
 				/>
 			))}
 		</div>

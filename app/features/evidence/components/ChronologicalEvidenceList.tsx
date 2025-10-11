@@ -32,7 +32,7 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 	const displayedEvidence = isExpanded ? sortedEvidence : sortedEvidence.slice(0, 5)
 
 	// Get empathy map item if available (prioritize short phrases)
-	const getEmpathyMapContent = (item: Evidence) => {
+	const _getEmpathyMapContent = (item: Evidence) => {
 		// Check for empathy map items in priority order
 		const empathyItems = [
 			...(item.says || []),

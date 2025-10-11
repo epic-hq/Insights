@@ -104,7 +104,7 @@ export default function PersonDetail() {
 			if (!groups.has(key)) {
 				groups.set(key, { label, facets: [] })
 			}
-			groups.get(key)!.facets.push(facet)
+			groups.get(key)?.facets.push(facet)
 		}
 		return Array.from(groups.entries()).map(([slug, value]) => ({ kind_slug: slug, ...value }))
 	}, [personFacets, catalog.kinds])

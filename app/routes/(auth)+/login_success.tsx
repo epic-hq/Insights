@@ -1,7 +1,7 @@
 import consola from "consola"
 import { type LoaderFunctionArgs, redirect } from "react-router"
-import type { SupabaseClient } from "~/types"
 import { getServerClient } from "~/lib/supabase/server"
+import type { SupabaseClient } from "~/types"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
@@ -61,7 +61,7 @@ async function resolveInviteRedirect({
 		}
 	}
 
-	const firstInviteWithToken = invites.find((inv) => typeof inv?.["token"] === "string")
+	const firstInviteWithToken = invites.find((inv) => typeof inv?.token === "string")
 	if (!firstInviteWithToken) return null
 
 	const token = String(firstInviteWithToken.token)
@@ -84,7 +84,7 @@ async function computeManagePathFromToken({
 	}
 
 	const lookup = (lookupData as Record<string, unknown> | null) ?? null
-	const accountId = (lookup?.["account_id"] as string | undefined) ?? null
+	const accountId = (lookup?.account_id as string | undefined) ?? null
 	if (!accountId) return null
 
 	return `/a/${accountId}/team/manage?token=${encodeURIComponent(token)}`
