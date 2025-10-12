@@ -1,5 +1,6 @@
 import { parseWithZod } from "@conform-to/zod/v4"
 import consola from "consola"
+import posthog from "posthog-js"
 import { useCallback, useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, useLoaderData, useNavigation } from "react-router"
@@ -111,6 +112,28 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 						status: "accepted",
 						message: "Invitation accepted. You're now on this team.",
 					}
+
+					// Capture invite_accepted event
+					try {
+						const inviterUserId = (lookup?.inviter_user_id as string | undefined) ?? null
+						const role = (lookup?.account_role as "owner" | "member" | "viewer" | undefined) ?? "member"
+
+						posthog.capture("invite_accepted", {
+							account_id: accountId,
+							inviter_user_id: inviterUserId,
+							role,
+						})
+
+						// Update user lifecycle
+						posthog.identify(user.sub, {
+							$set: {
+								team_member: true,
+								last_team_joined_at: new Date().toISOString(),
+							},
+						})
+					} catch (trackingError) {
+						consola.warn("[INVITE] PostHog tracking failed:", trackingError)
+					}
 				}
 			}
 		}
@@ -121,14 +144,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const normalizedAccount = account
 		? {
-				account_id: accountId,
-				name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
-				personal_account: Boolean(
-					(account as Record<string, unknown>)?.personal_account ??
-						(account as Record<string, unknown>)?.personalAccount
-				),
-				account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
-			}
+			account_id: accountId,
+			name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
+			personal_account: Boolean(
+				(account as Record<string, unknown>)?.personal_account ??
+				(account as Record<string, unknown>)?.personalAccount
+			),
+			account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
+		}
 		: null
 
 	let members: MembersRow[] = []
@@ -224,7 +247,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				try {
 					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
 					teamName = (accountData as any)?.name || teamName
-				} catch {}
+				} catch { }
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({
@@ -250,6 +273,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					error: err,
 				})
 			}
+		}
+
+		// Capture invite_sent event
+		try {
+			posthog.capture("invite_sent", {
+				account_id: accountId,
+				invitee_email: email,
+				role: mapPermissionToAccountRoleForRpc(permission),
+				invitation_type: "one_time",
+			})
+		} catch (trackingError) {
+			consola.warn("[INVITE] PostHog tracking failed:", trackingError)
 		}
 
 		return data({ ok: true, token, email })

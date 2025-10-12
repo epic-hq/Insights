@@ -11,6 +11,8 @@ export type UserSettings = {
 	first_name?: string | null
 	last_name?: string | null
 	company_name?: string | null
+	company_website?: string | null
+	company_description?: string | null
 	title?: string | null
 	role?: string | null
 	industry?: string | null
@@ -110,7 +112,19 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 	)
 }
 
-function EditableRow({ label, field, value, placeholder }: { label: string; field: string; value?: string | null; placeholder?: string }) {
+function EditableRow({ 
+	label, 
+	field, 
+	value, 
+	placeholder,
+	multiline = false 
+}: { 
+	label: string
+	field: string
+	value?: string | null
+	placeholder?: string
+	multiline?: boolean
+}) {
 	const fetcher = useFetcher()
 
 	const handleSubmit = (newValue: string) => {
@@ -131,6 +145,7 @@ function EditableRow({ label, field, value, placeholder }: { label: string; fiel
 					textClassName="text-sm"
 					inputClassName="text-sm"
 					autoFocus={true}
+					multiline={multiline}
 				/>
 			</div>
 		</div>
@@ -176,7 +191,7 @@ export function UserSettings({
 	if (!settings.company_name) missingFields.push("company")
 	if (!settings.title) missingFields.push("title")
 	if (!settings.role) missingFields.push("role")
-	
+
 	const isIncomplete = missingFields.length > 0
 
 	return (
@@ -221,24 +236,28 @@ export function UserSettings({
 									const formData = new FormData()
 									formData.append("field", "image_url")
 									formData.append("value", newValue)
-									const fetcher = { submit: (data: FormData) => {
-										fetch(window.location.pathname, {
-											method: "POST",
-											body: data,
-										}).then(() => window.location.reload())
-									}}
+									const fetcher = {
+										submit: (data: FormData) => {
+											fetch(window.location.pathname, {
+												method: "POST",
+												body: data,
+											}).then(() => window.location.reload())
+										}
+									}
 									fetcher.submit(formData)
 								}}
-								placeholder="Paste custom image URL (optional)"
+								placeholder={oauthAvatar
+									? "Add a custom URL override"
+									: "Paste a URL to your profile picture"}
 								textClassName="text-xs text-gray-500"
 								inputClassName="text-sm"
 								autoFocus={true}
 							/>
-							<p className="mt-1 text-gray-400 text-xs">
-								{oauthAvatar 
-									? "Add a custom URL to override your OAuth avatar" 
+							{/* <p className="mt-1 text-gray-400 text-xs">
+								{oauthAvatar
+									? "Add a custom URL to override your OAuth avatar"
 									: "Paste a URL to your profile picture"}
-							</p>
+							</p> */}
 						</div>
 					</div>
 					<EditableRow label="First Name" field="first_name" value={settings.first_name} />
@@ -252,11 +271,26 @@ export function UserSettings({
 			<div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
 				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Professional Information</h3>
 				<div className="divide-y">
-					<EditableRow label="Company" field="company_name" value={settings.company_name} placeholder="Add company name" />
 					<EditableRow label="Title" field="title" value={settings.title} placeholder="Add job title" />
 					<EditableRow label="Role" field="role" value={settings.role} placeholder="e.g., Product Manager, Designer, Founder" />
 					<EditableRow label="Industry" field="industry" value={settings.industry} placeholder="e.g., SaaS, Healthcare, Finance" />
 					<EditableRow label="Referral Source" field="referral_source" value={settings.referral_source} placeholder="How did you hear about us?" />
+				</div>
+			</div>
+
+			{/* Company Info */}
+			<div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
+				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Company Information</h3>
+				<div className="divide-y">
+					<EditableRow label="Company Name" field="company_name" value={settings.company_name} placeholder="Add company name" />
+					<EditableRow label="Website" field="company_website" value={settings.company_website} placeholder="https://example.com" />
+					<EditableRow 
+						label="Description" 
+						field="company_description" 
+						value={settings.company_description} 
+						placeholder="Brief description of your company"
+						multiline={true}
+					/>
 				</div>
 			</div>
 

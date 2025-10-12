@@ -1,5 +1,6 @@
 import { useMemo } from "react"
 import { NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
+import { PanelLeftIcon } from "lucide-react"
 import {
 	Sidebar,
 	SidebarContent,
@@ -12,7 +13,6 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarRail,
-	SidebarTrigger,
 	useSidebar,
 } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -160,8 +160,11 @@ export function AppSidebar() {
 				<UserProfile />
 			</SidebarFooter>
 
-			<SidebarRail>
-				<SidebarTrigger className="-right-4 absolute top-3" />
+			<SidebarRail className="group pointer-events-auto">
+				<span className="sr-only">Toggle Sidebar</span>
+				<div className="pointer-events-none absolute top-3 -right-4 hidden size-7 items-center justify-center rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors duration-200 ease-linear group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground md:flex">
+					<PanelLeftIcon className="size-4" />
+				</div>
 			</SidebarRail>
 		</Sidebar>
 	)

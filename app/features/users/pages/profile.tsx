@@ -41,6 +41,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		"last_name",
 		"mobile_phone",
 		"company_name",
+		"company_website",
+		"company_description",
 		"title",
 		"role",
 		"industry",

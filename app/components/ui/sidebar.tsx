@@ -241,6 +241,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 			size="icon"
 			className={cn("size-7", className)}
 			onClick={(event) => {
+				event.stopPropagation()
 				onClick?.(event)
 				toggleSidebar()
 			}}

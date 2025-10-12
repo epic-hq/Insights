@@ -149,12 +149,32 @@ export default function ProtectedLayout() {
 	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage
 
 	useEffect(() => {
-		posthog.identify(auth.user.sub, {
+		// Identify user with person properties
+		// Only set properties that are explicitly set by the user
+		const identifyProps: Record<string, unknown> = {
 			email: auth.user.email,
 			full_name: auth.user.user_metadata?.full_name,
-		})
+		}
+
+		// Only add role and company if they exist in user_settings
+		if (user_settings?.role) {
+			identifyProps.role = user_settings.role
+		}
+		if (user_settings?.company_name) {
+			identifyProps.company_name = user_settings.company_name
+		}
+
+		posthog.identify(auth.user.sub, identifyProps)
+
+		// Set group analytics for account-level tracking
+		if (auth.accountId) {
+			posthog.group("account", auth.accountId, {
+				plan: "free", // TODO: Get actual plan from account settings
+				seats: accounts?.length || 1,
+			})
+		}
 		// consola.log("[protectedLayout] Identify user: ", auth.user)
-	}, [auth.user])
+	}, [auth.user, auth.accountId, user_settings, accounts])
 
 	return (
 		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>
