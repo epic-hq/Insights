@@ -9,10 +9,14 @@ import { S3Client } from '@aws-sdk/client-s3'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 
+const forcePathStyle = process.env.S3_FORCE_PATH_STYLE
+  ? process.env.S3_FORCE_PATH_STYLE === 'true'
+  : Boolean(process.env.S3_ENDPOINT)
+
 const s3 = new S3Client({
   region: process.env.S3_REGION || 'us-east-1',
-  endpoint: process.env.S3_ENDPOINT,             // e.g., https://<ref>.supabase.co/storage/v1/s3
-  forcePathStyle: true,                           // required for Supabase S3
+  endpoint: process.env.S3_ENDPOINT || undefined, // Optional custom S3-compatible endpoint
+  forcePathStyle,
   credentials: {
     accessKeyId: process.env.S3_ACCESS_KEY_ID,
     secretAccessKey: process.env.S3_SECRET_ACCESS_KEY,
@@ -34,7 +38,7 @@ export default buildConfig({
         media: {
           adapter: 's3',
           client: s3,
-          bucket: process.env.S3_BUCKET,         // create in Supabase Storage
+          bucket: process.env.S3_BUCKET,         // ensure bucket exists in your S3-compatible provider
           prefix: 'uploads',                     // optional
           acl: 'public-read'
         },

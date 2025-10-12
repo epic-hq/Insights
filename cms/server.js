@@ -11,7 +11,7 @@ await payload.init({
   secret: process.env.PAYLOAD_SECRET,
   express: app,
   serverURL: process.env.CMS_PUBLIC_URL, // e.g., https://cms.getupsight.com
-  // Postgres (Supabase)
+  // Postgres (Neon or any managed Postgres provider)
   db: { adapter: 'postgres', url: process.env.DATABASE_URL, pool: { min: 0, max: 10 } },
   onInit: () => {
     console.log('✅ Payload CMS ready at', process.env.CMS_PUBLIC_URL || '/cms')
