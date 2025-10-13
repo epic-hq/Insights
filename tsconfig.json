@@ -18,7 +18,9 @@
 		"baseUrl": ".",
 		"paths": {
 			"~/*": ["./app/*"],
-			"@/*": ["./app/*"]
+			"@/*": ["./app/*"],
+			"baml": ["./baml_client/index.ts"],
+			"baml/*": ["./baml_client/*"]
 		},
 		"rootDirs": [".", "./.react-router/types"],
 		"plugins": [{ "name": "@react-router/dev" }],

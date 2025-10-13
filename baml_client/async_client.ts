@@ -23,7 +23,7 @@ import { toBamlError, BamlStream, BamlAbortError, Collector } from "@boundaryml/
 import type { Checked, Check, RecursivePartialNull as MovedRecursivePartialNull } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, PersonFacetObservation, PersonScaleObservation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetMention, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, PersonFacetObservation, PersonScaleObservation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate, TurnAnchors} from "./types"
 import type TypeBuilder from "./type_builder"
 import { AsyncHttpRequest, AsyncHttpStreamRequest } from "./async_request"
 import { LlmResponseParser, LlmStreamParser } from "./parser"
@@ -536,6 +536,51 @@ export class BamlAsyncClient {
         signal,
       )
       return raw.parsed(false) as types.EvidenceExtraction
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  async ExtractEvidenceFromTranscriptV2(
+      transcript: string,chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+      __baml_options__?: BamlCallOptions
+  ): Promise<types.Extraction> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const signal = options.signal;
+      
+      if (signal?.aborted) {
+        throw new BamlAbortError('Operation was aborted', signal.reason);
+      }
+      
+      // Check if onTick is provided - route through streaming if so
+      if (options.onTick) {
+        const stream = this.stream.ExtractEvidenceFromTranscriptV2(
+          transcript,chapters,language,facet_catalog,
+          __baml_options__
+        );
+        
+        return await stream.getFinalResponse();
+      }
+      
+      const collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = await this.runtime.callFunction(
+        "ExtractEvidenceFromTranscriptV2",
+        {
+          "transcript": transcript,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+        },
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+        signal,
+      )
+      return raw.parsed(false) as types.Extraction
     } catch (error) {
       throw toBamlError(error);
     }
@@ -1897,6 +1942,69 @@ class BamlStreamClient {
         raw,
         (a): partial_types.EvidenceExtraction => a,
         (a): types.EvidenceExtraction => a,
+        this.ctxManager.cloneContext(),
+        options.signal,
+      )
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidenceFromTranscriptV2(
+      transcript: string,chapters: types.Chapter[],language: string,facet_catalog: types.FacetCatalog,
+      __baml_options__?: BamlCallOptions
+  ): BamlStream<partial_types.Extraction, types.Extraction> {
+    try {
+      const options = { ...this.bamlOptions, ...(__baml_options__ || {}) }
+      const signal = options.signal;
+      
+      if (signal?.aborted) {
+        throw new BamlAbortError('Operation was aborted', signal.reason);
+      }
+      
+      let collector = options.collector ? (Array.isArray(options.collector) ? options.collector : [options.collector]) : [];
+      
+      let onTickWrapper: (() => void) | undefined;
+      
+      // Create collector and wrap onTick if provided
+      if (options.onTick) {
+        const tickCollector = new Collector("on-tick-collector");
+        collector = [...collector, tickCollector];
+        
+        onTickWrapper = () => {
+          const log = tickCollector.last;
+          if (log) {
+            try {
+              options.onTick!("Unknown", log);
+            } catch (error) {
+              console.error("Error in onTick callback for ExtractEvidenceFromTranscriptV2", error);
+            }
+          }
+        };
+      }
+
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      const raw = this.runtime.streamFunction(
+        "ExtractEvidenceFromTranscriptV2",
+        {
+          "transcript": transcript,"chapters": chapters,"language": language,"facet_catalog": facet_catalog
+        },
+        undefined,
+        this.ctxManager.cloneContext(),
+        options.tb?.__tb(),
+        options.clientRegistry,
+        collector,
+        env,
+        signal,
+        onTickWrapper,
+      )
+      return new BamlStream<partial_types.Extraction, types.Extraction>(
+        raw,
+        (a): partial_types.Extraction => a,
+        (a): types.Extraction => a,
         this.ctxManager.cloneContext(),
         options.signal,
       )

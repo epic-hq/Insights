@@ -65,6 +65,8 @@ export default class TypeBuilder {
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
+    EvidenceTurn: ClassViewer<'EvidenceTurn', "index" | "person_key" | "gist" | "chunk" | "verbatim" | "anchors" | "confidence" | "why_it_matters" | "facet_mentions" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
+    
     EvidenceUnit: ClassViewer<'EvidenceUnit', "person_key" | "person_role" | "topic" | "gist" | "chunk" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
@@ -73,6 +75,8 @@ export default class TypeBuilder {
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
+    Extraction: ClassViewer<'Extraction', "evidence" | "scenes">;
+    
     FacetCandidatePayload: ClassViewer<'FacetCandidatePayload', "kind_slug" | "label" | "synonyms" | "notes">;
     
     FacetCatalog: ClassViewer<'FacetCatalog', "kinds" | "facets" | "version">;
@@ -80,6 +84,8 @@ export default class TypeBuilder {
     FacetCatalogEntry: ClassViewer<'FacetCatalogEntry', "facet_ref" | "kind_slug" | "label" | "alias" | "synonyms">;
     
     FacetCatalogKind: ClassViewer<'FacetCatalogKind', "slug" | "label">;
+    
+    FacetMention: ClassViewer<'FacetMention', "index" | "parent_index" | "person_key" | "kind_slug" | "value" | "quote" | "confidence">;
     
     FollowUpQuestion: ClassViewer<'FollowUpQuestion', "id" | "text" | "rationale" | "estimatedMinutes" | "categoryId" | "scores">;
     
@@ -165,6 +171,8 @@ export default class TypeBuilder {
     
     ResearchStructure: ClassViewer<'ResearchStructure', "decision_questions" | "research_questions" | "interview_prompts">;
     
+    Scene: ClassViewer<'Scene', "scene_id" | "start_index" | "end_index" | "topic" | "summary">;
+    
     Scores: ClassViewer<'Scores', "goalMatch" | "novelty" | "importance" | "uncertainty">;
     
     Set: ClassViewer<'Set', "name" | "description" | "members">;
@@ -179,6 +187,8 @@ export default class TypeBuilder {
     
     ThemeCandidate: ClassViewer<'ThemeCandidate', "name" | "statement" | "inclusion_criteria" | "exclusion_criteria" | "synonyms" | "anti_examples" | "links">;
     
+    TurnAnchors: ClassViewer<'TurnAnchors', "start_ms" | "end_ms" | "speaker_label" | "chapter_title" | "char_span">;
+    
     
     BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
     
@@ -188,7 +198,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -272,6 +282,10 @@ export default class TypeBuilder {
           "facts","goals","pains","behaviors","triggers","success","quotes",
         ]);
         
+        this.EvidenceTurn = this.tb.classViewer("EvidenceTurn", [
+          "index","person_key","gist","chunk","verbatim","anchors","confidence","why_it_matters","facet_mentions","says","does","thinks","feels","pains","gains",
+        ]);
+        
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
           "person_key","person_role","topic","gist","chunk","verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key","says","does","thinks","feels","pains","gains",
         ]);
@@ -288,6 +302,10 @@ export default class TypeBuilder {
           "name","pain","details","evidence","desiredOutcome","assumptionAlignment","researchQuestionAnswered","evidenceStrength","productImplication","followUpQuestions","emotionalResponse","underlyingMotivation","values","category","journeyStage","jtbd","contradictions","relatedTags",
         ]);
         
+        this.Extraction = this.tb.classViewer("Extraction", [
+          "evidence","scenes",
+        ]);
+        
         this.FacetCandidatePayload = this.tb.classViewer("FacetCandidatePayload", [
           "kind_slug","label","synonyms","notes",
         ]);
@@ -302,6 +320,10 @@ export default class TypeBuilder {
         
         this.FacetCatalogKind = this.tb.classViewer("FacetCatalogKind", [
           "slug","label",
+        ]);
+        
+        this.FacetMention = this.tb.classViewer("FacetMention", [
+          "index","parent_index","person_key","kind_slug","value","quote","confidence",
         ]);
         
         this.FollowUpQuestion = this.tb.classViewer("FollowUpQuestion", [
@@ -472,6 +494,10 @@ export default class TypeBuilder {
           "decision_questions","research_questions","interview_prompts",
         ]);
         
+        this.Scene = this.tb.classViewer("Scene", [
+          "scene_id","start_index","end_index","topic","summary",
+        ]);
+        
         this.Scores = this.tb.classViewer("Scores", [
           "goalMatch","novelty","importance","uncertainty",
         ]);
@@ -498,6 +524,10 @@ export default class TypeBuilder {
         
         this.ThemeCandidate = this.tb.classViewer("ThemeCandidate", [
           "name","statement","inclusion_criteria","exclusion_criteria","synonyms","anti_examples","links",
+        ]);
+        
+        this.TurnAnchors = this.tb.classViewer("TurnAnchors", [
+          "start_ms","end_ms","speaker_label","chapter_title","char_span",
         ]);
         
         

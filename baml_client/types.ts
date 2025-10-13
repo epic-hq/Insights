@@ -465,6 +465,25 @@ export interface EvidenceSet {
   
 }
 
+export interface EvidenceTurn {
+  index: number
+  person_key: string
+  gist: string
+  chunk: string
+  verbatim: string
+  anchors: TurnAnchors
+  confidence: string
+  why_it_matters?: string | null
+  facet_mentions: FacetMention[]
+  says?: string[] | null
+  does?: string[] | null
+  thinks?: string[] | null
+  feels?: string[] | null
+  pains?: string[] | null
+  gains?: string[] | null
+  
+}
+
 export interface EvidenceUnit {
   person_key: string
   person_role?: string | null
@@ -535,6 +554,12 @@ export interface ExtractedInsight {
   [key: string]: any;
 }
 
+export interface Extraction {
+  evidence: EvidenceTurn[]
+  scenes: Scene[]
+  
+}
+
 export interface FacetCandidatePayload {
   kind_slug: string
   label: string
@@ -562,6 +587,17 @@ export interface FacetCatalogEntry {
 export interface FacetCatalogKind {
   slug: string
   label: string
+  
+}
+
+export interface FacetMention {
+  index: number
+  parent_index: number
+  person_key: string
+  kind_slug: string
+  value: string
+  quote?: string | null
+  confidence?: number | null
   
 }
 
@@ -1013,6 +1049,15 @@ export interface ResearchStructure {
   
 }
 
+export interface Scene {
+  scene_id: string
+  start_index: number
+  end_index: number
+  topic: string
+  summary?: string | null
+  
+}
+
 export interface Scores {
   goalMatch: number
   novelty: number
@@ -1062,5 +1107,14 @@ export interface ThemeCandidate {
   synonyms?: string[] | null
   anti_examples?: string[] | null
   links: EvidenceLinkProposal[]
+  
+}
+
+export interface TurnAnchors {
+  start_ms?: number | null
+  end_ms?: number | null
+  speaker_label?: string | null
+  chapter_title?: string | null
+  char_span?: number[] | null
   
 }

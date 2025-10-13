@@ -42,7 +42,16 @@ client<llm> CustomGPT5Mini {
   }
 }
 
- 
+client<llm> CustomGPT5 {
+  provider openai-responses
+  retry_policy Exponential
+  options {
+    model "gpt-5"
+    api_key env.OPENAI_API_KEY
+  }
+}
+
+
 
 // https://docs.boundaryml.com/docs/snippets/clients/round-robin
 client<llm> CustomFast {

@@ -23,7 +23,7 @@ import { toBamlError } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type { partial_types } from "./partial_types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, PersonFacetObservation, PersonScaleObservation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetMention, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, PersonFacetObservation, PersonScaleObservation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, Spectrum, SuggestedQuestion, ThemeCandidate, TurnAnchors} from "./types"
 import type TypeBuilder from "./type_builder"
 
 export class LlmResponseParser {
@@ -255,6 +255,29 @@ export class LlmResponseParser {
         __baml_options__?.clientRegistry,
         env,
       ) as types.EvidenceExtraction
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidenceFromTranscriptV2(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): types.Extraction {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "ExtractEvidenceFromTranscriptV2",
+        llmResponse,
+        false,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as types.Extraction
     } catch (error) {
       throw toBamlError(error);
     }
@@ -859,6 +882,29 @@ export class LlmStreamParser {
         __baml_options__?.clientRegistry,
         env,
       ) as partial_types.EvidenceExtraction
+    } catch (error) {
+      throw toBamlError(error);
+    }
+  }
+  
+  ExtractEvidenceFromTranscriptV2(
+      llmResponse: string,
+      __baml_options__?: { tb?: TypeBuilder, clientRegistry?: ClientRegistry, env?: Record<string, string | undefined> }
+  ): partial_types.Extraction {
+    try {
+      const rawEnv = __baml_options__?.env ? { ...process.env, ...__baml_options__.env } : { ...process.env };
+      const env: Record<string, string> = Object.fromEntries(
+        Object.entries(rawEnv).filter(([_, value]) => value !== undefined) as [string, string][]
+      );
+      return this.runtime.parseLlmResponse(
+        "ExtractEvidenceFromTranscriptV2",
+        llmResponse,
+        true,
+        this.ctxManager.cloneContext(),
+        __baml_options__?.tb?.__tb(),
+        __baml_options__?.clientRegistry,
+        env,
+      ) as partial_types.Extraction
     } catch (error) {
       throw toBamlError(error);
     }
