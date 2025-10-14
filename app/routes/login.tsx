@@ -1,6 +1,7 @@
 import consola from "consola"
 import { useEffect } from "react"
 import { type ActionFunctionArgs, Link, redirect, useFetcher } from "react-router"
+import { LogoBrand } from "~/components/branding"
 import { LoginForm } from "~/components/login-form"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -66,52 +67,81 @@ export default function Login() {
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">
-			<div className="w-full max-w-sm">
-				<div className="flex flex-col gap-6">
-					<Card>
-						<CardHeader>
-							<CardTitle className="mb-6 text-2xl">Login</CardTitle>
-							{/* <CardDescription>Enter your email below to login to your account</CardDescription> */}
-						</CardHeader>
-						<CardContent className="space-y-8">
-							<LoginForm />
-							<fetcher.Form method="post">
-								<div className="flex flex-col gap-6">
-									<div className="grid gap-2">
-										<Label htmlFor="email">Email</Label>
-										<Input id="email" name="email" type="email" placeholder="m@example.com" required />
-									</div>
-									<div className="grid gap-2">
-										<div className="flex items-center">
-											<Label htmlFor="password">Password</Label>
-											<Link
-												to="/forgot-password"
-												className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
-											>
-												Forgot your password?
-											</Link>
+			<div className="w-full max-w-3xl">
+				<Card className="overflow-hidden">
+					<div className="grid md:grid-cols-2">
+						{/* Left: Marketing */}
+						<div className="hidden flex-col justify-between bg-gradient-to-br from-primary/5 via-transparent to-primary/10 p-8 md:flex">
+							<div>
+								<LogoBrand />
+								<p className="mt-4 text-lg text-muted-foreground">Get more out of every conversation</p>
+							</div>
+							<div className="mb-4 flex items-center gap-3">
+								<div />
+							</div>
+							{/* <p className="mb-4 text-muted-foreground">
+													Transform customer interviews into actionable insights with AI-powered analysis.
+												</p> */}
+							<ul className="space-y-3">
+								<li className="flex items-start gap-3">
+									<span className="mt-1 text-primary">✓</span>
+									<span className="mt-1 text-primary/70">Extract themes and patterns automatically</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<span className="mt-1 text-primary">✓</span>
+									<span className="mt-1 text-primary/70">Build personas from real feedback</span>
+								</li>
+								<li className="flex items-start gap-3">
+									<span className="mt-1 text-primary">✓</span>
+									<span className="mt-1 text-primary/70">Discover hidden opportunities</span>
+								</li>
+							</ul>
+						</div>
+
+						{/* Right: Login Form */}
+						<div className="flex flex-col gap-6 p-8">
+							<CardHeader className="ml-0 pl-0">
+								<CardTitle className="text-center text-2xl">Login</CardTitle>
+							</CardHeader>
+							<CardContent className="space-y-8 p-0">
+								<LoginForm />
+								<fetcher.Form method="post">
+									<div className="flex flex-col gap-6">
+										<div className="grid gap-2">
+											<Label htmlFor="email">Email</Label>
+											<Input id="email" name="email" type="email" placeholder="m@example.com" required />
 										</div>
-										<Input id="password" type="password" name="password" required />
+										<div className="grid gap-2">
+											<div className="flex items-center">
+												<Label htmlFor="password">Password</Label>
+												<Link
+													to="/forgot-password"
+													className="ml-auto inline-block text-sm underline-offset-4 hover:underline"
+												>
+													Forgot your password?
+												</Link>
+											</div>
+											<Input id="password" type="password" name="password" required />
+										</div>
+										{error && <p className="text-red-500 text-sm">{error}</p>}
+										<Button type="submit" className="w-full" disabled={loading}>
+											{loading ? "Logging in..." : "Login"}
+										</Button>
 									</div>
-									{error && <p className="text-red-500 text-sm">{error}</p>}
-									<Button type="submit" className="w-full" disabled={loading}>
-										{loading ? "Logging in..." : "Login"}
-									</Button>
-								</div>
-								<div className="mt-4 text-center text-sm">
-									Don&apos;t have an account?{" "}
-									<Link to="/sign-up" className="underline underline-offset-4">
-										Sign up
-									</Link>
-								</div>
-							</fetcher.Form>
-						</CardContent>
-					</Card>
-				</div>
-				{/* Footer */}
-				<div className="mt-8 text-center text-slate-500 text-xs dark:text-slate-400">
-					<p>By signing in, you agree to our Terms of Service and Privacy Policy.</p>
-				</div>
+									<div className="mt-4 text-center text-sm">
+										Don&apos;t have an account?{" "}
+										<Link to="/sign-up" className="underline underline-offset-4">
+											Sign up
+										</Link>
+									</div>
+								</fetcher.Form>
+							</CardContent>
+							<div className="text-center text-slate-500 text-xs dark:text-slate-400">
+								<p>By signing in, you agree to our Terms of Service and Privacy Policy.</p>
+							</div>
+						</div>
+					</div>
+				</Card>
 			</div>
 		</div>
 	)
