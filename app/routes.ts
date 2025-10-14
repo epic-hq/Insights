@@ -96,7 +96,10 @@ const routes = [
 
 	// Authentication routes
 	route("/auth/callback", "./routes/auth.callback.tsx"),
-	route("login", "./routes/(auth-new)+/login.tsx"),
+	route("login", "./routes/login.tsx"),
+	route("sign-up", "./routes/sign-up.tsx"),
+	route("forgot-password", "./routes/forgot-password.tsx"),
+	// route("login", "./routes/(auth)+/login.tsx"),
 	route("login_success", "./routes/(auth)+/login_success.tsx"),
 	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
 	route("register", "./routes/(auth)+/register.tsx"),

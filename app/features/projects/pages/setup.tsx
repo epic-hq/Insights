@@ -2,6 +2,7 @@
 import { b } from "baml_client"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useNavigate } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import ProjectGoalsScreenRedesigned from "~/features/onboarding/components/ProjectGoalsScreenRedesigned"
 import { getProjectById } from "~/features/projects/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -19,7 +20,13 @@ type TemplatePrefill = {
 	custom_instructions: string
 }
 
-function fallbackPrefill(templateKey: string, projectName: string, signup: any): TemplatePrefill {
+type SignupData = {
+	goal?: unknown
+	challenges?: unknown
+	custom_instructions?: string
+} & Record<string, unknown>
+
+function fallbackPrefill(templateKey: string, projectName: string, signup: SignupData): TemplatePrefill {
 	const goalFromSignup = (signup?.goal || "").toString().trim()
 	const challenges = (signup?.challenges || "").toString().trim()
 	const _inferredGoal = goalFromSignup || `Understand customer needs for ${projectName}`
@@ -60,14 +67,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Default template: Understand Customer Needs
 	const template_key = "understand_customer_needs"
-	const signup = { ...(ctx.user_settings?.signup_data || {}) }
+	const signup: SignupData = { ...(ctx.user_settings?.signup_data || {}) }
 
 	// Allow optional prefill instructions via query param for quick re-runs
 	try {
 		const url = new URL(request.url)
 		const extra = url.searchParams.get("prefillInstructions")
 		if (extra && extra.trim().length > 0) {
-			;(signup as any).custom_instructions = String(extra)
+			signup.custom_instructions = String(extra)
 		}
 	} catch {}
 
@@ -123,7 +130,7 @@ export default function ProjectSetupPage() {
 
 	return (
 		<div className="min-h-screen bg-gray-50">
-			<div className="mx-auto max-w-4xl px-4 py-8">
+			<PageContainer size="lg" padded={false} className="max-w-4xl px-4 py-8">
 				<ProjectGoalsScreenRedesigned
 					onNext={handleNext}
 					project={project}
@@ -132,7 +139,7 @@ export default function ProjectSetupPage() {
 					templateKey={template_key}
 					prefill={prefill}
 				/>
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

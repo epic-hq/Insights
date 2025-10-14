@@ -312,7 +312,6 @@ async function saveResearchStructure(
 		// 3. Save Interview Prompts
 		const interviewPrompts = structure.interview_prompts.map((ip: any) => {
 			const mappedId = idMapping.get(ip.id)
-			const mappedResearchQuestionId = idMapping.get(ip.research_question_id)
 			const gateSlug = isValidationMode ? getValidationGateSlug(ip.research_question_id) : undefined
 			if (gateSlug && validationGateMeta[gateSlug]) {
 				registerGateMeta(gateSlug, (existing) => ({
@@ -325,7 +324,6 @@ async function saveResearchStructure(
 				id: mappedId,
 				project_id: projectId,
 				text: ip.text,
-				research_question_id: mappedResearchQuestionId,
 				category: gateSlug ?? ip.category ?? null,
 			}
 		})

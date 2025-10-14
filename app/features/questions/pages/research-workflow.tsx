@@ -2,6 +2,7 @@ import { consola } from "consola"
 import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { ResearchStructureManager } from "~/components/research/ResearchStructureManager"
 import { getServerClient } from "~/lib/supabase/server"
 
@@ -60,14 +61,20 @@ export async function loader({ params, request }: LoaderFunctionArgs) {
 		.eq("project_id", projectId)
 		.in("kind", ["research_goal", "target_roles", "target_orgs", "assumptions", "unknowns"])
 
-	const projectContext =
-		projectSections?.reduce(
-			(acc: Record<string, string>, section: any) => {
+	type ProjectSectionRow = {
+		kind: string
+		content_md: string | null
+	}
+
+	const projectContext = ((projectSections ?? []) as ProjectSectionRow[]).reduce<Record<string, string>>(
+		(acc, section) => {
+			if (section.content_md) {
 				acc[section.kind] = section.content_md
-				return acc
-			},
-			{} as Record<string, string>
-		) || {}
+			}
+			return acc
+		},
+		{}
+	)
 
 	// Check if research structure already exists
 	const { data: existingDQs } = await supabase
@@ -100,13 +107,13 @@ export default function ResearchWorkflowPage() {
 		<div className="min-h-screen bg-gray-50">
 			{/* Simple Header */}
 			<div className="border-b bg-white">
-				<div className="mx-auto max-w-6xl px-4 py-4">
+				<PageContainer size="lg" padded={false} className="max-w-6xl px-4 py-4">
 					<h1 className="font-semibold text-xl">{data.project.name}</h1>
-				</div>
+				</PageContainer>
 			</div>
 
 			{/* Content */}
-			<div className="mx-auto max-w-6xl space-y-8 p-4">
+			<PageContainer size="lg" padded={false} className="max-w-6xl space-y-8 p-4">
 				{/* Research Structure Section */}
 				<ResearchStructureManager
 					projectId={data.project.id}
@@ -129,7 +136,7 @@ export default function ResearchWorkflowPage() {
 					unknowns={data.unknowns}
 					researchStructure={validatedStructure}
 				/> */}
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

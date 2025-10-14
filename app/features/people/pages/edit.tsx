@@ -2,6 +2,7 @@ import { Loader2, Trash2 } from "lucide-react"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData, useNavigation } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -218,7 +219,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	} catch (error) {
 		// Log error for debugging without using console
 		if (typeof window !== "undefined") {
-			;(window as any).debugError = error
+			const globalWindow = window as typeof window & { debugError?: unknown }
+			globalWindow.debugError = error
 		}
 		return { error: "Failed to update person" }
 	}
@@ -242,7 +244,7 @@ export default function EditPerson() {
 	const totalFacetOptions = catalog.facets.length
 
 	return (
-		<div className="mx-auto max-w-2xl">
+		<PageContainer size="sm" padded={false} className="max-w-2xl">
 			<div className="mb-8">
 				<h1 className="font-bold text-3xl text-gray-900">Edit Person</h1>
 				<p className="mt-2 text-gray-600">Update person details</p>
@@ -444,6 +446,6 @@ export default function EditPerson() {
 					</AlertDialog>
 				</div>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

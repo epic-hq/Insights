@@ -1,9 +1,18 @@
 import { ChevronLeft } from "lucide-react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
+
+type EvidencePersonRow = {
+	person: {
+		id: string
+		name: string | null
+		role: string | null
+	}
+}
 
 function isValidUuid(value: string): boolean {
 	return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value)
@@ -55,15 +64,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	// Transform the data to match EvidenceCard expectations
+	const peopleRows = (data.people ?? []) as EvidencePersonRow[]
 	const transformedEvidence = {
 		...data,
-		people:
-			data.people?.map((ep: any) => ({
-				id: ep.person.id,
-				name: ep.person.name,
-				role: ep.person.role,
-				personas: [], // No personas data needed for now
-			})) || [],
+		people: peopleRows.map((row) => ({
+			id: row.person.id,
+			name: row.person.name,
+			role: row.person.role,
+			personas: [], // No personas data needed for now
+		})),
 	}
 
 	return {
@@ -88,7 +97,7 @@ export default function EvidenceDetail() {
 			</div>
 
 			{/* Full Evidence Card - Centered with max width */}
-			<div className="mx-auto max-w-2xl">
+			<PageContainer size="sm" padded={false} className="max-w-2xl">
 				<EvidenceCard
 					evidence={evidence}
 					people={evidence.people || []}
@@ -96,7 +105,7 @@ export default function EvidenceDetail() {
 					variant="expanded"
 					showInterviewLink={true}
 				/>
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

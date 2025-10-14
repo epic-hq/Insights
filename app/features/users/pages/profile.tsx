@@ -1,19 +1,28 @@
 import consola from "consola"
-import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
 import { data } from "react-router"
+import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import UserSettings from "~/features/users/components/UserSettings"
-import { userContext } from "~/server/user-context"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { userContext } from "~/server/user-context"
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const { user_settings, claims } = ctx
-	
+
 	// Get OAuth avatar from claims.user_metadata (Supabase auth metadata)
 	// Different OAuth providers use different field names
-	const userMetadata = claims.user_metadata as any
-	const oauthAvatar = userMetadata?.avatar_url || userMetadata?.picture || userMetadata?.image_url || null
-	
+	const userMetadata = claims.user_metadata as Record<string, unknown> | null | undefined
+	const readMetadataString = (metadata: Record<string, unknown> | null | undefined, key: string) => {
+		const value = metadata?.[key]
+		return typeof value === "string" ? value : undefined
+	}
+	const oauthAvatar =
+		readMetadataString(userMetadata, "avatar_url") ||
+		readMetadataString(userMetadata, "picture") ||
+		readMetadataString(userMetadata, "image_url") ||
+		null
+
 	consola.log("OAuth avatar from user_metadata:", oauthAvatar)
 	return { user_settings, userId: claims.sub, oauthAvatar }
 }
@@ -75,8 +84,8 @@ export default function Profile() {
 	const { user_settings, oauthAvatar } = useLoaderData<typeof loader>()
 	consola.log("user_settings", user_settings)
 	return (
-		<div className="mx-auto max-w-3xl p-6">
+		<PageContainer size="sm" padded={false} className="max-w-3xl p-6">
 			<UserSettings settings={user_settings || {}} oauthAvatar={oauthAvatar} />
-		</div>
+		</PageContainer>
 	)
 }

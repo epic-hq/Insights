@@ -1,3 +1,4 @@
+import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
 import { Grid, List, Upload } from "lucide-react"
@@ -5,6 +6,7 @@ import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
@@ -32,7 +34,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
-	const { data: rows, error }: { data: Interview[] | null; error: any } = await getInterviews({
+	const { data: rows, error }: { data: Interview[] | null; error: PostgrestError | null } = await getInterviews({
 		supabase,
 		accountId,
 		projectId,
@@ -118,7 +120,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
 			{/* Clean Header - Metro Style */}
 			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
-				<div className="mx-auto max-w-6xl">
+				<PageContainer size="lg" padded={false} className="max-w-6xl">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<h1 className="text-3xl text-foreground dark:text-foreground">Content</h1>
@@ -155,22 +157,22 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							</div>
 						</div>
 					</div>
-				</div>
+				</PageContainer>
 			</div>
 
 			{/* Segment Chart Section - Fixed */}
 			{showPie && segmentData.length > 0 && (
 				<div className="border-gray-200 border-b bg-white px-6 py-6 dark:border-gray-800 dark:bg-gray-950">
-					<div className="mx-auto max-w-6xl">
+					<PageContainer size="lg" padded={false} className="max-w-6xl">
 						<div className="flex justify-center">
 							<PrettySegmentPie data={segmentData} />
 						</div>
-					</div>
+					</PageContainer>
 				</div>
 			)}
 
 			{/* Main Content */}
-			<div className="mx-auto max-w-6xl px-6 py-12">
+			<PageContainer size="lg" padded={false} className="max-w-6xl px-6 py-12">
 				{interviews.length === 0 ? (
 					<div className="py-16 text-center">
 						<div className="mx-auto max-w-md">
@@ -289,7 +291,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 						</div>
 					</div>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

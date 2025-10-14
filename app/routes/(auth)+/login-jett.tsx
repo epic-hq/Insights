@@ -1,9 +1,11 @@
 import consola from "consola"
+import { useEffect } from "react"
 import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
+import { LoginForm } from "~/components/login-form"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
-import { UTM_COOKIE_NAME, extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, type UtmParams } from "~/utils/utm"
 import { PATHS } from "~/paths"
+import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -64,12 +66,12 @@ export default function AuthPage() {
 				<div className="w-full max-w-md">
 					{/* Main Auth Card */}
 					<div className="rounded-2xl border-0 bg-white/80 p-8 shadow-2xl backdrop-blur-sm dark:bg-slate-900/80">
-						<div className="mb-6 text-center">
+						{/* <div className="mb-6 text-center">
 							<h1 className="font-bold text-2xl text-slate-900 dark:text-slate-100">Welcome back</h1>
 							<p className="mt-2 text-slate-600 text-sm dark:text-slate-400">Sign in to your UpSight account</p>
-						</div>
+						</div> */}
 
-						<AuthUI view="sign_in" redirectTo={redirectTo} />
+						<LoginForm />
 					</div>
 
 					{/* Footer */}

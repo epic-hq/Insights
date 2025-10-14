@@ -2,6 +2,7 @@ import { motion } from "framer-motion"
 import { useMemo } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -120,7 +121,7 @@ export default function PersonDetail() {
 	}, [person.person_scale])
 
 	return (
-		<div className="mx-auto max-w-4xl py-8">
+		<PageContainer size="lg" padded={false} className="max-w-4xl py-8">
 			<motion.div
 				className="relative mb-8 flex flex-col items-center rounded-xl border border-border bg-background p-8 shadow-md"
 				style={{ borderColor: themeColor }}
@@ -285,6 +286,6 @@ export default function PersonDetail() {
 					</motion.div>
 				</div>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

@@ -1,6 +1,6 @@
-import { useMemo } from "react"
-import { NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import { PanelLeftIcon } from "lucide-react"
+import { useMemo } from "react"
+import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import {
 	Sidebar,
 	SidebarContent,
@@ -83,9 +83,9 @@ export function AppSidebar() {
 	return (
 		<Sidebar collapsible="icon" variant="sidebar">
 			<SidebarHeader>
-				<div className="flex items-center gap-2 px-2">
+				<Link to="/home" className="flex items-center gap-2 px-2">
 					<div className="-ml-2 flex items-center gap-2">{isCollapsed ? <Logo /> : <LogoBrand />}</div>
-				</div>
+				</Link>
 				<TeamSwitcher accounts={accounts} collapsed={isCollapsed} />
 			</SidebarHeader>
 
@@ -162,7 +162,7 @@ export function AppSidebar() {
 
 			<SidebarRail className="group pointer-events-auto">
 				<span className="sr-only">Toggle Sidebar</span>
-				<div className="pointer-events-none absolute top-3 -right-4 hidden size-7 items-center justify-center rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors duration-200 ease-linear group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground md:flex">
+				<div className="-right-4 pointer-events-none absolute top-3 hidden size-7 items-center justify-center rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors duration-200 ease-linear group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground md:flex">
 					<PanelLeftIcon className="size-4" />
 				</div>
 			</SidebarRail>

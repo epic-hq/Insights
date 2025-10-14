@@ -2,9 +2,9 @@ import consola from "consola"
 import { type LoaderFunctionArgs, redirect } from "react-router"
 import { getPostHogServerClient } from "~/lib/posthog.server"
 import { getServerClient } from "~/lib/supabase/server"
-import { collectPersistedUtmParams, clearUtmCookie, extractUtmParamsFromRequest } from "~/utils/utm.server"
-import type { UtmParams } from "~/utils/utm"
 import type { SupabaseClient } from "~/types"
+import type { UtmParams } from "~/utils/utm"
+import { clearUtmCookie, collectPersistedUtmParams, extractUtmParamsFromRequest } from "~/utils/utm.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
@@ -237,7 +237,7 @@ async function computeManagePathFromToken({
 function extractInviteToken(next: string, origin: string): string | null {
 	try {
 		const parsed = new URL(next, origin)
-		return parsed.searchParams.get("token")
+		return parsed.searchParams.get("invite_token")
 	} catch {
 		return null
 	}

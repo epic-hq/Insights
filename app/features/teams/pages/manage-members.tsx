@@ -6,6 +6,7 @@ import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, useLoaderData, useNavigation } from "react-router"
 import { useSubmit } from "react-router-dom"
 import { z } from "zod"
+import { PageContainer } from "~/components/layout/PageContainer"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -69,7 +70,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	if (!accountId) throw new Response("Missing accountId", { status: 400 })
 
 	const url = new URL(request.url)
-	const inviteToken = url.searchParams.get("token")?.trim() || null
+	const inviteToken = url.searchParams.get("invite_token")?.trim() || null
 	let inviteAcceptance: InvitationAcceptanceState = { status: "idle" }
 
 	if (inviteToken) {
@@ -233,7 +234,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			try {
 				// Build absolute invite URL that preserves token through auth
 				const host = PATHS.AUTH.HOST
-				const inviteUrl = `${host}/accept-invite?token=${encodeURIComponent(token)}`
+				const inviteUrl = `${host}/accept-invite?invite_token=${encodeURIComponent(token)}`
 
 				consola.info("[INVITE] Prepared invite", {
 					accountId,
@@ -246,7 +247,14 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				let teamName = "your team"
 				try {
 					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
-					teamName = (accountData as any)?.name || teamName
+					if (
+						accountData &&
+						typeof accountData === "object" &&
+						"name" in accountData &&
+						typeof accountData.name === "string"
+					) {
+						teamName = accountData.name
+					}
 				} catch { }
 				const { sendEmail } = await import("~/emails/clients.server")
 
@@ -393,7 +401,7 @@ export default function ManageTeamMembers() {
 	)
 
 	return (
-		<div className="container mx-auto max-w-3xl py-6">
+		<PageContainer size="sm" padded={false} className="container max-w-3xl py-6">
 			<div className="mb-6 space-y-2">
 				<h1 className="font-semibold text-2xl">Team Members</h1>
 				<p className="text-muted-foreground text-sm">
@@ -506,7 +514,7 @@ export default function ManageTeamMembers() {
 					</AlertDialog>
 				</>
 			)}
-		</div>
+		</PageContainer>
 	)
 }
 
