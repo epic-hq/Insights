@@ -14,10 +14,11 @@ import type { Route } from "../+types/root"
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
 // It ensures the user is authenticated and sets up the user context
-export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
+export const unstable_middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
+			consola.log("middleware user", user)
 			if (!user) {
 				throw redirect("/login")
 			}
@@ -114,12 +115,12 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 
 export async function loader({ context }: Route.LoaderArgs) {
 	try {
-		const loadContextInstance = context.get(loadContext)
-		const { lang } = loadContextInstance
+		// const loadContextInstance = context.get(loadContext)
+		// const { lang } = loadContextInstance
 		const user = context.get(userContext)
 
 		return {
-			lang,
+			// lang,
 			auth: {
 				user: user.claims,
 				accountId: user.account_id,

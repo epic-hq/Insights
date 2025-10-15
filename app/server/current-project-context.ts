@@ -1,4 +1,4 @@
-import { unstable_createContext } from "react-router"
+import { createContext } from "react-router"
 import type { GetAccount, Project, UUID } from "~/types"
 // import type { GetProject } from "~/types"
 
@@ -9,4 +9,4 @@ export type CurrentProjectContext = {
 	project: Project
 }
 
-export const currentProjectContext = unstable_createContext<CurrentProjectContext>(undefined)
+export const currentProjectContext = createContext<CurrentProjectContext>(undefined)

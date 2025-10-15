@@ -21,18 +21,21 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	if (code) {
 		const { client, headers } = getServerClient(request)
 		const { error } = await client.auth.exchangeCodeForSession(code)
+		consola.log(`exchangeCodeForSession error: ${error}`)
 		if (!error) {
-			const forwardedHost = headers.get("x-forwarded-host") // original origin before load balancer
+			// Prefer original host if behind a proxy, otherwise use relative redirect in dev
+			const forwardedHost = request.headers.get("x-forwarded-host")
 			const isLocalEnv = process.env.NODE_ENV === "development"
+			const suffix = invite_token ? `?invite_token=${invite_token}` : ""
 			if (isLocalEnv) {
-				// we can be sure that there is no load balancer in between, so no need to watch for X-Forwarded-Host
-				consola.log(`redirecting to ${origin}${next}${invite_token ? `?invite_token=${invite_token}` : ""}`)
-				return redirect(`${origin}${next}${invite_token ? `?invite_token=${invite_token}` : ""}`, { headers })
+				// Relative redirect avoids any subtle cross-origin handling in dev and preserves Set-Cookie
+				consola.log(`redirecting to (relative) ${next}${suffix}`)
+				return redirect(`${next}${suffix}`, { headers })
 			}
 			if (forwardedHost) {
-				return redirect(`https://${forwardedHost}${next}${invite_token ? `?invite_token=${invite_token}` : ""}`, { headers })
+				return redirect(`https://${forwardedHost}${next}${suffix}`, { headers })
 			}
-			return redirect(`${origin}${next}${invite_token ? `?invite_token=${invite_token}` : ""}`, { headers })
+			return redirect(`${origin}${next}${suffix}`, { headers })
 		}
 	}
 

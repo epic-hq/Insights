@@ -109,7 +109,7 @@ const routes = [
 
 	// New Auth
 	// route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
-	route("/auth-new/oauth", "./routes/(auth-new)+/oauth/route.ts"),
+	route("/auth/oauth", "./routes/(auth)+/oauth/route.ts"),
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),

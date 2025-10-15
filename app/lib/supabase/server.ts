@@ -1,4 +1,5 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr"
+import consola from "consola"
 import type { Database } from "~/../supabase/types"
 import { getServerEnv } from "~/env.server"
 
@@ -7,13 +8,17 @@ const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SE
 export const getServerClient = (request: Request) => {
 	const headers = new Headers()
 	const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+
 		cookies: {
 			getAll() {
-				return parseCookieHeader(request.headers.get("Cookie") ?? "")
+				return parseCookieHeader(request.headers.get('Cookie') ?? '') as {
+					name: string
+					value: string
+				}[]
 			},
 			setAll(cookiesToSet) {
 				cookiesToSet.forEach(({ name, value, options }) =>
-					headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
+					headers.append('Set-Cookie', serializeCookieHeader(name, value, options))
 				)
 			},
 		},
@@ -26,7 +31,7 @@ export function createSupabaseAdminClient() {
 	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => {},
+			setAll: () => { },
 		},
 		auth: {
 			autoRefreshToken: false,
@@ -45,6 +50,7 @@ export async function getAuthenticatedUser(request: Request) {
 	try {
 		// Prefer JWT claims when available
 		const { data: claims, error } = await supabase.client.auth.getClaims()
+		consola.log("getAuthenticatedUser claims", claims)
 		if (claims?.claims && !error) {
 			return claims.claims as any
 		}
@@ -92,7 +98,7 @@ export async function getSession(request: Request) {
 export const supabaseAnon = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 	cookies: {
 		getAll: () => [],
-		setAll: () => {},
+		setAll: () => { },
 	},
 	auth: { persistSession: false },
 })
@@ -102,7 +108,7 @@ export function getRlsClient(jwt: string) {
 	return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => {},
+			setAll: () => { },
 		},
 		auth: { persistSession: false },
 		global: {

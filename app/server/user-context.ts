@@ -1,5 +1,5 @@
 import type { JwtPayload, SupabaseClient } from "@supabase/supabase-js"
-import { unstable_createContext } from "react-router"
+import { createContext } from "react-router"
 import type { Database } from "supabase/types"
 import type { AccountSettings, UserSettings } from "~/types"
 
@@ -14,4 +14,4 @@ export type UserContext = {
 	user_settings?: UserSettings
 }
 
-export const userContext = unstable_createContext<UserContext>(undefined)
+export const userContext = createContext<UserContext>(undefined)

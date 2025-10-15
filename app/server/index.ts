@@ -45,29 +45,29 @@ export default await createHonoServer({
 								consola.info("[WS] upstream open", id)
 								try {
 									ws.send(JSON.stringify({ type: "Begin", id }))
-								} catch {}
+								} catch { }
 							})
 
 							transcriber.on("error", (error: any) => {
 								consola.error("[WS] upstream error", error)
 								try {
 									ws.send(JSON.stringify({ type: "Error", error: String(error?.message || error) }))
-								} catch {}
+								} catch { }
 								try {
 									ws.close(1011, "Upstream error")
-								} catch {}
+								} catch { }
 							})
 
 							transcriber.on("close", (code: number, reason: string) => {
 								try {
 									ws.close(code || 1000, reason || "")
-								} catch {}
+								} catch { }
 							})
 
 							transcriber.on("turn", (turn: any) => {
 								try {
 									ws.send(JSON.stringify({ type: "Turn", ...turn }))
-								} catch {}
+								} catch { }
 							})
 
 							await transcriber.connect()
@@ -75,10 +75,10 @@ export default await createHonoServer({
 						} catch (e: any) {
 							try {
 								ws.send(JSON.stringify({ type: "Error", error: e?.message || "Failed to connect" }))
-							} catch {}
+							} catch { }
 							try {
 								ws.close(1011, "Init failure")
-							} catch {}
+							} catch { }
 						}
 					},
 					onMessage: async (event, _ws) => {
@@ -95,7 +95,7 @@ export default await createHonoServer({
 									await writer.close()
 								}
 							}
-						} catch {}
+						} catch { }
 					},
 					onClose: async () => {
 						consola.info("[WS] proxy close")
@@ -103,20 +103,20 @@ export default await createHonoServer({
 							if (writer) {
 								try {
 									await writer.close()
-								} catch {}
+								} catch { }
 							}
 							if (transcriber) {
 								try {
 									await transcriber.close()
-								} catch {}
+								} catch { }
 							}
-						} catch {}
+						} catch { }
 					},
 					onError: async (_event, ws) => {
 						consola.error("[WS] proxy error")
 						try {
 							ws.close(1011, "Server error")
-						} catch {}
+						} catch { }
 					},
 				}
 			})
