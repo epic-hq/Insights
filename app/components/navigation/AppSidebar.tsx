@@ -13,6 +13,7 @@ import {
 	SidebarMenuButton,
 	SidebarMenuItem,
 	SidebarRail,
+	SidebarTrigger,
 	useSidebar,
 } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -161,10 +162,7 @@ export function AppSidebar() {
 			</SidebarFooter>
 
 			<SidebarRail className="group pointer-events-auto">
-				<span className="sr-only">Toggle Sidebar</span>
-				<div className="-right-4 pointer-events-none absolute top-3 hidden size-7 items-center justify-center rounded-md border border-sidebar-border bg-sidebar text-sidebar-foreground shadow-sm transition-colors duration-200 ease-linear group-hover:bg-sidebar-accent group-hover:text-sidebar-accent-foreground md:flex">
-					<PanelLeftIcon className="size-4" />
-				</div>
+				<SidebarTrigger className="-right-4 absolute top-3" />
 			</SidebarRail>
 		</Sidebar>
 	)
