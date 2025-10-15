@@ -31,7 +31,6 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
-
 			<form onSubmit={handleSocialLogin}>
 				<div className="flex flex-col gap-6">
 					{error && <p className="text-destructive-500 text-sm">{error}</p>}
@@ -40,7 +39,6 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 					</Button>
 				</div>
 			</form>
-
 		</div>
 	)
 }

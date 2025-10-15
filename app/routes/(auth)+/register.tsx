@@ -4,7 +4,7 @@ import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
 import { getAuthenticatedUser } from "~/lib/supabase/server"
 import { PATHS } from "~/paths"
-import { UTM_COOKIE_NAME, extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, type UtmParams } from "~/utils/utm"
+import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)

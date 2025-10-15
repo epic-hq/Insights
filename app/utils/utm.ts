@@ -21,7 +21,8 @@ export type UtmParamKey = (typeof UTM_PARAM_KEYS)[number]
 export type UtmParams = Partial<Record<UtmParamKey, string>>
 
 export function extractUtmParamsFromSearch(search: URLSearchParams | URL | string): UtmParams {
-	const params = search instanceof URL ? search.searchParams : typeof search === "string" ? new URLSearchParams(search) : search
+	const params =
+		search instanceof URL ? search.searchParams : typeof search === "string" ? new URLSearchParams(search) : search
 	const result: UtmParams = {}
 
 	for (const key of UTM_PARAM_KEYS) {

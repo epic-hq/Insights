@@ -112,13 +112,13 @@ function Row({ label, value }: { label: string; value: React.ReactNode }) {
 	)
 }
 
-function EditableRow({ 
-	label, 
-	field, 
-	value, 
+function EditableRow({
+	label,
+	field,
+	value,
 	placeholder,
-	multiline = false 
-}: { 
+	multiline = false,
+}: {
 	label: string
 	field: string
 	value?: string | null
@@ -242,13 +242,11 @@ export function UserSettings({
 												method: "POST",
 												body: data,
 											}).then(() => window.location.reload())
-										}
+										},
 									}
 									fetcher.submit(formData)
 								}}
-								placeholder={oauthAvatar
-									? "Add a custom URL override"
-									: "Paste a URL to your profile picture"}
+								placeholder={oauthAvatar ? "Add a custom URL override" : "Paste a URL to your profile picture"}
 								textClassName="text-xs text-gray-500"
 								inputClassName="text-sm"
 								autoFocus={true}
@@ -263,7 +261,12 @@ export function UserSettings({
 					<EditableRow label="First Name" field="first_name" value={settings.first_name} />
 					<EditableRow label="Last Name" field="last_name" value={settings.last_name} />
 					<Row label="Email" value={settings.email || <span className="text-gray-400 text-sm italic">Not set</span>} />
-					<EditableRow label="Mobile" field="mobile_phone" value={settings.mobile_phone} placeholder="Add phone number" />
+					<EditableRow
+						label="Mobile"
+						field="mobile_phone"
+						value={settings.mobile_phone}
+						placeholder="Add phone number"
+					/>
 				</div>
 			</div>
 
@@ -272,9 +275,24 @@ export function UserSettings({
 				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Professional Information</h3>
 				<div className="divide-y">
 					<EditableRow label="Title" field="title" value={settings.title} placeholder="Add job title" />
-					<EditableRow label="Role" field="role" value={settings.role} placeholder="e.g., Product Manager, Designer, Founder" />
-					<EditableRow label="Industry" field="industry" value={settings.industry} placeholder="e.g., SaaS, Healthcare, Finance" />
-					<EditableRow label="Referral Source" field="referral_source" value={settings.referral_source} placeholder="How did you hear about us?" />
+					<EditableRow
+						label="Role"
+						field="role"
+						value={settings.role}
+						placeholder="e.g., Product Manager, Designer, Founder"
+					/>
+					<EditableRow
+						label="Industry"
+						field="industry"
+						value={settings.industry}
+						placeholder="e.g., SaaS, Healthcare, Finance"
+					/>
+					<EditableRow
+						label="Referral Source"
+						field="referral_source"
+						value={settings.referral_source}
+						placeholder="How did you hear about us?"
+					/>
 				</div>
 			</div>
 
@@ -282,12 +300,22 @@ export function UserSettings({
 			<div className="mt-6 rounded-xl border bg-white p-4 shadow-sm">
 				<h3 className="mb-2 font-semibold text-gray-500 text-sm uppercase tracking-wide">Company Information</h3>
 				<div className="divide-y">
-					<EditableRow label="Company Name" field="company_name" value={settings.company_name} placeholder="Add company name" />
-					<EditableRow label="Website" field="company_website" value={settings.company_website} placeholder="https://example.com" />
-					<EditableRow 
-						label="Description" 
-						field="company_description" 
-						value={settings.company_description} 
+					<EditableRow
+						label="Company Name"
+						field="company_name"
+						value={settings.company_name}
+						placeholder="Add company name"
+					/>
+					<EditableRow
+						label="Website"
+						field="company_website"
+						value={settings.company_website}
+						placeholder="https://example.com"
+					/>
+					<EditableRow
+						label="Description"
+						field="company_description"
+						value={settings.company_description}
 						placeholder="Brief description of your company"
 						multiline={true}
 					/>

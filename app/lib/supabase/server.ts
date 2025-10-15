@@ -8,17 +8,16 @@ const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SE
 export const getServerClient = (request: Request) => {
 	const headers = new Headers()
 	const supabase = createServerClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
-
 		cookies: {
 			getAll() {
-				return parseCookieHeader(request.headers.get('Cookie') ?? '') as {
+				return parseCookieHeader(request.headers.get("Cookie") ?? "") as {
 					name: string
 					value: string
 				}[]
 			},
 			setAll(cookiesToSet) {
 				cookiesToSet.forEach(({ name, value, options }) =>
-					headers.append('Set-Cookie', serializeCookieHeader(name, value, options))
+					headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
 				)
 			},
 		},
@@ -31,7 +30,7 @@ export function createSupabaseAdminClient() {
 	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => { },
+			setAll: () => {},
 		},
 		auth: {
 			autoRefreshToken: false,
@@ -98,7 +97,7 @@ export async function getSession(request: Request) {
 export const supabaseAnon = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 	cookies: {
 		getAll: () => [],
-		setAll: () => { },
+		setAll: () => {},
 	},
 	auth: { persistSession: false },
 })
@@ -108,7 +107,7 @@ export function getRlsClient(jwt: string) {
 	return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => { },
+			setAll: () => {},
 		},
 		auth: { persistSession: false },
 		global: {

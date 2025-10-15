@@ -1,6 +1,6 @@
 import consola from "consola"
-import { useEffect, useState } from "react"
 import { PostHogProvider } from "posthog-js/react"
+import { useEffect, useState } from "react"
 import { useTranslation } from "react-i18next"
 import type { LoaderFunctionArgs } from "react-router"
 import {
@@ -414,11 +414,7 @@ const NotFoundFace = () => {
 				<h1>404 — Page Not Found</h1>
 				<p>We looked everywhere but couldn&apos;t find the page you requested.</p>
 				<div className="not-found__actions">
-					<button
-						type="button"
-						onClick={() => window.history.back()}
-						className="not-found__cta not-found__cta--ghost"
-					>
+					<button type="button" onClick={() => window.history.back()} className="not-found__cta not-found__cta--ghost">
 						← Go Back
 					</button>
 					<a href="/home" className="not-found__cta">
@@ -809,21 +805,13 @@ export const ErrorBoundary = () => {
 
 	if (isRouteErrorResponse(error) && error.status >= 500) {
 		const headline = error.statusText || "Unexpected Error"
-		const errorMessage =
-			typeof error.data === "string"
-				? error.data
-				: "Something went wrong on our end."
+		const errorMessage = typeof error.data === "string" ? error.data : "Something went wrong on our end."
 		return <ServerErrorGears status={error.status} headline={headline} message={errorMessage} />
 	}
 
 	// For everything else, fall back to our standard error boundary
 	if (error instanceof Error) {
-		return (
-			<ServerErrorGears
-				headline={error.name || "Unexpected Error"}
-				message={error.message}
-			/>
-		)
+		return <ServerErrorGears headline={error.name || "Unexpected Error"} message={error.message} />
 	}
 
 	return <ErrorBoundaryComponent error={error instanceof Error ? error : undefined} />

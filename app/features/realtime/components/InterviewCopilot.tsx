@@ -95,7 +95,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 	// Track all media streams for cleanup
 	const mediaStreamsRef = useRef<MediaStream[]>([])
-	
+
 	// Ref to store stopStreaming function to avoid circular dependencies
 	const stopStreamingRef = useRef<((finalize?: boolean) => Promise<void>) | null>(null)
 

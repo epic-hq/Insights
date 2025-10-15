@@ -1,5 +1,6 @@
 import { parseCookieHeader, serializeCookieHeader } from "@supabase/ssr"
-import { UTM_COOKIE_NAME, extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, type UtmParams } from "./utm"
+import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "./utm"
+
 const ONE_WEEK_SECONDS = 60 * 60 * 24 * 7
 
 export function extractUtmParamsFromRequest(request: Request): UtmParams {

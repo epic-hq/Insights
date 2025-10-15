@@ -1,5 +1,19 @@
 import consola from "consola"
-import { ChevronDown, ChevronRight, Clock, GraduationCapIcon, HelpCircle, Info, Loader2, Option, Plus, Target, TargetIcon, Users, X } from "lucide-react"
+import {
+	ChevronDown,
+	ChevronRight,
+	Clock,
+	GraduationCapIcon,
+	HelpCircle,
+	Info,
+	Loader2,
+	Option,
+	Plus,
+	Target,
+	TargetIcon,
+	Users,
+	X,
+} from "lucide-react"
 import { useCallback, useEffect, useRef, useState } from "react"
 import { Link } from "react-router"
 import { toast } from "sonner"
@@ -625,14 +639,16 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-												}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
+												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+											}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-												}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
+												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+											}`}
 										>
 											{step.title}
 										</span>
@@ -767,9 +783,7 @@ export default function ProjectGoalsScreen({
 										<div className="space-y-6">
 											{/* Interview Type */}
 											<div>
-												<label className="mb-3 block font-semibold text-gray-900 text-sm">
-													Conversation Type
-												</label>
+												<label className="mb-3 block font-semibold text-gray-900 text-sm">Conversation Type</label>
 												<ToggleGroup
 													type="single"
 													value={researchMode}
@@ -898,9 +912,7 @@ export default function ProjectGoalsScreen({
 
 											{/* Target Conversations */}
 											<div>
-												<label className="mb-3 block font-semibold text-gray-900 text-sm">
-													How many?
-												</label>
+												<label className="mb-3 block font-semibold text-gray-900 text-sm">How many?</label>
 												<div className="flex items-center gap-3">
 													<Input
 														type="number"
@@ -1557,8 +1569,6 @@ export default function ProjectGoalsScreen({
 							</CollapsibleContent>
 						</Card>
 					</Collapsible>
-
-
 				</div>
 
 				{/* Custom Instructions Collapsible Section */}
