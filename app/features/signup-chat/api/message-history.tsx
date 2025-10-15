@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { memory } from "~/mastra/memory"
 
 export async function loader({ request }: LoaderFunctionArgs) {

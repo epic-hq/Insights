@@ -20,7 +20,7 @@ import {
 import { Button } from "~/components/ui/button"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
 // import { sendEmail } from "~/emails/clients.server"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { PATHS } from "~/paths"
 import type { GetAccountInvitesResponse } from "~/types-accounts"
 import InvitationEmail from "../../../../emails/team-invitation"
@@ -145,14 +145,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const normalizedAccount = account
 		? {
-				account_id: accountId,
-				name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
-				personal_account: Boolean(
-					(account as Record<string, unknown>)?.personal_account ??
-						(account as Record<string, unknown>)?.personalAccount
-				),
-				account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
-			}
+			account_id: accountId,
+			name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
+			personal_account: Boolean(
+				(account as Record<string, unknown>)?.personal_account ??
+				(account as Record<string, unknown>)?.personalAccount
+			),
+			account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
+		}
 		: null
 
 	let members: MembersRow[] = []
@@ -255,7 +255,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					) {
 						teamName = accountData.name
 					}
-				} catch {}
+				} catch { }
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({

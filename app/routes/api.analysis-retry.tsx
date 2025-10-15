@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import type { Json } from "~/../supabase/types"
-import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/server"
+import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -16,7 +16,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	try {
 		// Get user ID from JWT claims (fast) with DB fallback
-		const { getAuthenticatedUser } = await import("~/lib/supabase/server")
+		const { getAuthenticatedUser } = await import("~/lib/supabase/client.server")
 		const claims = await getAuthenticatedUser(request)
 		if (!claims?.sub) {
 			return Response.json({ error: "Unauthorized" }, { status: 401 })

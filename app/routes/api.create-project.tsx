@@ -4,7 +4,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
 import { getPostHogServerClient } from "~/lib/posthog.server"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 
 interface CreateProjectData {
 	target_orgs: string[]

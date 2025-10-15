@@ -4,7 +4,7 @@ import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { ResearchStructureManager } from "~/components/research/ResearchStructureManager"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 interface ResearchStructure {
 	decision_questions: Array<{

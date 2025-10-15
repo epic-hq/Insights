@@ -1,7 +1,7 @@
 import consola from "consola"
 import { data, redirect, useLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 
 interface InviteItem {
 	account_id: string

@@ -4,7 +4,7 @@ import type { TreeNode } from "~/components/charts/TreeMap"
 import Dashboard from "~/features/dashboard/components/Dashboard"
 import type { KPI } from "~/features/dashboard/components/KPIBar"
 import { getPersonas } from "~/features/personas/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { InsightView, OpportunityView } from "~/types"
 
 export const meta: MetaFunction = () => {

@@ -3,7 +3,7 @@ import { b } from "baml_client"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 

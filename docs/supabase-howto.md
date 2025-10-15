@@ -518,7 +518,7 @@ export const supabase = createServerClient(
 The pattern to use in loaders/actions is this:
 
 ```ts
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { InsightView } from "~/types"
 
 export const meta: MetaFunction = () => {

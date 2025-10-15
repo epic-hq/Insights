@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { aggregateAutoInsightsData, formatDataForLLM } from "./autoInsightsData.server"
 
 // Mock Supabase client
-vi.mock("~/lib/supabase/server")
+vi.mock("~/lib/supabase/client.server")
 
 const mockSupabase = {
 	from: vi.fn(),

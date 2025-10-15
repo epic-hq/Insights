@@ -2,7 +2,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {

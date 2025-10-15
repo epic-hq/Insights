@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import type { Database, Json } from "~/../supabase/types"
-import { createSupabaseAdminClient } from "~/lib/supabase/server"
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 interface AssemblyAIWebhookPayload {

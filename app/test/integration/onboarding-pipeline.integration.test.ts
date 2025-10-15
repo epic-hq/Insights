@@ -4,7 +4,7 @@ import { action as onboardingAction } from "~/routes/api.onboarding-start"
 import { mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Mock dependencies that require external services
-vi.mock("~/lib/supabase/server", () => ({
+vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
 	createSupabaseAdminClient: () => testDb, // Use test DB as admin client
 }))

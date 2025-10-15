@@ -274,7 +274,7 @@ export default function EntityIndex() {
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 type EntityRow = Database["public"]["Tables"]["{entity}"]["Row"]
@@ -338,7 +338,7 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 type EntityInsert = Database["public"]["Tables"]["{entity}"]["Insert"]
@@ -453,7 +453,7 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 type EntityInsert = Database["public"]["Tables"]["{entity}"]["Insert"]

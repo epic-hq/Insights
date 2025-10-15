@@ -2,7 +2,7 @@
 
 import consola from "consola"
 import { type LoaderFunctionArgs, redirect } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	consola.log(`oauth loader request: ${request.url}`)

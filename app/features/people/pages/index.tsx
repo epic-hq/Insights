@@ -9,7 +9,7 @@ import { getPeople } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
@@ -147,9 +147,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-													name: pp.personas.name,
-													color_hex: pp.personas.color_hex || undefined,
-												}
+												name: pp.personas.name,
+												color_hex: pp.personas.color_hex || undefined,
+											}
 											: undefined,
 									})),
 								}}

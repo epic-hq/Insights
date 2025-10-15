@@ -4,7 +4,7 @@ import { type AppLoadContext, createContext, RouterContextProvider } from "react
 import { i18next } from "remix-hono/i18next"
 import { type ClientEnvVars, getClientEnv, getServerEnv, type ServerEnv } from "~/env.server"
 
-export const getLoadContext = async (req, res) => {
+export const getLoadContext = async (c: Context) => {
 	// get the locale from the context
 	// const locale = i18next.getLocale(c)
 	// get t function for the default namespace
@@ -37,7 +37,7 @@ declare module "react-router" {
 		clientEnv: ClientEnvVars
 	}
 }
-interface LoadContext extends Awaited<ReturnType<typeof getLoadContext>> {}
+interface LoadContext extends Awaited<ReturnType<typeof getLoadContext>> { }
 
 export const loadContext = createContext<AppLoadContext>()
 
@@ -45,5 +45,5 @@ export const loadContext = createContext<AppLoadContext>()
  * Declare our loaders and actions context type
  */
 declare module "react-router" {
-	interface AppLoadContext extends Omit<LoadContext, "body"> {}
+	interface AppLoadContext extends Omit<LoadContext, "body"> { }
 }

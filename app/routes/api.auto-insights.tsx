@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { aggregateAutoInsightsData, formatDataForLLM } from "~/utils/autoInsightsData.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {

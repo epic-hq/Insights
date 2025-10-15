@@ -1,7 +1,7 @@
 import consola from "consola"
 import { type LoaderFunctionArgs, redirect } from "react-router"
 import { getPostHogServerClient } from "~/lib/posthog.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { SupabaseClient } from "~/types"
 import type { UtmParams } from "~/utils/utm"
 import { clearUtmCookie, collectPersistedUtmParams, extractUtmParamsFromRequest } from "~/utils/utm.server"

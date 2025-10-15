@@ -9,7 +9,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useRecordNow } from "~/hooks/useRecordNow"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
 	const { projectId } = params

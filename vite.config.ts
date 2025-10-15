@@ -48,11 +48,11 @@ export default defineConfig({
 		// },
 		reactRouterDevTools(),
 		reactRouter(),
-		// reactRouterHonoServer({
-		// 	dev: {
-		// 		exclude: [/^\/(resources)\/.+/],
-		// 	},
-		// }),
+		reactRouterHonoServer({
+			dev: {
+				exclude: [/^\/(resources)\/.+/],
+			},
+		}),
 		tsconfigPaths(),
 		iconsSpritesheet({
 			inputDir: "./resources/icons",

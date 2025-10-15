@@ -3,10 +3,15 @@ import type { GetAccount, Project, UUID } from "~/types"
 // import type { GetProject } from "~/types"
 
 export type CurrentProjectContext = {
-	accountId: UUID
+	accountId: UUID | null
 	projectId: UUID | null
-	account: GetAccount
-	project: Project
+	account: GetAccount | null
+	project: Project | null
 }
 
-export const currentProjectContext = createContext<CurrentProjectContext>(undefined)
+export const currentProjectContext = createContext<CurrentProjectContext>({
+	accountId: null,
+	projectId: null,
+	account: null,
+	project: null,
+})

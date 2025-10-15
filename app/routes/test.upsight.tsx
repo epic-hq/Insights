@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { mastra } from "~/mastra"
 
 export async function loader({ request }: LoaderFunctionArgs) {

@@ -53,7 +53,7 @@ This is the authoritative, efficient playbook for building and operating feature
 
 
 ## Authentication & Context
-- Server-side Supabase client: `app/lib/supabase/server.ts`.
+- Server-side Supabase client: `app/lib/supabase/client.server.ts`.
   - `createSupabaseServerClient()`, `getAuthenticatedUser()`, `getSession()`.
 - Client-side Supabase: `app/lib/supabase/client.ts` (SSR-compatible).
 - React auth: `AuthContext` provides `user`, `session`, `signOut()`; initialized from server loader state.
@@ -186,7 +186,7 @@ __RLS-first queries__
 
 ## Quick References (by file)
 - Routing: `app/routes.ts`, `app/features/*/routes.ts`
-- Auth: `app/contexts/AuthContext.tsx`, `app/lib/supabase/server.ts`
+- Auth: `app/contexts/AuthContext.tsx`, `app/lib/supabase/client.server.ts`
 - Update API: `app/routes/api.update-field.tsx`
 - Junction helpers: `app/lib/database/junction-helpers.ts`, `junction-server.ts`, `useJunctionTables.ts`
 - Evidence schema: `supabase/schemas/32_evidence.sql`

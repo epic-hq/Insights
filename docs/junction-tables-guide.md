@@ -8,13 +8,13 @@ This guide covers how to work with the normalized junction tables that replaced 
 
 ### Junction Tables
 
-| Table | Purpose | Replaces |
-|-------|---------|----------|
-| `insight_tags` | Tag insights | `insights.related_tags[]` |
-| `interview_tags` | Tag interviews | New functionality |
+| Table                  | Purpose                        | Replaces                              |
+| ---------------------- | ------------------------------ | ------------------------------------- |
+| `insight_tags`         | Tag insights                   | `insights.related_tags[]`             |
+| `interview_tags`       | Tag interviews                 | New functionality                     |
 | `opportunity_insights` | Link opportunities to insights | `opportunities.related_insight_ids[]` |
-| `project_people` | Track people across projects | Enhanced relationship tracking |
-| `persona_insights` | Link insights to personas | New analytics capability |
+| `project_people`       | Track people across projects   | Enhanced relationship tracking        |
+| `persona_insights`     | Link insights to personas      | New analytics capability              |
 
 ## Usage Patterns
 
@@ -175,7 +175,7 @@ function OpportunityInsightLinks({ opportunityId }: { opportunityId: string }) {
 **Loader with junction data:**
 
 ```typescript
-import { getServerClient } from '~/lib/supabase/server'
+import { getServerClient } from '~/lib/supabase/client.server'
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
   const { client: supabase } = getServerClient(request)

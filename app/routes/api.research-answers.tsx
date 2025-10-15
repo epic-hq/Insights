@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { getResearchAnswerRollup } from "~/lib/database/research-answers.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)

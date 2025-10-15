@@ -3,7 +3,7 @@ import { useState } from "react"
 import { Form, Link, type MetaFunction, redirect, useNavigate } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Route } from "./+types/login"
 
 export const meta: MetaFunction = () => {

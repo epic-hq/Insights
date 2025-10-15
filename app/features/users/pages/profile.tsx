@@ -3,7 +3,7 @@ import { data } from "react-router"
 import { type ActionFunctionArgs, type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import UserSettings from "~/features/users/components/UserSettings"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { userContext } from "~/server/user-context"
 
 export async function loader({ context }: LoaderFunctionArgs) {

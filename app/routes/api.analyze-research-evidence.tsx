@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 const DEFAULT_MIN_CONFIDENCE = 0.6
 

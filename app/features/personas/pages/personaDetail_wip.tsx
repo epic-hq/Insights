@@ -4,7 +4,7 @@ import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
 import { Button } from "~/components/ui/button"
 import PersonaStrategicPanel, { type PersonaStrategicProps } from "~/features/personas/components/PersonaStrategicPanel"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 const MOCKDATA = true
 

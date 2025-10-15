@@ -3,7 +3,7 @@ import { useEffect } from "react"
 import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
 import { LoginForm } from "~/components/login-form"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { PATHS } from "~/paths"
 import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm"
 

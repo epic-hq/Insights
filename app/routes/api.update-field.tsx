@@ -2,7 +2,7 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { updateInsight } from "~/features/insights/db"
 import { updateInterview } from "~/features/interviews/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 /**
  * Generalized API endpoint for updating single fields across supported entities

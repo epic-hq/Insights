@@ -21,7 +21,7 @@ import {
 import PersonaStrategicPanel, {
 	PersonaStrategicPanelMockData,
 } from "~/features/personas/components/PersonaStrategicPanel"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Persona } from "~/types"
 import PersonaCompareBoard from "./PersonaCompareBoard"
 import { defaultMapperFromDifferentiators, RadialSpectrumFromSupabase } from "./persona_visualization_mockup3"
@@ -235,13 +235,12 @@ function PersonaCompareMatrix({
 													onClick={() => onHighlight(item)}
 													onMouseEnter={() => onHighlight(item)}
 													onMouseLeave={() => onHighlight(null)}
-													className={`rounded-md px-2 py-1 text-xs transition ${
-														active
+													className={`rounded-md px-2 py-1 text-xs transition ${active
 															? "border border-indigo-400/30 bg-indigo-500/20 text-indigo-200"
 															: i === 1
 																? "border border-emerald-400/20 bg-emerald-500/10 text-emerald-200"
 																: "bg-zinc-800 text-zinc-200"
-													}`}
+														}`}
 												>
 													{item}
 												</button>
@@ -281,26 +280,23 @@ function PersonaCardEnhanced({
 		<motion.div
 			initial={{ opacity: 0, y: 10 }}
 			animate={{ opacity: 1, y: 0 }}
-			className={`relative overflow-hidden rounded-2xl border bg-zinc-950 p-5 ring-1 ring-inset ${
-				isContrast ? "border-emerald-700/40 ring-emerald-900/40" : "border-zinc-800 ring-zinc-900"
-			}`}
+			className={`relative overflow-hidden rounded-2xl border bg-zinc-950 p-5 ring-1 ring-inset ${isContrast ? "border-emerald-700/40 ring-emerald-900/40" : "border-zinc-800 ring-zinc-900"
+				}`}
 		>
 			{/* Ribbon */}
 			<div
-				className={`absolute top-0 right-0 m-3 rounded-md px-2 py-1 text-[11px] tracking-wide ${
-					isContrast
+				className={`absolute top-0 right-0 m-3 rounded-md px-2 py-1 text-[11px] tracking-wide ${isContrast
 						? "border border-emerald-400/30 bg-emerald-500/15 text-emerald-300"
 						: "border border-indigo-400/30 bg-indigo-500/15 text-indigo-200"
-				}`}
+					}`}
 			>
 				{isContrast ? "CONTRAST" : "PROVISIONAL"}
 			</div>
 
 			<div className="flex items-start gap-4">
 				<div
-					className={`grid size-12 shrink-0 place-items-center rounded-xl ring-2 ${ring} bg-gradient-to-br from-zinc-800 to-zinc-900 ${
-						isContrast ? "ring-emerald-400/60" : ""
-					}`}
+					className={`grid size-12 shrink-0 place-items-center rounded-xl ring-2 ${ring} bg-gradient-to-br from-zinc-800 to-zinc-900 ${isContrast ? "ring-emerald-400/60" : ""
+						}`}
 				>
 					<UserCheck className="size-6 text-zinc-200" />
 				</div>
@@ -380,11 +376,10 @@ function AttrGroup({
 							onClick={() => onHighlight(g)}
 							onMouseEnter={() => onHighlight(g)}
 							onMouseLeave={() => onHighlight(null)}
-							className={`rounded-md px-2 py-1 text-xs transition ${
-								active
+							className={`rounded-md px-2 py-1 text-xs transition ${active
 									? "border border-indigo-400/30 bg-indigo-500/20 text-indigo-200"
 									: "bg-zinc-800 text-zinc-200 hover:bg-zinc-800/80"
-							}`}
+								}`}
 						>
 							{g}
 						</button>
@@ -478,11 +473,10 @@ function PainDotPlot({
 									onClick={() => onHighlight(r.label)}
 									onMouseEnter={() => onHighlight(r.label)}
 									onMouseLeave={() => onHighlight(null)}
-									className={`shrink-0 rounded-md px-2 py-1 text-xs ${
-										active
+									className={`shrink-0 rounded-md px-2 py-1 text-xs ${active
 											? "border border-indigo-400/30 bg-indigo-500/20 text-indigo-200"
 											: "bg-zinc-800 text-zinc-200"
-									}`}
+										}`}
 								>
 									{r.label}
 								</button>
@@ -629,21 +623,19 @@ export default function PersonasShowcase({ params }) {
 					<div className="flex items-center gap-2">
 						<button
 							onClick={() => setView("cards")}
-							className={`rounded-md border px-3 py-1.5 text-sm ${
-								view === "cards"
+							className={`rounded-md border px-3 py-1.5 text-sm ${view === "cards"
 									? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
 									: "border-zinc-700 bg-zinc-900 text-zinc-300"
-							}`}
+								}`}
 						>
 							Card View
 						</button>
 						<button
 							onClick={() => setView("matrix")}
-							className={`rounded-md border px-3 py-1.5 text-sm ${
-								view === "matrix"
+							className={`rounded-md border px-3 py-1.5 text-sm ${view === "matrix"
 									? "border-indigo-500/40 bg-indigo-500/10 text-indigo-200"
 									: "border-zinc-700 bg-zinc-900 text-zinc-300"
-							}`}
+								}`}
 						>
 							Matrix View
 						</button>

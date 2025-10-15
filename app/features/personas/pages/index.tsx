@@ -11,7 +11,7 @@ import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaC
 import PersonaCompareBoard from "~/features/personas/components/PersonaCompareBoard"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export const meta: MetaFunction = () => {
 	return [

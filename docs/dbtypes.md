@@ -247,7 +247,7 @@ The following functions are exported from feature DB modules and are available f
 
 ### Database Function Calls (via Supabase)
 
-All DB access is performed using the Supabase client, instantiated in [`app/lib/supabase/client.ts`](app/lib/supabase/client.ts:1) and [`app/lib/supabase/server.ts`](app/lib/supabase/server.ts:1). Junction table helpers are in [`app/lib/database/junction-helpers.ts`](app/lib/database/junction-helpers.ts:1).
+All DB access is performed using the Supabase client, instantiated in [`app/lib/supabase/client.ts`](app/lib/supabase/client.ts:1) and [`app/lib/supabase/client.server.ts`](app/lib/supabase/client.server.ts:1). Junction table helpers are in [`app/lib/database/junction-helpers.ts`](app/lib/database/junction-helpers.ts:1).
 
 **Tables & Operations Used:**
 

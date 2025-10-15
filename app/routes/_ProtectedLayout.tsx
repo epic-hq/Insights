@@ -6,7 +6,7 @@ import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
-import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/client.server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
@@ -14,7 +14,7 @@ import type { Route } from "../+types/root"
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
 // It ensures the user is authenticated and sets up the user context
-export const unstable_middleware: Route.MiddlewareFunction[] = [
+export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
@@ -27,7 +27,7 @@ export const unstable_middleware: Route.MiddlewareFunction[] = [
 			const jwt = user?.jwt || user?.access_token || null
 
 			// Use RLS client if JWT is present, otherwise fallback to anon client
-			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/server")).getServerClient(request).client
+			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/client.server")).getServerClient(request).client
 
 			// Get user's settings and accounts in parallel
 			const [userSettingsResult, userAccountsResult] = await Promise.all([
@@ -70,7 +70,11 @@ export const unstable_middleware: Route.MiddlewareFunction[] = [
 				accounts: accounts || [],
 				currentAccount,
 			})
-			// consola.log("_ProtectedLayout Authentication middleware success\n")
+			consola.log("_ProtectedLayout Authentication middleware success, {", {
+				user_settings,
+				accounts,
+				currentAccount,
+			}, "\n")
 
 			// Check if signup process is completed
 			const signupCompleted = user_settings?.signup_data?.completed === true
