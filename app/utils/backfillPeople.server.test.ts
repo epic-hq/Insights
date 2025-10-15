@@ -9,7 +9,7 @@ import type { Database } from "~/../supabase/types"
 import { backfillMissingPeople, getInterviewPeopleStats } from "./backfillPeople.server"
 
 // Mock dependencies
-vi.mock("~/lib/supabase/server", () => ({
+vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: vi.fn(),
 }))
 
@@ -46,10 +46,10 @@ describe("backfillMissingPeople", () => {
 		mockRequest = new Request("http://localhost:3000")
 
 		// Mock getServerClient to return our mock
-		const { getServerClient } = require("~/lib/supabase/server")
-		;(getServerClient as MockedFunction<any>).mockReturnValue({
-			client: mockSupabaseClient,
-		})
+		const { getServerClient } = require("~/lib/supabase/client.server")
+			; (getServerClient as MockedFunction<any>).mockReturnValue({
+				client: mockSupabaseClient,
+			})
 	})
 
 	describe("Smart Name Generation", () => {
@@ -535,10 +535,10 @@ describe("getInterviewPeopleStats", () => {
 		mockSupabaseClient = createMockSupabaseClient()
 		mockRequest = new Request("http://localhost:3000")
 
-		const { getServerClient } = require("~/lib/supabase/server")
-		;(getServerClient as MockedFunction<any>).mockReturnValue({
-			client: mockSupabaseClient,
-		})
+		const { getServerClient } = require("~/lib/supabase/client.server")
+			; (getServerClient as MockedFunction<any>).mockReturnValue({
+				client: mockSupabaseClient,
+			})
 	})
 
 	it("should return correct statistics", async () => {

@@ -2,7 +2,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { upsertProjectSection } from "~/features/projects/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 interface ProjectSectionData {

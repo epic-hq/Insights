@@ -1,5 +1,6 @@
+import { PanelLeftIcon } from "lucide-react"
 import { useMemo } from "react"
-import { NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
+import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import {
 	Sidebar,
 	SidebarContent,
@@ -83,9 +84,9 @@ export function AppSidebar() {
 	return (
 		<Sidebar collapsible="icon" variant="sidebar">
 			<SidebarHeader>
-				<div className="flex items-center gap-2 px-2">
+				<Link to="/home" className="flex items-center gap-2 px-2">
 					<div className="-ml-2 flex items-center gap-2">{isCollapsed ? <Logo /> : <LogoBrand />}</div>
-				</div>
+				</Link>
 				<TeamSwitcher accounts={accounts} collapsed={isCollapsed} />
 			</SidebarHeader>
 
@@ -160,7 +161,7 @@ export function AppSidebar() {
 				<UserProfile />
 			</SidebarFooter>
 
-			<SidebarRail>
+			<SidebarRail className="group pointer-events-auto">
 				<SidebarTrigger className="-right-4 absolute top-3" />
 			</SidebarRail>
 		</Sidebar>

@@ -6,7 +6,7 @@ import { AppLayout } from "~/components/layout/AppLayout"
 import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
-import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/client.server"
 import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
@@ -14,10 +14,11 @@ import type { Route } from "../+types/root"
 // Server-side Authentication Middleware
 // This middleware runs before every loader in protected routes
 // It ensures the user is authenticated and sets up the user context
-export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
+export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
+			consola.log("middleware user", user)
 			if (!user) {
 				throw redirect("/login")
 			}
@@ -26,7 +27,7 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			const jwt = user?.jwt || user?.access_token || null
 
 			// Use RLS client if JWT is present, otherwise fallback to anon client
-			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/server")).getServerClient(request).client
+			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/client.server")).getServerClient(request).client
 
 			// Get user's settings and accounts in parallel
 			const [userSettingsResult, userAccountsResult] = await Promise.all([
@@ -69,7 +70,11 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 				accounts: accounts || [],
 				currentAccount,
 			})
-			// consola.log("_ProtectedLayout Authentication middleware success\n")
+			consola.log("_ProtectedLayout Authentication middleware success, {", {
+				user_settings,
+				accounts,
+				currentAccount,
+			}, "\n")
 
 			// Check if signup process is completed
 			const signupCompleted = user_settings?.signup_data?.completed === true
@@ -114,12 +119,12 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 
 export async function loader({ context }: Route.LoaderArgs) {
 	try {
-		const loadContextInstance = context.get(loadContext)
-		const { lang } = loadContextInstance
+		// const loadContextInstance = context.get(loadContext)
+		// const { lang } = loadContextInstance
 		const user = context.get(userContext)
 
 		return {
-			lang,
+			// lang,
 			auth: {
 				user: user.claims,
 				accountId: user.account_id,
@@ -149,12 +154,32 @@ export default function ProtectedLayout() {
 	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage
 
 	useEffect(() => {
-		posthog.identify(auth.user.sub, {
+		// Identify user with person properties
+		// Only set properties that are explicitly set by the user
+		const identifyProps: Record<string, unknown> = {
 			email: auth.user.email,
 			full_name: auth.user.user_metadata?.full_name,
-		})
+		}
+
+		// Only add role and company if they exist in user_settings
+		if (user_settings?.role) {
+			identifyProps.role = user_settings.role
+		}
+		if (user_settings?.company_name) {
+			identifyProps.company_name = user_settings.company_name
+		}
+
+		posthog.identify(auth.user.sub, identifyProps)
+
+		// Set group analytics for account-level tracking
+		if (auth.accountId) {
+			posthog.group("account", auth.accountId, {
+				plan: "free", // TODO: Get actual plan from account settings
+				seats: accounts?.length || 1,
+			})
+		}
 		// consola.log("[protectedLayout] Identify user: ", auth.user)
-	}, [auth.user])
+	}, [auth.user, auth.accountId, user_settings, accounts])
 
 	return (
 		<AuthProvider user={auth.user} organizations={accounts} user_settings={user_settings}>

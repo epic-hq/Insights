@@ -96,6 +96,9 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	// Track all media streams for cleanup
 	const mediaStreamsRef = useRef<MediaStream[]>([])
 
+	// Ref to store stopStreaming function to avoid circular dependencies
+	const stopStreamingRef = useRef<((finalize?: boolean) => Promise<void>) | null>(null)
+
 	// Audio source selection
 	const [audioSource, setAudioSource] = useState<"microphone" | "system">("microphone")
 	const [micDeviceId, setMicDeviceId] = useState<string | "default">("default")
@@ -154,13 +157,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			}
 			cleanupMediaStreams()
 			// On unmount, ensure we don't accidentally finalize
-			stopStreaming(false)
+			if (stopStreamingRef.current) {
+				stopStreamingRef.current(false)
+			}
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [
-		cleanupMediaStreams, // On unmount, ensure we don't accidentally finalize
-		stopStreaming,
-	])
+	}, [cleanupMediaStreams])
 
 	// Start duration timer
 	const startDurationTimer = useCallback(() => {
@@ -490,7 +491,9 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			consola.error("startStreaming error", e)
 			setStreamStatus("error")
 			setIsRecording(false)
-			stopStreaming()
+			if (stopStreamingRef.current) {
+				stopStreamingRef.current()
+			}
 		}
 	}, [
 		assignedInterviewId,
@@ -500,7 +503,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		drainForSamples,
 		projectPath,
 		startDurationTimer,
-		stopStreaming,
 	])
 
 	// Pause without finalizing; keeps WS alive if possible
@@ -738,6 +740,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			projectPath,
 		]
 	)
+
+	// Update ref whenever stopStreaming changes to avoid circular dependencies
+	useEffect(() => {
+		stopStreamingRef.current = stopStreaming
+	}, [stopStreaming])
 
 	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 

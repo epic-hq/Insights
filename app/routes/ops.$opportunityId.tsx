@@ -5,7 +5,7 @@ import { z } from "zod"
 import OpportunityDetail from "~/components/opportunities/OpportunityDetail"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { db } from "~/lib/supabase/server"
+import { db } from "~/lib/supabase/client.server"
 import type { OpportunityView } from "~/types"
 
 export const meta: MetaFunction = ({ params }) => {

@@ -15,7 +15,7 @@ import {
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server"
 
 // Mock only external services, not DB operations
-vi.mock("~/lib/supabase/server", () => ({
+vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
 }))
 

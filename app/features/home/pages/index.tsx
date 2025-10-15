@@ -1,7 +1,7 @@
 import consola from "consola"
 import { ArrowRight, Hash, House, Mic, Target } from "lucide-react"
 import { useState } from "react"
-import { Link, type LoaderFunctionArgs, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -13,6 +13,11 @@ import type { Project, Project_Section } from "~/types"
 
 export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
+	if (!ctx) {
+		consola.error("home loader context not found")
+		// If middleware didn't populate context (e.g., session not yet visible), send user to login
+		return redirect("/login")
+	}
 	const { supabase, account_id } = ctx // account_id is now team account from middleware
 	const user_settings = ctx.user_settings
 

@@ -1,8 +1,11 @@
 import consola from "consola"
+import { useEffect } from "react"
 import { type LoaderFunctionArgs, redirect, useLocation } from "react-router"
 import { AuthUI } from "~/components/auth/AuthUI"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { LoginForm } from "~/components/login-form"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 import { PATHS } from "~/paths"
+import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const user = await getAuthenticatedUser(request)
@@ -18,6 +21,32 @@ export default function AuthPage() {
 	// CRITICAL: Include 'next' in the OAuth callback URL so it survives the OAuth roundtrip
 	const redirectTo = `${PATHS.AUTH.HOST}${PATHS.AUTH.CALLBACK}?next=${encodeURIComponent(next)}`
 	consola.debug(`login redirectTo (for OAuth only): ${redirectTo}`, { next })
+
+	// Persist incoming UTM params so they survive Supabase redirects
+	useEffect(() => {
+		const utmParams = extractUtmParamsFromSearch(location.search)
+		if (!hasUtmParams(utmParams)) {
+			return
+		}
+
+		try {
+			const existingRaw = document.cookie
+				.split("; ")
+				.find((row) => row.startsWith(`${UTM_COOKIE_NAME}=`))
+				?.split("=")[1]
+
+			const existing = existingRaw ? (JSON.parse(decodeURIComponent(existingRaw)) as UtmParams) : {}
+			const merged = mergeUtmParams(existing, utmParams)
+			const cookieValue = encodeURIComponent(JSON.stringify(merged))
+			const secure = window.location.protocol === "https:" ? "; Secure" : ""
+			const oneWeekSeconds = 60 * 60 * 24 * 7
+
+			document.cookie = `${UTM_COOKIE_NAME}=${cookieValue}; Path=/; Max-Age=${oneWeekSeconds}; SameSite=Lax${secure}`
+		} catch (error) {
+			consola.warn("[AUTH] Failed to persist UTM params", error)
+		}
+	}, [location.search])
+
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 dark:from-slate-950 dark:via-slate-900 dark:to-slate-800">
 			<div className="container relative flex min-h-screen flex-col items-center justify-center">
@@ -37,12 +66,12 @@ export default function AuthPage() {
 				<div className="w-full max-w-md">
 					{/* Main Auth Card */}
 					<div className="rounded-2xl border-0 bg-white/80 p-8 shadow-2xl backdrop-blur-sm dark:bg-slate-900/80">
-						<div className="mb-6 text-center">
+						{/* <div className="mb-6 text-center">
 							<h1 className="font-bold text-2xl text-slate-900 dark:text-slate-100">Welcome back</h1>
 							<p className="mt-2 text-slate-600 text-sm dark:text-slate-400">Sign in to your UpSight account</p>
-						</div>
+						</div> */}
 
-						<AuthUI view="sign_in" redirectTo={redirectTo} />
+						<LoginForm />
 					</div>
 
 					{/* Footer */}

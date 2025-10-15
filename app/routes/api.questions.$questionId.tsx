@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 /**
  * Intent-based API endpoint for question operations

@@ -1,7 +1,7 @@
 import consola from "consola"
 import { type LoaderFunctionArgs, redirect } from "react-router"
 import { acceptInvitation } from "~/features/teams/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
 	const url = new URL(request.url)

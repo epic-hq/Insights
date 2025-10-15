@@ -2,13 +2,14 @@ import { Mic, UploadCloud } from "lucide-react"
 import { useCallback } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData, useSearchParams } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import InterviewQuestionsManager from "~/components/questions/InterviewQuestionsManager"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { OnboardingStepper } from "~/features/onboarding/components/OnboardingStepper"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useRecordNow } from "~/hooks/useRecordNow"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ params, request }: LoaderFunctionArgs) {
 	const { projectId } = params
@@ -56,7 +57,7 @@ export default function QuestionsIndex() {
 	}
 
 	return (
-		<div className="mx-auto max-w-6xl px-4 py-6">
+		<PageContainer size="lg">
 			{isOnboarding && (
 				<div className="mb-8">
 					<OnboardingStepper
@@ -99,6 +100,6 @@ export default function QuestionsIndex() {
 					Upload Audio / Transcript
 				</Button>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

@@ -1729,6 +1729,78 @@ export type Database = {
           },
         ]
       }
+      mastra_ai_spans: {
+        Row: {
+          attributes: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          endedAt: string | null
+          endedAtZ: string | null
+          error: Json | null
+          input: Json | null
+          isEvent: boolean
+          links: Json | null
+          metadata: Json | null
+          name: string
+          output: Json | null
+          parentSpanId: string | null
+          scope: Json | null
+          spanId: string
+          spanType: string
+          startedAt: string
+          startedAtZ: string | null
+          traceId: string
+          updatedAt: string | null
+          updatedAtZ: string | null
+        }
+        Insert: {
+          attributes?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          endedAt?: string | null
+          endedAtZ?: string | null
+          error?: Json | null
+          input?: Json | null
+          isEvent: boolean
+          links?: Json | null
+          metadata?: Json | null
+          name: string
+          output?: Json | null
+          parentSpanId?: string | null
+          scope?: Json | null
+          spanId: string
+          spanType: string
+          startedAt: string
+          startedAtZ?: string | null
+          traceId: string
+          updatedAt?: string | null
+          updatedAtZ?: string | null
+        }
+        Update: {
+          attributes?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          endedAt?: string | null
+          endedAtZ?: string | null
+          error?: Json | null
+          input?: Json | null
+          isEvent?: boolean
+          links?: Json | null
+          metadata?: Json | null
+          name?: string
+          output?: Json | null
+          parentSpanId?: string | null
+          scope?: Json | null
+          spanId?: string
+          spanType?: string
+          startedAt?: string
+          startedAtZ?: string | null
+          traceId?: string
+          updatedAt?: string | null
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
       mastra_evals: {
         Row: {
           agent_name: string
@@ -1869,6 +1941,7 @@ export type Database = {
           scorer: Json
           scorerId: string
           source: string
+          spanId: string | null
           threadId: string | null
           traceId: string | null
           updatedAt: string
@@ -1902,6 +1975,7 @@ export type Database = {
           scorer: Json
           scorerId: string
           source: string
+          spanId?: string | null
           threadId?: string | null
           traceId?: string | null
           updatedAt: string
@@ -1935,6 +2009,7 @@ export type Database = {
           scorer?: Json
           scorerId?: string
           source?: string
+          spanId?: string | null
           threadId?: string | null
           traceId?: string | null
           updatedAt?: string
@@ -3679,7 +3754,9 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          company_description: string | null
           company_name: string | null
+          company_website: string | null
           created_at: string
           email: string | null
           first_name: string | null
@@ -3706,7 +3783,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_description?: string | null
           company_name?: string | null
+          company_website?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -3733,7 +3812,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_description?: string | null
           company_name?: string | null
+          company_website?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -4216,6 +4297,10 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: string
+      }
+      list_invitations_for_current_user: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }

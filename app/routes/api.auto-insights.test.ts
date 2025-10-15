@@ -1,11 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest"
 import { b } from "~/../baml_client"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { aggregateAutoInsightsData, formatDataForLLM } from "~/utils/autoInsightsData.server"
 import { action } from "./api.auto-insights"
 
 // Mock dependencies
-vi.mock("~/lib/supabase/server")
+vi.mock("~/lib/supabase/client.server")
 vi.mock("~/../baml_client")
 vi.mock("~/utils/autoInsightsData.server")
 vi.mock("consola")

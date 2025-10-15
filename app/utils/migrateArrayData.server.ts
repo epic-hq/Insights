@@ -4,7 +4,7 @@
  */
 
 import consola from "consola"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export interface MigrationStats {
 	insightTagsMigrated: number

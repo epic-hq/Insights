@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { getProjectStatusData } from "~/utils/project-status.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {

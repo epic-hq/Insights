@@ -4,6 +4,8 @@ create table public.user_settings (
 	first_name text,
 	last_name text,
 	company_name text,
+	company_website text,
+	company_description text,
 	title text,
 	role text,
 	industry text,

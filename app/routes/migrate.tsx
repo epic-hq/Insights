@@ -1,6 +1,6 @@
 import type { ActionFunctionArgs } from "react-router"
 import { Form, useActionData, useNavigation } from "react-router-dom"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrateArrayData.server"
 
 export async function action({ request }: ActionFunctionArgs) {

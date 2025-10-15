@@ -1,10 +1,12 @@
 import { parseWithZod } from "@conform-to/zod/v4"
 import consola from "consola"
+import posthog from "posthog-js"
 import { useCallback, useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { data, useLoaderData, useNavigation } from "react-router"
 import { useSubmit } from "react-router-dom"
 import { z } from "zod"
+import { PageContainer } from "~/components/layout/PageContainer"
 import {
 	AlertDialog,
 	AlertDialogAction,
@@ -18,7 +20,7 @@ import {
 import { Button } from "~/components/ui/button"
 import { type PermissionLevel, TeamInvite, type TeamMember } from "~/components/ui/team-invite"
 // import { sendEmail } from "~/emails/clients.server"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { PATHS } from "~/paths"
 import type { GetAccountInvitesResponse } from "~/types-accounts"
 import InvitationEmail from "../../../../emails/team-invitation"
@@ -68,7 +70,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	if (!accountId) throw new Response("Missing accountId", { status: 400 })
 
 	const url = new URL(request.url)
-	const inviteToken = url.searchParams.get("token")?.trim() || null
+	const inviteToken = url.searchParams.get("invite_token")?.trim() || null
 	let inviteAcceptance: InvitationAcceptanceState = { status: "idle" }
 
 	if (inviteToken) {
@@ -111,6 +113,28 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 						status: "accepted",
 						message: "Invitation accepted. You're now on this team.",
 					}
+
+					// Capture invite_accepted event
+					try {
+						const inviterUserId = (lookup?.inviter_user_id as string | undefined) ?? null
+						const role = (lookup?.account_role as "owner" | "member" | "viewer" | undefined) ?? "member"
+
+						posthog.capture("invite_accepted", {
+							account_id: accountId,
+							inviter_user_id: inviterUserId,
+							role,
+						})
+
+						// Update user lifecycle
+						posthog.identify(user.sub, {
+							$set: {
+								team_member: true,
+								last_team_joined_at: new Date().toISOString(),
+							},
+						})
+					} catch (trackingError) {
+						consola.warn("[INVITE] PostHog tracking failed:", trackingError)
+					}
 				}
 			}
 		}
@@ -121,14 +145,14 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 	const normalizedAccount = account
 		? {
-				account_id: accountId,
-				name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
-				personal_account: Boolean(
-					(account as Record<string, unknown>)?.personal_account ??
-						(account as Record<string, unknown>)?.personalAccount
-				),
-				account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
-			}
+			account_id: accountId,
+			name: ((account as Record<string, unknown>)?.name as string | null | undefined) ?? null,
+			personal_account: Boolean(
+				(account as Record<string, unknown>)?.personal_account ??
+				(account as Record<string, unknown>)?.personalAccount
+			),
+			account_role: ((account as Record<string, unknown>)?.account_role ?? "viewer") as "owner" | "member" | "viewer",
+		}
 		: null
 
 	let members: MembersRow[] = []
@@ -210,7 +234,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 			try {
 				// Build absolute invite URL that preserves token through auth
 				const host = PATHS.AUTH.HOST
-				const inviteUrl = `${host}/accept-invite?token=${encodeURIComponent(token)}`
+				const inviteUrl = `${host}/accept-invite?invite_token=${encodeURIComponent(token)}`
 
 				consola.info("[INVITE] Prepared invite", {
 					accountId,
@@ -223,8 +247,15 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				let teamName = "your team"
 				try {
 					const { data: accountData } = await dbGetAccount({ supabase: client, account_id: accountId })
-					teamName = (accountData as any)?.name || teamName
-				} catch {}
+					if (
+						accountData &&
+						typeof accountData === "object" &&
+						"name" in accountData &&
+						typeof accountData.name === "string"
+					) {
+						teamName = accountData.name
+					}
+				} catch { }
 				const { sendEmail } = await import("~/emails/clients.server")
 
 				const sendResult = await sendEmail({
@@ -250,6 +281,18 @@ export async function action({ request, params }: ActionFunctionArgs) {
 					error: err,
 				})
 			}
+		}
+
+		// Capture invite_sent event
+		try {
+			posthog.capture("invite_sent", {
+				account_id: accountId,
+				invitee_email: email,
+				role: mapPermissionToAccountRoleForRpc(permission),
+				invitation_type: "one_time",
+			})
+		} catch (trackingError) {
+			consola.warn("[INVITE] PostHog tracking failed:", trackingError)
 		}
 
 		return data({ ok: true, token, email })
@@ -358,7 +401,7 @@ export default function ManageTeamMembers() {
 	)
 
 	return (
-		<div className="container mx-auto max-w-3xl py-6">
+		<PageContainer size="sm" padded={false} className="container max-w-3xl py-6">
 			<div className="mb-6 space-y-2">
 				<h1 className="font-semibold text-2xl">Team Members</h1>
 				<p className="text-muted-foreground text-sm">
@@ -471,7 +514,7 @@ export default function ManageTeamMembers() {
 					</AlertDialog>
 				</>
 			)}
-		</div>
+		</PageContainer>
 	)
 }
 

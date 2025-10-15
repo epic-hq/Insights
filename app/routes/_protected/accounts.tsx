@@ -98,7 +98,7 @@ async function parse_account_id_from_params({
 // Server-side Authentication Middleware
 // This middleware runs before every loader in current-project-layout routes
 // It ensures the user is authenticated and sets up the user context
-export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
+export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const ctx = context.get(userContext)

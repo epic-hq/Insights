@@ -1,6 +1,7 @@
 import consola from "consola"
 import { type ActionFunctionArgs, type LoaderFunctionArgs, type MetaFunction, redirect } from "react-router"
 import { Form, useActionData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -123,9 +124,9 @@ export default function NewProject() {
 	const actionData = useActionData<typeof action>()
 
 	return (
-		<div className="mx-auto max-w-7xl">
-			<div className="space-y-8 px-4 py-6 sm:px-6 sm:py-8">
-				<div className="mx-auto max-w-2xl">
+		<PageContainer size="md">
+			<div className="space-y-8">
+				<div>
 					<div className="mb-6 sm:mb-8">
 						<h1 className="font-bold text-2xl tracking-tight sm:text-3xl">New Project</h1>
 						{/* <p className="mt-2 text-gray-600">Create a new project</p> */}
@@ -179,6 +180,6 @@ export default function NewProject() {
 					</Form>
 				</div>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

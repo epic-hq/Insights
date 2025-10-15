@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 import { b } from "baml_client"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {

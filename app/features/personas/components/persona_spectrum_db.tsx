@@ -12,7 +12,7 @@ import {
 	YAxis,
 	ZAxis,
 } from "recharts"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 // ---------------------------------------------------------------------------
 // Remix Route: /projects/:projectId/personas/spectrum

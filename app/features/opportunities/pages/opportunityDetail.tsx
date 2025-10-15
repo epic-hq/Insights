@@ -1,5 +1,6 @@
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -66,7 +67,7 @@ export default function OpportunityDetail() {
 	}
 
 	return (
-		<div className="mx-auto max-w-4xl">
+		<PageContainer size="lg" padded={false} className="max-w-4xl">
 			<div className="mb-8 flex items-center justify-between">
 				<div>
 					<div className="mb-2 flex items-center gap-2">
@@ -146,6 +147,6 @@ export default function OpportunityDetail() {
 					</div>
 				</div>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

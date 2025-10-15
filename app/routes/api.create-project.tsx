@@ -3,7 +3,8 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getPostHogServerClient } from "~/lib/posthog.server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 
 interface CreateProjectData {
 	target_orgs: string[]
@@ -111,6 +112,42 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		consola.log(`Created project: ${project.name} (${project.id}) for account ${teamAccountId}`)
+
+		// Check if this is user's first project
+		const { count: projectCount } = await supabase
+			.from("projects")
+			.select("id", { count: "exact", head: true })
+			.eq("account_id", teamAccountId)
+
+		const posthog = getPostHogServerClient()
+		if (posthog) {
+			await posthog.capture({
+				distinctId: user.sub,
+				event: "project_created",
+				properties: {
+					project_id: project.id,
+					account_id: teamAccountId,
+					project_name: project.name,
+					is_first_project: (projectCount || 0) <= 1,
+					has_description: Boolean(project.description),
+				},
+			})
+
+			// Update lifecycle_stage if this is their first project
+			if ((projectCount || 0) <= 1) {
+				await posthog.identify({
+					distinctId: user.sub,
+					properties: {
+						lifecycle_stage: "active",
+						first_project_created_at: new Date().toISOString(),
+					},
+				})
+			}
+
+			await posthog.flush()
+		} else {
+			consola.debug("[CREATE_PROJECT] PostHog client unavailable; skipping analytics")
+		}
 
 		return Response.json({
 			success: true,

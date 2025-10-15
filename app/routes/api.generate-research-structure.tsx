@@ -3,7 +3,7 @@ import { b } from "baml_client"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getProjectContextGeneric } from "~/features/questions/db"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 
@@ -312,7 +312,6 @@ async function saveResearchStructure(
 		// 3. Save Interview Prompts
 		const interviewPrompts = structure.interview_prompts.map((ip: any) => {
 			const mappedId = idMapping.get(ip.id)
-			const mappedResearchQuestionId = idMapping.get(ip.research_question_id)
 			const gateSlug = isValidationMode ? getValidationGateSlug(ip.research_question_id) : undefined
 			if (gateSlug && validationGateMeta[gateSlug]) {
 				registerGateMeta(gateSlug, (existing) => ({
@@ -325,7 +324,6 @@ async function saveResearchStructure(
 				id: mappedId,
 				project_id: projectId,
 				text: ip.text,
-				research_question_id: mappedResearchQuestionId,
 				category: gateSlug ?? ip.category ?? null,
 			}
 		})

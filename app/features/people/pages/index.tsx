@@ -1,6 +1,7 @@
 import { useMemo } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link, useParams } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
@@ -8,7 +9,7 @@ import { getPeople } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
@@ -17,8 +18,6 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
-	// const accountId = jwt?.claims.sub
 	//
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
@@ -90,7 +89,7 @@ export default function PeopleIndexPage() {
 
 			{/* Clean Header - Metro Style */}
 			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
-				<div className="mx-auto max-w-6xl">
+				<PageContainer size="lg" padded={false} className="max-w-6xl">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
 							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400"> </p>
@@ -104,11 +103,11 @@ export default function PeopleIndexPage() {
 							</Button>
 						</div>
 					</div>
-				</div>
+				</PageContainer>
 			</div>
 
 			{/* Main Content */}
-			<div className="mx-auto max-w-6xl px-6 py-12">
+			<PageContainer size="lg" padded={false} className="max-w-6xl px-6 py-12">
 				{people.length === 0 ? (
 					<div className="py-16 text-center">
 						<div className="mx-auto max-w-md">
@@ -148,9 +147,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-													name: pp.personas.name,
-													color_hex: pp.personas.color_hex || undefined,
-												}
+												name: pp.personas.name,
+												color_hex: pp.personas.color_hex || undefined,
+											}
 											: undefined,
 									})),
 								}}
@@ -159,7 +158,7 @@ export default function PeopleIndexPage() {
 						))}
 					</div>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

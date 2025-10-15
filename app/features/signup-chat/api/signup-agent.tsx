@@ -3,7 +3,7 @@ import { convertToModelMessages } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { mastra } from "~/mastra"
 import { memory } from "~/mastra/memory"
 
@@ -68,11 +68,11 @@ export async function action({ request }: ActionFunctionArgs) {
 		// NOTE: Not sure that this is working. Agent does not seem to be picking it up.
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("onFinish", data)

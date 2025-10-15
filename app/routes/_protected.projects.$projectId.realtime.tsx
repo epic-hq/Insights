@@ -1,7 +1,7 @@
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router"
 import { InterviewCopilot } from "~/features/realtime/components/InterviewCopilot"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client: supabase } = getServerClient(request)

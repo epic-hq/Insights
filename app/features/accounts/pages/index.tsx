@@ -1,5 +1,5 @@
 import type { LoaderFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader(loaderArgs: LoaderFunctionArgs) {
 	const { client: supabase } = getServerClient(loaderArgs.request)

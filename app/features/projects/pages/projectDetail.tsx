@@ -1,6 +1,7 @@
 import consola from "consola"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -71,7 +72,7 @@ export default function ProjectDetail() {
 	const personas = project.project_personas ?? []
 
 	return (
-		<div className="mx-auto max-w-4xl">
+		<PageContainer size="lg" padded={false} className="max-w-4xl">
 			<div className="mb-12 flex items-start justify-between">
 				<div className="flex-1">
 					<h1 className="mb-3 font-light text-4xl text-gray-900 tracking-tight">{project.name}</h1>
@@ -229,6 +230,6 @@ export default function ProjectDetail() {
 					</div>
 				</div>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

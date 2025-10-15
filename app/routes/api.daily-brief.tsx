@@ -2,7 +2,7 @@ import { RuntimeContext } from "@mastra/core/di"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getSession } from "~/lib/supabase/server"
+import { getSession } from "~/lib/supabase/client.server"
 import { mastra } from "~/mastra"
 
 export async function action({ request }: ActionFunctionArgs) {

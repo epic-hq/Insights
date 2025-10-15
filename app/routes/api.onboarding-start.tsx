@@ -5,7 +5,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
-import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
@@ -127,7 +127,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
 				baseProjectName = derived.name || baseProjectName
 				projectDescription = derived.description || projectDescription
-			} catch {}
+			} catch { }
 
 			// Find available project name by checking for slug conflicts
 			let projectName = baseProjectName
@@ -346,10 +346,10 @@ Please extract insights that specifically address these research questions and h
 				process.env.NODE_ENV === "production"
 					? PRODUCTION_HOST
 					: (() => {
-							const tunnel = process.env.PUBLIC_TUNNEL_URL
-							if (!tunnel) return PRODUCTION_HOST
-							return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
-						})()
+						const tunnel = process.env.PUBLIC_TUNNEL_URL
+						if (!tunnel) return PRODUCTION_HOST
+						return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
+					})()
 			const webhookUrl = `${host}/api/assemblyai-webhook`
 
 			consola.log("AssemblyAI Webhook: Starting transcription with webhook URL:", webhookUrl)

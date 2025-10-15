@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {

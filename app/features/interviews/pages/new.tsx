@@ -2,6 +2,7 @@ import { Plus, User, Users, X } from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
@@ -165,7 +166,7 @@ export default function NewInterview() {
 	}
 
 	return (
-		<div className="mx-auto max-w-4xl">
+		<PageContainer size="lg" padded={false} className="max-w-4xl">
 			<div className="mb-8">
 				<h1 className="font-bold text-3xl text-foreground">New Interview</h1>
 				<p className="mt-2 text-muted-foreground">Create a comprehensive interview record with participant details</p>
@@ -425,6 +426,6 @@ export default function NewInterview() {
 					</Button>
 				</div>
 			</Form>
-		</div>
+		</PageContainer>
 	)
 }

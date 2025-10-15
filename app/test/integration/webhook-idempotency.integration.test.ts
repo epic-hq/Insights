@@ -4,7 +4,7 @@
  */
 
 import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
-import { createSupabaseAdminClient } from "~/lib/supabase/server"
+import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Only mock external APIs, not our database or core logic

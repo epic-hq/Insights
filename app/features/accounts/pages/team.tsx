@@ -1,5 +1,6 @@
 import { ArrowLeft, BookOpen, Calendar, Code, Edit, Settings, Share, Trash2, Users } from "lucide-react"
 import { useState } from "react"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -40,7 +41,7 @@ export default function ProjectDetail() {
 
 	return (
 		<div className="min-h-screen bg-gray-50/50">
-			<div className="mx-auto max-w-5xl p-6">
+			<PageContainer size="lg" padded={false} className="max-w-5xl p-6">
 				{/* Header */}
 				<div className="mb-8">
 					<div className="mb-6 flex items-center gap-4">
@@ -204,7 +205,7 @@ export default function ProjectDetail() {
 						</Card>
 					</TabsContent>
 				</Tabs>
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

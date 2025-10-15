@@ -2,6 +2,7 @@ import consola from "consola"
 import React from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { getInsightById } from "~/features/insights/db"
 import { userContext } from "~/server/user-context"
 import { InsightCardV3Page } from "../components/InsightCardV3Page"
@@ -52,15 +53,19 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	}
 }
 
-export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, { error: any }> {
+type ErrorBoundaryState = {
+	error: unknown | null
+}
+
+export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
 	constructor(props: { children: React.ReactNode }) {
 		super(props)
 		this.state = { error: null }
 	}
-	static getDerivedStateFromError(error: any) {
+	static getDerivedStateFromError(error: unknown) {
 		return { error }
 	}
-	componentDidCatch(_error: any) {
+	componentDidCatch(_error: unknown) {
 		// Optionally send to server or analytics here
 	}
 	render() {
@@ -77,7 +82,7 @@ export default function InsightDetail() {
 		return <div>Insight not found</div>
 	}
 	return (
-		<div className="mx-auto max-w-4xl">
+		<PageContainer size="lg" padded={false} className="max-w-4xl">
 			{/* <div className="mb-6 flex items-center gap-2">
 				<Link to="/insights" className="text-blue-600 hover:text-blue-800">
 					Insights
@@ -88,6 +93,6 @@ export default function InsightDetail() {
 			<ErrorBoundary>
 				<InsightCardV3Page insight={insight} extended={true} />
 			</ErrorBoundary>
-		</div>
+		</PageContainer>
 	)
 }
