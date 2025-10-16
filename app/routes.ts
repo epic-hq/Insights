@@ -98,21 +98,17 @@ const routes = [
 	]),
 
 	// Authentication routes
-	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("login", "./routes/login.tsx"),
 	route("sign-up", "./routes/sign-up.tsx"),
+	route("/auth/oauth", "./routes/(auth)+/oauth/route.ts"),
+	route("/auth/callback", "./routes/auth.callback.tsx"),
 	route("forgot-password", "./routes/forgot-password.tsx"),
-	// route("login", "./routes/(auth)+/login.tsx"),
 	route("login_success", "./routes/(auth)+/login_success.tsx"),
 	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
-	// route("register", "./routes/(auth)+/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
 	route("accept-invite", "./routes/accept-invite.tsx"),
 	route("invites", "./routes/invites.tsx"),
 
-	// New Auth
-	// route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
-	route("/auth/oauth", "./routes/(auth)+/oauth/route.ts"),
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
@@ -120,7 +116,6 @@ const routes = [
 	route("api/update-field", "./routes/api.update-field.tsx"),
 	route("api/update-user-project-preference", "./routes/api.update-user-project-preference.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
-	// route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
 	route("api/evaluate-question", "./routes/api.evaluate-question.tsx"),
 	route("api/create-project", "./routes/api.create-project.tsx"),
@@ -160,7 +155,6 @@ const routes = [
 	route("apple-touch-icon-precomposed.png", "./routes/apple-touch-icon-precomposed[.]png.ts"),
 
 	// Test routes
-	// route("test_register", "./routes/(auth)+/test_register.tsx"),
 	route("test/upsight", "./routes/test.upsight.tsx"),
 	route("test/question-quality", "./routes/test.question-quality.tsx"),
 	// route("realtime/quick", "./features/realtime/pages/quick.tsx"),

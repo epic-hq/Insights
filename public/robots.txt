@@ -1,0 +1,18 @@
+# Insights - Robots.txt
+# https://www.robotstxt.org/robotstxt.html
+
+User-agent: *
+Allow: /
+
+# Disallow private/authenticated routes
+Disallow: /a/
+Disallow: /api/
+Disallow: /auth/
+
+# Allow public pages
+Allow: /auth/login
+Allow: /auth/register
+Allow: /sign-up
+
+# Sitemap location
+Sitemap: https://getupsight.com/sitemap.xml

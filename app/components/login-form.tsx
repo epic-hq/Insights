@@ -1,6 +1,5 @@
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 
@@ -34,7 +33,12 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 			<form onSubmit={handleSocialLogin}>
 				<div className="flex flex-col gap-6">
 					{error && <p className="text-destructive-500 text-sm">{error}</p>}
-					<Button type="submit" className="w-full" variant="ghost" disabled={isLoading}>
+					<Button 
+						type="submit" 
+						className="w-full hover:bg-transparent hover:opacity-80" 
+						variant="ghost" 
+						disabled={isLoading}
+					>
 						{isLoading ? "Logging in..." : <img src="/images/auth/web_light_sq_SI@2x.png" className="h-10" alt="" />}
 					</Button>
 				</div>

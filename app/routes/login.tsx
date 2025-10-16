@@ -104,7 +104,7 @@ export default function Login() {
 								<CardTitle className="text-center text-2xl">Login</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-8 p-0">
-								<LoginForm />
+								<LoginForm className="hover:bg-transparent" />
 								<fetcher.Form method="post">
 									<div className="flex flex-col gap-6">
 										<div className="grid gap-2">
