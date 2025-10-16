@@ -3,6 +3,7 @@ import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { Streamdown } from "streamdown"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { BackButton } from "~/components/ui/BackButton"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -179,7 +180,7 @@ export default function EditInterview() {
 	const [notes, setNotes] = useState<string>(normalize(interview.observations_and_notes))
 
 	return (
-		<div className="mx-auto max-w-2xl">
+		<PageContainer size="sm" padded={false} className="max-w-2xl">
 			<div className="mb-6">
 				<BackButton
 					to={routes.interviews.detail(interview.id)}
@@ -272,6 +273,7 @@ export default function EditInterview() {
 								mediaUrl={interview.media_url}
 								title="Play"
 								size="sm"
+								className="max-w-xs"
 								duration_sec={interview.duration_sec || undefined}
 							/>
 						)}
@@ -318,6 +320,6 @@ export default function EditInterview() {
 					</Button>
 				</Form>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

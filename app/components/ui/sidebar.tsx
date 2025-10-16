@@ -241,6 +241,7 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 			size="icon"
 			className={cn("size-7", className)}
 			onClick={(event) => {
+				event.stopPropagation()
 				onClick?.(event)
 				toggleSidebar()
 			}}
@@ -252,17 +253,11 @@ function SidebarTrigger({ className, onClick, ...props }: React.ComponentProps<t
 	)
 }
 
-function SidebarRail({ className, ...props }: React.ComponentProps<"button">) {
-	const { toggleSidebar } = useSidebar()
-
+function SidebarRail({ className, ...props }: React.ComponentProps<"div">) {
 	return (
-		<button
+		<div
 			data-sidebar="rail"
 			data-slot="sidebar-rail"
-			aria-label="Toggle Sidebar"
-			tabIndex={-1}
-			onClick={toggleSidebar}
-			title="Toggle Sidebar"
 			className={cn(
 				"-translate-x-1/2 group-data-[side=left]:-right-4 absolute inset-y-0 z-20 hidden w-4 transition-all ease-linear after:absolute after:inset-y-0 after:left-1/2 after:w-[2px] hover:after:bg-sidebar-border group-data-[side=right]:left-0 sm:flex",
 				"in-data-[side=left]:cursor-w-resize in-data-[side=right]:cursor-e-resize",

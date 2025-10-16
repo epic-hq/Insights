@@ -21,7 +21,7 @@ import {
 import PersonaStrategicPanel, {
 	PersonaStrategicPanelMockData,
 } from "~/features/personas/components/PersonaStrategicPanel"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Persona } from "~/types"
 import PersonaCompareBoard from "./PersonaCompareBoard"
 import { defaultMapperFromDifferentiators, RadialSpectrumFromSupabase } from "./persona_visualization_mockup3"

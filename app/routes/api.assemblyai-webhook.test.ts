@@ -2,7 +2,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest"
 import { action } from "./api.assemblyai-webhook"
 
 // Mock dependencies
-vi.mock("~/lib/supabase/server")
+vi.mock("~/lib/supabase/client.server")
 vi.mock("~/utils/processInterview.server")
 vi.mock("consola")
 
@@ -13,7 +13,7 @@ const mockSupabaseAdmin = {
 const mockProcessInterview = vi.fn()
 
 // Mock the admin client
-vi.mocked(import("~/lib/supabase/server")).mockResolvedValue({
+vi.mocked(import("~/lib/supabase/client.server")).mockResolvedValue({
 	createSupabaseAdminClient: () => mockSupabaseAdmin,
 })
 

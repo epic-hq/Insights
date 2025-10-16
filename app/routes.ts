@@ -82,6 +82,7 @@ const routes = [
 
 				// Realtime interviews APIs (project-scoped)
 				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),
+				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
 				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
 				// Project-setup agent chat API (project-scoped)
@@ -98,22 +99,26 @@ const routes = [
 
 	// Authentication routes
 	route("/auth/callback", "./routes/auth.callback.tsx"),
-	route("login", "./routes/(auth-new)+/login.tsx"),
+	route("login", "./routes/login.tsx"),
+	route("sign-up", "./routes/sign-up.tsx"),
+	route("forgot-password", "./routes/forgot-password.tsx"),
+	// route("login", "./routes/(auth)+/login.tsx"),
 	route("login_success", "./routes/(auth)+/login_success.tsx"),
 	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
-	route("register", "./routes/(auth)+/register.tsx"),
+	// route("register", "./routes/(auth)+/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
 	route("accept-invite", "./routes/accept-invite.tsx"),
 	route("invites", "./routes/invites.tsx"),
 
 	// New Auth
 	// route("/auth-new/login", "./routes/(auth-new)+/login.tsx"),
-	route("/auth-new/oauth", "./routes/(auth-new)+/oauth/route.ts"),
+	route("/auth/oauth", "./routes/(auth)+/oauth/route.ts"),
 
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
 	route("api/update-field", "./routes/api.update-field.tsx"),
+	route("api/update-user-project-preference", "./routes/api.update-user-project-preference.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	// route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),
@@ -129,6 +134,7 @@ const routes = [
 	route("api/analyze-project-status", "./routes/api.analyze-project-status.tsx"),
 	route("api/analyze-research-evidence", "./routes/api.analyze-research-evidence.tsx"),
 	route("api/agent-state/:agentId", "./routes/api.agent-state.$agentId.tsx"),
+	route("api/media/signed-url", "./routes/api.media.signed-url.tsx"),
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
@@ -154,7 +160,7 @@ const routes = [
 	route("apple-touch-icon-precomposed.png", "./routes/apple-touch-icon-precomposed[.]png.ts"),
 
 	// Test routes
-	route("test_register", "./routes/(auth)+/test_register.tsx"),
+	// route("test_register", "./routes/(auth)+/test_register.tsx"),
 	route("test/upsight", "./routes/test.upsight.tsx"),
 	route("test/question-quality", "./routes/test.question-quality.tsx"),
 	// route("realtime/quick", "./features/realtime/pages/quick.tsx"),

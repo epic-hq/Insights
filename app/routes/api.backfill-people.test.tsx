@@ -12,7 +12,7 @@ vi.mock("~/utils/backfillPeople.server", () => ({
 	getInterviewPeopleStats: vi.fn(),
 }))
 
-vi.mock("~/lib/supabase/server", () => ({
+vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: vi.fn(),
 }))
 
@@ -31,7 +31,7 @@ describe("api.backfill-people", () => {
 			},
 		}
 
-		const { getServerClient } = require("~/lib/supabase/server")
+		const { getServerClient } = require("~/lib/supabase/client.server")
 		;(getServerClient as MockedFunction<any>).mockReturnValue(mockSupabaseClient)
 	})
 

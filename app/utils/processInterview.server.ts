@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
+import posthog from "posthog-js"
 import { b } from "~/../baml_client"
 import type { FacetCatalog, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
 import type { Database, Json } from "~/../supabase/types"
@@ -15,7 +16,7 @@ import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from
 import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -1419,6 +1420,57 @@ export async function processInterviewTranscriptWithClient({
 
 	// 8. Update interview status to ready
 	await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
+
+	// 9. Capture interview_added event
+	try {
+		// Determine source of interview
+		const source = metadata.fileName
+			? metadata.fileName.match(/\.(mp3|wav|m4a|ogg)$/i)
+				? "upload"
+				: metadata.fileName.match(/\.(mp4|mov|avi|webm)$/i)
+					? "upload"
+					: "paste"
+			: "record"
+
+		const fileType = metadata.fileName
+			? metadata.fileName.match(/\.(mp3|wav|m4a|ogg)$/i)
+				? "audio"
+				: metadata.fileName.match(/\.(mp4|mov|avi|webm)$/i)
+					? "video"
+					: "text"
+			: undefined
+
+		posthog.capture("interview_added", {
+			interview_id: interviewRecord.id,
+			project_id: metadata.projectId,
+			account_id: metadata.accountId,
+			source,
+			duration_s: interviewRecord.duration_sec || 0,
+			file_type: fileType,
+			has_transcript: Boolean(fullTranscript),
+			evidence_count: insertedEvidenceIds.length,
+			insights_count: data?.length || 0,
+		})
+
+		// Update user lifecycle if this is early in their journey
+		if (metadata.userId) {
+			const { count: interviewCount } = await db
+				.from("interviews")
+				.select("id", { count: "exact", head: true })
+				.eq("account_id", metadata.accountId)
+
+			if ((interviewCount || 0) <= 3) {
+				posthog.identify(metadata.userId, {
+					$set: {
+						interview_count: interviewCount || 1,
+					},
+				})
+			}
+		}
+	} catch (trackingError) {
+		consola.warn("[processInterview] PostHog tracking failed:", trackingError)
+		// Don't fail the process if tracking fails
+	}
 
 	return { stored: data as InsightInsert[], interview: interviewRecord }
 }

@@ -1,6 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
@@ -118,7 +119,7 @@ export default function EditProject() {
 	const actionData = useActionData<typeof action>()
 
 	return (
-		<div className="mx-auto max-w-2xl">
+		<PageContainer size="sm" padded={false} className="max-w-2xl">
 			<div className="mb-8">
 				<h1 className="font-bold text-3xl text-gray-900">Edit Project</h1>
 				<p className="mt-2 text-gray-600">Update project details</p>
@@ -198,6 +199,6 @@ export default function EditProject() {
 					</Button>
 				</Form>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

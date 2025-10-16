@@ -3,7 +3,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { data } from "react-router"
 import { z } from "zod"
 import { createTeamAccount } from "~/features/teams/db/accounts"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 
 const createTeamSchema = z.object({
 	name: z.string().min(1, "Team name is required").max(50, "Team name must be 50 characters or less"),

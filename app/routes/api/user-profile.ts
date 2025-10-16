@@ -1,4 +1,4 @@
-import { supabaseAdmin } from "~/lib/supabase/server"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: { request: Request }) {
 	const url = new URL(request.url)

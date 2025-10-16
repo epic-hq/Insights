@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { ActionFunction, LoaderFunction } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 import { type EntityType, getVoteCountsForEntities, getVoteCountsForEntity, removeVote, upsertVote } from "../db"

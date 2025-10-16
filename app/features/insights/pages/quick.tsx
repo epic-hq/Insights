@@ -19,8 +19,13 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	const supabase = ctx.supabase
 
 	const ctx_project = context.get(currentProjectContext)
-	const projectId = ctx_project.projectId || ""
-	const accountId = ctx_project.accountId || ""
+	const projectId = ctx_project.projectId
+	const accountId = ctx_project.accountId
+
+	if (!projectId || !accountId) {
+		consola.warn("Missing project or account context")
+		return { insights: [] }
+	}
 
 	const { data: insights, error } = await getInsights({
 		supabase,

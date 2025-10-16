@@ -5,7 +5,7 @@ import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
-import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
@@ -302,15 +302,15 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "AssemblyAI API key not configured" }, { status: 500 })
 			}
 
-			// Store audio file in Supabase Storage first using shared utility
-			consola.log("Storing audio file in Supabase Storage...")
-			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile(
-				supabaseAdmin,
-				finalProjectId,
-				interview.id,
-				file,
-				file.name
-			)
+			// Store audio file in Cloudflare R2 first using shared utility
+			consola.log("Storing audio file in Cloudflare R2...")
+			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile({
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				source: file,
+				originalFilename: file.name,
+				contentType: file.type,
+			})
 
 			if (storageError || !storedMediaUrl) {
 				consola.error("Audio storage failed:", storageError)

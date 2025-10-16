@@ -1,28 +1,26 @@
+import { Stream } from "@cloudflare/stream-react"
 import consola from "consola"
-import { Download, FastForward, Pause, Play, Rewind, Volume2 } from "lucide-react"
-import { useEffect, useRef, useState } from "react"
+import { Download } from "lucide-react"
+import { useCallback, useEffect, useState } from "react"
 import { cn } from "~/lib/utils"
 import { Button } from "./button"
-import { Slider } from "./slider"
 
-interface EnhancedMediaPlayerProps {
+export interface EnhancedMediaPlayerProps {
 	mediaUrl: string
 	startTime?: string | number // Can be seconds or MM:SS format
-	endTime?: string | number
 	title?: string
 	className?: string
-	size?: "sm" | "default" | "lg"
-	duration_sec?: number
 	autoPlay?: boolean
 	showDebug?: boolean
 }
 
-// Helper function to convert time to seconds - handle multiple formats
+type MediaIntent = "playback" | "download"
+
+// Helper function to convert time to seconds
 function parseTimeToSeconds(time: string | number | undefined): number {
 	if (typeof time === "number") return time
 	if (!time) return 0
 
-	// Handle MM:SS format
 	if (typeof time === "string" && time.includes(":")) {
 		const parts = time.split(":")
 		if (parts.length === 2) {
@@ -38,157 +36,254 @@ function parseTimeToSeconds(time: string | number | undefined): number {
 		}
 	}
 
-	// Handle milliseconds (if > 3600, likely milliseconds)
 	if (typeof time === "string") {
 		const parsed = Number.parseFloat(time)
 		if (!Number.isNaN(parsed)) {
-			// If the number is very large, it might be milliseconds
-			if (parsed > 3600) {
-				return parsed / 1000 // Convert milliseconds to seconds
-			}
-			return parsed
+			return parsed > 3600 ? parsed / 1000 : parsed
 		}
 	}
 
 	return 0
 }
 
-// Helper function to format seconds as MM:SS or HH:MM:SS
-function formatDuration(seconds: number | null | undefined): string {
-	if (typeof seconds !== "number" || !Number.isFinite(seconds) || seconds < 0) {
-		return "00:00"
+function extractFilenameFromUrl(url: string): string | null {
+	try {
+		const withoutQuery = url.split("?")[0] ?? ""
+		const segments = withoutQuery.split("/").filter(Boolean)
+		if (!segments.length) return null
+		return decodeURIComponent(segments[segments.length - 1])
+	} catch {
+		return null
 	}
-	const whole = Math.floor(seconds)
-	const hours = Math.floor(whole / 3600)
-	const minutes = Math.floor((whole % 3600) / 60)
-	const secs = whole % 60
-
-	if (hours > 0) {
-		return `${hours}:${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
-	}
-
-	return `${minutes.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`
 }
 
 export function EnhancedMediaPlayer({
 	mediaUrl,
 	startTime,
-	endTime,
 	title = "Play Media",
 	className,
-	size = "default",
-	duration_sec,
 	autoPlay = false,
 	showDebug = false,
 }: EnhancedMediaPlayerProps) {
-	const [isPlaying, setIsPlaying] = useState(false)
+	const startSeconds = parseTimeToSeconds(startTime)
+	const [isClient, setIsClient] = useState(false)
+	const [signedUrl, setSignedUrl] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
-	const [currentTime, setCurrentTime] = useState(0)
-	const [duration, setDuration] = useState<number | null>(
-		typeof duration_sec === "number" && Number.isFinite(duration_sec) && duration_sec > 0
-			? Math.floor(duration_sec)
-			: null
-	)
-	const [volume, setVolume] = useState(1)
-	const [shouldLoad, setShouldLoad] = useState(false) // Lazy load media
-	const mediaRef = useRef<HTMLAudioElement | HTMLVideoElement>(null)
+	const [error, setError] = useState<string | null>(null)
 
-	// Cleanup when component unmounts or URL changes
 	useEffect(() => {
-		return () => {
-			if (mediaRef.current) {
-				mediaRef.current.pause()
-				mediaRef.current.src = ""
-				mediaRef.current.load()
-			}
-		}
+		setIsClient(true)
 	}, [])
 
-	const startSeconds = parseTimeToSeconds(startTime)
-	const endSeconds = parseTimeToSeconds(endTime)
+	// Fetch signed URL when component mounts or mediaUrl changes
+	useEffect(() => {
+		let cancelled = false
+
+		const fetchSignedUrl = async () => {
+			setIsLoading(true)
+			setError(null)
+
+			try {
+				const response = await fetch("/api/media/signed-url", {
+					method: "POST",
+					credentials: "include",
+					headers: { "Content-Type": "application/json" },
+					body: JSON.stringify({ mediaUrl, intent: "playback" }),
+				})
+
+				if (!response.ok) {
+					throw new Error(`Failed to get signed URL: ${response.status}`)
+				}
+
+				const data = (await response.json()) as { signedUrl?: string }
+				if (!cancelled && data.signedUrl) {
+					setSignedUrl(data.signedUrl)
+				}
+			} catch (err) {
+				if (!cancelled) {
+					const message = err instanceof Error ? err.message : "Failed to load media"
+					consola.error("Error fetching signed URL:", err)
+					setError(message)
+				}
+			} finally {
+				if (!cancelled) {
+					setIsLoading(false)
+				}
+			}
+		}
+
+		void fetchSignedUrl()
+
+		return () => {
+			cancelled = true
+		}
+	}, [mediaUrl])
+
+	const handleDownload = useCallback(async () => {
+		try {
+			const response = await fetch("/api/media/signed-url", {
+				method: "POST",
+				credentials: "include",
+				headers: { "Content-Type": "application/json" },
+				body: JSON.stringify({
+					mediaUrl,
+					intent: "download",
+					filename: extractFilenameFromUrl(mediaUrl) ?? "media-file",
+				}),
+			})
+
+			if (!response.ok) {
+				alert("Failed to authorize download. Please try again.")
+				return
+			}
+
+			const data = (await response.json()) as { signedUrl?: string }
+			if (data.signedUrl) {
+				const link = document.createElement("a")
+				link.href = data.signedUrl
+				link.download = extractFilenameFromUrl(data.signedUrl) ?? extractFilenameFromUrl(mediaUrl) ?? "media-file"
+				document.body.appendChild(link)
+				link.click()
+				document.body.removeChild(link)
+			}
+		} catch (err) {
+			consola.error("Download error:", err)
+			alert("Failed to download media. Please try again.")
+		}
+	}, [mediaUrl])
 
 	if (!mediaUrl) return null
 
-	// Better media type detection
-	const isVideo = /\.(mp4|mov|avi|webm|mkv)$/i.test(mediaUrl) || /video\//i.test(mediaUrl)
-	const mediaType = isVideo ? "video" : "audio"
+	if (isLoading) {
+		return (
+			<div className={cn("flex items-center justify-center rounded-md border bg-muted p-8", className)}>
+				<div className="flex flex-col items-center gap-2">
+					<div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+					<p className="text-muted-foreground text-sm">Loading media...</p>
+				</div>
+			</div>
+		)
+	}
 
-	const handlePlayPause = async () => {
-		// Load media on first play
-		if (!shouldLoad) {
-			setShouldLoad(true)
-			setIsLoading(true)
-			// Wait for next render cycle when media element exists
-			setTimeout(async () => {
-				if (mediaRef.current) {
-					try {
-						if (startSeconds > 0) {
-							mediaRef.current.currentTime = startSeconds
-						}
-						await mediaRef.current.play()
-						setIsPlaying(true)
-					} catch (error) {
-						consola.error("Error playing media:", error)
-						alert("Unable to play media. Please check the file format and try again.")
-					} finally {
-						setIsLoading(false)
-					}
-				}
-			}, 100)
+	if (error) {
+		return (
+			<div className={cn("rounded-md border border-destructive bg-destructive/10 p-4", className)}>
+				<p className="text-destructive text-sm">{error}</p>
+			</div>
+		)
+	}
+
+	if (!signedUrl) {
+		return null
+	}
+
+	const ensurePlaybackSource = useCallback(async () => {
+		if (playbackSource) {
+			const expiresAt = playbackSource.expiresAt
+			if (!expiresAt || expiresAt - Date.now() > 15_000) {
+				return playbackSource.url
+			}
+		}
+
+		const signed = await requestSignedUrl("playback")
+		if (signed?.url) {
+			setPlaybackSource(signed)
+			return signed.url
+		}
+
+		consola.warn("No signed playback URL available for media", { mediaUrl })
+		return null
+	}, [mediaUrl, playbackSource, requestSignedUrl])
+
+	const waitForMediaElement = useCallback(async () => {
+		const maxAttempts = 20
+		for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+			if (mediaRef.current) {
+				return mediaRef.current
+			}
+			await sleep(25)
+		}
+		return mediaRef.current
+	}, [])
+
+	const handlePlayPause = useCallback(async () => {
+		if (usesCloudflareStream) {
+			if (shouldLoad) {
+				setShouldLoad(false)
+				setIsPlaying(false)
+			} else {
+				setShouldLoad(true)
+				setIsPlaying(true)
+			}
 			return
 		}
 
-		if (!mediaRef.current) return
+		if (isPlaying) {
+			if (mediaRef.current) {
+				mediaRef.current.pause()
+			}
+			setIsPlaying(false)
+			return
+		}
 
 		try {
 			setIsLoading(true)
-			if (isPlaying) {
-				mediaRef.current.pause()
-				setIsPlaying(false)
-			} else {
-				// Set start time if specified
-				if (startSeconds > 0) {
-					mediaRef.current.currentTime = startSeconds
-				}
-				await mediaRef.current.play()
-				setIsPlaying(true)
+
+			if (!shouldLoad) {
+				setShouldLoad(true)
 			}
+
+			const playbackUrl = await ensurePlaybackSource()
+			if (!playbackUrl) {
+				throw new Error("Unable to resolve media URL for playback")
+			}
+
+			const element = await waitForMediaElement()
+			if (!element) {
+				throw new Error("Media element is not available")
+			}
+
+			if (element.src !== playbackUrl) {
+				element.src = playbackUrl
+				element.load()
+			}
+
+			if (startSeconds > 0) {
+				element.currentTime = startSeconds
+				setCurrentTime(startSeconds)
+			}
+
+			await element.play()
+			setIsPlaying(true)
 		} catch (error) {
 			consola.error("Error playing media:", error)
+			setShouldLoad(false)
+			setPlaybackSource(null)
 			alert("Unable to play media. Please check the file format and try again.")
 		} finally {
 			setIsLoading(false)
 		}
-	}
-
-	const _handleSeekToStart = () => {
-		if (mediaRef.current && startSeconds > 0) {
-			mediaRef.current.currentTime = startSeconds
-			setCurrentTime(startSeconds)
-		}
-	}
+	}, [ensurePlaybackSource, isPlaying, shouldLoad, startSeconds, usesCloudflareStream, waitForMediaElement])
 
 	const handleSkipForward = () => {
-		if (mediaRef.current) {
-			mediaRef.current.currentTime = Math.min(
-				mediaRef.current.currentTime + 10,
-				duration || mediaRef.current.duration || 0
-			)
-		}
+		const element = mediaRef.current
+		if (!element) return
+		const computedDuration =
+			duration ?? (Number.isFinite(element.duration) && element.duration > 0 ? element.duration : 0)
+		const max = computedDuration > 0 ? computedDuration : element.currentTime + 10
+		element.currentTime = Math.min(element.currentTime + 10, max)
 	}
 
 	const handleSkipBackward = () => {
-		if (mediaRef.current) {
-			mediaRef.current.currentTime = Math.max(mediaRef.current.currentTime - 10, 0)
-		}
+		if (!mediaRef.current) return
+		mediaRef.current.currentTime = Math.max(mediaRef.current.currentTime - 10, 0)
 	}
 
 	const handleSeek = (value: number[]) => {
-		if (mediaRef.current && duration) {
-			const newTime = (value[0] / 100) * duration
-			mediaRef.current.currentTime = newTime
-			setCurrentTime(newTime)
-		}
+		if (!mediaRef.current || !duration) return
+		const newTime = (value[0] / 100) * duration
+		mediaRef.current.currentTime = newTime
+		setCurrentTime(newTime)
 	}
 
 	const handleVolumeChange = (value: number[]) => {
@@ -199,22 +294,30 @@ export function EnhancedMediaPlayer({
 		}
 	}
 
-	const handleDownload = () => {
+	const handleDownload = useCallback(async () => {
+		const fallbackName = extractFilenameFromUrl(mediaUrl) ?? "media-file"
+		const signed = await requestSignedUrl("download", { filename: fallbackName })
+		if (!signed?.url) {
+			alert("We couldn't authorize the download for this media. Please refresh or contact support.")
+			return
+		}
+		const downloadUrl = signed.url
+		const filename = extractFilenameFromUrl(downloadUrl) ?? extractFilenameFromUrl(mediaUrl) ?? "media-file"
+
 		const link = document.createElement("a")
-		link.href = mediaUrl
-		link.download = mediaUrl.split("/").pop() || "media-file"
-		link.setAttribute("download", link.download)
+		link.href = downloadUrl
+		link.download = filename
+		link.setAttribute("download", filename)
 		document.body.appendChild(link)
 		link.click()
 		document.body.removeChild(link)
-	}
+	}, [mediaUrl, requestSignedUrl])
 
 	const handleTimeUpdate = () => {
 		if (mediaRef.current) {
 			const current = mediaRef.current.currentTime
 			setCurrentTime(current)
 
-			// Auto-pause at end time if specified
 			if (endSeconds > 0 && current >= endSeconds) {
 				mediaRef.current.pause()
 				setIsPlaying(false)
@@ -232,21 +335,16 @@ export function EnhancedMediaPlayer({
 
 	const handleCanPlay = () => {
 		setIsLoading(false)
-
-		// Auto-play if requested and start time is set
-		if (autoPlay && startSeconds > 0) {
-			handlePlayPause()
-		}
 	}
 
 	const handleLoadedMetadata = () => {
-		const d = mediaRef.current?.duration
-		if (typeof d === "number" && Number.isFinite(d) && d > 0) {
-			setDuration(Math.floor(d))
+		const mediaDuration = mediaRef.current?.duration
+		if (typeof mediaDuration === "number" && Number.isFinite(mediaDuration) && mediaDuration > 0) {
+			setDuration(Math.floor(mediaDuration))
 		}
 	}
 
-	const handleError = (e: React.SyntheticEvent<HTMLMediaElement, Event>) => {
+	const handleError = (e: SyntheticEvent<HTMLMediaElement, Event>) => {
 		setIsLoading(false)
 		const error = (e.target as HTMLMediaElement).error
 		consola.error("Media load error:", {
@@ -257,10 +355,24 @@ export function EnhancedMediaPlayer({
 		alert(`Failed to load media: ${error?.message || "Unknown error"}. Check console for details.`)
 	}
 
-	// Calculate progress percentage
+	useEffect(() => {
+		if (!autoPlay || autoPlayTriggeredRef.current) {
+			return
+		}
+
+		if (usesCloudflareStream) {
+			setShouldLoad(true)
+			setIsPlaying(true)
+			autoPlayTriggeredRef.current = true
+			return
+		}
+
+		autoPlayTriggeredRef.current = true
+		void handlePlayPause()
+	}, [autoPlay, usesCloudflareStream, handlePlayPause])
+
 	const progressPercentage = duration ? (currentTime / duration) * 100 : 0
 
-	// Format time range display
 	const getTimeRangeDisplay = () => {
 		if (startSeconds > 0) {
 			const start = formatDuration(startSeconds)
@@ -273,25 +385,24 @@ export function EnhancedMediaPlayer({
 		return null
 	}
 
-	const _timeRangeDisplay = getTimeRangeDisplay()
+	const timeRangeDisplay = getTimeRangeDisplay()
+	const showNativeControls = !usesCloudflareStream
+	const showProgressSlider = showNativeControls && Boolean(duration)
+	const showVolumeControl = showNativeControls
 
 	return (
 		<div className={cn("relative w-full max-w-md space-y-3", className)}>
-			{/* Target time in upper right */}
-			{/* {timeRangeDisplay && (
-				<div className="-top-5 absolute right-0 text-muted-foreground text-xs">{timeRangeDisplay}</div>
-			)} */}
-
-			{/* Main Controls Row */}
 			<div className="flex items-center gap-3">
 				<Button
-					onClick={handlePlayPause}
+					onClick={() => {
+						void handlePlayPause()
+					}}
 					size={size}
 					variant="outline"
-					disabled={isLoading}
+					disabled={showNativeControls ? isLoading : false}
 					className="flex items-center gap-2 border-blue-500 text-blue-600 hover:border-blue-600 hover:bg-blue-50"
 				>
-					{isLoading ? (
+					{showNativeControls && isBusy ? (
 						<div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent" />
 					) : isPlaying ? (
 						<Pause className="h-4 w-4" />
@@ -300,13 +411,13 @@ export function EnhancedMediaPlayer({
 					)}
 				</Button>
 
-				{/* Rewind/Fast-forward Controls */}
 				<Button
 					onClick={handleSkipBackward}
 					size="sm"
 					variant="ghost"
 					className="text-blue-600 hover:bg-blue-50"
 					title="Rewind 10s"
+					disabled={!showNativeControls}
 				>
 					<Rewind className="h-3 w-3" />
 				</Button>
@@ -317,45 +428,60 @@ export function EnhancedMediaPlayer({
 					variant="ghost"
 					className="text-blue-600 hover:bg-blue-50"
 					title="Fast-forward 10s"
+					disabled={!showNativeControls}
 				>
 					<FastForward className="h-3 w-3" />
 				</Button>
 
-				{/* Current Time / Total Duration */}
 				<div className="flex flex-1 items-center justify-center gap-1 text-muted-foreground text-xs">
-					<span>{formatDuration(currentTime)}</span>
-					{duration && (
+					{showNativeControls ? (
 						<>
-							<span>/</span>
-							<span>{formatDuration(duration)}</span>
+							<span>{formatDuration(currentTime)}</span>
+							{duration && (
+								<>
+									<span>/</span>
+									<span>{formatDuration(duration)}</span>
+								</>
+							)}
 						</>
+					) : (
+						<span>{title}</span>
 					)}
 				</div>
 
-				{/* Download button */}
 				<Button
-					onClick={handleDownload}
+					onClick={() => {
+						void handleDownload()
+					}}
 					size="sm"
 					variant="ghost"
 					className="text-blue-600 hover:bg-blue-50"
 					title="Download media file"
+					disabled={isSigning}
 				>
 					<Download className="h-3 w-3" />
 				</Button>
 			</div>
 
-			{/* Progress Slider */}
-			{duration && (
+			{timeRangeDisplay && <div className="-mt-1 text-right text-muted-foreground text-xs">{timeRangeDisplay}</div>}
+
+			{showProgressSlider && (
 				<Slider value={[progressPercentage]} onValueChange={handleSeek} max={100} step={0.1} className="w-full" />
 			)}
 
-			{/* Volume Control */}
-			<div className="flex items-center gap-2">
-				<Volume2 className="h-3 w-3 text-muted-foreground" />
-				<Slider value={[volume * 100]} onValueChange={handleVolumeChange} max={100} step={1} className="w-24" />
-			</div>
+			{showVolumeControl && (
+				<div className="flex items-center gap-2">
+					<Volume2 className="h-3 w-3 text-muted-foreground" />
+					<Slider value={[volume * 100]} onValueChange={handleVolumeChange} max={100} step={1} className="w-24" />
+				</div>
+			)}
 
-			{/* Debug Information */}
+			{usesCloudflareStream && !shouldLoad && (
+				<p className="rounded border border-blue-200 border-dashed bg-blue-50/40 p-2 text-muted-foreground text-xs">
+					Press play to launch the Cloudflare Stream player.
+				</p>
+			)}
+
 			{showDebug && (
 				<details className="text-xs">
 					<summary className="cursor-pointer text-muted-foreground">Debug Info</summary>
@@ -365,18 +491,41 @@ export function EnhancedMediaPlayer({
 						<div>Parsed startSeconds: {startSeconds}</div>
 						<div>Parsed endSeconds: {endSeconds}</div>
 						<div>Current time: {currentTime.toFixed(2)}s</div>
-						<div>Duration: {duration}s</div>
+						<div>Duration: {duration ?? "unknown"}s</div>
 						<div>Media URL: {mediaUrl}</div>
+						<div>Cloudflare Stream: {usesCloudflareStream ? "yes" : "no"}</div>
+						{cloudflareStreamInfo?.streamId ? <div>Stream ID: {cloudflareStreamInfo.streamId}</div> : null}
+						<div>Signed source: {playbackSource?.url ?? "n/a"}</div>
+						<div>Signed expiresAt: {playbackSource?.expiresAt ?? "n/a"}</div>
 					</div>
 				</details>
 			)}
 
-			{/* Only load media when user clicks play - lazy loading for memory management */}
+			{usesCloudflareStream && shouldLoad && cloudflareStreamInfo && (
+				<div className="aspect-video w-full overflow-hidden rounded-md border">
+					{isClient ? (
+						<Stream
+							key={`${cloudflareStreamInfo.streamId}-${cloudflareStreamInfo.token ?? "public"}`}
+							src={cloudflareStreamInfo.streamId}
+							controls
+							autoplay={autoPlay || isPlaying}
+							muted={autoPlay}
+							playsInline
+							token={cloudflareStreamInfo.token}
+							className="h-full w-full"
+						/>
+					) : (
+						<div className="h-full w-full animate-pulse bg-muted" />
+					)}
+				</div>
+			)}
+
 			{shouldLoad &&
+				showNativeControls &&
 				(mediaType === "video" ? (
 					<video
-						ref={mediaRef as React.RefObject<HTMLVideoElement>}
-						src={mediaUrl}
+						ref={mediaRef as RefObject<HTMLVideoElement>}
+						src={playbackSource?.url ?? undefined}
 						onEnded={handleEnded}
 						onLoadStart={handleLoadStart}
 						onCanPlay={handleCanPlay}
@@ -389,8 +538,8 @@ export function EnhancedMediaPlayer({
 					/>
 				) : (
 					<audio
-						ref={mediaRef as React.RefObject<HTMLAudioElement>}
-						src={mediaUrl}
+						ref={mediaRef as RefObject<HTMLAudioElement>}
+						src={playbackSource?.url ?? undefined}
 						onEnded={handleEnded}
 						onLoadStart={handleLoadStart}
 						onCanPlay={handleCanPlay}

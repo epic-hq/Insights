@@ -67,10 +67,35 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 
 	// Create a link component that preserves the original appearance
 	const createLinkWrapper = (item: Evidence, children: React.ReactNode) => {
-		// If we have anchors, use the first one for linking
-		const hasAnchors = item.anchors && item.anchors.length > 0
-		const anchorParam = hasAnchors ? `?anchor=${encodeURIComponent(JSON.stringify(item.anchors[0]))}` : ""
-		const url = `${routes.evidence.detail(item.id)}${anchorParam}`
+		let url = routes.evidence.detail(item.id)
+		
+		// If we have anchors with a start time, add simple ?t=seconds parameter
+		if (item.anchors && item.anchors.length > 0) {
+			const anchor = item.anchors[0] as any
+			const startTime = anchor?.start
+			
+			if (startTime) {
+				let seconds = 0
+				if (typeof startTime === 'number') {
+					seconds = startTime
+				} else if (typeof startTime === 'string') {
+					if (startTime.endsWith('ms')) {
+						seconds = Number.parseFloat(startTime.replace('ms', '')) / 1000
+					} else if (startTime.includes(':')) {
+						const parts = startTime.split(':')
+						if (parts.length === 2) {
+							seconds = Number.parseInt(parts[0]) * 60 + Number.parseInt(parts[1])
+						}
+					} else {
+						seconds = Number.parseFloat(startTime)
+					}
+				}
+				
+				if (seconds > 0) {
+					url = `${url}?t=${seconds}`
+				}
+			}
+		}
 
 		return (
 			<Link to={url} className="text-inherit no-underline hover:no-underline">

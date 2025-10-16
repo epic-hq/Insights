@@ -33,7 +33,7 @@ import { ScrollArea } from "~/components/ui/scroll-area"
 import { Textarea } from "~/components/ui/textarea"
 import { getInsights } from "~/features/insights/db"
 import { getProjects } from "~/features/projects/db"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import type { Insight, Project } from "~/types"
 import { PlanCard } from "../components/PlanCard"
 

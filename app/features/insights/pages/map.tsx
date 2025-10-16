@@ -10,7 +10,7 @@
 import consola from "consola"
 import { type LoaderFunctionArgs, useLoaderData } from "react-router-dom"
 import { CartesianGrid, LabelList, ResponsiveContainer, Scatter, ScatterChart, Tooltip, XAxis, YAxis } from "recharts"
-import { getServerClient, getSession } from "~/lib/supabase/server"
+import { getServerClient, getSession } from "~/lib/supabase/client.server"
 
 /* -------------------------------------------------------------------------- */
 

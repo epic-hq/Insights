@@ -12,7 +12,7 @@ import {
 	YAxis,
 	ZAxis,
 } from "recharts"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 /**
  * Persona Visualization V2 — Radial Spectrum wired to Supabase (Remix-friendly)

@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { json, redirect } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 /**
  * Receives a client session (access/refresh tokens) and sets server cookies.

@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Download, Edit2, HeartHandshake, Loader2, Puzzle } from "lucide-react"
+import { Edit2, HeartHandshake, Loader2, Puzzle } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
@@ -262,13 +262,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		// Process empathy map data in the loader for better performance
+		type EmpathyMapItem = { text: string; evidenceId: string; anchors?: unknown }
 		const empathyMap = {
-			says: [] as Array<{ text: string; evidenceId: string }>,
-			does: [] as Array<{ text: string; evidenceId: string }>,
-			thinks: [] as Array<{ text: string; evidenceId: string }>,
-			feels: [] as Array<{ text: string; evidenceId: string }>,
-			pains: [] as Array<{ text: string; evidenceId: string }>,
-			gains: [] as Array<{ text: string; evidenceId: string }>,
+			says: [] as EmpathyMapItem[],
+			does: [] as EmpathyMapItem[],
+			thinks: [] as EmpathyMapItem[],
+			feels: [] as EmpathyMapItem[],
+			pains: [] as EmpathyMapItem[],
+			gains: [] as EmpathyMapItem[],
 		}
 
 		if (evidence) {
@@ -279,7 +280,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.says)) {
 					e.says.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.says.push({ text: item.trim(), evidenceId })
+							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors })
 						}
 					})
 				}
@@ -287,7 +288,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.does)) {
 					e.does.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.does.push({ text: item.trim(), evidenceId })
+							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors })
 						}
 					})
 				}
@@ -295,7 +296,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.thinks)) {
 					e.thinks.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.thinks.push({ text: item.trim(), evidenceId })
+							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors })
 						}
 					})
 				}
@@ -303,7 +304,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.feels)) {
 					e.feels.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.feels.push({ text: item.trim(), evidenceId })
+							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors })
 						}
 					})
 				}
@@ -311,7 +312,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.pains)) {
 					e.pains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.pains.push({ text: item.trim(), evidenceId })
+							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
 						}
 					})
 				}
@@ -319,7 +320,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.gains)) {
 					e.gains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.gains.push({ text: item.trim(), evidenceId })
+							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
 						}
 					})
 				}
@@ -327,7 +328,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		// Deduplicate while preserving order and limit results
-		const deduplicateAndLimit = (items: Array<{ text: string; evidenceId: string }>, limit = 8) => {
+		const deduplicateAndLimit = (items: EmpathyMapItem[], limit = 8) => {
 			const seen = new Set<string>()
 			return items
 				.filter((item) => {
@@ -382,13 +383,43 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
-	const navigation = useNavigation()
+	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
+	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
 	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
-
-	// Always call hooks at the top level
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
 	const [isProcessing, setIsProcessing] = useState(false)
+
+	// Helper to create evidence link with time parameter (like YouTube ?t=10)
+	const createEvidenceLink = (item: { evidenceId: string; anchors?: unknown }) => {
+		if (!item.anchors || !Array.isArray(item.anchors) || item.anchors.length === 0) {
+			return routes.evidence.detail(item.evidenceId)
+		}
+		
+		const anchor = item.anchors[0] as any
+		const startTime = anchor?.start
+		
+		if (!startTime) {
+			return routes.evidence.detail(item.evidenceId)
+		}
+		
+		// Parse time to seconds for simple ?t=3.5 parameter
+		let seconds = 0
+		if (typeof startTime === 'number') {
+			seconds = startTime
+		} else if (typeof startTime === 'string') {
+			if (startTime.endsWith('ms')) {
+				seconds = parseFloat(startTime.replace('ms', '')) / 1000
+			} else if (startTime.includes(':')) {
+				const parts = startTime.split(':')
+				if (parts.length === 2) {
+					seconds = parseInt(parts[0]) * 60 + parseInt(parts[1])
+				}
+			} else {
+				seconds = parseFloat(startTime)
+			}
+		}
+		
+		return `${routes.evidence.detail(item.evidenceId)}?t=${seconds}`
+	}
 
 	// Check if any action is in progress
 	const isActionPending = navigation.state === "loading" || navigation.state === "submitting"
@@ -653,7 +684,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												{empathyMap.pains.map((item, i) => (
 													<Link
 														key={`pain-${item.evidenceId}-${i}`}
-														to={routes.evidence.detail(item.evidenceId)}
+														to={createEvidenceLink(item)}
 														className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 													>
 														{item.text}
@@ -679,7 +710,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												{empathyMap.gains.map((item, i) => (
 													<Link
 														key={`gain-${item.evidenceId}-${i}`}
-														to={routes.evidence.detail(item.evidenceId)}
+														to={createEvidenceLink(item)}
 														className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 													>
 														{item.text}
@@ -711,7 +742,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													{empathyMap.says.map((item, i) => (
 														<Link
 															key={`says-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
+															to={createEvidenceLink(item)}
 															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 														>
 															"{item.text}"
@@ -737,7 +768,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													{empathyMap.does.map((item, i) => (
 														<Link
 															key={`does-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
+															to={createEvidenceLink(item)}
 															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 														>
 															{item.text}
@@ -766,7 +797,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													{empathyMap.thinks.map((item, i) => (
 														<Link
 															key={`thinks-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
+															to={createEvidenceLink(item)}
 															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 														>
 															{item.text}
@@ -792,7 +823,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													{empathyMap.feels.map((item, i) => (
 														<Link
 															key={`feels-${item.evidenceId}-${i}`}
-															to={routes.evidence.detail(item.evidenceId)}
+															to={createEvidenceLink(item)}
 															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
 														>
 															{item.text}
@@ -814,21 +845,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<h3 className="font-semibold text-foreground text-lg">Raw Recording Details</h3>
 
 					{interview.media_url && (
-						<div className="mb-4 flex items-center gap-2">
+						<div className="mb-4">
 							<MediaPlayer
 								mediaUrl={interview.media_url}
 								title="Play Recording"
 								size="sm"
+								className="max-w-xs"
 								duration_sec={interview.duration_sec || undefined}
 							/>
-							<a
-								href={interview.media_url}
-								download
-								className="inline-flex h-9 items-center justify-center rounded-md px-3 font-medium text-blue-600 text-sm transition-colors hover:bg-blue-50 dark:hover:bg-blue-950"
-								title="Download recording"
-							>
-								<Download className="h-4 w-4" />
-							</a>
 						</div>
 					)}
 
@@ -855,7 +879,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									{evidence.slice(0, 4).map((evidenceItem) => (
 										<Link
 											key={evidenceItem.id}
-											to={routes.evidence.detail(evidenceItem.id)}
+											to={createEvidenceLink({ evidenceId: evidenceItem.id, anchors: evidenceItem.anchors })}
 											className="block rounded-md border bg-muted/30 p-3 text-sm hover:bg-muted/50"
 										>
 											<div className="line-clamp-2 font-medium text-foreground">

@@ -7,7 +7,7 @@ import { afterAll, beforeEach, describe, expect, it, vi } from "vitest"
 import { getTestDbState, mockTestAuth, seedTestData, TEST_ACCOUNT_ID, testDb } from "~/test/utils/testDb"
 
 // Mock only Supabase server client for auth context
-vi.mock("~/lib/supabase/server", () => ({
+vi.mock("~/lib/supabase/client.server", () => ({
 	getServerClient: () => mockTestAuth(),
 }))
 

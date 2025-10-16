@@ -6,6 +6,7 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card } from "@/components/ui/card"
+import { PageContainer } from "~/components/layout/PageContainer"
 
 // Mock data - in real app this would come from params and database
 const prospectData = {
@@ -104,7 +105,7 @@ export default function ProspectDetailPage() {
 
 	return (
 		<div className="min-h-screen bg-gray-50">
-			<div className="mx-auto max-w-5xl space-y-6 p-6">
+			<PageContainer size="lg" padded={false} className="max-w-5xl space-y-6 p-6">
 				{/* Header */}
 				<div className="flex items-center gap-4">
 					<Link to="/">
@@ -197,7 +198,7 @@ export default function ProspectDetailPage() {
 					<h2 className="mb-4 font-semibold text-2xl text-gray-900">Validation Details</h2>
 
 					<div className="space-y-3">
-						{prospectData.validationJourney.map((item, index) => {
+						{prospectData.validationJourney.map((item) => {
 							const phaseInfo = {
 								Qualify: { purpose: "Are they your target?", question: "What do you do in relation to X?" },
 								Discover: {
@@ -216,8 +217,15 @@ export default function ProspectDetailPage() {
 								Pay: { purpose: "Will they trade money for relief?", question: "Have you paid / would you pay?" },
 							}[item.phase]
 
+							const evidenceItems = item.evidence.map((evidence) => (
+								<li key={evidence} className="flex items-start gap-2 text-gray-600 text-sm">
+									<span className="mt-0.5 text-emerald-600">•</span>
+									<span>{evidence}</span>
+								</li>
+							))
+
 							return (
-								<Card key={index} className="overflow-hidden border-2">
+								<Card key={item.phase} className="overflow-hidden border-2">
 									<div className="p-5">
 										<div className="mb-4 flex items-start gap-4">
 											<Badge variant="secondary" className="mt-0.5 font-semibold">
@@ -238,14 +246,7 @@ export default function ProspectDetailPage() {
 												<summary className="cursor-pointer font-medium text-gray-700 text-sm hover:text-gray-900">
 													Supporting Evidence ({item.evidence.length})
 												</summary>
-												<ul className="mt-3 space-y-2 pl-4">
-													{item.evidence.map((evidence, evidenceIndex) => (
-														<li key={evidenceIndex} className="flex items-start gap-2 text-gray-600 text-sm">
-															<span className="mt-0.5 text-emerald-600">•</span>
-															<span>{evidence}</span>
-														</li>
-													))}
-												</ul>
+												<ul className="mt-3 space-y-2 pl-4">{evidenceItems}</ul>
 											</details>
 										)}
 									</div>
@@ -254,7 +255,7 @@ export default function ProspectDetailPage() {
 						})}
 					</div>
 				</div>
-			</div>
+			</PageContainer>
 		</div>
 	)
 }

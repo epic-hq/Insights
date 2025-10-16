@@ -96,6 +96,9 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 	// Track all media streams for cleanup
 	const mediaStreamsRef = useRef<MediaStream[]>([])
 
+	// Ref to store stopStreaming function to avoid circular dependencies
+	const stopStreamingRef = useRef<((finalize?: boolean) => Promise<void>) | null>(null)
+
 	// Audio source selection
 	const [audioSource, setAudioSource] = useState<"microphone" | "system">("microphone")
 	const [micDeviceId, setMicDeviceId] = useState<string | "default">("default")
@@ -154,13 +157,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			}
 			cleanupMediaStreams()
 			// On unmount, ensure we don't accidentally finalize
-			stopStreaming(false)
+			if (stopStreamingRef.current) {
+				stopStreamingRef.current(false)
+			}
 		}
-		// eslint-disable-next-line react-hooks/exhaustive-deps
-	}, [
-		cleanupMediaStreams, // On unmount, ensure we don't accidentally finalize
-		stopStreaming,
-	])
+	}, [cleanupMediaStreams])
 
 	// Start duration timer
 	const startDurationTimer = useCallback(() => {
@@ -490,7 +491,9 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			consola.error("startStreaming error", e)
 			setStreamStatus("error")
 			setIsRecording(false)
-			stopStreaming()
+			if (stopStreamingRef.current) {
+				stopStreamingRef.current()
+			}
 		}
 	}, [
 		assignedInterviewId,
@@ -500,7 +503,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 		drainForSamples,
 		projectPath,
 		startDurationTimer,
-		stopStreaming,
 	])
 
 	// Pause without finalizing; keeps WS alive if possible
@@ -672,19 +674,42 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					cleanupMediaStreams()
 					setShowCompletionDialog(true)
 
-					// Upload media to storage on Supabase
+					// Upload media to storage in Cloudflare R2 via server endpoint
 					let mediaUrl: string | undefined
 					const id = assignedInterviewId
 					if (blob.size > 0 && id) {
-						const filename = `interviews/${projectId}/${id}-${Date.now()}.webm`
-						const { error } = await supabase.storage
-							.from("interview-recordings")
-							.upload(filename, blob, { upsert: true })
-						if (!error) {
-							const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
-							mediaUrl = data.publicUrl
-						} else {
-							consola.warn("Audio upload failed:", error.message)
+						const uploadEndpoint = projectPath
+							? `${projectPath}/api/interviews/realtime-upload`
+							: "/api/interviews/realtime-upload"
+						const formData = new FormData()
+						formData.append("file", blob, `realtime-${id}-${Date.now()}.webm`)
+						formData.append("interviewId", id)
+						formData.append("projectId", projectId)
+
+						try {
+							const response = await fetch(uploadEndpoint, {
+								method: "POST",
+								body: formData,
+							})
+
+							if (response.ok) {
+								const payload = (await response.json()) as { mediaUrl?: string }
+								if (typeof payload?.mediaUrl === "string" && payload.mediaUrl) {
+									mediaUrl = payload.mediaUrl
+								} else {
+									consola.warn("Realtime upload succeeded but returned no mediaUrl")
+								}
+							} else {
+								const errorText = await response.text().catch(() => "")
+								consola.warn(
+									"Realtime audio upload failed",
+									response.status,
+									response.statusText,
+									errorText.slice(0, 200)
+								)
+							}
+						} catch (uploadError) {
+							consola.warn("Realtime audio upload error", uploadError)
 						}
 					}
 
@@ -738,6 +763,11 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			projectPath,
 		]
 	)
+
+	// Update ref whenever stopStreaming changes to avoid circular dependencies
+	useEffect(() => {
+		stopStreamingRef.current = stopStreaming
+	}, [stopStreaming])
 
 	// In realtime flow, do not pre-seed questions/goals; manager will render empty unless user generates
 

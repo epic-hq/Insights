@@ -94,15 +94,15 @@ export function UserProfile({ collapsed = false, className }: UserProfileProps) 
 						<DropdownMenuSeparator />
 						<DropdownMenuGroup>
 							<DropdownMenuItem asChild>
-								<Link to={routes.team.members() || PATHS.TEAMS} className="flex items-center gap-2">
-									<Users className="h-4 w-4" />
-									<span>Manage Team</span>
-								</Link>
-							</DropdownMenuItem>
-							<DropdownMenuItem asChild>
 								<Link to={PATHS.PROFILE} className="flex items-center gap-2">
 									<User className="h-4 w-4" />
 									<span>Profile</span>
+								</Link>
+							</DropdownMenuItem>
+							<DropdownMenuItem asChild>
+								<Link to={routes.team.members() || PATHS.TEAMS} className="flex items-center gap-2">
+									<Users className="h-4 w-4" />
+									<span>Manage Team</span>
 								</Link>
 							</DropdownMenuItem>
 						</DropdownMenuGroup>

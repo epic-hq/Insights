@@ -5,7 +5,7 @@
  */
 
 import consola from "consola"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrateArrayData.server"
 
 // Create a mock request object for server functions

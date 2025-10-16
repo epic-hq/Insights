@@ -1,5 +1,6 @@
+import { PanelLeftIcon } from "lucide-react"
 import { useMemo } from "react"
-import { NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
+import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import {
 	Sidebar,
 	SidebarContent,
@@ -39,6 +40,10 @@ interface AccountRecord {
 
 interface ProtectedLayoutData {
 	accounts?: AccountRecord[] | null
+	user_settings?: {
+		last_used_account_id?: string | null
+		last_used_project_id?: string | null
+	} | null
 }
 
 export function AppSidebar() {
@@ -61,11 +66,28 @@ export function AppSidebar() {
 
 	const fallbackProject = useMemo(() => {
 		if (projectId) return { id: projectId }
+		
+		// Respect user's last used project preference
+		const lastUsedProjectId = protectedData?.user_settings?.last_used_project_id
+		if (lastUsedProjectId && fallbackAccount?.projects?.length) {
+			const lastUsedProject = fallbackAccount.projects.find((p) => p.id === lastUsedProjectId)
+			if (lastUsedProject) {
+				console.log("[AppSidebar] Using last_used_project_id:", lastUsedProjectId)
+				return lastUsedProject
+			}
+			console.warn("[AppSidebar] last_used_project_id not found in current account projects:", {
+				lastUsedProjectId,
+				availableProjects: fallbackAccount.projects.map((p) => p.id),
+			})
+		}
+		
+		// Final fallback to first project
 		if (fallbackAccount?.projects?.length) {
+			console.log("[AppSidebar] Falling back to first project:", fallbackAccount.projects[0].id)
 			return fallbackAccount.projects[0] || null
 		}
 		return null
-	}, [fallbackAccount, projectId])
+	}, [fallbackAccount, projectId, protectedData?.user_settings?.last_used_project_id])
 
 	const effectiveAccountId = accountId || fallbackAccount?.account_id || ""
 	const effectiveProjectId = fallbackProject?.id || ""
@@ -83,9 +105,9 @@ export function AppSidebar() {
 	return (
 		<Sidebar collapsible="icon" variant="sidebar">
 			<SidebarHeader>
-				<div className="flex items-center gap-2 px-2">
+				<Link to="/home" className="flex items-center gap-2 px-2">
 					<div className="-ml-2 flex items-center gap-2">{isCollapsed ? <Logo /> : <LogoBrand />}</div>
-				</div>
+				</Link>
 				<TeamSwitcher accounts={accounts} collapsed={isCollapsed} />
 			</SidebarHeader>
 
@@ -160,7 +182,7 @@ export function AppSidebar() {
 				<UserProfile />
 			</SidebarFooter>
 
-			<SidebarRail>
+			<SidebarRail className="group pointer-events-auto">
 				<SidebarTrigger className="-right-4 absolute top-3" />
 			</SidebarRail>
 		</Sidebar>

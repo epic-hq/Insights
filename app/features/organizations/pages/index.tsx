@@ -8,7 +8,7 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOrganizations } from "~/features/organizations/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { cn } from "~/lib/utils"
 import type { Organization, PeopleOrganization } from "~/types"
 

@@ -4,7 +4,7 @@
  */
 
 import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { backfillMissingPeople, getInterviewPeopleStats } from "~/utils/backfillPeople.server"
 
 export async function action({ request }: ActionFunctionArgs) {

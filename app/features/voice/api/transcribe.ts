@@ -2,7 +2,7 @@ import { openai } from "@ai-sdk/openai"
 import { NoOutputGeneratedError, experimental_transcribe as transcribe } from "ai"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getAuthenticatedUser } from "~/lib/supabase/server"
+import { getAuthenticatedUser } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {

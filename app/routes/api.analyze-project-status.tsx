@@ -5,7 +5,7 @@ import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { getInsights } from "~/features/insights/db"
 import { getInterviews } from "~/features/interviews/db"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 
 interface AnalysisRequest {
 	projectId: string

@@ -18,7 +18,7 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: "google",
 				options: {
-					redirectTo: `${window.location.origin}/auth-new/oauth?next=/home`,
+					redirectTo: `${window.location.origin}/auth/oauth?next=/home`,
 				},
 			})
 
@@ -31,22 +31,14 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 
 	return (
 		<div className={cn("flex flex-col gap-6", className)} {...props}>
-			<Card>
-				<CardHeader>
-					<CardTitle className="text-2xl">Welcome!</CardTitle>
-					<CardDescription>Sign in to your account to continue</CardDescription>
-				</CardHeader>
-				<CardContent>
-					<form onSubmit={handleSocialLogin}>
-						<div className="flex flex-col gap-6">
-							{error && <p className="text-destructive-500 text-sm">{error}</p>}
-							<Button type="submit" className="w-full" disabled={isLoading}>
-								{isLoading ? "Logging in..." : "Continue with Google"}
-							</Button>
-						</div>
-					</form>
-				</CardContent>
-			</Card>
+			<form onSubmit={handleSocialLogin}>
+				<div className="flex flex-col gap-6">
+					{error && <p className="text-destructive-500 text-sm">{error}</p>}
+					<Button type="submit" className="w-full" variant="ghost" disabled={isLoading}>
+						{isLoading ? "Logging in..." : <img src="/images/auth/web_light_sq_SI@2x.png" className="h-10" alt="" />}
+					</Button>
+				</div>
+			</form>
 		</div>
 	)
 }

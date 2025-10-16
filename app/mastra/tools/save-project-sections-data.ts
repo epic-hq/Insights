@@ -2,7 +2,7 @@ import { createTool } from "@mastra/core/tools"
 import consola from "consola"
 import { z } from "zod"
 import { upsertProjectSection } from "~/features/projects/db"
-import { supabaseAdmin } from "~/lib/supabase/server"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 // Helpers to format content consistently with /api/save-project-goals

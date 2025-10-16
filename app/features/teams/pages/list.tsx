@@ -1,5 +1,5 @@
 import { Link, type LoaderFunctionArgs } from "react-router"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { cn } from "~/lib/utils"
 import { getAccounts } from "../db"
 import type { Route } from "./+types/list"

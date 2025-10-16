@@ -289,7 +289,7 @@ function lightenColor(hex: string, percent: number): string {
 	return `#${rHex}${gHex}${bHex}`
 }
 
-export const meta: MetaFunction = () => [{ title: "Insights • Metro" }]
+export const meta: MetaFunction = () => [{ title: "UpSight Intel" }]
 
 const mainSections = [
 	{

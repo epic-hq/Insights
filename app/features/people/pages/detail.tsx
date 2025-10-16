@@ -2,6 +2,7 @@ import { motion } from "framer-motion"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -221,7 +222,7 @@ export default function PersonDetail() {
 	}, [linkedOrganizations, organizations])
 
 	return (
-		<div className="mx-auto max-w-4xl py-8">
+		<PageContainer size="lg" padded={false} className="max-w-4xl py-8">
 			<motion.div
 				className="relative mb-8 flex flex-col items-center rounded-xl border border-border bg-background p-8 shadow-md"
 				style={{ borderColor: themeColor }}
@@ -246,7 +247,7 @@ export default function PersonDetail() {
 									className="inline-block rounded-full px-3 py-1 font-semibold text-xs"
 									style={{ backgroundColor: `${themeColor}22`, color: themeColor }}
 								>
-									{persona.name}
+									<Link to={routes.personas.detail(persona.id)}>{persona.name}</Link>
 								</span>
 							)}
 							{person.segment && <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{person.segment}</span>}
@@ -351,7 +352,7 @@ export default function PersonDetail() {
 										</SelectTrigger>
 										<SelectContent>
 											{availableOrganizations.length === 0 ? (
-												<SelectItem value="" disabled>
+												<SelectItem value="none" disabled>
 													No organizations available
 												</SelectItem>
 											) : (
@@ -523,6 +524,6 @@ export default function PersonDetail() {
 					</motion.div>
 				</div>
 			</div>
-		</div>
+		</PageContainer>
 	)
 }

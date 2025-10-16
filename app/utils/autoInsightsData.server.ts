@@ -1,4 +1,4 @@
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 // Type definitions for aggregated data
 export interface AutoInsightsData {

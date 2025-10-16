@@ -5,7 +5,7 @@
 
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { getMigrationStatus, migrateArrayDataToJunctions } from "~/utils/migrateArrayData.server"
 
 export async function action({ request }: ActionFunctionArgs) {

@@ -3907,7 +3907,9 @@ export type Database = {
       }
       user_settings: {
         Row: {
+          company_description: string | null
           company_name: string | null
+          company_website: string | null
           created_at: string
           email: string | null
           first_name: string | null
@@ -3934,7 +3936,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          company_description?: string | null
           company_name?: string | null
+          company_website?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -3961,7 +3965,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          company_description?: string | null
           company_name?: string | null
+          company_website?: string | null
           created_at?: string
           email?: string | null
           first_name?: string | null
@@ -4444,6 +4450,10 @@ export type Database = {
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
         Returns: unknown
+      }
+      list_invitations_for_current_user: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       list_invitations_for_current_user: {
         Args: Record<PropertyKey, never>

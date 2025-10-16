@@ -3,7 +3,7 @@
  * Integrates junction table helpers with server-side Supabase client
  */
 
-import { getServerClient } from "~/lib/supabase/server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { createJunctionTableManager, type JunctionTableManager } from "./junction-helpers"
 
 /**

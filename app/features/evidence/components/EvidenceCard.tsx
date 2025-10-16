@@ -4,7 +4,7 @@ import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
-import { EnhancedMediaPlayer } from "~/components/ui/EnhancedMediaPlayer"
+import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
 import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
 
@@ -73,13 +73,17 @@ export function EvidenceCard({
 	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null
 
 	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as EvidenceAnchor[]) : []
+	
 	const mediaAnchors = anchors.filter((anchor) => {
 		if (!anchor || typeof anchor !== "object") return false
 		const type = anchor.type?.toLowerCase()
 		// Accept media types OR doc types that have time-based start values (not paragraph refs)
 		const isMediaType = type === "audio" || type === "video" || type === "av" || type === "media" || type === "clip"
 		const isDocWithTime =
-			type === "doc" && anchor.start && typeof anchor.start === "string" && anchor.start.includes(":")
+			type === "doc" &&
+			anchor.start &&
+			typeof anchor.start === "string" &&
+			(anchor.start.includes(":") || anchor.start.includes("ms") || /^\d+(\.\d+)?$/.test(anchor.start))
 		return isMediaType || isDocWithTime
 	})
 	const resolvedMediaUrl = interview?.media_url ?? null
@@ -263,14 +267,7 @@ export function EvidenceCard({
 										</div>
 									</div>
 									{variant === "expanded" ? (
-										<EnhancedMediaPlayer
-											mediaUrl={mediaUrl}
-											startTime={anchor.start ?? undefined}
-											endTime={anchor.end ?? undefined}
-											size="sm"
-											title={displayTitle}
-											duration_sec={interview?.duration_sec ?? undefined}
-										/>
+										<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={anchor.start ?? undefined} title={displayTitle} />
 									) : (
 										<div className="flex items-center gap-2 text-muted-foreground text-xs">
 											<Play className="h-3 w-3" />

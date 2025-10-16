@@ -1,7 +1,7 @@
 import { RuntimeContext } from "@mastra/core/di"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/server"
+import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import type { UserContext } from "~/mastra"
 
 export const loader = () => new Response("Method Not Allowed", { status: 405 })
