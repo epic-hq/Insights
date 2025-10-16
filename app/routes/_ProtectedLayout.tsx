@@ -27,7 +27,9 @@ export const middleware: Route.MiddlewareFunction[] = [
 			const jwt = user?.jwt || user?.access_token || null
 
 			// Use RLS client if JWT is present, otherwise fallback to anon client
-			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/client.server")).getServerClient(request).client
+			const supabase = jwt
+				? getRlsClient(jwt)
+				: (await import("~/lib/supabase/client.server")).getServerClient(request).client
 
 			// Get user's settings and accounts in parallel
 			const [userSettingsResult, userAccountsResult] = await Promise.all([
@@ -70,11 +72,15 @@ export const middleware: Route.MiddlewareFunction[] = [
 				accounts: accounts || [],
 				currentAccount,
 			})
-			consola.log("_ProtectedLayout Authentication middleware success, {", {
-				user_settings,
-				accounts,
-				currentAccount,
-			}, "\n")
+			consola.log(
+				"_ProtectedLayout Authentication middleware success, {",
+				{
+					user_settings,
+					accounts,
+					currentAccount,
+				},
+				"\n"
+			)
 
 			// Check if signup process is completed
 			const signupCompleted = user_settings?.signup_data?.completed === true

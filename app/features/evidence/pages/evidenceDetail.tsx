@@ -18,12 +18,24 @@ function isValidUuid(value: string): boolean {
 	return /^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$/.test(value)
 }
 
-export async function loader({ context, params }: LoaderFunctionArgs) {
+export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const { evidenceId } = params
 	if (!evidenceId) throw new Response("Missing evidenceId", { status: 400 })
 	if (!isValidUuid(evidenceId)) {
 		throw new Response("Invalid evidence identifier", { status: 400 })
+	}
+
+	// Parse anchor from URL query parameter if present
+	const url = new URL(request.url)
+	const anchorParam = url.searchParams.get("anchor")
+	let anchorOverride = null
+	if (anchorParam) {
+		try {
+			anchorOverride = JSON.parse(decodeURIComponent(anchorParam))
+		} catch (e) {
+			// Invalid anchor JSON, ignore
+		}
 	}
 
 	// Fetch evidence with interview data (excluding evidence_tag to avoid multiple rows issue)
@@ -67,6 +79,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const peopleRows = (data.people ?? []) as EvidencePersonRow[]
 	const transformedEvidence = {
 		...data,
+		// If anchor override is provided, use it instead of stored anchors
+		anchors: anchorOverride ? [anchorOverride] : data.anchors,
 		people: peopleRows.map((row) => ({
 			id: row.person.id,
 			name: row.person.name,
@@ -77,6 +91,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	return {
 		evidence: transformedEvidence,
+		anchorFromUrl: anchorOverride,
 	}
 }
 

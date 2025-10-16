@@ -23,7 +23,9 @@ export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
 			const jwt = user?.jwt || user?.access_token || null
 
 			// Use RLS client if JWT is present, otherwise fallback to anon client
-			const supabase = jwt ? getRlsClient(jwt) : (await import("~/lib/supabase/client.server")).getServerClient(request).client
+			const supabase = jwt
+				? getRlsClient(jwt)
+				: (await import("~/lib/supabase/client.server")).getServerClient(request).client
 
 			// Set user context for all child loaders/actions to access
 			context.set(userContext, {

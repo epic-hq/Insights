@@ -47,9 +47,9 @@ describe("backfillMissingPeople", () => {
 
 		// Mock getServerClient to return our mock
 		const { getServerClient } = require("~/lib/supabase/client.server")
-			; (getServerClient as MockedFunction<any>).mockReturnValue({
-				client: mockSupabaseClient,
-			})
+		;(getServerClient as MockedFunction<any>).mockReturnValue({
+			client: mockSupabaseClient,
+		})
 	})
 
 	describe("Smart Name Generation", () => {
@@ -536,9 +536,9 @@ describe("getInterviewPeopleStats", () => {
 		mockRequest = new Request("http://localhost:3000")
 
 		const { getServerClient } = require("~/lib/supabase/client.server")
-			; (getServerClient as MockedFunction<any>).mockReturnValue({
-				client: mockSupabaseClient,
-			})
+		;(getServerClient as MockedFunction<any>).mockReturnValue({
+			client: mockSupabaseClient,
+		})
 	})
 
 	it("should return correct statistics", async () => {

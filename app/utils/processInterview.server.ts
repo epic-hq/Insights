@@ -280,7 +280,7 @@ async function processEvidencePhase({
 				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
 			})
 		}
-		; (lfTrace as any)?.end?.()
+		;(lfTrace as any)?.end?.()
 	}
 
 	if (!evidenceResponse) {
@@ -336,8 +336,8 @@ async function processEvidencePhase({
 		const kind_tags = Array.isArray(ev.kind_tags)
 			? (ev.kind_tags as string[])
 			: Object.values(ev.kind_tags ?? {})
-				.flat()
-				.filter((x): x is string => typeof x === "string")
+					.flat()
+					.filter((x): x is string => typeof x === "string")
 		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
 		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
 		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
@@ -393,12 +393,12 @@ async function processEvidencePhase({
 		const _feels = Array.isArray((ev as any).feels) ? ((ev as any).feels as string[]) : []
 		const _pains = Array.isArray((ev as any).pains) ? ((ev as any).pains as string[]) : []
 		const _gains = Array.isArray((ev as any).gains) ? ((ev as any).gains as string[]) : []
-			; (row as Record<string, unknown>).says = _says
-			; (row as Record<string, unknown>).does = _does
-			; (row as Record<string, unknown>).thinks = _thinks
-			; (row as Record<string, unknown>).feels = _feels
-			; (row as Record<string, unknown>).pains = _pains
-			; (row as Record<string, unknown>).gains = _gains
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -420,7 +420,7 @@ async function processEvidencePhase({
 		}
 		const context_summary = (ev as { context_summary?: string }).context_summary
 		if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
-			; (row as Record<string, unknown>).context_summary = context_summary.trim()
+			;(row as Record<string, unknown>).context_summary = context_summary.trim()
 		}
 
 		evidenceRows.push(row)
@@ -658,24 +658,24 @@ async function processEvidencePhase({
 	if (metadata.projectId) {
 		const observationInputs = Array.isArray(evidencePeople)
 			? evidencePeople
-				.map((participant, index) => {
-					const key =
-						typeof participant?.person_key === "string" && participant.person_key.trim().length
-							? participant.person_key.trim()
-							: `participant-${index}`
-					const personId = personIdByKey.get(key) || primaryPersonId
-					if (!personId) return null
-					const facets = Array.isArray(participant?.facets) ? (participant?.facets as PersonFacetObservation[]) : []
-					const scales = Array.isArray(participant?.scales) ? (participant?.scales as PersonScaleObservation[]) : []
-					if (!facets.length && !scales.length) return null
-					return { personId, facets, scales }
-				})
-				.filter(
-					(
-						item
-					): item is { personId: string; facets?: PersonFacetObservation[]; scales?: PersonScaleObservation[] } =>
-						item !== null
-				)
+					.map((participant, index) => {
+						const key =
+							typeof participant?.person_key === "string" && participant.person_key.trim().length
+								? participant.person_key.trim()
+								: `participant-${index}`
+						const personId = personIdByKey.get(key) || primaryPersonId
+						if (!personId) return null
+						const facets = Array.isArray(participant?.facets) ? (participant?.facets as PersonFacetObservation[]) : []
+						const scales = Array.isArray(participant?.scales) ? (participant?.scales as PersonScaleObservation[]) : []
+						if (!facets.length && !scales.length) return null
+						return { personId, facets, scales }
+					})
+					.filter(
+						(
+							item
+						): item is { personId: string; facets?: PersonFacetObservation[]; scales?: PersonScaleObservation[] } =>
+							item !== null
+					)
 			: []
 		if (observationInputs.length) {
 			await persistFacetObservations({
@@ -1124,8 +1124,8 @@ export async function processInterviewTranscriptWithClient({
 				const tags: string[] = Array.isArray(evUnit?.kind_tags)
 					? evUnit.kind_tags
 					: Object.values(evUnit?.kind_tags ?? {})
-						.flat()
-						.filter((x: unknown): x is string => typeof x === "string")
+							.flat()
+							.filter((x: unknown): x is string => typeof x === "string")
 
 				const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
 				const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined

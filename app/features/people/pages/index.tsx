@@ -147,9 +147,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-												name: pp.personas.name,
-												color_hex: pp.personas.color_hex || undefined,
-											}
+													name: pp.personas.name,
+													color_hex: pp.personas.color_hex || undefined,
+												}
 											: undefined,
 									})),
 								}}

@@ -273,6 +273,7 @@ export default function EditInterview() {
 								mediaUrl={interview.media_url}
 								title="Play"
 								size="sm"
+								className="max-w-xs"
 								duration_sec={interview.duration_sec || undefined}
 							/>
 						)}

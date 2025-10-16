@@ -39,7 +39,7 @@ export const loader: LoaderFunction = async ({ request, params, context }) => {
 			const { data } = await supabase.auth.getClaims()
 			const sub = (data?.claims as Claims | undefined)?.sub
 			if (sub) userId = sub
-		} catch { }
+		} catch {}
 	}
 
 	const url = new URL(request.url)
@@ -132,7 +132,7 @@ export const action: ActionFunction = async ({ context, request, params }) => {
 			// Fallback: some tokens only have sub; prefer context when available
 			accountId = accountId || c.account_id || c.sub
 		}
-	} catch { }
+	} catch {}
 
 	if (!accountId || !projectId || !userId) {
 		return Response.json({ error: { message: "Missing authentication context" } }, { status: 401 })

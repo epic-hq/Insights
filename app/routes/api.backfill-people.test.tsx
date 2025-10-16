@@ -32,7 +32,7 @@ describe("api.backfill-people", () => {
 		}
 
 		const { getServerClient } = require("~/lib/supabase/client.server")
-			; (getServerClient as MockedFunction<any>).mockReturnValue(mockSupabaseClient)
+		;(getServerClient as MockedFunction<any>).mockReturnValue(mockSupabaseClient)
 	})
 
 	describe("Authentication", () => {
@@ -107,7 +107,7 @@ describe("api.backfill-people", () => {
 			}
 
 			const { getInterviewPeopleStats } = require("~/utils/backfillPeople.server")
-				; (getInterviewPeopleStats as MockedFunction<any>).mockResolvedValue(mockStats)
+			;(getInterviewPeopleStats as MockedFunction<any>).mockResolvedValue(mockStats)
 
 			const formData = new FormData()
 			formData.append("action", "stats")
@@ -128,7 +128,7 @@ describe("api.backfill-people", () => {
 
 		it("should handle stats errors gracefully", async () => {
 			const { getInterviewPeopleStats } = require("~/utils/backfillPeople.server")
-				; (getInterviewPeopleStats as MockedFunction<any>).mockRejectedValue(new Error("Database connection failed"))
+			;(getInterviewPeopleStats as MockedFunction<any>).mockRejectedValue(new Error("Database connection failed"))
 
 			const formData = new FormData()
 			formData.append("action", "stats")
@@ -175,7 +175,7 @@ describe("api.backfill-people", () => {
 			}
 
 			const { backfillMissingPeople } = require("~/utils/backfillPeople.server")
-				; (backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
+			;(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
 
 			const formData = new FormData()
 			formData.append("action", "backfill")
@@ -209,7 +209,7 @@ describe("api.backfill-people", () => {
 			}
 
 			const { backfillMissingPeople } = require("~/utils/backfillPeople.server")
-				; (backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
+			;(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
 
 			const formData = new FormData()
 			formData.append("action", "backfill")
@@ -235,7 +235,7 @@ describe("api.backfill-people", () => {
 
 		it("should handle backfill errors gracefully", async () => {
 			const { backfillMissingPeople } = require("~/utils/backfillPeople.server")
-				; (backfillMissingPeople as MockedFunction<any>).mockRejectedValue(new Error("Failed to connect to database"))
+			;(backfillMissingPeople as MockedFunction<any>).mockRejectedValue(new Error("Failed to connect to database"))
 
 			const formData = new FormData()
 			formData.append("action", "backfill")
@@ -266,7 +266,7 @@ describe("api.backfill-people", () => {
 			}
 
 			const { backfillMissingPeople } = require("~/utils/backfillPeople.server")
-				; (backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
+			;(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
 
 			const formData = new FormData()
 			formData.append("action", "backfill")
@@ -381,7 +381,7 @@ describe("api.backfill-people", () => {
 			}
 
 			const { backfillMissingPeople } = require("~/utils/backfillPeople.server")
-				; (backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
+			;(backfillMissingPeople as MockedFunction<any>).mockResolvedValue(mockResult)
 
 			const formData = new FormData()
 			formData.append("action", "backfill")

@@ -464,12 +464,13 @@ export function MobileInsightsApp() {
 											<CardContent className="p-3">
 												<div className="flex items-start gap-2">
 													<div
-														className={`mt-2 h-2 w-2 rounded-full ${suggestion.type === "insight"
+														className={`mt-2 h-2 w-2 rounded-full ${
+															suggestion.type === "insight"
 																? "bg-blue-500"
 																: suggestion.type === "question"
 																	? "bg-orange-500"
 																	: "bg-green-500"
-															}`}
+														}`}
 													/>
 													<div className="flex-1">
 														<h4 className="mb-1 font-medium text-gray-900 text-sm">{suggestion.title}</h4>
@@ -490,8 +491,9 @@ export function MobileInsightsApp() {
 							{chatMessages.map((msg) => (
 								<div key={msg.id} className={`flex ${msg.sender === "user" ? "justify-end" : "justify-start"}`}>
 									<div
-										className={`max-w-[80%] rounded-lg p-3 ${msg.sender === "user" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"
-											}`}
+										className={`max-w-[80%] rounded-lg p-3 ${
+											msg.sender === "user" ? "bg-blue-600 text-white" : "bg-gray-100 text-gray-900"
+										}`}
 									>
 										<p className="text-sm">{msg.message}</p>
 										<p className={`mt-1 text-xs ${msg.sender === "user" ? "text-blue-100" : "text-gray-500"}`}>

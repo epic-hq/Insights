@@ -20,6 +20,18 @@ interface R2Config {
 	region: string
 }
 
+interface R2PresignOptions {
+	key: string
+	expiresInSeconds?: number
+	responseContentType?: string
+	responseContentDisposition?: string
+}
+
+interface R2PresignResult {
+	url: string
+	expiresAt: number
+}
+
 let cachedConfig: R2Config | null = null
 let attemptedLoad = false
 
@@ -29,6 +41,25 @@ export function getR2PublicUrl(key: string): string | null {
 	const base = config.publicBaseUrl.endsWith("/") ? config.publicBaseUrl.slice(0, -1) : config.publicBaseUrl
 	const sanitizedKey = key.replace(/^\/+/, "")
 	return `${base}/${sanitizedKey}`
+}
+
+export function getR2KeyFromPublicUrl(fullUrl: string): string | null {
+	const config = getR2Config()
+	if (!config) return null
+
+	try {
+		const normalizedBase = config.publicBaseUrl.replace(/\/+$/, "")
+		const withoutQuery = fullUrl.split(/[?#]/)[0] ?? ""
+
+		if (!withoutQuery.toLowerCase().startsWith(normalizedBase.toLowerCase())) {
+			return null
+		}
+
+		const remainder = withoutQuery.slice(normalizedBase.length).replace(/^\/+/, "")
+		return remainder ? decodeURIComponent(remainder) : null
+	} catch {
+		return null
+	}
 }
 
 export async function uploadToR2({ key, body, contentType }: R2UploadParams): Promise<UploadResult> {
@@ -92,6 +123,64 @@ export async function uploadToR2({ key, body, contentType }: R2UploadParams): Pr
 		const message = error instanceof Error ? error.message : "Unknown error"
 		consola.error("Unexpected error uploading to R2:", error)
 		return { success: false, error: message }
+	}
+}
+
+export function createR2PresignedUrl(options: R2PresignOptions): R2PresignResult | null {
+	const config = getR2Config()
+	if (!config) return null
+
+	const { key, expiresInSeconds = 900, responseContentType, responseContentDisposition } = options
+	const expires = clamp(Math.floor(expiresInSeconds), 1, 60 * 60 * 24 * 7) // 1 second to 7 days
+
+	try {
+		const { endpoint, bucket, region, accessKeyId, secretAccessKey } = config
+		const encodedKey = encodeKey(key)
+		const requestPath = `/${bucket}/${encodedKey}`
+		const urlBase = `${endpoint}/${bucket}/${encodedKey}`
+		const host = new URL(endpoint).host
+
+		const now = new Date()
+		const amzDate = toAmzDate(now)
+		const dateStamp = amzDate.slice(0, 8)
+		const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
+
+		const queryParams: Array<[string, string]> = [
+			["X-Amz-Algorithm", "AWS4-HMAC-SHA256"],
+			["X-Amz-Credential", `${accessKeyId}/${credentialScope}`],
+			["X-Amz-Date", amzDate],
+			["X-Amz-Expires", String(expires)],
+			["X-Amz-SignedHeaders", "host"],
+		]
+
+		if (responseContentType) {
+			queryParams.push(["response-content-type", responseContentType])
+		}
+
+		if (responseContentDisposition) {
+			queryParams.push(["response-content-disposition", responseContentDisposition])
+		}
+
+		const canonicalQuery = buildCanonicalQuery(queryParams)
+		const canonicalHeaders = `host:${host}\n`
+		const signedHeaders = "host"
+		const payloadHash = "UNSIGNED-PAYLOAD"
+
+		const canonicalRequest = ["GET", requestPath, canonicalQuery, canonicalHeaders, signedHeaders, payloadHash].join(
+			"\n"
+		)
+		const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n")
+		const signingKey = getSigningKey(secretAccessKey, dateStamp, region, "s3")
+		const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex")
+
+		const signedQuery = `${canonicalQuery}&X-Amz-Signature=${signature}`
+		const url = `${urlBase}?${signedQuery}`
+		const expiresAt = now.getTime() + expires * 1000
+
+		return { url, expiresAt }
+	} catch (error) {
+		consola.error("Failed to generate R2 presigned URL:", error)
+		return null
 	}
 }
 
@@ -168,10 +257,26 @@ function buildCanonicalHeaders(headers: Record<string, string>): string {
 		.concat("\n")
 }
 
+function buildCanonicalQuery(params: Array<[string, string]>): string {
+	return params
+		.map(([key, value]) => [encodeRfc3986(key), encodeRfc3986(value)] as const)
+		.sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+		.map(([key, value]) => `${key}=${value}`)
+		.join("&")
+}
+
 async function safeRead(response: Response): Promise<string | null> {
 	try {
 		return await response.text()
 	} catch {
 		return null
 	}
+}
+
+function encodeRfc3986(value: string): string {
+	return encodeURIComponent(value).replace(/[!'()*]/g, (char) => `%${char.charCodeAt(0).toString(16).toUpperCase()}`)
+}
+
+function clamp(value: number, min: number, max: number): number {
+	return Math.min(Math.max(value, min), max)
 }

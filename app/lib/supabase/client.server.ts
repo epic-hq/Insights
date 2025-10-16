@@ -49,7 +49,7 @@ export async function getAuthenticatedUser(request: Request) {
 	try {
 		// Prefer JWT claims when available
 		const { data: claims, error } = await supabase.client.auth.getClaims()
-		consola.log("getAuthenticatedUser claims", claims)
+		// consola.log("getAuthenticatedUser claims", claims)
 		if (claims?.claims && !error) {
 			return claims.claims as any
 		}

@@ -165,9 +165,9 @@ export function RadialSpectrumFromSupabase({
 		p.name_and_tagline?.toLowerCase().includes("independent") ? "Contrast" : "Provisional",
 	mapPersonaToPoints,
 	supabaseUrl = (typeof window !== "undefined" ? (window as any).ENV?.SUPABASE_URL : undefined) ||
-	import.meta.env.VITE_SUPABASE_URL,
+		import.meta.env.VITE_SUPABASE_URL,
 	supabaseAnon = (typeof window !== "undefined" ? (window as any).ENV?.SUPABASE_ANON_KEY : undefined) ||
-	import.meta.env.VITE_SUPABASE_ANON_KEY,
+		import.meta.env.VITE_SUPABASE_ANON_KEY,
 }: {
 	setId: string
 	axis?: string // which spectrum to pull out of spectrum_positions
@@ -206,14 +206,14 @@ export function RadialSpectrumFromSupabase({
 			return
 		}
 		const sb = createClient(supabaseUrl, supabaseAnon)
-			; (async () => {
-				const { data, error } = await sb
-					.from("personas")
-					.select("id,set_id,name_and_tagline,differentiators,spectrum_positions")
-					.eq("set_id", setId)
-				if (error) setErr(error.message)
-				else setRows(data as PersonaRow[])
-			})()
+		;(async () => {
+			const { data, error } = await sb
+				.from("personas")
+				.select("id,set_id,name_and_tagline,differentiators,spectrum_positions")
+				.eq("set_id", setId)
+			if (error) setErr(error.message)
+			else setRows(data as PersonaRow[])
+		})()
 	}, [setId, supabaseUrl, supabaseAnon, axis])
 
 	const dataSets: DataSet[] = useMemo(() => {

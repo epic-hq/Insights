@@ -383,9 +383,9 @@ export function formatDataForLLM(data: AutoInsightsData): string {
 
 ## Top Insights (by Impact & Novelty)
 ${insights
-			.slice(0, 20)
-			.map(
-				(insight) => `
+	.slice(0, 20)
+	.map(
+		(insight) => `
 ### ${insight.name} (Category: ${insight.category})
 - **Pain**: ${insight.pain || "N/A"}
 - **Desired Outcome**: ${insight.desired_outcome || "N/A"}
@@ -397,54 +397,54 @@ ${insights
 - **Tags**: ${insight.tags.join(", ") || "None"}
 - **Personas**: ${insight.personas.join(", ") || "None"}
 `
-			)
-			.join("\n")}
+	)
+	.join("\n")}
 
 ## Personas & Segments
 ${personas
-			.map(
-				(persona) => `
+	.map(
+		(persona) => `
 ### ${persona.name} (${persona.percentage || 0}% of users)
 - **Description**: ${persona.description || "N/A"}
 - **Insights**: ${persona.insight_count} insights
 - **Top Pain Points**: ${persona.top_pain_points.join("; ") || "None identified"}
 - **Top Desired Outcomes**: ${persona.top_desired_outcomes.join("; ") || "None identified"}
 `
-			)
-			.join("\n")}
+	)
+	.join("\n")}
 
 ## Current Opportunities Pipeline
 ${opportunities
-			.map(
-				(opp) => `
+	.map(
+		(opp) => `
 ### ${opp.title} (Status: ${opp.kanban_status || "Unknown"})
 - **Supporting Insights**: ${opp.insight_count} insights
 - **Key Supporting Evidence**: ${opp.supporting_insights.join(", ") || "None"}
 `
-			)
-			.join("\n")}
+	)
+	.join("\n")}
 
 ## Trending Tags & Themes
 ${tags
-			.slice(0, 10)
-			.map(
-				(tag) => `
+	.slice(0, 10)
+	.map(
+		(tag) => `
 - **${tag.tag}**: ${tag.insight_count} insights, ${tag.interview_count} interviews (Categories: ${tag.categories.join(", ")})
 `
-			)
-			.join("\n")}
+	)
+	.join("\n")}
 
 ## Recent Interview Themes
 ${interviews
-			.slice(0, 10)
-			.map(
-				(interview) => `
+	.slice(0, 10)
+	.map(
+		(interview) => `
 ### ${interview.title || "Untitled"} (${interview.interview_date || "No date"})
 - **Segment**: ${interview.segment || "N/A"}
 - **Insights Generated**: ${interview.insight_count}
 - **High Impact Themes**: ${interview.high_impact_themes?.join(", ") || "None identified"}
 `
-			)
-			.join("\n")}
+	)
+	.join("\n")}
 `.trim()
 }
