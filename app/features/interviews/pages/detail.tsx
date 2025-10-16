@@ -388,11 +388,37 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
 	const [isProcessing, setIsProcessing] = useState(false)
 
-	// Helper to create evidence link with anchor parameter
+	// Helper to create evidence link with time parameter (like YouTube ?t=10)
 	const createEvidenceLink = (item: { evidenceId: string; anchors?: unknown }) => {
-		const hasAnchors = item.anchors && Array.isArray(item.anchors) && item.anchors.length > 0
-		const anchorParam = hasAnchors ? `?anchor=${encodeURIComponent(JSON.stringify(item.anchors[0]))}` : ""
-		return `${routes.evidence.detail(item.evidenceId)}${anchorParam}`
+		if (!item.anchors || !Array.isArray(item.anchors) || item.anchors.length === 0) {
+			return routes.evidence.detail(item.evidenceId)
+		}
+		
+		const anchor = item.anchors[0] as any
+		const startTime = anchor?.start
+		
+		if (!startTime) {
+			return routes.evidence.detail(item.evidenceId)
+		}
+		
+		// Parse time to seconds for simple ?t=3.5 parameter
+		let seconds = 0
+		if (typeof startTime === 'number') {
+			seconds = startTime
+		} else if (typeof startTime === 'string') {
+			if (startTime.endsWith('ms')) {
+				seconds = parseFloat(startTime.replace('ms', '')) / 1000
+			} else if (startTime.includes(':')) {
+				const parts = startTime.split(':')
+				if (parts.length === 2) {
+					seconds = parseInt(parts[0]) * 60 + parseInt(parts[1])
+				}
+			} else {
+				seconds = parseFloat(startTime)
+			}
+		}
+		
+		return `${routes.evidence.detail(item.evidenceId)}?t=${seconds}`
 	}
 
 	// Check if any action is in progress
@@ -853,7 +879,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									{evidence.slice(0, 4).map((evidenceItem) => (
 										<Link
 											key={evidenceItem.id}
-											to={routes.evidence.detail(evidenceItem.id)}
+											to={createEvidenceLink({ evidenceId: evidenceItem.id, anchors: evidenceItem.anchors })}
 											className="block rounded-md border bg-muted/30 p-3 text-sm hover:bg-muted/50"
 										>
 											<div className="line-clamp-2 font-medium text-foreground">

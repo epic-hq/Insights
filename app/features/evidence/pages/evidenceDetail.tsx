@@ -26,15 +26,20 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		throw new Response("Invalid evidence identifier", { status: 400 })
 	}
 
-	// Parse anchor from URL query parameter if present
+	// Parse simple ?t=seconds parameter (like YouTube)
 	const url = new URL(request.url)
-	const anchorParam = url.searchParams.get("anchor")
+	const timeParam = url.searchParams.get("t")
+	
 	let anchorOverride = null
-	if (anchorParam) {
-		try {
-			anchorOverride = JSON.parse(decodeURIComponent(anchorParam))
-		} catch (e) {
-			// Invalid anchor JSON, ignore
+	if (timeParam) {
+		const seconds = Number.parseFloat(timeParam)
+		if (!Number.isNaN(seconds) && seconds > 0) {
+			// Create a simple anchor with the time
+			anchorOverride = {
+				type: "doc",
+				start: `${seconds * 1000}ms`, // Convert back to ms format for consistency
+				end: null
+			}
 		}
 	}
 

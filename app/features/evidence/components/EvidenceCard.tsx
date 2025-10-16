@@ -73,6 +73,7 @@ export function EvidenceCard({
 	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null
 
 	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as EvidenceAnchor[]) : []
+	
 	const mediaAnchors = anchors.filter((anchor) => {
 		if (!anchor || typeof anchor !== "object") return false
 		const type = anchor.type?.toLowerCase()
