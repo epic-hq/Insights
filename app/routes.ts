@@ -116,6 +116,7 @@ const routes = [
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),
 	route("api/update-field", "./routes/api.update-field.tsx"),
+	route("api/update-user-project-preference", "./routes/api.update-user-project-preference.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	// route("api/copilotkit", "./features/signup-chat/api/copilotkit.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),

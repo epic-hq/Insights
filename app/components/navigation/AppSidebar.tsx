@@ -40,6 +40,10 @@ interface AccountRecord {
 
 interface ProtectedLayoutData {
 	accounts?: AccountRecord[] | null
+	user_settings?: {
+		last_used_account_id?: string | null
+		last_used_project_id?: string | null
+	} | null
 }
 
 export function AppSidebar() {
@@ -62,11 +66,28 @@ export function AppSidebar() {
 
 	const fallbackProject = useMemo(() => {
 		if (projectId) return { id: projectId }
+		
+		// Respect user's last used project preference
+		const lastUsedProjectId = protectedData?.user_settings?.last_used_project_id
+		if (lastUsedProjectId && fallbackAccount?.projects?.length) {
+			const lastUsedProject = fallbackAccount.projects.find((p) => p.id === lastUsedProjectId)
+			if (lastUsedProject) {
+				console.log("[AppSidebar] Using last_used_project_id:", lastUsedProjectId)
+				return lastUsedProject
+			}
+			console.warn("[AppSidebar] last_used_project_id not found in current account projects:", {
+				lastUsedProjectId,
+				availableProjects: fallbackAccount.projects.map((p) => p.id),
+			})
+		}
+		
+		// Final fallback to first project
 		if (fallbackAccount?.projects?.length) {
+			console.log("[AppSidebar] Falling back to first project:", fallbackAccount.projects[0].id)
 			return fallbackAccount.projects[0] || null
 		}
 		return null
-	}, [fallbackAccount, projectId])
+	}, [fallbackAccount, projectId, protectedData?.user_settings?.last_used_project_id])
 
 	const effectiveAccountId = accountId || fallbackAccount?.account_id || ""
 	const effectiveProjectId = fallbackProject?.id || ""

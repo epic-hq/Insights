@@ -146,7 +146,7 @@ export default function PersonDetail() {
 									className="inline-block rounded-full px-3 py-1 font-semibold text-xs"
 									style={{ backgroundColor: `${themeColor}22`, color: themeColor }}
 								>
-									{persona.name}
+									<Link to={routes.personas.detail(persona.id)}>{persona.name}</Link>
 								</span>
 							)}
 							{person.segment && <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{person.segment}</span>}

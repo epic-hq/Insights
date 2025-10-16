@@ -1,5 +1,5 @@
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, File, Home, Lightbulb, ListChecks, Mic, Sparkles, Target, UserCircle, Users } from "lucide-react"
+import { BookOpen, Compass, File, Home, Lightbulb, ListChecks, Mic, Sparkles, Target, UserCircle, Users } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface AppSidebarNavItem {
@@ -80,6 +80,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		key: "analyze",
 		title: "Analyze",
 		items: [
+			{
+				key: "status",
+				title: "Status",
+				description: "Running Report",
+				icon: Compass,
+				to: (routes) => routes.projects.dashboard(),
+			},
 			{
 				key: "personas",
 				title: "Personas",

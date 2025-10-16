@@ -69,19 +69,55 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	}, [protectedData?.accounts])
 
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
-	const currentProject =
-		currentAccount?.projects?.find((proj) => proj.id === projectId) || currentAccount?.projects?.[0]
+	
+	// Determine current project with same fallback logic as AppSidebar
+	const currentProject = useMemo(() => {
+		// First priority: URL projectId
+		if (projectId && currentAccount?.projects) {
+			const urlProject = currentAccount.projects.find((proj) => proj.id === projectId)
+			if (urlProject) return urlProject
+		}
+		
+		// Second priority: last_used_project_id from user_settings
+		const userSettings = protectedData?.user_settings as { last_used_project_id?: string | null } | undefined
+		const lastUsedProjectId = userSettings?.last_used_project_id
+		if (lastUsedProjectId && currentAccount?.projects) {
+			const lastUsedProject = currentAccount.projects.find((proj) => proj.id === lastUsedProjectId)
+			if (lastUsedProject) return lastUsedProject
+		}
+		
+		// Final fallback: first project
+		return currentAccount?.projects?.[0]
+	}, [projectId, currentAccount, protectedData])
 
 	const currentProjectLabel = currentProject?.name || "Select a project"
 	const currentAccountLabel = currentAccount?.name || "Select an account"
 	const initials = currentProject?.name?.charAt(0)?.toUpperCase() || "P"
 
-	const handleSelectProject = (acctId: string, projId: string) => {
+	const handleSelectProject = async (acctId: string, projId: string) => {
 		if (!acctId || !projId) {
 			console.error("Cannot navigate: missing accountId or projectId", { acctId, projId })
 			return
 		}
+		
+		// Update local context state
 		setLastProjectPath({ accountId: acctId, projectId: projId })
+		
+		// Persist preference to database to prevent sidebar showing wrong project
+		try {
+			const formData = new FormData()
+			formData.append("accountId", acctId)
+			formData.append("projectId", projId)
+			
+			await fetch("/api/update-user-project-preference", {
+				method: "POST",
+				body: formData,
+			})
+		} catch (error) {
+			console.error("Failed to persist project preference:", error)
+			// Don't block navigation on persistence failure
+		}
+		
 		const basePath = `/a/${acctId}/${projId}`
 		const routes = createRouteDefinitions(basePath)
 		navigate(routes.dashboard())
