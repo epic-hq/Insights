@@ -10,6 +10,7 @@ import interviewsRoutes from "./features/interviews/routes"
 import marketingRoutes from "./features/marketing/routes"
 import mobileRoutes from "./features/mobile/insights/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
+import organizationsRoutes from "./features/organizations/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
 import projectChatRoutes from "./features/project-chat/routes"
@@ -51,6 +52,7 @@ const routes = [
 				...insightsRoutes,
 				...evidenceRoutes,
 				...opportunitiesRoutes,
+				...organizationsRoutes,
 				...peopleRoutes,
 				...personasRoutes,
 				...themesRoutes,
@@ -103,7 +105,7 @@ const routes = [
 	// route("login", "./routes/(auth)+/login.tsx"),
 	route("login_success", "./routes/(auth)+/login_success.tsx"),
 	route("login_failure", "./routes/(auth)+/login_failure.tsx"),
-	route("register", "./routes/(auth)+/register.tsx"),
+	// route("register", "./routes/(auth)+/register.tsx"),
 	route("/auth/signout", "./routes/auth.signout.tsx"),
 	route("accept-invite", "./routes/accept-invite.tsx"),
 	route("invites", "./routes/invites.tsx"),
@@ -158,7 +160,7 @@ const routes = [
 	route("apple-touch-icon-precomposed.png", "./routes/apple-touch-icon-precomposed[.]png.ts"),
 
 	// Test routes
-	route("test_register", "./routes/(auth)+/test_register.tsx"),
+	// route("test_register", "./routes/(auth)+/test_register.tsx"),
 	route("test/upsight", "./routes/test.upsight.tsx"),
 	route("test/question-quality", "./routes/test.question-quality.tsx"),
 	// route("realtime/quick", "./features/realtime/pages/quick.tsx"),
