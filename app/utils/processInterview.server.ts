@@ -8,7 +8,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import posthog from "posthog-js"
 import { b } from "~/../baml_client"
-import type { FacetCatalog, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
+import type { FacetCatalog, FacetMention, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
 import type { Database, Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
@@ -59,15 +59,6 @@ export interface ExtractedInsight {
 	contradictions?: string
 }
 
-// Utilities ---------------------------------------------------------------
-type AllowedSupport = "supports" | "refutes" | "neutral"
-const allowedEvidenceSupport = new Set<AllowedSupport>(["supports", "refutes", "neutral"])
-
-function normalizeSupport(s: unknown): AllowedSupport {
-	const val = typeof s === "string" ? (s.toLowerCase().trim() as AllowedSupport) : ("supports" as AllowedSupport)
-	return allowedEvidenceSupport.has(val) ? val : "supports"
-}
-
 function sanitizeVerbatim(input: unknown): string | null {
 	if (typeof input !== "string") return null
 	// Replace smart quotes, collapse whitespace, and drop ASCII control chars
@@ -102,6 +93,222 @@ function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
 	const mainTag = (kindTags[0] || "").toLowerCase().trim()
 	const basis = `${normQuote.slice(0, 160)}|${mainTag}`
 	return stringHash(basis)
+}
+
+function humanizeKey(value?: string | null): string | null {
+	if (!value) return null
+	const cleaned = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ")
+	const capitalized = cleaned.replace(/\b\w/g, (char) => char.toUpperCase()).trim()
+	if (!capitalized.length) return null
+	return capitalized
+}
+
+function normalizePersonKey(value: unknown, fallbackIndex: number): string {
+	if (typeof value === "string") {
+		const trimmed = value.trim()
+		if (trimmed.length) return trimmed
+	}
+	return `participant-${fallbackIndex}`
+}
+
+interface DerivedParticipant {
+	person_key: string
+	role: "participant" | "interviewer"
+	display_name: string | null
+	inferred_name: string | null
+	organization: string | null
+	summary: string | null
+	segments: string[]
+	personas: string[]
+}
+
+interface DerivedPeopleResult {
+	people: DerivedParticipant[]
+	primaryKey: string | null
+}
+
+function derivePeopleFromEvidence({
+	turns,
+	normalizedKeys,
+	metadata,
+}: {
+	turns: EvidenceFromBaml["evidence"]
+	normalizedKeys: string[]
+	metadata: InterviewMetadata
+}): DerivedPeopleResult {
+	const stats = new Map<
+		string,
+		{ count: number; firstIndex: number; speakerLabels: Set<string>; inferredLabels: Set<string> }
+	>()
+
+	for (let idx = 0; idx < normalizedKeys.length; idx++) {
+		const key = normalizedKeys[idx]
+		const turn = turns[idx]
+		const speakerLabel =
+			turn && typeof (turn as EvidenceTurn)?.anchors === "object"
+				? ((turn as EvidenceTurn).anchors as { speaker_label?: string | null })?.speaker_label
+				: null
+
+		let entry = stats.get(key)
+		if (!entry) {
+			entry = {
+				count: 0,
+				firstIndex: idx,
+				speakerLabels: new Set<string>(),
+				inferredLabels: new Set<string>(),
+			}
+			stats.set(key, entry)
+		}
+
+		entry.count += 1
+		if (entry.firstIndex > idx) {
+			entry.firstIndex = idx
+		}
+
+		if (typeof speakerLabel === "string" && speakerLabel.trim().length) {
+			entry.speakerLabels.add(speakerLabel.trim())
+		}
+
+		if (typeof turn?.person_key === "string" && turn.person_key.trim().length) {
+			entry.inferredLabels.add(turn.person_key.trim())
+		}
+	}
+
+	if (!stats.size) {
+		const fallbackName = metadata.participantName?.trim() || generateFallbackPersonName(metadata)
+		return {
+			primaryKey: "participant-0",
+			people: [
+				{
+					person_key: "participant-0",
+					role: "participant",
+					display_name: fallbackName,
+					inferred_name: fallbackName,
+					organization: metadata.participantName?.trim() || null,
+					summary: null,
+					segments: metadata.segment ? [metadata.segment] : [],
+					personas: [],
+				},
+			],
+		}
+	}
+
+	const interviewerPattern = /(interviewer|moderator|researcher|host|facilitator|observer|notetaker|scribe)/i
+	const participantPattern =
+		/(participant|customer|client|user|prospect|founder|ceo|manager|designer|engineer|lead|owner|buyer|shopper|patient|student|tenant)/i
+	const metadataParticipantLower = metadata.participantName?.toLowerCase().trim()
+	const metadataInterviewerLower = metadata.interviewerName?.toLowerCase().trim()
+
+	const entries = Array.from(stats.entries()).map(([key, info]) => {
+		const labels = new Set<string>([key])
+		for (const label of info.speakerLabels) labels.add(label)
+		for (const label of info.inferredLabels) labels.add(label)
+		const normalizedLabels = Array.from(labels)
+			.map((label) => label.toLowerCase().trim())
+			.filter(Boolean)
+
+		const matchesInterviewer = normalizedLabels.some((label) => interviewerPattern.test(label))
+		const matchesParticipant = normalizedLabels.some((label) => participantPattern.test(label))
+		const matchesMetadataParticipant = metadataParticipantLower
+			? normalizedLabels.some((label) => label.includes(metadataParticipantLower))
+			: false
+		const matchesMetadataInterviewer = metadataInterviewerLower
+			? normalizedLabels.some((label) => label.includes(metadataInterviewerLower))
+			: false
+
+		return {
+			key,
+			info,
+			labels,
+			matchesInterviewer,
+			matchesParticipant,
+			matchesMetadataParticipant,
+			matchesMetadataInterviewer,
+		}
+	})
+
+	const sortedByPosition = entries.sort((a, b) => a.info.firstIndex - b.info.firstIndex)
+
+	const primaryCandidate =
+		sortedByPosition.find((entry) => entry.matchesMetadataParticipant && !entry.matchesInterviewer) ||
+		sortedByPosition
+			.filter((entry) => entry.matchesParticipant && !entry.matchesInterviewer)
+			.sort((a, b) => b.info.count - a.info.count || a.info.firstIndex - b.info.firstIndex)[0] ||
+		sortedByPosition.find((entry) => !entry.matchesInterviewer) ||
+		sortedByPosition[0]
+
+	const primaryKey = primaryCandidate?.key ?? sortedByPosition[0]?.key ?? null
+
+	const pickLabel = (labels: Set<string>): string | null => {
+		for (const raw of labels) {
+			if (!raw) continue
+			const trimmed = raw.trim()
+			if (!trimmed.length) continue
+			if (/^(speaker|participant|interviewer|moderator)([-_]?\d+)?$/i.test(trimmed)) continue
+			const humanized = humanizeKey(trimmed)
+			if (humanized) return humanized
+		}
+		const fallback = Array.from(labels)[0] ?? null
+		return humanizeKey(fallback) ?? fallback
+	}
+
+	const derivedPeople: DerivedParticipant[] = sortedByPosition.map((entry) => {
+		const isPrimary = entry.key === primaryKey
+		const role: "participant" | "interviewer" = entry.matchesInterviewer && !isPrimary ? "interviewer" : "participant"
+
+		let displayName: string | null = null
+		let inferredName: string | null = null
+
+		if (role === "participant") {
+			if (isPrimary && metadata.participantName?.trim()) {
+				displayName = metadata.participantName.trim()
+				inferredName = displayName
+			} else {
+				const labelCandidate = pickLabel(entry.labels)
+				displayName = labelCandidate || humanizeKey(entry.key)
+				inferredName = displayName
+			}
+		} else {
+			if (metadata.interviewerName?.trim()) {
+				displayName = metadata.interviewerName.trim()
+				inferredName = displayName
+			} else {
+				const labelCandidate = pickLabel(entry.labels)
+				displayName = labelCandidate || humanizeKey(entry.key)
+				inferredName = displayName
+			}
+		}
+
+		const segments = role === "participant" && metadata.segment ? [metadata.segment] : []
+
+		return {
+			person_key: entry.key,
+			role,
+			display_name: displayName ?? null,
+			inferred_name: inferredName ?? null,
+			organization: null,
+			summary: null,
+			segments,
+			personas: [],
+		}
+	})
+
+	if (!derivedPeople.some((person) => person.role === "participant")) {
+		const fallbackName =
+			metadata.participantName?.trim() || humanizeKey(primaryKey) || generateFallbackPersonName(metadata)
+		derivedPeople.unshift({
+			person_key: primaryKey ?? "participant-0",
+			role: "participant",
+			display_name: fallbackName,
+			inferred_name: fallbackName,
+			organization: null,
+			summary: null,
+			segments: metadata.segment ? [metadata.segment] : [],
+			personas: [],
+		})
+	}
+
+	return { people: derivedPeople, primaryKey }
 }
 
 async function resolveFacetCatalog(
@@ -143,7 +350,9 @@ function generateFallbackPersonName(metadata: InterviewMetadata): string {
 	return timestamp
 }
 
-type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscript>>
+type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscriptV2>>
+
+type EvidenceTurn = EvidenceFromBaml["evidence"][number]
 
 interface ProcessEvidenceOptions {
 	db: SupabaseClient<Database>
@@ -163,6 +372,7 @@ interface ProcessEvidenceResult {
 	primaryPersonSegments: string[]
 	insertedEvidenceIds: string[]
 	evidenceUnits: EvidenceFromBaml["evidence"]
+	evidenceKindTags: string[][]
 }
 
 async function processEvidencePhase({
@@ -204,10 +414,12 @@ async function processEvidencePhase({
 	}
 
 	let evidenceUnits: EvidenceFromBaml["evidence"] = []
-	let evidencePeople: EvidenceFromBaml["people"] = []
 	let insertedEvidenceIds: string[] = []
-	const personKeyForEvidence: (string | null)[] = []
+	const evidenceKindTags: string[][] = []
+	const personKeyForEvidence: string[] = []
 	const personRoleByKey = new Map<string, string | null>()
+	const facetObservationsByPersonKey = new Map<string, PersonFacetObservation[]>()
+	const facetObservationDedup = new Map<string, Set<string>>()
 
 	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
 	const langfuse = getLangfuseClient()
@@ -225,7 +437,7 @@ async function processEvidencePhase({
 			? `${fullTranscript.slice(0, transcriptPreviewLength)}...`
 			: fullTranscript
 	const lfGeneration = lfTrace?.generation?.({
-		name: "baml.ExtractEvidenceFromTranscript",
+		name: "baml.ExtractEvidenceFromTranscriptV2",
 		input: {
 			language,
 			transcriptLength: fullTranscript.length,
@@ -247,7 +459,7 @@ async function processEvidencePhase({
 	let langfuseUsage: ReturnType<typeof mapUsageToLangfuse> | undefined
 	let generationEnded = false
 	try {
-		evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscript(
+		evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscriptV2(
 			fullTranscript || "",
 			chapters,
 			language,
@@ -255,7 +467,7 @@ async function processEvidencePhase({
 		)
 		usageSummary = summarizeCollectorUsage(collector, costOptions)
 		if (usageSummary) {
-			consola.log("[BAML usage] ExtractEvidenceFromTranscript:", usageSummary)
+			consola.log("[BAML usage] ExtractEvidenceFromTranscriptV2:", usageSummary)
 		}
 		langfuseUsage = mapUsageToLangfuse(usageSummary)
 		lfGeneration?.update?.({
@@ -293,12 +505,26 @@ async function processEvidencePhase({
 			primaryPersonSegments: [],
 			insertedEvidenceIds,
 			evidenceUnits,
+			evidenceKindTags,
 		}
 	}
 
 	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
-	evidencePeople = Array.isArray(evidenceResponse?.people) ? evidenceResponse.people : []
+	const scenes = Array.isArray(evidenceResponse?.scenes) ? evidenceResponse.scenes : []
+
+	const normalizedPersonKeys = evidenceUnits.map((unit, idx) => normalizePersonKey(unit?.person_key, idx))
+	const { people: derivedPeople, primaryKey: derivedPrimaryKey } = derivePeopleFromEvidence({
+		turns: evidenceUnits,
+		normalizedKeys: normalizedPersonKeys,
+		metadata,
+	})
+
+	for (const participant of derivedPeople) {
+		if (participant.person_key) {
+			personRoleByKey.set(participant.person_key, participant.role ?? null)
+		}
+	}
 
 	if (!evidenceUnits.length) {
 		return {
@@ -310,6 +536,21 @@ async function processEvidencePhase({
 			primaryPersonSegments: [],
 			insertedEvidenceIds,
 			evidenceUnits,
+			evidenceKindTags,
+		}
+	}
+
+	const sceneTopicByIndex = new Map<number, string>()
+	for (const scene of scenes ?? []) {
+		const startIndex =
+			typeof (scene as { start_index?: number }).start_index === "number" ? (scene as any).start_index : null
+		const endIndex = typeof (scene as { end_index?: number }).end_index === "number" ? (scene as any).end_index : null
+		const topicRaw = typeof (scene as { topic?: string }).topic === "string" ? (scene as any).topic : null
+		if (startIndex === null || startIndex === undefined || topicRaw === null) continue
+		const topic = sanitizeVerbatim(topicRaw) ?? null
+		const end = endIndex !== null && endIndex !== undefined ? endIndex : startIndex
+		for (let idx = startIndex; idx <= end; idx++) {
+			if (topic) sceneTopicByIndex.set(idx, topic)
 		}
 	}
 
@@ -325,30 +566,34 @@ async function processEvidencePhase({
 
 	const evidenceRows: EvidenceInsert[] = []
 	const interviewMediaUrl = typeof interviewRecord.media_url === "string" ? interviewRecord.media_url : null
-	for (const ev of evidenceUnits) {
-		const personKey = typeof (ev as any).person_key === "string" ? (ev as any).person_key.trim() : null
-		const verb = sanitizeVerbatim((ev as { verbatim?: string }).verbatim)
+	for (let idx = 0; idx < evidenceUnits.length; idx++) {
+		const ev = evidenceUnits[idx] as EvidenceTurn
+		const personKey = normalizedPersonKeys[idx] || derivedPrimaryKey || "participant-0"
+		const verb = sanitizeVerbatim(ev?.verbatim)
 		if (!verb) continue
-		const chunk = sanitizeVerbatim((ev as { chunk?: string }).chunk) ?? verb
-		const gist = sanitizeVerbatim((ev as { gist?: string }).gist) ?? verb
-		const topic = sanitizeVerbatim((ev as { topic?: string }).topic)
-		const support = normalizeSupport((ev as { support?: string }).support)
-		const kind_tags = Array.isArray(ev.kind_tags)
-			? (ev.kind_tags as string[])
-			: Object.values(ev.kind_tags ?? {})
-					.flat()
-					.filter((x): x is string => typeof x === "string")
+		const chunk = sanitizeVerbatim(ev?.chunk) ?? verb
+		const gist = sanitizeVerbatim(ev?.gist) ?? verb
+		const evidenceIndex = typeof ev?.index === "number" ? ev.index : idx
+		const sceneTopic = sceneTopicByIndex.get(evidenceIndex) ?? null
+		const facetMentions = Array.isArray((ev as { facet_mentions?: FacetMention[] }).facet_mentions)
+			? ((ev as { facet_mentions?: FacetMention[] }).facet_mentions as FacetMention[])
+			: []
+		const kind_tags = Array.from(
+			new Set(
+				facetMentions
+					.map((mention) => (typeof mention?.kind_slug === "string" ? mention.kind_slug.trim() : ""))
+					.filter((slug): slug is string => Boolean(slug))
+			)
+		)
+		evidenceKindTags.push(kind_tags)
 		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
 		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
 		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
-		const providedIndKey = (ev as { independence_key?: string }).independence_key
-		const independence_key =
-			providedIndKey && providedIndKey.trim().length > 0
-				? providedIndKey.trim()
-				: computeIndependenceKey(gist ?? verb, kind_tags)
-		const rawAnchors = Array.isArray((ev as { anchors?: unknown }).anchors)
-			? (((ev as { anchors?: unknown }).anchors ?? []) as Array<Record<string, any>>)
-			: []
+		const independence_key = computeIndependenceKey(gist ?? verb, kind_tags)
+		const rawAnchors =
+			ev && typeof (ev as any).anchors === "object" && (ev as any).anchors !== null
+				? [((ev as any).anchors ?? {}) as Record<string, any>]
+				: []
 		const sanitizedAnchors = rawAnchors
 			.map((anchor) => {
 				if (!anchor || typeof anchor !== "object") return null
@@ -371,14 +616,14 @@ async function processEvidencePhase({
 			source_type: "primary",
 			method: "interview",
 			modality: "qual",
-			support,
+			support: "supports",
 			kind_tags,
-			personas: (ev.personas ?? []) as string[],
-			segments: (ev.segments ?? []) as string[],
-			journey_stage: ev.journey_stage || null,
+			personas: [],
+			segments: [],
+			journey_stage: null,
 			chunk,
 			gist,
-			topic: topic || null,
+			topic: sceneTopic,
 			weight_quality,
 			weight_relevance,
 			independence_key,
@@ -387,12 +632,12 @@ async function processEvidencePhase({
 			anchors: sanitizedAnchors as unknown as Json,
 		}
 
-		const _says = Array.isArray((ev as any).says) ? ((ev as any).says as string[]) : []
-		const _does = Array.isArray((ev as any).does) ? ((ev as any).does as string[]) : []
-		const _thinks = Array.isArray((ev as any).thinks) ? ((ev as any).thinks as string[]) : []
-		const _feels = Array.isArray((ev as any).feels) ? ((ev as any).feels as string[]) : []
-		const _pains = Array.isArray((ev as any).pains) ? ((ev as any).pains as string[]) : []
-		const _gains = Array.isArray((ev as any).gains) ? ((ev as any).gains as string[]) : []
+		const _says = Array.isArray(ev?.says) ? (ev.says as string[]) : []
+		const _does = Array.isArray(ev?.does) ? (ev.does as string[]) : []
+		const _thinks = Array.isArray(ev?.thinks) ? (ev.thinks as string[]) : []
+		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
+		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
+		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
 		;(row as Record<string, unknown>).says = _says
 		;(row as Record<string, unknown>).does = _does
 		;(row as Record<string, unknown>).thinks = _thinks
@@ -418,13 +663,48 @@ async function processEvidencePhase({
 				if (typeof v === "string" && v.trim() && empathySamples[k].length < 3) empathySamples[k].push(v.trim())
 			}
 		}
-		const context_summary = (ev as { context_summary?: string }).context_summary
-		if (context_summary && typeof context_summary === "string" && context_summary.trim().length) {
-			;(row as Record<string, unknown>).context_summary = context_summary.trim()
+
+		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
+		if (whyItMatters) {
+			;(row as Record<string, unknown>).context_summary = whyItMatters
+		}
+
+		const observationList = facetObservationsByPersonKey.get(personKey) ?? []
+		const dedupeSet = facetObservationDedup.get(personKey) ?? new Set<string>()
+		if (!facetObservationsByPersonKey.has(personKey)) {
+			facetObservationsByPersonKey.set(personKey, observationList)
+			facetObservationDedup.set(personKey, dedupeSet)
+		}
+		for (const mention of facetMentions) {
+			const kindSlug = typeof mention?.kind_slug === "string" ? mention.kind_slug.trim() : ""
+			const valueRaw = typeof mention?.value === "string" ? mention.value.trim() : ""
+			if (!kindSlug || !valueRaw) continue
+			const value = sanitizeVerbatim(valueRaw) ?? valueRaw
+			const dedupeKey = `${kindSlug.toLowerCase()}|${value.toLowerCase()}|${evidenceIndex}`
+			if (dedupeSet.has(dedupeKey)) continue
+			dedupeSet.add(dedupeKey)
+			const note =
+				mention?.quote && typeof mention.quote === "string"
+					? (sanitizeVerbatim(mention.quote) ?? mention.quote.trim())
+					: null
+			const facetObservation: PersonFacetObservation = {
+				kind_slug: kindSlug,
+				value,
+				source: "interview",
+				evidence_unit_index: evidenceIndex,
+				confidence: typeof mention?.confidence === "number" ? mention.confidence : undefined,
+				notes: note ? [note] : undefined,
+				candidate: {
+					kind_slug: kindSlug,
+					label: value,
+					synonyms: [],
+				},
+			}
+			observationList.push(facetObservation)
 		}
 
 		evidenceRows.push(row)
-		personKeyForEvidence.push(personKey?.length ? personKey : null)
+		personKeyForEvidence.push(personKey)
 	}
 
 	if (!evidenceRows.length) {
@@ -437,6 +717,7 @@ async function processEvidencePhase({
 			primaryPersonSegments: [],
 			insertedEvidenceIds,
 			evidenceUnits,
+			evidenceKindTags,
 		}
 	}
 
@@ -519,22 +800,17 @@ async function processEvidencePhase({
 		}
 	}
 
-	const resolveName = (participant: EvidenceFromBaml["people"][number], index: number): string => {
+	const resolveName = (participant: DerivedParticipant, index: number): string => {
 		const candidates = [
-			participant.inferred_name,
 			participant.display_name,
-			participant.person_key && humanizeKey(participant.person_key),
+			participant.inferred_name,
+			participant.person_key ? humanizeKey(participant.person_key) : null,
+			participant.role === "participant" ? metadata.participantName : metadata.interviewerName,
 		]
 		for (const candidate of candidates) {
 			if (typeof candidate === "string" && candidate.trim().length) return candidate.trim()
 		}
 		return `Participant ${index + 1}`
-	}
-
-	const humanizeKey = (value?: string | null): string | null => {
-		if (!value) return null
-		const cleaned = value.replace(/[_-]+/g, " ").replace(/\s+/g, " ")
-		return cleaned.replace(/\b\w/g, (char) => char.toUpperCase()).trim()
 	}
 
 	const upsertPerson = async (
@@ -568,39 +844,37 @@ async function processEvidencePhase({
 	let primaryPersonOrganization: string | null = null
 	let primaryPersonSegments: string[] = []
 
-	if (Array.isArray(evidencePeople) && evidencePeople.length) {
-		for (const [index, participant] of evidencePeople.entries()) {
-			const participantKey = participant?.person_key?.trim()
-			if (participantKey) {
-				personRoleByKey.set(participantKey, participant.role ?? null)
-			}
+	if (derivedPeople.length) {
+		for (const [index, participant] of derivedPeople.entries()) {
+			const participantKey = participant.person_key?.trim() || `participant-${index}`
 			const resolvedName = resolveName(participant, index)
-			const segments = Array.isArray(participant?.segments)
-				? participant.segments?.filter((seg): seg is string => typeof seg === "string" && seg.trim().length > 0)
+			const segments = Array.isArray(participant.segments)
+				? participant.segments.filter((seg): seg is string => typeof seg === "string" && seg.trim().length > 0)
 				: []
 			const participantOverrides: Partial<PeopleInsert> = {
 				description: participant.summary?.trim() || null,
 				segment: segments[0] || metadata.segment || null,
 				company: participant.organization?.trim() || null,
-				role: participant.role?.trim() || null,
+				role: participant.role || null,
 			}
 			const personRecord = await upsertPerson(resolvedName, participantOverrides)
-			const key = participantKey?.length ? participantKey : `participant-${index}`
-			personIdByKey.set(key, personRecord.id)
-			keyByPersonId.set(personRecord.id, key)
-			if (participant?.display_name) {
-				displayNameByKey.set(key, participant.display_name.trim())
+			personIdByKey.set(participantKey, personRecord.id)
+			keyByPersonId.set(personRecord.id, participantKey)
+			if (participant.display_name) {
+				displayNameByKey.set(participantKey, participant.display_name.trim())
 			}
-			personRoleById.set(personRecord.id, participant.role?.trim() || null)
+			personRoleById.set(personRecord.id, participant.role ?? null)
 
-			const isPrimary = (participant.role || "").toLowerCase().includes("participant") || !primaryPersonId
+			const isPrimary =
+				participant.person_key === (derivedPrimaryKey ?? participant.person_key) ||
+				(participant.role === "participant" && !primaryPersonId)
 			if (isPrimary) {
 				primaryPersonId = personRecord.id
 				primaryPersonName = personRecord.name
-				primaryPersonRole = participant.role?.trim() || null
+				primaryPersonRole = participant.role ?? "participant"
 				primaryPersonDescription = participantOverrides.description ?? null
 				primaryPersonOrganization = participantOverrides.company ?? null
-				primaryPersonSegments = segments
+				primaryPersonSegments = segments.length ? segments : metadata.segment ? [metadata.segment] : []
 			}
 		}
 	}
@@ -656,27 +930,19 @@ async function processEvidencePhase({
 	}
 
 	if (metadata.projectId) {
-		const observationInputs = Array.isArray(evidencePeople)
-			? evidencePeople
-					.map((participant, index) => {
-						const key =
-							typeof participant?.person_key === "string" && participant.person_key.trim().length
-								? participant.person_key.trim()
-								: `participant-${index}`
-						const personId = personIdByKey.get(key) || primaryPersonId
-						if (!personId) return null
-						const facets = Array.isArray(participant?.facets) ? (participant?.facets as PersonFacetObservation[]) : []
-						const scales = Array.isArray(participant?.scales) ? (participant?.scales as PersonScaleObservation[]) : []
-						if (!facets.length && !scales.length) return null
-						return { personId, facets, scales }
-					})
-					.filter(
-						(
-							item
-						): item is { personId: string; facets?: PersonFacetObservation[]; scales?: PersonScaleObservation[] } =>
-							item !== null
-					)
-			: []
+		const observationInputs = Array.from(facetObservationsByPersonKey.entries())
+			.map(([key, facets]) => {
+				const personId = personIdByKey.get(key) || primaryPersonId
+				const normalizedFacets = Array.isArray(facets)
+					? facets.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+					: []
+				if (!personId || !normalizedFacets.length) return null
+				return { personId, facets: normalizedFacets, scales: [] as PersonScaleObservation[] }
+			})
+			.filter(
+				(item): item is { personId: string; facets: PersonFacetObservation[]; scales: PersonScaleObservation[] } =>
+					item !== null
+			)
 		if (observationInputs.length) {
 			await persistFacetObservations({
 				db,
@@ -698,6 +964,7 @@ async function processEvidencePhase({
 		primaryPersonSegments,
 		insertedEvidenceIds,
 		evidenceUnits,
+		evidenceKindTags,
 	}
 }
 
@@ -929,6 +1196,7 @@ export async function processInterviewTranscriptWithClient({
 		primaryPersonSegments,
 		insertedEvidenceIds,
 		evidenceUnits,
+		evidenceKindTags,
 	} = await processEvidencePhase({
 		db,
 		metadata,
@@ -1119,13 +1387,7 @@ export async function processInterviewTranscriptWithClient({
 			// However types may differ; we already captured insertedEvidenceIds above
 			for (let i = 0; i < insertedEvidenceIds.length; i++) {
 				const evId = insertedEvidenceIds[i]
-				// Safeguard: find the corresponding evidence unit's kind_tags if available
-				const evUnit = Array.isArray(evidenceUnits) ? (evidenceUnits[i] as any) : undefined
-				const tags: string[] = Array.isArray(evUnit?.kind_tags)
-					? evUnit.kind_tags
-					: Object.values(evUnit?.kind_tags ?? {})
-							.flat()
-							.filter((x: unknown): x is string => typeof x === "string")
+				const tags = evidenceKindTags[i] ?? []
 
 				const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
 				const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined
