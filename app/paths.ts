@@ -4,7 +4,7 @@ const HOST = process.env.NODE_ENV === "development" ? "http://localhost:4280" : 
 
 const AUTH = {
 	LOGIN: "/login",
-	REGISTER: "/register",
+	REGISTER: "/sign-up",
 	LOGOUT: "/logout",
 	CALLBACK: "/auth/callback",
 	HOST,

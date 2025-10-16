@@ -9,8 +9,10 @@ import { LogoBrand } from "../branding"
 import { AppSidebar } from "./AppSidebar"
 
 const marketingLinks = [
-	{ key: "benefits", label: "Why", link: "#benefits" },
-	{ key: "features", label: "Features", link: "#features" },
+	{ key: "benefits", label: "Why", link: "/#benefits" },
+	{ key: "features", label: "Features", link: "/#features" },
+	// { key: "case-studies", label: "Case Studies", link: "/case-studies" },
+	{ key: "blog", label: "Learn", link: "/blog" },
 ]
 
 export default function MainNav() {
@@ -23,7 +25,9 @@ export default function MainNav() {
 	const dashboardLink = hasProjectContext ? routes.dashboard() : PATHS.HOME
 	const isHomePage = pathname === "/"
 	const isAboutPage = pathname === "/about"
-	const isMarketingPage = !user || isHomePage || isAboutPage
+	const isBlogPage = pathname.startsWith("/blog")
+	const isCaseStudiesPage = pathname.startsWith("/case-studies")
+	const isMarketingPage = !user || isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage
 
 	if (user && !isMarketingPage) {
 		return <AppSidebar />
@@ -37,7 +41,7 @@ export default function MainNav() {
 						<LogoBrand />
 					</Link>
 
-					{(isHomePage || isAboutPage) && !user && (
+					{(isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage) && !user && (
 						<div className="hidden sm:flex sm:space-x-8">
 							{marketingLinks.map(({ key, label, link }) => (
 								<NavLink

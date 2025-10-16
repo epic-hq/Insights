@@ -33,6 +33,9 @@ const envSchema = z.object({
 	R2_PUBLIC_BASE_URL: z.string().optional(),
 	R2_ENDPOINT: z.string().optional(),
 	R2_REGION: z.string().optional(),
+
+	// Payload CMS
+	PAYLOAD_CMS_URL: z.string().default("https://upsight-cms.vercel.app"),
 })
 
 export type ServerEnv = z.infer<typeof envSchema>
