@@ -1729,6 +1729,78 @@ export type Database = {
           },
         ]
       }
+      mastra_ai_spans: {
+        Row: {
+          attributes: Json | null
+          createdAt: string
+          createdAtZ: string | null
+          endedAt: string | null
+          endedAtZ: string | null
+          error: Json | null
+          input: Json | null
+          isEvent: boolean
+          links: Json | null
+          metadata: Json | null
+          name: string
+          output: Json | null
+          parentSpanId: string | null
+          scope: Json | null
+          spanId: string
+          spanType: string
+          startedAt: string
+          startedAtZ: string | null
+          traceId: string
+          updatedAt: string | null
+          updatedAtZ: string | null
+        }
+        Insert: {
+          attributes?: Json | null
+          createdAt: string
+          createdAtZ?: string | null
+          endedAt?: string | null
+          endedAtZ?: string | null
+          error?: Json | null
+          input?: Json | null
+          isEvent: boolean
+          links?: Json | null
+          metadata?: Json | null
+          name: string
+          output?: Json | null
+          parentSpanId?: string | null
+          scope?: Json | null
+          spanId: string
+          spanType: string
+          startedAt: string
+          startedAtZ?: string | null
+          traceId: string
+          updatedAt?: string | null
+          updatedAtZ?: string | null
+        }
+        Update: {
+          attributes?: Json | null
+          createdAt?: string
+          createdAtZ?: string | null
+          endedAt?: string | null
+          endedAtZ?: string | null
+          error?: Json | null
+          input?: Json | null
+          isEvent?: boolean
+          links?: Json | null
+          metadata?: Json | null
+          name?: string
+          output?: Json | null
+          parentSpanId?: string | null
+          scope?: Json | null
+          spanId?: string
+          spanType?: string
+          startedAt?: string
+          startedAtZ?: string | null
+          traceId?: string
+          updatedAt?: string | null
+          updatedAtZ?: string | null
+        }
+        Relationships: []
+      }
       mastra_evals: {
         Row: {
           agent_name: string
@@ -1869,6 +1941,7 @@ export type Database = {
           scorer: Json
           scorerId: string
           source: string
+          spanId: string | null
           threadId: string | null
           traceId: string | null
           updatedAt: string
@@ -1902,6 +1975,7 @@ export type Database = {
           scorer: Json
           scorerId: string
           source: string
+          spanId?: string | null
           threadId?: string | null
           traceId?: string | null
           updatedAt: string
@@ -1935,6 +2009,7 @@ export type Database = {
           scorer?: Json
           scorerId?: string
           source?: string
+          spanId?: string | null
           threadId?: string | null
           traceId?: string | null
           updatedAt?: string
@@ -2062,102 +2137,6 @@ export type Database = {
         }
         Relationships: []
       }
-      organizations: {
-        Row: {
-          account_id: string | null
-          annual_revenue: number | null
-          billing_address: Json | null
-          company_type: string | null
-          created_at: string
-          description: string | null
-          domain: string | null
-          email: string | null
-          employee_count: number | null
-          headquarters_location: string | null
-          id: string
-          industry: string | null
-          legal_name: string | null
-          linkedin_url: string | null
-          name: string
-          notes: string | null
-          phone: string | null
-          project_id: string | null
-          shipping_address: Json | null
-          size_range: string | null
-          sub_industry: string | null
-          twitter_url: string | null
-          updated_at: string
-          website_url: string | null
-        }
-        Insert: {
-          account_id?: string | null
-          annual_revenue?: number | null
-          billing_address?: Json | null
-          company_type?: string | null
-          created_at?: string
-          description?: string | null
-          domain?: string | null
-          email?: string | null
-          employee_count?: number | null
-          headquarters_location?: string | null
-          id?: string
-          industry?: string | null
-          legal_name?: string | null
-          linkedin_url?: string | null
-          name: string
-          notes?: string | null
-          phone?: string | null
-          project_id?: string | null
-          shipping_address?: Json | null
-          size_range?: string | null
-          sub_industry?: string | null
-          twitter_url?: string | null
-          updated_at?: string
-          website_url?: string | null
-        }
-        Update: {
-          account_id?: string | null
-          annual_revenue?: number | null
-          billing_address?: Json | null
-          company_type?: string | null
-          created_at?: string
-          description?: string | null
-          domain?: string | null
-          email?: string | null
-          employee_count?: number | null
-          headquarters_location?: string | null
-          id?: string
-          industry?: string | null
-          legal_name?: string | null
-          linkedin_url?: string | null
-          name?: string
-          notes?: string | null
-          phone?: string | null
-          project_id?: string | null
-          shipping_address?: Json | null
-          size_range?: string | null
-          sub_industry?: string | null
-          twitter_url?: string | null
-          updated_at?: string
-          website_url?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "organizations_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "organizations_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       opportunities: {
         Row: {
           account_id: string
@@ -2254,6 +2233,95 @@ export type Database = {
           },
           {
             foreignKeyName: "opportunity_insights_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      organizations: {
+        Row: {
+          account_id: string | null
+          annual_revenue: number | null
+          billing_address: Json | null
+          company_type: string | null
+          created_at: string
+          description: string | null
+          domain: string | null
+          email: string | null
+          employee_count: number | null
+          headquarters_location: string | null
+          id: string
+          industry: string | null
+          legal_name: string | null
+          linkedin_url: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          project_id: string | null
+          shipping_address: Json | null
+          size_range: string | null
+          sub_industry: string | null
+          twitter_url: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          annual_revenue?: number | null
+          billing_address?: Json | null
+          company_type?: string | null
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          email?: string | null
+          employee_count?: number | null
+          headquarters_location?: string | null
+          id?: string
+          industry?: string | null
+          legal_name?: string | null
+          linkedin_url?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string | null
+          shipping_address?: Json | null
+          size_range?: string | null
+          sub_industry?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          annual_revenue?: number | null
+          billing_address?: Json | null
+          company_type?: string | null
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          email?: string | null
+          employee_count?: number | null
+          headquarters_location?: string | null
+          id?: string
+          industry?: string | null
+          legal_name?: string | null
+          linkedin_url?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string | null
+          shipping_address?: Json | null
+          size_range?: string | null
+          sub_industry?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -2388,13 +2456,6 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
-          {
-            foreignKeyName: "people_organizations_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
           {
             foreignKeyName: "people_organizations_organization_id_fkey"
             columns: ["organization_id"]
@@ -4382,7 +4443,11 @@ export type Database = {
       }
       l2_normalize: {
         Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: string
+        Returns: unknown
+      }
+      list_invitations_for_current_user: {
+        Args: Record<PropertyKey, never>
+        Returns: Json
       }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }

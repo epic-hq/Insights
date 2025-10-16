@@ -1,6 +1,6 @@
 import type { Context } from "hono"
 import type { TFunction } from "i18next"
-import { type AppLoadContext, unstable_createContext } from "react-router"
+import { type AppLoadContext, createContext } from "react-router"
 import { i18next } from "remix-hono/i18next"
 import { type ClientEnvVars, getClientEnv, getServerEnv, type ServerEnv } from "~/env.server"
 
@@ -34,13 +34,13 @@ declare module "react-router" {
 		clientEnv: ClientEnvVars
 	}
 }
-interface LoadContext extends Awaited<ReturnType<typeof getLoadContext>> {}
+interface LoadContext extends Awaited<ReturnType<typeof getLoadContext>> { }
 
-export const loadContext = unstable_createContext<AppLoadContext>()
+export const loadContext = createContext<AppLoadContext>()
 
 /**
  * Declare our loaders and actions context type
  */
 declare module "react-router" {
-	interface AppLoadContext extends Omit<LoadContext, "body"> {}
+	interface AppLoadContext extends Omit<LoadContext, "body"> { }
 }
