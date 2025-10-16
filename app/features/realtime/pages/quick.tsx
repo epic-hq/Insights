@@ -231,15 +231,31 @@ export default function QuickRealtime() {
 					const blob = await stopped
 					let mediaUrl: string | undefined
 					if (blob.size > 0 && interviewId) {
-						const filename = `interviews/${projectId}/${interviewId}-${Date.now()}.webm`
-						const { error } = await supabase.storage
-							.from("interview-recordings")
-							.upload(filename, blob, { upsert: true })
-						if (!error) {
-							const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
-							mediaUrl = data.publicUrl
-						} else {
-							appendLog(`Audio upload failed: ${error.message}`)
+						const uploadEndpoint = `${basePath}/api/interviews/realtime-upload`
+						const formData = new FormData()
+						formData.append("file", blob, `realtime-${interviewId}-${Date.now()}.webm`)
+						formData.append("interviewId", interviewId)
+						formData.append("projectId", projectId ?? "")
+
+						try {
+							const response = await fetch(uploadEndpoint, {
+								method: "POST",
+								body: formData,
+							})
+
+							if (response.ok) {
+								const payload = (await response.json()) as { mediaUrl?: string }
+								if (typeof payload?.mediaUrl === "string" && payload.mediaUrl) {
+									mediaUrl = payload.mediaUrl
+								} else {
+									appendLog("Audio upload response missing mediaUrl")
+								}
+							} else {
+								const errorText = await response.text().catch(() => "")
+								appendLog(`Audio upload failed: ${response.status} ${response.statusText} ${errorText.slice(0, 120)}`)
+							}
+						} catch (uploadError) {
+							appendLog(`Audio upload error: ${(uploadError as Error).message ?? uploadError}`)
 						}
 					}
 

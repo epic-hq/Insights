@@ -67,7 +67,7 @@ ngrok http --url=cowbird-still-routinely.ngrok-free.app 4280
 **Process:**
 ```
 1. User uploads file via UploadScreen
-   └── File stored in Supabase Storage
+   └── File stored in Cloudflare R2
 
 2. Upload job created → AssemblyAI submission
    ├── Creates upload_jobs record with assemblyai_id
@@ -119,7 +119,7 @@ ngrok http --url=cowbird-still-routinely.ngrok-free.app 4280
 3. User clicks "Finish" → stopStreaming()
    ├── Stops WebSocket connection
    ├── Stops MediaRecorder and creates audio blob
-   ├── Uploads audio blob to Supabase Storage
+   ├── Uploads audio blob to Cloudflare R2
    ├── Calls POST /api/interviews/realtime-finalize
    │   ├── Updates interview with transcript + media_url
    │   ├── Creates formattedTranscriptData:
@@ -172,7 +172,7 @@ Both flows converge at `createAndProcessAnalysisJob()` which ensures consistent 
 | **Audio Source** | External file/URL | Live recording |
 | **Transcription** | AssemblyAI (full features) | WebSocket streaming |
 | **Audio Duration** | ✅ From AssemblyAI | ✅ From audio blob |
-| **Audio Storage** | ✅ Stored in Supabase Storage | ✅ Stored in Supabase Storage |
+| **Audio Storage** | ✅ Stored in Cloudflare R2 | ✅ Stored in Cloudflare R2 |
 | **Processing Timing** | After upload completes | After recording finishes |
 | **Error Handling** | Webhook resilience | UI error states |
 
@@ -194,7 +194,7 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 
 ## Audio File Storage
 
-**NEW**: All interview flows now store the original audio files in Supabase Storage for consistent media access.
+**NEW**: All interview flows now store the original audio files in Cloudflare R2 for consistent media access.
 
 ### Storage Implementation
 
@@ -207,45 +207,46 @@ Both flows store duration in `interviews.duration_sec` field (integer seconds).
 ### Upload Flows Storage:
 
 **api.upload-file.tsx**:
-1. ✅ Stores original file in Supabase Storage
+1. ✅ Stores original file in Cloudflare R2
 2. Uploads to AssemblyAI for transcription
 3. Uses stored URL as `media_url` in database
 
 **api.upload-from-url.tsx**:
-1. ✅ Downloads file from URL and stores in Supabase Storage
+1. ✅ Downloads file from URL and stores in Cloudflare R2
 2. Uploads to AssemblyAI for transcription
 3. Uses stored URL as `media_url` in database
 
 **api.assemblyai-webhook.tsx**:
 1. ✅ Downloads audio file from AssemblyAI `audio_url`
-2. Stores in Supabase Storage
+2. Stores in Cloudflare R2
 3. Uses stored URL as `media_url` in database
 
 **Realtime Flow**:
 1. ✅ Records audio locally via MediaRecorder
-2. Stores recorded blob in Supabase Storage
+2. Stores recorded blob in Cloudflare R2
 3. Uses stored URL as `media_url` in database
 
 ### Benefits:
 - **Consistent Access**: All interviews have persistent media URLs
 - **Data Ownership**: Audio files stored in our infrastructure
 - **Reliability**: Not dependent on external URLs or temporary AssemblyAI URLs
-- **Performance**: Files served from Supabase CDN
+- **Performance**: Files served from Cloudflare R2
 
 ## Data Flow Summary
 
 ```
 Upload URL → Store → AssemblyAI → Webhook → Analysis → Database
      ↓          ↓         ↓          ↓         ↓         ↓
-File/URL  Supabase  Transcription Processing   AI     Insights
-         Storage  + audio_duration              ↓    + Evidence
+File/URL  Cloudflare R2  Transcription Processing   AI     Insights
+         Storage      + audio_duration              ↓    + Evidence
                                           Themes   + People
                                                  + Personas
 
 Realtime → WebSocket → Record+Store → Finalize → Analysis → Database
     ↓          ↓            ↓            ↓         ↓         ↓
- Live Audio  Streaming  Supabase    Processing    AI    Insights
-           Transcription Storage   + duration           + Evidence
+ Live Audio  Streaming  Cloudflare R2    Processing    AI    Insights
+           Transcription     Storage   + duration           + Evidence
                                                        + People
                                                       + Personas
 ```
+

@@ -103,15 +103,15 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 			await createPlannedAnswersForInterview(supabase, { projectId, interviewId: interview.id })
 
-			// Store audio file in Supabase Storage
-			consola.log("Storing audio file in Supabase Storage...")
-			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile(
-				supabase,
+			// Store audio file in Cloudflare R2
+			consola.log("Storing audio file in Cloudflare R2...")
+			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile({
 				projectId,
-				interview.id,
-				file,
-				file.name
-			)
+				interviewId: interview.id,
+				source: file,
+				originalFilename: file.name,
+				contentType: file.type,
+			})
 
 			if (storageError || !storedMediaUrl) {
 				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })

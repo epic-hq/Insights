@@ -674,19 +674,42 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					cleanupMediaStreams()
 					setShowCompletionDialog(true)
 
-					// Upload media to storage on Supabase
+					// Upload media to storage in Cloudflare R2 via server endpoint
 					let mediaUrl: string | undefined
 					const id = assignedInterviewId
 					if (blob.size > 0 && id) {
-						const filename = `interviews/${projectId}/${id}-${Date.now()}.webm`
-						const { error } = await supabase.storage
-							.from("interview-recordings")
-							.upload(filename, blob, { upsert: true })
-						if (!error) {
-							const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
-							mediaUrl = data.publicUrl
-						} else {
-							consola.warn("Audio upload failed:", error.message)
+						const uploadEndpoint = projectPath
+							? `${projectPath}/api/interviews/realtime-upload`
+							: "/api/interviews/realtime-upload"
+						const formData = new FormData()
+						formData.append("file", blob, `realtime-${id}-${Date.now()}.webm`)
+						formData.append("interviewId", id)
+						formData.append("projectId", projectId)
+
+						try {
+							const response = await fetch(uploadEndpoint, {
+								method: "POST",
+								body: formData,
+							})
+
+							if (response.ok) {
+								const payload = (await response.json()) as { mediaUrl?: string }
+								if (typeof payload?.mediaUrl === "string" && payload.mediaUrl) {
+									mediaUrl = payload.mediaUrl
+								} else {
+									consola.warn("Realtime upload succeeded but returned no mediaUrl")
+								}
+							} else {
+								const errorText = await response.text().catch(() => "")
+								consola.warn(
+									"Realtime audio upload failed",
+									response.status,
+									response.statusText,
+									errorText.slice(0, 200)
+								)
+							}
+						} catch (uploadError) {
+							consola.warn("Realtime audio upload error", uploadError)
 						}
 					}
 

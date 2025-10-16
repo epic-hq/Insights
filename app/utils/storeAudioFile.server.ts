@@ -1,117 +1,181 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import type { Database } from "~/../supabase/types"
+import { getR2PublicUrl, uploadToR2 } from "~/utils/r2.server"
 
 interface StoreAudioResult {
 	mediaUrl: string | null
 	error?: string
 }
 
-/**
- * Store audio file in Supabase Storage and return public URL
- */
-export async function storeAudioFile(
-	supabase: SupabaseClient<Database>,
-	projectId: string,
-	interviewId: string,
-	source: File | Blob | string, // File, Blob, or URL
+interface StoreAudioFileParams {
+	projectId: string
+	interviewId: string
+	source: File | Blob | string
 	originalFilename?: string
-): Promise<StoreAudioResult> {
+	contentType?: string
+}
+
+/**
+ * Store audio file in Cloudflare R2 and return a public URL
+ */
+export async function storeAudioFile({
+	projectId,
+	interviewId,
+	source,
+	originalFilename,
+	contentType,
+}: StoreAudioFileParams): Promise<StoreAudioResult> {
 	try {
 		const timestamp = Date.now()
-		const extension = getFileExtension(source, originalFilename)
+
+		const resolvedSource = await resolveSourceBlob(source, originalFilename, contentType)
+		if (resolvedSource.error) {
+			return { mediaUrl: null, error: resolvedSource.error }
+		}
+
+		const { blob, detectedContentType, inferredFilename } = resolvedSource
+
+		const extension = getFileExtension(
+			typeof source === "string" ? source : blob,
+			originalFilename ?? inferredFilename,
+			contentType ?? detectedContentType
+		)
 		const filename = `interviews/${projectId}/${interviewId}-${timestamp}.${extension}`
 
-		let uploadData: File | Blob | ArrayBuffer
-
-		if (typeof source === "string") {
-			// Source is a URL - fetch the file
-			consola.log("Fetching audio from URL:", source)
-
-			try {
-				// Handle potential redirects and SSL issues with AssemblyAI URLs
-				const response = await fetch(source, {
-					redirect: "follow",
-					// Add headers to handle AssemblyAI redirects properly
-					headers: {
-						"User-Agent": "Insights-Audio-Fetcher/1.0",
-					},
-				})
-
-				if (!response.ok) {
-					return { mediaUrl: null, error: `Failed to fetch audio from URL: ${response.status}` }
-				}
-
-				uploadData = await response.blob()
-
-				// Ensure we have actual content
-				if (uploadData.size === 0) {
-					return { mediaUrl: null, error: "Downloaded file is empty" }
-				}
-
-				consola.log("Successfully downloaded audio file, size:", uploadData.size)
-			} catch (fetchError) {
-				const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError)
-				consola.error("Error fetching audio from URL:", errorMsg)
-				return { mediaUrl: null, error: `Failed to download audio: ${errorMsg}` }
-			}
-		} else {
-			// Source is already a File or Blob
-			uploadData = source
+		const payload = await blobToUint8Array(blob)
+		if (!payload.length) {
+			return { mediaUrl: null, error: "Audio file is empty" }
 		}
 
-		consola.log("Uploading audio file to Storage:", filename)
-		const { error: uploadError } = await supabase.storage
-			.from("interview-recordings")
-			.upload(filename, uploadData, { upsert: true })
+		const mimeType = contentType || detectedContentType || inferMimeType(extension) || "application/octet-stream"
 
-		if (uploadError) {
-			consola.error("Audio upload failed:", uploadError)
-			return { mediaUrl: null, error: uploadError.message }
+		consola.log("Uploading audio file to Cloudflare R2:", filename)
+		const uploadResult = await uploadToR2({ key: filename, body: payload, contentType: mimeType })
+
+		if (!uploadResult.success) {
+			consola.error("Audio upload to R2 failed:", uploadResult.error)
+			return { mediaUrl: null, error: uploadResult.error ?? "Failed to upload audio" }
 		}
 
-		// Get public URL
-		const { data } = supabase.storage.from("interview-recordings").getPublicUrl(filename)
+		const publicUrl = getR2PublicUrl(filename)
+		if (!publicUrl) {
+			consola.error("R2 public base URL not configured; cannot resolve media URL")
+			return { mediaUrl: null, error: "Cloudflare R2 public URL is not configured" }
+		}
 
-		consola.log("Audio file stored successfully:", data.publicUrl)
-		return { mediaUrl: data.publicUrl }
+		consola.log("Audio file stored successfully in R2:", publicUrl)
+		return { mediaUrl: publicUrl }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unknown error"
-		consola.error("Error storing audio file:", error)
+		consola.error("Error storing audio file in R2:", error)
 		return { mediaUrl: null, error: message }
 	}
 }
 
-/**
- * Determine file extension from source
- */
-function getFileExtension(source: File | Blob | string, originalFilename?: string): string {
+async function resolveSourceBlob(
+	source: File | Blob | string,
+	originalFilename?: string,
+	providedContentType?: string
+): Promise<
+	| { blob: Blob; detectedContentType?: string; inferredFilename?: string; error?: undefined }
+	| { error: string; blob?: undefined; detectedContentType?: undefined; inferredFilename?: undefined }
+> {
 	if (typeof source === "string") {
-		// URL source - try to extract extension from URL
-		if (originalFilename) return getExtensionFromFilename(originalFilename)
-		const url = new URL(source)
-		const pathname = url.pathname
-		const match = pathname.match(/\.([a-zA-Z0-9]+)$/)
-		return match ? match[1] : "mp3" // default to mp3
+		consola.log("Fetching audio from URL:", source)
+		try {
+			const response = await fetch(source, {
+				redirect: "follow",
+				headers: {
+					"User-Agent": "Insights-Audio-Fetcher/1.0",
+				},
+			})
+
+			if (!response.ok) {
+				return { error: `Failed to fetch audio from URL: ${response.status}` }
+			}
+
+			const blob = await response.blob()
+			if (blob.size === 0) {
+				return { error: "Downloaded file is empty" }
+			}
+
+			const detectedContentType = providedContentType || response.headers.get("content-type") || blob.type || undefined
+
+			return {
+				blob,
+				detectedContentType,
+				inferredFilename: originalFilename ?? inferFilenameFromUrl(source),
+			}
+		} catch (fetchError) {
+			const errorMsg = fetchError instanceof Error ? fetchError.message : String(fetchError)
+			consola.error("Error fetching audio from URL:", errorMsg)
+			return { error: `Failed to download audio: ${errorMsg}` }
+		}
 	}
 
-	if (source instanceof File) {
-		// File source - use name
-		return getExtensionFromFilename(source.name) || "mp3"
+	if (isBlob(source)) {
+		if (source.size === 0) {
+			return { error: "Audio file is empty" }
+		}
+
+		const detectedContentType = providedContentType || source.type || undefined
+		const inferredFilename = originalFilename ?? (isFile(source) ? source.name : undefined)
+
+		return { blob: source, detectedContentType, inferredFilename }
 	}
 
-	// Blob source - try to determine from type
-	if (source instanceof Blob) {
-		const type = source.type
-		if (type.includes("webm")) return "webm"
-		if (type.includes("mp4")) return "mp4"
-		if (type.includes("wav")) return "wav"
-		if (type.includes("mp3")) return "mp3"
-		if (type.includes("m4a")) return "m4a"
-		return "webm" // default for blobs (realtime recordings)
+	return { error: "Unsupported audio source type" }
+}
+
+function isBlob(value: unknown): value is Blob {
+	return typeof Blob !== "undefined" && value instanceof Blob
+}
+
+function isFile(value: Blob): value is File {
+	return typeof File !== "undefined" && value instanceof File
+}
+
+async function blobToUint8Array(blob: Blob): Promise<Uint8Array> {
+	const arrayBuffer = await blob.arrayBuffer()
+	return new Uint8Array(arrayBuffer)
+}
+
+function getFileExtension(source: File | Blob | string, originalFilename?: string, contentType?: string): string {
+	if (originalFilename) {
+		const fromName = getExtensionFromFilename(originalFilename)
+		if (fromName) return fromName
 	}
 
-	return "mp3" // fallback
+	if (typeof source === "string") {
+		try {
+			const url = new URL(source)
+			const match = url.pathname.match(/\.([a-zA-Z0-9]+)(?:$|\?)/)
+			if (match) return match[1]
+		} catch {
+			/* ignore invalid URLs */
+		}
+
+		const fromContentType = extensionFromContentType(contentType)
+		if (fromContentType) return fromContentType
+
+		return "mp3"
+	}
+
+	if (isFile(source)) {
+		const fromName = getExtensionFromFilename(source.name)
+		if (fromName) return fromName
+	}
+
+	if (contentType) {
+		const fromContentType = extensionFromContentType(contentType)
+		if (fromContentType) return fromContentType
+	}
+
+	if (source.type) {
+		const fromType = extensionFromContentType(source.type)
+		if (fromType) return fromType
+	}
+
+	return "webm"
 }
 
 function getExtensionFromFilename(filename: string): string | null {
@@ -119,7 +183,48 @@ function getExtensionFromFilename(filename: string): string | null {
 	return match ? match[1] : null
 }
 
-// Helper to get file extension from File object
-function _getFileExtensionFromFile(file: File): string {
-	return getExtensionFromFilename(file.name) || "unknown"
+function extensionFromContentType(contentType?: string | null): string | null {
+	if (!contentType) return null
+	const normalized = contentType.split(";")[0]?.trim().toLowerCase()
+	return CONTENT_TYPE_TO_EXTENSION[normalized] ?? null
+}
+
+function inferMimeType(extension: string): string | undefined {
+	return MIME_TYPES[extension.toLowerCase()]
+}
+
+function inferFilenameFromUrl(url: string): string | undefined {
+	try {
+		const parsed = new URL(url)
+		const parts = parsed.pathname.split("/")
+		const last = parts.pop()
+		if (last && last.includes(".")) return last
+	} catch {
+		/* ignore */
+	}
+	return undefined
+}
+
+const MIME_TYPES: Record<string, string> = {
+	webm: "audio/webm",
+	wav: "audio/wav",
+	mp3: "audio/mpeg",
+	m4a: "audio/mp4",
+	mp4: "video/mp4",
+	mov: "video/quicktime",
+	ogg: "audio/ogg",
+	aac: "audio/aac",
+	flac: "audio/flac",
+}
+
+const CONTENT_TYPE_TO_EXTENSION: Record<string, string> = {
+	"audio/webm": "webm",
+	"audio/wav": "wav",
+	"audio/mpeg": "mp3",
+	"audio/mp4": "m4a",
+	"video/mp4": "mp4",
+	"video/quicktime": "mov",
+	"audio/ogg": "ogg",
+	"audio/aac": "aac",
+	"audio/flac": "flac",
 }
