@@ -302,15 +302,15 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "AssemblyAI API key not configured" }, { status: 500 })
 			}
 
-			// Store audio file in Supabase Storage first using shared utility
-			consola.log("Storing audio file in Supabase Storage...")
-			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile(
-				supabaseAdmin,
-				finalProjectId,
-				interview.id,
-				file,
-				file.name
-			)
+			// Store audio file in Cloudflare R2 first using shared utility
+			consola.log("Storing audio file in Cloudflare R2...")
+			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile({
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				source: file,
+				originalFilename: file.name,
+				contentType: file.type,
+			})
 
 			if (storageError || !storedMediaUrl) {
 				consola.error("Audio storage failed:", storageError)

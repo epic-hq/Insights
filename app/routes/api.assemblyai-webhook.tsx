@@ -79,7 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.log("AssemblyAI Webhook: Retrieved transcript data, length:", transcriptData.text?.length || 0)
 
 			// Audio file already stored at upload time in onboarding flow
-			// No need to download from AssemblyAI since we have the original file in Supabase Storage
+			// No need to download from AssemblyAI since we have the original file in Cloudflare R2
 			consola.log("Audio file already stored during upload - skipping AssemblyAI download")
 
 			// Create transcript data object matching expected format
