@@ -80,6 +80,7 @@ const routes = [
 
 				// Realtime interviews APIs (project-scoped)
 				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),
+				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
 				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
 				// Project-setup agent chat API (project-scoped)
