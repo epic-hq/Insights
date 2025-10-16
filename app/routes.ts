@@ -10,6 +10,7 @@ import interviewsRoutes from "./features/interviews/routes"
 import marketingRoutes from "./features/marketing/routes"
 import mobileRoutes from "./features/mobile/insights/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
+import organizationsRoutes from "./features/organizations/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
 import projectChatRoutes from "./features/project-chat/routes"
@@ -51,6 +52,7 @@ const routes = [
 				...insightsRoutes,
 				...evidenceRoutes,
 				...opportunitiesRoutes,
+				...organizationsRoutes,
 				...peopleRoutes,
 				...personasRoutes,
 				...themesRoutes,

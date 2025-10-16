@@ -1,6 +1,6 @@
 import { formatDistance } from "date-fns"
 import { motion } from "framer-motion"
-import { User } from "lucide-react"
+import { Building2, User } from "lucide-react"
 import { useState } from "react"
 import { Link } from "react-router-dom"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -23,6 +23,14 @@ interface PersonWithPersonas {
 			name: string
 			color_hex: string
 		}
+	}>
+	people_organizations?: Array<{
+		organization?: {
+			id: string
+			name: string | null
+			website_url: string | null
+		}
+		role?: string | null
 	}>
 }
 
@@ -60,6 +68,8 @@ export default function EnhancedPersonCard({ person, className, facets }: Enhanc
 			.slice(0, 2) || "?"
 
 	const topFacets = facets?.slice(0, 3) ?? []
+	const primaryOrganization = person.people_organizations?.[0]?.organization
+	const primaryOrganizationLabel = primaryOrganization?.name || primaryOrganization?.website_url || undefined
 
 	return (
 		<Link to={routes.people.detail(person.id)} tabIndex={0} aria-label={`View details for ${name}`}>
@@ -127,6 +137,12 @@ export default function EnhancedPersonCard({ person, className, facets }: Enhanc
 						</div>
 					</CardHeader>
 					<CardContent className="pt-0">
+						{primaryOrganization && (
+							<div className="mb-3 flex items-center gap-2 font-medium text-foreground text-sm">
+								<Building2 className="h-4 w-4 text-muted-foreground" />
+								<span>{primaryOrganizationLabel?.replace?.(/^https?:\/\//, "") || "Organization"}</span>
+							</div>
+						)}
 						{topFacets.length > 0 && (
 							<div className="mb-3 flex flex-wrap gap-2">
 								{topFacets.map((facet) => (

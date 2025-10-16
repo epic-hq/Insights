@@ -30,19 +30,34 @@ export const getPeople = async ({
 				noted_at,
 				candidate_id
 			),
-			person_scale (
-				kind_slug,
-				score,
-				band,
-				source,
-				confidence,
-				noted_at
-			),
-			interview_people (
-				interviews (
-					id,
-					title
-				)
+                        person_scale (
+                                kind_slug,
+                                score,
+                                band,
+                                source,
+                                confidence,
+                                noted_at
+                        ),
+                        people_organizations (
+                                id,
+                                role,
+                                relationship_status,
+                                is_primary,
+                                organization:organizations (
+                                        id,
+                                        name,
+                                        website_url,
+                                        domain,
+                                        industry,
+                                        size_range,
+                                        headquarters_location
+                                )
+                        ),
+                        interview_people (
+                                interviews (
+                                        id,
+                                        title
+                                )
 			)
 		`)
 		// .eq("account_id", accountId)
@@ -86,19 +101,35 @@ export const getPersonById = async ({
 				noted_at,
 				candidate_id
 			),
-			person_scale (
-				kind_slug,
-				score,
-				band,
-				source,
-				confidence,
-				noted_at
-			),
-			interview_people (
-				interviews (
-					id,
-					title,
-					insights (
+                        person_scale (
+                                kind_slug,
+                                score,
+                                band,
+                                source,
+                                confidence,
+                                noted_at
+                        ),
+                        people_organizations (
+                                id,
+                                role,
+                                relationship_status,
+                                is_primary,
+                                notes,
+                                organization:organizations (
+                                        id,
+                                        name,
+                                        website_url,
+                                        domain,
+                                        industry,
+                                        size_range,
+                                        headquarters_location
+                                )
+                        ),
+                        interview_people (
+                                interviews (
+                                        id,
+                                        title,
+                                        insights (
 						id,
 						name,
 						category,
@@ -216,16 +247,24 @@ export const getPeopleWithValidation = async ({
 				source,
 				confidence
 			),
-			person_scale (
-				kind_slug,
-				score,
-				band
-			),
-			interview_people (
-				interviews (
-					id,
-					title,
-					insights (
+                        person_scale (
+                                kind_slug,
+                                score,
+                                band
+                        ),
+                        people_organizations (
+                                organization:organizations (
+                                        id,
+                                        name,
+                                        website_url,
+                                        domain
+                                )
+                        ),
+                        interview_people (
+                                interviews (
+                                        id,
+                                        title,
+                                        insights (
 						id,
 						name,
 						category,

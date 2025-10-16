@@ -2062,6 +2062,102 @@ export type Database = {
         }
         Relationships: []
       }
+      organizations: {
+        Row: {
+          account_id: string | null
+          annual_revenue: number | null
+          billing_address: Json | null
+          company_type: string | null
+          created_at: string
+          description: string | null
+          domain: string | null
+          email: string | null
+          employee_count: number | null
+          headquarters_location: string | null
+          id: string
+          industry: string | null
+          legal_name: string | null
+          linkedin_url: string | null
+          name: string
+          notes: string | null
+          phone: string | null
+          project_id: string | null
+          shipping_address: Json | null
+          size_range: string | null
+          sub_industry: string | null
+          twitter_url: string | null
+          updated_at: string
+          website_url: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          annual_revenue?: number | null
+          billing_address?: Json | null
+          company_type?: string | null
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          email?: string | null
+          employee_count?: number | null
+          headquarters_location?: string | null
+          id?: string
+          industry?: string | null
+          legal_name?: string | null
+          linkedin_url?: string | null
+          name: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string | null
+          shipping_address?: Json | null
+          size_range?: string | null
+          sub_industry?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          annual_revenue?: number | null
+          billing_address?: Json | null
+          company_type?: string | null
+          created_at?: string
+          description?: string | null
+          domain?: string | null
+          email?: string | null
+          employee_count?: number | null
+          headquarters_location?: string | null
+          id?: string
+          industry?: string | null
+          legal_name?: string | null
+          linkedin_url?: string | null
+          name?: string
+          notes?: string | null
+          phone?: string | null
+          project_id?: string | null
+          shipping_address?: Json | null
+          size_range?: string | null
+          sub_industry?: string | null
+          twitter_url?: string | null
+          updated_at?: string
+          website_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "organizations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       opportunities: {
         Row: {
           account_id: string
@@ -2244,6 +2340,77 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "people_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      people_organizations: {
+        Row: {
+          account_id: string | null
+          created_at: string
+          id: string
+          is_primary: boolean | null
+          notes: string | null
+          organization_id: string
+          person_id: string
+          project_id: string | null
+          relationship_status: string | null
+          role: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          notes?: string | null
+          organization_id: string
+          person_id: string
+          project_id?: string | null
+          relationship_status?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string | null
+          created_at?: string
+          id?: string
+          is_primary?: boolean | null
+          notes?: string | null
+          organization_id?: string
+          person_id?: string
+          project_id?: string | null
+          relationship_status?: string | null
+          role?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "people_organizations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_organizations_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_organizations_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_organizations_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"

@@ -89,6 +89,14 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Organizations
+	organizations: {
+		index: () => string
+		new: () => string
+		detail: (id: string) => string
+		edit: (id: string) => string
+	}
+
 	// Questions
 	questions: {
 		index: () => string
@@ -226,6 +234,13 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `${base}/opportunities/new`,
 			detail: (id: string) => `${base}/opportunities/${id}`,
 			edit: (id: string) => `${base}/opportunities/${id}/edit`,
+		},
+
+		organizations: {
+			index: () => `${base}/organizations`,
+			new: () => `${base}/organizations/new`,
+			detail: (id: string) => `${base}/organizations/${id}`,
+			edit: (id: string) => `${base}/organizations/${id}/edit`,
 		},
 
 		// Questions

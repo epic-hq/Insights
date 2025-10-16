@@ -5,6 +5,7 @@ import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Textarea } from "~/components/ui/textarea"
+import { getOrganizations, linkPersonToOrganization } from "~/features/organizations/db"
 import { createPerson } from "~/features/people/db"
 import { getPersonas } from "~/features/personas/db"
 import { userContext } from "~/server/user-context"
@@ -25,8 +26,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
-	const { data: personas } = await getPersonas({ supabase, accountId, projectId })
-	return { personas: personas || [] }
+	const [{ data: personas }, organizations] = await Promise.all([
+		getPersonas({ supabase, accountId, projectId }),
+		getOrganizations({ supabase, accountId, projectId }),
+	])
+	if (organizations.error) {
+		throw new Response("Failed to load organizations", { status: 500 })
+	}
+	return { personas: personas || [], organizations: organizations.data || [] }
 }
 
 export async function action({ request, context, params }: ActionFunctionArgs) {
@@ -46,6 +53,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const _notes = formData.get("notes") as string
 	const image_url = formData.get("image_url") as string
 	const _persona_id = formData.get("persona_id") as string
+	const _organization_id = formData.get("organization_id") as string
 
 	if (!name?.trim()) {
 		return { error: "Name is required" }
@@ -90,6 +98,20 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			}
 		}
 
+		if (_organization_id && _organization_id !== "none") {
+			const { error: orgError } = await linkPersonToOrganization({
+				supabase,
+				accountId,
+				projectId,
+				personId: data.id,
+				organizationId: _organization_id,
+			})
+
+			if (orgError) {
+				return { error: "Person created, but failed to link organization" }
+			}
+		}
+
 		return redirect(routes.people.detail(data.id))
 	} catch (_error) {
 		return { error: "Failed to create person" }
@@ -98,7 +120,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 export default function NewPerson() {
 	const actionData = useActionData<typeof action>()
-	const { personas } = useLoaderData() as { personas: { id: string; name: string }[] }
+	const { personas, organizations } = useLoaderData() as {
+		personas: { id: string; name: string }[]
+		organizations: { id: string; name: string }[]
+	}
 	// const currentProjectContext = useCurrentProject()
 	// const routes = useProjectRoutes(currentProjectContext?.projectPath || "")
 
@@ -153,6 +178,23 @@ export default function NewPerson() {
 							{personas.map((persona) => (
 								<SelectItem key={persona.id} value={persona.id}>
 									{persona.name}
+								</SelectItem>
+							))}
+						</SelectContent>
+					</Select>
+				</div>
+
+				<div>
+					<Label htmlFor="organization_id">Organization</Label>
+					<Select name="organization_id" defaultValue="none">
+						<SelectTrigger className="mt-1">
+							<SelectValue placeholder="Select an organization" />
+						</SelectTrigger>
+						<SelectContent>
+							<SelectItem value="none">No organization</SelectItem>
+							{organizations.map((organization) => (
+								<SelectItem key={organization.id} value={organization.id}>
+									{organization.name}
 								</SelectItem>
 							))}
 						</SelectContent>
