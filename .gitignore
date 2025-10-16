@@ -94,3 +94,5 @@ blob-report
 # Mastra
 .mastra
 .trigger
+*storybook.log
+storybook-static
