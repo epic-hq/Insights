@@ -72,10 +72,10 @@ export default function Login() {
 					<div className="grid md:grid-cols-2">
 						{/* Left: Marketing */}
 						<div className="hidden flex-col justify-between bg-gradient-to-br from-primary/5 via-transparent to-primary/10 p-8 md:flex">
-							<div>
+							<Link to="/">
 								<LogoBrand />
 								<p className="mt-4 text-lg text-muted-foreground">Get more out of every conversation</p>
-							</div>
+							</Link>
 							<div className="mb-4 flex items-center gap-3">
 								<div />
 							</div>
@@ -104,7 +104,7 @@ export default function Login() {
 								<CardTitle className="text-center text-2xl">Login</CardTitle>
 							</CardHeader>
 							<CardContent className="space-y-8 p-0">
-								<LoginForm className="hover:bg-transparent" />
+								<LoginForm />
 								<fetcher.Form method="post">
 									<div className="flex flex-col gap-6">
 										<div className="grid gap-2">

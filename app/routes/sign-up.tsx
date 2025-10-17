@@ -87,10 +87,10 @@ export default function SignUp() {
 					<div className="grid md:grid-cols-2">
 						{/* Left: Marketing */}
 						<div className="hidden flex-col justify-between bg-gradient-to-br from-primary/5 via-transparent to-primary/10 p-8 md:flex">
-							<div>
+							<Link to="/">
 								<LogoBrand />
 								<p className="mt-4 text-lg text-muted-foreground">Get more out of every conversation</p>
-							</div>
+							</Link>
 
 							<p className="text-center font-semibold text-foreground/50 text-xl">Start free for 14 days</p>
 							<ul className="space-y-3">

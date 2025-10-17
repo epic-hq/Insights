@@ -10,9 +10,13 @@ import tsconfigPaths from "vite-tsconfig-paths"
 
 export default defineConfig({
 	base: "/",
-	resolve: { alias: { "@": "/src" } },
+	resolve: {
+		alias: { "@": "/src" },
+		dedupe: ["react", "react-dom"],
+	},
 	// Externalize BAML native modules and AWS SDK to prevent bundling issues
 	optimizeDeps: {
+		include: ["react", "react-dom"],
 		exclude: [
 			"@boundaryml/baml",
 			"@boundaryml/baml-darwin-arm64",
