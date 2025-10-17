@@ -24,6 +24,8 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	try {
+		const url = new URL(request.url)
+		const mediaId = url.searchParams.get("media_id")
 		const payload: AssemblyAIWebhookPayload = await request.json()
 		consola.log("Received AssemblyAI webhook:", {
 			transcript_id: payload.transcript_id,
@@ -41,6 +43,14 @@ export async function action({ request }: ActionFunctionArgs) {
 			.single()
 
 		if (uploadJobError || !uploadJob) {
+			if (mediaId) {
+				consola.warn("Media pipeline webhook received without upload job", {
+					transcript_id: payload.transcript_id,
+					media_id: mediaId,
+				})
+				return Response.json({ success: true, media_id: mediaId, status: payload.status }, { status: 202 })
+			}
+
 			consola.error("Upload job query failed for transcript:", payload.transcript_id)
 			consola.error("Error details:", {
 				error: uploadJobError,
