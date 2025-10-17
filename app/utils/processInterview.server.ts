@@ -5,11 +5,16 @@
 // Import BAML client - this file is server-only so it's safe to import directly
 
 import type { SupabaseClient } from "@supabase/supabase-js"
-import { task } from "@trigger.dev/sdk"
 import consola from "consola"
 import posthog from "posthog-js"
 import { b } from "~/../baml_client"
-import type { FacetCatalog, FacetMention, PersonFacetObservation, PersonScaleObservation } from "~/../baml_client/types"
+import type {
+	EvidenceParticipant,
+	FacetCatalog,
+	FacetMention,
+	PersonFacetObservation,
+	PersonScaleObservation,
+} from "~/../baml_client/types"
 import type { Database, Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
@@ -17,7 +22,7 @@ import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from
 import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
-import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -29,53 +34,53 @@ type InterviewPeopleInsert = Tables["interview_people"]["Insert"]
 type EvidenceInsert = Tables["evidence"]["Insert"]
 
 export interface ProcessingResult {
-        stored: InsightInsert[]
-        interview: Interview
+	stored: InsightInsert[]
+	interview: Interview
 }
 
-interface UploadMediaAndTranscribePayload {
-        metadata: InterviewMetadata
-        transcriptData: Record<string, unknown>
-        mediaUrl: string
-        existingInterviewId?: string
+export interface UploadMediaAndTranscribePayload {
+	metadata: InterviewMetadata
+	transcriptData: Record<string, unknown>
+	mediaUrl: string
+	existingInterviewId?: string
 }
 
-interface UploadMediaAndTranscribeResult {
-        metadata: InterviewMetadata
-        interview: Interview
-        sanitizedTranscriptData: Record<string, unknown>
-        transcriptData: Record<string, unknown>
-        fullTranscript: string
-        language: string
+export interface UploadMediaAndTranscribeResult {
+	metadata: InterviewMetadata
+	interview: Interview
+	sanitizedTranscriptData: Record<string, unknown>
+	transcriptData: Record<string, unknown>
+	fullTranscript: string
+	language: string
 }
 
 interface AnalyzeThemesAndPersonaResult {
-        storedInsights: InsightInsert[]
-        interview: Interview
+	storedInsights: InsightInsert[]
+	interview: Interview
 }
 
-interface AnalyzeThemesTaskPayload {
-        metadata: InterviewMetadata
-        interview: Interview
-        fullTranscript: string
-        userCustomInstructions?: string
-        evidenceResult: ExtractEvidenceResult
+export interface AnalyzeThemesTaskPayload {
+	metadata: InterviewMetadata
+	interview: Interview
+	fullTranscript: string
+	userCustomInstructions?: string
+	evidenceResult: ExtractEvidenceResult
 }
 
-interface AttributeAnswersTaskPayload {
-        metadata: InterviewMetadata
-        interview: Interview
-        fullTranscript: string
-        insertedEvidenceIds: string[]
-        storedInsights: InsightInsert[]
+export interface AttributeAnswersTaskPayload {
+	metadata: InterviewMetadata
+	interview: Interview
+	fullTranscript: string
+	insertedEvidenceIds: string[]
+	storedInsights: InsightInsert[]
 }
 
-const workflowRetryConfig = {
-        maxAttempts: 3,
-        factor: 1.8,
-        minTimeoutInMs: 500,
-        maxTimeoutInMs: 30_000,
-        randomize: false,
+export const workflowRetryConfig = {
+	maxAttempts: 3,
+	factor: 1.8,
+	minTimeoutInMs: 500,
+	maxTimeoutInMs: 30_000,
+	randomize: false,
 }
 
 export interface InterviewMetadata {
@@ -149,212 +154,12 @@ function humanizeKey(value?: string | null): string | null {
 	return capitalized
 }
 
-function normalizePersonKey(value: unknown, fallbackIndex: number): string {
+function sanitizePersonKey(value: unknown, fallback: string): string {
 	if (typeof value === "string") {
 		const trimmed = value.trim()
 		if (trimmed.length) return trimmed
 	}
-	return `participant-${fallbackIndex}`
-}
-
-interface DerivedParticipant {
-	person_key: string
-	role: "participant" | "interviewer"
-	display_name: string | null
-	inferred_name: string | null
-	organization: string | null
-	summary: string | null
-	segments: string[]
-	personas: string[]
-}
-
-interface DerivedPeopleResult {
-	people: DerivedParticipant[]
-	primaryKey: string | null
-}
-
-function derivePeopleFromEvidence({
-	turns,
-	normalizedKeys,
-	metadata,
-}: {
-	turns: EvidenceFromBaml["evidence"]
-	normalizedKeys: string[]
-	metadata: InterviewMetadata
-}): DerivedPeopleResult {
-	const stats = new Map<
-		string,
-		{ count: number; firstIndex: number; speakerLabels: Set<string>; inferredLabels: Set<string> }
-	>()
-
-	for (let idx = 0; idx < normalizedKeys.length; idx++) {
-		const key = normalizedKeys[idx]
-		const turn = turns[idx]
-		const speakerLabel =
-			turn && typeof (turn as EvidenceTurn)?.anchors === "object"
-				? ((turn as EvidenceTurn).anchors as { speaker_label?: string | null })?.speaker_label
-				: null
-
-		let entry = stats.get(key)
-		if (!entry) {
-			entry = {
-				count: 0,
-				firstIndex: idx,
-				speakerLabels: new Set<string>(),
-				inferredLabels: new Set<string>(),
-			}
-			stats.set(key, entry)
-		}
-
-		entry.count += 1
-		if (entry.firstIndex > idx) {
-			entry.firstIndex = idx
-		}
-
-		if (typeof speakerLabel === "string" && speakerLabel.trim().length) {
-			entry.speakerLabels.add(speakerLabel.trim())
-		}
-
-		if (typeof turn?.person_key === "string" && turn.person_key.trim().length) {
-			entry.inferredLabels.add(turn.person_key.trim())
-		}
-	}
-
-	if (!stats.size) {
-		const fallbackName = metadata.participantName?.trim() || generateFallbackPersonName(metadata)
-		return {
-			primaryKey: "participant-0",
-			people: [
-				{
-					person_key: "participant-0",
-					role: "participant",
-					display_name: fallbackName,
-					inferred_name: fallbackName,
-					organization: metadata.participantName?.trim() || null,
-					summary: null,
-					segments: metadata.segment ? [metadata.segment] : [],
-					personas: [],
-				},
-			],
-		}
-	}
-
-	const interviewerPattern = /(interviewer|moderator|researcher|host|facilitator|observer|notetaker|scribe)/i
-	const participantPattern =
-		/(participant|customer|client|user|prospect|founder|ceo|manager|designer|engineer|lead|owner|buyer|shopper|patient|student|tenant)/i
-	const metadataParticipantLower = metadata.participantName?.toLowerCase().trim()
-	const metadataInterviewerLower = metadata.interviewerName?.toLowerCase().trim()
-
-	const entries = Array.from(stats.entries()).map(([key, info]) => {
-		const labels = new Set<string>([key])
-		for (const label of info.speakerLabels) labels.add(label)
-		for (const label of info.inferredLabels) labels.add(label)
-		const normalizedLabels = Array.from(labels)
-			.map((label) => label.toLowerCase().trim())
-			.filter(Boolean)
-
-		const matchesInterviewer = normalizedLabels.some((label) => interviewerPattern.test(label))
-		const matchesParticipant = normalizedLabels.some((label) => participantPattern.test(label))
-		const matchesMetadataParticipant = metadataParticipantLower
-			? normalizedLabels.some((label) => label.includes(metadataParticipantLower))
-			: false
-		const matchesMetadataInterviewer = metadataInterviewerLower
-			? normalizedLabels.some((label) => label.includes(metadataInterviewerLower))
-			: false
-
-		return {
-			key,
-			info,
-			labels,
-			matchesInterviewer,
-			matchesParticipant,
-			matchesMetadataParticipant,
-			matchesMetadataInterviewer,
-		}
-	})
-
-	const sortedByPosition = entries.sort((a, b) => a.info.firstIndex - b.info.firstIndex)
-
-	const primaryCandidate =
-		sortedByPosition.find((entry) => entry.matchesMetadataParticipant && !entry.matchesInterviewer) ||
-		sortedByPosition
-			.filter((entry) => entry.matchesParticipant && !entry.matchesInterviewer)
-			.sort((a, b) => b.info.count - a.info.count || a.info.firstIndex - b.info.firstIndex)[0] ||
-		sortedByPosition.find((entry) => !entry.matchesInterviewer) ||
-		sortedByPosition[0]
-
-	const primaryKey = primaryCandidate?.key ?? sortedByPosition[0]?.key ?? null
-
-	const pickLabel = (labels: Set<string>): string | null => {
-		for (const raw of labels) {
-			if (!raw) continue
-			const trimmed = raw.trim()
-			if (!trimmed.length) continue
-			if (/^(speaker|participant|interviewer|moderator)([-_]?\d+)?$/i.test(trimmed)) continue
-			const humanized = humanizeKey(trimmed)
-			if (humanized) return humanized
-		}
-		const fallback = Array.from(labels)[0] ?? null
-		return humanizeKey(fallback) ?? fallback
-	}
-
-	const derivedPeople: DerivedParticipant[] = sortedByPosition.map((entry) => {
-		const isPrimary = entry.key === primaryKey
-		const role: "participant" | "interviewer" = entry.matchesInterviewer && !isPrimary ? "interviewer" : "participant"
-
-		let displayName: string | null = null
-		let inferredName: string | null = null
-
-		if (role === "participant") {
-			if (isPrimary && metadata.participantName?.trim()) {
-				displayName = metadata.participantName.trim()
-				inferredName = displayName
-			} else {
-				const labelCandidate = pickLabel(entry.labels)
-				displayName = labelCandidate || humanizeKey(entry.key)
-				inferredName = displayName
-			}
-		} else {
-			if (metadata.interviewerName?.trim()) {
-				displayName = metadata.interviewerName.trim()
-				inferredName = displayName
-			} else {
-				const labelCandidate = pickLabel(entry.labels)
-				displayName = labelCandidate || humanizeKey(entry.key)
-				inferredName = displayName
-			}
-		}
-
-		const segments = role === "participant" && metadata.segment ? [metadata.segment] : []
-
-		return {
-			person_key: entry.key,
-			role,
-			display_name: displayName ?? null,
-			inferred_name: inferredName ?? null,
-			organization: null,
-			summary: null,
-			segments,
-			personas: [],
-		}
-	})
-
-	if (!derivedPeople.some((person) => person.role === "participant")) {
-		const fallbackName =
-			metadata.participantName?.trim() || humanizeKey(primaryKey) || generateFallbackPersonName(metadata)
-		derivedPeople.unshift({
-			person_key: primaryKey ?? "participant-0",
-			role: "participant",
-			display_name: fallbackName,
-			inferred_name: fallbackName,
-			organization: null,
-			summary: null,
-			segments: metadata.segment ? [metadata.segment] : [],
-			personas: [],
-		})
-	}
-
-	return { people: derivedPeople, primaryKey }
+	return fallback
 }
 
 async function resolveFacetCatalog(
@@ -400,34 +205,47 @@ type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscrip
 
 type EvidenceTurn = EvidenceFromBaml["evidence"][number]
 
+interface NormalizedParticipant {
+	person_key: string
+	role: string | null
+	display_name: string | null
+	inferred_name: string | null
+	organization: string | null
+	summary: string | null
+	segments: string[]
+	personas: string[]
+	facets: PersonFacetObservation[]
+	scales: PersonScaleObservation[]
+}
+
 interface ExtractEvidenceOptions {
-        db: SupabaseClient<Database>
-        metadata: InterviewMetadata
-        interviewRecord: Interview
-        transcriptData: Record<string, unknown>
-        language: string
-        fullTranscript: string
+	db: SupabaseClient<Database>
+	metadata: InterviewMetadata
+	interviewRecord: Interview
+	transcriptData: Record<string, unknown>
+	language: string
+	fullTranscript: string
 }
 
-interface ExtractEvidenceResult {
-        personData: { id: string }
-        primaryPersonName: string | null
-        primaryPersonRole: string | null
-        primaryPersonDescription: string | null
-        primaryPersonOrganization: string | null
-        primaryPersonSegments: string[]
-        insertedEvidenceIds: string[]
-        evidenceUnits: EvidenceFromBaml["evidence"]
-        evidenceKindTags: string[][]
+export interface ExtractEvidenceResult {
+	personData: { id: string }
+	primaryPersonName: string | null
+	primaryPersonRole: string | null
+	primaryPersonDescription: string | null
+	primaryPersonOrganization: string | null
+	primaryPersonSegments: string[]
+	insertedEvidenceIds: string[]
+	evidenceUnits: EvidenceFromBaml["evidence"]
+	evidenceKindTags: string[][]
 }
 
-async function extractEvidenceAndPeopleCore({
-        db,
-        metadata,
-        interviewRecord,
-        transcriptData,
-        language,
-        fullTranscript,
+export async function extractEvidenceAndPeopleCore({
+	db,
+	metadata,
+	interviewRecord,
+	transcriptData,
+	language,
+	fullTranscript,
 }: ExtractEvidenceOptions): Promise<ExtractEvidenceResult> {
 	type RawChapter = {
 		start_ms?: number
@@ -505,14 +323,14 @@ async function extractEvidenceAndPeopleCore({
 	let langfuseUsage: ReturnType<typeof mapUsageToLangfuse> | undefined
 	let generationEnded = false
 	try {
-                // Keep passing the merged facet catalog so the model can ground mentions against the project taxonomy.
-                // Dropping this trims the prompt slightly but increases the odds that facet references drift from known labels.
-                evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscriptV2(
-                        fullTranscript || "",
-                        chapters,
-                        language,
-                        facetCatalog
-                )
+		// Keep passing the merged facet catalog so the model can ground mentions against the project taxonomy.
+		// Dropping this trims the prompt slightly but increases the odds that facet references drift from known labels.
+		evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscriptV2(
+			fullTranscript || "",
+			chapters,
+			language,
+			facetCatalog
+		)
 		usageSummary = summarizeCollectorUsage(collector, costOptions)
 		if (usageSummary) {
 			consola.log("[BAML usage] ExtractEvidenceFromTranscriptV2:", usageSummary)
@@ -561,16 +379,135 @@ async function extractEvidenceAndPeopleCore({
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
 	const scenes = Array.isArray(evidenceResponse?.scenes) ? evidenceResponse.scenes : []
 
-	const normalizedPersonKeys = evidenceUnits.map((unit, idx) => normalizePersonKey(unit?.person_key, idx))
-	const { people: derivedPeople, primaryKey: derivedPrimaryKey } = derivePeopleFromEvidence({
-		turns: evidenceUnits,
-		normalizedKeys: normalizedPersonKeys,
-		metadata,
-	})
+	const rawPeople = Array.isArray((evidenceResponse as { people?: EvidenceParticipant[] })?.people)
+		? (((evidenceResponse as { people?: EvidenceParticipant[] }).people ?? []) as EvidenceParticipant[])
+		: []
+	const participants: NormalizedParticipant[] = []
+	const participantByKey = new Map<string, NormalizedParticipant>()
 
-	for (const participant of derivedPeople) {
-		if (participant.person_key) {
-			personRoleByKey.set(participant.person_key, participant.role ?? null)
+	const coerceString = (value: unknown): string | null => {
+		if (typeof value === "string") {
+			const trimmed = value.trim()
+			return trimmed.length ? trimmed : null
+		}
+		return null
+	}
+
+	for (let i = 0; i < rawPeople.length; i++) {
+		const raw = rawPeople[i] ?? ({} as EvidenceParticipant)
+		let person_key = sanitizePersonKey((raw as EvidenceParticipant).person_key, `person-${i}`)
+		if (participantByKey.has(person_key)) {
+			person_key = `${person_key}-${i}`
+		}
+		const role = coerceString((raw as EvidenceParticipant).role)
+		const display_name = coerceString((raw as EvidenceParticipant).display_name)
+		const inferred_name = coerceString((raw as EvidenceParticipant).inferred_name)
+		const organization = coerceString((raw as EvidenceParticipant).organization)
+		const summary = coerceString((raw as EvidenceParticipant).summary)
+		const segments = Array.isArray((raw as EvidenceParticipant).segments)
+			? ((raw as EvidenceParticipant).segments as unknown[])
+					.map((segment) => coerceString(segment))
+					.filter((segment): segment is string => Boolean(segment))
+			: []
+		const personas = Array.isArray((raw as EvidenceParticipant).personas)
+			? ((raw as EvidenceParticipant).personas as unknown[])
+					.map((persona) => coerceString(persona))
+					.filter((persona): persona is string => Boolean(persona))
+			: []
+		const facets = Array.isArray((raw as EvidenceParticipant).facets)
+			? ((raw as EvidenceParticipant).facets as unknown[])
+					.map((facet) => {
+						if (!facet || typeof facet !== "object") return null
+						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+						const value = coerceString((facet as PersonFacetObservation).value)
+						if (!kind_slug || !value) return null
+						return {
+							...facet,
+							kind_slug,
+							value,
+							source: (facet as PersonFacetObservation).source || "interview",
+						} as PersonFacetObservation
+					})
+					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+			: []
+		const scales = Array.isArray((raw as EvidenceParticipant).scales)
+			? ((raw as EvidenceParticipant).scales as unknown[])
+					.map((scale) => {
+						if (!scale || typeof scale !== "object") return null
+						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+						const score = (scale as PersonScaleObservation).score
+						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+						return {
+							...scale,
+							kind_slug,
+							score,
+							source: (scale as PersonScaleObservation).source || "interview",
+						} as PersonScaleObservation
+					})
+					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+			: []
+
+		const normalized: NormalizedParticipant = {
+			person_key,
+			role,
+			display_name,
+			inferred_name,
+			organization,
+			summary,
+			segments,
+			personas,
+			facets,
+			scales,
+		}
+		participants.push(normalized)
+		participantByKey.set(person_key, normalized)
+		personRoleByKey.set(person_key, role ?? null)
+	}
+
+	if (!participants.length) {
+		const fallbackKey = "person-0"
+		const fallbackName = metadata.participantName?.trim() || generateFallbackPersonName(metadata)
+		const fallbackParticipant: NormalizedParticipant = {
+			person_key: fallbackKey,
+			role: null,
+			display_name: fallbackName,
+			inferred_name: fallbackName,
+			organization: null,
+			summary: null,
+			segments: metadata.segment ? [metadata.segment] : [],
+			personas: [],
+			facets: [],
+			scales: [],
+		}
+		participants.push(fallbackParticipant)
+		participantByKey.set(fallbackKey, fallbackParticipant)
+		personRoleByKey.set(fallbackKey, null)
+	}
+
+	const primaryParticipant =
+		participants.find((participant) => {
+			const roleLower = participant.role?.toLowerCase()
+			return roleLower ? roleLower !== "interviewer" : false
+		}) ??
+		participants[0] ??
+		null
+
+	const primaryPersonKey = primaryParticipant?.person_key ?? participants[0]?.person_key ?? "person-0"
+
+	for (const participant of participants) {
+		if (participant.facets.length) {
+			const observationList = facetObservationsByPersonKey.get(participant.person_key) ?? []
+			const dedupeSet = facetObservationDedup.get(participant.person_key) ?? new Set<string>()
+			if (!facetObservationsByPersonKey.has(participant.person_key)) {
+				facetObservationsByPersonKey.set(participant.person_key, observationList)
+				facetObservationDedup.set(participant.person_key, dedupeSet)
+			}
+			for (const facet of participant.facets) {
+				const dedupeKey = `${facet.kind_slug.toLowerCase()}|${facet.value.toLowerCase()}|${facet.evidence_unit_index ?? -1}`
+				if (dedupeSet.has(dedupeKey)) continue
+				dedupeSet.add(dedupeKey)
+				observationList.push(facet)
+			}
 		}
 	}
 
@@ -616,7 +553,9 @@ async function extractEvidenceAndPeopleCore({
 	const interviewMediaUrl = typeof interviewRecord.media_url === "string" ? interviewRecord.media_url : null
 	for (let idx = 0; idx < evidenceUnits.length; idx++) {
 		const ev = evidenceUnits[idx] as EvidenceTurn
-		const personKey = normalizedPersonKeys[idx] || derivedPrimaryKey || "participant-0"
+		const rawPersonKey = coerceString((ev as { person_key?: string }).person_key)
+		const fallbackPersonKey = primaryPersonKey || participants[0]?.person_key || "person-0"
+		const personKey = rawPersonKey && participantByKey.has(rawPersonKey) ? rawPersonKey : fallbackPersonKey
 		const verb = sanitizeVerbatim(ev?.verbatim)
 		if (!verb) continue
 		const chunk = sanitizeVerbatim(ev?.chunk) ?? verb
@@ -769,12 +708,12 @@ async function extractEvidenceAndPeopleCore({
 		}
 	}
 
-        await db.from("evidence").delete().eq("interview_id", interviewRecord.id)
+	await db.from("evidence").delete().eq("interview_id", interviewRecord.id)
 
-        const { data: insertedEvidence, error: evidenceInsertError } = await db
-                .from("evidence")
-                .insert(evidenceRows)
-                .select("id, kind_tags")
+	const { data: insertedEvidence, error: evidenceInsertError } = await db
+		.from("evidence")
+		.insert(evidenceRows)
+		.select("id, kind_tags")
 	if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
 	insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
 
@@ -825,6 +764,7 @@ async function extractEvidenceAndPeopleCore({
 	}
 
 	const personIdByKey = new Map<string, string>()
+	const personNameByKey = new Map<string, string>()
 	const keyByPersonId = new Map<string, string>()
 	const displayNameByKey = new Map<string, string>()
 	const personRoleById = new Map<string, string | null>()
@@ -850,12 +790,13 @@ async function extractEvidenceAndPeopleCore({
 		}
 	}
 
-	const resolveName = (participant: DerivedParticipant, index: number): string => {
+	const resolveName = (participant: NormalizedParticipant, index: number): string => {
 		const candidates = [
 			participant.display_name,
 			participant.inferred_name,
 			participant.person_key ? humanizeKey(participant.person_key) : null,
-			participant.role === "participant" ? metadata.participantName : metadata.interviewerName,
+			metadata.participantName,
+			metadata.interviewerName,
 		]
 		for (const candidate of candidates) {
 			if (typeof candidate === "string" && candidate.trim().length) return candidate.trim()
@@ -894,34 +835,30 @@ async function extractEvidenceAndPeopleCore({
 	let primaryPersonOrganization: string | null = null
 	let primaryPersonSegments: string[] = []
 
-	if (derivedPeople.length) {
-		for (const [index, participant] of derivedPeople.entries()) {
-			const participantKey = participant.person_key?.trim() || `participant-${index}`
+	if (participants.length) {
+		for (const [index, participant] of participants.entries()) {
+			const participantKey = participant.person_key
 			const resolvedName = resolveName(participant, index)
-			const segments = Array.isArray(participant.segments)
-				? participant.segments.filter((seg): seg is string => typeof seg === "string" && seg.trim().length > 0)
-				: []
+			const segments = participant.segments.length ? participant.segments : metadata.segment ? [metadata.segment] : []
 			const participantOverrides: Partial<PeopleInsert> = {
-				description: participant.summary?.trim() || null,
+				description: participant.summary ?? null,
 				segment: segments[0] || metadata.segment || null,
-				company: participant.organization?.trim() || null,
-				role: participant.role || null,
+				company: participant.organization ?? null,
+				role: participant.role ?? null,
 			}
 			const personRecord = await upsertPerson(resolvedName, participantOverrides)
 			personIdByKey.set(participantKey, personRecord.id)
+			personNameByKey.set(participantKey, personRecord.name)
 			keyByPersonId.set(personRecord.id, participantKey)
 			if (participant.display_name) {
-				displayNameByKey.set(participantKey, participant.display_name.trim())
+				displayNameByKey.set(participantKey, participant.display_name)
 			}
 			personRoleById.set(personRecord.id, participant.role ?? null)
 
-			const isPrimary =
-				participant.person_key === (derivedPrimaryKey ?? participant.person_key) ||
-				(participant.role === "participant" && !primaryPersonId)
-			if (isPrimary) {
+			if (!primaryPersonId && participant.person_key === primaryPersonKey) {
 				primaryPersonId = personRecord.id
 				primaryPersonName = personRecord.name
-				primaryPersonRole = participant.role ?? "participant"
+				primaryPersonRole = participant.role ?? null
 				primaryPersonDescription = participantOverrides.description ?? null
 				primaryPersonOrganization = participantOverrides.company ?? null
 				primaryPersonSegments = segments.length ? segments : metadata.segment ? [metadata.segment] : []
@@ -929,20 +866,43 @@ async function extractEvidenceAndPeopleCore({
 		}
 	}
 
+	if (!primaryPersonId && participants.length) {
+		const fallbackKey = participants[0].person_key
+		const fallbackId = personIdByKey.get(fallbackKey) ?? null
+		if (fallbackId) {
+			primaryPersonId = fallbackId
+			primaryPersonName = personNameByKey.get(fallbackKey) ?? resolveName(participants[0], 0)
+			primaryPersonRole = participants[0].role ?? null
+			primaryPersonDescription = participants[0].summary ?? null
+			primaryPersonOrganization = participants[0].organization ?? null
+			primaryPersonSegments = participants[0].segments.length
+				? participants[0].segments
+				: metadata.segment
+					? [metadata.segment]
+					: []
+		}
+	}
+
 	if (!primaryPersonId) {
 		const fallback = await upsertPerson(generateFallbackPersonName(metadata))
 		primaryPersonId = fallback.id
 		primaryPersonName = fallback.name
+		primaryPersonSegments = metadata.segment ? [metadata.segment] : []
+		primaryPersonRole = primaryPersonRole ?? null
+		primaryPersonDescription = primaryPersonDescription ?? null
+		primaryPersonOrganization = primaryPersonOrganization ?? null
 	}
 
 	if (!primaryPersonId) throw new Error("Failed to resolve primary person for interview")
 
-	personRoleById.set(primaryPersonId, primaryPersonRole ?? "participant")
+	if (!personRoleById.has(primaryPersonId) || primaryPersonRole !== null) {
+		personRoleById.set(primaryPersonId, primaryPersonRole ?? null)
+	}
 
 	const ensuredPersonIds = new Set<string>([primaryPersonId])
 	for (const id of personIdByKey.values()) ensuredPersonIds.add(id)
 	for (const personId of ensuredPersonIds) {
-		const role = personRoleById.get(personId) ?? (personId === primaryPersonId ? "participant" : null)
+		const role = personRoleById.get(personId) ?? null
 		const linkPayload: InterviewPeopleInsert = {
 			interview_id: interviewRecord.id,
 			person_id: personId,
@@ -986,8 +946,9 @@ async function extractEvidenceAndPeopleCore({
 				const normalizedFacets = Array.isArray(facets)
 					? facets.filter((facet): facet is PersonFacetObservation => Boolean(facet))
 					: []
-				if (!personId || !normalizedFacets.length) return null
-				return { personId, facets: normalizedFacets, scales: [] as PersonScaleObservation[] }
+				const scaleObservations = participantByKey.get(key)?.scales ?? []
+				if (!personId || (!normalizedFacets.length && !scaleObservations.length)) return null
+				return { personId, facets: normalizedFacets, scales: scaleObservations }
 			})
 			.filter(
 				(item): item is { personId: string; facets: PersonFacetObservation[]; scales: PersonScaleObservation[] } =>
@@ -1018,622 +979,537 @@ async function extractEvidenceAndPeopleCore({
 	}
 }
 
-async function analyzeThemesAndPersonaCore({
-        db,
-        metadata,
-        interviewRecord,
-        fullTranscript,
-        userCustomInstructions,
-        evidenceResult,
+export async function analyzeThemesAndPersonaCore({
+	db,
+	metadata,
+	interviewRecord,
+	fullTranscript,
+	userCustomInstructions,
+	evidenceResult,
 }: {
-        db: SupabaseClient<Database>
-        metadata: InterviewMetadata
-        interviewRecord: Interview
-        fullTranscript: string
-        userCustomInstructions?: string
-        evidenceResult: ExtractEvidenceResult
+	db: SupabaseClient<Database>
+	metadata: InterviewMetadata
+	interviewRecord: Interview
+	fullTranscript: string
+	userCustomInstructions?: string
+	evidenceResult: ExtractEvidenceResult
 }): Promise<AnalyzeThemesAndPersonaResult> {
-        try {
-                await autoGroupThemesAndApply({
-                        supabase: db,
-                        account_id: metadata.accountId,
-                        project_id: metadata.projectId ?? null,
-                        limit: 200,
-                })
-        } catch (themeErr) {
-                consola.warn("Auto theme generation failed; continuing without themes", themeErr)
-        }
+	try {
+		await autoGroupThemesAndApply({
+			supabase: db,
+			account_id: metadata.accountId,
+			project_id: metadata.projectId ?? null,
+			limit: 200,
+		})
+	} catch (themeErr) {
+		consola.warn("Auto theme generation failed; continuing without themes", themeErr)
+	}
 
-        async function extractInsightsWithRetry(text: string, instructions: string, attempts = 2) {
-                let lastErr: unknown = null
-                for (let i = 0; i <= attempts; i++) {
-                        try {
-                                return await b.ExtractInsights(text, instructions)
-                        } catch (e) {
-                                lastErr = e
-                                const delayMs = 500 * (i + 1)
-                                consola.warn(
-                                        `ExtractInsights failed (attempt ${i + 1}/${attempts + 1}), retrying in ${delayMs}ms`,
-                                        e
-                                )
-                                await new Promise((res) => setTimeout(res, delayMs))
-                        }
-                }
-                throw lastErr
-        }
+	async function extractInsightsWithRetry(text: string, instructions: string, attempts = 2) {
+		let lastErr: unknown = null
+		for (let i = 0; i <= attempts; i++) {
+			try {
+				return await b.ExtractInsights(text, instructions)
+			} catch (e) {
+				lastErr = e
+				const delayMs = 500 * (i + 1)
+				consola.warn(`ExtractInsights failed (attempt ${i + 1}/${attempts + 1}), retrying in ${delayMs}ms`, e)
+				await new Promise((res) => setTimeout(res, delayMs))
+			}
+		}
+		throw lastErr
+	}
 
-        type ExtractInsightsResponse = Awaited<ReturnType<typeof b.ExtractInsights>>
-        let response: ExtractInsightsResponse
-        try {
-                response = await extractInsightsWithRetry(fullTranscript, userCustomInstructions || "")
-                consola.log("BAML extractInsights response:", response)
-        } catch (err) {
-                const errMsg = err instanceof Error ? err.message : String(err)
-                consola.error("ExtractInsights ultimately failed after retries:", errMsg)
-                throw new Error(`Insights extraction failed: ${errMsg}`)
-        }
+	type ExtractInsightsResponse = Awaited<ReturnType<typeof b.ExtractInsights>>
+	let response: ExtractInsightsResponse
+	try {
+		response = await extractInsightsWithRetry(fullTranscript, userCustomInstructions || "")
+		consola.log("BAML extractInsights response:", response)
+	} catch (err) {
+		const errMsg = err instanceof Error ? err.message : String(err)
+		consola.error("ExtractInsights ultimately failed after retries:", errMsg)
+		throw new Error(`Insights extraction failed: ${errMsg}`)
+	}
 
-        const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
+	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
 
-        if (!insights?.length) {
-                return { storedInsights: [], interview: interviewRecord }
-        }
+	if (!insights?.length) {
+		return { storedInsights: [], interview: interviewRecord }
+	}
 
-        await db.from("insights").delete().eq("interview_id", interviewRecord.id)
+	await db.from("insights").delete().eq("interview_id", interviewRecord.id)
 
-        const rows = insights.map((i) => ({
-                account_id: metadata.accountId,
-                project_id: metadata.projectId,
-                interview_id: interviewRecord.id,
-                name: i.name,
-                category: i.category,
-                details: i.details ?? null,
-                journey_stage: i.journeyStage ?? null,
-                jtbd: i.jtbd ?? null,
-                motivation: i.underlyingMotivation ?? null,
-                pain: i.pain ?? null,
-                desired_outcome: i.desiredOutcome ?? null,
-                emotional_response: i.emotionalResponse ?? null,
-                evidence: i.evidence ?? null,
-                confidence: i.confidence ? (i.confidence > 3 ? "high" : i.confidence > 1 ? "medium" : "low") : null,
-                contradictions: i.contradictions ?? null,
-                impact: i.impact ?? null,
-                novelty: i.novelty ?? null,
-                created_by: metadata.userId,
-                updated_by: metadata.userId,
-        }))
+	const rows = insights.map((i) => ({
+		account_id: metadata.accountId,
+		project_id: metadata.projectId,
+		interview_id: interviewRecord.id,
+		name: i.name,
+		category: i.category,
+		details: i.details ?? null,
+		journey_stage: i.journeyStage ?? null,
+		jtbd: i.jtbd ?? null,
+		motivation: i.underlyingMotivation ?? null,
+		pain: i.pain ?? null,
+		desired_outcome: i.desiredOutcome ?? null,
+		emotional_response: i.emotionalResponse ?? null,
+		evidence: i.evidence ?? null,
+		confidence: i.confidence ? (i.confidence > 3 ? "high" : i.confidence > 1 ? "medium" : "low") : null,
+		contradictions: i.contradictions ?? null,
+		impact: i.impact ?? null,
+		novelty: i.novelty ?? null,
+		created_by: metadata.userId,
+		updated_by: metadata.userId,
+	}))
 
-        const { data, error } = await db.from("insights").insert(rows).select()
-        if (error) throw new Error(`Failed to insert insights: ${error.message}`)
+	const { data, error } = await db.from("insights").insert(rows).select()
+	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
 
-        const generateFallbackName = (): string => {
-                if (metadata.fileName) {
-                        const nameFromFile = metadata.fileName
-                                .replace(/\.[^/.]+$/, "")
-                                .replace(/[_-]/g, " ")
-                                .replace(/\b\w/g, (l) => l.toUpperCase())
-                                .trim()
+	const generateFallbackName = (): string => {
+		if (metadata.fileName) {
+			const nameFromFile = metadata.fileName
+				.replace(/\.[^/.]+$/, "")
+				.replace(/[_-]/g, " ")
+				.replace(/\b\w/g, (l) => l.toUpperCase())
+				.trim()
 
-                        if (nameFromFile.length > 0) return `${nameFromFile}`
-                }
-                if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -"))
-                        return `${metadata.interviewTitle}`
-                const timestamp = new Date().toISOString().split("T")[0]
-                return `${timestamp}`
-        }
+			if (nameFromFile.length > 0) return `${nameFromFile}`
+		}
+		if (metadata.interviewTitle && !metadata.interviewTitle.includes("Interview -")) return `${metadata.interviewTitle}`
+		const timestamp = new Date().toISOString().split("T")[0]
+		return `${timestamp}`
+	}
 
-        const personData = evidenceResult.personData
-        const personName =
-                interviewee?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
-        const personUpdatePayload: PeopleUpdate = {
-                name: personName,
-                description:
-                        interviewee?.participantDescription?.trim() || evidenceResult.primaryPersonDescription || null,
-                segment:
-                        interviewee?.segment?.trim() ||
-                        evidenceResult.primaryPersonSegments[0] ||
-                        metadata.segment ||
-                        null,
-                contact_info: interviewee?.contactInfo || null,
-                company: evidenceResult.primaryPersonOrganization || null,
-                role: evidenceResult.primaryPersonRole || null,
-        }
-        const { error: personUpdateErr } = await db.from("people").update(personUpdatePayload).eq("id", personData.id)
-        if (personUpdateErr) {
-                consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
-        }
+	const personData = evidenceResult.personData
+	const personName = interviewee?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
+	const personUpdatePayload: PeopleUpdate = {
+		name: personName,
+		description: interviewee?.participantDescription?.trim() || evidenceResult.primaryPersonDescription || null,
+		segment: interviewee?.segment?.trim() || evidenceResult.primaryPersonSegments[0] || metadata.segment || null,
+		contact_info: interviewee?.contactInfo || null,
+		company: evidenceResult.primaryPersonOrganization || null,
+		role: evidenceResult.primaryPersonRole || null,
+	}
+	const { error: personUpdateErr } = await db.from("people").update(personUpdatePayload).eq("id", personData.id)
+	if (personUpdateErr) {
+		consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
+	}
 
-        try {
-                let latestQuestions: Array<{ id: string; text: string; categoryId?: string | null }> = []
-                if (metadata.projectId) {
-                        const { data: plannedAnswers, error: plannedError } = await db
-                                .from("project_answers")
-                                .select("question_id, question_text, question_category")
-                                .eq("project_id", metadata.projectId)
-                                .eq("interview_id", interviewRecord.id)
+	try {
+		let latestQuestions: Array<{ id: string; text: string; categoryId?: string | null }> = []
+		if (metadata.projectId) {
+			const { data: plannedAnswers, error: plannedError } = await db
+				.from("project_answers")
+				.select("question_id, question_text, question_category")
+				.eq("project_id", metadata.projectId)
+				.eq("interview_id", interviewRecord.id)
 
-                        if (plannedError) {
-                                consola.warn("Failed to load planned project_answers", plannedError.message)
-                        }
+			if (plannedError) {
+				consola.warn("Failed to load planned project_answers", plannedError.message)
+			}
 
-                        if (plannedAnswers && plannedAnswers.length > 0) {
-                                latestQuestions = plannedAnswers
-                                        .filter((row) => row.question_id && row.question_text)
-                                        .map((row) => ({
-                                                id: row.question_id as string,
-                                                text: row.question_text ?? "",
-                                                categoryId: row.question_category,
-                                        }))
-                        } else {
-                                const { data: qsSection } = await db
-                                        .from("project_sections")
-                                        .select("meta, created_at")
-                                        .eq("project_id", metadata.projectId)
-                                        .eq("kind", "questions")
-                                        .order("created_at", { ascending: false })
-                                        .limit(1)
-                                        .single()
-                                const meta = (qsSection?.meta as any) || {}
-                                const fromMeta = Array.isArray(meta?.questions) ? meta.questions : []
-                                latestQuestions = fromMeta
-                                        .filter((q: any) => q?.id && (q?.text || q?.question))
-                                        .map((q: any) => ({
-                                                id: String(q.id),
-                                                text: String(q.text || q.question || ""),
-                                                categoryId: q.categoryId || q.category || null,
-                                        }))
-                        }
-                }
+			if (plannedAnswers && plannedAnswers.length > 0) {
+				latestQuestions = plannedAnswers
+					.filter((row) => row.question_id && row.question_text)
+					.map((row) => ({
+						id: row.question_id as string,
+						text: row.question_text ?? "",
+						categoryId: row.question_category,
+					}))
+			} else {
+				const { data: qsSection } = await db
+					.from("project_sections")
+					.select("meta, created_at")
+					.eq("project_id", metadata.projectId)
+					.eq("kind", "questions")
+					.order("created_at", { ascending: false })
+					.limit(1)
+					.single()
+				const meta = (qsSection?.meta as any) || {}
+				const fromMeta = Array.isArray(meta?.questions) ? meta.questions : []
+				latestQuestions = fromMeta
+					.filter((q: any) => q?.id && (q?.text || q?.question))
+					.map((q: any) => ({
+						id: String(q.id),
+						text: String(q.text || q.question || ""),
+						categoryId: q.categoryId || q.category || null,
+					}))
+			}
+		}
 
-                const categoryToQuestion = new Map<string, { id: string; text: string }>()
-                for (const q of latestQuestions) {
-                        if (!q.id || !q.text) continue
-                        if (q.categoryId && !categoryToQuestion.has(q.categoryId)) {
-                                categoryToQuestion.set(q.categoryId, { id: q.id, text: q.text })
-                        }
-                }
+		const categoryToQuestion = new Map<string, { id: string; text: string }>()
+		for (const q of latestQuestions) {
+			if (!q.id || !q.text) continue
+			if (q.categoryId && !categoryToQuestion.has(q.categoryId)) {
+				categoryToQuestion.set(q.categoryId, { id: q.id, text: q.text })
+			}
+		}
 
-                const knownCategories = new Set([
-                        "context",
-                        "pain",
-                        "workflow",
-                        "goals",
-                        "constraints",
-                        "willingness",
-                        "demographics",
-                ])
+		const knownCategories = new Set([
+			"context",
+			"pain",
+			"workflow",
+			"goals",
+			"constraints",
+			"willingness",
+			"demographics",
+		])
 
-                if (Array.isArray(evidenceResult.evidenceUnits) && evidenceResult.evidenceUnits.length && metadata.projectId) {
-                        for (let i = 0; i < evidenceResult.insertedEvidenceIds.length; i++) {
-                                const evId = evidenceResult.insertedEvidenceIds[i]
-                                const tags = evidenceResult.evidenceKindTags[i] ?? []
+		if (Array.isArray(evidenceResult.evidenceUnits) && evidenceResult.evidenceUnits.length && metadata.projectId) {
+			for (let i = 0; i < evidenceResult.insertedEvidenceIds.length; i++) {
+				const evId = evidenceResult.insertedEvidenceIds[i]
+				const tags = evidenceResult.evidenceKindTags[i] ?? []
 
-                                const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
-                                const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined
-                                if (!qRep) continue
+				const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
+				const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined
+				if (!qRep) continue
 
-                                let answerId: string | null = null
-                                let existingAnswer: Pick<
-                                        Tables["project_answers"]["Row"],
-                                        | "id"
-                                        | "answered_at"
-                                        | "respondent_person_id"
-                                        | "question_category"
-                                        | "estimated_time_minutes"
-                                        | "order_index"
-                                        | "origin"
-                                > | null = null
-                                const { data: existingAns } = await db
-                                        .from("project_answers")
-                                        .select(
-                                                "id, answered_at, respondent_person_id, question_category, estimated_time_minutes, order_index, origin"
-                                        )
-                                        .eq("project_id", metadata.projectId)
-                                        .eq("interview_id", interviewRecord.id)
-                                        .eq("question_id", qRep.id)
-                                        .limit(1)
-                                        .single()
-                                if (existingAns?.id) {
-                                        answerId = existingAns.id
-                                        existingAnswer = existingAns as typeof existingAnswer
-                                } else {
-                                        const { data: createdAns, error: ansErr } = await db
-                                                .from("project_answers")
-                                                .insert({
-                                                        project_id: metadata.projectId,
-                                                        interview_id: interviewRecord.id,
-                                                        respondent_person_id: personData.id,
-                                                        question_id: qRep.id,
-                                                        question_text: qRep.text,
-                                                        question_category: qRep.categoryId || matchCat || null,
-                                                        status: "answered",
-                                                        origin: "scripted",
-                                                        answered_at: new Date().toISOString(),
-                                                })
-                                                .select("id")
-                                                .single()
-                                        if (ansErr) {
-                                                consola.warn("Failed to upsert project_answers for evidence", ansErr.message)
-                                                continue
-                                        }
-                                        answerId = createdAns?.id ?? null
-                                }
+				let answerId: string | null = null
+				let existingAnswer: Pick<
+					Tables["project_answers"]["Row"],
+					| "id"
+					| "answered_at"
+					| "respondent_person_id"
+					| "question_category"
+					| "estimated_time_minutes"
+					| "order_index"
+					| "origin"
+				> | null = null
+				const { data: existingAns } = await db
+					.from("project_answers")
+					.select(
+						"id, answered_at, respondent_person_id, question_category, estimated_time_minutes, order_index, origin"
+					)
+					.eq("project_id", metadata.projectId)
+					.eq("interview_id", interviewRecord.id)
+					.eq("question_id", qRep.id)
+					.limit(1)
+					.single()
+				if (existingAns?.id) {
+					answerId = existingAns.id
+					existingAnswer = existingAns as typeof existingAnswer
+				} else {
+					const { data: createdAns, error: ansErr } = await db
+						.from("project_answers")
+						.insert({
+							project_id: metadata.projectId,
+							interview_id: interviewRecord.id,
+							respondent_person_id: personData.id,
+							question_id: qRep.id,
+							question_text: qRep.text,
+							question_category: qRep.categoryId || matchCat || null,
+							status: "answered",
+							origin: "scripted",
+							answered_at: new Date().toISOString(),
+						})
+						.select("id")
+						.single()
+					if (ansErr) {
+						consola.warn("Failed to upsert project_answers for evidence", ansErr.message)
+						continue
+					}
+					answerId = createdAns?.id ?? null
+				}
 
-                                if (!answerId) continue
+				if (!answerId) continue
 
-                                const answerUpdatePayload: Tables["project_answers"]["Update"] = {}
-                                if (existingAnswer?.respondent_person_id !== personData.id) {
-                                        answerUpdatePayload.respondent_person_id = personData.id
-                                }
-                                if (existingAnswer?.status !== "answered") {
-                                        answerUpdatePayload.status = "answered"
-                                }
-                                if (!existingAnswer?.answered_at) {
-                                        answerUpdatePayload.answered_at = new Date().toISOString()
-                                }
-                                if (!existingAnswer?.question_category && (qRep?.categoryId || matchCat)) {
-                                        answerUpdatePayload.question_category = qRep?.categoryId || matchCat || null
-                                }
+				const answerUpdatePayload: Tables["project_answers"]["Update"] = {}
+				if (existingAnswer?.respondent_person_id !== personData.id) {
+					answerUpdatePayload.respondent_person_id = personData.id
+				}
+				if (existingAnswer?.status !== "answered") {
+					answerUpdatePayload.status = "answered"
+				}
+				if (!existingAnswer?.answered_at) {
+					answerUpdatePayload.answered_at = new Date().toISOString()
+				}
+				if (!existingAnswer?.question_category && (qRep?.categoryId || matchCat)) {
+					answerUpdatePayload.question_category = qRep?.categoryId || matchCat || null
+				}
 
-                                if (Object.keys(answerUpdatePayload).length) {
-                                        const { error: answerUpdateErr } = await db
-                                                .from("project_answers")
-                                                .update(answerUpdatePayload)
-                                                .eq("id", answerId)
-                                        if (answerUpdateErr) {
-                                                consola.warn("Failed to update project_answers metadata", answerUpdateErr.message)
-                                        }
-                                }
+				if (Object.keys(answerUpdatePayload).length) {
+					const { error: answerUpdateErr } = await db
+						.from("project_answers")
+						.update(answerUpdatePayload)
+						.eq("id", answerId)
+					if (answerUpdateErr) {
+						consola.warn("Failed to update project_answers metadata", answerUpdateErr.message)
+					}
+				}
 
-                                const { error: evidenceUpdateErr } = await db
-                                        .from("evidence")
-                                        .update({ project_answer_id: answerId })
-                                        .eq("id", evId)
-                                if (evidenceUpdateErr) {
-                                        consola.warn("Failed to attach evidence to project_answer", evidenceUpdateErr.message)
-                                }
-                        }
-                }
-        } catch (mapErr) {
-                consola.warn("Evidence→Answer mapping skipped due to error", mapErr)
-        }
+				const { error: evidenceUpdateErr } = await db
+					.from("evidence")
+					.update({ project_answer_id: answerId })
+					.eq("id", evId)
+				if (evidenceUpdateErr) {
+					consola.warn("Failed to attach evidence to project_answer", evidenceUpdateErr.message)
+				}
+			}
+		}
+	} catch (mapErr) {
+		consola.warn("Evidence→Answer mapping skipped due to error", mapErr)
+	}
 
-        const junctionData: InterviewPeopleInsert = {
-                interview_id: interviewRecord.id,
-                person_id: personData.id,
-                role: "participant",
-                project_id: metadata.projectId,
-        }
-        const { error: junctionError } = await db
-                .from("interview_people")
-                .upsert(junctionData, { onConflict: "interview_id,person_id" })
-                .select("id")
-                .single()
-        if (junctionError) {
-                if (!junctionError.message?.toLowerCase().includes("duplicate key value")) {
-                        throw new Error(`Failed to link person to interview: ${junctionError.message}`)
-                }
-                consola.info("interview_people already linked; skipping duplicate link", {
-                        interview_id: interviewRecord.id,
-                        person_id: personData.id,
-                })
-        }
+	const junctionData: InterviewPeopleInsert = {
+		interview_id: interviewRecord.id,
+		person_id: personData.id,
+		role: evidenceResult.primaryPersonRole ?? null,
+		project_id: metadata.projectId,
+	}
+	const { error: junctionError } = await db
+		.from("interview_people")
+		.upsert(junctionData, { onConflict: "interview_id,person_id" })
+		.select("id")
+		.single()
+	if (junctionError) {
+		if (!junctionError.message?.toLowerCase().includes("duplicate key value")) {
+			throw new Error(`Failed to link person to interview: ${junctionError.message}`)
+		}
+		consola.info("interview_people already linked; skipping duplicate link", {
+			interview_id: interviewRecord.id,
+			person_id: personData.id,
+		})
+	}
 
-        try {
-                let personasQuery = db.from("personas").select("id, name, description").order("created_at", { ascending: false })
+	try {
+		let personasQuery = db.from("personas").select("id, name, description").order("created_at", { ascending: false })
 
-                if (metadata.projectId) {
-                        personasQuery = personasQuery.eq("project_id", metadata.projectId)
-                }
+		if (metadata.projectId) {
+			personasQuery = personasQuery.eq("project_id", metadata.projectId)
+		}
 
-                const { data: existingPersonas, error: personasError } = await personasQuery
+		const { data: existingPersonas, error: personasError } = await personasQuery
 
-                if (personasError) {
-                        consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
-                }
+		if (personasError) {
+			consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
+		}
 
-                const intervieweeInfo = JSON.stringify({
-                        name: personName,
-                        segment: interviewee?.segment || metadata.segment || null,
-                        description: interviewee?.participantDescription || null,
-                })
+		const intervieweeInfo = JSON.stringify({
+			name: personName,
+			segment: interviewee?.segment || metadata.segment || null,
+			description: interviewee?.participantDescription || null,
+		})
 
-                const existingPersonasForBaml = JSON.stringify(
-                        (existingPersonas || []).map((p) => ({
-                                id: p.id,
-                                name: p.name,
-                                description: p.description,
-                        }))
-                )
+		const existingPersonasForBaml = JSON.stringify(
+			(existingPersonas || []).map((p) => ({
+				id: p.id,
+				name: p.name,
+				description: p.description,
+			}))
+		)
 
-                const personaDecision = await b.AssignPersonaToInterview(fullTranscript, intervieweeInfo, existingPersonasForBaml)
+		const personaDecision = await b.AssignPersonaToInterview(fullTranscript, intervieweeInfo, existingPersonasForBaml)
 
-                consola.log("Persona assignment decision:", personaDecision)
+		consola.log("Persona assignment decision:", personaDecision)
 
-                let personaId: string | null = null
+		let personaId: string | null = null
 
-                if (personaDecision.action === "assign_existing" && personaDecision.persona_id) {
-                        personaId = personaDecision.persona_id
-                        consola.log(`Assigning to existing persona: ${personaDecision.persona_name} (${personaId})`)
-                } else if (personaDecision.action === "create_new" && personaDecision.new_persona_data) {
-                        const newPersona = personaDecision.new_persona_data
-                        const { data: createdPersona, error: createError } = await db
-                                .from("personas")
-                                .insert({
-                                        account_id: metadata.accountId,
-                                        project_id: metadata.projectId,
-                                        name: newPersona.name,
-                                        description: newPersona.description || null,
-                                        color_hex: newPersona.color_hex || null,
-                                })
-                                .select("id")
-                                .single()
+		if (personaDecision.action === "assign_existing" && personaDecision.persona_id) {
+			personaId = personaDecision.persona_id
+			consola.log(`Assigning to existing persona: ${personaDecision.persona_name} (${personaId})`)
+		} else if (personaDecision.action === "create_new" && personaDecision.new_persona_data) {
+			const newPersona = personaDecision.new_persona_data
+			const { data: createdPersona, error: createError } = await db
+				.from("personas")
+				.insert({
+					account_id: metadata.accountId,
+					project_id: metadata.projectId,
+					name: newPersona.name,
+					description: newPersona.description || null,
+					color_hex: newPersona.color_hex || null,
+				})
+				.select("id")
+				.single()
 
-                        if (createError) {
-                                consola.warn(`Failed to create new persona: ${createError.message}`)
-                        } else {
-                                personaId = createdPersona.id
-                                consola.log(`Created new persona: ${newPersona.name} (${personaId})`)
-                        }
-                }
+			if (createError) {
+				consola.warn(`Failed to create new persona: ${createError.message}`)
+			} else {
+				personaId = createdPersona.id
+				consola.log(`Created new persona: ${newPersona.name} (${personaId})`)
+			}
+		}
 
-                if (personaId && personData.id) {
-                        const { error: linkError } = await db.from("people_personas").upsert(
-                                {
-                                        person_id: personData.id,
-                                        persona_id: personaId,
-                                        interview_id: interviewRecord.id,
-                                        project_id: metadata.projectId,
-                                        confidence_score: personaDecision.confidence_score || 0.5,
-                                        source: "ai_assignment",
-                                        assigned_at: new Date().toISOString(),
-                                },
-                                { onConflict: "person_id,persona_id" }
-                        )
+		if (personaId && personData.id) {
+			const { error: linkError } = await db.from("people_personas").upsert(
+				{
+					person_id: personData.id,
+					persona_id: personaId,
+					interview_id: interviewRecord.id,
+					project_id: metadata.projectId,
+					confidence_score: personaDecision.confidence_score || 0.5,
+					source: "ai_assignment",
+					assigned_at: new Date().toISOString(),
+				},
+				{ onConflict: "person_id,persona_id" }
+			)
 
-                        if (linkError) {
-                                consola.warn(`Failed to link person to persona: ${linkError.message}`)
-                        } else {
-                                consola.log(`Successfully linked person ${personData.id} to persona ${personaId}`)
-                        }
-                }
-        } catch (personaErr) {
-                consola.warn("Persona assignment failed; continuing without persona assignment", personaErr)
-        }
+			if (linkError) {
+				consola.warn(`Failed to link person to persona: ${linkError.message}`)
+			} else {
+				consola.log(`Successfully linked person ${personData.id} to persona ${personaId}`)
+			}
+		}
+	} catch (personaErr) {
+		consola.warn("Persona assignment failed; continuing without persona assignment", personaErr)
+	}
 
-        consola.log(`Successfully created/linked person "${personName}" to interview ${interviewRecord.id}`)
+	consola.log(`Successfully created/linked person "${personName}" to interview ${interviewRecord.id}`)
 
-        await db
-                .from("interviews")
-                .update({
-                        segment: interviewee?.segment ?? null,
-                        high_impact_themes: highImpactThemes ?? null,
-                        open_questions_and_next_steps: openQuestionsAndNextSteps ?? null,
-                        observations_and_notes: observationsAndNotes ?? null,
-                })
-                .eq("id", interviewRecord.id)
+	await db
+		.from("interviews")
+		.update({
+			segment: interviewee?.segment ?? null,
+			high_impact_themes: highImpactThemes ?? null,
+			open_questions_and_next_steps: openQuestionsAndNextSteps ?? null,
+			observations_and_notes: observationsAndNotes ?? null,
+		})
+		.eq("id", interviewRecord.id)
 
-        const allTags = insights.flatMap((insight) => insight.relatedTags || [])
-        const uniqueTags = [...new Set(allTags.filter(Boolean))]
+	const allTags = insights.flatMap((insight) => insight.relatedTags || [])
+	const uniqueTags = [...new Set(allTags.filter(Boolean))]
 
-        consola.log(`Creating ${uniqueTags.length} unique tags:`, uniqueTags)
+	consola.log(`Creating ${uniqueTags.length} unique tags:`, uniqueTags)
 
-        for (const tagName of uniqueTags) {
-                const { data: tagData, error: tagError } = await db
-                        .from("tags")
-                        .upsert({ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId }, { onConflict: "account_id,tag" })
-                        .select("id")
-                        .single()
+	for (const tagName of uniqueTags) {
+		const { data: tagData, error: tagError } = await db
+			.from("tags")
+			.upsert(
+				{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
+				{ onConflict: "account_id,tag" }
+			)
+			.select("id")
+			.single()
 
-                if (tagError) {
-                        consola.warn(`Failed to create tag "${tagName}": ${tagError.message}`)
-                        continue
-                }
+		if (tagError) {
+			consola.warn(`Failed to create tag "${tagName}": ${tagError.message}`)
+			continue
+		}
 
-                for (let i = 0; i < insights.length; i++) {
-                        const originalInsight = insights[i]
-                        const storedInsight = data?.[i]
+		for (let i = 0; i < insights.length; i++) {
+			const originalInsight = insights[i]
+			const storedInsight = data?.[i]
 
-                        if (!storedInsight || !originalInsight.relatedTags?.includes(tagName)) {
-                                continue
-                        }
+			if (!storedInsight || !originalInsight.relatedTags?.includes(tagName)) {
+				continue
+			}
 
-                        const { error: junctionError } = await db
-                                .from("insight_tags")
-                                .insert({
-                                        insight_id: storedInsight.id,
-                                        tag_id: tagData.id,
-                                        account_id: metadata.accountId,
-                                        project_id: metadata.projectId,
-                                })
-                                .select()
-                                .single()
+			const { error: junctionError } = await db
+				.from("insight_tags")
+				.insert({
+					insight_id: storedInsight.id,
+					tag_id: tagData.id,
+					account_id: metadata.accountId,
+					project_id: metadata.projectId,
+				})
+				.select()
+				.single()
 
-                        if (junctionError && !junctionError.message.includes("duplicate")) {
-                                consola.warn(`Failed to link insight ${storedInsight.id} to tag ${tagName}: ${junctionError.message}`)
-                        }
-                }
-        }
+			if (junctionError && !junctionError.message.includes("duplicate")) {
+				consola.warn(`Failed to link insight ${storedInsight.id} to tag ${tagName}: ${junctionError.message}`)
+			}
+		}
+	}
 
-        if (data?.length) {
-                for (const insight of data) {
-                        const { error: personaLinkError } = await db.rpc("auto_link_persona_insights", {
-                                p_insight_id: insight.id,
-                        })
+	if (data?.length) {
+		for (const insight of data) {
+			const { error: personaLinkError } = await db.rpc("auto_link_persona_insights", {
+				p_insight_id: insight.id,
+			})
 
-                        if (personaLinkError) {
-                                consola.warn(`Failed to auto-link persona insights for ${insight.id}: ${personaLinkError.message}`)
-                        }
-                }
-        }
+			if (personaLinkError) {
+				consola.warn(`Failed to auto-link persona insights for ${insight.id}: ${personaLinkError.message}`)
+			}
+		}
+	}
 
-        const { data: refreshedInterview } = await db
-                .from("interviews")
-                .select("*")
-                .eq("id", interviewRecord.id)
-                .single()
+	const { data: refreshedInterview } = await db.from("interviews").select("*").eq("id", interviewRecord.id).single()
 
-        const updatedInterview = (refreshedInterview as unknown as Interview) || interviewRecord
+	const updatedInterview = (refreshedInterview as unknown as Interview) || interviewRecord
 
-        return { storedInsights: (data as unknown as InsightInsert[]) ?? [], interview: updatedInterview }
+	return { storedInsights: (data as unknown as InsightInsert[]) ?? [], interview: updatedInterview }
 }
 
-async function attributeAnswersAndFinalizeCore({
-        db,
-        metadata,
-        interviewRecord,
-        insertedEvidenceIds,
-        storedInsights,
-        fullTranscript,
+export async function attributeAnswersAndFinalizeCore({
+	db,
+	metadata,
+	interviewRecord,
+	insertedEvidenceIds,
+	storedInsights,
+	fullTranscript,
 }: {
-        db: SupabaseClient<Database>
-        metadata: InterviewMetadata
-        interviewRecord: Interview
-        insertedEvidenceIds: string[]
-        storedInsights: InsightInsert[]
-        fullTranscript: string
+	db: SupabaseClient<Database>
+	metadata: InterviewMetadata
+	interviewRecord: Interview
+	insertedEvidenceIds: string[]
+	storedInsights: InsightInsert[]
+	fullTranscript: string
 }): Promise<void> {
-        if (metadata.projectId) {
-                try {
-                        await runEvidenceAnalysis({
-                                supabase: db,
-                                projectId: metadata.projectId,
-                                interviewId: interviewRecord.id,
-                        })
-                } catch (analysisError) {
-                        consola.warn("[processInterview] Evidence analysis failed", analysisError)
-                }
-        }
+	if (metadata.projectId) {
+		try {
+			await runEvidenceAnalysis({
+				supabase: db,
+				projectId: metadata.projectId,
+				interviewId: interviewRecord.id,
+			})
+		} catch (analysisError) {
+			consola.warn("[processInterview] Evidence analysis failed", analysisError)
+		}
+	}
 
-        await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
+	await db.from("interviews").update({ status: "ready" }).eq("id", interviewRecord.id)
 
-        try {
-                const source = metadata.fileName
-                        ? metadata.fileName.match(/\.(mp3|wav|m4a|ogg)$/i)
-                                ? "upload"
-                                : metadata.fileName.match(/\.(mp4|mov|avi|webm)$/i)
-                                        ? "upload"
-                                        : "paste"
-                        : "record"
+	try {
+		const source = metadata.fileName
+			? metadata.fileName.match(/\.(mp3|wav|m4a|ogg)$/i)
+				? "upload"
+				: metadata.fileName.match(/\.(mp4|mov|avi|webm)$/i)
+					? "upload"
+					: "paste"
+			: "record"
 
-                const fileType = metadata.fileName
-                        ? metadata.fileName.match(/\.(mp3|wav|m4a|ogg)$/i)
-                                ? "audio"
-                                : metadata.fileName.match(/\.(mp4|mov|avi|webm)$/i)
-                                        ? "video"
-                                        : "text"
-                        : undefined
+		const fileType = metadata.fileName
+			? metadata.fileName.match(/\.(mp3|wav|m4a|ogg)$/i)
+				? "audio"
+				: metadata.fileName.match(/\.(mp4|mov|avi|webm)$/i)
+					? "video"
+					: "text"
+			: undefined
 
-                posthog.capture("interview_added", {
-                        interview_id: interviewRecord.id,
-                        project_id: metadata.projectId,
-                        account_id: metadata.accountId,
-                        source,
-                        duration_s: interviewRecord.duration_sec || 0,
-                        file_type: fileType,
-                        has_transcript: Boolean(fullTranscript),
-                        evidence_count: insertedEvidenceIds.length,
-                        insights_count: storedInsights.length,
-                        $insert_id: `interview:${interviewRecord.id}:analysis`,
-                })
+		posthog.capture("interview_added", {
+			interview_id: interviewRecord.id,
+			project_id: metadata.projectId,
+			account_id: metadata.accountId,
+			source,
+			duration_s: interviewRecord.duration_sec || 0,
+			file_type: fileType,
+			has_transcript: Boolean(fullTranscript),
+			evidence_count: insertedEvidenceIds.length,
+			insights_count: storedInsights.length,
+			$insert_id: `interview:${interviewRecord.id}:analysis`,
+		})
 
-                if (metadata.userId) {
-                        const { count: interviewCount } = await db
-                                .from("interviews")
-                                .select("id", { count: "exact", head: true })
-                                .eq("account_id", metadata.accountId)
+		if (metadata.userId) {
+			const { count: interviewCount } = await db
+				.from("interviews")
+				.select("id", { count: "exact", head: true })
+				.eq("account_id", metadata.accountId)
 
-                        if ((interviewCount || 0) <= 3) {
-                                posthog.identify(metadata.userId, {
-                                        $set: {
-                                                interview_count: interviewCount || 1,
-                                        },
-                                })
-                        }
-                }
-        } catch (trackingError) {
-                consola.warn("[processInterview] PostHog tracking failed:", trackingError)
-        }
+			if ((interviewCount || 0) <= 3) {
+				posthog.identify(metadata.userId, {
+					$set: {
+						interview_count: interviewCount || 1,
+					},
+				})
+			}
+		}
+	} catch (trackingError) {
+		consola.warn("[processInterview] PostHog tracking failed:", trackingError)
+	}
 }
-
-export const uploadMediaAndTranscribeTask = task({
-        id: "interview.upload-media-and-transcribe",
-        retry: workflowRetryConfig,
-        run: async (payload: UploadMediaAndTranscribePayload) => {
-                const client = createSupabaseAdminClient()
-                return await uploadMediaAndTranscribeCore({ ...payload, client })
-        },
-})
-
-export const extractEvidenceAndPeopleTask = task({
-        id: "interview.extract-evidence-and-people",
-        retry: workflowRetryConfig,
-        run: async (payload: UploadMediaAndTranscribeResult) => {
-                const client = createSupabaseAdminClient()
-                const evidenceResult = await extractEvidenceAndPeopleCore({
-                        db: client,
-                        metadata: payload.metadata,
-                        interviewRecord: payload.interview,
-                        transcriptData: payload.transcriptData,
-                        language: payload.language,
-                        fullTranscript: payload.fullTranscript,
-                })
-                return {
-                        metadata: payload.metadata,
-                        interview: payload.interview,
-                        fullTranscript: payload.fullTranscript,
-                        transcriptData: payload.transcriptData,
-                        language: payload.language,
-                        evidenceResult,
-                }
-        },
-})
-
-export const analyzeThemesAndPersonaTask = task({
-        id: "interview.analyze-themes-and-persona",
-        retry: workflowRetryConfig,
-        run: async (payload: AnalyzeThemesTaskPayload) => {
-                const client = createSupabaseAdminClient()
-                const analysisResult = await analyzeThemesAndPersonaCore({
-                        db: client,
-                        metadata: payload.metadata,
-                        interviewRecord: payload.interview,
-                        fullTranscript: payload.fullTranscript,
-                        userCustomInstructions: payload.userCustomInstructions,
-                        evidenceResult: payload.evidenceResult,
-                })
-
-                return {
-                        metadata: payload.metadata,
-                        interview: analysisResult.interview,
-                        storedInsights: analysisResult.storedInsights,
-                        insertedEvidenceIds: payload.evidenceResult.insertedEvidenceIds,
-                        fullTranscript: payload.fullTranscript,
-                }
-        },
-})
-
-export const attributeAnswersTask = task({
-        id: "interview.attribute-answers",
-        retry: workflowRetryConfig,
-        run: async (payload: AttributeAnswersTaskPayload) => {
-                const client = createSupabaseAdminClient()
-                await attributeAnswersAndFinalizeCore({
-                        db: client,
-                        metadata: payload.metadata,
-                        interviewRecord: payload.interview,
-                        insertedEvidenceIds: payload.insertedEvidenceIds,
-                        storedInsights: payload.storedInsights,
-                        fullTranscript: payload.fullTranscript,
-                })
-                return { interviewId: payload.interview.id, storedInsights: payload.storedInsights }
-        },
-})
 
 async function ensureFallbackPerson(
-        db: SupabaseClient<Database>,
-        metadata: InterviewMetadata,
-        interviewRecord: Interview
+	db: SupabaseClient<Database>,
+	metadata: InterviewMetadata,
+	interviewRecord: Interview
 ): Promise<string> {
 	const fallbackName = generateFallbackPersonName(metadata)
 	const payload: PeopleInsert = {
@@ -1653,105 +1529,107 @@ async function ensureFallbackPerson(
 		project_id: metadata.projectId ?? null,
 		role: "participant",
 	}
-        await db.from("interview_people").upsert(linkPayload, { onConflict: "interview_id,person_id" })
-        return data.id
+	await db.from("interview_people").upsert(linkPayload, { onConflict: "interview_id,person_id" })
+	return data.id
 }
 
-async function uploadMediaAndTranscribeCore({
-        metadata,
-        transcriptData,
-        mediaUrl,
-        existingInterviewId,
-        client,
+export async function uploadMediaAndTranscribeCore({
+	metadata,
+	transcriptData,
+	mediaUrl,
+	existingInterviewId,
+	client,
 }: UploadMediaAndTranscribePayload & { client: SupabaseClient<Database> }): Promise<UploadMediaAndTranscribeResult> {
-        const normalizedMetadata: InterviewMetadata = { ...metadata }
-        const sanitizedTranscriptData = safeSanitizeTranscriptPayload(transcriptData)
-        const normalizedTranscriptData = sanitizedTranscriptData as unknown as Record<string, unknown>
+	const normalizedMetadata: InterviewMetadata = { ...metadata }
+	const sanitizedTranscriptData = safeSanitizeTranscriptPayload(transcriptData)
+	const normalizedTranscriptData = sanitizedTranscriptData as unknown as Record<string, unknown>
 
-        if (normalizedMetadata.projectId) {
-                const { data: projectRow } = await client
-                        .from("projects")
-                        .select("account_id")
-                        .eq("id", normalizedMetadata.projectId)
-                        .single()
-                if (projectRow?.account_id && normalizedMetadata.accountId !== projectRow.account_id) {
-                        consola.warn("Overriding metadata.accountId with project account", {
-                                provided: normalizedMetadata.accountId,
-                                projectAccount: projectRow.account_id,
-                        })
-                        normalizedMetadata.accountId = projectRow.account_id
-                }
-        }
+	if (normalizedMetadata.projectId) {
+		const { data: projectRow } = await client
+			.from("projects")
+			.select("account_id")
+			.eq("id", normalizedMetadata.projectId)
+			.single()
+		if (projectRow?.account_id && normalizedMetadata.accountId !== projectRow.account_id) {
+			consola.warn("Overriding metadata.accountId with project account", {
+				provided: normalizedMetadata.accountId,
+				projectAccount: projectRow.account_id,
+			})
+			normalizedMetadata.accountId = projectRow.account_id
+		}
+	}
 
-        const fullTranscript = (sanitizedTranscriptData.full_transcript ?? "") as string
-        const language =
-                (normalizedTranscriptData as any).language ||
-                (normalizedTranscriptData as any).detected_language ||
-                "en"
+	const fullTranscript = (sanitizedTranscriptData.full_transcript ?? "") as string
+	const language =
+		(normalizedTranscriptData as any).language || (normalizedTranscriptData as any).detected_language || "en"
 
-        let interviewRecord: Interview
-        consola.log("assembly audio_duration ", sanitizedTranscriptData.audio_duration)
-        if (existingInterviewId) {
-                        const { data: existing, error: fetchErr } = await client
-                                .from("interviews")
-                                .select("*")
-                                .eq("id", existingInterviewId)
-                                .single()
-                        if (fetchErr || !existing) {
-                                throw new Error(`Existing interview ${existingInterviewId} not found: ${fetchErr?.message}`)
-                        }
-                        const { data: updated, error: updateErr } = await client
-                                .from("interviews")
-                                .update({
-                                        status: "processing",
-                                        transcript: fullTranscript,
-                                        transcript_formatted: sanitizedTranscriptData as unknown as Json,
-                                        duration_sec: sanitizedTranscriptData.audio_duration ?? null,
-                                })
-                                .eq("id", existingInterviewId)
-                                .select("*")
-                                .single()
-                        if (updateErr || !updated) {
-                                throw new Error(`Failed to update existing interview: ${updateErr?.message}`)
-                        }
-                        interviewRecord = updated as unknown as Interview
-        } else {
-                const interviewData: InterviewInsert = {
-                        account_id: normalizedMetadata.accountId,
-                        project_id: normalizedMetadata.projectId,
-                        title: normalizedMetadata.interviewTitle || normalizedMetadata.fileName,
-                        interview_date: normalizedMetadata.interviewDate || new Date().toISOString().split("T")[0],
-                        participant_pseudonym: normalizedMetadata.participantName || "Anonymous",
-                        segment: normalizedMetadata.segment || null,
-                        media_url: mediaUrl || null,
-                        transcript: fullTranscript,
-                        transcript_formatted: sanitizedTranscriptData as unknown as Json,
-                        duration_sec: sanitizedTranscriptData.audio_duration ?? null,
-                        status: "processing" as const,
-                } as InterviewInsert
+	let interviewRecord: Interview
+	consola.log("assembly audio_duration ", sanitizedTranscriptData.audio_duration)
+	if (existingInterviewId) {
+		const { data: existing, error: fetchErr } = await client
+			.from("interviews")
+			.select("*")
+			.eq("id", existingInterviewId)
+			.single()
+		if (fetchErr || !existing) {
+			throw new Error(`Existing interview ${existingInterviewId} not found: ${fetchErr?.message}`)
+		}
+		const { data: updated, error: updateErr } = await client
+			.from("interviews")
+			.update({
+				status: "processing",
+				transcript: fullTranscript,
+				transcript_formatted: sanitizedTranscriptData as unknown as Json,
+				duration_sec: sanitizedTranscriptData.audio_duration ?? null,
+			})
+			.eq("id", existingInterviewId)
+			.select("*")
+			.single()
+		if (updateErr || !updated) {
+			throw new Error(`Failed to update existing interview: ${updateErr?.message}`)
+		}
+		interviewRecord = updated as unknown as Interview
+	} else {
+		const interviewData: InterviewInsert = {
+			account_id: normalizedMetadata.accountId,
+			project_id: normalizedMetadata.projectId,
+			title: normalizedMetadata.interviewTitle || normalizedMetadata.fileName,
+			interview_date: normalizedMetadata.interviewDate || new Date().toISOString().split("T")[0],
+			participant_pseudonym: normalizedMetadata.participantName || "Anonymous",
+			segment: normalizedMetadata.segment || null,
+			media_url: mediaUrl || null,
+			transcript: fullTranscript,
+			transcript_formatted: sanitizedTranscriptData as unknown as Json,
+			duration_sec: sanitizedTranscriptData.audio_duration ?? null,
+			status: "processing" as const,
+		} as InterviewInsert
 
-                const { data: created, error: interviewError } = await client.from("interviews").insert(interviewData).select().single()
-                if (interviewError || !created) {
-                        throw new Error(`Failed to create interview record: ${interviewError?.message}`)
-                }
-                interviewRecord = created as unknown as Interview
-        }
+		const { data: created, error: interviewError } = await client
+			.from("interviews")
+			.insert(interviewData)
+			.select()
+			.single()
+		if (interviewError || !created) {
+			throw new Error(`Failed to create interview record: ${interviewError?.message}`)
+		}
+		interviewRecord = created as unknown as Interview
+	}
 
-        if (normalizedMetadata.projectId && interviewRecord?.id) {
-                await createPlannedAnswersForInterview(client, {
-                        projectId: normalizedMetadata.projectId,
-                        interviewId: interviewRecord.id,
-                })
-        }
+	if (normalizedMetadata.projectId && interviewRecord?.id) {
+		await createPlannedAnswersForInterview(client, {
+			projectId: normalizedMetadata.projectId,
+			interviewId: interviewRecord.id,
+		})
+	}
 
-        return {
-                metadata: normalizedMetadata,
-                interview: interviewRecord,
-                sanitizedTranscriptData: sanitizedTranscriptData as unknown as Record<string, unknown>,
-                transcriptData: normalizedTranscriptData,
-                fullTranscript,
-                language,
-        }
+	return {
+		metadata: normalizedMetadata,
+		interview: interviewRecord,
+		sanitizedTranscriptData: sanitizedTranscriptData as unknown as Record<string, unknown>,
+		transcriptData: normalizedTranscriptData,
+		fullTranscript,
+		language,
+	}
 }
 
 /**
@@ -1823,54 +1701,54 @@ export async function processInterviewTranscriptWithAdminClient({
  * Internal implementation shared by both public functions
  */
 export async function processInterviewTranscriptWithClient({
-        metadata,
-        mediaUrl,
-        transcriptData: rawTranscriptData,
-        userCustomInstructions,
-        client: db,
-        existingInterviewId,
+	metadata,
+	mediaUrl,
+	transcriptData: rawTranscriptData,
+	userCustomInstructions,
+	client: db,
+	existingInterviewId,
 }: {
-        metadata: InterviewMetadata
-        transcriptData: Record<string, unknown>
-        mediaUrl: string
-        userCustomInstructions?: string
-        client: SupabaseClient<Database>
-        existingInterviewId?: string
+	metadata: InterviewMetadata
+	transcriptData: Record<string, unknown>
+	mediaUrl: string
+	userCustomInstructions?: string
+	client: SupabaseClient<Database>
+	existingInterviewId?: string
 }): Promise<ProcessingResult> {
-        const uploadResult = await uploadMediaAndTranscribeCore({
-                metadata,
-                transcriptData: rawTranscriptData,
-                mediaUrl,
-                existingInterviewId,
-                client: db,
-        })
+	const uploadResult = await uploadMediaAndTranscribeCore({
+		metadata,
+		transcriptData: rawTranscriptData,
+		mediaUrl,
+		existingInterviewId,
+		client: db,
+	})
 
-        const evidenceResult = await extractEvidenceAndPeopleCore({
-                db,
-                metadata: uploadResult.metadata,
-                interviewRecord: uploadResult.interview,
-                transcriptData: uploadResult.transcriptData,
-                language: uploadResult.language,
-                fullTranscript: uploadResult.fullTranscript,
-        })
+	const evidenceResult = await extractEvidenceAndPeopleCore({
+		db,
+		metadata: uploadResult.metadata,
+		interviewRecord: uploadResult.interview,
+		transcriptData: uploadResult.transcriptData,
+		language: uploadResult.language,
+		fullTranscript: uploadResult.fullTranscript,
+	})
 
-        const analysisResult = await analyzeThemesAndPersonaCore({
-                db,
-                metadata: uploadResult.metadata,
-                interviewRecord: uploadResult.interview,
-                fullTranscript: uploadResult.fullTranscript,
-                userCustomInstructions,
-                evidenceResult,
-        })
+	const analysisResult = await analyzeThemesAndPersonaCore({
+		db,
+		metadata: uploadResult.metadata,
+		interviewRecord: uploadResult.interview,
+		fullTranscript: uploadResult.fullTranscript,
+		userCustomInstructions,
+		evidenceResult,
+	})
 
-        await attributeAnswersAndFinalizeCore({
-                db,
-                metadata: uploadResult.metadata,
-                interviewRecord: analysisResult.interview,
-                insertedEvidenceIds: evidenceResult.insertedEvidenceIds,
-                storedInsights: analysisResult.storedInsights,
-                fullTranscript: uploadResult.fullTranscript,
-        })
+	await attributeAnswersAndFinalizeCore({
+		db,
+		metadata: uploadResult.metadata,
+		interviewRecord: analysisResult.interview,
+		insertedEvidenceIds: evidenceResult.insertedEvidenceIds,
+		storedInsights: analysisResult.storedInsights,
+		fullTranscript: uploadResult.fullTranscript,
+	})
 
-        return { stored: analysisResult.storedInsights, interview: analysisResult.interview }
+	return { stored: analysisResult.storedInsights, interview: analysisResult.interview }
 }
