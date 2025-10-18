@@ -19,22 +19,34 @@ import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 // Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
 function normalizeMultilineText(value: unknown): string {
-	try {
-		if (Array.isArray(value)) {
-			const lines = value.filter((v) => typeof v === "string" && v.trim()) as string[]
-			return lines.map((line) => `• ${line.trim()}`).join("\n")
-		}
-		if (typeof value === "string") {
-			// Try to parse stringified JSON arrays: "[\"a\",\"b\"]"
-			const parsed = JSON.parse(value)
-			if (Array.isArray(parsed)) {
-				const lines = parsed.filter((v) => typeof v === "string" && v.trim()) as string[]
-				return lines.map((line) => `• ${line.trim()}`).join("\n")
-			}
-			return value
-		}
-		return ""
-	} catch {
+    try {
+        if (Array.isArray(value)) {
+            const lines = value.filter((v) => typeof v === "string" && v.trim()) as string[]
+            return lines
+                .map((line) => {
+                    const t = (typeof line === "string" ? line : String(line)).trim()
+                    if (/^([-*+]|\d+\.)\s+/.test(t)) return t
+                    return `- ${t}`
+                })
+                .join("\n")
+        }
+        if (typeof value === "string") {
+            // Try to parse stringified JSON arrays: "[\"a\",\"b\"]"
+            const parsed = JSON.parse(value)
+            if (Array.isArray(parsed)) {
+                const lines = parsed.filter((v) => typeof v === "string" && v.trim()) as string[]
+                return lines
+                    .map((line) => {
+                        const t = (typeof line === "string" ? line : String(line)).trim()
+                        if (/^([-*+]|\d+\.)\s+/.test(t)) return t
+                        return `- ${t}`
+                    })
+                    .join("\n")
+            }
+            return value
+        }
+        return ""
+    } catch {
 		// If JSON.parse fails, treat it as plain text
 		return typeof value === "string" ? value : ""
 	}
@@ -383,6 +395,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
+	const navigation = useNavigation()
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
 	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")

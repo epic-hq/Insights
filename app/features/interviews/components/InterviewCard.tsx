@@ -17,7 +17,7 @@ interface InterviewCardProps {
 		participant: string
 		role: string
 		persona: string
-		date: string
+		created_at: string
 		duration: string
 		insightCount: number
 		evidenceCount?: number
@@ -149,7 +149,7 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 						<div className="flex items-center gap-1.5">
 							<Calendar className="h-3.5 w-3.5 text-gray-500" />
 							<span className="text-gray-600 text-xs dark:text-gray-400">
-								{formatDistance(new Date(interview.date), new Date(), { addSuffix: true })}
+								{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}
 							</span>
 						</div>
 					</div>
