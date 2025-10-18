@@ -34,6 +34,8 @@ const envSchema = z.object({
 	R2_ENDPOINT: z.string().optional(),
 	R2_REGION: z.string().optional(),
 
+	TRIGGER_SECRET_KEY: z.string().optional(),
+
 	// Payload CMS
 	PAYLOAD_CMS_URL: z.string().default("https://upsight-cms.vercel.app"),
 })

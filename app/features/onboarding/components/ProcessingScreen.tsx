@@ -1,5 +1,6 @@
 import { Brain, Lightbulb, Shield, TrendingUp, Zap } from "lucide-react"
 import { useEffect, useState } from "react"
+import { Badge } from "~/components/ui/badge"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 
 interface EducationalCard {
@@ -15,6 +16,8 @@ interface ProcessingScreenProps {
 	fileName: string
 	onComplete: () => void
 	interviewId?: string
+	triggerRunId?: string
+	triggerAccessToken?: string
 }
 
 const educationalCards: EducationalCard[] = [
@@ -65,11 +68,21 @@ const educationalCards: EducationalCard[] = [
 	},
 ]
 
-export default function ProcessingScreen({ fileName, onComplete, interviewId }: ProcessingScreenProps) {
+export default function ProcessingScreen({
+	fileName,
+	onComplete,
+	interviewId,
+	triggerRunId,
+	triggerAccessToken,
+}: ProcessingScreenProps) {
 	const [currentCardIndex, setCurrentCardIndex] = useState(0)
 
 	// Use the realtime hook for actual progress tracking
-	const { progressInfo } = useInterviewProgress(interviewId || null)
+	const { progressInfo, isRealtime } = useInterviewProgress({
+		interviewId: interviewId || null,
+		runId: triggerRunId,
+		accessToken: triggerAccessToken,
+	})
 	const { progress, label: processingStage, isComplete } = progressInfo
 
 	// Auto-complete when processing is done
@@ -103,10 +116,20 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-600/20">
 						<div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-400 border-t-transparent" />
 					</div>
-					<div>
+					<div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
 						<h1 className="font-medium text-lg text-white">Processing Interview</h1>
-						<p className="text-gray-400 text-sm">{fileName}</p>
+						{triggerRunId && (
+							<Badge
+								className={`w-fit uppercase tracking-wide ${isRealtime
+										? "bg-[#FF5A36] text-white shadow-[0_0_25px_rgba(255,90,54,0.45)]"
+										: "border border-white/40 border-dashed bg-transparent text-white/80"
+									}`}
+							>
+								{isRealtime ? "Live via Trigger.dev" : "Waiting for Trigger.dev"}
+							</Badge>
+						)}
 					</div>
+					<p className="text-gray-400 text-sm">{fileName}</p>
 				</div>
 			</div>
 
@@ -148,6 +171,11 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 
 						{/* Processing Stage */}
 						<h2 className="mb-2 font-light text-white text-xl">{processingStage}</h2>
+						{isRealtime && (
+							<p className="mb-1 text-[#FF8A66] text-[11px] uppercase tracking-[0.28em]">
+								Realtime updates via Trigger.dev
+							</p>
+						)}
 						<p className="text-gray-400 text-sm">
 							{Math.max(1, Math.ceil((100 - progress) / 20))}{" "}
 							{Math.ceil((100 - progress) / 20) === 1 ? "minute" : "minutes"} remaining
@@ -171,9 +199,8 @@ export default function ProcessingScreen({ fileName, onComplete, interviewId }: 
 								<button
 									key={index}
 									onClick={() => goToCard(index)}
-									className={`h-1.5 w-1.5 rounded-full transition-all ${
-										index === currentCardIndex ? "bg-blue-400" : "bg-gray-600"
-									}`}
+									className={`h-1.5 w-1.5 rounded-full transition-all ${index === currentCardIndex ? "bg-blue-400" : "bg-gray-600"
+										}`}
 								/>
 							))}
 						</div>

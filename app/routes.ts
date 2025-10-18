@@ -123,6 +123,7 @@ const routes = [
 	route("api/load-project-goals", "./routes/api.load-project-goals.tsx"),
 	route("api/assemblyai-webhook", "./routes/api.assemblyai-webhook.tsx"),
 	route("api/trigger-analysis", "./routes/api.trigger-analysis.tsx"),
+	route("api/trigger-run-token", "./routes/api.trigger-run-token.tsx"),
 	route("api/daily-brief", "./routes/api.daily-brief.tsx"),
 	route("api/generate-questions", "./routes/api.generate-questions.tsx"),
 	route("api/project-status", "./routes/api.project-status.tsx"),
@@ -158,6 +159,7 @@ const routes = [
 	route("test/upsight", "./routes/test.upsight.tsx"),
 	route("test/question-quality", "./routes/test.question-quality.tsx"),
 	// route("realtime/quick", "./features/realtime/pages/quick.tsx"),
+	route("timeline", "./components/ui/timeline.tsx"),
 ] satisfies RouteConfig
 
 export default routes

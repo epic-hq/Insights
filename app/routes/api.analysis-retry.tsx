@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import type { Json } from "~/../supabase/types"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
+import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 export async function action({ request }: ActionFunctionArgs) {
@@ -50,72 +50,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted)
 
-		// Create a new analysis job
 		const admin = createSupabaseAdminClient()
-		const { data: analysisJob, error: analysisJobError } = await admin
-			.from("analysis_jobs")
-			.insert({
-				interview_id: interviewId,
-				transcript_data: formattedTranscriptData as unknown as Json,
-				custom_instructions: customInstructions,
-				status: "in_progress",
-				status_detail: "User-triggered retry",
-			})
-			.select()
-			.single()
-
-		if (analysisJobError || !analysisJob) {
-			throw new Error(`Failed to create analysis job: ${analysisJobError?.message}`)
-		}
-
-		// Move interview into processing state
-		await admin.from("interviews").update({ status: "processing" }).eq("id", interviewId)
-
-		// Build metadata expected by the processor
-		const metadata = {
-			accountId: interview.account_id,
-			userId,
-			projectId: interview.project_id || undefined,
-			interviewTitle: interview.title || undefined,
-			interviewDate: interview.interview_date || undefined,
-			participantName: interview.participant_pseudonym || undefined,
-			duration_sec: interview.duration_sec || undefined,
-			fileName: (formattedTranscriptData as { original_filename?: string }).original_filename || undefined,
-		}
-
-		// Kick off processing
-		const { processInterviewTranscriptWithAdminClient } = await import("~/utils/processInterview.server")
 
 		try {
-			await processInterviewTranscriptWithAdminClient({
-				metadata,
-				mediaUrl: interview.media_url || "",
+			await createAndProcessAnalysisJob({
+				interviewId,
 				transcriptData: formattedTranscriptData as unknown as Record<string, unknown>,
-				userCustomInstructions: customInstructions,
+				customInstructions,
 				adminClient: admin,
-				existingInterviewId: interviewId,
+				mediaUrl: interview.media_url || "",
+				initiatingUserId: userId,
 			})
-
-			// Success: mark job + interview
-			await admin
-				.from("analysis_jobs")
-				.update({ status: "done", status_detail: "Analysis completed", progress: 100 })
-				.eq("id", analysisJob.id)
-
-			await admin.from("interviews").update({ status: "ready" }).eq("id", interviewId)
 
 			return Response.json({ success: true })
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e)
 			consola.error("User-triggered analysis retry failed:", msg)
-
-			await admin
-				.from("analysis_jobs")
-				.update({ status: "error", status_detail: "Analysis failed", last_error: msg })
-				.eq("id", analysisJob.id)
-
 			await admin.from("interviews").update({ status: "error" }).eq("id", interviewId)
-
 			return Response.json({ error: msg }, { status: 500 })
 		}
 	} catch (error) {

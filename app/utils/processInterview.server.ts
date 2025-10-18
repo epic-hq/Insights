@@ -43,6 +43,8 @@ export interface UploadMediaAndTranscribePayload {
 	transcriptData: Record<string, unknown>
 	mediaUrl: string
 	existingInterviewId?: string
+	analysisJobId?: string
+	userCustomInstructions?: string
 }
 
 export interface UploadMediaAndTranscribeResult {
@@ -52,6 +54,8 @@ export interface UploadMediaAndTranscribeResult {
 	transcriptData: Record<string, unknown>
 	fullTranscript: string
 	language: string
+	analysisJobId?: string
+	userCustomInstructions?: string
 }
 
 interface AnalyzeThemesAndPersonaResult {
@@ -65,6 +69,7 @@ export interface AnalyzeThemesTaskPayload {
 	fullTranscript: string
 	userCustomInstructions?: string
 	evidenceResult: ExtractEvidenceResult
+	analysisJobId?: string
 }
 
 export interface AttributeAnswersTaskPayload {
@@ -73,6 +78,7 @@ export interface AttributeAnswersTaskPayload {
 	fullTranscript: string
 	insertedEvidenceIds: string[]
 	storedInsights: InsightInsert[]
+	analysisJobId?: string
 }
 
 export const workflowRetryConfig = {
@@ -144,6 +150,133 @@ function computeIndependenceKey(verbatim: string, kindTags: string[]): string {
 	const mainTag = (kindTags[0] || "").toLowerCase().trim()
 	const basis = `${normQuote.slice(0, 160)}|${mainTag}`
 	return stringHash(basis)
+}
+
+type WordTimelineEntry = { text: string; start: number }
+type SegmentTimelineEntry = { text: string; start: number | null }
+
+function coerceSeconds(value: unknown): number | null {
+	if (typeof value === "number" && Number.isFinite(value)) {
+		return value > 500 ? value / 1000 : value
+	}
+	if (typeof value === "string") {
+		if (value.endsWith("ms")) {
+			const ms = Number.parseFloat(value.replace("ms", ""))
+			return Number.isFinite(ms) ? ms / 1000 : null
+		}
+		if (value.includes(":")) {
+			const parts = value.split(":").map((part) => Number.parseFloat(part))
+			if (parts.length === 2 && parts.every((part) => Number.isFinite(part))) {
+				return parts[0] * 60 + parts[1]
+			}
+		}
+		const numeric = Number.parseFloat(value)
+		if (Number.isFinite(numeric)) {
+			return numeric > 500 ? numeric / 1000 : numeric
+		}
+	}
+	return null
+}
+
+function normalizeTokens(input: string): string[] {
+	return input
+		.toLowerCase()
+		.replace(/[^a-z0-9\s']/gi, " ")
+		.split(/\s+/)
+		.filter(Boolean)
+}
+
+function buildWordTimeline(transcriptData: Record<string, unknown>): WordTimelineEntry[] {
+	const wordsRaw = Array.isArray((transcriptData as any).words) ? ((transcriptData as any).words as any[]) : []
+	const timeline: WordTimelineEntry[] = []
+	for (const word of wordsRaw) {
+		if (!word || typeof word !== "object") continue
+		const text = typeof word.text === "string" ? word.text.trim().toLowerCase() : ""
+		if (!text) continue
+		const start = coerceSeconds((word as any).start ?? (word as any).start_ms ?? (word as any).startTime)
+		if (start === null) continue
+		timeline.push({ text, start })
+	}
+	return timeline
+}
+
+function buildSegmentTimeline(transcriptData: Record<string, unknown>): SegmentTimelineEntry[] {
+	const sources = ["utterances", "segments", "sentences"] as const
+	const timeline: SegmentTimelineEntry[] = []
+	for (const key of sources) {
+		const items = Array.isArray((transcriptData as any)[key]) ? ((transcriptData as any)[key] as any[]) : []
+		for (const item of items) {
+			if (!item || typeof item !== "object") continue
+			const text = typeof item.text === "string" ? item.text : typeof item.gist === "string" ? item.gist : null
+			if (!text) continue
+			const start = coerceSeconds(item.start ?? item.start_ms ?? item.startTime)
+			timeline.push({ text, start })
+		}
+	}
+	return timeline
+}
+
+function findStartSecondsForSnippet({
+	snippet,
+	wordTimeline,
+	segmentTimeline,
+	fullTranscript,
+	durationSeconds,
+}: {
+	snippet: string
+	wordTimeline: WordTimelineEntry[]
+	segmentTimeline: SegmentTimelineEntry[]
+	fullTranscript: string
+	durationSeconds: number | null
+}): number | null {
+	const normalizedTokens = normalizeTokens(snippet)
+	const searchTokens = normalizedTokens.slice(0, Math.min(4, normalizedTokens.length))
+
+	if (searchTokens.length && wordTimeline.length) {
+		const window = searchTokens.length
+		for (let i = 0; i <= wordTimeline.length - window; i++) {
+			let matches = true
+			for (let j = 0; j < window; j++) {
+				if (wordTimeline[i + j]?.text !== searchTokens[j]) {
+					matches = false
+					break
+				}
+			}
+			if (matches) {
+				return wordTimeline[i].start
+			}
+		}
+	}
+
+	const snippetSample = snippet.toLowerCase().slice(0, 120)
+	if (snippetSample && segmentTimeline.length) {
+		for (const segment of segmentTimeline) {
+			if (!segment.text) continue
+			if (segment.text.toLowerCase().includes(snippetSample)) {
+				const start = segment.start
+				if (start !== null) return start
+			}
+		}
+	}
+
+	if (durationSeconds && fullTranscript) {
+		const transcriptLower = fullTranscript.toLowerCase()
+		const index = transcriptLower.indexOf(snippetSample)
+		if (index >= 0) {
+			const ratio = transcriptLower.length ? index / transcriptLower.length : 0
+			const estimated = durationSeconds * ratio
+			return Number.isFinite(estimated) ? Math.max(0, Math.min(durationSeconds, estimated)) : null
+		}
+	}
+
+	return null
+}
+
+function appendTimeParamToUrl(url: string, seconds: number | null): string {
+	if (!url || seconds === null || !Number.isFinite(seconds) || seconds < 0) return url
+	const rounded = Math.round(seconds)
+	const separator = url.includes("?") ? "&" : "?"
+	return `${url}${separator}t=${rounded}`
 }
 
 function humanizeKey(value?: string | null): string | null {
@@ -551,6 +684,14 @@ export async function extractEvidenceAndPeopleCore({
 
 	const evidenceRows: EvidenceInsert[] = []
 	const interviewMediaUrl = typeof interviewRecord.media_url === "string" ? interviewRecord.media_url : null
+	const durationSeconds =
+		typeof (transcriptData as { audio_duration?: unknown }).audio_duration === "number"
+			? (transcriptData as { audio_duration?: number }).audio_duration
+			: typeof interviewRecord.duration_sec === "number"
+				? interviewRecord.duration_sec
+				: null
+	const wordTimeline = buildWordTimeline(transcriptData)
+	const segmentTimeline = buildSegmentTimeline(transcriptData)
 	for (let idx = 0; idx < evidenceUnits.length; idx++) {
 		const ev = evidenceUnits[idx] as EvidenceTurn
 		const rawPersonKey = coerceString((ev as { person_key?: string }).person_key)
@@ -581,21 +722,54 @@ export async function extractEvidenceAndPeopleCore({
 			ev && typeof (ev as any).anchors === "object" && (ev as any).anchors !== null
 				? [((ev as any).anchors ?? {}) as Record<string, any>]
 				: []
+		const snippetForTiming = chunk || gist || verb
+		const anchorSeconds =
+			snippetForTiming && snippetForTiming.length
+				? findStartSecondsForSnippet({
+						snippet: snippetForTiming,
+						wordTimeline,
+						segmentTimeline,
+						fullTranscript,
+						durationSeconds,
+					})
+				: null
 		const sanitizedAnchors = rawAnchors
 			.map((anchor) => {
 				if (!anchor || typeof anchor !== "object") return null
 				const targetValue = anchor.target
+				let nextTarget: string | null = null
 				if (typeof targetValue === "string") {
 					const trimmed = targetValue.trim()
-					if (!trimmed.length) return { ...anchor, target: null }
-					if (trimmed.toLowerCase() === "transcript") {
-						return { ...anchor, target: interviewMediaUrl ?? null }
+					if (trimmed.length) {
+						nextTarget = trimmed.toLowerCase() === "transcript" ? interviewMediaUrl ?? null : trimmed
 					}
-					return { ...anchor, target: trimmed }
+				} else if (typeof targetValue === "object" && targetValue !== null) {
+					nextTarget = interviewMediaUrl ?? null
 				}
-				return anchor
+
+				const result: Record<string, any> = { ...anchor }
+				if (anchorSeconds !== null) {
+					result.start_seconds = anchorSeconds
+					result.start_ms = Math.round(anchorSeconds * 1000)
+				}
+
+				const fallbackTarget = nextTarget ?? interviewMediaUrl
+				if (fallbackTarget) {
+					result.target = appendTimeParamToUrl(fallbackTarget, anchorSeconds)
+				} else if (nextTarget === null) {
+					result.target = null
+				}
+
+				return result
 			})
 			.filter((anchor): anchor is Record<string, any> => Boolean(anchor))
+		if (sanitizedAnchors.length === 0 && interviewMediaUrl && anchorSeconds !== null) {
+			sanitizedAnchors.push({
+				target: appendTimeParamToUrl(interviewMediaUrl, anchorSeconds),
+				start_seconds: anchorSeconds,
+				start_ms: Math.round(anchorSeconds * 1000),
+			})
+		}
 		const row: EvidenceInsert = {
 			account_id: metadata.accountId,
 			project_id: metadata.projectId,

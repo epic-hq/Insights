@@ -97,6 +97,7 @@
     "@supabase/ssr": "0.7.0",
     "@supabase/supabase-js": "2.75.0",
     "@tanstack/react-table": "8.21.3",
+    "@trigger.dev/react-hooks": "4.0.4",
     "@trigger.dev/sdk": "4.0.4",
     "ai": "5.0.37",
     "assemblyai": "4.16.1",

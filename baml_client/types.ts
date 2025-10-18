@@ -555,6 +555,7 @@ export interface ExtractedInsight {
 }
 
 export interface Extraction {
+  people: Person[]
   evidence: EvidenceTurn[]
   scenes: Scene[]
   
@@ -744,6 +745,14 @@ export interface OpportunityRecommendation {
   supporting_insights: string[]
   competitive_advantage: string
   recommended_actions: ActionButton[]
+  
+}
+
+export interface Person {
+  id: string
+  display_name?: string | null
+  inferred_name?: string | null
+  role?: string | null
   
 }
 

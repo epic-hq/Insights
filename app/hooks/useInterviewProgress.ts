@@ -1,6 +1,8 @@
-import { useCallback, useEffect, useRef, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useRealtimeRun } from "@trigger.dev/react-hooks"
 import { createClient } from "~/lib/supabase/client"
 import type { Interview } from "~/types"
+import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe"
 
 interface ProgressInfo {
 	status: string
@@ -10,7 +12,13 @@ interface ProgressInfo {
 	hasError: boolean
 }
 
-export function useInterviewProgress(interviewId: string | null) {
+interface UseInterviewProgressOptions {
+	interviewId: string | null
+	runId?: string
+	accessToken?: string
+}
+
+export function useInterviewProgress({ interviewId, runId, accessToken }: UseInterviewProgressOptions) {
 	const [interview, setInterview] = useState<Interview | null>(null)
 	const [progressInfo, setProgressInfo] = useState<ProgressInfo>({
 		status: "uploading",
@@ -25,6 +33,23 @@ export function useInterviewProgress(interviewId: string | null) {
 
 	// Create supabase client at the component level (hook safe)
 	const supabase = createClient()
+
+	const shouldSubscribeToRun = Boolean(runId && accessToken)
+
+	const realtimeOptions = useMemo(() => {
+		if (!shouldSubscribeToRun) {
+			return { enabled: false as const }
+		}
+
+		return {
+			accessToken: accessToken as string,
+		}
+	}, [shouldSubscribeToRun, accessToken])
+
+	const realtimeRunId = shouldSubscribeToRun ? runId : undefined
+
+	const { run } = useRealtimeRun<typeof uploadMediaAndTranscribeTask>(realtimeRunId, realtimeOptions)
+	const isRealtime = Boolean(runId && accessToken && run)
 
 	// Get expected duration for each status phase
 	const getProgressDuration = useCallback((status: string): number => {
@@ -116,8 +141,57 @@ export function useInterviewProgress(interviewId: string | null) {
 		}
 	}, [interviewId, supabase, cleanupTimers])
 
-	// Update progress info when interview status changes
+	// Update progress based on trigger.dev run metadata when available
 	useEffect(() => {
+		if (!run) return
+
+		cleanupTimers()
+
+		const runStatus = run.status ?? "UNKNOWN"
+		const isComplete = runStatus === "COMPLETED"
+		const hasError = runStatus === "FAILED" || runStatus === "CANCELED"
+
+		const percent =
+			typeof run.metadata?.progressPercent === "number"
+				? run.metadata.progressPercent
+				: isComplete
+					? 100
+					: runStatus === "EXECUTING"
+						? 60
+						: 15
+
+		const labelFromMetadata = typeof run.metadata?.stageLabel === "string" ? run.metadata.stageLabel : null
+
+		const label =
+			labelFromMetadata ??
+			(() => {
+				switch (runStatus) {
+					case "QUEUED":
+						return "Queued for processing..."
+					case "EXECUTING":
+						return "Processing with Trigger.dev..."
+					case "COMPLETED":
+						return "Analysis complete!"
+					case "FAILED":
+					case "CANCELED":
+						return "Processing failed"
+					default:
+						return "Processing..."
+				}
+			})()
+
+		setProgressInfo({
+			status: runStatus,
+			progress: Math.round(percent),
+			label,
+			isComplete,
+			hasError,
+		})
+	}, [run, cleanupTimers])
+
+	// Update progress info when interview status changes (fallback when run metadata unavailable)
+	useEffect(() => {
+		if (run) return
 		if (!interview) return
 
 		const status = interview.status
@@ -190,11 +264,12 @@ export function useInterviewProgress(interviewId: string | null) {
 			isComplete,
 			hasError,
 		})
-	}, [interview, syntheticProgress, startSyntheticProgress, cleanupTimers])
+	}, [interview, syntheticProgress, startSyntheticProgress, cleanupTimers, run])
 
 	return {
 		interview,
 		progressInfo,
-		isLoading: !interview && !progressInfo.hasError,
+		isLoading: !interview && !run && !progressInfo.hasError,
+		isRealtime,
 	}
 }

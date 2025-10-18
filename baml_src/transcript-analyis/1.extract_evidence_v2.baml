@@ -12,9 +12,9 @@ class TurnAnchors {
 
 class EvidenceTurn {
   index int @description("0-based chronological index in the stream")
-  person_key string @description("Reference to participant who spoke/acted")
+  person_key string @description("Reference to who spoke/acted")
   gist string @description("≤12-word essence of the turn; slide-like headline")
-  chunk string @description("2–5 sentences capturing the participant's full thought")
+  chunk string @description("2–5 sentences capturing the person's full thought")
   verbatim string @description("≤15-word exact quote/snippet from the chunk")
   anchors TurnAnchors @description("Anchors to source for auditability")
   confidence string @description("low | medium | high")
@@ -48,8 +48,16 @@ class Scene {
   summary string? @description("1–2 sentence summary of what the scene covers")
 }
 
+class Person {
+	id string @description("Stable identifier referenced by evidence units that should be unique per person across all transcripts, so make it a hash")
+	display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2'")
+	inferred_name string? @description("Preferred name if confidently inferred from context")
+	role string? @description("their role in the coversation (participant | interviewer | observer | moderator | customer | Sales Rep")
+}
+
 class Extraction {
-	//  people Participant[]
+	//  people EvidenceParticipant[]
+	 people Person[]
 	 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
 	 scenes Scene[]
 }
@@ -60,15 +68,15 @@ function ExtractEvidenceFromTranscriptV2(
   language: string,
   facet_catalog: FacetCatalog
 ) -> Extraction {
-  client "CustomGPT5"
+  client "CustomGPT4oMini"
   prompt #"
 You are an expert UX researcher.
 Your task is to produce an exhaustive, chronological Event Stream from an interview transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
 
 ## Steps
 1. Identify every human speaker. Populate the `people` array once with label, inferred name (if safe), role (participant vs interviewer), personas/segments, organization, and a concise descriptor of responsibilities.
-2. Slice the transcript into coherent, chronological turns (2–5 sentences, single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, tags, anchors, confidence, and empathy map fields.
-3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, workflow, preference, demographic, context, artifact, emotion). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
+2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, tags, anchors, confidence, and empathy map fields.
+3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
 4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
 
 ## Selection Priorities

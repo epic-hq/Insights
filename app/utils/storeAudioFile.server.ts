@@ -1,4 +1,5 @@
 import consola from "consola"
+import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
 import { getR2PublicUrl, uploadToR2 } from "~/utils/r2.server"
 
 interface StoreAudioResult {
@@ -12,6 +13,7 @@ interface StoreAudioFileParams {
 	source: File | Blob | string
 	originalFilename?: string
 	contentType?: string
+	langfuseParent?: LangfuseTraceClient | LangfuseSpanClient
 }
 
 /**
@@ -23,16 +25,54 @@ export async function storeAudioFile({
 	source,
 	originalFilename,
 	contentType,
+	langfuseParent,
 }: StoreAudioFileParams): Promise<StoreAudioResult> {
+	const baseMetadata = {
+		projectId,
+		interviewId,
+		originalFilename: originalFilename ?? null,
+		sourceKind: typeof source === "string" ? "url" : isFile(source) ? "file" : "blob",
+	}
+	let uploadSpan: LangfuseSpanClient | undefined
 	try {
 		const timestamp = Date.now()
 
 		const resolvedSource = await resolveSourceBlob(source, originalFilename, contentType)
 		if (resolvedSource.error) {
+			langfuseParent
+				?.span?.({
+					name: "storage.r2.resolve",
+					metadata: {
+						...baseMetadata,
+						providedContentType: contentType ?? null,
+					},
+					input: {
+						sourceKind: baseMetadata.sourceKind,
+					},
+				})
+				?.end?.({
+					level: "ERROR",
+					statusMessage: resolvedSource.error,
+				})
 			return { mediaUrl: null, error: resolvedSource.error }
 		}
 
 		const { blob, detectedContentType, inferredFilename } = resolvedSource
+
+		uploadSpan = langfuseParent?.span?.({
+			name: "storage.r2.upload",
+			metadata: {
+				...baseMetadata,
+				inferredFilename: inferredFilename ?? null,
+				timestamp,
+			},
+			input: {
+				sourceKind: baseMetadata.sourceKind,
+				size: blob.size,
+				providedContentType: contentType ?? null,
+				detectedContentType: detectedContentType ?? null,
+			},
+		})
 
 		const extension = getFileExtension(
 			typeof source === "string" ? source : blob,
@@ -43,6 +83,10 @@ export async function storeAudioFile({
 
 		const payload = await blobToUint8Array(blob)
 		if (!payload.length) {
+			uploadSpan?.end?.({
+				level: "ERROR",
+				statusMessage: "Audio file is empty",
+			})
 			return { mediaUrl: null, error: "Audio file is empty" }
 		}
 
@@ -53,20 +97,42 @@ export async function storeAudioFile({
 
 		if (!uploadResult.success) {
 			consola.error("Audio upload to R2 failed:", uploadResult.error)
+			uploadSpan?.end?.({
+				level: "ERROR",
+				statusMessage: uploadResult.error ?? "Failed to upload audio",
+				metadata: {
+					errorCode: uploadResult.error ?? null,
+				},
+			})
 			return { mediaUrl: null, error: uploadResult.error ?? "Failed to upload audio" }
 		}
 
 		const publicUrl = getR2PublicUrl(filename)
 		if (!publicUrl) {
 			consola.error("R2 public base URL not configured; cannot resolve media URL")
+			uploadSpan?.end?.({
+				level: "ERROR",
+				statusMessage: "Cloudflare R2 public URL is not configured",
+			})
 			return { mediaUrl: null, error: "Cloudflare R2 public URL is not configured" }
 		}
 
 		consola.log("Audio file stored successfully in R2:", publicUrl)
+		uploadSpan?.end?.({
+			output: {
+				mediaUrl: publicUrl,
+				bytesUploaded: payload.length,
+				contentType: mimeType,
+			},
+		})
 		return { mediaUrl: publicUrl }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unknown error"
 		consola.error("Error storing audio file in R2:", error)
+		uploadSpan?.end?.({
+			level: "ERROR",
+			statusMessage: message,
+		})
 		return { mediaUrl: null, error: message }
 	}
 }

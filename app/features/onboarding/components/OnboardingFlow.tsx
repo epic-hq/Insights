@@ -23,6 +23,8 @@ export interface OnboardingData {
 	mediaType?: string
 	interviewId?: string
 	projectId?: string
+	triggerRunId?: string
+	triggerAccessToken?: string | null
 }
 
 interface OnboardingFlowProps {
@@ -73,6 +75,7 @@ export default function OnboardingFlow({
 		custom_instructions: existingProject?.custom_instructions,
 		questions: existingProject?.questions || [],
 		projectId,
+		triggerAccessToken: null,
 	})
 
 	const handleWelcomeNext = useCallback(
@@ -106,7 +109,7 @@ export default function OnboardingFlow({
 
 	const handleUploadNext = useCallback(
 		async (file: File, mediaType: string, uploadProjectId?: string) => {
-			const updatedData = { ...data, file, mediaType }
+			const updatedData = { ...data, file, mediaType, triggerRunId: undefined, triggerAccessToken: null }
 			setData(updatedData)
 			setCurrentStep("processing")
 
@@ -153,6 +156,37 @@ export default function OnboardingFlow({
 				}
 				if (result.project?.id) {
 					setData((prev) => ({ ...prev, projectId: result.project.id }))
+				}
+				if (result.triggerRun?.id) {
+					setData((prev) => ({
+						...prev,
+						triggerRunId: result.triggerRun.id,
+						triggerAccessToken: result.triggerRun.publicToken ?? null,
+					}))
+
+					if (!result.triggerRun.publicToken) {
+						try {
+							const tokenResponse = await fetch("/api/trigger-run-token", {
+								method: "POST",
+								headers: {
+									"Content-Type": "application/json",
+								},
+								body: JSON.stringify({ runId: result.triggerRun.id }),
+							})
+
+							if (tokenResponse.ok) {
+								const tokenData = (await tokenResponse.json()) as { token?: string }
+								if (tokenData.token) {
+									setData((prev) => ({
+										...prev,
+										triggerAccessToken: tokenData.token ?? null,
+									}))
+								}
+							}
+						} catch (tokenError) {
+							console.error("Failed to fetch Trigger.dev token", tokenError)
+						}
+					}
 				}
 			} catch (error) {
 				// Handle error - could show error state or retry
@@ -253,6 +287,8 @@ export default function OnboardingFlow({
 						fileName={data.file?.name || "Unknown file"}
 						onComplete={handleProcessingComplete}
 						interviewId={data.interviewId}
+						triggerRunId={data.triggerRunId}
+						triggerAccessToken={data.triggerAccessToken ?? undefined}
 					/>
 				)
 
