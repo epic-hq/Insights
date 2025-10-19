@@ -128,11 +128,11 @@ export async function getPosts(options?: {
  */
 export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 	const env = getServerEnv()
-	
+
 	const where: Where = {
 		slug: { equals: slug },
 	}
-	
+
 	const queryString = stringify(
 		{
 			where,
@@ -142,7 +142,7 @@ export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 	)
 
 	const url = `${env.PAYLOAD_CMS_URL}/api/posts${queryString}`
-	console.log("Query URL:", url)
+
 
 	const response = await fetch(url, {
 		headers: getHeaders(),
@@ -155,11 +155,8 @@ export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 	}
 
 	const data = await handleResponse<PayloadResponse<PayloadPost>>(response)
-	console.log("Found posts:", data.docs.length)
-	if (data.docs.length > 0) {
-		console.log("Returned post slug:", data.docs[0].slug)
-	}
-	
+
+
 	return data.docs[0] || null
 }
 
@@ -188,7 +185,7 @@ export async function getRecentPosts(limit = 5): Promise<PayloadPost[]> {
  */
 export async function searchPosts(query: string, limit = 10): Promise<PayloadPost[]> {
 	const env = getServerEnv()
-	
+
 	const where: Where = {
 		or: [
 			{ title: { contains: query } },
@@ -233,4 +230,3 @@ export async function getAllPostSlugs(): Promise<string[]> {
 	const data = await handleResponse<PayloadResponse<PayloadPost>>(response)
 	return data.docs.map((post) => post.slug)
 }
-

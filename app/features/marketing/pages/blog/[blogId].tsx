@@ -55,7 +55,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 			...post,
 			author: post.populatedAuthors?.[0] || post.author,
 		}
-		console.log("normalizedPost author:", normalizedPost.author)
+
 		// Filter out current post from recent posts
 		const filteredRecentPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 4)
 
