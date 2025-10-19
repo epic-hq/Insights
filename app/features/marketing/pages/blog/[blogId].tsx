@@ -48,7 +48,7 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		}
 
 		// Convert Lexical content to HTML in the loader
-		const htmlContent = lexicalToHtml(post.content)
+		const htmlContent = await lexicalToHtml(post.content)
 
 		// Filter out current post from recent posts
 		const filteredRecentPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 4)
@@ -67,7 +67,13 @@ export async function loader({ params }: LoaderFunctionArgs) {
 export default function BlogPost() {
 	const { post, htmlContent, recentPosts } = useLoaderData<typeof loader>()
 
-	const imageUrl = post.heroImage?.url ? `https://upsight-cms.vercel.app${post.heroImage.url}` : null
+	const heroImageUrl: string | undefined = post.heroImage?.url
+		? post.heroImage.url.startsWith("/")
+			? `https://upsight-cms.vercel.app${post.heroImage.url}`
+			: post.heroImage.url
+		: undefined
+	const imageUrl: string | undefined =
+		heroImageUrl ?? (post.featured_image ? getImageUrl(post.featured_image) || undefined : undefined)
 	const readingTime = getReadingTime(post.content)
 
 	// Structured data for SEO
@@ -75,7 +81,7 @@ export default function BlogPost() {
 		"@context": "https://schema.org",
 		"@type": "BlogPosting",
 		headline: post.title,
-		image: post.featured_image ? getImageUrl(post.featured_image) : undefined,
+		image: imageUrl || undefined,
 		datePublished: post.publishedAt,
 		dateModified: post.updatedAt,
 		author: post.author
@@ -101,6 +107,30 @@ export default function BlogPost() {
 			<script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(structuredData) }} />
 
 			<div className="bg-background">
+				{/* Hero */}
+				{imageUrl && (
+					<section className="relative h-[56vh] min-h-[360px] w-full">
+						<img
+							src={imageUrl!}
+							alt={(post.heroImage?.alt || post.featured_image?.alt || post.title) as string}
+							className="absolute inset-0 h-full w-full object-cover"
+						/>
+						<div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/80" />
+						<div className="absolute inset-0 z-10 flex items-end pb-20">
+							<div className="mx-auto w-full max-w-4xl px-6 pb-10">
+								{post.tags?.length ? (
+									<div className="mb-3 font-semibold text-white/80 text-xs uppercase tracking-wider">{post.tags[0]}</div>
+								) : null}
+								<h1 className="mb-4 font-bold text-3xl text-white md:text-5xl">{post.title}</h1>
+								<div className="flex items-center gap-3 text-sm text-white/80">
+									<span>{formatDate(post.publishedAt)}</span>
+									<span>•</span>
+									<span>{readingTime} min read</span>
+								</div>
+							</div>
+						</div>
+					</section>
+				)}
 				{/* Header */}
 				<article className="mx-auto max-w-4xl px-6 py-16">
 					{/* Breadcrumb */}
@@ -115,37 +145,37 @@ export default function BlogPost() {
 					</nav>
 
 					{/* Title */}
-					<h1 className="mb-6 font-bold text-4xl text-foreground tracking-tight md:text-5xl">{post.title}</h1>
+					{!imageUrl && (
+						<h1 className="mb-6 font-bold text-4xl text-foreground tracking-tight md:text-5xl">{post.title}</h1>
+					)}
 
 					{/* Meta */}
-					<div className="mb-8 flex flex-wrap items-center gap-4 text-muted-foreground">
-						{post.author && (
-							<div className="flex items-center gap-2">
-								{post.author.avatar && (
-									<img
-										src={getImageUrl(post.author.avatar)}
-										alt={post.author.name}
-										className="h-10 w-10 rounded-full"
-									/>
-								)}
-								<span className="font-medium text-foreground">{post.author.name}</span>
-							</div>
-						)}
-						<span>•</span>
-						<span>{readingTime} min read</span>
-					</div>
-
-					{/* Featured Image */}
-					{post.featured_image && (
-						<div className="mb-12 overflow-hidden rounded-lg">
-							<img src={imageUrl} alt={post.featured_image.alt || post.title} className="h-auto w-full object-cover" />
+					{!imageUrl && (
+						<div className="mb-8 flex flex-wrap items-center gap-4 text-muted-foreground">
+							{post.author && (
+								<div className="flex items-center gap-2">
+									{post.author.avatar && (
+										<img
+											src={getImageUrl(post.author.avatar)}
+											alt={post.author.name}
+											className="h-10 w-10 rounded-full"
+										/>
+									)}
+									<span className="font-medium text-foreground">{post.author.name}</span>
+								</div>
+							)}
+							<span>•</span>
+							<span>{readingTime} min read</span>
 						</div>
 					)}
+
+					{/* Featured Image */}
+					{!imageUrl && <div className="mb-12 overflow-hidden rounded-lg">{/* no image available */}</div>}
 
 					{/* Content */}
 					{/* biome-ignore lint/security/noDangerouslySetInnerHtml: CMS content is trusted */}
 					<div
-						className="prose prose-slate prose-lg mx-auto max-w-none prose-code:rounded prose-img:rounded-xl prose-blockquote:border-l-amber-500 prose-blockquote:bg-amber-50 prose-code:bg-slate-100 prose-pre:bg-slate-900 prose-code:px-1.5 prose-blockquote:py-1 prose-code:py-0.5 prose-blockquote:pl-4 prose-a:font-medium prose-code:font-mono prose-headings:font-bold prose-strong:font-semibold prose-a:text-amber-600 prose-blockquote:text-slate-700 prose-code:text-slate-800 prose-code:text-sm prose-em:text-slate-700 prose-headings:text-slate-900 prose-li:text-slate-700 prose-ol:text-slate-700 prose-p:text-slate-700 prose-pre:text-slate-100 prose-strong:text-slate-900 prose-ul:text-slate-700 prose-p:mb-6 prose-p:leading-relaxed prose-headings:tracking-tight prose-a:no-underline prose-img:shadow-lg prose-li:marker:text-amber-500 prose-code:before:content-none prose-code:after:content-none hover:prose-a:underline"
+						className="prose prose-slate prose-lg mx-auto prose-p:mb-0 max-w-none space-y-6 prose-code:rounded prose-img:rounded-xl prose-blockquote:border-l-amber-500 prose-blockquote:bg-amber-50 prose-code:bg-slate-100 prose-pre:bg-slate-900 prose-code:px-1.5 prose-blockquote:py-1 prose-code:py-0.5 prose-blockquote:pl-4 prose-a:font-medium prose-code:font-mono prose-headings:font-bold prose-strong:font-semibold prose-a:text-amber-600 prose-blockquote:text-slate-700 prose-code:text-slate-800 prose-code:text-sm prose-em:text-slate-700 prose-headings:text-slate-900 prose-li:text-slate-700 prose-ol:text-slate-700 prose-p:text-slate-700 prose-pre:text-slate-100 prose-strong:text-slate-900 prose-ul:text-slate-700 prose-p:leading-relaxed prose-headings:tracking-tight prose-a:no-underline prose-img:shadow-lg prose-li:marker:text-amber-500 prose-code:before:content-none prose-code:after:content-none hover:prose-a:underline [&>blockquote]:my-8 [&>h1]:mt-10 [&>h2]:mt-8 [&>h3]:mt-6 [&>img]:my-6 [&>ol]:my-6 [&>p]:my-6 [&>ul]:my-6"
 						dangerouslySetInnerHTML={{ __html: htmlContent }}
 					/>
 
