@@ -50,11 +50,17 @@ export async function loader({ params }: LoaderFunctionArgs) {
 		// Convert Lexical content to HTML in the loader
 		const htmlContent = await lexicalToHtml(post.content)
 
+		// Normalize author field: CMS returns authors/populatedAuthors array, but component expects author singular
+		const normalizedPost = {
+			...post,
+			author: post.populatedAuthors?.[0] || post.author,
+		}
+		console.log("normalizedPost author:", normalizedPost.author)
 		// Filter out current post from recent posts
 		const filteredRecentPosts = recentPosts.filter((p) => p.id !== post.id).slice(0, 4)
 
 		return {
-			post,
+			post: normalizedPost,
 			htmlContent,
 			recentPosts: filteredRecentPosts,
 		}
@@ -123,6 +129,12 @@ export default function BlogPost() {
 								) : null}
 								<h1 className="mb-4 font-bold text-3xl text-white md:text-5xl">{post.title}</h1>
 								<div className="flex items-center gap-3 text-sm text-white/80">
+									{post.author && (
+										<>
+											<span className="font-medium text-white">{post.author.name}</span>
+											<span>•</span>
+										</>
+									)}
 									<span>{formatDate(post.publishedAt)}</span>
 									<span>•</span>
 									<span>{readingTime} min read</span>
@@ -161,7 +173,7 @@ export default function BlogPost() {
 											className="h-10 w-10 rounded-full"
 										/>
 									)}
-									<span className="font-medium text-foreground">{post.author.name}</span>
+									<span className="font-medium text-foreground">{post.author?.name}</span>
 								</div>
 							)}
 							<span>•</span>
