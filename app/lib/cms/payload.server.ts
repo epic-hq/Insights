@@ -4,7 +4,12 @@
  * Handles all API calls to Payload CMS for blog posts and other content.
  */
 
+import { stringify } from "qs-esm"
 import { getServerEnv } from "~/env.server"
+
+// Payload CMS Where clause type
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+type Where = Record<string, any>
 
 // Types based on Payload CMS structure
 export interface PayloadImage {
@@ -99,17 +104,19 @@ export async function getPosts(options?: {
 	page?: number
 	status?: "draft" | "published"
 }): Promise<PayloadResponse<PayloadPost>> {
-	const { limit = 10, page = 1, status = "published" } = options || {}
+	const { limit = 10, page = 1 } = options || {}
 	const env = getServerEnv()
 
-	const params = new URLSearchParams({
-		limit: limit.toString(),
-		page: page.toString(),
-		where: JSON.stringify({ status: { equals: status } }),
-		sort: "-publishedAt", // Sort by newest first
-	})
+	const queryString = stringify(
+		{
+			limit,
+			page,
+			sort: "-publishedAt",
+		},
+		{ addQueryPrefix: true },
+	)
 
-	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts?${params}`, {
+	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts${queryString}`, {
 		headers: getHeaders(),
 	})
 
@@ -121,20 +128,38 @@ export async function getPosts(options?: {
  */
 export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 	const env = getServerEnv()
-	const params = new URLSearchParams({
-		where: JSON.stringify({
-			slug: { equals: slug },
-			status: { equals: "published" },
-		}),
-		limit: "1",
-	})
+	
+	const where: Where = {
+		slug: { equals: slug },
+	}
+	
+	const queryString = stringify(
+		{
+			where,
+			limit: 1,
+		},
+		{ addQueryPrefix: true },
+	)
 
-	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts?${params}`, {
+	const url = `${env.PAYLOAD_CMS_URL}/api/posts${queryString}`
+	console.log("Query URL:", url)
+
+	const response = await fetch(url, {
 		headers: getHeaders(),
 	})
 
-	const data = await handleResponse<PayloadResponse<PayloadPost>>(response)
+	if (!response.ok) {
+		const errorText = await response.text()
+		console.error("Payload CMS error:", response.status, errorText)
+		throw new Error(`Failed to fetch post: ${response.status}`)
+	}
 
+	const data = await handleResponse<PayloadResponse<PayloadPost>>(response)
+	console.log("Found posts:", data.docs.length)
+	if (data.docs.length > 0) {
+		console.log("Returned post slug:", data.docs[0].slug)
+	}
+	
 	return data.docs[0] || null
 }
 
@@ -163,20 +188,24 @@ export async function getRecentPosts(limit = 5): Promise<PayloadPost[]> {
  */
 export async function searchPosts(query: string, limit = 10): Promise<PayloadPost[]> {
 	const env = getServerEnv()
-	const params = new URLSearchParams({
-		where: JSON.stringify({
-			or: [
-				{ title: { contains: query } },
-				{ excerpt: { contains: query } },
-				{ content: { contains: query } },
-			],
-			status: { equals: "published" },
-		}),
-		limit: limit.toString(),
-		sort: "-publishedAt",
-	})
+	
+	const where: Where = {
+		or: [
+			{ title: { contains: query } },
+			{ excerpt: { contains: query } },
+		],
+	}
 
-	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts?${params}`, {
+	const queryString = stringify(
+		{
+			where,
+			limit,
+			sort: "-publishedAt",
+		},
+		{ addQueryPrefix: true },
+	)
+
+	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts${queryString}`, {
 		headers: getHeaders(),
 	})
 
@@ -189,12 +218,15 @@ export async function searchPosts(query: string, limit = 10): Promise<PayloadPos
  */
 export async function getAllPostSlugs(): Promise<string[]> {
 	const env = getServerEnv()
-	const params = new URLSearchParams({
-		limit: "1000", // Get all posts
-		where: JSON.stringify({ status: { equals: "published" } }),
-	})
 
-	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts?${params}`, {
+	const queryString = stringify(
+		{
+			limit: 1000,
+		},
+		{ addQueryPrefix: true },
+	)
+
+	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts${queryString}`, {
 		headers: getHeaders(),
 	})
 
