@@ -110,7 +110,7 @@ export async function createAndProcessAnalysisJob({
 			},
 		})
 		analysisJobRecord = { id: analysisJob.id }
-		consola.log("Created analysis job:", analysisJob.id)
+		consola.log("Analysis job created:", analysisJob.id)
 
 		const interviewStatusSpan = observation?.span?.({
 			name: "supabase.interview.mark-processing",
@@ -166,6 +166,9 @@ export async function createAndProcessAnalysisJob({
 			name: "trigger.upload-media-and-transcribe",
 			metadata: { interviewId, analysisJobId: analysisJob.id },
 		})
+
+		const triggerEnv = process.env.TRIGGER_SECRET_KEY?.startsWith("tr_dev_") ? "dev" : "prod"
+		consola.info(`Triggering interview pipeline in ${triggerEnv} environment`, { runId: analysisJob.id })
 
 		const handle = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
 			analysisJobId: analysisJob.id,
