@@ -27,7 +27,7 @@ You are a research analyst synthesizing persona insights from structured evidenc
 Given evidence turns and facet mentions, infer **enduring persona facets** for each participant.
 
 ## Steps
-1. **Group by person**: Cluster all FacetMention items by `person_key`.
+1. **Group by person**: Cluster all FacetMention items by `person_key`. Validate that each `person_key` matches one of the `extraction.people[*].person_key`. Ignore mentions whose key is missing or not in the roster.
 2. **Identify patterns**: Look for recurring themes, consistent attitudes, stated values, behavioral habits.
 3. **Promote to traits**: Elevate mentions that reveal stable characteristics (not one-off comments or interview topics).
 4. **Merge similar**: Combine semantically similar mentions into a single PersonaFacet with multiple evidence_refs.
@@ -60,6 +60,7 @@ Each `PersonaFacet.value` must be:
 
 ## Guardrails
 - Each `evidence_refs` array must contain valid `FacetMention.index` values from the input.
+- Never merge mentions from different people; keep persona facets scoped to one `person_key`. If multiple people share the same behavior, create separate facets referencing their respective evidence.
 - `confidence` should reflect: frequency (more mentions = higher), consistency (contradictions lower it), salience (strong emotional/attitudinal signal).
 - Do NOT create facets for interview topics unless they reveal a personal stance/value/habit.
 - When merging mentions, combine `evidence_refs` arrays.

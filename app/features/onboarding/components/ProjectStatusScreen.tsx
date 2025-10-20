@@ -38,6 +38,7 @@ import {
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
 import type { Project_Section } from "~/types"
 
 const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
@@ -298,7 +299,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-					(researchRollup?.research_questions_without_decision?.length || 0) > 0
+				(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -705,19 +706,31 @@ export default function ProjectStatusScreen({
 											)}
 										</CardHeader>
 										<CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-4">
-											<div className="w-full space-y-2 sm:w-[75%]">
-												<div className="flex flex-col gap-1 text-sm sm:flex-row sm:items-center sm:justify-start sm:gap-4">
-													<span className="">
-														Interview Progress {Math.round((displayData.totalInterviews / targetConversations) * 100)}%
+											<div className="w-full space-y-2">
+												<div className="flex items-center justify-between text-sm">
+													<span className="font-medium text-muted-foreground">
+														Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}%
 													</span>
-													<div className="text-muted-foreground">
-														{displayData.totalInterviews} of {targetConversations}
-													</div>
+													<span className={cn(
+														"font-semibold",
+														(displayData.totalInterviews / targetConversations) * 100 >= 100
+															? "text-green-600"
+															: "text-foreground"
+													)}>
+														{displayData.totalInterviews} / {targetConversations}
+													</span>
 												</div>
-												<div className="h-2 w-full rounded-full bg-muted sm:w-[75%]">
+												<div className="h-2 w-full rounded-full bg-muted">
 													<div
-														className="h-2 rounded-full bg-primary transition-all duration-300"
-														style={{ width: `${(displayData.totalInterviews / targetConversations) * 100}%` }}
+														className={cn(
+															"h-2 rounded-full transition-all duration-300",
+															(displayData.totalInterviews / targetConversations) * 100 >= 100
+																? "bg-green-500"
+																: "bg-primary"
+														)}
+														style={{
+															width: `${Math.min((displayData.totalInterviews / targetConversations) * 100, 100)}%`,
+														}}
 													/>
 												</div>
 											</div>

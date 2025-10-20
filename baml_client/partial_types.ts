@@ -398,7 +398,7 @@ export namespace partial_types {
       recommended_actions: ActionButton[]
     }
     export interface Person {
-      id?: string | null
+      person_key?: string | null
       display_name?: string | null
       inferred_name?: string | null
       role?: string | null

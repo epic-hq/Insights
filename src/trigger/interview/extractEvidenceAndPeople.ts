@@ -51,7 +51,6 @@ export const extractEvidenceAndPeopleTask = task({
 				.from("interviews")
 				.update({
 					status: "ready",
-					evidence_count: evidenceResult.insertedEvidenceIds.length,
 					updated_at: new Date().toISOString(),
 				})
 				.eq("id", payload.interview.id)

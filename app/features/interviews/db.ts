@@ -11,7 +11,8 @@ export const getInterviews = async ({
 	accountId?: string
 	projectId: string
 }): Promise<{ data: InterviewWithPeople[] | null; error: any }> => {
-	return await supabase
+	// First get interviews
+	const { data: interviews, error } = await supabase
 		.from("interviews")
 		.select(`
 			title,
@@ -45,9 +46,37 @@ export const getInterviews = async ({
 				)
 			)
 		`)
-		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
+
+	if (error || !interviews) {
+		return { data: null, error }
+	}
+
+	// Get evidence counts for all interviews in one query
+	const { data: evidenceCounts } = await supabase
+		.from("evidence")
+		.select("interview_id")
+		.eq("project_id", projectId)
+		.in("interview_id", interviews.map(i => i.id))
+
+	// Build a map of interview_id -> evidence count
+	const evidenceCountMap = new Map<string, number>()
+	if (evidenceCounts) {
+		evidenceCounts.forEach(e => {
+			if (e.interview_id) {
+				evidenceCountMap.set(e.interview_id, (evidenceCountMap.get(e.interview_id) || 0) + 1)
+			}
+		})
+	}
+
+	// Attach evidence counts to interviews
+	const interviewsWithCounts = interviews.map(interview => ({
+		...interview,
+		evidence_count: evidenceCountMap.get(interview.id) || 0,
+	}))
+
+	return { data: interviewsWithCounts as any, error: null }
 }
 
 export const getInterviewById = async ({

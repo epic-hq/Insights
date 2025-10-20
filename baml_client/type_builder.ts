@@ -119,7 +119,7 @@ export default class TypeBuilder {
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
     
-    Person: ClassViewer<'Person', "id" | "display_name" | "inferred_name" | "role">;
+    Person: ClassViewer<'Person', "person_key" | "display_name" | "inferred_name" | "role">;
     
     PersonFacetObservation: ClassViewer<'PersonFacetObservation', "facet_ref" | "candidate" | "kind_slug" | "value" | "source" | "evidence_unit_index" | "confidence" | "notes">;
     
@@ -397,7 +397,7 @@ export default class TypeBuilder {
         ]);
         
         this.Person = this.tb.classViewer("Person", [
-          "id","display_name","inferred_name","role",
+          "person_key","display_name","inferred_name","role",
         ]);
         
         this.PersonFacetObservation = this.tb.classViewer("PersonFacetObservation", [

@@ -1,0 +1,56 @@
+name: Build & Deploy (Remix + Trigger.dev)
+
+on:
+  push:
+    branches: [main]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: Install dependencies
+        run: npm ci
+
+      # --------------------------
+      # 1. Build Remix/Vite app
+      # --------------------------
+      - name: Build app
+        run: |
+          npx dotenvx@latest run -e .env.production -- npm run build
+        env:
+          DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
+
+      # --------------------------
+      # 2. Deploy frontend
+      # --------------------------
+      # 👉 Option A: Fly.io (change as needed)
+      - name: Deploy to Fly.io
+        if: success()
+        run: |
+          npx flyctl deploy --remote-only
+        env:
+          FLY_API_TOKEN: ${{ secrets.FLY_API_TOKEN }}
+
+      # 👉 Option B: Vercel
+      # - name: Deploy to Vercel
+      #   run: |
+      #     npx vercel deploy --prod --yes
+      #   env:
+      #     VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+
+      # --------------------------
+      # 3. Deploy Trigger.dev Cloud
+      # --------------------------
+      - name: Deploy Trigger.dev Cloud
+        run: |
+          npx dotenvx@latest run -e .env.production -- npx trigger.dev@latest deploy
+        env:
+          DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}

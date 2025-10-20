@@ -750,7 +750,7 @@ export interface OpportunityRecommendation {
 }
 
 export interface Person {
-  id: string
+  person_key: string
   display_name?: string | null
   inferred_name?: string | null
   role?: string | null
