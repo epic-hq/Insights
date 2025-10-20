@@ -18,7 +18,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
-			consola.log("middleware user", user)
+			consola.log("middleware user", user?.aud, ': ', user?.sub, ': ', user?.email)
 			if (!user) {
 				throw redirect("/login")
 			}
@@ -75,8 +75,8 @@ export const middleware: Route.MiddlewareFunction[] = [
 			consola.log(
 				"_ProtectedLayout Authentication middleware success, {",
 				{
-					user_settings,
-					accounts,
+					// user_settings,
+					// accounts,
 					currentAccount,
 				},
 				"\n"
@@ -129,11 +129,15 @@ export async function loader({ context }: Route.LoaderArgs) {
 		// const { lang } = loadContextInstance
 		const user = context.get(userContext)
 
+		// Get the current team account (non-personal account) or fallback to first account
+		const currentTeamAccount = user.accounts?.find((acc) => !acc.personal_account) || user.accounts?.[0]
+		const currentAccountId = currentTeamAccount?.account_id || user.account_id
+
 		return {
 			// lang,
 			auth: {
 				user: user.claims,
-				accountId: user.account_id,
+				accountId: currentAccountId, // Use team account ID, not user ID
 			},
 			accounts: user.accounts || [],
 			user_settings: user.user_settings || {},

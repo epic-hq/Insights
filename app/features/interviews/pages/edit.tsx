@@ -90,13 +90,13 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			})
 
 			if (error) {
-				return { error: "Failed to delete interview" }
+				return { error: "Failed to delete interview " + JSON.stringify(error) }
 			}
 
 			const routes = createProjectRoutes(accountId, projectId)
 			return redirect(routes.interviews.index())
 		} catch (_error) {
-			return { error: "Failed to delete interview" }
+			return { error: "Failed to delete interview " + JSON.stringify(_error) }
 		}
 	}
 
@@ -144,7 +144,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		})
 
 		if (error) {
-			return { error: "Failed to update interview" }
+			return { error: "Failed to update interview " + JSON.stringify(error) }
 		}
 
 		const routes = createProjectRoutes(accountId, projectId)

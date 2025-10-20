@@ -17,21 +17,33 @@ function isUUID(str: string) {
 async function parse_account_id_from_params({
 	account_id_or_slug,
 	supabase,
+	userAccounts,
 }: {
 	account_id_or_slug: string
 	supabase: SupabaseClient
+	userAccounts?: Array<{ account_id: string; slug: string | null }>
 }) {
+	// If UUID, validate against user's accounts and return directly
 	if (isUUID(account_id_or_slug || "")) {
-		const getAccountResponse = await supabase.rpc("get_account", {
-			account_id: account_id_or_slug,
-		})
-		if (getAccountResponse.error) {
-			consola.error("Get account error:", getAccountResponse.error)
-			throw new Response(getAccountResponse.error.message, { status: 500 })
+		// Validate user has access to this account
+		if (userAccounts) {
+			const hasAccess = userAccounts.some((acc) => acc.account_id === account_id_or_slug)
+			if (!hasAccess) {
+				throw new Response("You must be a member of an account to access it", { status: 403 })
+			}
 		}
-		const data = getAccountResponse.data as GetAccount
-		return data.account_id
+		return account_id_or_slug
 	}
+	
+	// If slug, look up in user's accounts first
+	if (userAccounts) {
+		const account = userAccounts.find((acc) => acc.slug === account_id_or_slug)
+		if (account) {
+			return account.account_id
+		}
+	}
+	
+	// Fallback to RPC for slug lookup
 	const getAccountIdResponse = await supabase.rpc("get_account_by_slug", {
 		slug: account_id_or_slug,
 	})
@@ -76,17 +88,25 @@ async function parse_project_id_from_params({
 // Server-side Authentication Middleware
 // This middleware runs before every loader in current-project-layout routes
 // It ensures the user is authenticated and sets up the user context
-export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
+export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
-			const supabase = context.get(userContext).supabase
+			const ctx = context.get(userContext)
+			const supabase = ctx.supabase
 
 			const account_id_or_slug = params?.accountId || ""
 			const project_id_or_slug = params?.projectId || ""
 
+			// Get user accounts from middleware context for validation
+			const userAccounts = ctx.accounts?.map((acc: any) => ({
+				account_id: acc.account_id,
+				slug: acc.slug,
+			}))
+
 			const parsed_account_id = await parse_account_id_from_params({
 				account_id_or_slug,
 				supabase,
+				userAccounts,
 			})
 
 			if (!project_id_or_slug) {

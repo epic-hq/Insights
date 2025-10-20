@@ -1,4 +1,5 @@
 import { defineConfig } from "@trigger.dev/sdk";
+import { syncEnvVars } from "@trigger.dev/build/extensions/core";
 
 export default defineConfig({
   project: "proj_lynprxsfeejgreudknxt",
@@ -21,5 +22,32 @@ export default defineConfig({
   dirs: ["./src/trigger"],
   build: {
     external: ["@boundaryml/baml", "@boundaryml/baml-*"],
+    extensions: [
+      syncEnvVars(async (ctx) => {
+        // Sync all required environment variables from process.env
+        return [
+          { name: "NODE_ENV", value: process.env.NODE_ENV || "production" },
+          { name: "APP_ENV", value: process.env.APP_ENV || "production" },
+          { name: "SUPABASE_URL", value: process.env.SUPABASE_URL! },
+          { name: "SUPABASE_ANON_KEY", value: process.env.SUPABASE_ANON_KEY! },
+          { name: "SUPABASE_SERVICE_ROLE_KEY", value: process.env.SUPABASE_SERVICE_ROLE_KEY || "" },
+          { name: "OPENAI_API_KEY", value: process.env.OPENAI_API_KEY || "" },
+          { name: "ASSEMBLYAI_API_KEY", value: process.env.ASSEMBLYAI_API_KEY || "" },
+          { name: "ELEVEN_API_KEY", value: process.env.ELEVEN_API_KEY || "" },
+          { name: "LANGFUSE_PUBLIC_KEY", value: process.env.LANGFUSE_PUBLIC_KEY || "" },
+          { name: "LANGFUSE_SECRET_KEY", value: process.env.LANGFUSE_SECRET_KEY || "" },
+          { name: "LANGFUSE_HOST", value: process.env.LANGFUSE_HOST || "" },
+          { name: "RESEND_API_KEY", value: process.env.RESEND_API_KEY || "" },
+          { name: "R2_ACCOUNT_ID", value: process.env.R2_ACCOUNT_ID || "" },
+          { name: "R2_ACCESS_KEY_ID", value: process.env.R2_ACCESS_KEY_ID || "" },
+          { name: "R2_SECRET_ACCESS_KEY", value: process.env.R2_SECRET_ACCESS_KEY || "" },
+          { name: "R2_BUCKET_NAME", value: process.env.R2_BUCKET_NAME || "" },
+          { name: "R2_PUBLIC_BASE_URL", value: process.env.R2_PUBLIC_BASE_URL || "" },
+          { name: "R2_ENDPOINT", value: process.env.R2_ENDPOINT || "" },
+          { name: "R2_REGION", value: process.env.R2_REGION || "" },
+          { name: "TRIGGER_SECRET_KEY", value: process.env.TRIGGER_SECRET_KEY || "" },
+        ];
+      }),
+    ],
   },
 });

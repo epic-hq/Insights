@@ -8,9 +8,10 @@ interface UploadScreenProps {
 	onNext: (file: File, mediaType: string, projectId?: string) => void
 	onBack: () => void
 	projectId?: string
+	error?: string
 }
 
-export default function UploadScreen({ onNext, onBack, projectId }: UploadScreenProps) {
+export default function UploadScreen({ onNext, onBack, projectId, error }: UploadScreenProps) {
 	const [selectedFile, setSelectedFile] = useState<File | null>(null)
 	const [mediaType, setMediaType] = useState("interview")
 	const [isDragOver, setIsDragOver] = useState(false)
@@ -101,13 +102,31 @@ export default function UploadScreen({ onNext, onBack, projectId }: UploadScreen
 			{/* Main Content */}
 			<div className="mx-auto max-w-xl">
 				<div className="space-y-6">
+					{/* Error Alert */}
+					{error && (
+						<div className="rounded-lg border border-red-500 bg-red-500/10 p-4">
+							<div className="flex items-start gap-3">
+								<div className="flex-shrink-0">
+									<svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
+										<path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+									</svg>
+								</div>
+								<div className="flex-1">
+									<h3 className="font-semibold text-red-500 text-sm">Upload Failed</h3>
+									<p className="mt-1 text-red-400 text-sm">{error}</p>
+									<p className="mt-2 text-red-300 text-xs">Please try uploading your file again. If the problem persists, try a smaller file or contact support.</p>
+								</div>
+							</div>
+						</div>
+					)}
 					{/* Instructions */}
 					{/* <div className="space-y-2">
 						<div className="flex items-center gap-2 text-purple-400">
 							<Upload className="h-5 w-5" />
 							<span className="font-medium text-sm">Media Upload</span>
 						</div> */}
-					{/* <h2 className="font-bold text-2xl text-foreground">Add your first interview</h2> */}
+					{/* <h2 className="font-bold text-2xl text-foreground">Add your first interview</h2>
+					<p className="text-gray-300 text-sm leading-relaxed">
 					{/* <p className="text-gray-300 text-sm leading-relaxed">
 							Upload an audio, video or transcript from a conversation or interview.
 						</p>

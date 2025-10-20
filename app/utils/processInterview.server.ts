@@ -6,6 +6,7 @@
 
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
+import { createHash } from "node:crypto"
 import posthog from "posthog-js"
 import { b } from "~/../baml_client"
 import type {
@@ -335,6 +336,7 @@ function generateFallbackPersonName(metadata: InterviewMetadata): string {
 }
 
 type EvidenceFromBaml = Awaited<ReturnType<typeof b.ExtractEvidenceFromTranscriptV2>>
+type PersonaSynthesisFromBaml = Awaited<ReturnType<typeof b.DerivePersonaFacetsFromEvidence>>
 
 type EvidenceTurn = EvidenceFromBaml["evidence"][number]
 
@@ -349,6 +351,59 @@ interface NormalizedParticipant {
 	personas: string[]
 	facets: PersonFacetObservation[]
 	scales: PersonScaleObservation[]
+}
+
+type NameResolutionSource = "display" | "inferred" | "metadata" | "person_key" | "fallback"
+
+const GENERIC_PERSON_LABEL_PATTERNS: RegExp[] = [
+	/^(participant|person|speaker|customer|interviewee|user|client|respondent|guest|attendee)(?:[\s_-]*(\d+|[a-z]))?$/i,
+	/^(interviewer|moderator|facilitator)(?:[\s_-]*(\d+|[a-z]))?$/i,
+	/^(participant|speaker)\s*(one|two|three|first|second|third)$/i,
+]
+
+function isGenericPersonLabel(label: string | null | undefined): boolean {
+	if (!label) return false
+	const normalized = label.trim().toLowerCase()
+	if (!normalized.length) return false
+	return GENERIC_PERSON_LABEL_PATTERNS.some((pattern) => pattern.test(normalized))
+}
+
+function generateParticipantHash(options: {
+	accountId: string
+	projectId?: string | null
+	interviewId?: string | null
+	personKey: string
+	index: number
+}): string {
+	const { accountId, projectId, interviewId, personKey, index } = options
+	const hashInput = [
+		accountId || "unknown-account",
+		projectId || "no-project",
+		interviewId || "no-interview",
+		personKey || "no-key",
+		index.toString(),
+	].join("|")
+	return createHash("sha1").update(hashInput).digest("hex").slice(0, 10)
+}
+
+function appendHashToName(name: string, hash: string): string {
+	const trimmed = name.trim()
+	return trimmed.length ? `${trimmed} #${hash}` : hash
+}
+
+function shouldAttachHash(
+	resolution: { name: string; source: NameResolutionSource },
+	participant: NormalizedParticipant
+): boolean {
+	if (!resolution.name.trim()) return true
+	if (resolution.source === "person_key" || resolution.source === "fallback") return true
+
+	if (isGenericPersonLabel(resolution.name)) return true
+	if (isGenericPersonLabel(participant.person_key)) return true
+	if (isGenericPersonLabel(participant.display_name)) return true
+	if (isGenericPersonLabel(participant.inferred_name)) return true
+
+	return false
 }
 
 interface ExtractEvidenceOptions {
@@ -511,6 +566,61 @@ export async function extractEvidenceAndPeopleCore({
 	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
 	const scenes = Array.isArray(evidenceResponse?.scenes) ? evidenceResponse.scenes : []
+
+	// ═══════════════════════════════════════════════════════════════
+	// Phase 2: Derive Persona Facets from Evidence
+	// ═══════════════════════════════════════════════════════════════
+	let personaSynthesis: PersonaSynthesisFromBaml | null = null
+	let personaFacetsByPersonKey = new Map<string, PersonaSynthesisFromBaml["persona_facets"]>()
+
+	try {
+		consola.log("🧠 Running Phase 2: Persona synthesis from evidence...")
+		const synthesisCollector = createBamlCollector()
+		const synthesisClient = b.withOptions({ collector: synthesisCollector })
+
+		const lfSynthesisGeneration = lfTrace?.generation?.({
+			name: "baml.DerivePersonaFacetsFromEvidence",
+			input: {
+				evidenceCount: evidenceUnits.length,
+				peopleCount: evidenceResponse?.people?.length ?? 0,
+			},
+		})
+
+		personaSynthesis = await synthesisClient.DerivePersonaFacetsFromEvidence(evidenceResponse)
+
+		const synthesisUsage = summarizeCollectorUsage(synthesisCollector, costOptions)
+		if (synthesisUsage) {
+			consola.log("[BAML usage] DerivePersonaFacetsFromEvidence:", synthesisUsage)
+		}
+		const synthesisLangfuseUsage = mapUsageToLangfuse(synthesisUsage)
+
+		lfSynthesisGeneration?.end?.({
+			output: personaSynthesis,
+			usage: synthesisLangfuseUsage,
+			metadata: synthesisUsage ? { tokenUsage: synthesisUsage } : undefined,
+		})
+
+		// Group persona facets by person_key for efficient lookup
+		if (personaSynthesis?.persona_facets) {
+			for (const facet of personaSynthesis.persona_facets) {
+				if (!facet.person_key) continue
+				const facets = personaFacetsByPersonKey.get(facet.person_key) ?? []
+				if (!personaFacetsByPersonKey.has(facet.person_key)) {
+					personaFacetsByPersonKey.set(facet.person_key, facets)
+				}
+				facets.push(facet)
+			}
+			consola.log(
+				`✅ Phase 2 complete: Synthesized ${personaSynthesis.persona_facets.length} persona facets for ${personaFacetsByPersonKey.size} people`
+			)
+		}
+	} catch (synthesisError) {
+		consola.warn(
+			"⚠️  Phase 2 persona synthesis failed; falling back to Phase 1 raw mentions",
+			synthesisError
+		)
+		// Continue with raw mentions if synthesis fails
+	}
 
 	const rawPeople = Array.isArray((evidenceResponse as { people?: EvidenceParticipant[] })?.people)
 		? (((evidenceResponse as { people?: EvidenceParticipant[] }).people ?? []) as EvidenceParticipant[])
@@ -830,39 +940,8 @@ export async function extractEvidenceAndPeopleCore({
 			;(row as Record<string, unknown>).context_summary = whyItMatters
 		}
 
-		const observationList = facetObservationsByPersonKey.get(personKey) ?? []
-		const dedupeSet = facetObservationDedup.get(personKey) ?? new Set<string>()
-		if (!facetObservationsByPersonKey.has(personKey)) {
-			facetObservationsByPersonKey.set(personKey, observationList)
-			facetObservationDedup.set(personKey, dedupeSet)
-		}
-		for (const mention of facetMentions) {
-			const kindSlug = typeof mention?.kind_slug === "string" ? mention.kind_slug.trim() : ""
-			const valueRaw = typeof mention?.value === "string" ? mention.value.trim() : ""
-			if (!kindSlug || !valueRaw) continue
-			const value = sanitizeVerbatim(valueRaw) ?? valueRaw
-			const dedupeKey = `${kindSlug.toLowerCase()}|${value.toLowerCase()}|${evidenceIndex}`
-			if (dedupeSet.has(dedupeKey)) continue
-			dedupeSet.add(dedupeKey)
-			const note =
-				mention?.quote && typeof mention.quote === "string"
-					? (sanitizeVerbatim(mention.quote) ?? mention.quote.trim())
-					: null
-			const facetObservation: PersonFacetObservation = {
-				kind_slug: kindSlug,
-				value,
-				source: "interview",
-				evidence_unit_index: evidenceIndex,
-				confidence: typeof mention?.confidence === "number" ? mention.confidence : undefined,
-				notes: note ? [note] : undefined,
-				candidate: {
-					kind_slug: kindSlug,
-					label: value,
-					synonyms: [],
-				},
-			}
-			observationList.push(facetObservation)
-		}
+		// Skip raw mention processing - we'll use Phase 2 persona facets instead
+		// This prevents over-extraction of interview content as personal traits
 
 		evidenceRows.push(row)
 		personKeyForEvidence.push(personKey)
@@ -964,19 +1043,27 @@ export async function extractEvidenceAndPeopleCore({
 		}
 	}
 
-	const resolveName = (participant: NormalizedParticipant, index: number): string => {
-		const candidates = [
-			participant.display_name,
-			participant.inferred_name,
-			participant.person_key ? humanizeKey(participant.person_key) : null,
-			metadata.participantName,
-			metadata.interviewerName,
-		]
-		for (const candidate of candidates) {
-			if (typeof candidate === "string" && candidate.trim().length) return candidate.trim()
+const resolveName = (
+	participant: NormalizedParticipant,
+	index: number
+): { name: string; source: NameResolutionSource } => {
+	const candidates: Array<{ value: string | null | undefined; source: NameResolutionSource }> = [
+		{ value: participant.display_name, source: "display" },
+		{ value: participant.inferred_name, source: "inferred" },
+		{ value: participant.person_key ? humanizeKey(participant.person_key) : null, source: "person_key" },
+		{ value: metadata.participantName, source: "metadata" },
+		{ value: metadata.interviewerName, source: "metadata" },
+	]
+	for (const candidate of candidates) {
+		if (typeof candidate.value === "string") {
+			const trimmed = candidate.value.trim()
+			if (trimmed.length) {
+				return { name: trimmed, source: candidate.source }
+			}
 		}
-		return `Participant ${index + 1}`
 	}
+	return { name: `Participant ${index + 1}`, source: "fallback" }
+}
 
 	const upsertPerson = async (
 		name: string,
@@ -1012,7 +1099,7 @@ export async function extractEvidenceAndPeopleCore({
 	if (participants.length) {
 		for (const [index, participant] of participants.entries()) {
 			const participantKey = participant.person_key
-			const resolvedName = resolveName(participant, index)
+			const resolved = resolveName(participant, index)
 			const segments = participant.segments.length ? participant.segments : metadata.segment ? [metadata.segment] : []
 			const participantOverrides: Partial<PeopleInsert> = {
 				description: participant.summary ?? null,
@@ -1020,12 +1107,29 @@ export async function extractEvidenceAndPeopleCore({
 				company: participant.organization ?? null,
 				role: participant.role ?? null,
 			}
-			const personRecord = await upsertPerson(resolvedName, participantOverrides)
+			const needsHash = shouldAttachHash(resolved, participant)
+			const personNameForDb = needsHash
+				? appendHashToName(
+						resolved.name,
+						generateParticipantHash({
+							accountId: metadata.accountId,
+							projectId: metadata.projectId,
+							interviewId: interviewRecord.id,
+							personKey: participantKey,
+							index,
+						})
+					)
+				: resolved.name
+			const personRecord = await upsertPerson(personNameForDb, participantOverrides)
 			personIdByKey.set(participantKey, personRecord.id)
 			personNameByKey.set(participantKey, personRecord.name)
 			keyByPersonId.set(personRecord.id, participantKey)
-			if (participant.display_name) {
-				displayNameByKey.set(participantKey, participant.display_name)
+			const preferredDisplayName =
+				participant.display_name?.trim() ||
+				(needsHash ? resolved.name : personRecord.name) ||
+				null
+			if (preferredDisplayName) {
+				displayNameByKey.set(participantKey, preferredDisplayName)
 			}
 			personRoleById.set(personRecord.id, participant.role ?? null)
 
@@ -1045,7 +1149,7 @@ export async function extractEvidenceAndPeopleCore({
 		const fallbackId = personIdByKey.get(fallbackKey) ?? null
 		if (fallbackId) {
 			primaryPersonId = fallbackId
-			primaryPersonName = personNameByKey.get(fallbackKey) ?? resolveName(participants[0], 0)
+			primaryPersonName = personNameByKey.get(fallbackKey) ?? resolveName(participants[0], 0).name
 			primaryPersonRole = participants[0].role ?? null
 			primaryPersonDescription = participants[0].summary ?? null
 			primaryPersonOrganization = participants[0].organization ?? null
@@ -1114,20 +1218,53 @@ export async function extractEvidenceAndPeopleCore({
 	}
 
 	if (metadata.projectId) {
-		const observationInputs = Array.from(facetObservationsByPersonKey.entries())
-			.map(([key, facets]) => {
-				const personId = personIdByKey.get(key) || primaryPersonId
-				const normalizedFacets = Array.isArray(facets)
-					? facets.filter((facet): facet is PersonFacetObservation => Boolean(facet))
-					: []
-				const scaleObservations = participantByKey.get(key)?.scales ?? []
-				if (!personId || (!normalizedFacets.length && !scaleObservations.length)) return null
-				return { personId, facets: normalizedFacets, scales: scaleObservations }
-			})
-			.filter(
-				(item): item is { personId: string; facets: PersonFacetObservation[]; scales: PersonScaleObservation[] } =>
-					item !== null
-			)
+		// Use Phase 2 synthesized persona facets instead of raw Phase 1 mentions
+		const observationInputs: Array<{
+			personId: string
+			facets: PersonFacetObservation[]
+			scales: PersonScaleObservation[]
+		}> = []
+
+		for (const [personKey, personaFacets] of personaFacetsByPersonKey.entries()) {
+			const personId = personIdByKey.get(personKey) || primaryPersonId
+			if (!personId) continue
+
+			const facetObservations: PersonFacetObservation[] = []
+			for (const pf of personaFacets) {
+				if (!pf.kind_slug || !pf.value) continue
+
+				// Map evidence_refs to actual evidence indices for traceability
+				const evidenceIndices = Array.isArray(pf.evidence_refs) ? pf.evidence_refs : []
+				const primaryEvidenceIndex = evidenceIndices[0] ?? undefined
+
+				const facetObservation: PersonFacetObservation = {
+					kind_slug: pf.kind_slug,
+					value: pf.value,
+					source: "interview",
+					evidence_unit_index: primaryEvidenceIndex,
+					confidence: typeof pf.confidence === "number" ? pf.confidence : 0.8,
+					notes: pf.reasoning ? [pf.reasoning] : undefined,
+					candidate: {
+						kind_slug: pf.kind_slug,
+						label: pf.value,
+						synonyms: [],
+						notes: pf.reasoning
+							? [`Frequency: ${pf.frequency ?? 1}, Evidence refs: ${evidenceIndices.join(", ")}`]
+							: undefined,
+					},
+				}
+				facetObservations.push(facetObservation)
+			}
+
+			const scaleObservations = participantByKey.get(personKey)?.scales ?? []
+			if (facetObservations.length || scaleObservations.length) {
+				observationInputs.push({
+					personId,
+					facets: facetObservations,
+					scales: scaleObservations,
+				})
+			}
+		}
 		if (observationInputs.length) {
 			await persistFacetObservations({
 				db,

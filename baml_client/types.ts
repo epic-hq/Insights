@@ -557,6 +557,7 @@ export interface ExtractedInsight {
 export interface Extraction {
   people: Person[]
   evidence: EvidenceTurn[]
+  facet_mentions: FacetMention[]
   scenes: Scene[]
   
 }
@@ -749,7 +750,7 @@ export interface OpportunityRecommendation {
 }
 
 export interface Person {
-  id: string
+  person_key: string
   display_name?: string | null
   inferred_name?: string | null
   role?: string | null
@@ -873,6 +874,23 @@ export interface PersonaAssignmentDecision {
   confidence_score: number
   reasoning: string
   new_persona_data?: Persona | null
+  
+}
+
+export interface PersonaExtraction {
+  persona_facets: PersonaFacet[]
+  summary?: string | null
+  
+}
+
+export interface PersonaFacet {
+  person_key: string
+  kind_slug: string
+  value: string
+  evidence_refs: number[]
+  confidence: number
+  frequency: number
+  reasoning?: string | null
   
 }
 

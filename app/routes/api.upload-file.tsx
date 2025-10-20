@@ -119,27 +119,10 @@ export async function action({ request, context }: ActionFunctionArgs) {
 
 			mediaUrl = storedMediaUrl
 
-			// Upload to AssemblyAI for transcription
-			const apiKey = process.env.ASSEMBLYAI_API_KEY
-			if (!apiKey) throw new Error("ASSEMBLYAI_API_KEY env var not set")
-
-			const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
-				method: "POST",
-				headers: { Authorization: apiKey },
-				body: file.stream(), // pass-through readable stream from the browser upload
-				duplex: "half",
-			} as any)
-
-			if (!uploadResp.ok) {
-				const t = await uploadResp.text()
-				throw new Error(`AssemblyAI upload failed: ${uploadResp.status} ${t}`)
-			}
-
-			const { upload_url } = (await uploadResp.json()) as { upload_url: string }
-
-			// Transcribe using AssemblyAI URL (but keep our stored URL as mediaUrl)
-			consola.log("Starting transcription for uploaded file")
-			transcriptData = await transcribeAudioFromUrl(upload_url)
+			// Transcribe directly from R2 public URL (no need to upload to AssemblyAI)
+			// AssemblyAI will download the file from R2 server-to-server (faster + more reliable)
+			consola.log("Starting transcription from R2 URL:", storedMediaUrl)
+			transcriptData = await transcribeAudioFromUrl(storedMediaUrl)
 			consola.log(
 				"Transcription result:",
 				transcriptData.audio_duration,

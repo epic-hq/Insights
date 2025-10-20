@@ -65,6 +65,8 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 	}
 
 	const { supabase } = context.get(userContext)
+	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
+
 	const result = await regenerateEvidenceForProject({
 		supabase,
 		accountId,
@@ -77,6 +79,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
+	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
 	const projectId = params.projectId
 	if (!projectId) throw new Response("Missing projectId", { status: 400 })
 
@@ -90,6 +93,49 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const filterSupport = url.searchParams.get("support")
 	const filterConfidence = url.searchParams.get("confidence")
 	const filterMethod = url.searchParams.get("method")
+	const filterPersonId = url.searchParams.get("person_id") || undefined
+	const filterPersonNameParam = url.searchParams.get("person_name") || undefined
+
+	// If filtering by person, get evidence IDs from evidence_people first
+	let evidenceIdFilter: string[] | undefined
+	if (filterPersonId) {
+		const { data: personEvidence, error: peErr } = await supabase
+			.from("evidence_people")
+			.select("evidence_id")
+			.eq("project_id", projectId)
+			.eq("person_id", filterPersonId)
+		
+		if (peErr) throw new Error(`Failed to load evidence for person: ${peErr.message}`)
+		evidenceIdFilter = personEvidence?.map(pe => pe.evidence_id) || []
+		
+		if (evidenceIdFilter.length === 0) {
+			return { evidence: [], filteredByPerson: filterPersonId }
+		}
+	}
+
+	// If filtering by research question, get evidence IDs from project_answer_evidence
+	if (rqId) {
+		const { data: evidenceIds, error: linkError } = await supabase
+			.from("project_answer_evidence")
+			.select("evidence_id, project_answers!inner(research_question_id)")
+			.eq("project_answers.research_question_id", rqId)
+			.eq("project_id", projectId)
+
+		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
+
+		const rqEvidenceIds = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || []
+		
+		// Intersect with person filter if both are present
+		if (evidenceIdFilter) {
+			evidenceIdFilter = evidenceIdFilter.filter(id => rqEvidenceIds.includes(id))
+		} else {
+			evidenceIdFilter = rqEvidenceIds
+		}
+		
+		if (evidenceIdFilter.length === 0) {
+			return { evidence: [], filteredByRQ: rqId, filteredByPerson: filterPersonId }
+		}
+	}
 
 	let query = supabase
 		.from("evidence")
@@ -119,23 +165,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		)
 		.eq("project_id", projectId)
 
-	// If filtering by research question, join through project_answer_evidence -> project_answers
-	if (rqId) {
-		const { data: evidenceIds, error: linkError } = await supabase
-			.from("project_answer_evidence")
-			.select("evidence_id, project_answers!inner(research_question_id)")
-			.eq("project_answers.research_question_id", rqId)
-			.eq("project_id", projectId)
-
-		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
-
-		const ids = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || []
-		if (ids.length === 0) {
-			// No evidence linked to this research question
-			return { evidence: [], filteredByRQ: rqId }
-		}
-
-		query = query.in("id", ids)
+	// Apply evidence ID filter if we have one from person or RQ filtering
+	if (evidenceIdFilter) {
+		query = query.in("id", evidenceIdFilter)
 	}
 
 	// Apply simple filters
@@ -154,6 +186,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const peopleByEvidence = new Map<string, EvidenceListPerson[]>()
 	if (rows.length) {
 		const evidenceIds = rows.map((e) => e.id)
+
 		const { data: evp, error: epErr } = await supabase
 			.from("evidence_people")
 			.select("evidence_id, role, person:person_id(id, name)")
@@ -207,16 +240,40 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		}
 	}
 
-	const enriched: EvidenceListItem[] = rows.map((row) => ({
+	let filteredPersonName = filterPersonNameParam ?? null
+	if (filterPersonId && !filteredPersonName) {
+		for (const people of peopleByEvidence.values()) {
+			const match = people.find((person) => person.id === filterPersonId)
+			if (match) {
+				filteredPersonName = match.name ?? null
+				break
+			}
+		}
+	}
+
+	const filteredRows = filterPersonId
+		? rows.filter((row) => {
+			const people = peopleByEvidence.get(row.id) ?? []
+			return people.some((person) => person.id === filterPersonId)
+		})
+		: rows
+
+	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
 		...row,
 		people: peopleByEvidence.get(row.id) ?? [],
 	}))
 
-	return { evidence: enriched, filteredByRQ: rqId }
+	return {
+		evidence: enriched,
+		filteredByRQ: rqId,
+		filteredByPerson: filterPersonId
+			? { id: filterPersonId, name: filteredPersonName }
+			: null,
+	}
 }
 
 export default function EvidenceIndex() {
-	const { evidence, filteredByRQ } = useLoaderData<typeof loader>()
+	const { evidence, filteredByRQ, filteredByPerson } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher<typeof action>()
 	const isRegenerating = fetcher.state !== "idle"
 	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini")
@@ -251,6 +308,11 @@ export default function EvidenceIndex() {
 					{filteredByRQ && (
 						<Badge variant="outline" className="mt-1 w-fit text-xs">
 							Filtered by Research Question
+						</Badge>
+					)}
+					{filteredByPerson && (
+						<Badge variant="outline" className="mt-1 w-fit text-xs">
+							{filteredByPerson.name ? `Participant: ${filteredByPerson.name}` : "Filtered by participant"}
 						</Badge>
 					)}
 				</div>

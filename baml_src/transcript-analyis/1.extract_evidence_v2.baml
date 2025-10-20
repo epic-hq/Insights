@@ -49,8 +49,8 @@ class Scene {
 }
 
 class Person {
-	id string @description("Stable identifier referenced by evidence units that should be unique per person across all transcripts, so make it a hash")
-	display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2'")
+	person_key string @description("Stable slug used everywhere else in the payload (e.g., participant-1, interviewer-1). Must be unique per human speaker in the transcript.")
+	display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2' or the provided diarization name")
 	inferred_name string? @description("Preferred name if confidently inferred from context")
 	role string? @description("their role in the coversation (participant | interviewer | observer | moderator | customer | Sales Rep")
 }
@@ -59,6 +59,7 @@ class Extraction {
 	//  people EvidenceParticipant[]
 	 people Person[]
 	 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
+	 facet_mentions FacetMention[] @description("Flattened array of all facet mentions for easier phase-2 processing")
 	 scenes Scene[]
 }
 
@@ -74,7 +75,11 @@ You are an expert UX researcher.
 Your task is to produce an exhaustive, chronological Event Stream from an interview transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.
 
 ## Steps
-1. Identify every human speaker. Populate the `people` array once with label, inferred name (if safe), role (participant vs interviewer), personas/segments, organization, and a concise descriptor of responsibilities.
+1. Identify every human speaker. Populate the `people` array once with:
+   - `person_key`: deterministic slug per human such as `participant-1`, `participant-2`, `interviewer-1`. Derive the number from first appearance order. Reuse the EXACT same `person_key` string for all references to that person. Never reuse a slug for different humans.
+   - `display_name`: the literal transcript label (e.g., "SPEAKER 2", "Kai", "Interviewer").
+   - `inferred_name` and `role` when confident (role ∈ participant | interviewer | moderator | observer | customer | sales_rep).
+   - Include any known segments/personas/organization in the optional fields when the transcript states them.
 2. Slice the transcript into coherent, chronological turns (where each turn is a single speaker). Emit one `EvidenceTurn` per turn, anchored to the correct `person_key` with gist, chunk, verbatim, tags, anchors, confidence, and empathy map fields.
 3. For each `EvidenceTurn`, emit one or more `FacetMention` items—one per distinct, atomic signal (goal, pain, behavior, tool, value, preference, demographic, context, artifact, emotion, feature, price). Each `FacetMention` must reference its parent `EvidenceTurn` via `parent_index`. Keep `value` concrete and readable in isolation (≤12 words). Prefer verb+object or noun+modifier. Avoid vague superlatives (e.g., "best", "amazing") unless paired with a criterion. Include a short `quote` when high-signal.
 4. Segment the conversation into `Scene`s when the topic/goal shifts. Each scene spans a contiguous block of `EvidenceTurn.index` values and has a short topic label.
@@ -87,7 +92,7 @@ Skip generic filler unless it informs a concrete outcome.
 
 ## EvidenceTurn
 - index: 0-based chronological index (strictly ascending) and equals its position in the stream.
-- person_key: exact match to an entry in `people`.
+- person_key: exact match (character-for-character) to the `person_key` defined for that person in `people`. Never invent a new slug at the turn level.
 - gist: ≤12 words; no labels like "Quote:".
 - chunk: 2–5 sentences of the participant’s words.
 - verbatim: ≤15-word quote from the chunk.
@@ -103,6 +108,7 @@ Skip generic filler unless it informs a concrete outcome.
 - quote: include when it strengthens auditability; ≤15 words.
 - confidence: one of 1, 0.75, 0.5, 0.25, 0.
 - Output one FacetMention per distinct signal in a turn; do not merge similar mentions across turns.
+- person_key: must match the exact slug from `people`. If multiple people appear in a turn (e.g., collaborative utterance), duplicate the mention with the correct key for each speaker.
 
 ## Scenes
 - Create a new scene when the topic/goal shifts meaningfully.
@@ -110,10 +116,12 @@ Skip generic filler unless it informs a concrete outcome.
 
 ## Guardrails
 - Emit all items in ascending `index` / `parent_index` order.
+- Do not fall back to a generic person — if a turn's `person_key` cannot be matched to `people`, revisit your mapping rather than defaulting to the primary participant.
 - Do not output any catalog ids or proposals; linking occurs in a separate step.
 - Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
 - When choosing empathy vs mention: prefer FacetMention as the authoritative signal; only add empathy items if they add non-duplicative skim value.
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
+- Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
 
 Transcript (language={{ language }})
 {{ transcript }}

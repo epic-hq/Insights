@@ -47,28 +47,6 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// consola.log(`Found ${rows?.length || 0} interviews`)
 
-	// Fetch insights count for each interview
-	const { data: allInsights, error: insightsError } = await supabase
-		.from("insights")
-		.select("id, interview_id")
-		// .eq("account_id", accountId)
-		.eq("project_id", projectId)
-
-	if (insightsError) {
-		consola.error("Insights query error:", insightsError)
-		throw new Response(`Error fetching insights: ${insightsError.message}`, { status: 500 })
-	}
-
-	const insightCountMap = new Map<string, number>()
-	if (allInsights) {
-		allInsights.forEach((insight) => {
-			if (insight.interview_id) {
-				const currentCount = insightCountMap.get(insight.interview_id) || 0
-				insightCountMap.set(insight.interview_id, currentCount + 1)
-			}
-		})
-	}
-
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
@@ -97,17 +75,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			persona: participant?.segment || "No segment",
 			date: interview.interview_date || interview.created_at || "",
 			duration: interview.duration_sec ? `${Math.round((interview.duration_sec / 60) * 10) / 10} min` : "Unknown",
-			insightCount: insightCountMap.get(interview.id) || 0,
+			evidenceCount: interview.evidence_count || 0,
 		}
 	})
 
-	// Use the insight count from the map we already calculated
-	const interviewsWithCounts = interviews.map((interview) => ({
-		...interview,
-		insightCount: interview.insightCount, // Already calculated above
-	}))
-
-	return { interviews: interviewsWithCounts, segmentData }
+	return { interviews, segmentData }
 }
 
 export default function InterviewsIndex({ showPie = false }: { showPie?: boolean }) {
@@ -263,7 +235,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												)}
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
-												<span className="font-medium text-purple-600">{interview.insightCount}</span>
+												<span className="font-medium text-purple-600">{interview.evidenceCount}</span>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3 text-gray-900 text-sm dark:text-white">
 												{interview.duration}

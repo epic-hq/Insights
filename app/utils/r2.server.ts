@@ -8,6 +8,7 @@ interface R2UploadParams {
 	key: string
 	body: Uint8Array
 	contentType?: string
+	useMultipart?: boolean // Enable multipart for files > threshold
 }
 
 interface R2Config {
@@ -55,19 +56,57 @@ export function getR2KeyFromPublicUrl(fullUrl: string): string | null {
 			return null
 		}
 
-		const remainder = withoutQuery.slice(normalizedBase.length).replace(/^\/+/, "")
+		let remainder = withoutQuery.slice(normalizedBase.length).replace(/^\/+/, "")
+
+		// Strip bucket name prefix if present (e.g., "upsight-usermedia/interviews/..." → "interviews/...")
+		// This handles cases where R2_PUBLIC_BASE_URL includes the bucket in the path
+		const bucketPrefix = `${config.bucket}/`
+		if (remainder.startsWith(bucketPrefix)) {
+			remainder = remainder.slice(bucketPrefix.length)
+		}
+
 		return remainder ? decodeURIComponent(remainder) : null
 	} catch {
 		return null
 	}
 }
 
-export async function uploadToR2({ key, body, contentType }: R2UploadParams): Promise<UploadResult> {
+// Multipart upload constants
+const MULTIPART_THRESHOLD = 100 * 1024 * 1024 // 100MB - use multipart for files larger than this
+const PART_SIZE = 10 * 1024 * 1024 // 10MB chunks
+const MAX_CONCURRENT_PARTS = 2 // Upload 2 parts in parallel (reduced for stability)
+const MAX_PART_RETRIES = 3 // Retry failed parts up to 3 times
+const PART_UPLOAD_TIMEOUT = 60000 // 60 second timeout per part
+
+export async function uploadToR2({ key, body, contentType, useMultipart }: R2UploadParams): Promise<UploadResult> {
 	const config = getR2Config()
 	if (!config) {
 		return { success: false, error: "Cloudflare R2 is not configured" }
 	}
 
+	// Auto-enable multipart for files > threshold
+	const shouldUseMultipart = useMultipart ?? body.length > MULTIPART_THRESHOLD
+
+	if (shouldUseMultipart && body.length > PART_SIZE) {
+		consola.log(`Using multipart upload for ${(body.length / 1024 / 1024).toFixed(2)}MB file`)
+		return uploadToR2Multipart({ key, body, contentType, config })
+	}
+
+	// Fall back to single PUT for small files
+	return uploadToR2Single({ key, body, contentType, config })
+}
+
+async function uploadToR2Single({
+	key,
+	body,
+	contentType,
+	config,
+}: {
+	key: string
+	body: Uint8Array
+	contentType?: string
+	config: R2Config
+}): Promise<UploadResult> {
 	try {
 		const { endpoint, accessKeyId, secretAccessKey, bucket, region } = config
 		const encodedKey = encodeKey(key)
@@ -123,6 +162,410 @@ export async function uploadToR2({ key, body, contentType }: R2UploadParams): Pr
 		const message = error instanceof Error ? error.message : "Unknown error"
 		consola.error("Unexpected error uploading to R2:", error)
 		return { success: false, error: message }
+	}
+}
+
+async function uploadToR2Multipart({
+	key,
+	body,
+	contentType,
+	config,
+}: {
+	key: string
+	body: Uint8Array
+	contentType?: string
+	config: R2Config
+}): Promise<UploadResult> {
+	try {
+		// Step 1: Initiate multipart upload
+		const uploadId = await initiateMultipartUpload({ key, contentType, config })
+		if (!uploadId) {
+			return { success: false, error: "Failed to initiate multipart upload" }
+		}
+
+		consola.log(`Initiated multipart upload: ${uploadId}`)
+
+		// Step 2: Split file into parts and upload
+		const numParts = Math.ceil(body.length / PART_SIZE)
+		const parts: Array<{ PartNumber: number; ETag: string }> = []
+
+		consola.log(`Uploading ${numParts} parts (${PART_SIZE / 1024 / 1024}MB each)`)
+
+		// Upload parts in batches to control concurrency
+		for (let i = 0; i < numParts; i += MAX_CONCURRENT_PARTS) {
+			const batch = []
+			for (let j = 0; j < MAX_CONCURRENT_PARTS && i + j < numParts; j++) {
+				const partNumber = i + j + 1
+				const start = (i + j) * PART_SIZE
+				const end = Math.min(start + PART_SIZE, body.length)
+				const partBody = body.slice(start, end)
+
+				batch.push(
+					uploadPart({
+						key,
+						uploadId,
+						partNumber,
+						body: partBody,
+						config,
+					})
+				)
+			}
+
+			const batchResults = await Promise.all(batch)
+			for (const result of batchResults) {
+				if (!result) {
+					// Abort multipart upload on failure
+					await abortMultipartUpload({ key, uploadId, config })
+					return { success: false, error: "Failed to upload part" }
+				}
+				parts.push(result)
+			}
+
+			consola.log(`Uploaded ${parts.length}/${numParts} parts`)
+		}
+
+		// Step 3: Complete multipart upload
+		const complete = await completeMultipartUpload({
+			key,
+			uploadId,
+			parts,
+			config,
+		})
+
+		if (!complete) {
+			await abortMultipartUpload({ key, uploadId, config })
+			return { success: false, error: "Failed to complete multipart upload" }
+		}
+
+		consola.log(`✅ Multipart upload complete: ${key}`)
+		return { success: true }
+	} catch (error) {
+		const message = error instanceof Error ? error.message : "Unknown error"
+		consola.error("Multipart upload failed:", error)
+		return { success: false, error: message }
+	}
+}
+
+async function initiateMultipartUpload({
+	key,
+	contentType,
+	config,
+}: {
+	key: string
+	contentType?: string
+	config: R2Config
+}): Promise<string | null> {
+	const { endpoint, bucket, region, accessKeyId, secretAccessKey } = config
+	const encodedKey = encodeKey(key)
+	const requestPath = `/${bucket}/${encodedKey}`
+	const url = `${endpoint}/${bucket}/${encodedKey}?uploads`
+	const host = new URL(endpoint).host
+
+	const now = new Date()
+	const amzDate = toAmzDate(now)
+	const dateStamp = amzDate.slice(0, 8)
+
+	const headers: Record<string, string> = {
+		host,
+		"x-amz-content-sha256": "UNSIGNED-PAYLOAD",
+		"x-amz-date": amzDate,
+	}
+
+	if (contentType) {
+		headers["content-type"] = contentType
+	}
+
+	const canonicalHeaders = buildCanonicalHeaders(headers)
+	const signedHeaders = Object.keys(headers)
+		.map((name) => name.toLowerCase())
+		.sort()
+		.join(";")
+
+	const canonicalRequest = ["POST", requestPath, "uploads=", canonicalHeaders, signedHeaders, "UNSIGNED-PAYLOAD"].join(
+		"\n"
+	)
+	const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
+	const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n")
+
+	const signingKey = getSigningKey(secretAccessKey, dateStamp, region, "s3")
+	const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex")
+
+	headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers,
+		})
+
+		if (!response.ok) {
+			const errorText = await safeRead(response)
+			consola.error("Failed to initiate multipart upload", response.status, errorText?.slice(0, 200))
+			return null
+		}
+
+		const text = await response.text()
+		const uploadIdMatch = text.match(/<UploadId>([^<]+)<\/UploadId>/)
+		return uploadIdMatch?.[1] ?? null
+	} catch (error) {
+		consola.error("Error initiating multipart upload:", error)
+		return null
+	}
+}
+
+async function uploadPart({
+	key,
+	uploadId,
+	partNumber,
+	body,
+	config,
+}: {
+	key: string
+	uploadId: string
+	partNumber: number
+	body: Uint8Array
+	config: R2Config
+}): Promise<{ PartNumber: number; ETag: string } | null> {
+	// Retry logic with exponential backoff
+	for (let attempt = 1; attempt <= MAX_PART_RETRIES; attempt++) {
+		try {
+			const result = await uploadPartAttempt({ key, uploadId, partNumber, body, config })
+			if (result) {
+				if (attempt > 1) {
+					consola.log(`Part ${partNumber} succeeded on attempt ${attempt}`)
+				}
+				return result
+			}
+		} catch (error) {
+			const isLastAttempt = attempt === MAX_PART_RETRIES
+			consola.error(`Part ${partNumber} attempt ${attempt}/${MAX_PART_RETRIES} failed:`, error)
+
+			if (!isLastAttempt) {
+				// Exponential backoff: 1s, 2s, 4s
+				const backoffMs = 2 ** (attempt - 1) * 1000
+				consola.log(`Retrying part ${partNumber} in ${backoffMs}ms...`)
+				await new Promise((resolve) => setTimeout(resolve, backoffMs))
+			}
+		}
+	}
+
+	consola.error(`Part ${partNumber} failed after ${MAX_PART_RETRIES} attempts`)
+	return null
+}
+
+async function uploadPartAttempt({
+	key,
+	uploadId,
+	partNumber,
+	body,
+	config,
+}: {
+	key: string
+	uploadId: string
+	partNumber: number
+	body: Uint8Array
+	config: R2Config
+}): Promise<{ PartNumber: number; ETag: string } | null> {
+	const { endpoint, bucket, region, accessKeyId, secretAccessKey } = config
+	const encodedKey = encodeKey(key)
+	const requestPath = `/${bucket}/${encodedKey}`
+	const queryString = `partNumber=${partNumber}&uploadId=${encodeURIComponent(uploadId)}`
+	const url = `${endpoint}/${bucket}/${encodedKey}?${queryString}`
+	const host = new URL(endpoint).host
+
+	const now = new Date()
+	const amzDate = toAmzDate(now)
+	const dateStamp = amzDate.slice(0, 8)
+
+	const payloadHash = hashHex(body)
+
+	const headers: Record<string, string> = {
+		host,
+		"x-amz-content-sha256": payloadHash,
+		"x-amz-date": amzDate,
+	}
+
+	const canonicalHeaders = buildCanonicalHeaders(headers)
+	const signedHeaders = Object.keys(headers)
+		.map((name) => name.toLowerCase())
+		.sort()
+		.join(";")
+
+	const canonicalRequest = ["PUT", requestPath, queryString, canonicalHeaders, signedHeaders, payloadHash].join("\n")
+	const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
+	const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n")
+
+	const signingKey = getSigningKey(secretAccessKey, dateStamp, region, "s3")
+	const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex")
+
+	headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+
+	// Add timeout to detect stalled connections
+	const controller = new AbortController()
+	const timeoutId = setTimeout(() => controller.abort(), PART_UPLOAD_TIMEOUT)
+
+	try {
+		const response = await fetch(url, {
+			method: "PUT",
+			headers,
+			body: Buffer.from(body),
+			signal: controller.signal,
+		})
+
+		clearTimeout(timeoutId)
+
+		if (!response.ok) {
+			const errorText = await safeRead(response)
+			consola.error(`Part ${partNumber} upload failed`, response.status, errorText?.slice(0, 200))
+			return null
+		}
+
+		const etag = response.headers.get("etag")
+		if (!etag) {
+			consola.error(`Part ${partNumber} missing ETag`)
+			return null
+		}
+
+		return { PartNumber: partNumber, ETag: etag }
+	} catch (error) {
+		clearTimeout(timeoutId)
+
+		if (error instanceof Error && error.name === "AbortError") {
+			consola.error(`Part ${partNumber} timed out after ${PART_UPLOAD_TIMEOUT}ms`)
+		}
+		throw error
+	}
+}
+
+async function completeMultipartUpload({
+	key,
+	uploadId,
+	parts,
+	config,
+}: {
+	key: string
+	uploadId: string
+	parts: Array<{ PartNumber: number; ETag: string }>
+	config: R2Config
+}): Promise<boolean> {
+	const { endpoint, bucket, region, accessKeyId, secretAccessKey } = config
+	const encodedKey = encodeKey(key)
+	const requestPath = `/${bucket}/${encodedKey}`
+	const queryString = `uploadId=${encodeURIComponent(uploadId)}`
+	const url = `${endpoint}/${bucket}/${encodedKey}?${queryString}`
+	const host = new URL(endpoint).host
+
+	// Build XML body
+	const sortedParts = parts.sort((a, b) => a.PartNumber - b.PartNumber)
+	const xmlParts = sortedParts
+		.map((p) => `<Part><PartNumber>${p.PartNumber}</PartNumber><ETag>${p.ETag}</ETag></Part>`)
+		.join("")
+	const xmlBody = `<CompleteMultipartUpload>${xmlParts}</CompleteMultipartUpload>`
+
+	const now = new Date()
+	const amzDate = toAmzDate(now)
+	const dateStamp = amzDate.slice(0, 8)
+
+	const payloadHash = hashHex(xmlBody)
+
+	const headers: Record<string, string> = {
+		host,
+		"x-amz-content-sha256": payloadHash,
+		"x-amz-date": amzDate,
+		"content-type": "application/xml",
+	}
+
+	const canonicalHeaders = buildCanonicalHeaders(headers)
+	const signedHeaders = Object.keys(headers)
+		.map((name) => name.toLowerCase())
+		.sort()
+		.join(";")
+
+	const canonicalRequest = ["POST", requestPath, queryString, canonicalHeaders, signedHeaders, payloadHash].join("\n")
+	const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
+	const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n")
+
+	const signingKey = getSigningKey(secretAccessKey, dateStamp, region, "s3")
+	const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex")
+
+	headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+
+	try {
+		const response = await fetch(url, {
+			method: "POST",
+			headers,
+			body: xmlBody,
+		})
+
+		if (!response.ok) {
+			const errorText = await safeRead(response)
+			consola.error("Failed to complete multipart upload", response.status, errorText?.slice(0, 200))
+			return false
+		}
+
+		return true
+	} catch (error) {
+		consola.error("Error completing multipart upload:", error)
+		return false
+	}
+}
+
+async function abortMultipartUpload({
+	key,
+	uploadId,
+	config,
+}: {
+	key: string
+	uploadId: string
+	config: R2Config
+}): Promise<void> {
+	const { endpoint, bucket, region, accessKeyId, secretAccessKey } = config
+	const encodedKey = encodeKey(key)
+	const requestPath = `/${bucket}/${encodedKey}`
+	const queryString = `uploadId=${encodeURIComponent(uploadId)}`
+	const url = `${endpoint}/${bucket}/${encodedKey}?${queryString}`
+	const host = new URL(endpoint).host
+
+	const now = new Date()
+	const amzDate = toAmzDate(now)
+	const dateStamp = amzDate.slice(0, 8)
+
+	const headers: Record<string, string> = {
+		host,
+		"x-amz-content-sha256": "UNSIGNED-PAYLOAD",
+		"x-amz-date": amzDate,
+	}
+
+	const canonicalHeaders = buildCanonicalHeaders(headers)
+	const signedHeaders = Object.keys(headers)
+		.map((name) => name.toLowerCase())
+		.sort()
+		.join(";")
+
+	const canonicalRequest = [
+		"DELETE",
+		requestPath,
+		queryString,
+		canonicalHeaders,
+		signedHeaders,
+		"UNSIGNED-PAYLOAD",
+	].join("\n")
+	const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
+	const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n")
+
+	const signingKey = getSigningKey(secretAccessKey, dateStamp, region, "s3")
+	const signature = createHmac("sha256", signingKey).update(stringToSign).digest("hex")
+
+	headers.authorization = `AWS4-HMAC-SHA256 Credential=${accessKeyId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`
+
+	try {
+		await fetch(url, {
+			method: "DELETE",
+			headers,
+		})
+		consola.log(`Aborted multipart upload: ${uploadId}`)
+	} catch (error) {
+		consola.error("Error aborting multipart upload:", error)
 	}
 }
 

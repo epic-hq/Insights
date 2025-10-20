@@ -468,6 +468,8 @@ Key properties available in run subscriptions:
 
 **Complete guide to configuring `trigger.config.ts` with build extensions**
 
+> **📖 For production deployment guide, see [docs/trigger-dev-deployment.md](docs/trigger-dev-deployment.md)**
+
 ## Basic Configuration
 
 ```ts
