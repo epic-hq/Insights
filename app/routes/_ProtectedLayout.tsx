@@ -129,16 +129,17 @@ export async function loader({ context }: Route.LoaderArgs) {
 		// const { lang } = loadContextInstance
 		const user = context.get(userContext)
 
-		// Use the account_id from the user context
-		const currentAccountId = user.account_id
+		// Get the current team account (non-personal account) or fallback to first account
+		const currentTeamAccount = user.accounts?.find((acc) => !acc.personal_account) || user.accounts?.[0]
+		const currentAccountId = currentTeamAccount?.account_id || user.account_id
 
 		return {
 			// lang,
 			auth: {
 				user: user.claims,
-				accountId: currentAccountId,
+				accountId: currentAccountId, // Use team account ID, not user ID
 			},
-			accounts: [],
+			accounts: user.accounts || [],
 			user_settings: user.user_settings || {},
 		}
 	} catch (error) {

@@ -4,6 +4,13 @@ import type { Database } from "supabase/types"
 import type { AccountSettings, UserSettings } from "~/types"
 
 export type UserMetadata = { avatar_url?: string | null; email?: string | null; name?: string | null }
+
+export type UserAccount = {
+	account_id: string
+	name?: string | null
+	personal_account?: boolean | null
+}
+
 export type UserContext = {
 	claims: JwtPayload | null
 	account_id: string
@@ -12,6 +19,7 @@ export type UserContext = {
 	headers: Headers
 	accountSettings?: AccountSettings
 	user_settings?: UserSettings
+	accounts?: UserAccount[]
 }
 
 export const userContext = createContext<UserContext>({
