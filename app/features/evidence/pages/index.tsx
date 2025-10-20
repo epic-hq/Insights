@@ -96,6 +96,47 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const filterPersonId = url.searchParams.get("person_id") || undefined
 	const filterPersonNameParam = url.searchParams.get("person_name") || undefined
 
+	// If filtering by person, get evidence IDs from evidence_people first
+	let evidenceIdFilter: string[] | undefined
+	if (filterPersonId) {
+		const { data: personEvidence, error: peErr } = await supabase
+			.from("evidence_people")
+			.select("evidence_id")
+			.eq("project_id", projectId)
+			.eq("person_id", filterPersonId)
+		
+		if (peErr) throw new Error(`Failed to load evidence for person: ${peErr.message}`)
+		evidenceIdFilter = personEvidence?.map(pe => pe.evidence_id) || []
+		
+		if (evidenceIdFilter.length === 0) {
+			return { evidence: [], filteredByPerson: filterPersonId }
+		}
+	}
+
+	// If filtering by research question, get evidence IDs from project_answer_evidence
+	if (rqId) {
+		const { data: evidenceIds, error: linkError } = await supabase
+			.from("project_answer_evidence")
+			.select("evidence_id, project_answers!inner(research_question_id)")
+			.eq("project_answers.research_question_id", rqId)
+			.eq("project_id", projectId)
+
+		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
+
+		const rqEvidenceIds = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || []
+		
+		// Intersect with person filter if both are present
+		if (evidenceIdFilter) {
+			evidenceIdFilter = evidenceIdFilter.filter(id => rqEvidenceIds.includes(id))
+		} else {
+			evidenceIdFilter = rqEvidenceIds
+		}
+		
+		if (evidenceIdFilter.length === 0) {
+			return { evidence: [], filteredByRQ: rqId, filteredByPerson: filterPersonId }
+		}
+	}
+
 	let query = supabase
 		.from("evidence")
 		.select(
@@ -124,23 +165,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		)
 		.eq("project_id", projectId)
 
-	// If filtering by research question, join through project_answer_evidence -> project_answers
-	if (rqId) {
-		const { data: evidenceIds, error: linkError } = await supabase
-			.from("project_answer_evidence")
-			.select("evidence_id, project_answers!inner(research_question_id)")
-			.eq("project_answers.research_question_id", rqId)
-			.eq("project_id", projectId)
-
-		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
-
-		const ids = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || []
-		if (ids.length === 0) {
-			// No evidence linked to this research question
-			return { evidence: [], filteredByRQ: rqId }
-		}
-
-		query = query.in("id", ids)
+	// Apply evidence ID filter if we have one from person or RQ filtering
+	if (evidenceIdFilter) {
+		query = query.in("id", evidenceIdFilter)
 	}
 
 	// Apply simple filters
@@ -226,9 +253,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const filteredRows = filterPersonId
 		? rows.filter((row) => {
-				const people = peopleByEvidence.get(row.id) ?? []
-				return people.some((person) => person.id === filterPersonId)
-		  })
+			const people = peopleByEvidence.get(row.id) ?? []
+			return people.some((person) => person.id === filterPersonId)
+		})
 		: rows
 
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({

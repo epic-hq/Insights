@@ -56,7 +56,15 @@ export function getR2KeyFromPublicUrl(fullUrl: string): string | null {
 			return null
 		}
 
-		const remainder = withoutQuery.slice(normalizedBase.length).replace(/^\/+/, "")
+		let remainder = withoutQuery.slice(normalizedBase.length).replace(/^\/+/, "")
+
+		// Strip bucket name prefix if present (e.g., "upsight-usermedia/interviews/..." → "interviews/...")
+		// This handles cases where R2_PUBLIC_BASE_URL includes the bucket in the path
+		const bucketPrefix = `${config.bucket}/`
+		if (remainder.startsWith(bucketPrefix)) {
+			remainder = remainder.slice(bucketPrefix.length)
+		}
+
 		return remainder ? decodeURIComponent(remainder) : null
 	} catch {
 		return null
@@ -331,16 +339,16 @@ async function uploadPart({
 		} catch (error) {
 			const isLastAttempt = attempt === MAX_PART_RETRIES
 			consola.error(`Part ${partNumber} attempt ${attempt}/${MAX_PART_RETRIES} failed:`, error)
-			
+
 			if (!isLastAttempt) {
 				// Exponential backoff: 1s, 2s, 4s
-				const backoffMs = Math.pow(2, attempt - 1) * 1000
+				const backoffMs = 2 ** (attempt - 1) * 1000
 				consola.log(`Retrying part ${partNumber} in ${backoffMs}ms...`)
-				await new Promise(resolve => setTimeout(resolve, backoffMs))
+				await new Promise((resolve) => setTimeout(resolve, backoffMs))
 			}
 		}
 	}
-	
+
 	consola.error(`Part ${partNumber} failed after ${MAX_PART_RETRIES} attempts`)
 	return null
 }
@@ -421,8 +429,8 @@ async function uploadPartAttempt({
 		return { PartNumber: partNumber, ETag: etag }
 	} catch (error) {
 		clearTimeout(timeoutId)
-		
-		if (error instanceof Error && error.name === 'AbortError') {
+
+		if (error instanceof Error && error.name === "AbortError") {
 			consola.error(`Part ${partNumber} timed out after ${PART_UPLOAD_TIMEOUT}ms`)
 		}
 		throw error
@@ -449,7 +457,9 @@ async function completeMultipartUpload({
 
 	// Build XML body
 	const sortedParts = parts.sort((a, b) => a.PartNumber - b.PartNumber)
-	const xmlParts = sortedParts.map((p) => `<Part><PartNumber>${p.PartNumber}</PartNumber><ETag>${p.ETag}</ETag></Part>`).join("")
+	const xmlParts = sortedParts
+		.map((p) => `<Part><PartNumber>${p.PartNumber}</PartNumber><ETag>${p.ETag}</ETag></Part>`)
+		.join("")
 	const xmlBody = `<CompleteMultipartUpload>${xmlParts}</CompleteMultipartUpload>`
 
 	const now = new Date()
@@ -532,9 +542,14 @@ async function abortMultipartUpload({
 		.sort()
 		.join(";")
 
-	const canonicalRequest = ["DELETE", requestPath, queryString, canonicalHeaders, signedHeaders, "UNSIGNED-PAYLOAD"].join(
-		"\n"
-	)
+	const canonicalRequest = [
+		"DELETE",
+		requestPath,
+		queryString,
+		canonicalHeaders,
+		signedHeaders,
+		"UNSIGNED-PAYLOAD",
+	].join("\n")
 	const credentialScope = `${dateStamp}/${region}/s3/aws4_request`
 	const stringToSign = ["AWS4-HMAC-SHA256", amzDate, credentialScope, hashHex(canonicalRequest)].join("\n")
 
