@@ -19,11 +19,7 @@ async function investigatePersonFacets(personId: string) {
 	console.log(`\n🔍 Investigating facets for person: ${personId}\n`)
 
 	// Get person details
-	const { data: person, error: personError } = await supabase
-		.from("people")
-		.select("*")
-		.eq("id", personId)
-		.single()
+	const { data: person, error: personError } = await supabase.from("people").select("*").eq("id", personId).single()
 
 	if (personError) {
 		console.error("❌ Error fetching person:", personError)
@@ -58,7 +54,7 @@ async function investigatePersonFacets(personId: string) {
 			acc[facet.facet_ref].push(facet)
 			return acc
 		},
-		{} as Record<string, typeof facets>,
+		{} as Record<string, typeof facets>
 	)
 
 	console.log("📋 Facets grouped by reference:\n")
@@ -91,7 +87,7 @@ async function investigatePersonFacets(personId: string) {
 			acc[facet.source] = (acc[facet.source] || 0) + 1
 			return acc
 		},
-		{} as Record<string, number>,
+		{} as Record<string, number>
 	)
 
 	console.log("📈 Facets by source:")

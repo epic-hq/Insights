@@ -31,8 +31,12 @@ async function parse_account_id_from_params({
 	supabase: SupabaseClient
 	userAccounts?: Array<{ account_id: string; slug: string | null }>
 }) {
-	consola.log("parse_account_id_from_params:", { account_id_or_slug, hasUserAccounts: !!userAccounts, userAccountsCount: userAccounts?.length })
-	
+	consola.log("parse_account_id_from_params:", {
+		account_id_or_slug,
+		hasUserAccounts: !!userAccounts,
+		userAccountsCount: userAccounts?.length,
+	})
+
 	// If UUID, validate against user's accounts and return the account
 	if (isUUID(account_id_or_slug || "")) {
 		// Validate user has access to this account
@@ -46,7 +50,7 @@ async function parse_account_id_from_params({
 			// Return the account ID - the account object will be loaded from userContext
 			return { account_id: account_id_or_slug }
 		}
-		
+
 		consola.warn("No userAccounts available, falling back to database query")
 		// Fallback: query database if userAccounts not available
 		const accountQuery = supabase.schema("accounts").from("accounts").select("*").eq("id", account_id_or_slug)
@@ -57,7 +61,7 @@ async function parse_account_id_from_params({
 		}
 		return account
 	}
-	
+
 	// If slug, look up in user's accounts first
 	if (userAccounts) {
 		const account = userAccounts.find((acc) => acc.slug === account_id_or_slug)
@@ -65,7 +69,7 @@ async function parse_account_id_from_params({
 			return { account_id: account.account_id }
 		}
 	}
-	
+
 	// Fallback to RPC for slug lookup
 	const getAccountBySlugResponse = await supabase.rpc("get_account_by_slug", {
 		slug: account_id_or_slug,
@@ -97,12 +101,12 @@ export const middleware: Route.MiddlewareFunction[] = [
 				account_id: acc.account_id,
 				slug: acc.slug,
 			}))
-			
-			consola.log("_protected/accounts middleware:", { 
-				account_id_or_slug, 
+
+			consola.log("_protected/accounts middleware:", {
+				account_id_or_slug,
 				hasAccounts: !!ctx.accounts,
 				accountsCount: ctx.accounts?.length,
-				userAccountsCount: userAccounts?.length 
+				userAccountsCount: userAccounts?.length,
 			})
 
 			const parsed_account = await parse_account_id_from_params({

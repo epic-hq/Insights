@@ -156,19 +156,19 @@ export default function OnboardingFlow({
 				if (result.interview?.id && result.project?.id) {
 					// Use accountId from props, or extract from API response if available
 					const finalAccountId = accountId || result.interview?.account_id || result.project?.account_id
-					console.log("OnboardingFlow redirect:", { 
-						accountId, 
+					console.log("OnboardingFlow redirect:", {
+						accountId,
 						finalAccountId,
 						projectId: result.project.id,
-						interviewId: result.interview.id 
+						interviewId: result.interview.id,
 					})
-					
+
 					if (!finalAccountId) {
 						console.error("No accountId available for redirect!")
 						// Don't redirect if we don't have an accountId
 						return
 					}
-					
+
 					const interviewUrl = `/a/${finalAccountId}/${result.project.id}/interviews/${result.interview.id}`
 					console.log("Redirecting to:", interviewUrl)
 					window.location.href = interviewUrl
@@ -305,7 +305,9 @@ export default function OnboardingFlow({
 				)
 
 			case "upload":
-				return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} error={data.error} />
+				return (
+					<UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} error={data.error} />
+				)
 
 			case "processing":
 				return (

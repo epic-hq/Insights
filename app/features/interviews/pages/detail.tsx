@@ -1198,7 +1198,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 														<div className="flex items-center gap-2">
 															<Link
 																to={`${routes.evidence.index()}?${evidenceQuery.toString()}`}
-																className="text-xs font-medium text-blue-600 hover:text-blue-800"
+																className="font-medium text-blue-600 text-xs hover:text-blue-800"
 															>
 																View evidence
 															</Link>

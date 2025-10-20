@@ -104,10 +104,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.select("evidence_id")
 			.eq("project_id", projectId)
 			.eq("person_id", filterPersonId)
-		
+
 		if (peErr) throw new Error(`Failed to load evidence for person: ${peErr.message}`)
-		evidenceIdFilter = personEvidence?.map(pe => pe.evidence_id) || []
-		
+		evidenceIdFilter = personEvidence?.map((pe) => pe.evidence_id) || []
+
 		if (evidenceIdFilter.length === 0) {
 			return { evidence: [], filteredByPerson: filterPersonId }
 		}
@@ -124,14 +124,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (linkError) throw new Error(`Failed to load evidence links: ${linkError.message}`)
 
 		const rqEvidenceIds = evidenceIds?.map((link) => link.evidence_id).filter((id): id is string => Boolean(id)) || []
-		
+
 		// Intersect with person filter if both are present
 		if (evidenceIdFilter) {
-			evidenceIdFilter = evidenceIdFilter.filter(id => rqEvidenceIds.includes(id))
+			evidenceIdFilter = evidenceIdFilter.filter((id) => rqEvidenceIds.includes(id))
 		} else {
 			evidenceIdFilter = rqEvidenceIds
 		}
-		
+
 		if (evidenceIdFilter.length === 0) {
 			return { evidence: [], filteredByRQ: rqId, filteredByPerson: filterPersonId }
 		}
@@ -253,9 +253,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const filteredRows = filterPersonId
 		? rows.filter((row) => {
-			const people = peopleByEvidence.get(row.id) ?? []
-			return people.some((person) => person.id === filterPersonId)
-		})
+				const people = peopleByEvidence.get(row.id) ?? []
+				return people.some((person) => person.id === filterPersonId)
+			})
 		: rows
 
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
@@ -266,9 +266,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	return {
 		evidence: enriched,
 		filteredByRQ: rqId,
-		filteredByPerson: filterPersonId
-			? { id: filterPersonId, name: filteredPersonName }
-			: null,
+		filteredByPerson: filterPersonId ? { id: filterPersonId, name: filteredPersonName } : null,
 	}
 }
 

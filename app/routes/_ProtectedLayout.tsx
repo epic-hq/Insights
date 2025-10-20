@@ -18,7 +18,7 @@ export const middleware: Route.MiddlewareFunction[] = [
 	async ({ request, context, params }) => {
 		try {
 			const user = await getAuthenticatedUser(request)
-			consola.log("middleware user", user?.aud, ': ', user?.sub, ': ', user?.email)
+			consola.log("middleware user", user?.aud, ": ", user?.sub, ": ", user?.email)
 			if (!user) {
 				throw redirect("/login")
 			}

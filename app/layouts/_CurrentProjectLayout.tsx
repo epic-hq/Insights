@@ -34,7 +34,7 @@ async function parse_account_id_from_params({
 		}
 		return account_id_or_slug
 	}
-	
+
 	// If slug, look up in user's accounts first
 	if (userAccounts) {
 		const account = userAccounts.find((acc) => acc.slug === account_id_or_slug)
@@ -42,7 +42,7 @@ async function parse_account_id_from_params({
 			return account.account_id
 		}
 	}
-	
+
 	// Fallback to RPC for slug lookup
 	const getAccountIdResponse = await supabase.rpc("get_account_by_slug", {
 		slug: account_id_or_slug,

@@ -58,12 +58,15 @@ export const getInterviews = async ({
 		.from("evidence")
 		.select("interview_id")
 		.eq("project_id", projectId)
-		.in("interview_id", interviews.map(i => i.id))
+		.in(
+			"interview_id",
+			interviews.map((i) => i.id)
+		)
 
 	// Build a map of interview_id -> evidence count
 	const evidenceCountMap = new Map<string, number>()
 	if (evidenceCounts) {
-		evidenceCounts.forEach(e => {
+		evidenceCounts.forEach((e) => {
 			if (e.interview_id) {
 				evidenceCountMap.set(e.interview_id, (evidenceCountMap.get(e.interview_id) || 0) + 1)
 			}
@@ -71,7 +74,7 @@ export const getInterviews = async ({
 	}
 
 	// Attach evidence counts to interviews
-	const interviewsWithCounts = interviews.map(interview => ({
+	const interviewsWithCounts = interviews.map((interview) => ({
 		...interview,
 		evidence_count: evidenceCountMap.get(interview.id) || 0,
 	}))

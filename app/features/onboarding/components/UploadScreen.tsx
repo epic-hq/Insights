@@ -108,13 +108,20 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 							<div className="flex items-start gap-3">
 								<div className="flex-shrink-0">
 									<svg className="h-5 w-5 text-red-500" viewBox="0 0 20 20" fill="currentColor">
-										<path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
+										<path
+											fillRule="evenodd"
+											d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z"
+											clipRule="evenodd"
+										/>
 									</svg>
 								</div>
 								<div className="flex-1">
 									<h3 className="font-semibold text-red-500 text-sm">Upload Failed</h3>
 									<p className="mt-1 text-red-400 text-sm">{error}</p>
-									<p className="mt-2 text-red-300 text-xs">Please try uploading your file again. If the problem persists, try a smaller file or contact support.</p>
+									<p className="mt-2 text-red-300 text-xs">
+										Please try uploading your file again. If the problem persists, try a smaller file or contact
+										support.
+									</p>
 								</div>
 							</div>
 						</div>

@@ -4,9 +4,9 @@
 // is accessible via `~/../baml_client`.
 // Import BAML client - this file is server-only so it's safe to import directly
 
+import { createHash } from "node:crypto"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import { createHash } from "node:crypto"
 import posthog from "posthog-js"
 import { b } from "~/../baml_client"
 import type {
@@ -571,7 +571,7 @@ export async function extractEvidenceAndPeopleCore({
 	// Phase 2: Derive Persona Facets from Evidence
 	// ═══════════════════════════════════════════════════════════════
 	let personaSynthesis: PersonaSynthesisFromBaml | null = null
-	let personaFacetsByPersonKey = new Map<string, PersonaSynthesisFromBaml["persona_facets"]>()
+	const personaFacetsByPersonKey = new Map<string, PersonaSynthesisFromBaml["persona_facets"]>()
 
 	try {
 		consola.log("🧠 Running Phase 2: Persona synthesis from evidence...")
@@ -615,10 +615,7 @@ export async function extractEvidenceAndPeopleCore({
 			)
 		}
 	} catch (synthesisError) {
-		consola.warn(
-			"⚠️  Phase 2 persona synthesis failed; falling back to Phase 1 raw mentions",
-			synthesisError
-		)
+		consola.warn("⚠️  Phase 2 persona synthesis failed; falling back to Phase 1 raw mentions", synthesisError)
 		// Continue with raw mentions if synthesis fails
 	}
 
@@ -1043,27 +1040,27 @@ export async function extractEvidenceAndPeopleCore({
 		}
 	}
 
-const resolveName = (
-	participant: NormalizedParticipant,
-	index: number
-): { name: string; source: NameResolutionSource } => {
-	const candidates: Array<{ value: string | null | undefined; source: NameResolutionSource }> = [
-		{ value: participant.display_name, source: "display" },
-		{ value: participant.inferred_name, source: "inferred" },
-		{ value: participant.person_key ? humanizeKey(participant.person_key) : null, source: "person_key" },
-		{ value: metadata.participantName, source: "metadata" },
-		{ value: metadata.interviewerName, source: "metadata" },
-	]
-	for (const candidate of candidates) {
-		if (typeof candidate.value === "string") {
-			const trimmed = candidate.value.trim()
-			if (trimmed.length) {
-				return { name: trimmed, source: candidate.source }
+	const resolveName = (
+		participant: NormalizedParticipant,
+		index: number
+	): { name: string; source: NameResolutionSource } => {
+		const candidates: Array<{ value: string | null | undefined; source: NameResolutionSource }> = [
+			{ value: participant.display_name, source: "display" },
+			{ value: participant.inferred_name, source: "inferred" },
+			{ value: participant.person_key ? humanizeKey(participant.person_key) : null, source: "person_key" },
+			{ value: metadata.participantName, source: "metadata" },
+			{ value: metadata.interviewerName, source: "metadata" },
+		]
+		for (const candidate of candidates) {
+			if (typeof candidate.value === "string") {
+				const trimmed = candidate.value.trim()
+				if (trimmed.length) {
+					return { name: trimmed, source: candidate.source }
+				}
 			}
 		}
+		return { name: `Participant ${index + 1}`, source: "fallback" }
 	}
-	return { name: `Participant ${index + 1}`, source: "fallback" }
-}
 
 	const upsertPerson = async (
 		name: string,
@@ -1125,9 +1122,7 @@ const resolveName = (
 			personNameByKey.set(participantKey, personRecord.name)
 			keyByPersonId.set(personRecord.id, participantKey)
 			const preferredDisplayName =
-				participant.display_name?.trim() ||
-				(needsHash ? resolved.name : personRecord.name) ||
-				null
+				participant.display_name?.trim() || (needsHash ? resolved.name : personRecord.name) || null
 			if (preferredDisplayName) {
 				displayNameByKey.set(participantKey, preferredDisplayName)
 			}

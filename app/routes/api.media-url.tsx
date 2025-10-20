@@ -1,6 +1,6 @@
 import type { LoaderFunctionArgs } from "react-router"
-import { createR2PresignedUrl } from "~/utils/r2.server"
 import { userContext } from "~/server/user-context"
+import { createR2PresignedUrl } from "~/utils/r2.server"
 
 /**
  * Generate a fresh presigned URL for accessing media files in R2
@@ -38,9 +38,6 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 		})
 	} catch (error) {
 		console.error("Failed to generate media URL:", error)
-		return Response.json(
-			{ error: error instanceof Error ? error.message : "Unknown error" },
-			{ status: 500 }
-		)
+		return Response.json({ error: error instanceof Error ? error.message : "Unknown error" }, { status: 500 })
 	}
 }
