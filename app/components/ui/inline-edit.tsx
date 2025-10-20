@@ -166,7 +166,9 @@ export default function InlineEdit({
 			)}
 		>
 			{markdown ? (
-				<Streamdown>{value || placeholder}</Streamdown>
+				<Streamdown className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
+					{value || placeholder}
+				</Streamdown>
 			) : (
 				<TextComponent className={cn("min-w-0 text-gray-800", showEditButton ? "flex-1" : "w-full", textClassName)}>
 					{multiline ? (

@@ -1,5 +1,3 @@
-"use client"
-
 import { cva, type VariantProps } from "class-variance-authority"
 import {
 	AlertCircle,
@@ -89,8 +87,8 @@ const timelineIconVariants = cva(
 
 export interface TimelineItem {
 	id: string
-	title: string
-	description?: string
+	title: React.ReactNode
+	description?: React.ReactNode
 	timestamp?: string | Date
 	status?: "default" | "completed" | "active" | "pending" | "error"
 	icon?: React.ReactNode
@@ -630,3 +628,26 @@ export function ExtendedHorizontalTimelineExample() {
 }
 
 export { timelineVariants, timelineItemVariants, timelineConnectorVariants, timelineIconVariants }
+export default function TimelineExamplesPage() {
+	return (
+		<div className="p-4">
+			<h1 className="mb-4 font-bold text-xl">Timeline Examples</h1>
+			<h2 className="font-semibold text-lg">Basic Timeline Example</h2>
+			<BasicTimelineExample />
+			<h2 className="font-semibold text-lg">Compact Timeline Example</h2>
+			<CompactTimelineExample />
+			<h2 className="font-semibold text-lg">Extended Horizontal Timeline Example</h2>
+			<ExtendedHorizontalTimelineExample />
+			<h2 className="font-semibold text-lg">Timeline with Custom Icons Example</h2>
+			<TimelineWithCustomIconsExample />
+			<h2 className="font-semibold text-lg">Project Timeline Example</h2>
+			<ProjectTimelineExample />
+			<h2 className="font-semibold text-lg">Timeline Variants Example</h2>
+			<TimelineVariantsExample />
+			<h2 className="font-semibold text-lg">Timeline With Content Example</h2>
+			<TimelineWithContentExample />
+			<h2 className="font-semibold text-lg">Horizontal Timeline Example</h2>
+			<HorizontalTimelineExample />
+		</div>
+	)
+}

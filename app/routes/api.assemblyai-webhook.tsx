@@ -1,6 +1,8 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
+import type { LangfuseTraceClient } from "langfuse"
 import type { Database, Json } from "~/../supabase/types"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -18,10 +20,16 @@ interface AssemblyAIWebhookPayload {
 	}
 }
 
+type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
+
+	const langfuse = getLangfuseClient()
+	let trace: LangfuseTraceClient | undefined
+	let traceEndPayload: TraceEndPayload | undefined
 
 	try {
 		const payload: AssemblyAIWebhookPayload = await request.json()
@@ -30,10 +38,28 @@ export async function action({ request }: ActionFunctionArgs) {
 			status: payload.status,
 		})
 
+		trace = (langfuse as any).trace?.({
+			name: "webhook.assemblyai",
+			metadata: {
+				transcriptId: payload.transcript_id,
+				status: payload.status,
+			},
+			input: {
+				hasText: Boolean(payload.text),
+				audioDuration: payload.audio_duration ?? null,
+			},
+		})
+
 		// Use admin client for webhook operations (no user context)
 		const supabase = createSupabaseAdminClient()
 
 		// Find the upload job by AssemblyAI transcript ID
+		const fetchUploadJobSpan = trace?.span?.({
+			name: "supabase.upload-job.fetch",
+			metadata: {
+				transcriptId: payload.transcript_id,
+			},
+		})
 		const { data: uploadJob, error: uploadJobError } = await supabase
 			.from("upload_jobs")
 			.select("*")
@@ -47,12 +73,41 @@ export async function action({ request }: ActionFunctionArgs) {
 				hasServiceRole: !!process.env.SUPABASE_SERVICE_ROLE_KEY,
 				supabaseUrl: process.env.SUPABASE_URL,
 			})
+			fetchUploadJobSpan?.end?.({
+				level: "ERROR",
+				statusMessage: uploadJobError?.message ?? "Upload job not found",
+			})
+			traceEndPayload = { level: "ERROR", statusMessage: "Upload job not found" }
 			return Response.json({ error: "Upload job not found" }, { status: 404 })
 		}
+		fetchUploadJobSpan?.end?.({
+			output: {
+				uploadJobId: uploadJob.id,
+				interviewId: uploadJob.interview_id,
+				status: uploadJob.status,
+			},
+		})
+		trace?.update?.({
+			metadata: {
+				interviewId: uploadJob.interview_id,
+			},
+		})
 
 		// Idempotency check - prevent duplicate processing
 		if (uploadJob.status === "done") {
 			consola.log("Upload job already processed, skipping:", payload.transcript_id)
+			trace?.event?.({
+				name: "upload-job.already-processed",
+				metadata: {
+					uploadJobId: uploadJob.id,
+				},
+			})
+			traceEndPayload = {
+				output: {
+					uploadJobId: uploadJob.id,
+					status: "already_processed",
+				},
+			}
 			return Response.json({ success: true, message: "Already processed" })
 		}
 
@@ -62,21 +117,41 @@ export async function action({ request }: ActionFunctionArgs) {
 			// Fetch full transcript data from AssemblyAI
 			const apiKey = process.env.ASSEMBLYAI_API_KEY
 			if (!apiKey) {
+				traceEndPayload = { level: "ERROR", statusMessage: "AssemblyAI API key not configured" }
 				throw new Error("AssemblyAI API key not configured")
 			}
 
 			consola.log("AssemblyAI Webhook: Fetching transcript data for transcript:", payload.transcript_id)
 
+			const transcriptFetchSpan = trace?.span?.({
+				name: "assembly.transcript.fetch",
+				metadata: {
+					transcriptId: payload.transcript_id,
+					interviewId,
+				},
+			})
 			const transcriptResp = await fetch(`https://api.assemblyai.com/v2/transcript/${payload.transcript_id}`, {
 				headers: { Authorization: apiKey },
 			})
 
 			if (!transcriptResp.ok) {
-				throw new Error(`Failed to fetch transcript: ${transcriptResp.status}`)
+				const statusMessage = `Failed to fetch transcript: ${transcriptResp.status}`
+				transcriptFetchSpan?.end?.({
+					level: "ERROR",
+					statusMessage,
+				})
+				traceEndPayload = { level: "ERROR", statusMessage }
+				throw new Error(statusMessage)
 			}
 
 			const transcriptData = await transcriptResp.json()
 			consola.log("AssemblyAI Webhook: Retrieved transcript data, length:", transcriptData.text?.length || 0)
+			transcriptFetchSpan?.end?.({
+				output: {
+					length: transcriptData.text?.length ?? 0,
+					audioDuration: transcriptData.audio_duration ?? null,
+				},
+			})
 
 			// Audio file already stored at upload time in onboarding flow
 			// No need to download from AssemblyAI since we have the original file in Cloudflare R2
@@ -133,13 +208,27 @@ export async function action({ request }: ActionFunctionArgs) {
 					customInstructions,
 					adminClient: supabase,
 					initiatingUserId: uploadJob?.created_by ?? null,
+					langfuseParent: trace,
 				})
 
-				consola.log("Successfully processed analysis for interview:", interviewId)
+				consola.log("createAndProcessAnalysisJob for interview:", interviewId)
+				trace?.event?.({
+					name: "analysis.processed",
+					metadata: {
+						interviewId,
+					},
+				})
 			} catch (analysisError) {
-				consola.error("Analysis processing failed:", analysisError)
+				consola.error("createAndProcessAnalysisJob failed:", analysisError)
 				// Continue webhook processing - don't fail the webhook for analysis errors
 				consola.log("Webhook completed despite analysis error")
+				trace?.event?.({
+					name: "analysis.process.error",
+					metadata: {
+						interviewId,
+						message: analysisError instanceof Error ? analysisError.message : String(analysisError),
+					},
+				})
 			}
 		} else if (payload.status === "failed" || payload.status === "error") {
 			// Handle transcription failure
@@ -164,12 +253,21 @@ export async function action({ request }: ActionFunctionArgs) {
 				.eq("id", uploadJob.id)
 		}
 
+		traceEndPayload = {
+			output: {
+				interviewId,
+				transcriptId: payload.transcript_id,
+				status: payload.status,
+			},
+		}
+
 		return Response.json({ success: true })
 	} catch (error) {
 		consola.error("AssemblyAI webhook processing failed:", error)
-		return Response.json(
-			{ error: error instanceof Error ? error.message : "Webhook processing failed" },
-			{ status: 500 }
-		)
+		const message = error instanceof Error ? error.message : "Webhook processing failed"
+		traceEndPayload = { level: "ERROR", statusMessage: message }
+		return Response.json({ error: message }, { status: 500 })
+	} finally {
+		trace?.end?.(traceEndPayload)
 	}
 }

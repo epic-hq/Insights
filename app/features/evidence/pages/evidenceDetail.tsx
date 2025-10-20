@@ -85,7 +85,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const transformedEvidence = {
 		...data,
 		// If anchor override is provided, use it instead of stored anchors
-		anchors: anchorOverride ? [anchorOverride] : data.anchors,
+		anchors: anchorOverride
+			? [anchorOverride, ...(Array.isArray(data.anchors) ? (data.anchors as any[]) : [])]
+			: data.anchors,
 		people: peopleRows.map((row) => ({
 			id: row.person.id,
 			name: row.person.name,
@@ -94,14 +96,31 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		})),
 	}
 
+	// Related evidence in the same scene/topic
+	let relatedEvidence: Array<any> = []
+	const topic = transformedEvidence.topic as string | null
+	const interviewId = transformedEvidence.interview_id as string | null
+	if (topic && interviewId) {
+		const { data: related, error: relatedError } = await supabase
+			.from("evidence")
+			.select("id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, kind_tags, method, anchors, interview_id")
+			.eq("interview_id", interviewId)
+			.eq("topic", topic)
+			.neq("id", evidenceId)
+			.order("created_at", { ascending: true })
+			.limit(20)
+		if (!relatedError && Array.isArray(related)) relatedEvidence = related
+	}
+
 	return {
 		evidence: transformedEvidence,
+		relatedEvidence,
 		anchorFromUrl: anchorOverride,
 	}
 }
 
 export default function EvidenceDetail() {
-	const { evidence } = useLoaderData<typeof loader>()
+	const { evidence, relatedEvidence } = useLoaderData<typeof loader>()
 	const interview = evidence.interview
 
 	return (
@@ -126,6 +145,20 @@ export default function EvidenceDetail() {
 					showInterviewLink={true}
 				/>
 			</PageContainer>
+
+			{/* Related evidence in this topic */}
+			{Array.isArray(relatedEvidence) && relatedEvidence.length > 0 && (
+				<PageContainer size="sm" padded={false} className="max-w-2xl">
+					<div className="mt-2 space-y-3">
+						<p className="text-muted-foreground text-sm">Related in this topic</p>
+						<div className="space-y-2">
+							{relatedEvidence.map((ev: any) => (
+								<EvidenceCard key={ev.id} evidence={ev} variant="mini" />
+							))}
+						</div>
+					</div>
+				</PageContainer>
+			)}
 		</div>
 	)
 }

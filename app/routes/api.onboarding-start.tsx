@@ -1,13 +1,16 @@
 import type { UUID } from "node:crypto"
 import consola from "consola"
 import { format } from "date-fns"
+import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
 import type { ActionFunctionArgs } from "react-router"
 import { deriveProjectNameDescription } from "~/features/onboarding/server/signup-derived-project"
 import { createProject } from "~/features/projects/db"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
+import { getLangfuseClient } from "~/lib/langfuse.server"
 import { createSupabaseAdminClient, getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
 import { PRODUCTION_HOST } from "~/paths"
 import type { InterviewInsert } from "~/types"
+import { createAndProcessAnalysisJob } from "~/utils/processInterviewAnalysis.server"
 import { storeAudioFile } from "~/utils/storeAudioFile.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -35,10 +38,17 @@ type NewOnboardingData = {
 
 type OnboardingData = LegacyOnboardingData | NewOnboardingData
 
+type TraceEndPayload = Parameters<LangfuseTraceClient["end"]>[0]
+
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
 		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
+
+	const langfuse = getLangfuseClient()
+	let trace: LangfuseTraceClient | undefined
+	let traceEndPayload: TraceEndPayload | undefined
+	let triggerRunInfo: { runId: string; publicToken: string | null } | null = null
 
 	try {
 		// Get authenticated user and their team account
@@ -77,6 +87,20 @@ export async function action({ request }: ActionFunctionArgs) {
 		const onboardingDataStr = formData.get("onboardingData") as string
 		const projectId = formData.get("projectId") as UUID
 
+		trace = (langfuse as any).trace?.({
+			name: "api.onboarding-start",
+			userId: user.sub,
+			metadata: {
+				accountId: teamAccountId,
+				providedProjectId: projectId ?? null,
+			},
+			input: {
+				file: file ? { name: file.name, size: file.size, type: file.type } : null,
+				onboardingDataProvided: Boolean(onboardingDataStr),
+				projectId: projectId ?? null,
+			},
+		})
+
 		// Detailed logging for debugging
 		consola.log("=== ONBOARDING START DEBUG ===")
 		consola.log("user.sub:", user.sub)
@@ -88,14 +112,22 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		if (!file) {
 			consola.error("Missing file")
+			traceEndPayload = { level: "ERROR", statusMessage: "Missing file" }
 			return Response.json({ error: "Missing file" }, { status: 400 })
 		}
 		if (!onboardingDataStr) {
 			consola.error("Missing onboardingData")
+			traceEndPayload = { level: "ERROR", statusMessage: "Missing onboardingData" }
 			return Response.json({ error: "Missing onboardingData" }, { status: 400 })
 		}
 
 		const onboardingData: OnboardingData = JSON.parse(onboardingDataStr)
+		trace?.update?.({
+			metadata: {
+				mediaType: onboardingData.mediaType,
+				questionCount: Array.isArray(onboardingData.questions) ? onboardingData.questions.length : 0,
+			},
+		})
 
 		consola.log("Starting onboarding for account:", teamAccountId, "project:", projectId)
 
@@ -120,6 +152,13 @@ export async function action({ request }: ActionFunctionArgs) {
 		let finalProjectId = projectId
 
 		if (!projectId) {
+			let projectSpan: LangfuseSpanClient | undefined
+			projectSpan = trace?.span?.({
+				name: "project.ensure",
+				metadata: {
+					accountId: teamAccountId,
+				},
+			})
 			// Prefer signup-data derived values
 			let baseProjectName = researchGoal || `${primaryRole} at ${primaryOrg} Research`
 			let projectDescription = `Research project for ${primaryRole} at ${primaryOrg}. Goal: ${researchGoal}`
@@ -127,7 +166,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const derived = await deriveProjectNameDescription({ supabase, userId: user.sub })
 				baseProjectName = derived.name || baseProjectName
 				projectDescription = derived.description || projectDescription
-			} catch {}
+			} catch { }
 
 			// Find available project name by checking for slug conflicts
 			let projectName = baseProjectName
@@ -160,11 +199,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			if (projectError || !project) {
 				consola.error("Project creation failed:", projectError)
+				projectSpan?.end?.({
+					level: "ERROR",
+					statusMessage: projectError?.message ?? "Failed to create project",
+				})
+				traceEndPayload = {
+					level: "ERROR",
+					statusMessage: "Failed to create project",
+				}
 				return Response.json({ error: "Failed to create project" }, { status: 500 })
 			}
 
 			finalProjectId = project.id as UUID
 			consola.log("Created new project:", project.id)
+			projectSpan?.end?.({
+				output: { projectId: finalProjectId },
+			})
+			trace?.update?.({ metadata: { projectId: finalProjectId } })
 
 			// Create project sections for onboarding data (snake_case friendly)
 			const projectSections = [
@@ -205,7 +256,16 @@ export async function action({ request }: ActionFunctionArgs) {
 				// Continue anyway - project is created, sections are bonus
 			} else {
 				consola.log("Created project sections for onboarding data")
+				trace?.event?.({
+					name: "project.sections.created",
+					metadata: {
+						projectId: finalProjectId,
+						sectionCount: projectSections.length,
+					},
+				})
 			}
+		} else {
+			trace?.update?.({ metadata: { projectId } })
 		}
 
 		// 2. Create interview record with initial status
@@ -231,6 +291,18 @@ Please extract insights that specifically address these research questions and h
 			status: "uploaded", // Starting status for pipeline
 		} as InterviewInsert
 
+		const interviewSpan = trace?.span?.({
+			name: "interview.create",
+			metadata: {
+				projectId: finalProjectId,
+				accountId: teamAccountId,
+			},
+			input: {
+				fileName: file.name,
+				mediaType: mediaTypeInput,
+			},
+		})
+
 		const { data: interview, error: interviewError } = await supabase
 			.from("interviews")
 			.insert(interviewData)
@@ -239,8 +311,26 @@ Please extract insights that specifically address these research questions and h
 
 		if (interviewError || !interview) {
 			consola.error("Interview creation failed:", interviewError)
+			interviewSpan?.end?.({
+				level: "ERROR",
+				statusMessage: interviewError?.message ?? "Failed to create interview",
+			})
+			traceEndPayload = {
+				level: "ERROR",
+				statusMessage: "Failed to create interview",
+			}
 			return Response.json({ error: "Failed to create interview" }, { status: 500 })
 		}
+		interviewSpan?.end?.({
+			output: {
+				interviewId: interview.id,
+			},
+		})
+		trace?.update?.({
+			metadata: {
+				interviewId: interview.id,
+			},
+		})
 
 		await createPlannedAnswersForInterview(supabase, {
 			projectId: finalProjectId,
@@ -259,8 +349,24 @@ Please extract insights that specifically address these research questions and h
 		if (isTextFile) {
 			// Handle text files immediately - no upload needed
 			const textContent = await file.text()
+			const textSpan = trace?.span?.({
+				name: "ingest.text",
+				metadata: {
+					interviewId: interview.id,
+					projectId: finalProjectId,
+				},
+				input: {
+					fileName: file.name,
+					size: file.size,
+				},
+			})
 
 			if (!textContent || textContent.trim().length === 0) {
+				textSpan?.end?.({
+					level: "ERROR",
+					statusMessage: "Text file is empty",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: "Text file is empty" }
 				return Response.json({ error: "Text file is empty" }, { status: 400 })
 			}
 
@@ -273,71 +379,172 @@ Please extract insights that specifically address these research questions and h
 				original_filename: file.name,
 			})
 
-			// Skip upload queue, go directly to analysis - use admin client to bypass RLS
-			const { error: analysisJobError } = await supabaseAdmin.from("analysis_jobs").insert({
-				interview_id: interview.id,
-				transcript_data: transcriptData,
-				custom_instructions: customInstructions,
-				status: "pending",
-			})
-
-			if (analysisJobError) {
-				consola.error("Failed to create analysis job:", analysisJobError)
+			try {
+				const runInfo = await createAndProcessAnalysisJob({
+					interviewId: interview.id,
+					transcriptData,
+					customInstructions,
+					adminClient: supabaseAdmin,
+					mediaUrl: "",
+					initiatingUserId: user.sub,
+					langfuseParent: textSpan ?? trace,
+				})
+				if (runInfo && "runId" in runInfo) {
+					triggerRunInfo = runInfo
+				}
+				textSpan?.end?.({
+					output: {
+						interviewId: interview.id,
+						transcriptLength: textContent.trim().length,
+					},
+				})
+			} catch (analysisError) {
+				const message = analysisError instanceof Error ? analysisError.message : "Failed to queue analysis"
+				consola.error("Failed to queue analysis job:", analysisError)
+				textSpan?.end?.({
+					level: "ERROR",
+					statusMessage: message,
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: message }
 				return Response.json({ error: "Failed to queue analysis" }, { status: 500 })
 			}
-
-			// Update interview status - text files skip transcription and go straight to ready
-			await supabase
-				.from("interviews")
-				.update({
-					status: "ready",
-					transcript: textContent.trim(),
-					transcript_formatted: transcriptData,
-				})
-				.eq("id", interview.id)
 		} else {
+			const audioSpan = trace?.span?.({
+				name: "ingest.audio",
+				metadata: {
+					interviewId: interview.id,
+					projectId: finalProjectId,
+				},
+				input: {
+					fileName: file.name,
+					size: file.size,
+					type: file.type,
+				},
+			})
 			// Handle audio/video files - store file first, then upload to AssemblyAI with webhook
 			const apiKey = process.env.ASSEMBLYAI_API_KEY
 			if (!apiKey) {
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: "AssemblyAI API key not configured",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: "AssemblyAI API key not configured" }
 				return Response.json({ error: "AssemblyAI API key not configured" }, { status: 500 })
 			}
 
 			// Store audio file in Cloudflare R2 first using shared utility
-			consola.log("Storing audio file in Cloudflare R2...")
-			const { mediaUrl: storedMediaUrl, error: storageError } = await storeAudioFile({
-				projectId: finalProjectId,
-				interviewId: interview.id,
-				source: file,
-				originalFilename: file.name,
-				contentType: file.type,
+			const fileBuffer = await file.arrayBuffer()
+			const fileBlob = new Blob([fileBuffer], { type: file.type })
+			const assemblyPayload = Buffer.from(fileBuffer)
+
+			consola.log("Uploading audio to R2 and AssemblyAI in parallel...")
+
+			const assemblyUploadSpan = (audioSpan ?? trace)?.span?.({
+				name: "assembly.upload",
+				metadata: {
+					interviewId: interview.id,
+				},
+				input: {
+					size: file.size,
+					type: file.type,
+				},
 			})
 
-			if (storageError || !storedMediaUrl) {
-				consola.error("Audio storage failed:", storageError)
-				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
-			}
+			const storePromise = storeAudioFile({
+				projectId: finalProjectId,
+				interviewId: interview.id,
+				source: fileBlob,
+				originalFilename: file.name,
+				contentType: file.type,
+				langfuseParent: audioSpan ?? trace,
+			})
 
-			consola.log("Audio file stored successfully:", storedMediaUrl)
+			const assemblyPromise = (async () => {
+				const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
+					method: "POST",
+					headers: { Authorization: apiKey },
+					body: assemblyPayload,
+				})
 
-			// Update interview with media URL
-			await supabase.from("interviews").update({ media_url: storedMediaUrl }).eq("id", interview.id)
+				if (!uploadResp.ok) {
+					const errorText = await uploadResp.text()
+					throw new Error(`Upload failed: ${uploadResp.status} ${errorText?.slice(0, 500) ?? ""}`)
+				}
 
-			// Upload to AssemblyAI
-			const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
-				method: "POST",
-				headers: { Authorization: apiKey },
-				body: file.stream(),
-				duplex: "half",
-			} as RequestInit)
+				const { upload_url, upload_url_expires_at } = (await uploadResp.json()) as {
+					upload_url: string
+					upload_url_expires_at?: string
+				}
 
-			if (!uploadResp.ok) {
-				const errorText = await uploadResp.text()
-				consola.error("AssemblyAI upload failed:", uploadResp.status, errorText)
+				return { upload_url, status: uploadResp.status, expiresAt: upload_url_expires_at }
+			})()
+
+			let storedMediaUrl: string | null = null
+			let storageError: string | undefined
+			let assemblyUploadUrl: string | null = null
+			let assemblyStatus = 0
+
+			try {
+				const [storageResult, assemblyResult] = await Promise.all([storePromise, assemblyPromise])
+
+				storedMediaUrl = storageResult.mediaUrl
+				storageError = storageResult.error
+
+				assemblyUploadUrl = assemblyResult.upload_url
+				assemblyStatus = assemblyResult.status
+
+				assemblyUploadSpan?.end?.({
+					output: {
+						uploadUrl: assemblyUploadUrl,
+						status: assemblyStatus,
+					},
+				})
+			} catch (error) {
+				const message = error instanceof Error ? error.message : "Unknown upload error"
+				consola.error("Parallel upload failed:", message)
+				assemblyUploadSpan?.end?.({
+					level: "ERROR",
+					statusMessage: message,
+				})
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: "AssemblyAI upload failed",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: "File upload failed" }
 				return Response.json({ error: "File upload failed" }, { status: 500 })
 			}
 
-			const { upload_url } = (await uploadResp.json()) as { upload_url: string }
-			consola.log("File uploaded to AssemblyAI:", upload_url)
+			if (storageError || !storedMediaUrl) {
+				consola.error("Audio storage failed:", storageError)
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: storageError ?? "Failed to store audio file",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: `Failed to store audio file: ${storageError}` }
+				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
+			}
+
+			if (!assemblyUploadUrl) {
+				consola.error("AssemblyAI upload URL missing after upload")
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: "AssemblyAI upload failed",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: "File upload failed" }
+				return Response.json({ error: "File upload failed" }, { status: 500 })
+			}
+
+			consola.log("Audio file stored successfully:", storedMediaUrl)
+			consola.log("File uploaded to AssemblyAI:", assemblyUploadUrl)
+			trace?.update?.({
+				metadata: {
+					storedMediaUrl,
+					assemblyUploadUrl,
+				},
+			})
+
+			// Update interview with media URL
+			await supabase.from("interviews").update({ media_url: storedMediaUrl }).eq("id", interview.id)
 
 			// Start transcription with webhook
 			// In production: use PRODUCTION_HOST
@@ -346,13 +553,23 @@ Please extract insights that specifically address these research questions and h
 				process.env.NODE_ENV === "production"
 					? PRODUCTION_HOST
 					: (() => {
-							const tunnel = process.env.PUBLIC_TUNNEL_URL
-							if (!tunnel) return PRODUCTION_HOST
-							return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
-						})()
+						const tunnel = process.env.PUBLIC_TUNNEL_URL
+						if (!tunnel) return PRODUCTION_HOST
+						return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
+					})()
 			const webhookUrl = `${host}/api/assemblyai-webhook`
 
 			consola.log("AssemblyAI Webhook: Starting transcription with webhook URL:", webhookUrl)
+
+			const transcriptionSpan = (audioSpan ?? trace)?.span?.({
+				name: "assembly.transcription",
+				metadata: {
+					interviewId: interview.id,
+				},
+				input: {
+					webhookHost: host,
+				},
+			})
 
 			const transcriptResp = await fetch("https://api.assemblyai.com/v2/transcript", {
 				method: "POST",
@@ -361,7 +578,7 @@ Please extract insights that specifically address these research questions and h
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					audio_url: upload_url,
+					audio_url: assemblyUploadUrl,
 					webhook_url: webhookUrl,
 					// Add the same parameters as working version
 					speaker_labels: true,
@@ -380,17 +597,33 @@ Please extract insights that specifically address these research questions and h
 			if (!transcriptResp.ok) {
 				const errorText = await transcriptResp.text()
 				consola.error("AssemblyAI transcription failed:", transcriptResp.status, errorText)
+				transcriptionSpan?.end?.({
+					level: "ERROR",
+					statusMessage: `Transcription request failed: ${transcriptResp.status}`,
+					metadata: { responseBody: errorText?.slice(0, 500) ?? null },
+				})
+				audioSpan?.end?.({
+					level: "ERROR",
+					statusMessage: "Transcription request failed",
+				})
+				traceEndPayload = { level: "ERROR", statusMessage: "Transcription request failed" }
 				return Response.json({ error: "Transcription request failed" }, { status: 500 })
 			}
 
 			const { id: assemblyai_id } = (await transcriptResp.json()) as { id: string }
+			transcriptionSpan?.end?.({
+				output: {
+					assemblyTranscriptId: assemblyai_id,
+					status: transcriptResp.status,
+				},
+			})
 
 			// Create upload job record for tracking - use admin client to bypass RLS
 			const { error: uploadJobError } = await supabaseAdmin.from("upload_jobs").insert({
 				interview_id: interview.id,
 				file_name: file.name,
 				file_type: file.type,
-				external_url: upload_url,
+				external_url: assemblyUploadUrl,
 				assemblyai_id: assemblyai_id,
 				status: "in_progress",
 				status_detail: "Transcription in progress",
@@ -398,11 +631,37 @@ Please extract insights that specifically address these research questions and h
 			})
 
 			if (uploadJobError) {
-				consola.error("Failed to create upload job:", uploadJobError)
+				consola
+					.error(
+						"Failed to create upload job:",
+						uploadJobError
+					)(audioSpan ?? trace)
+					?.event?.({
+						name: "upload-job.create.error",
+						metadata: {
+							interviewId: interview.id,
+							message: uploadJobError.message,
+						},
+					})
 				// Continue anyway - webhook will handle completion
+			} else {
+				; (audioSpan ?? trace)?.event?.({
+					name: "upload-job.created",
+					metadata: {
+						interviewId: interview.id,
+						assemblyId: assemblyai_id,
+					},
+				})
 			}
 
 			consola.log("Transcription started with ID:", assemblyai_id)
+			audioSpan?.end?.({
+				output: {
+					interviewId: interview.id,
+					storedMediaUrl,
+					assemblyTranscriptId: assemblyai_id,
+				},
+			})
 		}
 
 		// Mark onboarding completed when first interview is uploaded
@@ -421,6 +680,18 @@ Please extract insights that specifically address these research questions and h
 			}
 		)
 
+		traceEndPayload = {
+			output: {
+				interviewId: interview.id,
+				projectId: finalProjectId,
+				mediaType: mediaTypeInput,
+				fileSize: file.size,
+			},
+			metadata: {
+				accountId: teamAccountId,
+			},
+		}
+
 		return Response.json({
 			success: true,
 			interview: {
@@ -432,9 +703,19 @@ Please extract insights that specifically address these research questions and h
 			project: {
 				id: finalProjectId,
 			},
+			triggerRun: triggerRunInfo
+				? {
+						id: triggerRunInfo.runId,
+						publicToken: triggerRunInfo.publicToken,
+					}
+				: null,
 		})
 	} catch (error) {
 		consola.error("Onboarding start failed:", error)
-		return Response.json({ error: error instanceof Error ? error.message : "Processing failed" }, { status: 500 })
+		const message = error instanceof Error ? error.message : "Processing failed"
+		traceEndPayload = { level: "ERROR", statusMessage: message }
+		return Response.json({ error: message }, { status: 500 })
+	} finally {
+		trace?.end?.(traceEndPayload)
 	}
 }
