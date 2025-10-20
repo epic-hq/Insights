@@ -217,7 +217,7 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 											)}
 										</span>
 										<span className="text-foreground/60 text-xs">
-											{new Date(comment.created_at).toLocaleDateString()}
+											{new Date(comment.created_at as string).toLocaleDateString()}
 										</span>
 									</div>
 									<p className="text-foreground/60 text-sm">{comment.content}</p>
