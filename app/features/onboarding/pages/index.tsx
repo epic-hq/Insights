@@ -7,7 +7,7 @@ import OnboardingFlow from "../components/OnboardingFlow"
 
 export default function OnboardingPage() {
 	const navigate = useNavigate()
-	const { projectPath, projectId } = useCurrentProject()
+	const { projectPath, projectId, accountId } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
 	// For standalone onboarding route, projectId might be empty initially
@@ -57,6 +57,7 @@ export default function OnboardingPage() {
 			onAddMoreInterviews={handleAddMoreInterviews}
 			onViewResults={handleViewResults}
 			projectId={projectId || undefined}
+			accountId={accountId || undefined}
 		/>
 	)
 }

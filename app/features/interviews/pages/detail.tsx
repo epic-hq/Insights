@@ -17,6 +17,7 @@ import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
+import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 // Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
@@ -244,8 +245,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			transcriptFormattedType: typeof transcriptMeta?.transcript_formatted,
 		})
 
+		// Generate a fresh presigned URL for media access if needed
+		let freshMediaUrl = interviewData.media_url
+		if (interviewData.media_url) {
+			try {
+				// Extract the R2 key from the stored URL
+				const r2Key = getR2KeyFromPublicUrl(interviewData.media_url)
+				if (r2Key) {
+					// Generate a fresh presigned URL (valid for 1 hour)
+					const presignedResult = createR2PresignedUrl({
+						key: r2Key,
+						expiresInSeconds: 60 * 60, // 1 hour
+					})
+					if (presignedResult) {
+						freshMediaUrl = presignedResult.url
+					}
+				}
+			} catch (error) {
+				consola.warn("Could not generate fresh presigned URL for media:", error)
+				// Keep the original URL as fallback
+			}
+		}
+
 		const interview = {
 			...interviewData,
+			media_url: freshMediaUrl, // Use fresh presigned URL
 			participants,
 			primaryParticipant,
 			// Check transcript availability without loading content
@@ -1148,27 +1172,46 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										const personName = participant.people?.name || participant.display_name || "Unassigned"
 										const primaryPersona = participant.people?.people_personas?.[0]?.personas
 
-										return personId ? (
-											<Link
-												key={participant.id}
-												to={routes.people.detail(personId)}
-												className="flex items-center justify-between rounded-md border bg-muted/30 p-3 transition-colors hover:bg-muted/50"
-											>
-												<div className="flex items-center gap-3">
-													<div>
-														<div className="font-medium text-foreground text-sm">{personName}</div>
-														{primaryPersona && (
-															<div className="text-muted-foreground text-xs">{primaryPersona.name}</div>
-														)}
+										if (personId) {
+											const evidenceQuery = new URLSearchParams({ person_id: personId })
+											if (personName) evidenceQuery.set("person_name", personName)
+
+											return (
+												<div
+													key={participant.id}
+													className="flex flex-col gap-2 rounded-md border bg-muted/30 p-3 transition-colors hover:bg-muted/40"
+												>
+													<div className="flex flex-col gap-1 sm:flex-row sm:items-center sm:justify-between">
+														<div>
+															<Link
+																to={routes.people.detail(personId)}
+																className="font-medium text-foreground text-sm hover:underline"
+															>
+																{personName}
+															</Link>
+															{primaryPersona && (
+																<div className="text-muted-foreground text-xs">{primaryPersona.name}</div>
+															)}
+														</div>
+														<div className="flex items-center gap-2">
+															<Link
+																to={`${routes.evidence.index()}?${evidenceQuery.toString()}`}
+																className="text-xs font-medium text-blue-600 hover:text-blue-800"
+															>
+																View evidence
+															</Link>
+															{participant.transcript_key && (
+																<Badge variant="secondary" className="text-foreground/60 text-xs">
+																	{participant.transcript_key}
+																</Badge>
+															)}
+														</div>
 													</div>
 												</div>
-												{participant.transcript_key && (
-													<Badge variant="secondary" className="text-foreground/60 text-xs">
-														{participant.transcript_key}
-													</Badge>
-												)}
-											</Link>
-										) : (
+											)
+										}
+
+										return (
 											<div
 												key={participant.id}
 												className="flex items-center justify-between rounded-md border border-dashed bg-muted/20 p-3"

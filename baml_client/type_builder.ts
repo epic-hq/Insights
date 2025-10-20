@@ -75,7 +75,7 @@ export default class TypeBuilder {
     
     ExtractedInsight: ClassBuilder<'ExtractedInsight', "name" | "pain" | "details" | "evidence" | "desiredOutcome" | "assumptionAlignment" | "researchQuestionAnswered" | "evidenceStrength" | "productImplication" | "followUpQuestions" | "emotionalResponse" | "underlyingMotivation" | "values" | "category" | "journeyStage" | "jtbd" | "contradictions" | "relatedTags">;
     
-    Extraction: ClassViewer<'Extraction', "people" | "evidence" | "scenes">;
+    Extraction: ClassViewer<'Extraction', "people" | "evidence" | "facet_mentions" | "scenes">;
     
     FacetCandidatePayload: ClassViewer<'FacetCandidatePayload', "kind_slug" | "label" | "synonyms" | "notes">;
     
@@ -132,6 +132,10 @@ export default class TypeBuilder {
     PersonaAnalysis: ClassViewer<'PersonaAnalysis', "persona_name" | "key_pain_points" | "unmet_needs" | "revenue_potential" | "willingness_to_pay" | "recommended_solutions" | "competitive_threats">;
     
     PersonaAssignmentDecision: ClassViewer<'PersonaAssignmentDecision', "action" | "persona_id" | "persona_name" | "confidence_score" | "reasoning" | "new_persona_data">;
+    
+    PersonaExtraction: ClassViewer<'PersonaExtraction', "persona_facets" | "summary">;
+    
+    PersonaFacet: ClassViewer<'PersonaFacet', "person_key" | "kind_slug" | "value" | "evidence_refs" | "confidence" | "frequency" | "reasoning">;
     
     PersonaSet: ClassViewer<'PersonaSet', "personas" | "version" | "change_log" | "contrast_persona">;
     
@@ -200,7 +204,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -305,7 +309,7 @@ export default class TypeBuilder {
         ]);
         
         this.Extraction = this.tb.classViewer("Extraction", [
-          "people","evidence","scenes",
+          "people","evidence","facet_mentions","scenes",
         ]);
         
         this.FacetCandidatePayload = this.tb.classViewer("FacetCandidatePayload", [
@@ -418,6 +422,14 @@ export default class TypeBuilder {
         
         this.PersonaAssignmentDecision = this.tb.classViewer("PersonaAssignmentDecision", [
           "action","persona_id","persona_name","confidence_score","reasoning","new_persona_data",
+        ]);
+        
+        this.PersonaExtraction = this.tb.classViewer("PersonaExtraction", [
+          "persona_facets","summary",
+        ]);
+        
+        this.PersonaFacet = this.tb.classViewer("PersonaFacet", [
+          "person_key","kind_slug","value","evidence_refs","confidence","frequency","reasoning",
         ]);
         
         this.PersonaSet = this.tb.classViewer("PersonaSet", [

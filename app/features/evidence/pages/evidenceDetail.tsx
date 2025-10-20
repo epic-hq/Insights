@@ -35,8 +35,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		const seconds = Number.parseFloat(timeParam)
 		if (!Number.isNaN(seconds) && seconds > 0) {
 			// Create a simple anchor with the time
+			// Use "media" type so EvidenceCard recognizes it as a playable timestamp
 			anchorOverride = {
-				type: "doc",
+				type: "media",
 				start: `${seconds * 1000}ms`, // Convert back to ms format for consistency
 				end: null
 			}

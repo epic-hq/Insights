@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
-import { getR2PublicUrl, uploadToR2 } from "~/utils/r2.server"
+import { createR2PresignedUrl, uploadToR2 } from "~/utils/r2.server"
 
 interface StoreAudioResult {
 	mediaUrl: string | null
@@ -107,25 +107,31 @@ export async function storeAudioFile({
 			return { mediaUrl: null, error: uploadResult.error ?? "Failed to upload audio" }
 		}
 
-		const publicUrl = getR2PublicUrl(filename)
-		if (!publicUrl) {
-			consola.error("R2 public base URL not configured; cannot resolve media URL")
+		// Generate a presigned URL valid for 24 hours (enough time for AssemblyAI to download)
+		const presignedResult = createR2PresignedUrl({
+			key: filename,
+			expiresInSeconds: 24 * 60 * 60, // 24 hours
+		})
+		
+		if (!presignedResult) {
+			consola.error("Failed to generate R2 presigned URL")
 			uploadSpan?.end?.({
 				level: "ERROR",
-				statusMessage: "Cloudflare R2 public URL is not configured",
+				statusMessage: "Failed to generate presigned URL for R2 file",
 			})
-			return { mediaUrl: null, error: "Cloudflare R2 public URL is not configured" }
+			return { mediaUrl: null, error: "Failed to generate presigned URL for R2 file" }
 		}
 
-		consola.log("Audio file stored successfully in R2:", publicUrl)
+		consola.log("Audio file stored successfully in R2:", presignedResult.url)
 		uploadSpan?.end?.({
 			output: {
-				mediaUrl: publicUrl,
+				mediaUrl: presignedResult.url,
 				bytesUploaded: payload.length,
 				contentType: mimeType,
+				expiresAt: presignedResult.expiresAt,
 			},
 		})
-		return { mediaUrl: publicUrl }
+		return { mediaUrl: presignedResult.url }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unknown error"
 		consola.error("Error storing audio file in R2:", error)

@@ -152,18 +152,21 @@ CREATE OR REPLACE FUNCTION trigger_update_project_people()
 RETURNS TRIGGER AS $$
 BEGIN
     IF TG_OP = 'INSERT' OR TG_OP = 'UPDATE' THEN
-        -- Get project_id from interview
+        -- Use project_id from interview_people table (can also query interview if needed)
         PERFORM update_project_people_stats(
-            (SELECT project_id FROM interviews WHERE id = NEW.interview_id),
+            COALESCE(NEW.project_id, (SELECT project_id FROM interviews WHERE id = NEW.interview_id)),
             NEW.person_id
         );
         RETURN NEW;
     ELSIF TG_OP = 'DELETE' THEN
-        -- Get project_id from interview
-        PERFORM update_project_people_stats(
-            (SELECT project_id FROM interviews WHERE id = OLD.interview_id),
-            OLD.person_id
-        );
+        -- CRITICAL: Use project_id directly from OLD record since interview may already be cascade-deleted
+        -- Don't query interviews table - it may be gone already due to CASCADE DELETE
+        IF OLD.project_id IS NOT NULL THEN
+            PERFORM update_project_people_stats(
+                OLD.project_id,
+                OLD.person_id
+            );
+        END IF;
         RETURN OLD;
     END IF;
     RETURN NULL;

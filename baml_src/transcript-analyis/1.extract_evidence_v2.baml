@@ -59,6 +59,7 @@ class Extraction {
 	//  people EvidenceParticipant[]
 	 people Person[]
 	 evidence EvidenceTurn[] @description("Chronological stream of evidence turns")
+	 facet_mentions FacetMention[] @description("Flattened array of all facet mentions for easier phase-2 processing")
 	 scenes Scene[]
 }
 
@@ -114,6 +115,7 @@ Skip generic filler unless it informs a concrete outcome.
 - Keep `value` and `verbatim` within word limits. Ban vague comparatives unless paired with a concrete subject/rationale. Each mention should be testable and specific (avoid grouping multiple subjects; emit one mention per subject).
 - When choosing empathy vs mention: prefer FacetMention as the authoritative signal; only add empathy items if they add non-duplicative skim value.
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
+- Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
 
 Transcript (language={{ language }})
 {{ transcript }}

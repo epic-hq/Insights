@@ -24,62 +24,49 @@ async function parse_account_id_from_params({
 	user_id,
 	account_id_or_slug,
 	supabase,
+	userAccounts,
 }: {
 	user_id: string
 	account_id_or_slug: string
 	supabase: SupabaseClient
+	userAccounts?: Array<{ account_id: string; slug: string | null }>
 }) {
-	// Testing direct call
-	// const query = supabase.from("accounts.accounts").select("*").eq("account_id", account_id_or_slug)
-	// const { data: account, error } = await query.single()
-	// if (error) {
-	// 	consola.error("Get account error:", error)
-	// 	throw new Response("Account not found", { status: 404 })
-	// }
-	// if (account) {
-	// 	consola.log("Get account success:", account)
-	// 	return account
-	// }
-
+	consola.log("parse_account_id_from_params:", { account_id_or_slug, hasUserAccounts: !!userAccounts, userAccountsCount: userAccounts?.length })
+	
+	// If UUID, validate against user's accounts and return the account
 	if (isUUID(account_id_or_slug || "")) {
-		// consola.log("Get account by id ", account_id_or_slug)
+		// Validate user has access to this account
+		if (userAccounts && userAccounts.length > 0) {
+			const userAccount = userAccounts.find((acc) => acc.account_id === account_id_or_slug)
+			consola.log("Found user account:", !!userAccount)
+			if (!userAccount) {
+				consola.error("User does not have access to account:", account_id_or_slug)
+				throw new Response("You must be a member of an account to access it", { status: 403 })
+			}
+			// Return the account ID - the account object will be loaded from userContext
+			return { account_id: account_id_or_slug }
+		}
+		
+		consola.warn("No userAccounts available, falling back to database query")
+		// Fallback: query database if userAccounts not available
 		const accountQuery = supabase.schema("accounts").from("accounts").select("*").eq("id", account_id_or_slug)
 		const { data: account, error } = await accountQuery.single()
 		if (error) {
 			consola.error("Get account error:", error)
+			throw new Response("Account not found", { status: 404 })
 		}
-		const account_usersQuery = supabase.schema("accounts").from("account_user").select("*").eq("user_id", user_id)
-		const { data: account_users, error: account_users_error } = await account_usersQuery
-		// consola.log("/accounts: Account users:", account_users)
-
-		const _current_user_role = await supabase.rpc("current_user_account_role", { p_account_id: account_id_or_slug })
-		// consola.log("/accounts: Current user role:", current_user_role)
-
-		const { data: accountsList } = await supabase.rpc("get_accounts")
-		// consola.log(
-		// 	"/accounts: Accounts list:",
-		// 	accountsList?.map((a) => a.account_id)
-		// )
-
-		// const getAccountResponse = await supabase.rpc("get_account", { account_id: account_id_or_slug })
-		// consola.log("/accounts: Get account response:", getAccountResponse)
-		if (account) {
-			return account
-		}
-
-		// HIDE FOR TESTING
-		// if (!getAccountResponse.data) {
-		// 	consola.error("Get account error:", getAccountResponse.error)
-		// 	throw new Response("Account not found", { status: 404 })
-		// }
-		// if (getAccountResponse.error) {
-		// 	consola.error("Get account error:", getAccountResponse.error)
-		// 	throw new Response(getAccountResponse.error.message, { status: 500 })
-		// }
-		// const data = getAccountResponse.data as GetAccount
-		// return data
+		return account
 	}
-	// slug
+	
+	// If slug, look up in user's accounts first
+	if (userAccounts) {
+		const account = userAccounts.find((acc) => acc.slug === account_id_or_slug)
+		if (account) {
+			return { account_id: account.account_id }
+		}
+	}
+	
+	// Fallback to RPC for slug lookup
 	const getAccountBySlugResponse = await supabase.rpc("get_account_by_slug", {
 		slug: account_id_or_slug,
 	})
@@ -105,10 +92,24 @@ export const middleware: Route.MiddlewareFunction[] = [
 			const _supabase = ctx.supabase
 			const account_id_or_slug = params?.accountId || ""
 
+			// Get user accounts from middleware context for validation
+			const userAccounts = ctx.accounts?.map((acc: any) => ({
+				account_id: acc.account_id,
+				slug: acc.slug,
+			}))
+			
+			consola.log("_protected/accounts middleware:", { 
+				account_id_or_slug, 
+				hasAccounts: !!ctx.accounts,
+				accountsCount: ctx.accounts?.length,
+				userAccountsCount: userAccounts?.length 
+			})
+
 			const parsed_account = await parse_account_id_from_params({
 				user_id: ctx.account_id,
 				account_id_or_slug,
 				supabase: _supabase,
+				userAccounts,
 			})
 
 			// Set user context for all child loaders/actions to access

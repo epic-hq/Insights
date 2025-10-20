@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Person,  PersonFacetObservation,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TurnAnchors } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Person,  PersonFacetObservation,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TurnAnchors } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -249,6 +249,7 @@ export namespace partial_types {
     export interface Extraction {
       people: Person[]
       evidence: EvidenceTurn[]
+      facet_mentions: FacetMention[]
       scenes: Scene[]
     }
     export interface FacetCandidatePayload {
@@ -509,6 +510,19 @@ export namespace partial_types {
       confidence_score?: number | null
       reasoning?: string | null
       new_persona_data?: Persona | null
+    }
+    export interface PersonaExtraction {
+      persona_facets: PersonaFacet[]
+      summary?: string | null
+    }
+    export interface PersonaFacet {
+      person_key?: string | null
+      kind_slug?: string | null
+      value?: string | null
+      evidence_refs: number[]
+      confidence?: number | null
+      frequency?: number | null
+      reasoning?: string | null
     }
     export interface PersonaSet {
       personas: Persona[]

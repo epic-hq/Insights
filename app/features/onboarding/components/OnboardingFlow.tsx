@@ -25,6 +25,7 @@ export interface OnboardingData {
 	projectId?: string
 	triggerRunId?: string
 	triggerAccessToken?: string | null
+	error?: string
 }
 
 interface OnboardingFlowProps {
@@ -150,7 +151,31 @@ export default function OnboardingFlow({
 
 				const result = await response.json()
 
-				// Store interview ID and project ID for progress tracking
+				// Redirect to interview page immediately after upload completes
+				// Processing will continue in the background via Trigger.dev
+				if (result.interview?.id && result.project?.id) {
+					// Use accountId from props, or extract from API response if available
+					const finalAccountId = accountId || result.interview?.account_id || result.project?.account_id
+					console.log("OnboardingFlow redirect:", { 
+						accountId, 
+						finalAccountId,
+						projectId: result.project.id,
+						interviewId: result.interview.id 
+					})
+					
+					if (!finalAccountId) {
+						console.error("No accountId available for redirect!")
+						// Don't redirect if we don't have an accountId
+						return
+					}
+					
+					const interviewUrl = `/a/${finalAccountId}/${result.project.id}/interviews/${result.interview.id}`
+					console.log("Redirecting to:", interviewUrl)
+					window.location.href = interviewUrl
+					return
+				}
+
+				// Fallback: Store interview ID and project ID for progress tracking (legacy flow)
 				if (result.interview?.id) {
 					setData((prev) => ({ ...prev, interviewId: result.interview.id }))
 				}
@@ -189,9 +214,10 @@ export default function OnboardingFlow({
 					}
 				}
 			} catch (error) {
-				// Handle error - could show error state or retry
+				// Handle error - show error message and return to upload screen
 				const errorMessage = error instanceof Error ? error.message : "Upload failed"
 				setData((prev) => ({ ...prev, error: errorMessage }))
+				setCurrentStep("upload") // Return to upload screen so user can retry
 			}
 		},
 		[data]
@@ -279,7 +305,7 @@ export default function OnboardingFlow({
 				)
 
 			case "upload":
-				return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} />
+				return <UploadScreen onNext={handleUploadNext} onBack={handleBack} projectId={currentProjectId} error={data.error} />
 
 			case "processing":
 				return (

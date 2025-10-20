@@ -437,20 +437,10 @@ Please extract insights that specifically address these research questions and h
 			const fileBlob = new Blob([fileBuffer], { type: file.type })
 			const assemblyPayload = Buffer.from(fileBuffer)
 
-			consola.log("Uploading audio to R2 and AssemblyAI in parallel...")
+			consola.log("Uploading audio to R2...")
 
-			const assemblyUploadSpan = (audioSpan ?? trace)?.span?.({
-				name: "assembly.upload",
-				metadata: {
-					interviewId: interview.id,
-				},
-				input: {
-					size: file.size,
-					type: file.type,
-				},
-			})
-
-			const storePromise = storeAudioFile({
+			// Upload to R2 first (with multipart + retry for large files)
+			const storageResult = await storeAudioFile({
 				projectId: finalProjectId,
 				interviewId: interview.id,
 				source: fileBlob,
@@ -459,63 +449,11 @@ Please extract insights that specifically address these research questions and h
 				langfuseParent: audioSpan ?? trace,
 			})
 
-			const assemblyPromise = (async () => {
-				const uploadResp = await fetch("https://api.assemblyai.com/v2/upload", {
-					method: "POST",
-					headers: { Authorization: apiKey },
-					body: assemblyPayload,
-				})
-
-				if (!uploadResp.ok) {
-					const errorText = await uploadResp.text()
-					throw new Error(`Upload failed: ${uploadResp.status} ${errorText?.slice(0, 500) ?? ""}`)
-				}
-
-				const { upload_url, upload_url_expires_at } = (await uploadResp.json()) as {
-					upload_url: string
-					upload_url_expires_at?: string
-				}
-
-				return { upload_url, status: uploadResp.status, expiresAt: upload_url_expires_at }
-			})()
-
-			let storedMediaUrl: string | null = null
-			let storageError: string | undefined
-			let assemblyUploadUrl: string | null = null
-			let assemblyStatus = 0
-
-			try {
-				const [storageResult, assemblyResult] = await Promise.all([storePromise, assemblyPromise])
-
-				storedMediaUrl = storageResult.mediaUrl
-				storageError = storageResult.error
-
-				assemblyUploadUrl = assemblyResult.upload_url
-				assemblyStatus = assemblyResult.status
-
-				assemblyUploadSpan?.end?.({
-					output: {
-						uploadUrl: assemblyUploadUrl,
-						status: assemblyStatus,
-					},
-				})
-			} catch (error) {
-				const message = error instanceof Error ? error.message : "Unknown upload error"
-				consola.error("Parallel upload failed:", message)
-				assemblyUploadSpan?.end?.({
-					level: "ERROR",
-					statusMessage: message,
-				})
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: "AssemblyAI upload failed",
-				})
-				traceEndPayload = { level: "ERROR", statusMessage: "File upload failed" }
-				return Response.json({ error: "File upload failed" }, { status: 500 })
-			}
+			const storedMediaUrl = storageResult.mediaUrl
+			const storageError = storageResult.error
 
 			if (storageError || !storedMediaUrl) {
-				consola.error("Audio storage failed:", storageError)
+				consola.error("R2 upload failed:", storageError)
 				audioSpan?.end?.({
 					level: "ERROR",
 					statusMessage: storageError ?? "Failed to store audio file",
@@ -524,22 +462,15 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
 			}
 
-			if (!assemblyUploadUrl) {
-				consola.error("AssemblyAI upload URL missing after upload")
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: "AssemblyAI upload failed",
-				})
-				traceEndPayload = { level: "ERROR", statusMessage: "File upload failed" }
-				return Response.json({ error: "File upload failed" }, { status: 500 })
-			}
-
-			consola.log("Audio file stored successfully:", storedMediaUrl)
-			consola.log("File uploaded to AssemblyAI:", assemblyUploadUrl)
+			consola.log("Audio file stored successfully in R2:", storedMediaUrl)
+			audioSpan?.end?.({
+				output: {
+					mediaUrl: storedMediaUrl,
+				},
+			})
 			trace?.update?.({
 				metadata: {
 					storedMediaUrl,
-					assemblyUploadUrl,
 				},
 			})
 
@@ -578,7 +509,7 @@ Please extract insights that specifically address these research questions and h
 					"Content-Type": "application/json",
 				},
 				body: JSON.stringify({
-					audio_url: assemblyUploadUrl,
+					audio_url: storedMediaUrl, // Use R2 public URL - AssemblyAI downloads from R2
 					webhook_url: webhookUrl,
 					// Add the same parameters as working version
 					speaker_labels: true,
@@ -623,7 +554,7 @@ Please extract insights that specifically address these research questions and h
 				interview_id: interview.id,
 				file_name: file.name,
 				file_type: file.type,
-				external_url: assemblyUploadUrl,
+				external_url: storedMediaUrl, // R2 public URL
 				assemblyai_id: assemblyai_id,
 				status: "in_progress",
 				status_detail: "Transcription in progress",
@@ -697,11 +628,13 @@ Please extract insights that specifically address these research questions and h
 			interview: {
 				id: interview.id,
 				project_id: finalProjectId,
+				account_id: teamAccountId,
 				title: interview.title,
 				status: interview.status,
 			},
 			project: {
 				id: finalProjectId,
+				account_id: teamAccountId,
 			},
 			triggerRun: triggerRunInfo
 				? {
