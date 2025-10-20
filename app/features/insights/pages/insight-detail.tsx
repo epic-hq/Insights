@@ -6,6 +6,7 @@ import { PageContainer } from "~/components/layout/PageContainer"
 import { getInsightById } from "~/features/insights/db"
 import { userContext } from "~/server/user-context"
 import { InsightCardV3Page } from "../components/InsightCardV3Page"
+import type { Route } from "./+types/insight-detail"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -57,7 +58,7 @@ type ErrorBoundaryState = {
 	error: unknown | null
 }
 
-export class ErrorBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
+class InsightContentBoundary extends React.Component<{ children: React.ReactNode }, ErrorBoundaryState> {
 	constructor(props: { children: React.ReactNode }) {
 		super(props)
 		this.state = { error: null }
@@ -76,6 +77,10 @@ export class ErrorBoundary extends React.Component<{ children: React.ReactNode }
 	}
 }
 
+export function ErrorBoundary({ error }: Route.ErrorBoundaryProps) {
+	return <div style={{ color: "red" }}>An error occurred: {String(error)}</div>
+}
+
 export default function InsightDetail() {
 	const { insight } = useLoaderData<typeof loader>()
 	if (!insight) {
@@ -90,9 +95,9 @@ export default function InsightDetail() {
 				<span className="text-gray-500">/</span>
 				<span className="text-gray-900">{insight.name}</span>
 			</div> */}
-			<ErrorBoundary>
+			<InsightContentBoundary>
 				<InsightCardV3Page insight={insight} extended={true} />
-			</ErrorBoundary>
+			</InsightContentBoundary>
 		</PageContainer>
 	)
 }

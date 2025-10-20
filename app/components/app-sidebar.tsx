@@ -159,9 +159,7 @@ export function AppSidebar({ ...props }: React.ComponentProps<typeof Sidebar>) {
 				<NavMain items={data.navMain} />
 				<NavProjects projects={data.projects} />
 			</SidebarContent>
-			<SidebarFooter>
-				{/* NavUser component removed */}
-			</SidebarFooter>
+			<SidebarFooter>{/* NavUser component removed */}</SidebarFooter>
 			<SidebarRail />
 		</Sidebar>
 	)
