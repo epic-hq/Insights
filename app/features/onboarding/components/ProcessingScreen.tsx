@@ -120,10 +120,11 @@ export default function ProcessingScreen({
 						<h1 className="font-medium text-lg text-white">Processing Interview</h1>
 						{triggerRunId && (
 							<Badge
-								className={`w-fit uppercase tracking-wide ${isRealtime
+								className={`w-fit uppercase tracking-wide ${
+									isRealtime
 										? "bg-[#FF5A36] text-white shadow-[0_0_25px_rgba(255,90,54,0.45)]"
 										: "border border-white/40 border-dashed bg-transparent text-white/80"
-									}`}
+								}`}
 							>
 								{isRealtime ? "Live via Trigger.dev" : "Waiting for Trigger.dev"}
 							</Badge>
@@ -199,8 +200,9 @@ export default function ProcessingScreen({
 								<button
 									key={index}
 									onClick={() => goToCard(index)}
-									className={`h-1.5 w-1.5 rounded-full transition-all ${index === currentCardIndex ? "bg-blue-400" : "bg-gray-600"
-										}`}
+									className={`h-1.5 w-1.5 rounded-full transition-all ${
+										index === currentCardIndex ? "bg-blue-400" : "bg-gray-600"
+									}`}
 								/>
 							))}
 						</div>

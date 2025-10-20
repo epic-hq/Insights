@@ -113,7 +113,7 @@ export async function getPosts(options?: {
 			page,
 			sort: "-publishedAt",
 		},
-		{ addQueryPrefix: true },
+		{ addQueryPrefix: true }
 	)
 
 	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts${queryString}`, {
@@ -138,11 +138,10 @@ export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 			where,
 			limit: 1,
 		},
-		{ addQueryPrefix: true },
+		{ addQueryPrefix: true }
 	)
 
 	const url = `${env.PAYLOAD_CMS_URL}/api/posts${queryString}`
-
 
 	const response = await fetch(url, {
 		headers: getHeaders(),
@@ -155,7 +154,6 @@ export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 	}
 
 	const data = await handleResponse<PayloadResponse<PayloadPost>>(response)
-
 
 	return data.docs[0] || null
 }
@@ -187,10 +185,7 @@ export async function searchPosts(query: string, limit = 10): Promise<PayloadPos
 	const env = getServerEnv()
 
 	const where: Where = {
-		or: [
-			{ title: { contains: query } },
-			{ excerpt: { contains: query } },
-		],
+		or: [{ title: { contains: query } }, { excerpt: { contains: query } }],
 	}
 
 	const queryString = stringify(
@@ -199,7 +194,7 @@ export async function searchPosts(query: string, limit = 10): Promise<PayloadPos
 			limit,
 			sort: "-publishedAt",
 		},
-		{ addQueryPrefix: true },
+		{ addQueryPrefix: true }
 	)
 
 	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts${queryString}`, {
@@ -220,7 +215,7 @@ export async function getAllPostSlugs(): Promise<string[]> {
 		{
 			limit: 1000,
 		},
-		{ addQueryPrefix: true },
+		{ addQueryPrefix: true }
 	)
 
 	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts${queryString}`, {

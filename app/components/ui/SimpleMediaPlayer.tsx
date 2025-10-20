@@ -97,7 +97,7 @@ export function SimpleMediaPlayer({
 	// Fetch signed URL - either on mount (if autoPlay or !lazyLoad) or when user clicks play
 	const fetchSignedUrl = useCallback(async () => {
 		if (signedUrl) return // Already fetched
-		
+
 		setIsLoading(true)
 		setError(null)
 
@@ -146,7 +146,7 @@ export function SimpleMediaPlayer({
 		const audio = audioRef.current
 		const video = videoRef.current
 		const element = audio || video
-		
+
 		if (!element) return
 
 		const setStartTime = () => {
@@ -229,37 +229,33 @@ export function SimpleMediaPlayer({
 	if (lazyLoad && !signedUrl && !hasUserInteracted) {
 		const isAudio = isAudioFile(mediaUrl)
 		const isVideo = isVideoFile(mediaUrl)
-		
+
 		return (
 			<div className={cn("relative w-full", className)}>
-				<div className="flex items-center justify-between gap-3 mb-3">
+				<div className="mb-3 flex items-center justify-between gap-3">
 					<span className="font-medium text-sm">{title}</span>
 				</div>
 				<button
 					type="button"
 					onClick={handlePlayClick}
 					className={cn(
-						"group relative w-full overflow-hidden rounded-md border bg-muted/30 hover:bg-muted/50 transition-colors",
+						"group relative w-full overflow-hidden rounded-md border bg-muted/30 transition-colors hover:bg-muted/50",
 						isVideo ? "aspect-video" : "h-16"
 					)}
 				>
 					<div className="absolute inset-0 flex items-center justify-center">
-						<div className="rounded-full bg-primary/90 p-4 group-hover:bg-primary transition-colors">
+						<div className="rounded-full bg-primary/90 p-4 transition-colors group-hover:bg-primary">
 							<svg className="h-8 w-8 text-primary-foreground" fill="currentColor" viewBox="0 0 24 24">
 								<path d="M8 5v14l11-7z" />
 							</svg>
 						</div>
 					</div>
 					{isVideo && (
-						<div className="absolute bottom-2 left-2 text-xs text-white bg-black/50 px-2 py-1 rounded">
+						<div className="absolute bottom-2 left-2 rounded bg-black/50 px-2 py-1 text-white text-xs">
 							Click to load video
 						</div>
 					)}
-					{isAudio && (
-						<div className="absolute left-4 text-sm text-muted-foreground">
-							Click to load audio
-						</div>
-					)}
+					{isAudio && <div className="absolute left-4 text-muted-foreground text-sm">Click to load audio</div>}
 				</button>
 			</div>
 		)
@@ -275,7 +271,7 @@ export function SimpleMediaPlayer({
 	return (
 		<div className={cn("relative w-full space-y-3", className)}>
 			<div className="flex items-center justify-between gap-3">
-				<span className="text-sm font-medium">{title}</span>
+				<span className="font-medium text-sm">{title}</span>
 				<Button
 					onClick={() => {
 						void handleDownload()
@@ -290,7 +286,7 @@ export function SimpleMediaPlayer({
 			</div>
 
 			{startSeconds > 0 && (
-				<div className="text-right text-xs text-muted-foreground">
+				<div className="text-right text-muted-foreground text-xs">
 					Start time: {Math.floor(startSeconds / 60)}:{String(Math.floor(startSeconds % 60)).padStart(2, "0")}
 				</div>
 			)}
@@ -298,17 +294,29 @@ export function SimpleMediaPlayer({
 			{isClient && (
 				<>
 					{isAudio ? (
-						<audio ref={audioRef} src={signedUrl} controls autoPlay={autoPlay || hasUserInteracted} className="w-full" />
+						<audio
+							ref={audioRef}
+							src={signedUrl}
+							controls
+							autoPlay={autoPlay || hasUserInteracted}
+							className="w-full"
+						/>
 					) : isVideo ? (
-						<video 
-							ref={videoRef} 
-							src={signedUrl} 
-							controls 
-							autoPlay={autoPlay || hasUserInteracted} 
+						<video
+							ref={videoRef}
+							src={signedUrl}
+							controls
+							autoPlay={autoPlay || hasUserInteracted}
 							className="aspect-video w-full rounded-md border bg-black"
 						/>
 					) : (
-						<video ref={videoRef} src={signedUrl} controls autoPlay={autoPlay || hasUserInteracted} className="w-full rounded-md border" />
+						<video
+							ref={videoRef}
+							src={signedUrl}
+							controls
+							autoPlay={autoPlay || hasUserInteracted}
+							className="w-full rounded-md border"
+						/>
 					)}
 				</>
 			)}
@@ -318,10 +326,10 @@ export function SimpleMediaPlayer({
 					<summary className="cursor-pointer text-muted-foreground">Debug Info</summary>
 					<div className="mt-1 space-y-1 rounded bg-gray-50 p-2 text-xs">
 						<div>Original URL: {mediaUrl}</div>
-						<div>Signed URL: {signedUrl || 'Not loaded'}</div>
+						<div>Signed URL: {signedUrl || "Not loaded"}</div>
 						<div>Start time: {startSeconds}s</div>
 						<div>Media type: {isAudio ? "audio" : isVideo ? "video" : "unknown"}</div>
-						<div>Lazy load: {lazyLoad ? 'enabled' : 'disabled'}</div>
+						<div>Lazy load: {lazyLoad ? "enabled" : "disabled"}</div>
 					</div>
 				</details>
 			)}

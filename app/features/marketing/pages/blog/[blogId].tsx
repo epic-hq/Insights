@@ -92,9 +92,9 @@ export default function BlogPost() {
 		dateModified: post.updatedAt,
 		author: post.author
 			? {
-				"@type": "Person",
-				name: post.author.name,
-			}
+					"@type": "Person",
+					name: post.author.name,
+				}
 			: undefined,
 		publisher: {
 			"@type": "Organization",
@@ -125,7 +125,9 @@ export default function BlogPost() {
 						<div className="absolute inset-0 z-10 flex items-end pb-20">
 							<div className="mx-auto w-full max-w-4xl px-6 pb-10">
 								{post.tags?.length ? (
-									<div className="mb-3 font-semibold text-white/80 text-xs uppercase tracking-wider">{post.tags[0]}</div>
+									<div className="mb-3 font-semibold text-white/80 text-xs uppercase tracking-wider">
+										{post.tags[0]}
+									</div>
 								) : null}
 								<h1 className="mb-4 font-bold text-3xl text-white md:text-5xl">{post.title}</h1>
 								<div className="flex items-center gap-3 text-sm text-white/80">

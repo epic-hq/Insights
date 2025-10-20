@@ -29,7 +29,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	// Parse simple ?t=seconds parameter (like YouTube)
 	const url = new URL(request.url)
 	const timeParam = url.searchParams.get("t")
-	
+
 	let anchorOverride = null
 	if (timeParam) {
 		const seconds = Number.parseFloat(timeParam)
@@ -38,7 +38,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			anchorOverride = {
 				type: "doc",
 				start: `${seconds * 1000}ms`, // Convert back to ms format for consistency
-				end: null
+				end: null,
 			}
 		}
 	}
@@ -103,7 +103,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	if (topic && interviewId) {
 		const { data: related, error: relatedError } = await supabase
 			.from("evidence")
-			.select("id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, kind_tags, method, anchors, interview_id")
+			.select(
+				"id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, kind_tags, method, anchors, interview_id"
+			)
 			.eq("interview_id", interviewId)
 			.eq("topic", topic)
 			.neq("id", evidenceId)

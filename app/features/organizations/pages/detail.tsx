@@ -239,7 +239,9 @@ export default function OrganizationDetailPage() {
 															{person.title && <span>{person.title}</span>}
 															{person.segment && <span>{person.segment}</span>}
 															{link.role && <Badge variant="outline">{link.role}</Badge>}
-															{link.relationship_status && <Badge variant="secondary">{link.relationship_status}</Badge>}
+															{link.relationship_status && (
+																<Badge variant="secondary">{link.relationship_status}</Badge>
+															)}
 														</div>
 														{link.notes && <p className="mt-1 text-muted-foreground text-xs">{link.notes}</p>}
 													</div>

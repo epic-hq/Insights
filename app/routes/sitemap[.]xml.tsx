@@ -3,10 +3,10 @@ import { getAllPostSlugs } from "~/lib/cms/payload.server"
 
 /**
  * Dynamic Sitemap Generator
- * 
+ *
  * This route generates a sitemap.xml dynamically.
  * Access at: /sitemap.xml
- * 
+ *
  * Note: There's also a static sitemap.xml in /public/sitemap.xml
  * This dynamic version can be used if you need to generate URLs programmatically.
  */
@@ -18,19 +18,19 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const staticPages = [
 		// Homepage - Highest priority
 		{ path: "/", priority: 1.0, changefreq: "weekly" },
-		
+
 		// Marketing pages - High priority for SEO
 		{ path: "/customer-interviews", priority: 0.9, changefreq: "weekly" },
-		
+
 		// Blog index
 		{ path: "/blog", priority: 0.8, changefreq: "daily" },
-		
+
 		// Sign up - High conversion priority
 		{ path: "/sign-up", priority: 0.8, changefreq: "monthly" },
-		
+
 		// Auth pages - Lower priority
 		{ path: "/login", priority: 0.7, changefreq: "monthly" },
-		
+
 		// Add more public pages as needed
 	]
 

@@ -69,7 +69,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	}, [protectedData?.accounts])
 
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
-	
+
 	// Determine current project with same fallback logic as AppSidebar
 	const currentProject = useMemo(() => {
 		// First priority: URL projectId
@@ -77,7 +77,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			const urlProject = currentAccount.projects.find((proj) => proj.id === projectId)
 			if (urlProject) return urlProject
 		}
-		
+
 		// Second priority: last_used_project_id from user_settings
 		const userSettings = protectedData?.user_settings as { last_used_project_id?: string | null } | undefined
 		const lastUsedProjectId = userSettings?.last_used_project_id
@@ -85,7 +85,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			const lastUsedProject = currentAccount.projects.find((proj) => proj.id === lastUsedProjectId)
 			if (lastUsedProject) return lastUsedProject
 		}
-		
+
 		// Final fallback: first project
 		return currentAccount?.projects?.[0]
 	}, [projectId, currentAccount, protectedData])
@@ -99,16 +99,16 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			console.error("Cannot navigate: missing accountId or projectId", { acctId, projId })
 			return
 		}
-		
+
 		// Update local context state
 		setLastProjectPath({ accountId: acctId, projectId: projId })
-		
+
 		// Persist preference to database to prevent sidebar showing wrong project
 		try {
 			const formData = new FormData()
 			formData.append("accountId", acctId)
 			formData.append("projectId", projId)
-			
+
 			await fetch("/api/update-user-project-preference", {
 				method: "POST",
 				body: formData,
@@ -117,7 +117,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			console.error("Failed to persist project preference:", error)
 			// Don't block navigation on persistence failure
 		}
-		
+
 		const basePath = `/a/${acctId}/${projId}`
 		const routes = createRouteDefinitions(basePath)
 		navigate(routes.dashboard())

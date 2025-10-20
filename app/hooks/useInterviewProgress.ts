@@ -1,8 +1,8 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRealtimeRun } from "@trigger.dev/react-hooks"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe"
 import { createClient } from "~/lib/supabase/client"
 import type { Interview } from "~/types"
-import type { uploadMediaAndTranscribeTask } from "~/../src/trigger/interview/uploadMediaAndTranscribe"
 
 interface ProgressInfo {
 	status: string

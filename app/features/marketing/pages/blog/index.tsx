@@ -45,9 +45,9 @@ function formatPostForClient(post: any) {
 		readingTime: getReadingTime(post.content),
 		author: post.populatedAuthors?.[0]
 			? {
-				name: post.populatedAuthors[0].name,
-				avatarUrl: null,
-			}
+					name: post.populatedAuthors[0].name,
+					avatarUrl: null,
+				}
 			: null,
 	}
 }

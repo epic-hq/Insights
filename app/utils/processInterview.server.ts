@@ -741,7 +741,7 @@ export async function extractEvidenceAndPeopleCore({
 				if (typeof targetValue === "string") {
 					const trimmed = targetValue.trim()
 					if (trimmed.length) {
-						nextTarget = trimmed.toLowerCase() === "transcript" ? interviewMediaUrl ?? null : trimmed
+						nextTarget = trimmed.toLowerCase() === "transcript" ? (interviewMediaUrl ?? null) : trimmed
 					}
 				} else if (typeof targetValue === "object" && targetValue !== null) {
 					nextTarget = interviewMediaUrl ?? null

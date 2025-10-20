@@ -109,7 +109,6 @@ const routes = [
 	route("accept-invite", "./routes/accept-invite.tsx"),
 	route("invites", "./routes/invites.tsx"),
 
-
 	// API routes
 	route("api/upload-file", "./routes/api.upload-file.tsx"),
 	route("api/upload-from-url", "./routes/api.upload-from-url.tsx"),

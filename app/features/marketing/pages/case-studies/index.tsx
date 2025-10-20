@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { ArrowRight, Award, Building2, Clock, Sparkles, TrendingUp } from "lucide-react"
+import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
 import { getServerEnv } from "~/env.server"
 import { formatDate, getReadingTime } from "~/lib/cms/utils"
@@ -32,7 +32,7 @@ function formatCaseStudyForClient(post: any) {
 	// Use heroImage field from CMS
 	const image = post.heroImage
 	const imageUrl = image?.url ? `https://upsight-cms.vercel.app${image.url}` : null
-	
+
 	return {
 		id: post.id,
 		title: post.title,
@@ -49,9 +49,9 @@ function formatCaseStudyForClient(post: any) {
 		results: post.results || null,
 		author: post.populatedAuthors?.[0]
 			? {
-				name: post.populatedAuthors[0].name,
-				avatarUrl: null,
-			}
+					name: post.populatedAuthors[0].name,
+					avatarUrl: null,
+				}
 			: null,
 	}
 }
@@ -70,11 +70,11 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			where: JSON.stringify({ status: { equals: "published" } }),
 			sort: "-publishedAt",
 		})
-		
+
 		const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/case-studies?${params}`, {
 			headers: { "Content-Type": "application/json" },
 		})
-		
+
 		// If endpoint doesn't exist yet, return empty state
 		if (!response.ok) {
 			console.log("Case studies endpoint not ready yet, returning empty state")
@@ -89,7 +89,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 				},
 			}
 		}
-		
+
 		const postsData = await response.json()
 
 		// Format all case studies on the server
@@ -128,7 +128,7 @@ export default function CaseStudiesIndex() {
 	return (
 		<>
 			{/* Compact Hero Header */}
-			<section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-zinc-900 via-stone-900 to-neutral-800 px-6 py-12 text-white md:py-16">
+			<section className="relative overflow-hidden border-slate-200 border-b bg-gradient-to-br from-zinc-900 via-stone-900 to-neutral-800 px-6 py-12 text-white md:py-16">
 				<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-black/10" />
 
 				<div className="container relative mx-auto max-w-6xl">
@@ -147,7 +147,8 @@ export default function CaseStudiesIndex() {
 						</h1>
 
 						<p className="mx-auto max-w-2xl text-base text-white/80 leading-relaxed md:text-lg">
-							Discover how teams transform customer conversations into breakthrough insights and build products people love
+							Discover how teams transform customer conversations into breakthrough insights and build products people
+							love
 						</p>
 					</div>
 				</div>
@@ -169,7 +170,8 @@ export default function CaseStudiesIndex() {
 							</div>
 							<h3 className="mb-2 font-semibold text-2xl text-slate-900">Case Studies Coming Soon</h3>
 							<p className="text-lg text-slate-600">
-								We're working on publishing customer success stories. Check back soon to see how teams are using Upsight!
+								We're working on publishing customer success stories. Check back soon to see how teams are using
+								Upsight!
 							</p>
 						</div>
 					)}
@@ -352,7 +354,9 @@ function CaseStudyCard({ caseStudy }: { caseStudy: FormattedCaseStudy }) {
 						{caseStudy.title}
 					</h3>
 
-					{caseStudy.excerpt && <p className="mb-4 line-clamp-3 flex-1 text-slate-600 leading-relaxed">{caseStudy.excerpt}</p>}
+					{caseStudy.excerpt && (
+						<p className="mb-4 line-clamp-3 flex-1 text-slate-600 leading-relaxed">{caseStudy.excerpt}</p>
+					)}
 
 					{caseStudy.results && (
 						<div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">

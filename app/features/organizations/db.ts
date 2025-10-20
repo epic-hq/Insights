@@ -29,11 +29,7 @@ export const getOrganizations = async ({ supabase, projectId }: ProjectScopedPar
 		.order("name", { ascending: true })
 }
 
-export const getOrganizationById = async ({
-	supabase,
-	projectId,
-	id,
-}: ProjectScopedParams & { id: string }) => {
+export const getOrganizationById = async ({ supabase, projectId, id }: ProjectScopedParams & { id: string }) => {
 	return await supabase
 		.from("organizations")
 		.select(`
@@ -77,25 +73,11 @@ export const updateOrganization = async ({
 	id: string
 	data: Database["public"]["Tables"]["organizations"]["Update"]
 }) => {
-	return await supabase
-		.from("organizations")
-		.update(data)
-		.eq("id", id)
-		.eq("project_id", projectId)
-		.select()
-		.single()
+	return await supabase.from("organizations").update(data).eq("id", id).eq("project_id", projectId).select().single()
 }
 
-export const deleteOrganization = async ({
-	supabase,
-	id,
-	projectId,
-}: ProjectScopedParams & { id: string }) => {
-	return await supabase
-		.from("organizations")
-		.delete()
-		.eq("id", id)
-		.eq("project_id", projectId)
+export const deleteOrganization = async ({ supabase, id, projectId }: ProjectScopedParams & { id: string }) => {
+	return await supabase.from("organizations").delete().eq("id", id).eq("project_id", projectId)
 }
 
 export const linkPersonToOrganization = async ({

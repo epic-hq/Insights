@@ -1,12 +1,12 @@
 #!/usr/bin/env tsx
 /**
  * Story Generator Script
- * 
+ *
  * Generates Storybook stories for components in batch.
- * 
+ *
  * Usage:
  *   npx tsx scripts/generate-stories.ts
- * 
+ *
  * Or make it executable:
  *   chmod +x scripts/generate-stories.ts
  *   ./scripts/generate-stories.ts
@@ -87,15 +87,15 @@ const components: Array<{
 	layout?: "centered" | "padded" | "fullscreen"
 }> = [
 	// Example components - uncomment and edit:
-	// { 
-	//   name: "Button", 
+	// {
+	//   name: "Button",
 	//   path: "./app/components/ui/Button.tsx",
 	//   title: "Components/UI/Button",
 	//   hasRouter: false,
 	//   layout: "centered",
 	// },
-	// { 
-	//   name: "Card", 
+	// {
+	//   name: "Card",
 	//   path: "./app/components/ui/Card.tsx",
 	//   title: "Components/UI/Card",
 	//   hasRouter: false,
@@ -169,11 +169,11 @@ function main() {
 		}
 	}
 
-	console.log(`\n📊 Summary:`)
+	console.log("\n📊 Summary:")
 	console.log(`   ✅ Generated: ${successCount}`)
 	console.log(`   ❌ Errors: ${errorCount}`)
 	console.log(`   ⏭️  Skipped: ${components.length - successCount - errorCount}`)
-	console.log(`\n🎉 Done!\n`)
+	console.log("\n🎉 Done!\n")
 }
 
 // Run the generator

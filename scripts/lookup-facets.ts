@@ -34,7 +34,7 @@ async function lookupFacets() {
 			acc[f.kind_id].push(f)
 			return acc
 		},
-		{} as Record<number, typeof facets>,
+		{} as Record<number, typeof facets>
 	)
 
 	for (const [kindId, items] of Object.entries(byKind)) {

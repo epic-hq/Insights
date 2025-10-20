@@ -1,5 +1,5 @@
-import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { ArrowLeft, Award, Building2, Calendar, Clock, TrendingUp } from "lucide-react"
+import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
 import type { PayloadPost } from "~/lib/cms/payload.server"
 import { getPostBySlug } from "~/lib/cms/payload.server"
@@ -12,7 +12,10 @@ export const meta: MetaFunction<typeof loader> = ({ data }) => {
 
 	const { caseStudy } = data
 	const seoTitle = caseStudy.seo?.title || `${caseStudy.title} - Case Study | Upsight`
-	const seoDescription = caseStudy.seo?.description || caseStudy.excerpt || `Read how ${caseStudy.company || "this team"} achieved success with Upsight`
+	const seoDescription =
+		caseStudy.seo?.description ||
+		caseStudy.excerpt ||
+		`Read how ${caseStudy.company || "this team"} achieved success with Upsight`
 	const seoImage = caseStudy.seo?.image
 
 	return [
@@ -51,7 +54,7 @@ export default function CaseStudyDetail() {
 	return (
 		<div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
 			{/* Hero Section */}
-			<section className="relative overflow-hidden border-b border-slate-200 bg-gradient-to-br from-zinc-900 via-stone-900 to-neutral-800 px-6 py-16 text-white md:py-24">
+			<section className="relative overflow-hidden border-slate-200 border-b bg-gradient-to-br from-zinc-900 via-stone-900 to-neutral-800 px-6 py-16 text-white md:py-24">
 				<div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-transparent to-black/20" />
 
 				<div className="container relative mx-auto max-w-4xl">
@@ -85,10 +88,14 @@ export default function CaseStudyDetail() {
 					)}
 
 					{/* Title */}
-					<h1 className="mb-6 font-bold text-4xl text-white leading-tight md:text-5xl lg:text-6xl">{caseStudy.title}</h1>
+					<h1 className="mb-6 font-bold text-4xl text-white leading-tight md:text-5xl lg:text-6xl">
+						{caseStudy.title}
+					</h1>
 
 					{/* Excerpt */}
-					{caseStudy.excerpt && <p className="mb-8 text-lg text-white/90 leading-relaxed md:text-xl">{caseStudy.excerpt}</p>}
+					{caseStudy.excerpt && (
+						<p className="mb-8 text-lg text-white/90 leading-relaxed md:text-xl">{caseStudy.excerpt}</p>
+					)}
 
 					{/* Meta Info */}
 					<div className="flex flex-wrap items-center gap-4 text-sm text-white/70">
@@ -107,7 +114,7 @@ export default function CaseStudyDetail() {
 
 			{/* Featured Image */}
 			{caseStudy.featured_image && (
-				<section className="border-b border-slate-200 bg-white">
+				<section className="border-slate-200 border-b bg-white">
 					<div className="container mx-auto max-w-5xl px-6 py-12">
 						<div className="overflow-hidden rounded-2xl shadow-2xl">
 							<img
@@ -122,7 +129,7 @@ export default function CaseStudyDetail() {
 
 			{/* Results Highlight */}
 			{caseStudy.results && (
-				<section className="border-b border-slate-200 bg-gradient-to-br from-green-50 to-emerald-50 px-6 py-12">
+				<section className="border-slate-200 border-b bg-gradient-to-br from-green-50 to-emerald-50 px-6 py-12">
 					<div className="container mx-auto max-w-4xl">
 						<div className="rounded-2xl border border-green-200 bg-white p-8 shadow-lg md:p-12">
 							<div className="mb-4 flex items-center gap-3">
@@ -147,7 +154,7 @@ export default function CaseStudyDetail() {
 
 			{/* Author */}
 			{caseStudy.author && (
-				<section className="border-t border-slate-200 bg-white px-6 py-12">
+				<section className="border-slate-200 border-t bg-white px-6 py-12">
 					<div className="container mx-auto max-w-4xl">
 						<div className="flex items-center gap-4">
 							{caseStudy.author.avatar && (
@@ -167,7 +174,7 @@ export default function CaseStudyDetail() {
 			)}
 
 			{/* CTA Section */}
-			<section className="border-t border-slate-200 bg-gradient-to-br from-amber-50 to-orange-50 px-6 py-16">
+			<section className="border-slate-200 border-t bg-gradient-to-br from-amber-50 to-orange-50 px-6 py-16">
 				<div className="container mx-auto max-w-4xl text-center">
 					<h2 className="mb-4 font-bold text-3xl text-slate-900">Ready to achieve similar results?</h2>
 					<p className="mb-8 text-lg text-slate-600">

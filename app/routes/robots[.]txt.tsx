@@ -2,10 +2,10 @@ import type { LoaderFunctionArgs } from "react-router"
 
 /**
  * Dynamic Robots.txt Generator
- * 
+ *
  * This route generates robots.txt dynamically.
  * Access at: /robots.txt
- * 
+ *
  * Note: There's also a static robots.txt in /public/robots.txt
  * This dynamic version can be used if you need environment-specific rules.
  */

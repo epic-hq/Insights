@@ -154,11 +154,7 @@ export async function searchPosts(query: string, limit = 10): Promise<PayloadPos
 	const env = getServerEnv()
 	const params = new URLSearchParams({
 		where: JSON.stringify({
-			or: [
-				{ title: { contains: query } },
-				{ excerpt: { contains: query } },
-				{ content: { contains: query } },
-			],
+			or: [{ title: { contains: query } }, { excerpt: { contains: query } }, { content: { contains: query } }],
 			status: { equals: "published" },
 		}),
 		limit: limit.toString(),

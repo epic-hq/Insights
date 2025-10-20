@@ -1,5 +1,17 @@
 import type { LucideIcon } from "lucide-react"
-import { BookOpen, Compass, File, Home, Lightbulb, ListChecks, Mic, Sparkles, Target, UserCircle, Users } from "lucide-react"
+import {
+	BookOpen,
+	Compass,
+	File,
+	Home,
+	Lightbulb,
+	ListChecks,
+	Mic,
+	Sparkles,
+	Target,
+	UserCircle,
+	Users,
+} from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
 export interface AppSidebarNavItem {

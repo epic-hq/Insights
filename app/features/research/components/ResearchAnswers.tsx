@@ -143,22 +143,22 @@ function AnswerRow({ answer, projectRoutes }: { answer: ResearchAnswerNode; proj
 	// Helper to create evidence link with time parameter
 	const createEvidenceLink = (evidenceId: string, anchors: any) => {
 		if (!projectRoutes) return null
-		
+
 		let url = projectRoutes.evidence.detail(evidenceId)
-		
+
 		if (anchors && Array.isArray(anchors) && anchors.length > 0) {
 			const anchor = anchors[0]
 			const startTime = anchor?.start
-			
+
 			if (startTime) {
 				let seconds = 0
-				if (typeof startTime === 'number') {
+				if (typeof startTime === "number") {
 					seconds = startTime
-				} else if (typeof startTime === 'string') {
-					if (startTime.endsWith('ms')) {
-						seconds = Number.parseFloat(startTime.replace('ms', '')) / 1000
-					} else if (startTime.includes(':')) {
-						const parts = startTime.split(':')
+				} else if (typeof startTime === "string") {
+					if (startTime.endsWith("ms")) {
+						seconds = Number.parseFloat(startTime.replace("ms", "")) / 1000
+					} else if (startTime.includes(":")) {
+						const parts = startTime.split(":")
 						if (parts.length === 2) {
 							seconds = Number.parseInt(parts[0]) * 60 + Number.parseInt(parts[1])
 						}
@@ -166,16 +166,16 @@ function AnswerRow({ answer, projectRoutes }: { answer: ResearchAnswerNode; proj
 						seconds = Number.parseFloat(startTime)
 					}
 				}
-				
+
 				if (seconds > 0) {
 					url = `${url}?t=${seconds}`
 				}
 			}
 		}
-		
+
 		return url
 	}
-	
+
 	const firstEvidence = answer.evidence[0]
 	const evidenceLink = firstEvidence ? createEvidenceLink(firstEvidence.id, firstEvidence.anchors) : null
 	const interviewLink =

@@ -9,10 +9,13 @@ import { getServerClient } from "~/lib/supabase/client.server"
 export async function action({ request }: ActionFunctionArgs) {
 	try {
 		const { client: supabase } = await getServerClient(request)
-		
+
 		// Get authenticated user
-		const { data: { user }, error: authError } = await supabase.auth.getUser()
-		
+		const {
+			data: { user },
+			error: authError,
+		} = await supabase.auth.getUser()
+
 		if (authError || !user) {
 			return { success: false, error: "Unauthorized" }
 		}

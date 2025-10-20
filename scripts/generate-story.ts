@@ -1,18 +1,18 @@
 #!/usr/bin/env tsx
 /**
  * Single Story Generator Script
- * 
+ *
  * Generates a Storybook story for a single component via command line.
- * 
+ *
  * Usage:
  *   npx tsx scripts/generate-story.ts <component-path> [options]
- * 
+ *
  * Examples:
  *   npx tsx scripts/generate-story.ts ./app/components/ui/Button.tsx
  *   npx tsx scripts/generate-story.ts ./app/components/ui/Button.tsx --title "Components/UI/Button"
  *   npx tsx scripts/generate-story.ts ./app/features/interviews/components/InterviewCard.tsx --router
  *   npx tsx scripts/generate-story.ts ./app/components/Card.tsx --layout padded --force
- * 
+ *
  * Options:
  *   --title <string>       Story title (default: auto-generated from path)
  *   --router              Component uses React Router hooks
@@ -159,7 +159,7 @@ function parseArgs() {
 			case "--router":
 				options.hasRouter = true
 				break
-			case "--layout":
+			case "--layout": {
 				const layout = args[++i]
 				if (layout === "centered" || layout === "padded" || layout === "fullscreen") {
 					options.layout = layout
@@ -168,6 +168,7 @@ function parseArgs() {
 					process.exit(1)
 				}
 				break
+			}
 			case "--force":
 				options.force = true
 				break
@@ -203,7 +204,7 @@ function main() {
 		// Check if story already exists
 		if (fs.existsSync(storyPath) && !options.force) {
 			console.error(`❌ Story already exists: ${componentName}.stories.tsx`)
-			console.error(`   Use --force to overwrite`)
+			console.error("   Use --force to overwrite")
 			process.exit(1)
 		}
 
@@ -227,9 +228,9 @@ function main() {
 		console.log(`   Title: ${title}`)
 		console.log(`   Router: ${options.hasRouter ? "Yes" : "No"}`)
 		console.log(`   Layout: ${options.layout}`)
-		console.log(`\n🎉 Done!\n`)
+		console.log("\n🎉 Done!\n")
 	} catch (error) {
-		console.error(`❌ Error generating story:`, error)
+		console.error("❌ Error generating story:", error)
 		process.exit(1)
 	}
 }

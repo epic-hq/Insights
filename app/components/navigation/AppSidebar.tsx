@@ -66,7 +66,7 @@ export function AppSidebar() {
 
 	const fallbackProject = useMemo(() => {
 		if (projectId) return { id: projectId }
-		
+
 		// Respect user's last used project preference
 		const lastUsedProjectId = protectedData?.user_settings?.last_used_project_id
 		if (lastUsedProjectId && fallbackAccount?.projects?.length) {
@@ -80,7 +80,7 @@ export function AppSidebar() {
 				availableProjects: fallbackAccount.projects.map((p) => p.id),
 			})
 		}
-		
+
 		// Final fallback to first project
 		if (fallbackAccount?.projects?.length) {
 			console.log("[AppSidebar] Falling back to first project:", fallbackAccount.projects[0].id)

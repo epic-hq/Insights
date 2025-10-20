@@ -5,7 +5,7 @@ export default [
 	route("/about", "./features/marketing/pages/about.tsx"),
 	route("index2", "./features/marketing/pages/index2.tsx"),
 	route("customer-interviews", "./features/marketing/pages/customer-interviews.tsx"),
-	
+
 	// Blog and Case Studies with shared layout
 	layout("./features/marketing/layouts/MarketingLayout.tsx", [
 		route("blog", "./features/marketing/pages/blog/index.tsx"),
