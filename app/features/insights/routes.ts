@@ -11,7 +11,7 @@ export default [
 			route("auto-insights", "./features/insights/pages/auto-insights.tsx"),
 		]),
 		route("new", "./features/insights/pages/new.tsx"),
-		route(":insightId", "./features/insights/pages/insightDetail.tsx"),
+		route(":insightId", "./features/insights/pages/insight-detail.tsx"),
 		route(":insightId/edit", "./features/insights/pages/edit.tsx"),
 		route("api/update-field", "./features/insights/api/update-field.tsx"),
 	]),

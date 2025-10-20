@@ -35,9 +35,11 @@ interface AccountRecord {
 
 interface ProtectedLayoutData {
 	accounts?: AccountRecord[] | string | null
+	user_settings?: { last_used_project_id?: string | null } | null
 }
 
 interface TeamSwitcherProps {
+	accounts?: AccountRecord[]
 	collapsed?: boolean
 }
 

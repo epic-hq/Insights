@@ -86,7 +86,7 @@ export default function CopilotChat({ context = "general", contextData, onClose,
 					const assistantMessage: Message = {
 						id: (Date.now() + 1).toString(),
 						role: "assistant",
-						content: generateContextualResponse(userMessage.content, context, contextData),
+						content: generateContextualResponse(userMessage.content, context, contextData || {}),
 						timestamp: new Date(),
 					}
 					setMessages((prev) => [...prev, assistantMessage])
