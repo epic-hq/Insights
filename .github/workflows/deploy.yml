@@ -26,12 +26,18 @@ jobs:
           node-version: 24.3.0
           cache: pnpm
 
-      - name: Enable pnpm via corepack
+      - name: Resolve pnpm version
+        id: pnpm-version
         run: |
           set -euo pipefail
-          corepack enable
-          PNPM_VERSION="$(node -p "const pm = require('./package.json').packageManager ?? ''; const match = pm.match(/^pnpm@(.*)$/); if (!match) { throw new Error('packageManager is not pnpm'); } match[1].split('+')[0]")"
-          corepack use "pnpm@${PNPM_VERSION}"
+          VERSION="$(node -p "const pm = require('./package.json').packageManager ?? ''; const match = pm.match(/^pnpm@(.*)$/); if (!match) { throw new Error('packageManager is not pnpm'); } match[1].split('+')[0]")"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ steps.pnpm-version.outputs.version }}
+          run_install: false
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
