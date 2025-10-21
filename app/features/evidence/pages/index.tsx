@@ -189,7 +189,14 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		const { data: evp, error: epErr } = await supabase
 			.from("evidence_people")
-			.select("evidence_id, role, person:person_id(id, name)")
+			.select(`
+				evidence_id,
+				role,
+				people:person_id!inner(
+					id,
+					name
+				)
+			`)
 			.eq("project_id", projectId)
 			.in("evidence_id", evidenceIds)
 		if (epErr) throw new Error(`Failed to load evidence_people: ${epErr.message}`)
@@ -199,9 +206,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		for (const row of (evp ?? []) as Array<{
 			evidence_id: string
 			role: string | null
-			person: { id: string; name: string | null } | null
+			people: { id: string; name: string | null } | null
 		}>) {
-			if (row.person) personIds.add(row.person.id)
+			if (row.people) personIds.add(row.people.id)
 		}
 
 		// Fetch personas for all people
@@ -209,15 +216,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		if (personIds.size > 0) {
 			const { data: pp, error: ppErr } = await supabase
 				.from("people_personas")
-				.select("person_id, persona:persona_id(id, name)")
+				.select("person_id, personas:persona_id!inner(id, name)")
 				.eq("project_id", projectId)
 				.in("person_id", Array.from(personIds))
 			if (ppErr) throw new Error(`Failed to load people_personas: ${ppErr.message}`)
 
-			for (const row of (pp ?? []) as Array<{ person_id: string; persona: { id: string; name: string } | null }>) {
-				if (!row.persona) continue
+			for (const row of (pp ?? []) as Array<{ person_id: string; personas: { id: string; name: string } | null }>) {
+				if (!row.personas) continue
 				const list = personasByPerson.get(row.person_id) ?? []
-				list.push(row.persona)
+				list.push(row.personas)
 				personasByPerson.set(row.person_id, list)
 			}
 		}
@@ -226,15 +233,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		for (const row of (evp ?? []) as Array<{
 			evidence_id: string
 			role: string | null
-			person: { id: string; name: string | null } | null
+			people: { id: string; name: string | null } | null
 		}>) {
-			if (!row.person) continue
+			if (!row.people) continue
 			const list = peopleByEvidence.get(row.evidence_id) ?? []
 			list.push({
-				id: row.person.id,
-				name: row.person.name ?? null,
+				id: row.people.id,
+				name: row.people.name ?? null,
 				role: row.role ?? null,
-				personas: personasByPerson.get(row.person.id) ?? [],
+				personas: personasByPerson.get(row.people.id) ?? [],
 			})
 			peopleByEvidence.set(row.evidence_id, list)
 		}

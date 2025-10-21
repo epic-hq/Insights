@@ -52,6 +52,33 @@ function SidebarProvider({
 	open?: boolean
 	onOpenChange?: (open: boolean) => void
 }) {
+	const persistSidebarPreference = React.useCallback((openState: boolean) => {
+		if (typeof window === "undefined") return
+
+		const serializedState = openState ? "expanded" : "collapsed"
+		const cookieStoreCandidate = (window as typeof window & {
+			cookieStore?: {
+				set?: (options: { name: string; value: string; expires?: number; path?: string }) => Promise<void>
+			}
+		}).cookieStore
+
+		if (cookieStoreCandidate?.set) {
+			void cookieStoreCandidate.set({
+				name: SIDEBAR_COOKIE_NAME,
+				value: serializedState,
+				expires: Date.now() + SIDEBAR_COOKIE_MAX_AGE * 1000,
+				path: "/",
+			})
+			return
+		}
+
+		try {
+			window.localStorage.setItem(SIDEBAR_COOKIE_NAME, serializedState)
+		} catch {
+			// Swallow storage errors silently.
+		}
+	}, [])
+
 	const isMobile = useIsMobile()
 	const [openMobile, setOpenMobile] = React.useState(false)
 
@@ -68,10 +95,9 @@ function SidebarProvider({
 				_setOpen(openState)
 			}
 
-			// This sets the cookie to keep the sidebar state.
-			document.cookie = `${SIDEBAR_COOKIE_NAME}=${openState}; path=/; max-age=${SIDEBAR_COOKIE_MAX_AGE}`
+			persistSidebarPreference(openState)
 		},
-		[setOpenProp, open]
+		[setOpenProp, open, persistSidebarPreference]
 	)
 
 	// Helper to toggle the sidebar.

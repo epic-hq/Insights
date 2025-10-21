@@ -1,6 +1,7 @@
 import { Building2, Globe, LinkIcon, Mail, MapPin, Phone, UserMinus, Users } from "lucide-react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import PageContainer from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
@@ -17,6 +18,7 @@ import {
 	linkPersonToOrganization,
 	unlinkPersonFromOrganization,
 } from "~/features/organizations/db"
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Organization, PeopleOrganization, Person } from "~/types"
@@ -137,14 +139,14 @@ export default function OrganizationDetailPage() {
 
 	return (
 		<PageContainer>
+			<PersonaPeopleSubnav />
 			<div className="mx-auto max-w-5xl px-4 py-10">
-				<Card className="mb-8 border border-border/80">
-					<CardHeader className="space-y-3">
-						<Badge variant="secondary" className="w-fit gap-1 text-xs">
-							<Building2 className="h-3.5 w-3.5" /> Organization
-						</Badge>
-						<CardTitle className="font-bold text-3xl text-foreground">{organization.name}</CardTitle>
-						<div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">
+				<DetailPageHeader
+					icon={Building2}
+					typeLabel="Organization"
+					title={organization.name}
+					metadata={
+						<>
 							{organization.website_url && (
 								<a
 									href={organization.website_url}
@@ -177,21 +179,19 @@ export default function OrganizationDetailPage() {
 									<Mail className="h-4 w-4" /> {organization.email}
 								</span>
 							)}
-						</div>
-						{(organization.industry || organization.size_range || organization.company_type) && (
-							<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
+						</>
+					}
+					badges={
+						(organization.industry || organization.size_range || organization.company_type) && (
+							<>
 								{organization.industry && <Badge variant="outline">{organization.industry}</Badge>}
 								{organization.company_type && <Badge variant="outline">{organization.company_type}</Badge>}
 								{organization.size_range && <Badge variant="outline">Size: {organization.size_range}</Badge>}
-							</div>
-						)}
-					</CardHeader>
-					{organization.description && (
-						<CardContent>
-							<p className="text-muted-foreground">{organization.description}</p>
-						</CardContent>
-					)}
-				</Card>
+							</>
+						)
+					}
+					description={organization.description}
+				/>
 
 				<div className="grid gap-6 lg:grid-cols-[2fr,1fr]">
 					<Card className="border border-border/80">

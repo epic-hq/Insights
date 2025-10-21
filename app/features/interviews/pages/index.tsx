@@ -182,10 +182,10 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								<thead>
 									<tr>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-											Interview
+											Participant
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-											Participant
+											Interview
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Persona
@@ -209,7 +209,17 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 										<tr key={interview.id} className="hover:bg-gray-50 dark:hover:bg-gray-800">
 											<td className="px-4 py-3">
 												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
-													<div className="font-medium text-gray-900 dark:text-white">
+													<div className="font-medium text-foreground text-base">
+														{interview.interview_people?.[0]?.people?.name || interview.participant}
+													</div>
+													<div className="text-foreground/60 text-sm">
+														{interview.interview_people?.[0]?.people?.segment || "Participant"}
+													</div>
+												</Link>
+											</td>
+											<td className="px-4 py-3">
+												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
+													<div className="text-foreground/70 text-sm">
 														{interview.title || `Interview with ${interview.participant}`}
 													</div>
 													<div className="mt-1">
@@ -220,14 +230,6 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 														/>
 													</div>
 												</Link>
-											</td>
-											<td className="px-4 py-3">
-												<div className="text-gray-900 text-sm dark:text-white">
-													{interview.interview_people?.[0]?.people?.name || interview.participant}
-												</div>
-												<div className="text-gray-500 text-sm dark:text-gray-400">
-													{interview.interview_people?.[0]?.people?.segment || "Participant"}
-												</div>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												{interview.interview_people?.[0]?.people?.people_personas?.[0]?.personas ? (

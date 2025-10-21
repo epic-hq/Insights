@@ -40,11 +40,12 @@ import InterviewQuestionHelp from "~/features/questions/components/InterviewQues
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
-import type { QuestionInput } from "~/types"
+import type { QuestionInput, Tables } from "~/types"
 import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 
 type ManagerResearchMode = ResearchMode
 export type Familiarity = "cold" | "warm"
+type InterviewPromptRow = Tables<"interview_prompts">
 
 export interface InterviewQuestionsManagerProps {
 	projectId?: string
@@ -600,11 +601,13 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			let formattedQuestions: Question[] = []
 			let selectedIds: string[] = []
 
-			const promptRows: any[] = Array.isArray(promptRes.data) ? (promptRes.data as any[]) : []
+			const promptRows: InterviewPromptRow[] = Array.isArray(promptRes.data)
+				? (promptRes.data as InterviewPromptRow[])
+				: []
 			if (promptRows.length > 0) {
 				formattedQuestions = promptRows
-					.filter((row: any) => row.status !== "deleted" && row.status !== "rejected")
-					.map((row: any) => ({
+					.filter((row) => row.status !== "deleted" && row.status !== "rejected")
+					.map((row) => ({
 						id: row.id,
 						text: row.text,
 						categoryId: row.category || "context",
@@ -620,7 +623,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					}))
 				selectedIds = promptRows
 					.filter(
-						(row: any) =>
+						(row) =>
 							row.status !== "deleted" &&
 							row.status !== "rejected" &&
 							(row.is_selected || typeof row.selected_order === "number")
@@ -1882,7 +1885,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 										className={mustHavesOnly ? "border-orange-200 bg-orange-50" : ""}
 									>
 										<Filter className="h-4 w-4" />
-										<span className="ml-1 hidden sm:inline">{mustHavesOnly ? "Show All" : "Filter"}</span>
+										<span className="ml-1 hidden sm:inline">{mustHavesOnly ? "Must-Haves" : "All"}</span>
 									</Button>
 								</TooltipTrigger>
 								<TooltipContent>
@@ -2191,10 +2194,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																								const updated = questions.map((q) =>
 																									q.id === question.id
 																										? {
-																												...q,
-																												text: editingText,
-																												qualityFlag: quality ?? undefined,
-																											}
+																											...q,
+																											text: editingText,
+																											qualityFlag: quality ?? undefined,
+																										}
 																										: q
 																								)
 																								setQuestions(updated)

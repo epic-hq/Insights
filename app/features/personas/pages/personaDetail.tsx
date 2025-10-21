@@ -1,11 +1,14 @@
 import consola from "consola"
+import { Users } from "lucide-react"
 import { motion } from "framer-motion"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
+import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Database, Insight, Interview } from "~/types"
@@ -213,60 +216,15 @@ export default function PersonaDetailRoute() {
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
-			{/* Clean Metro-Style Header */}
-			<div className="border-gray-200 border-b bg-white px-6 py-12 dark:border-gray-800 dark:bg-gray-950">
-				<div className="mx-auto max-w-6xl">
-					<motion.div
-						className="mb-8 flex flex-col gap-8 md:flex-row md:items-start md:justify-between"
-						initial={{ opacity: 0, y: 20 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.5 }}
-					>
-						{/* Avatar Section - Separated */}
-						<div className="flex items-center justify-center md:justify-start">
-							<motion.div className="relative" whileHover={{ scale: 1.02 }} transition={{ duration: 0.2 }}>
-								<Avatar
-									className="h-16 w-16 border-2 border-white shadow-lg dark:border-gray-800"
-									style={{ borderColor: `${themeColor}30` }}
-								>
-									<AvatarFallback className="font-bold text-white text-xl" style={{ backgroundColor: themeColor }}>
-										{initials}
-									</AvatarFallback>
-								</Avatar>
-							</motion.div>
-						</div>
-
-						{/* Title Section - Clean Typography */}
-						<div className="flex-1 text-center md:text-left">
-							<motion.h1
-								className="mb-4 font-light text-4xl text-gray-900 leading-tight tracking-tight md:text-5xl dark:text-white"
-								style={{ color: themeColor }}
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.2, duration: 0.5 }}
-							>
-								{name}
-							</motion.h1>
-
-							{/* Theme Color Accent Line */}
-							<motion.div
-								className="mx-auto mb-6 h-1 w-24 rounded-full md:mx-0"
-								style={{ backgroundColor: themeColor }}
-								initial={{ width: 0 }}
-								animate={{ width: "6rem" }}
-								transition={{ delay: 0.4, duration: 0.6 }}
-							/>
-
-							<motion.p
-								className="max-w-2xl text-gray-600 text-xl leading-relaxed dark:text-gray-400"
-								initial={{ opacity: 0, y: 20 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.3, duration: 0.5 }}
-							>
-								{description}
-							</motion.p>
-						</div>
-
+			<PersonaPeopleSubnav />
+			<div className="mx-auto max-w-6xl px-6 py-10">
+				<DetailPageHeader
+					icon={Users}
+					typeLabel="Persona"
+					title={name}
+					description={description}
+				>
+					<div className="mt-4 flex gap-2">
 						{/* Action Buttons */}
 						<motion.div
 							className="flex justify-center gap-3 md:justify-start"
@@ -303,9 +261,10 @@ export default function PersonaDetailRoute() {
 								Generate Insights
 							</Button>
 						</motion.div>
-					</motion.div>
+					</div>
+				</DetailPageHeader>
 
-					{/* KPI Stats Section */}
+				{/* KPI Stats Section */}
 					{/* <motion.div
 						className="grid grid-cols-3 gap-6"
 						initial={{ opacity: 0, y: 20 }}
@@ -349,10 +308,8 @@ export default function PersonaDetailRoute() {
 							</p>
 						</div>
 					</motion.div> */}
-				</div>
-			</div>
 
-			{/* Main Content */}
+				{/* Main Content */}
 			<div className="mx-auto max-w-6xl px-6 py-12">
 				{/* Persona Details Card */}
 				<Card className="mb-8">
@@ -495,6 +452,7 @@ export default function PersonaDetailRoute() {
 						</Card>
 					)}
 				</div>
+			</div>
 			</div>
 		</div>
 	)

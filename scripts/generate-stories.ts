@@ -20,7 +20,7 @@ interface StoryConfig {
 	componentName: string
 	title: string
 	hasRouter: boolean
-	mockData?: Record<string, any>
+	mockData?: Record<string, unknown>
 	layout?: "centered" | "padded" | "fullscreen"
 }
 
@@ -83,7 +83,7 @@ const components: Array<{
 	path: string
 	title?: string
 	hasRouter?: boolean
-	mockData?: Record<string, any>
+	mockData?: Record<string, unknown>
 	layout?: "centered" | "padded" | "fullscreen"
 }> = [
 	// Example components - uncomment and edit:

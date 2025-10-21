@@ -1,5 +1,7 @@
+import { type DraggableProvidedDraggableProps, type DraggableProvidedDragHandleProps } from "@hello-pangea/dnd"
 import { motion } from "framer-motion"
 import { Check, Edit, GripVertical, MoreHorizontal, Trash2, TriangleAlert, X, Zap } from "lucide-react"
+import React, { type RefCallback } from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -30,9 +32,9 @@ export interface QuestionCardProps {
 	fitsInTime: boolean
 
 	// Drag
-	dragHandleProps?: any
-	draggableProps?: any
-	innerRef?: (el: HTMLElement | null) => void
+	dragHandleProps?: DraggableProvidedDragHandleProps | null
+	draggableProps?: DraggableProvidedDraggableProps
+	innerRef?: RefCallback<HTMLDivElement>
 
 	// Editing
 	isEditing: boolean
@@ -65,8 +67,6 @@ function QualityFlag({ qualityFlag }: { qualityFlag?: QualityFlagType | null }) 
 	)
 }
 
-import React from "react"
-
 function QuestionCardComponent(props: QuestionCardProps) {
 	const {
 		question,
@@ -94,7 +94,7 @@ function QuestionCardComponent(props: QuestionCardProps) {
 				className={`border-none sm:rounded-xl sm:border sm:border-gray-200 sm:border-l-4 sm:shadow-sm ${
 					fitsInTime ? "sm:border-l-blue-500" : "bg-orange-50/30 sm:border-l-orange-500 dark:bg-orange-950/30"
 				}`}
-				ref={innerRef as any}
+				ref={innerRef ?? undefined}
 				{...draggableProps}
 			>
 				<CardContent className="p-2 sm:p-2">

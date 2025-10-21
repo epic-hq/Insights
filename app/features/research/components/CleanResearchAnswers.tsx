@@ -125,9 +125,9 @@ function DecisionCard({
 					<div className="flex items-start gap-3">
 						<ConfidenceBarChart level={confidenceLevel} variant={confidenceVariant} className="mt-1 flex-shrink-0" />
 						<div className="min-w-0 flex-1">
-							<h3 className="font-medium text-base text-gray-900 sm:text-lg">{decision.text}</h3>
+							<h3 className="font-medium text-base text-foreground sm:text-lg">{decision.text}</h3>
 							{bestAnswer?.answer_text && (
-								<div className="mt-2 text-gray-600 text-sm sm:text-base">
+								<div className="mt-2 text-foreground/70 text-sm sm:text-base">
 									{bestAnswer.answer_text.split("\n").map((line, index) => (
 										<p key={index} className={index > 0 ? "mt-1" : ""}>
 											{line.trim()}
@@ -148,11 +148,11 @@ function DecisionCard({
 				{decision.research_questions.length > 0 && (
 					<div className="mx-4 mt-6 md:mx-8">
 						<details className="group">
-							<summary className="flex cursor-pointer items-center justify-between font-medium text-gray-700 text-sm">
+							<summary className="flex cursor-pointer items-center justify-between font-medium text-foreground/80 text-sm">
 								<div className="hidden md:block">Details</div>
 								<div className="flex items-center gap-2">
-									<span className="text-gray-500 text-xs">{decision.metrics.evidence_count}</span>
-									<ChevronDownIcon className="h-4 w-4 text-gray-400 transition-transform duration-200 group-open:rotate-180" />
+									<span className="text-foreground/60 text-xs">{decision.metrics.evidence_count}</span>
+									<ChevronDownIcon className="h-4 w-4 text-foreground/50 transition-transform duration-200 group-open:rotate-180" />
 								</div>
 							</summary>
 							<div className="mt-3 space-y-2 sm:space-y-3">
@@ -170,9 +170,9 @@ function DecisionCard({
 											<div key={rq.id} className="rounded-lg bg-gray-50 p-3 sm:p-4">
 												<div className="flex items-start justify-between gap-3">
 													<div className="min-w-0 flex-1">
-														<h5 className="font-medium text-gray-900 text-sm">{rq.text}</h5>
+														<h5 className="font-medium text-foreground text-sm">{rq.text}</h5>
 														{bestRQAnswer?.answer_text && (
-															<div className="mt-1 text-gray-600 text-sm">
+															<div className="mt-1 text-foreground/70 text-sm">
 																{bestRQAnswer.answer_text.split("\n").map((line, index) => (
 																	<p key={index} className={index > 0 ? "mt-1" : ""}>
 																		{line.trim()}
@@ -184,7 +184,7 @@ function DecisionCard({
 													{evidenceLink && (
 														<a
 															href={evidenceLink}
-															className="flex-shrink-0 text-gray-400 hover:text-gray-600"
+															className="flex-shrink-0 text-foreground/50 hover:text-foreground/70"
 															title="View related evidence"
 														>
 															<ArrowRight className="h-4 w-4" />
@@ -252,7 +252,7 @@ export function CleanResearchAnswers({
 
 	return (
 		<div className={className}>
-			<h2 className="mb-4 font-semibold text-gray-900 text-lg sm:mb-6 sm:text-xl">Decision Analysis</h2>
+			<h2 className="mb-4 font-semibold text-foreground text-lg sm:mb-6 sm:text-xl">Decision Analysis</h2>
 			{data.decision_questions.map((decision) => (
 				<DecisionCard
 					key={decision.id}

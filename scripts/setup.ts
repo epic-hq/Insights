@@ -6,7 +6,6 @@ import prompt from "prompt"
 // add all the env you wish here
 const ENVIRONMENTS = ["stage", "prod", "test"]
 
-// biome-ignore lint/suspicious/noConsole: We want to log to the console
 const log = (message: string) => console.log(chalk.green(message))
 
 const getEnvInfo = () => {

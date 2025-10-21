@@ -1,5 +1,5 @@
 import consola from "consola"
-import { Edit2, HeartHandshake, Loader2, Puzzle } from "lucide-react"
+import { Edit2, Loader2 } from "lucide-react"
 import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
@@ -10,6 +10,7 @@ import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
+import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -540,7 +541,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			)}
 
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8 ">
-				<div className="flex-1 space-y-6">
+				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
@@ -668,229 +669,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-					{/* Tabbed Interface: Pains & Gains / User Actions */}
-					{(empathyMap.pains.length > 0 ||
-						empathyMap.gains.length > 0 ||
-						empathyMap.says.length > 0 ||
-						empathyMap.does.length > 0 ||
-						empathyMap.thinks.length > 0 ||
-						empathyMap.feels.length > 0) && (
-							<div
-							// className={`mb-8 rounded-xl border p-6 transition-all duration-300 ${activeTab === "pains-gains"
-							// 	? "border-orange-200/50 bg-gradient-to-br from-red-50 to-green-50 dark:border-orange-800/20 dark:from-red-950/20 dark:to-green-950/20"
-							// 	: "border-blue-200/50 bg-gradient-to-br from-blue-50 to-indigo-50 dark:border-blue-800/20 dark:from-blue-950/20 dark:to-indigo-950/20"
-							// 	}`}
-							>
-								{/* Tab Navigation */}
-								<div className="mb-6 flex space-x-1 rounded-lg bg-gray-100/50 p-1 dark:bg-gray-900/50">
-									<button
-										onClick={() => setActiveTab("pains-gains")}
-										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "pains-gains"
-												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-											}`}
-									>
-										<div className="flex items-center justify-center gap-2">
-											{/* <span>😣</span> */}
-											<Puzzle className="h-5 w-5 text-accent" />
-											<span>Pains & Goals</span>
-											{/* <Badge variant="secondary" className="text-xs">
-												{empathyMap.pains.length + empathyMap.gains.length}
-											</Badge> */}
-										</div>
-									</button>
-									<button
-										onClick={() => setActiveTab("user-actions")}
-										className={`flex-1 rounded-md px-3 py-2 font-medium text-sm transition-colors ${activeTab === "user-actions"
-												? "bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white"
-												: "text-gray-600 hover:text-gray-900 dark:text-gray-400 dark:hover:text-white"
-											}`}
-									>
-										<div className="flex items-center justify-center gap-2">
-											<HeartHandshake className="h-5 w-5 text-accent" />
-											<span>Empathy Map</span>
-											{/* <Badge variant="secondary" className="text-xs">
-												{empathyMap.says.length +
-													empathyMap.does.length +
-													empathyMap.thinks.length +
-													empathyMap.feels.length}
-											</Badge> */}
-										</div>
-									</button>
-								</div>
-
-								{/* Tab Content */}
-								{activeTab === "pains-gains" && (
-									<div className="grid gap-6 md:grid-cols-2">
-										{/* Pains Column */}
-										<div className="rounded-lg border border-red-200/50 bg-white/50 p-4 dark:border-red-800/30 dark:bg-black/10">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">😣</span>
-												<div className="font-semibold text-foreground">Pain Points</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.pains.length}
-												</Badge>
-											</div>
-											{empathyMap.pains.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No pain points identified</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.pains.map((item, i) => (
-														<Link
-															key={`pain-${item.evidenceId}-${i}`}
-															to={createEvidenceLink(item)}
-															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-														>
-															{item.text}
-														</Link>
-													))}
-												</div>
-											)}
-										</div>
-
-										{/* Gains Column */}
-										<div className="rounded-lg border border-green-200/50 bg-white/50 p-4 dark:border-green-800/30 dark:bg-black/10">
-											<div className="mb-3 flex items-center gap-2">
-												<span className="text-lg">🎯</span>
-												<div className="font-semibold text-foreground">Goals</div>
-												<Badge variant="secondary" className="ml-auto text-xs">
-													{empathyMap.gains.length}
-												</Badge>
-											</div>
-											{empathyMap.gains.length === 0 ? (
-												<div className="text-muted-foreground text-sm italic">No gains identified</div>
-											) : (
-												<div className="space-y-2">
-													{empathyMap.gains.map((item, i) => (
-														<Link
-															key={`gain-${item.evidenceId}-${i}`}
-															to={createEvidenceLink(item)}
-															className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-														>
-															{item.text}
-														</Link>
-													))}
-												</div>
-											)}
-										</div>
-									</div>
-								)}
-
-								{activeTab === "user-actions" && (
-									<div className="space-y-4">
-										{/* First Row: Says & Does */}
-										<div className="grid gap-4 md:grid-cols-2">
-											{/* Says Section */}
-											<div className="rounded-lg border border-green-200/50 bg-white/50 p-4 dark:border-green-800/30 dark:bg-black/10">
-												<div className="mb-3 flex items-center gap-2">
-													<span className="text-lg">💬</span>
-													<div className="font-semibold text-foreground">Says</div>
-													<Badge variant="secondary" className="ml-auto text-xs">
-														{empathyMap.says.length}
-													</Badge>
-												</div>
-												{empathyMap.says.length === 0 ? (
-													<div className="text-muted-foreground text-sm italic">No quotes captured</div>
-												) : (
-													<div className="space-y-2">
-														{empathyMap.says.map((item, i) => (
-															<Link
-																key={`says-${item.evidenceId}-${i}`}
-																to={createEvidenceLink(item)}
-																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-															>
-																"{item.text}"
-															</Link>
-														))}
-													</div>
-												)}
-											</div>
-
-											{/* Does Section */}
-											<div className="rounded-lg border border-blue-200/50 bg-white/50 p-4 dark:border-blue-800/30 dark:bg-black/10">
-												<div className="mb-3 flex items-center gap-2">
-													<span className="text-lg">⚡</span>
-													<div className="font-semibold text-foreground">Does</div>
-													<Badge variant="secondary" className="ml-auto text-xs">
-														{empathyMap.does.length}
-													</Badge>
-												</div>
-												{empathyMap.does.length === 0 ? (
-													<div className="text-muted-foreground text-sm italic">No behaviors captured</div>
-												) : (
-													<div className="space-y-2">
-														{empathyMap.does.map((item, i) => (
-															<Link
-																key={`does-${item.evidenceId}-${i}`}
-																to={createEvidenceLink(item)}
-																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-															>
-																{item.text}
-															</Link>
-														))}
-													</div>
-												)}
-											</div>
-										</div>
-
-										{/* Second Row: Thinks & Feels */}
-										<div className="grid gap-4 md:grid-cols-2">
-											{/* Thinks Section */}
-											<div className="rounded-lg border border-purple-200/50 bg-white/50 p-4 dark:border-purple-800/30 dark:bg-black/10">
-												<div className="mb-3 flex items-center gap-2">
-													<span className="text-lg">💭</span>
-													<div className="font-semibold text-foreground">Thinks</div>
-													<Badge variant="secondary" className="ml-auto text-xs">
-														{empathyMap.thinks.length}
-													</Badge>
-												</div>
-												{empathyMap.thinks.length === 0 ? (
-													<div className="text-muted-foreground text-sm italic">No thoughts captured</div>
-												) : (
-													<div className="space-y-2">
-														{empathyMap.thinks.map((item, i) => (
-															<Link
-																key={`thinks-${item.evidenceId}-${i}`}
-																to={createEvidenceLink(item)}
-																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-															>
-																{item.text}
-															</Link>
-														))}
-													</div>
-												)}
-											</div>
-
-											{/* Feels Section */}
-											<div className="rounded-lg border border-yellow-200/50 bg-white/50 p-4 dark:border-yellow-800/30 dark:bg-black/10">
-												<div className="mb-3 flex items-center gap-2">
-													<span className="text-lg">❤️</span>
-													<div className="font-semibold text-foreground">Feels</div>
-													<Badge variant="secondary" className="ml-auto text-xs">
-														{empathyMap.feels.length}
-													</Badge>
-												</div>
-												{empathyMap.feels.length === 0 ? (
-													<div className="text-muted-foreground text-sm italic">No emotions captured</div>
-												) : (
-													<div className="space-y-2">
-														{empathyMap.feels.map((item, i) => (
-															<Link
-																key={`feels-${item.evidenceId}-${i}`}
-																to={createEvidenceLink(item)}
-																className="block w-full rounded-md bg-black/5 px-3 py-2 text-left text-foreground text-sm hover:bg-black/10 dark:bg-white/5 dark:hover:bg-white/10"
-															>
-																{item.text}
-															</Link>
-														))}
-													</div>
-												)}
-											</div>
-										</div>
-									</div>
-								)}
-							</div>
-						)}
+					{/* Empathy Map Section */}
+					<div className="space-y-4">
+						<h3 className="font-semibold text-foreground text-lg">Empathy Map</h3>
+						<EmpathyMapTabs
+							empathyMap={empathyMap}
+							activeTab={activeTab}
+							setActiveTab={setActiveTab}
+							createEvidenceLink={createEvidenceLink}
+						/>
+					</div>
 
 					{/* Evidence Timeline Section */}
 					{evidence.length > 0 ? <PlayByPlayTimeline evidence={evidence} className="mb-6" /> : <p>No evidence found</p>}
@@ -918,7 +706,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						/>
 					</div>
 				</div>
-				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:max-w-sm">
+				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:w-80 lg:flex-shrink-0">
 					<div className="space-y-4">
 						{/* Evidence Summary */}
 						{/* {evidence.length > 0 && (

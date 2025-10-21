@@ -7,10 +7,10 @@ import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
 
 type EvidencePersonRow = {
-	person: {
+	role: string | null
+	people: {
 		id: string
 		name: string | null
-		role: string | null
 	}
 }
 
@@ -68,10 +68,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { data: peopleData } = await supabase
 		.from("evidence_people")
 		.select(`
-			person:person_id(
+			role,
+			people:person_id!inner(
 				id,
-				name,
-				role
+				name
 			)
 		`)
 		.eq("evidence_id", evidenceId)
@@ -90,9 +90,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			? [anchorOverride, ...(Array.isArray(data.anchors) ? (data.anchors as any[]) : [])]
 			: data.anchors,
 		people: peopleRows.map((row) => ({
-			id: row.person.id,
-			name: row.person.name,
-			role: row.person.role,
+			id: row.people.id,
+			name: row.people.name,
+			role: row.role,
 			personas: [], // No personas data needed for now
 		})),
 	}

@@ -246,8 +246,7 @@ export default function EditPerson() {
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
 			<div className="mb-8">
-				<h1 className="font-bold text-3xl text-gray-900">Edit Person</h1>
-				<p className="mt-2 text-gray-600">Update person details</p>
+				<h1 className="font-bold text-3xl text-foreground">Edit Person</h1>
 			</div>
 
 			<Form method="post" className="space-y-6">

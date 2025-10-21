@@ -1,18 +1,15 @@
-import { motion } from "framer-motion"
-import { useMemo } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
-import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
 import { getPersonById } from "~/features/people/db"
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
@@ -142,13 +139,6 @@ export default function PersonDetail() {
 	const persona = primaryPersona?.personas
 	const themeColor = persona?.color_hex || "#6366f1"
 	const name = person.name || "Unnamed Person"
-	const initials =
-		name
-			.split(" ")
-			.map((word) => word[0])
-			.join("")
-			.toUpperCase()
-			.slice(0, 2) || "?"
 
 	const facetsByRef = useMemo(() => {
 		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
@@ -189,16 +179,6 @@ export default function PersonDetail() {
 		return Array.from(groups.entries()).map(([slug, value]) => ({ kind_slug: slug, ...value }))
 	}, [personFacets, catalog.kinds])
 
-	const personScales = useMemo(() => {
-		return (person.person_scale ?? []).map((row) => ({
-			kind_slug: row.kind_slug,
-			score: row.score,
-			band: row.band || null,
-			confidence: row.confidence ?? null,
-			source: row.source || null,
-		}))
-	}, [person.person_scale])
-
 	const linkedOrganizations = useMemo(() => {
 		return (person.people_organizations ?? []).filter((link) => link.organization)
 	}, [person.people_organizations])
@@ -221,312 +201,239 @@ export default function PersonDetail() {
 			.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
 	}, [linkedOrganizations, organizations])
 
+	const [showLinkForm, setShowLinkForm] = useState(() => sortedLinkedOrganizations.length > 0)
+
+	useEffect(() => {
+		if (sortedLinkedOrganizations.length > 0) {
+			setShowLinkForm(true)
+		}
+	}, [sortedLinkedOrganizations.length])
+
+	useEffect(() => {
+		if (actionData?.error) {
+			setShowLinkForm(true)
+		}
+	}, [actionData?.error])
+
 	return (
-		<PageContainer size="lg" padded={false} className="max-w-4xl py-8">
-			<motion.div
-				className="relative mb-8 flex flex-col items-center rounded-xl border border-border bg-background p-8 shadow-md"
-				style={{ borderColor: themeColor }}
-				initial={{ opacity: 0, y: 16 }}
-				animate={{ opacity: 1, y: 0 }}
-				transition={{ duration: 0.4 }}
-			>
-				{/* Persona color accent bar */}
-				<div className="absolute top-0 left-0 h-1 w-full rounded-t-xl" style={{ backgroundColor: themeColor }} />
-				<div className="flex w-full items-center justify-between">
-					<div className="flex items-center gap-6">
-						<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
-							{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
-							<AvatarFallback className="bg-primary text-primary-foreground" style={{ backgroundColor: themeColor }}>
-								{initials}
-							</AvatarFallback>
-						</Avatar>
+		<PageContainer size="lg" padded={false} className="max-w-6xl py-8">
+			<PersonaPeopleSubnav />
+			
+			{/* Colored Header Section */}
+			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
+				{/* Header with persona color */}
+				<div className="h-20 w-full" style={{ backgroundColor: themeColor }}>
+					<div className="flex flex-col p-4 md:flex-row md:items-center md:justify-between">
 						<div>
-							<h1 className="mb-2 font-bold text-3xl text-foreground">{name}</h1>
-							{persona?.name && (
-								<span
-									className="inline-block rounded-full px-3 py-1 font-semibold text-xs"
-									style={{ backgroundColor: `${themeColor}22`, color: themeColor }}
-								>
-									<Link to={routes.personas.detail(persona.id)}>{persona.name}</Link>
-								</span>
-							)}
-							{person.segment && <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{person.segment}</span>}
-						</div>
-					</div>
-					<div className="flex gap-2">
-						<Button asChild variant="outline">
-							<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>Evidence</Link>
-						</Button>
-						<Button asChild variant="outline">
-							<Link to={routes.people.edit(person.id)}>Edit</Link>
-						</Button>
-					</div>
-				</div>
-				{person.description && (
-					<p className="mt-4 w-full max-w-2xl whitespace-pre-wrap text-base text-foreground">{person.description}</p>
-				)}
-			</motion.div>
-			{/* Persona Section (optional, could be expanded for more personas) */}
-			{/* Interview History & Stats */}
-			<div className="grid gap-8 lg:grid-cols-3">
-				<div className="space-y-4 lg:col-span-2">
-					<motion.div
-						className="rounded-xl border bg-background p-6"
-						initial={{ opacity: 0, y: 16 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ duration: 0.4 }}
-					>
-						<div className="flex items-start justify-between">
-							<div>
-								<h3 className="mb-1 font-semibold text-xl">Organizations</h3>
-								<p className="text-muted-foreground text-sm">
-									Link this person to companies they belong to for better account context.
-								</p>
-								{organizations.length === 0 && (
-									<p className="mt-2 text-muted-foreground text-xs">
-										No organizations yet. Create one to link this person.
-									</p>
+							<h1 className="font-bold text-2xl text-white">{name}</h1>
+							<div className="flex items-center gap-2 text-white/90">
+								{persona?.name && (
+									<Link to={routes.personas.detail(persona.id)} className="hover:text-white">
+										<Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30">
+											{persona.name}
+										</Badge>
+									</Link>
 								)}
+								{person.segment && <Badge variant="outline" className="border-white/30 text-white">{person.segment}</Badge>}
 							</div>
-							<Button asChild variant="outline" className="hidden sm:inline-flex">
-								<Link to={routes.organizations.new()}>New organization</Link>
+						</div>
+						<div className="mt-2 flex gap-2 md:mt-0">
+							<Button asChild variant="outline" size="sm" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+								<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
+							</Button>
+							<Button asChild variant="outline" size="sm" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+								<Link to={routes.people.edit(person.id)}>Edit</Link>
 							</Button>
 						</div>
-						<Button asChild variant="outline" className="mt-4 w-full sm:hidden">
-							<Link to={routes.organizations.new()}>New organization</Link>
-						</Button>
+					</div>
+				</div>
 
-						<div className="mt-4 space-y-3">
-							{sortedLinkedOrganizations.length === 0 ? (
-								<div className="rounded-lg border border-muted-foreground/30 border-dashed p-4 text-muted-foreground text-sm">
-									No organizations linked yet.
-								</div>
-							) : (
-								sortedLinkedOrganizations.map((link) => (
-									<div
-										key={link.id}
-										className="flex flex-col gap-3 rounded-lg border border-border/70 bg-card px-4 py-3 sm:flex-row sm:items-center sm:justify-between"
-									>
-										<div>
-											<Link
-												to={routes.organizations.detail(link.organization?.id)}
-												className="font-medium text-foreground text-sm hover:text-primary"
-											>
-												{link.organization?.name}
-											</Link>
-											<div className="flex flex-wrap gap-2 text-muted-foreground text-xs">
-												{link.organization?.domain && <span>{link.organization?.domain}</span>}
-												{link.role && <Badge variant="outline">{link.role}</Badge>}
-												{link.relationship_status && <Badge variant="secondary">{link.relationship_status}</Badge>}
-											</div>
-											{link.notes && <p className="mt-1 text-muted-foreground text-xs">{link.notes}</p>}
-										</div>
-										<Form method="post" className="flex justify-end">
-											<input type="hidden" name="_action" value="unlink-organization" />
-											<input type="hidden" name="organization_id" value={link.organization?.id} />
-											<Button variant="ghost" size="sm">
-												Remove
-											</Button>
-										</Form>
-									</div>
-								))
-							)}
-						</div>
-
-						<div className="mt-6 border-border/70 border-t pt-6">
-							{actionData?.error && (
-								<div className="mb-4 rounded-md border border-red-200 bg-red-50 p-3 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
-									{actionData.error}
-								</div>
-							)}
-							<Form method="post" className="grid gap-4 sm:grid-cols-2">
-								<input type="hidden" name="_action" value="link-organization" />
-								<div className="sm:col-span-2">
-									<Label htmlFor="organization_id">Organization</Label>
-									<Select
-										name="organization_id"
-										defaultValue={availableOrganizations[0]?.id ?? ""}
-										disabled={availableOrganizations.length === 0}
-									>
-										<SelectTrigger id="organization_id" className="mt-1">
-											<SelectValue
-												placeholder={
-													availableOrganizations.length ? "Select an organization" : "No available organizations"
-												}
-											/>
-										</SelectTrigger>
-										<SelectContent>
-											{availableOrganizations.length === 0 ? (
-												<SelectItem value="none" disabled>
-													No organizations available
-												</SelectItem>
-											) : (
-												availableOrganizations.map((organization) => (
-													<SelectItem key={organization.id} value={organization.id}>
-														{organization.name}
-													</SelectItem>
-												))
-											)}
-										</SelectContent>
-									</Select>
-								</div>
-								<div>
-									<Label htmlFor="role">Role</Label>
-									<Input id="role" name="role" placeholder="e.g., Buyer" className="mt-1" />
-								</div>
-								<div>
-									<Label htmlFor="relationship_status">Relationship Status</Label>
-									<Input
-										id="relationship_status"
-										name="relationship_status"
-										placeholder="e.g., Champion"
-										className="mt-1"
-									/>
-								</div>
-								<div className="sm:col-span-2">
-									<Label htmlFor="notes">Notes</Label>
-									<Textarea
-										id="notes"
-										name="notes"
-										rows={3}
-										placeholder="Add context about this relationship"
-										className="mt-1"
-									/>
-								</div>
-								<div className="flex justify-end sm:col-span-2">
-									<Button type="submit" disabled={availableOrganizations.length === 0}>
-										Link organization
-									</Button>
-								</div>
-							</Form>
-							{availableOrganizations.length === 0 && organizations.length > 0 && (
-								<p className="mt-3 text-muted-foreground text-xs">
-									All organizations are already linked to this person.
-								</p>
-							)}
-						</div>
-					</motion.div>
-
-					{facetsGrouped.length > 0 ? (
-						<motion.div
-							className="rounded-xl border bg-background p-6"
-							initial={{ opacity: 0, y: 16 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.2, duration: 0.4 }}
-						>
-							<h3 className="mb-4 font-semibold">Facets</h3>
-							<div className="space-y-3">
-								{facetsGrouped.map((group) => (
-									<div key={group.kind_slug}>
-										<div className="mb-1 font-semibold text-muted-foreground text-xs uppercase tracking-wide">
-											{group.label}
-										</div>
-										<div className="flex flex-wrap gap-2">
-											{group.facets.map((facet) => (
-												<Badge key={`${person.id}-${facet.facet_ref}`} variant="secondary" className="capitalize">
-													{facet.label}
-												</Badge>
-											))}
-										</div>
-									</div>
-								))}
+				{/* Main Content Grid - 2 columns like PersonaDetail */}
+				<div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
+					{/* Left Column - Description and Key Attributes */}
+					<div className="space-y-6">
+						{/* Description */}
+						{person.description && (
+							<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+								<h2 className="mb-3 font-semibold text-lg">About</h2>
+								<p className="text-gray-700 dark:text-gray-300">{person.description}</p>
 							</div>
-						</motion.div>
-					) : (
-						<motion.div
-							className="rounded-xl border bg-background p-6"
-							initial={{ opacity: 0, y: 16 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.2, duration: 0.4 }}
-						>
-							<h3 className="mb-4 font-semibold">Facets</h3>
-							<p className="text-muted-foreground text-sm">No facets assigned yet.</p>
-						</motion.div>
-					)}
-					<div className="h-4">
-						{personScales.length > 0 && (
-							<motion.div
-								className="rounded-xl border bg-background p-6"
-								initial={{ opacity: 0, y: 16 }}
-								animate={{ opacity: 1, y: 0 }}
-								transition={{ delay: 0.25, duration: 0.4 }}
-							>
-								<h3 className="mb-4 font-semibold">Scales</h3>
+						)}
+
+						{/* Attributes/Facets */}
+						{facetsGrouped.length > 0 && (
+							<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+								<h2 className="mb-3 font-semibold text-lg">Key Attributes</h2>
 								<div className="space-y-3">
-									{personScales.map((scale) => (
-										<div key={`${person.id}-${scale.kind_slug}`} className="rounded border px-3 py-2">
-											<div className="font-medium text-sm capitalize">{scale.kind_slug.replace(/_/g, " ")}</div>
-											<div className="text-muted-foreground text-xs">
-												Score: {Math.round((Number(scale.score) || 0) * 100)}%
-												{scale.band && <span className="ml-2 uppercase">({scale.band})</span>}
+									{facetsGrouped.map((group) => (
+										<div key={group.kind_slug}>
+											<h3 className="mb-2 font-medium text-sm">{group.label}</h3>
+											<div className="flex flex-wrap gap-2">
+												{group.facets.map((facet) => (
+													<span key={facet.facet_ref} className="rounded bg-white px-2 py-1 text-xs shadow-sm dark:bg-gray-900">
+														{facet.label}
+													</span>
+												))}
 											</div>
 										</div>
 									))}
 								</div>
-							</motion.div>
+							</div>
 						)}
 					</div>
-				</div>
 
-				{/* Right Sidebar */}
-				<div className="space-y-6">
-					{interviews.length > 0 && (
-						<motion.div
-							className="rounded-xl border bg-background p-6"
-							initial={{ opacity: 0, y: 16 }}
-							animate={{ opacity: 1, y: 0 }}
-							transition={{ delay: 0.1, duration: 0.4 }}
-						>
-							<h2 className="mb-4 font-semibold text-xl">Interview History</h2>
-							<div className="space-y-4">
-								{interviews.map((interviewPerson) => (
-									<motion.div
-										key={interviewPerson.interviews.id}
-										className="border-l-4 pl-4"
-										style={{ borderColor: themeColor }}
-										whileHover={{ scale: 1.01, backgroundColor: `${themeColor}0A` }}
-									>
-										<Link
-											to={routes.interviews.detail(interviewPerson.interviews.id)}
-											className="font-medium text-blue-600 hover:text-blue-800"
-										>
-											{interviewPerson.interviews.title}
-										</Link>
-										{interviewPerson.interviews.interview_date && (
-											<div className="text-muted-foreground text-sm">
-												{new Date(interviewPerson.interviews.interview_date).toLocaleDateString()}
-											</div>
-										)}
-										{interviewPerson.interviews.duration_sec && (
-											<div className="text-muted-foreground text-sm">
-												Duration: {interviewPerson.interviews.duration_sec / 60} minutes
-											</div>
-										)}
-									</motion.div>
-								))}
+					{/* Right Column - Organizations and Interview History */}
+					<div className="space-y-6">
+						{/* Organizations Section */}
+						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+							<div className="mb-3 flex items-center justify-between">
+								<h2 className="font-semibold text-lg">Organizations</h2>
+								<Button asChild variant="outline" size="sm">
+									<Link to={routes.organizations.new()}>Add</Link>
+								</Button>
 							</div>
-						</motion.div>
-					)}
-					<motion.div
-						className="rounded-xl border bg-background p-6"
-						initial={{ opacity: 0, y: 16 }}
-						animate={{ opacity: 1, y: 0 }}
-						transition={{ delay: 0.15, duration: 0.4 }}
-					>
-						<h3 className="mb-4 font-semibold">Statistics</h3>
-						<div className="space-y-3">
-							<div>
-								<label className="font-medium text-muted-foreground text-sm">Added</label>
-								<div className="mt-1 text-foreground text-sm">{new Date(person.created_at).toLocaleDateString()}</div>
-							</div>
-							{person.updated_at && (
-								<div>
-									<label className="font-medium text-muted-foreground text-sm">Last Updated</label>
-									<div className="mt-1 text-foreground text-sm">{new Date(person.updated_at).toLocaleDateString()}</div>
+
+							{sortedLinkedOrganizations.length > 0 ? (
+								<div className="space-y-3">
+									{sortedLinkedOrganizations.map((link) => {
+										const organization = link.organization
+										if (!organization) return null
+										return (
+											<div key={link.id} className="flex items-center justify-between rounded-md border p-3">
+												<div className="flex items-center gap-3">
+													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
+														<span className="font-medium text-primary text-xs">
+															{organization.name?.charAt(0)?.toUpperCase() || "?"}
+														</span>
+													</div>
+													<div>
+														<Link
+															to={routes.organizations.detail(organization.id)}
+															className="font-medium text-sm hover:text-primary"
+														>
+															{organization.name}
+														</Link>
+														{link.role && <div className="text-muted-foreground text-xs">{link.role}</div>}
+													</div>
+												</div>
+												<Form method="post">
+													<input type="hidden" name="_action" value="unlink-organization" />
+													<input type="hidden" name="organization_id" value={organization.id} />
+													<Button type="submit" variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
+														×
+													</Button>
+												</Form>
+											</div>
+										)
+									})}
+								</div>
+							) : (
+								<div className="rounded-md border border-dashed p-6 text-center">
+									<p className="text-muted-foreground text-sm">No organizations linked</p>
 								</div>
 							)}
+
+							{/* Link Form */}
+							{actionData?.error && (
+								<div className="mt-4 rounded-md bg-destructive/15 p-3 text-destructive text-sm">
+									{actionData.error}
+								</div>
+							)}
+							
+							{showLinkForm ? (
+								<Form method="post" className="mt-4 space-y-3">
+									<input type="hidden" name="_action" value="link-organization" />
+									<Select name="organization_id" defaultValue={availableOrganizations[0]?.id ?? ""}>
+										<SelectTrigger>
+											<SelectValue placeholder="Select organization" />
+										</SelectTrigger>
+										<SelectContent>
+											{availableOrganizations.map((org) => (
+												<SelectItem key={org.id} value={org.id}>
+													{org.name}
+												</SelectItem>
+											))}
+										</SelectContent>
+									</Select>
+									<div className="flex gap-2">
+										<Input name="role" placeholder="Role" className="flex-1" />
+										<Button type="submit">Link</Button>
+										<Button type="button" variant="outline" onClick={() => setShowLinkForm(false)}>
+											Cancel
+										</Button>
+									</div>
+								</Form>
+							) : (
+								availableOrganizations.length > 0 && (
+									<Button
+										type="button"
+										variant="outline"
+										size="sm"
+										onClick={() => setShowLinkForm(true)}
+										className="mt-4"
+									>
+										Link Organization
+									</Button>
+								)
+							)}
 						</div>
-					</motion.div>
+
+						{/* Interview History */}
+						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
+							<h2 className="mb-3 font-semibold text-lg">Interview History</h2>
+							{interviews.length > 0 ? (
+								<div className="space-y-2">
+									{interviews.slice(0, 5).map((interviewPerson) => (
+										<div
+											key={interviewPerson.id}
+											className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
+										>
+											<Link
+												to={routes.interviews.detail(interviewPerson.interview_id)}
+												className="font-medium text-blue-600 hover:text-blue-800"
+											>
+												{interviewPerson.interviews?.title || `Interview ${interviewPerson.interview_id.slice(0, 8)}`}
+											</Link>
+											<p className="text-gray-400 text-xs">
+												{interviewPerson.interviews?.created_at &&
+													new Date(interviewPerson.interviews.created_at).toLocaleDateString()}
+											</p>
+										</div>
+									))}
+									{interviews.length > 5 && (
+										<p className="pt-2 text-center text-gray-500">
+											+{interviews.length - 5} more interviews
+										</p>
+									)}
+								</div>
+							) : (
+								<p className="text-gray-500">No interviews yet</p>
+							)}
+						</div>
+					</div>
+
+					{/* Statistics - Full width like PersonaDetail */}
+					<div className="rounded-lg bg-gray-50 p-4 md:col-span-2 dark:bg-gray-800">
+						<h2 className="mb-3 font-semibold text-lg">Person Details</h2>
+						<div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
+							<div>
+								<span className="text-gray-500">Added</span>
+								<div className="font-medium">{new Date(person.created_at).toLocaleDateString()}</div>
+							</div>
+							<div>
+								<span className="text-gray-500">Updated</span>
+								<div className="font-medium">{new Date(person.updated_at).toLocaleDateString()}</div>
+							</div>
+							<div>
+								<span className="text-gray-500">Interviews</span>
+								<div className="font-medium">{interviews.length}</div>
+							</div>
+							<div>
+								<span className="text-gray-500">Organizations</span>
+								<div className="font-medium">{sortedLinkedOrganizations.length}</div>
+							</div>
+						</div>
+					</div>
 				</div>
 			</div>
 		</PageContainer>

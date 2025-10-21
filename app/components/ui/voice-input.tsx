@@ -4,6 +4,8 @@ import React from "react"
 
 import { cn } from "~/lib/utils"
 
+const FREQUENCY_BAR_IDS = Array.from({ length: 12 }, (_, idx) => `frequency-bar-${idx}`)
+
 interface VoiceInputProps {
 	onStart?: () => void
 	onStop?: () => void
@@ -46,6 +48,13 @@ export function VoiceInput({
 	const onClickHandler = () => {
 		_setListening(!_listening)
 	}
+
+	const normalizedIntensity = React.useMemo(() => {
+		if (typeof audioIntensity !== "number" || Number.isNaN(audioIntensity)) return 0
+		return Math.min(Math.max(audioIntensity, 0), 1)
+	}, [audioIntensity])
+
+	const peakHeight = React.useMemo(() => 2 + normalizedIntensity * 12, [normalizedIntensity])
 
 	return (
 		<div className={cn("flex flex-col items-center justify-center", className)}>
@@ -92,18 +101,20 @@ export function VoiceInput({
 						>
 							{/* Frequency Animation */}
 							<div className="flex items-center justify-center gap-0.5">
-								{[...Array(12)].map((_, i) => (
+								{FREQUENCY_BAR_IDS.map((barId, index) => (
 									<motion.div
-										key={i}
+										key={barId}
 										className="w-0.5 rounded-full bg-primary"
 										initial={{ height: 2 }}
 										animate={{
-											height: _listening ? [2, 3 + Math.random() * 10, 3 + Math.random() * 5, 2] : 2,
+											height: _listening
+												? [2, peakHeight, Math.max(2, peakHeight * 0.6), 2]
+												: 2,
 										}}
 										transition={{
 											duration: _listening ? 1 : 0.3,
 											repeat: _listening ? Number.POSITIVE_INFINITY : 0,
-											delay: _listening ? i * 0.05 : 0,
+											delay: _listening ? index * 0.05 : 0,
 											ease: "easeInOut",
 										}}
 									/>
