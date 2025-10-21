@@ -168,7 +168,7 @@ export function SimpleMediaPlayer({
 		return () => {
 			element.removeEventListener("loadedmetadata", handleLoadedMetadata)
 		}
-	}, [signedUrl, startSeconds, mediaUrl])
+	}, [signedUrl, startSeconds])
 
 	const handleDownload = useCallback(async () => {
 		try {
@@ -291,35 +291,26 @@ export function SimpleMediaPlayer({
 				</div>
 			)}
 
-			{isClient && (
-				<>
-					{isAudio ? (
-						<audio
-							ref={audioRef}
-							src={signedUrl}
-							controls
-							autoPlay={autoPlay || hasUserInteracted}
-							className="w-full"
-						/>
-					) : isVideo ? (
-						<video
-							ref={videoRef}
-							src={signedUrl}
-							controls
-							autoPlay={autoPlay || hasUserInteracted}
-							className="aspect-video w-full rounded-md border bg-black"
-						/>
-					) : (
-						<video
-							ref={videoRef}
-							src={signedUrl}
-							controls
-							autoPlay={autoPlay || hasUserInteracted}
-							className="w-full rounded-md border"
-						/>
-					)}
-				</>
-			)}
+			{isClient &&
+				(isAudio ? (
+					<audio ref={audioRef} src={signedUrl} controls autoPlay={autoPlay || hasUserInteracted} className="w-full" />
+				) : isVideo ? (
+					<video
+						ref={videoRef}
+						src={signedUrl}
+						controls
+						autoPlay={autoPlay || hasUserInteracted}
+						className="aspect-video w-full rounded-md border bg-black"
+					/>
+				) : (
+					<video
+						ref={videoRef}
+						src={signedUrl}
+						controls
+						autoPlay={autoPlay || hasUserInteracted}
+						className="w-full rounded-md border"
+					/>
+				))}
 
 			{showDebug && (
 				<details className="text-xs">

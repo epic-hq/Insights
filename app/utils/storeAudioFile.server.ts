@@ -270,7 +270,7 @@ function inferFilenameFromUrl(url: string): string | undefined {
 		const parsed = new URL(url)
 		const parts = parsed.pathname.split("/")
 		const last = parts.pop()
-		if (last && last.includes(".")) return last
+		if (last?.includes(".")) return last
 	} catch {
 		/* ignore */
 	}

@@ -111,6 +111,7 @@ export const getInterviewById = async ({
 			media_url,
 			media_type,
 			created_at,
+			created_by,
 			updated_at,
 			interview_people (
 				role,

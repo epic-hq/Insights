@@ -117,7 +117,7 @@ async function captureSignupEvent({
 			.eq("user_id", userId)
 			.single()
 
-		const rawProvider = metadata?.["provider"]
+		const rawProvider = metadata?.provider
 		const provider = typeof rawProvider === "string" ? rawProvider : undefined
 
 		// Capture the signup event

@@ -24,7 +24,7 @@ type FinalTurn = {
 
 export default function QuickRealtime() {
 	const { accountId, projectId } = useCurrentProject()
-	const supabase = createClient()
+	const _supabase = createClient()
 	const navigate = useNavigate()
 	const basePath = `/a/${accountId}/${projectId}`
 	const [status, setStatus] = useState<"idle" | "connecting" | "streaming" | "stopped" | "error">("idle")

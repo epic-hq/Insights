@@ -756,7 +756,6 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			assignedInterviewId,
 			currentCaption,
 			projectId,
-			supabase,
 			stopDurationTimer,
 			cleanupMediaStreams,
 			getAudioDuration,

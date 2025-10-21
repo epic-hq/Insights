@@ -16,50 +16,67 @@ jobs:
   lint:
     name: ⬣ Biome lint
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip lint]') }}
     steps:
      - uses: actions/checkout@v4
      - uses: biomejs/setup-biome@v2
      - run: biome ci . --reporter=github --error-on-warnings=false || true
 
   typecheck:
-    needs: lint
     name: 🔎 Type check
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip typecheck]') }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: "package.json"
           cache: "pnpm"
+      - name: Enable pnpm via corepack
+        run: |
+          set -euo pipefail
+          corepack enable
+          PNPM_VERSION="$(node -p "const pm = require('./package.json').packageManager ?? ''; const match = pm.match(/^pnpm@(.*)$/); if (!match) { throw new Error('packageManager is not pnpm'); } match[1].split('+')[0]")"
+          corepack use "pnpm@${PNPM_VERSION}"
       - run: pnpm install --prefer-offline --frozen-lockfile
       - run: pnpm run typecheck
 
   check-unused:
-    needs: lint
     name: ✂️ Check unused code
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip unused]') }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: "package.json"
           cache: "pnpm"
+      - name: Enable pnpm via corepack
+        run: |
+          set -euo pipefail
+          corepack enable
+          PNPM_VERSION="$(node -p "const pm = require('./package.json').packageManager ?? ''; const match = pm.match(/^pnpm@(.*)$/); if (!match) { throw new Error('packageManager is not pnpm'); } match[1].split('+')[0]")"
+          corepack use "pnpm@${PNPM_VERSION}"
       - run: pnpm install --prefer-offline --frozen-lockfile
       - run: pnpm run check:unused
 
   vitest:
-    needs: typecheck
+    needs: [lint, typecheck]
     name: ⚡ Unit Tests
     runs-on: ubuntu-latest
+    if: ${{ !contains(github.event.head_commit.message, '[skip ci]') && !contains(github.event.head_commit.message, '[skip test]') }}
     steps:
       - uses: actions/checkout@v4
-      - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
           node-version-file: "package.json"
           cache: "pnpm"
+      - name: Enable pnpm via corepack
+        run: |
+          set -euo pipefail
+          corepack enable
+          PNPM_VERSION="$(node -p "const pm = require('./package.json').packageManager ?? ''; const match = pm.match(/^pnpm@(.*)$/); if (!match) { throw new Error('packageManager is not pnpm'); } match[1].split('+')[0]")"
+          corepack use "pnpm@${PNPM_VERSION}"
       - run: pnpm install --prefer-offline --frozen-lockfile
       - run: pnpm exec playwright install chromium --with-deps
       - run: pnpm run test:cov

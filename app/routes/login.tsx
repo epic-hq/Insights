@@ -4,11 +4,10 @@ import { type ActionFunctionArgs, Link, redirect, useFetcher } from "react-route
 import { LogoBrand } from "~/components/branding"
 import { LoginForm } from "~/components/login-form"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
-import { getAuthenticatedUser, getServerClient } from "~/lib/supabase/client.server"
-import { PATHS } from "~/paths"
+import { getServerClient } from "~/lib/supabase/client.server"
 import { extractUtmParamsFromSearch, hasUtmParams, mergeUtmParams, UTM_COOKIE_NAME, type UtmParams } from "~/utils/utm"
 
 export const action = async ({ request }: ActionFunctionArgs) => {

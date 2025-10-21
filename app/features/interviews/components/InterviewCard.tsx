@@ -94,20 +94,18 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 
 					{/* Interview Title - Prominent */}
 					<div className="mb-4">
-						<h3 className="line-clamp-2 font-semibold text-gray-900 text-lg leading-tight dark:text-white">
-							{interviewTitle}
+						<h3 className="line-clamp-2 flex items-center gap-2 font-semibold text-foreground text-lg dark:text-foreground">
+							<Users className="h-4 w-4" />
+							<span>{participantName}</span>
+							{participantSegment && participantSegment !== "Participant" && (
+								<span className="text-foreground/50">• {participantSegment}</span>
+							)}
 						</h3>
 					</div>
 
 					{/* Participants */}
 					<div className="mb-4">
-						<div className="flex items-center gap-2 text-gray-600 text-sm dark:text-gray-400">
-							<Users className="h-4 w-4" />
-							<span>{participantName}</span>
-							{participantSegment && participantSegment !== "Participant" && (
-								<span className="text-gray-400">• {participantSegment}</span>
-							)}
-						</div>
+						<div className="flex items-center gap-2 text-gray-600 text-sm dark:text-gray-400">{interviewTitle}</div>
 					</div>
 
 					{/* Top Themes */}

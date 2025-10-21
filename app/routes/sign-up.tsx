@@ -78,7 +78,7 @@ export default function SignUp() {
 		} catch (error) {
 			consola.warn("[REGISTER] Failed to persist UTM params", error)
 		}
-	}, [location.search])
+	}, [])
 
 	return (
 		<div className="flex min-h-svh w-full items-center justify-center p-6 md:p-10">

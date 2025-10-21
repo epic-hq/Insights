@@ -1,10 +1,9 @@
 import type { Context } from "hono"
 import type { TFunction } from "i18next"
 import { type AppLoadContext, createContext, RouterContextProvider } from "react-router"
-import { i18next } from "remix-hono/i18next"
 import { type ClientEnvVars, getClientEnv, getServerEnv, type ServerEnv } from "~/env.server"
 
-export const getLoadContext = async (c: Context) => {
+export const getLoadContext = async (_c: Context) => {
 	// get the locale from the context
 	// const locale = i18next.getLocale(c)
 	// get t function for the default namespace

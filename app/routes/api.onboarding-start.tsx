@@ -435,7 +435,7 @@ Please extract insights that specifically address these research questions and h
 			// Store audio file in Cloudflare R2 first using shared utility
 			const fileBuffer = await file.arrayBuffer()
 			const fileBlob = new Blob([fileBuffer], { type: file.type })
-			const assemblyPayload = Buffer.from(fileBuffer)
+			const _assemblyPayload = Buffer.from(fileBuffer)
 
 			consola.log("Uploading audio to R2...")
 

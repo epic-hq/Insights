@@ -10,7 +10,6 @@ import {
 	Option,
 	Plus,
 	Target,
-	TargetIcon,
 	Users,
 	X,
 } from "lucide-react"

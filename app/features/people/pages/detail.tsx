@@ -253,9 +253,14 @@ export default function PersonDetail() {
 							{person.segment && <span className="ml-2 rounded bg-muted px-2 py-0.5 text-xs">{person.segment}</span>}
 						</div>
 					</div>
-					<Button asChild variant="outline">
-						<Link to={routes.people.edit(person.id)}>Edit</Link>
-					</Button>
+					<div className="flex gap-2">
+						<Button asChild variant="outline">
+							<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>Evidence</Link>
+						</Button>
+						<Button asChild variant="outline">
+							<Link to={routes.people.edit(person.id)}>Edit</Link>
+						</Button>
+					</div>
 				</div>
 				{person.description && (
 					<p className="mt-4 w-full max-w-2xl whitespace-pre-wrap text-base text-foreground">{person.description}</p>
@@ -304,7 +309,7 @@ export default function PersonDetail() {
 									>
 										<div>
 											<Link
-												to={routes.organizations.detail(link.organization!.id)}
+												to={routes.organizations.detail(link.organization?.id)}
 												className="font-medium text-foreground text-sm hover:text-primary"
 											>
 												{link.organization?.name}
@@ -318,7 +323,7 @@ export default function PersonDetail() {
 										</div>
 										<Form method="post" className="flex justify-end">
 											<input type="hidden" name="_action" value="unlink-organization" />
-											<input type="hidden" name="organization_id" value={link.organization!.id} />
+											<input type="hidden" name="organization_id" value={link.organization?.id} />
 											<Button variant="ghost" size="sm">
 												Remove
 											</Button>

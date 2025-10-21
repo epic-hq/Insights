@@ -7,7 +7,6 @@ import { AuthProvider } from "~/contexts/AuthContext"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjects } from "~/features/projects/db"
 import { getAuthenticatedUser, getRlsClient } from "~/lib/supabase/client.server"
-import { loadContext } from "~/server/load-context"
 import { userContext } from "~/server/user-context"
 import type { Route } from "../+types/root"
 

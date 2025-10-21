@@ -1,4 +1,3 @@
-import { PanelLeftIcon } from "lucide-react"
 import { useMemo } from "react"
 import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import {

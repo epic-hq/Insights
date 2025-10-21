@@ -1,7 +1,6 @@
 import { ArrowLeft, Award, Building2, Calendar, Clock, TrendingUp } from "lucide-react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
-import type { PayloadPost } from "~/lib/cms/payload.server"
 import { getPostBySlug } from "~/lib/cms/payload.server"
 import { formatDate, getImageUrl, getReadingTime } from "~/lib/cms/utils"
 

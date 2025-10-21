@@ -160,7 +160,7 @@ function AnswerRow({ answer, projectRoutes }: { answer: ResearchAnswerNode; proj
 					} else if (startTime.includes(":")) {
 						const parts = startTime.split(":")
 						if (parts.length === 2) {
-							seconds = Number.parseInt(parts[0]) * 60 + Number.parseInt(parts[1])
+							seconds = Number.parseInt(parts[0], 10) * 60 + Number.parseInt(parts[1], 10)
 						}
 					} else {
 						seconds = Number.parseFloat(startTime)

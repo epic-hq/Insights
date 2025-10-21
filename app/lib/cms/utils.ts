@@ -96,12 +96,12 @@ function extractTextFromNodes(nodes: any[]): string {
 
 		// Text node
 		if (node.text) {
-			text += node.text + " "
+			text += `${node.text} `
 		}
 
 		// Node with children
 		if (node.children && Array.isArray(node.children)) {
-			text += extractTextFromNodes(node.children) + " "
+			text += `${extractTextFromNodes(node.children)} `
 		}
 	}
 

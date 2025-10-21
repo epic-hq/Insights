@@ -152,7 +152,7 @@ function EditableRow({
 	)
 }
 
-function BoolPill({ value }: { value?: boolean }) {
+function _BoolPill({ value }: { value?: boolean }) {
 	if (value === undefined || value === null) return null
 	return (
 		<span
@@ -166,7 +166,7 @@ function BoolPill({ value }: { value?: boolean }) {
 	)
 }
 
-function Time({ iso }: { iso?: string }) {
+function _Time({ iso }: { iso?: string }) {
 	if (!iso) return null
 	const d = new Date(iso)
 	const ok = !Number.isNaN(d.getTime())

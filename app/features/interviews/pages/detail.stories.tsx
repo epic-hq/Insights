@@ -1,6 +1,5 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import { reactRouterParameters, withRouter } from "storybook-addon-remix-react-router"
-import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import InterviewDetail from "./detail"
 
 const meta = {

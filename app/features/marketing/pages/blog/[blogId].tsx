@@ -261,7 +261,7 @@ export default function BlogPost() {
 
 function RecentPostCard({ post }: { post: PayloadPost }) {
 	const imageUrl = getImageUrl(post.featured_image)
-	const publishedDate = formatDate(post.publishedAt)
+	const _publishedDate = formatDate(post.publishedAt)
 
 	return (
 		<Link to={`/blog/${post.slug}`} className="group">

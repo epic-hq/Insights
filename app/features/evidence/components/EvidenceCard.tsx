@@ -1,9 +1,8 @@
 import { motion } from "framer-motion"
-import { Clock, Play, Quote } from "lucide-react"
+import { Clock, Play } from "lucide-react"
 import { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
-import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
 import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
@@ -107,7 +106,7 @@ export function EvidenceCard({
 		: null
 
 	const personaBadges = primarySpeaker?.personas ?? []
-	const supportLevel = getSupportConfidenceLevel(evidence.support)
+	const _supportLevel = getSupportConfidenceLevel(evidence.support)
 	const supportLabel = formatSupportLabel(evidence.support)
 	const createdLabel = evidence.created_at ? new Date(evidence.created_at).toLocaleDateString() : null
 
@@ -178,33 +177,37 @@ export function EvidenceCard({
 				</blockquote>
 			)}
 
-			{/* Media anchors */}
-			{hasMediaReplay && (
-				<div className="mt-3 space-y-2 px-4">
-					{mediaAnchors.map((anchor, i) => {
-						const seconds = getAnchorSeconds(anchor)
-						const mediaUrl = resolveAnchorMediaUrl(anchor, resolvedMediaUrl)
-						if (!mediaUrl) return null
-						const displayTitle = anchor.title ?? "Replay segment"
-						return (
-							<div key={i} className="rounded-md border p-2">
-								<div className="flex items-center gap-2 text-muted-foreground text-xs">
-									<Clock className="h-3.5 w-3.5" />
-									<span>{formatAnchorTime(seconds, null)}</span>
-								</div>
-								{variant === "expanded" ? (
+			{/* Media anchor - only show the first valid one */}
+			{hasMediaReplay && mediaAnchors.length > 0 && (() => {
+				const firstAnchor = mediaAnchors[0]
+				const seconds = getAnchorSeconds(firstAnchor) ?? 0
+				const mediaUrl = resolveAnchorMediaUrl(firstAnchor, resolvedMediaUrl)
+				const displayTitle = firstAnchor.title ?? "Replay segment"
+				const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
+				
+				return (
+					<div className="mt-3 px-4">
+						<div className="rounded-md border p-2">
+							<div className="flex items-center gap-2 text-muted-foreground text-xs">
+								<Clock className="h-3.5 w-3.5" />
+								<span>{formatAnchorTime(seconds, null)}</span>
+							</div>
+							{variant === "expanded" ? (
+								isValidUrl ? (
 									<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
 								) : (
-									<div className="flex items-center gap-2 text-muted-foreground text-xs">
-										<Play className="h-3 w-3" />
-										<span>Play clip</span>
-									</div>
-								)}
-							</div>
-						)
-					})}
-				</div>
-			)}
+									<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
+								)
+							) : (
+								<div className="flex items-center gap-2 text-muted-foreground text-xs">
+									<Play className="h-3 w-3" />
+									<span>{isValidUrl ? "Play clip" : "Unavailable"}</span>
+								</div>
+							)}
+						</div>
+					</div>
+				)
+			})()}
 
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">

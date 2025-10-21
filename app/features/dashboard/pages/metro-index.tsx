@@ -55,6 +55,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
 
+	if (!supabase) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
@@ -165,26 +169,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Fetch insights for the theme tree
 	const { data: insightRows } = await supabase.from("insights").select("*").eq("account_id", accountId).limit(10)
 
-	// Transform insights into the expected format
+	// Transform insights into the expected format - InsightView extends Insight, so use the DB row directly
 	const insights: InsightView[] = (insightRows || []).map((insight) => ({
-		id: insight.id,
-		name: insight.name || "",
-		tag: "", // No tag field in DB schema
-		category: insight.category || "",
-		journeyStage: insight.journey_stage || "",
-		impact: insight.impact,
-		novelty: insight.novelty,
-		jtbd: insight.jtbd,
-		underlyingMotivation: "", // No motivation field in DB schema
-		pain: insight.pain,
-		desiredOutcome: insight.desired_outcome,
-		description: "", // No description field in DB schema
-		evidence: "", // No evidence field in DB schema
-		opportunityIdeas: insight.opportunity_ideas,
-		confidence: insight.confidence,
-		createdAt: insight.created_at,
-		// relatedTags: removed - now using insight_tags junction table
-		contradictions: insight.contradictions,
+		...insight, // Spread all database fields
+		// Add any UI-specific aliases if needed
+		title: insight.name,
+		impact_score: insight.impact,
+		content: insight.details,
 	}))
 
 	// Remove debug queries - they're causing performance issues
@@ -247,7 +238,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const projects = await getProjects({ supabase, accountId })
 
 	// Fetch project status data
-	const projectStatusData = await getProjectStatusData(projectId, supabase, accountId)
+	const projectStatusData = await getProjectStatusData(projectId, supabase)
 
 	return {
 		personas,

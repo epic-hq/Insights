@@ -1,5 +1,4 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr"
-import consola from "consola"
 import type { Database } from "~/../supabase/types"
 import { getServerEnv } from "~/env.server"
 
