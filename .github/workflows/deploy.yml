@@ -30,7 +30,7 @@ jobs:
       # --------------------------
       - name: Build app
         run: |
-          pnpm exec dotenvx run -e .env.production -- pnpm run build
+          pnpm exec dotenvx run -f .env.production -- pnpm run build
         env:
           DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
 
@@ -57,6 +57,7 @@ jobs:
       # --------------------------
       - name: Deploy Trigger.dev Cloud
         run: |
-          pnpm exec dotenvx run -e .env.production -- pnpm dlx trigger.dev@latest deploy
+          pnpm exec dotenvx run -f .env.production -- pnpm dlx trigger.dev@latest deploy
         env:
           DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
+          TRIGGER_ACCESS_TOKEN: ${{ secrets.TRIGGER_ACCESS_TOKEN }}
