@@ -11,13 +11,18 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.18.2
+
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 20
+          cache: pnpm
 
       - name: Install dependencies
-        run: pnpm ci
+        run: pnpm install --frozen-lockfile
 
       # --------------------------
       # 1. Build Remix/Vite app
@@ -51,6 +56,6 @@ jobs:
       # --------------------------
       - name: Deploy Trigger.dev Cloud
         run: |
-          npx dotenvx@latest run -e .env.production -- pnpm trigger.dev@latest deploy
+          npx dotenvx@latest run -e .env.production -- pnpm dlx trigger.dev@latest deploy
         env:
           DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
