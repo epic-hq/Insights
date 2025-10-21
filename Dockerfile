@@ -25,6 +25,8 @@ RUN --mount=type=cache,id=pnpm-store,target=/root/.pnpm-store \
     pnpm install --frozen-lockfile
 # App source
 COPY . .
+# Ensure Mastra artifacts directory always exists to unblock downstream copy steps
+RUN mkdir -p .mastra
 # ---- your generation & build steps
 RUN pnpm run baml-generate && pnpm run build
 
