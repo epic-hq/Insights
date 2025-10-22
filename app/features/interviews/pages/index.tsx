@@ -1,14 +1,26 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { Grid, List, Upload } from "lucide-react"
-import { useState } from "react"
+import { Bot, Grid, List, Upload } from "lucide-react"
+import { useState, type FormEvent } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import {
+	Dialog,
+	DialogContent,
+	DialogDescription,
+	DialogFooter,
+	DialogHeader,
+	DialogTitle,
+	DialogTrigger,
+} from "~/components/ui/dialog"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
+import { Input } from "~/components/ui/input"
+import { Label } from "~/components/ui/label"
+import { Textarea } from "~/components/ui/textarea"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
@@ -67,6 +79,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Get primary participant from interview_people junction
 		const primaryParticipant = interview.interview_people?.[0]
 		const participant = primaryParticipant?.people
+		const meetingBotsRaw = Array.isArray((interview as any).meeting_bots)
+			? ([...(interview as any).meeting_bots] as Array<{ created_at?: string } & Record<string, unknown>>)
+			: []
+		const meetingBots = meetingBotsRaw.sort((a, b) => {
+			const aTime = a.created_at ? new Date(a.created_at).getTime() : 0
+			const bTime = b.created_at ? new Date(b.created_at).getTime() : 0
+			return bTime - aTime
+		})
+		const meetingBot = meetingBots[0] ?? null
+		const meetingBotStatusRaw =
+			meetingBot && typeof meetingBot.status === "string"
+				? meetingBot.status.replace(/_/g, " ")
+				: null
+		const meetingBotStatus =
+			meetingBotStatusRaw && meetingBotStatusRaw.length > 0
+				? meetingBotStatusRaw.charAt(0).toUpperCase() + meetingBotStatusRaw.slice(1)
+				: null
+		const meetingBotDetail =
+			meetingBot && typeof meetingBot.status_detail === "string" && meetingBot.status_detail.length > 0
+				? meetingBot.status_detail
+				: null
 
 		return {
 			...interview,
@@ -76,6 +109,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			date: interview.interview_date || interview.created_at || "",
 			duration: interview.duration_sec ? `${Math.round((interview.duration_sec / 60) * 10) / 10} min` : "Unknown",
 			evidenceCount: interview.evidence_count || 0,
+			meetingBot,
+			meetingBotStatus,
+			meetingBotStatusDetail: meetingBotDetail,
 		}
 	})
 
@@ -87,6 +123,61 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
 	const [viewMode, setViewMode] = useState<"cards" | "table">("table")
+	const [isRecallDialogOpen, setRecallDialogOpen] = useState(false)
+	const [isSendingRecall, setIsSendingRecall] = useState(false)
+	const [recallError, setRecallError] = useState<string | null>(null)
+
+	const handleRecallSubmit = async (event: FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const form = event.currentTarget
+		const formData = new FormData(form)
+
+		const meetingUrl = String(formData.get("meetingUrl") ?? "").trim()
+		const botName = String(formData.get("botName") ?? "").trim()
+		const customInstructions = String(formData.get("customInstructions") ?? "").trim()
+
+		if (!meetingUrl) {
+			setRecallError("Meeting URL is required.")
+			return
+		}
+
+		setIsSendingRecall(true)
+		setRecallError(null)
+
+		try {
+			const response = await fetch(routes.api.recallBot(), {
+				method: "POST",
+				headers: {
+					"Content-Type": "application/json",
+				},
+				body: JSON.stringify({
+					meetingUrl,
+					botName: botName || undefined,
+					customInstructions: customInstructions || undefined,
+				}),
+			})
+
+			if (!response.ok) {
+				const data = await response.json().catch(() => null)
+				const errorMessage =
+					(typeof data?.error === "string" && data.error) ||
+					`Failed to schedule Recall bot (status ${response.status})`
+				setRecallError(errorMessage)
+				return
+			}
+
+			form.reset()
+			setRecallDialogOpen(false)
+
+			// Reload to reflect newly created interview entry
+			window.location.reload()
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to schedule Recall bot"
+			setRecallError(message)
+		} finally {
+			setIsSendingRecall(false)
+		}
+	}
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
@@ -124,6 +215,66 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 							{/* Actions */}
 							<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
+								<Dialog open={isRecallDialogOpen} onOpenChange={setRecallDialogOpen}>
+									<DialogTrigger asChild>
+										<Button variant="outline" className="gap-2">
+											<Bot className="h-4 w-4" />
+											Send Recall Bot
+										</Button>
+									</DialogTrigger>
+									<DialogContent className="sm:max-w-lg">
+										<DialogHeader>
+											<DialogTitle>Send Recall meeting bot</DialogTitle>
+											<DialogDescription>
+												Invite the Recall.ai bot to automatically record and transcribe your meeting.
+											</DialogDescription>
+										</DialogHeader>
+										<form onSubmit={handleRecallSubmit} className="space-y-4">
+											<div className="space-y-2">
+												<Label htmlFor="meetingUrl">Meeting URL</Label>
+												<Input
+													id="meetingUrl"
+													name="meetingUrl"
+													type="url"
+													required
+													autoFocus
+													placeholder="https://meet.google.com/..."
+												/>
+											</div>
+											<div className="space-y-2">
+												<Label htmlFor="botName">Bot name (optional)</Label>
+												<Input
+													id="botName"
+													name="botName"
+													placeholder="e.g., Customer Research Notetaker"
+												/>
+											</div>
+											<div className="space-y-2">
+												<Label htmlFor="customInstructions">Custom instructions (optional)</Label>
+												<Textarea
+													id="customInstructions"
+													name="customInstructions"
+													rows={3}
+													placeholder="Share context or instructions for this interview..."
+												/>
+											</div>
+											{recallError && <p className="text-sm text-red-600">{recallError}</p>}
+											<DialogFooter className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end sm:gap-3">
+												<Button
+													type="button"
+													variant="ghost"
+													disabled={isSendingRecall}
+													onClick={() => setRecallDialogOpen(false)}
+												>
+													Cancel
+												</Button>
+												<Button type="submit" disabled={isSendingRecall}>
+													{isSendingRecall ? "Scheduling..." : "Send bot"}
+												</Button>
+											</DialogFooter>
+										</form>
+									</DialogContent>
+								</Dialog>
 								<Button asChild variant="default" className="gap-2">
 									<Link to={routes.interviews.upload()}>
 										<Upload className="h-4 w-4" />
@@ -247,16 +398,24 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												{interview.duration}
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
-												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-														: interview.status === "transcribed"
-															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-															: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-														}`}
-												>
-													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
-												</span>
+												<div className="flex flex-col gap-1">
+													<span
+														className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
+															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+															: interview.status === "transcribed"
+																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+															}`}
+													>
+														{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
+													</span>
+													{interview.meetingBotStatus ? (
+														<span className="inline-flex items-center rounded-full bg-slate-100 px-2.5 py-0.5 font-medium text-xs text-slate-700 dark:bg-slate-800 dark:text-slate-200">
+															Recall bot •{" "}
+															{interview.meetingBotStatusDetail ?? interview.meetingBotStatus}
+														</span>
+													) : null}
+												</div>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3 text-gray-500 text-sm dark:text-gray-400">
 												{formatDistance(new Date(interview.created_at), new Date(), { addSuffix: true })}

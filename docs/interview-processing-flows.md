@@ -154,6 +154,32 @@ ngrok http --url=cowbird-still-routinely.ngrok-free.app 4280
    └── Navigates to interview detail page
 ```
 
+## Recall Meeting Bots (`api.interviews.recall-bot`)
+
+**Files involved:**
+- API entrypoint: `app/routes/api.interviews.recall-bot.tsx`
+- Webhook: `app/routes/api.recall-webhook.tsx`
+- Trigger.dev task: `src/trigger/recall/ingestRecallBot.ts`
+- Persistence: `meeting_bots`, `upload_jobs`, `interviews`
+
+**Process:**
+```
+1. POST /api/interviews/recall-bot
+   ├── Creates interview + upload_job records scoped to the project
+   ├── Calls Recall.ai to deploy a meeting bot (Svix authentication)
+   └── Persists meeting_bots row (status = pending)
+
+2. Recall.ai webhook (Svix signature verified)
+   ├── Updates meeting_bots + upload_jobs status
+   └── When status == done → queue recall.ingest-bot Trigger.dev run
+
+3. Trigger.dev task recall.ingest-bot
+   ├── Fetches Recall recording + transcript
+   ├── Stores raw video + normalized audio in Cloudflare R2
+   ├── Normalizes transcript via `normalizeRecallTranscript` + `safeSanitizeTranscriptPayload`
+   └── Calls `processInterviewTranscriptWithAdminClient` to reuse the existing analysis pipeline
+```
+
 ## Shared Analysis Pipeline (Trigger.dev)
 
 Both flows converge at the Trigger.dev task pipeline which orchestrates async processing:
@@ -313,4 +339,3 @@ Live Audio → WebSocket → Record+Store → Finalize → Trigger.dev → Datab
             Transcription  + Presigned  + Transcript                + Facets
                            URL                                       + Evidence
 ```
-

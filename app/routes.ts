@@ -84,6 +84,7 @@ const routes = [
 				route("api/interviews/realtime-start", "./routes/api.interviews.realtime-start.tsx"),
 				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
 				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
+				route("api/interviews/recall-bot", "./routes/api.interviews.recall-bot.tsx"),
 
 				// Project-setup agent chat API (project-scoped)
 				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
@@ -121,6 +122,7 @@ const routes = [
 	route("api/save-project-goals", "./routes/api.save-project-goals.tsx"),
 	route("api/load-project-goals", "./routes/api.load-project-goals.tsx"),
 	route("api/assemblyai-webhook", "./routes/api.assemblyai-webhook.tsx"),
+	route("api/recall-webhook", "./routes/api.recall-webhook.tsx"),
 	route("api/trigger-analysis", "./routes/api.trigger-analysis.tsx"),
 	route("api/trigger-run-token", "./routes/api.trigger-run-token.tsx"),
 	route("api/daily-brief", "./routes/api.daily-brief.tsx"),

@@ -137,6 +137,7 @@ export interface RouteDefinitions {
 		uploadFromUrl: () => string
 		generatePersonaInsights: () => string
 		interviewStatus: () => string
+		recallBot: () => string
 		realtimeStart: () => string
 		generatePersonas: () => string
 		insightsUpdateField: () => string
@@ -285,6 +286,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			uploadFromUrl: () => "/api/upload-from-url",
 			generatePersonaInsights: () => "/api/generate-persona-insights",
 			interviewStatus: () => "/api/interview-status",
+			recallBot: () => `${base}/api/interviews/recall-bot`,
 			realtimeStart: () => `${base}/api/interviews/realtime-start`,
 			generatePersonas: () => `${base}/personas/api/generate-personas`,
 			insightsUpdateField: () => `${base}/insights/api/update-field`,

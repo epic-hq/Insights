@@ -26,6 +26,8 @@ interface InterviewCardProps {
 			name: string
 			color?: string
 		}>
+		meetingBotStatus?: string | null
+		meetingBotStatusDetail?: string | null
 		interview_people?: Array<{
 			people?: {
 				name?: string
@@ -82,15 +84,22 @@ export default function InterviewCard({ interview, className }: InterviewCardPro
 				{/* Card Content */}
 				<div className="p-5">
 					{/* Header - Interview Label */}
-					<div className="mb-3 flex items-center justify-between">
-						<div className="flex items-center gap-2">
-							<MediaTypeIcon mediaType={interview.media_type} showLabel={true} />
-							{/* <span className="text-foreground/40 text-sm font-medium">Interview</span> */}
-						</div>
+				<div className="mb-3 flex items-center justify-between gap-2">
+					<div className="flex items-center gap-2">
+						<MediaTypeIcon mediaType={interview.media_type} showLabel={true} />
+						{/* <span className="text-foreground/40 text-sm font-medium">Interview</span> */}
+					</div>
+					<div className="flex flex-wrap items-center gap-2">
 						<Badge className={cn("font-medium text-xs", getStatusColor(interview.status))}>
 							{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 						</Badge>
+						{interview.meetingBotStatus ? (
+							<Badge variant="outline" className="border-slate-300 text-xs text-slate-700 dark:border-slate-700 dark:text-slate-200">
+								Recall bot • {interview.meetingBotStatusDetail ?? interview.meetingBotStatus}
+							</Badge>
+						) : null}
 					</div>
+				</div>
 
 					{/* Interview Title - Prominent */}
 					<div className="mb-4">

@@ -29,6 +29,13 @@ export const getInterviews = async ({
 			media_type,
 			created_at,
 			updated_at,
+			meeting_bots (
+				id,
+				status,
+				status_detail,
+				recall_status,
+				created_at
+			),
 			interview_people (
 				role,
 				people (

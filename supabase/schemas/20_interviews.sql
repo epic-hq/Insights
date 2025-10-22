@@ -22,7 +22,9 @@ create table if not exists interviews (
   interviewer_id uuid references auth.users (id),
   participant_pseudonym text,
   segment text,
-	media_url text, -- url to the media file
+	media_url text, -- legacy/general media URL
+	raw_media_url text, -- original provider URL (e.g., Recall recording)
+	processed_media_url text, -- normalized audio stored in R2
 	media_type text, -- type of content: interview, focus-group, customer-call, user-testing
 	transcript text,
 	transcript_formatted jsonb,

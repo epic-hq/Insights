@@ -1658,6 +1658,8 @@ export type Database = {
           interviewer_id: string | null
           media_type: string | null
           media_url: string | null
+          raw_media_url: string | null
+          processed_media_url: string | null
           observations_and_notes: string | null
           open_questions_and_next_steps: string | null
           participant_pseudonym: string | null
@@ -1682,6 +1684,8 @@ export type Database = {
           interviewer_id?: string | null
           media_type?: string | null
           media_url?: string | null
+          raw_media_url?: string | null
+          processed_media_url?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
@@ -1706,6 +1710,8 @@ export type Database = {
           interviewer_id?: string | null
           media_type?: string | null
           media_url?: string | null
+          raw_media_url?: string | null
+          processed_media_url?: string | null
           observations_and_notes?: string | null
           open_questions_and_next_steps?: string | null
           participant_pseudonym?: string | null
@@ -3849,6 +3855,86 @@ export type Database = {
           },
         ]
       }
+      meeting_bots: {
+        Row: {
+          bot_id: string
+          bot_name: string | null
+          created_at: string | null
+          id: string
+          interview_id: string
+          joined_at: string | null
+          last_status_at: string | null
+          left_at: string | null
+          meeting_url: string
+          metadata: Json | null
+          processed_recording_key: string | null
+          processed_recording_url: string | null
+          raw_payload: Json | null
+          raw_recording_key: string | null
+          raw_recording_url: string | null
+          recall_status: string | null
+          region: string
+          status: Database["public"]["Enums"]["job_status"]
+          status_detail: string | null
+          transcript_download_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          bot_id: string
+          bot_name?: string | null
+          created_at?: string | null
+          id?: string
+          interview_id: string
+          joined_at?: string | null
+          last_status_at?: string | null
+          left_at?: string | null
+          meeting_url: string
+          metadata?: Json | null
+          processed_recording_key?: string | null
+          processed_recording_url?: string | null
+          raw_payload?: Json | null
+          raw_recording_key?: string | null
+          raw_recording_url?: string | null
+          recall_status?: string | null
+          region: string
+          status?: Database["public"]["Enums"]["job_status"]
+          status_detail?: string | null
+          transcript_download_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          bot_id?: string
+          bot_name?: string | null
+          created_at?: string | null
+          id?: string
+          interview_id?: string
+          joined_at?: string | null
+          last_status_at?: string | null
+          left_at?: string | null
+          meeting_url?: string
+          metadata?: Json | null
+          processed_recording_key?: string | null
+          processed_recording_url?: string | null
+          raw_payload?: Json | null
+          raw_recording_key?: string | null
+          raw_recording_url?: string | null
+          recall_status?: string | null
+          region?: string
+          status?: Database["public"]["Enums"]["job_status"]
+          status_detail?: string | null
+          transcript_download_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meeting_bots_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       upload_jobs: {
         Row: {
           assemblyai_id: string | null
@@ -3861,8 +3947,14 @@ export type Database = {
           id: string
           interview_id: string
           last_error: string | null
+          meeting_bot_id: string | null
+          processed_media_key: string | null
+          processed_media_url: string | null
+          raw_media_key: string | null
+          source_provider: string
           status: Database["public"]["Enums"]["job_status"]
           status_detail: string | null
+          transcript_download_url: string | null
           updated_at: string | null
         }
         Insert: {
@@ -3876,8 +3968,14 @@ export type Database = {
           id?: string
           interview_id: string
           last_error?: string | null
+          meeting_bot_id?: string | null
+          processed_media_key?: string | null
+          processed_media_url?: string | null
+          raw_media_key?: string | null
+          source_provider?: string
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
+          transcript_download_url?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -3891,8 +3989,14 @@ export type Database = {
           id?: string
           interview_id?: string
           last_error?: string | null
+          meeting_bot_id?: string | null
+          processed_media_key?: string | null
+          processed_media_url?: string | null
+          raw_media_key?: string | null
+          source_provider?: string
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
+          transcript_download_url?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -3901,6 +4005,13 @@ export type Database = {
             columns: ["interview_id"]
             isOneToOne: false
             referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upload_jobs_meeting_bot_id_fkey"
+            columns: ["meeting_bot_id"]
+            isOneToOne: false
+            referencedRelation: "meeting_bots"
             referencedColumns: ["id"]
           },
         ]
