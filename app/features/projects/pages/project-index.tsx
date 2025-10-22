@@ -1,8 +1,11 @@
+import { convertMessages } from "@mastra/core/agent"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { redirect, useLoaderData } from "react-router"
 import ProjectStatusScreen from "~/features/onboarding/components/ProjectStatusScreen"
 import { getProjectById } from "~/features/projects/db"
 import { getProjectContextGeneric } from "~/features/questions/db"
+import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 import { getProjectStatusData } from "~/utils/project-status.server"
 
@@ -51,29 +54,71 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.order("created_at", { ascending: false })
 
 	// Load project status (latest analysis or fallback counts)
-	const statusData = await getProjectStatusData(projectId, supabase)
+        const statusData = await getProjectStatusData(projectId, supabase)
 
-	return {
-		accountId,
-		projectId,
-		projectName: project?.name || "Project",
-		icp: project?.description || "",
-		projectSections: projectSections || [],
-		projectContext,
-		statusData,
-	}
+        let initialChatMessages: UpsightMessage[] = []
+
+        try {
+                const userId = ctx.claims.sub
+                if (userId) {
+                        const resourceId = `projectStatusAgent-${userId}-${projectId}`
+                        const threads = await memory.getThreadsByResourceIdPaginated({
+                                resourceId,
+                                orderBy: "createdAt",
+                                sortDirection: "DESC",
+                                page: 0,
+                                perPage: 100,
+                        })
+
+                        let threadId = ""
+                        if (!(threads?.total > 0)) {
+                                const newThread = await memory.createThread({
+                                        resourceId,
+                                        title: `Project Status ${projectId}`,
+                                        metadata: { user_id: userId, project_id: projectId, account_id: accountId },
+                                })
+                                threadId = newThread.id
+                        } else {
+                                threadId = threads.threads[0].id
+                        }
+
+                        const { messagesV2 } = await memory.query({
+                                threadId,
+                                selectBy: { last: 50 },
+                        })
+
+                        if (messagesV2 && messagesV2.length > 0) {
+                                initialChatMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+                        }
+                }
+        } catch (error) {
+                console.error("project-status chat history load failed", error)
+        }
+
+        return {
+                accountId,
+                projectId,
+                projectName: project?.name || "Project",
+                icp: project?.description || "",
+                projectSections: projectSections || [],
+                projectContext,
+                statusData,
+                initialChatMessages,
+        }
 }
 
 export default function ProjectIndex() {
-	const { accountId, projectId, projectName, icp, projectSections, statusData } = useLoaderData<typeof loader>()
-	return (
-		<ProjectStatusScreen
-			projectName={projectName}
-			icp={icp}
-			accountId={accountId}
-			projectId={projectId}
-			projectSections={projectSections}
-			statusData={statusData || undefined}
-		/>
-	)
+        const { accountId, projectId, projectName, icp, projectSections, statusData, initialChatMessages } =
+                useLoaderData<typeof loader>()
+        return (
+                <ProjectStatusScreen
+                        projectName={projectName}
+                        icp={icp}
+                        accountId={accountId}
+                        projectId={projectId}
+                        projectSections={projectSections}
+                        statusData={statusData || undefined}
+                        initialChatMessages={initialChatMessages}
+                />
+        )
 }

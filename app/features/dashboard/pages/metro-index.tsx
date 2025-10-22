@@ -17,13 +17,12 @@ import {
 } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import {
-	type LoaderFunctionArgs,
-	type MetaFunction,
-	redirect,
-	useLoaderData,
-	useNavigate,
-	useParams,
-	useRouteLoaderData,
+        type LoaderFunctionArgs,
+        type MetaFunction,
+        redirect,
+        useLoaderData,
+        useNavigate,
+        useRouteLoaderData,
 } from "react-router"
 import type { Database } from "~/../supabase/types"
 import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
@@ -324,12 +323,12 @@ const mainSections = [
 ]
 
 export default function MetroIndex() {
-	const params = useParams()
-	const { accountId, projectId } = params
-	const {
-		personas = [],
-		insights = [],
-		interviews = [],
+        const {
+                accountId,
+                projectId,
+                personas = [],
+                insights = [],
+                interviews = [],
 		projects = [],
 		people = [],
 		projectStatusData,
@@ -388,12 +387,13 @@ export default function MetroIndex() {
 			<div className={`flex-1 transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
 				{/* Project Status */}
 				<ProjectStatusScreen
-					projectName={project?.name || ""}
-					icp={project?.icp || ""}
-					projectId={projectId}
-					statusData={projectStatusData}
-					personas={personas}
-					insights={insights}
+                                        projectName={project?.name || ""}
+                                        icp={project?.icp || ""}
+                                        projectId={projectId}
+                                        accountId={accountId}
+                                        statusData={projectStatusData}
+                                        personas={personas}
+                                        insights={insights}
 				/>
 
 				{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}
