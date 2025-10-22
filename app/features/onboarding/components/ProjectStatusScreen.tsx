@@ -1,3 +1,5 @@
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { motion } from "framer-motion"
 import {
@@ -17,13 +19,14 @@ import {
 	Users,
 	Zap,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRevalidator } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
+import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import type { DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
@@ -40,6 +43,7 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import type { Project_Section } from "~/types"
+import type { UpsightMessage } from "~/mastra/message-types"
 
 const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
 const _OPEN_STATUSES = new Set(["planned", "asked"])
@@ -57,23 +61,25 @@ function _ConfidenceBadge({ value }: { value?: number }) {
 }
 
 interface ProjectStatusScreenProps {
-	projectName: string
-	projectId?: string
-	accountId?: string
-	statusData?: ProjectStatusData | null
-	personas?: any[]
-	insights?: any[]
-	projectSections?: Project_Section[]
+        projectName: string
+        projectId?: string
+        accountId?: string
+        statusData?: ProjectStatusData | null
+        personas?: any[]
+        insights?: any[]
+        projectSections?: Project_Section[]
+        initialChatMessages?: UpsightMessage[]
 }
 
 export default function ProjectStatusScreen({
-	projectName,
-	projectId,
-	accountId,
-	statusData,
-	personas = [],
-	insights = [],
-	projectSections: initialSections,
+        projectName,
+        projectId,
+        accountId,
+        statusData,
+        personas = [],
+        insights = [],
+        projectSections: initialSections,
+        initialChatMessages = [],
 }: ProjectStatusScreenProps) {
 	const [isAnalyzing, setIsAnalyzing] = useState(false)
 	const [customInstructions, setCustomInstructions] = useState("")
@@ -91,11 +97,13 @@ export default function ProjectStatusScreen({
 	const [analysisError, setAnalysisError] = useState<string | null>(null)
 	const [targetConversations, setTargetConversations] = useState<number>(10)
 	const revalidator = useRevalidator()
-	const currentProjectContext = useCurrentProject()
-	const projectPath =
-		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
-	const routes = useProjectRoutes(projectPath)
-	const supabase = createClient()
+        const currentProjectContext = useCurrentProject()
+        const projectPath =
+                currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
+        const routes = useProjectRoutes(projectPath)
+        const supabase = createClient()
+        const effectiveAccountId = currentProjectContext?.accountId || accountId || ""
+        const effectiveProjectId = currentProjectContext?.projectId || projectId || ""
 
 	const handleResearchMetrics = useCallback((metrics: { answered: number; open: number; total: number }) => {
 		setResearchMetrics(metrics)
@@ -532,12 +540,19 @@ export default function ProjectStatusScreen({
 							</div>
 
 							{/* Right Side: Data Details - Mobile Responsive */}
-							<div className="space-y-6 overflow-y-auto sm:space-y-8 lg:border-gray-200 lg:border-l lg:pl-8 lg:dark:border-gray-700">
-								<div className="space-y-6">
-									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
-										<Target className="h-6 w-6 text-blue-600" />
-										Research Progress
-									</h3>
+                                                        <div className="space-y-6 overflow-y-auto sm:space-y-8 lg:border-gray-200 lg:border-l lg:pl-8 lg:dark:border-gray-700">
+                                                                {effectiveAccountId && effectiveProjectId && (
+                                                                        <ProjectStatusAgentChat
+                                                                                accountId={effectiveAccountId}
+                                                                                projectId={effectiveProjectId}
+                                                                                initialMessages={initialChatMessages}
+                                                                        />
+                                                                )}
+                                                                <div className="space-y-6">
+                                                                        <h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
+                                                                                <Target className="h-6 w-6 text-blue-600" />
+                                                                                Research Progress
+                                                                        </h3>
 									<div className="space-y-4">
 										<div className="flex items-center justify-between">
 											<span className="text-muted-foreground">Questions Answered</span>
@@ -979,4 +994,131 @@ export default function ProjectStatusScreen({
 			)}
 		</div>
 	)
+}
+
+function ProjectStatusAgentChat({
+        accountId,
+        projectId,
+        initialMessages,
+}: {
+        accountId: string
+        projectId: string
+        initialMessages: UpsightMessage[]
+}) {
+        const [input, setInput] = useState("")
+        const messagesEndRef = useRef<HTMLDivElement | null>(null)
+        const { messages, sendMessage, status } = useChat<UpsightMessage>({
+                transport: new DefaultChatTransport({
+                        api: `/a/${accountId}/${projectId}/api/chat/project-status`,
+                }),
+                messages: initialMessages,
+                sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+        })
+
+        const visibleMessages = useMemo(() => (messages ?? []).slice(-12), [messages])
+
+        useEffect(() => {
+                if (messagesEndRef.current) {
+                        messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+                }
+        }, [visibleMessages])
+
+        const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+                event.preventDefault()
+                const trimmed = input.trim()
+                if (!trimmed) return
+                sendMessage({ text: trimmed })
+                setInput("")
+        }
+
+        const isBusy = status === "streaming" || status === "submitted"
+        const isError = status === "error"
+
+        return (
+                <Card className="border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
+                        <CardHeader className="p-3 pb-2 sm:p-4">
+                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                        <MessageCircleQuestionIcon className="h-4 w-4 text-blue-600" />
+                                        Ask Project Copilot
+                                </CardTitle>
+                                <CardDescription className="text-xs sm:text-sm">
+                                        Ask short, direct questions about findings, assumptions, or next steps.
+                                </CardDescription>
+                        </CardHeader>
+                        <CardContent className="space-y-3 p-3 sm:p-4">
+                                <div className="h-48 overflow-y-auto rounded-lg border border-border/60 bg-muted/30 p-3">
+                                        {visibleMessages.length === 0 ? (
+                                                <p className="text-muted-foreground text-xs sm:text-sm">
+                                                        No questions yet. Try "What evidence do we have for our top assumption?"
+                                                </p>
+                                        ) : (
+                                                <div className="space-y-3 text-xs sm:text-sm">
+                                                        {visibleMessages.map((message, index) => {
+                                                                const key = message.id || `${message.role}-${index}`
+                                                                const isUser = message.role === "user"
+                                                                const textParts =
+                                                                        message.parts?.map((part) => {
+                                                                                if (part.type === "text") return part.text
+                                                                                if (part.type === "tool-call") {
+                                                                                        return `Requesting tool: ${part.toolName ?? "unknown"}`
+                                                                                }
+                                                                                if (part.type === "tool-result") {
+                                                                                        return `Tool result: ${part.toolName ?? "unknown"}`
+                                                                                }
+                                                                                return ""
+                                                                        }) ?? []
+                                                                const messageText = textParts.filter(Boolean).join("\n").trim()
+                                                                return (
+                                                                        <div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+                                                                                <div className="max-w-[85%]">
+                                                                                        <div className="mb-1 text-muted-foreground text-[10px] uppercase tracking-wide">
+                                                                                                {isUser ? "You" : "Project Copilot"}
+                                                                                        </div>
+                                                                                        <div
+                                                                                                className={cn(
+                                                                                                        "whitespace-pre-wrap rounded-lg px-3 py-2 shadow-sm",
+                                                                                                        isUser
+                                                                                                                ? "bg-blue-600 text-white"
+                                                                                                                : "bg-background text-foreground ring-1 ring-border/60"
+                                                                                                )}
+                                                                                        >
+                                                                                                {messageText || (
+                                                                                                        <span className="text-muted-foreground">
+                                                                                                                (No text response)
+                                                                                                        </span>
+                                                                                                )}
+                                                                                        </div>
+                                                                                </div>
+                                                                        </div>
+                                                                )
+                                                        })}
+                                                        <div ref={messagesEndRef} />
+                                                </div>
+                                        )}
+                                </div>
+                                <form onSubmit={handleSubmit} className="space-y-2">
+                                        <Textarea
+                                                value={input}
+                                                onChange={(event) => setInput(event.currentTarget.value)}
+                                                placeholder="What should we do next to validate this project?"
+                                                rows={2}
+                                                disabled={isBusy}
+                                                className="min-h-[72px] resize-none"
+                                        />
+                                        <div className="flex items-center justify-between gap-2">
+                                                <span className="text-muted-foreground text-xs" aria-live="polite">
+                                                        {isError
+                                                                ? "Something went wrong. Try again."
+                                                                : isBusy
+                                                                ? "Thinking..."
+                                                                : "Focus on one question at a time."}
+                                                </span>
+                                                <Button type="submit" size="sm" disabled={!input.trim() || isBusy}>
+                                                        Send
+                                                </Button>
+                                        </div>
+                                </form>
+                        </CardContent>
+                </Card>
+        )
 }
