@@ -16,7 +16,7 @@ import type {
 	PersonFacetObservation,
 	PersonScaleObservation,
 } from "~/../baml_client/types"
-import type { Database, Json } from "~/../supabase/types"
+import type { Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
@@ -24,7 +24,7 @@ import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
-import type { InsightInsert, Interview, InterviewInsert } from "~/types" // path alias provided by project setup
+import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 // Supabase table types

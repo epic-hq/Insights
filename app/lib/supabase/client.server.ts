@@ -1,6 +1,6 @@
 import { createServerClient, parseCookieHeader, serializeCookieHeader } from "@supabase/ssr"
-import type { Database } from "~/../supabase/types"
 import { getServerEnv } from "~/env.server"
+import type { Database } from "~/types"
 
 const { SUPABASE_URL, SUPABASE_ANON_KEY, SUPABASE_SERVICE_ROLE_KEY: _SUPABASE_SERVICE_ROLE_KEY } = getServerEnv()
 
@@ -29,7 +29,7 @@ export function createSupabaseAdminClient() {
 	return createServerClient<Database>(SUPABASE_URL, _SUPABASE_SERVICE_ROLE_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => {},
+			setAll: () => { },
 		},
 		auth: {
 			autoRefreshToken: false,
@@ -96,7 +96,7 @@ export async function getSession(request: Request) {
 export const supabaseAnon = createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 	cookies: {
 		getAll: () => [],
-		setAll: () => {},
+		setAll: () => { },
 	},
 	auth: { persistSession: false },
 })
@@ -106,7 +106,7 @@ export function getRlsClient(jwt: string) {
 	return createServerClient<Database>(SUPABASE_URL, SUPABASE_ANON_KEY, {
 		cookies: {
 			getAll: () => [],
-			setAll: () => {},
+			setAll: () => { },
 		},
 		auth: { persistSession: false },
 		global: {
