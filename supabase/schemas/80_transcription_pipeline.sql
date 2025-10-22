@@ -32,6 +32,7 @@ create table analysis_jobs (
   last_error text,
   status job_status not null default 'pending',
   status_detail text,
+  trigger_run_id text,
   created_at timestamptz default now(),
   updated_at timestamptz default now()
 );
@@ -102,6 +103,7 @@ create trigger set_analysis_jobs_timestamp
 -- Indexes for worker performance
 create index idx_upload_jobs_status_created on upload_jobs(status, created_at);
 create index idx_analysis_jobs_status_created on analysis_jobs(status, created_at);
+create index idx_analysis_jobs_trigger_run on analysis_jobs(trigger_run_id);
 create index idx_upload_jobs_assemblyai_id on upload_jobs(assemblyai_id);
 
 -- Database webhooks will be configured via Supabase Dashboard to trigger edge functions

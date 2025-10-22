@@ -366,6 +366,7 @@ export type Database = {
           progress: number | null
           status: Database["public"]["Enums"]["job_status"]
           status_detail: string | null
+          trigger_run_id: string | null
           transcript_data: Json
           updated_at: string | null
         }
@@ -379,6 +380,7 @@ export type Database = {
           progress?: number | null
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
+          trigger_run_id?: string | null
           transcript_data: Json
           updated_at?: string | null
         }
@@ -392,6 +394,7 @@ export type Database = {
           progress?: number | null
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
+          trigger_run_id?: string | null
           transcript_data?: Json
           updated_at?: string | null
         }

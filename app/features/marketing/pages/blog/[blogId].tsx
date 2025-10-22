@@ -122,8 +122,8 @@ export default function BlogPost() {
 							className="absolute inset-0 h-full w-full object-cover"
 						/>
 						<div className="absolute inset-0 bg-gradient-to-b from-black/10 via-black/40 to-black/80" />
-						<div className="absolute inset-0 z-10 flex items-end pb-20">
-							<div className="mx-auto w-full max-w-4xl px-6 pb-10">
+						<div className="absolute inset-0 z-10 flex items-center">
+							<div className="mx-auto w-full max-w-4xl px-6">
 								{post.tags?.length ? (
 									<div className="mb-3 font-semibold text-white/80 text-xs uppercase tracking-wider">
 										{post.tags[0]}

@@ -1,8 +1,9 @@
 import consola from "consola"
 import { Edit2, Loader2 } from "lucide-react"
-import { useEffect, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
+import type { Database } from "~/../supabase/types"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
@@ -14,6 +15,7 @@ import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
@@ -51,6 +53,26 @@ function normalizeMultilineText(value: unknown): string {
 	} catch {
 		// If JSON.parse fails, treat it as plain text
 		return typeof value === "string" ? value : ""
+	}
+}
+
+type AnalysisJobSummary = Pick<
+	Database["public"]["Tables"]["analysis_jobs"]["Row"],
+	"id" | "status" | "status_detail" | "progress" | "trigger_run_id" | "created_at" | "updated_at"
+>
+
+const ACTIVE_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["pending", "in_progress", "retry"])
+const TERMINAL_ANALYSIS_STATUSES = new Set<Database["public"]["Enums"]["job_status"]>(["done", "error"])
+
+function toAnalysisJobSummary(row: Database["public"]["Tables"]["analysis_jobs"]["Row"]): AnalysisJobSummary {
+	return {
+		id: row.id,
+		status: row.status,
+		status_detail: row.status_detail,
+		progress: row.progress,
+		trigger_run_id: row.trigger_run_id,
+		created_at: row.created_at,
+		updated_at: row.updated_at,
 	}
 }
 
@@ -276,6 +298,19 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			hasFormattedTranscript: !!transcriptMeta?.transcript_formatted,
 		}
 
+		const { data: analysisJobRows, error: analysisJobError } = await supabase
+			.from("analysis_jobs")
+			.select("id, status, status_detail, progress, trigger_run_id, created_at, updated_at")
+			.eq("interview_id", interviewId)
+			.order("created_at", { ascending: false })
+			.limit(1)
+
+		if (analysisJobError) {
+			consola.warn("Could not load latest analysis job:", analysisJobError.message)
+		}
+
+		const analysisJob = (analysisJobRows?.[0] ?? null) as AnalysisJobSummary | null
+
 		// Fetch insights related to this interview with junction table tags
 		const { data: insights, error } = await getInterviewInsights({
 			supabase,
@@ -410,6 +445,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			empathyMap,
 			peopleOptions: peopleOptions || [],
 			creatorName,
+			analysisJob,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -435,7 +471,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions, creatorName } =
+	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions, creatorName, analysisJob } =
 		useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
@@ -443,7 +479,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
 	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
-	const [isProcessing, setIsProcessing] = useState(false)
+	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
+	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
+	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
+
+	useEffect(() => {
+		setAnalysisState(analysisJob)
+		// Reset trigger auth when navigating to a different interview or run
+		if (!analysisJob?.trigger_run_id) {
+			setTriggerAuth(null)
+			setTokenErrorRunId(null)
+		}
+	}, [analysisJob])
 
 	// Helper to create evidence link with time parameter (like YouTube ?t=10)
 	const createEvidenceLink = (item: { evidenceId: string; anchors?: unknown }) => {
@@ -481,11 +528,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	// Check if any action is in progress
 	const isActionPending = navigation.state === "loading" || navigation.state === "submitting"
 	const isFetcherBusy = fetcher.state !== "idle" || participantFetcher.state !== "idle"
+	const showBlockingOverlay = isActionPending || isFetcherBusy
+	const overlayLabel =
+		navigation.state === "loading"
+			? "Loading interview..."
+			: navigation.state === "submitting" || isFetcherBusy
+				? "Saving changes..."
+				: "Processing..."
 
 	useEffect(() => {
 		if (!interview?.id) return
 
-		// Subscribe to analysis_jobs updates for this interview to reflect processing state
 		const supabase = getSupabaseClient()
 		const channel = supabase
 			.channel(`analysis-${interview.id}`)
@@ -493,10 +546,24 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				"postgres_changes",
 				{ event: "*", schema: "public", table: "analysis_jobs", filter: `interview_id=eq.${interview.id}` },
 				(payload) => {
-					const next = (payload as unknown as { new?: { status?: string } }).new
-					const status = next?.status
-					if (status === "in_progress") setIsProcessing(true)
-					if (status === "completed" || status === "failed" || status === "error") setIsProcessing(false)
+					const raw = (payload as { new?: Database["public"]["Tables"]["analysis_jobs"]["Row"] }).new
+					if (!raw) return
+
+					setAnalysisState((prev) => {
+						const nextSummary = toAnalysisJobSummary(raw)
+						if (!prev) {
+							return nextSummary
+						}
+
+						const prevCreated = prev.created_at ? new Date(prev.created_at).getTime() : 0
+						const nextCreated = nextSummary.created_at ? new Date(nextSummary.created_at).getTime() : prevCreated
+
+						if (raw.id === prev.id || nextCreated >= prevCreated) {
+							return nextSummary
+						}
+
+						return prev
+					})
 				}
 			)
 			.subscribe()
@@ -506,6 +573,78 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [interview.id])
 
+	useEffect(() => {
+		if (!analysisState?.trigger_run_id) return
+		if (!triggerAuth?.runId) return
+		if (analysisState.trigger_run_id === triggerAuth.runId) return
+
+		setTriggerAuth(null)
+		setTokenErrorRunId(null)
+	}, [analysisState?.trigger_run_id, triggerAuth?.runId])
+
+	useEffect(() => {
+		const runId = analysisState?.trigger_run_id ?? null
+		const status = analysisState?.status
+
+		if (!runId || !status) {
+			setTriggerAuth(null)
+			setTokenErrorRunId(null)
+			return
+		}
+
+		if (TERMINAL_ANALYSIS_STATUSES.has(status)) {
+			setTriggerAuth(null)
+			setTokenErrorRunId(null)
+			return
+		}
+
+		if (triggerAuth?.runId === runId) {
+			return
+		}
+
+		if (tokenErrorRunId === runId) {
+			return
+		}
+
+		let isCancelled = false
+
+		const fetchToken = async () => {
+			try {
+				const response = await fetch("/api/trigger-run-token", {
+					method: "POST",
+					headers: {
+						"Content-Type": "application/json",
+					},
+					body: JSON.stringify({ runId }),
+					credentials: "same-origin",
+				})
+
+				if (!response.ok) {
+					throw new Error(`Failed to fetch Trigger.dev token (${response.status})`)
+				}
+
+				const data = (await response.json()) as { token?: string }
+
+				if (!isCancelled && data?.token) {
+					setTriggerAuth({ runId, token: data.token })
+					setTokenErrorRunId(null)
+				}
+			} catch (error) {
+				consola.warn("Failed to fetch Trigger.dev access token", error)
+				if (!isCancelled) {
+					setTriggerAuth(null)
+					setTokenErrorRunId(runId)
+				}
+			}
+		}
+
+		fetchToken()
+
+		return () => {
+			isCancelled = true
+		}
+	}, [analysisState?.trigger_run_id, analysisState?.status, triggerAuth?.runId, tokenErrorRunId])
+
 	// Early validation without logging in render
 	if (!interview || !accountId || !projectId) {
 		return <div>Error: Missing interview data</div>
@@ -513,6 +652,20 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const participants = interview.participants || []
 	const primaryParticipant = participants[0]?.people
+	const activeRunId = analysisState?.trigger_run_id ?? null
+	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
+	const isProcessing = useMemo(
+		() => (analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false),
+		[analysisState]
+	)
+	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
+
+	const { progressInfo, isRealtime } = useInterviewProgress({
+		interviewId: interview.id,
+		runId: activeRunId ?? undefined,
+		accessToken: triggerAccessToken,
+	})
+	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
 
 	function formatReadable(dateString: string) {
 		const d = new Date(dateString)
@@ -531,17 +684,55 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	return (
 		<div className="relative mx-auto mt-6 max-w-6xl">
 			{/* Loading Overlay */}
-			{(isActionPending || isFetcherBusy || isProcessing) && (
+			{showBlockingOverlay && (
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
 					<div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 shadow-lg">
 						<Loader2 className="h-8 w-8 animate-spin text-primary" />
-						<p className="font-medium text-sm">{isProcessing ? "Analyzing interview..." : "Processing..."}</p>
+						<p className="font-medium text-sm">{overlayLabel}</p>
 					</div>
 				</div>
 			)}
 
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8 ">
 				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
+					{isProcessing && (
+						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
+							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+								<div>
+									<p className="font-semibold text-primary text-xs uppercase tracking-wide">Analysis in progress</p>
+									<p className="text-muted-foreground text-sm">
+										{analysisState?.status_detail || progressInfo.label}
+									</p>
+								</div>
+								<div className="flex flex-col items-end gap-2">
+									<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
+										<div
+											className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
+											style={{ width: `${progressPercent}%` }}
+										/>
+									</div>
+									<span className="font-medium text-sm text-primary">{progressPercent}%</span>
+								</div>
+							</div>
+							{isRealtime ? (
+								<p className="mt-2 text-muted-foreground text-xs">Live updates via Trigger.dev</p>
+							) : tokenErrorRunId === activeRunId ? (
+								<p className="mt-2 text-muted-foreground text-xs">
+									Live updates temporarily unavailable; showing interview status.
+								</p>
+							) : null}
+						</div>
+					)}
+
+					{hasAnalysisError && (
+						<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 shadow-sm">
+							<p className="font-semibold text-destructive text-xs uppercase tracking-wide">Analysis failed</p>
+							<p className="mt-1 text-destructive text-sm">
+								{analysisState?.status_detail || "The most recent analysis run reported an error. Try again once the issue is resolved."}
+							</p>
+						</div>
+					)}
+
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">

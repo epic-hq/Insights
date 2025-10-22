@@ -87,28 +87,28 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 		switch (speaker.toUpperCase()) {
 			case "A":
 				return {
-					badge: "bg-blue-100 text-blue-800 border-blue-200",
-					border: "border-blue-500",
+					badge: "bg-blue-100 text-blue-900 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800",
+					border: "border-blue-500 dark:border-blue-400",
 				}
 			case "B":
 				return {
-					badge: "bg-green-100 text-green-800 border-green-200",
-					border: "border-green-500",
+					badge: "bg-green-100 text-green-900 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800",
+					border: "border-green-500 dark:border-green-400",
 				}
 			case "C":
 				return {
-					badge: "bg-yellow-100 text-yellow-800 border-yellow-200",
-					border: "border-yellow-500",
+					badge: "bg-yellow-100 text-yellow-900 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800",
+					border: "border-yellow-500 dark:border-yellow-400",
 				}
 			case "D":
 				return {
-					badge: "bg-red-100 text-red-800 border-red-200",
-					border: "border-red-500",
+					badge: "bg-red-100 text-red-900 border-red-200 dark:bg-red-900/20 dark:text-red-300 dark:border-red-800",
+					border: "border-red-500 dark:border-red-400",
 				}
 			default:
 				return {
-					badge: "bg-gray-100 text-gray-800 border-gray-200",
-					border: "border-gray-500",
+					badge: "bg-muted text-muted-foreground border-border",
+					border: "border-muted-foreground",
 				}
 		}
 	}
@@ -175,7 +175,7 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 		return (
 			<Card>
 				<CardContent className="py-8 text-center">
-					<p className="text-gray-500">No transcript data available</p>
+					<p className="text-muted-foreground">No transcript data available</p>
 				</CardContent>
 			</Card>
 		)
@@ -243,10 +243,10 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 								</div>
 							) : (
 								<div className="space-y-4">
-									<div className="rounded-lg bg-gray-50 p-4">
+									<div className="rounded-lg bg-muted p-4">
 										<p className="whitespace-pre-wrap text-foreground leading-relaxed">{rawTranscript}</p>
 									</div>
-									<div className="text-center text-foreground text-sm">
+									<div className="text-center text-muted-foreground text-sm">
 										<p>Raw transcript content - no speaker breakdown available</p>
 									</div>
 								</div>

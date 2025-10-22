@@ -98,8 +98,8 @@ export function LazyTranscriptResults({
 
 	if (!hasTranscript && !hasFormattedTranscript) {
 		return (
-			<div className="rounded-lg border bg-gray-50 p-6 text-center">
-				<p className="text-gray-500">No transcript available for this interview.</p>
+			<div className="rounded-lg border bg-muted p-6 text-center">
+				<p className="text-muted-foreground">No transcript available for this interview.</p>
 			</div>
 		)
 	}
@@ -109,7 +109,7 @@ export function LazyTranscriptResults({
 			<div className="rounded-lg border bg-background/50 p-6">
 				<div className="flex items-center justify-between">
 					<div className="flex items-center gap-3">
-						<FileText className="h-5 w-5 text-gray-400" />
+						<FileText className="h-5 w-5 text-muted-foreground" />
 						<div>
 							<h3 className="font-medium text-foreground">Interview Transcript</h3>
 							<p className="text-foreground text-sm ">
@@ -128,10 +128,10 @@ export function LazyTranscriptResults({
 
 	if (loading) {
 		return (
-			<div className="rounded-lg border bg-white p-6">
+			<div className="rounded-lg border bg-card p-6">
 				<div className="flex items-center justify-center space-x-2">
-					<div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-500 border-t-transparent" />
-					<span className="text-gray-600">Loading transcript...</span>
+					<div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+					<span className="text-muted-foreground">Loading transcript...</span>
 				</div>
 			</div>
 		)
@@ -139,9 +139,9 @@ export function LazyTranscriptResults({
 
 	if (error) {
 		return (
-			<div className="rounded-lg border border-red-200 bg-red-50 p-6">
+			<div className="rounded-lg border border-destructive/20 bg-destructive/10 p-6">
 				<div className="flex items-center justify-between">
-					<p className="text-red-600">Error loading transcript: {error}</p>
+					<p className="text-destructive">Error loading transcript: {error}</p>
 					<Button onClick={loadTranscript} variant="outline" size="sm">
 						Retry
 					</Button>
