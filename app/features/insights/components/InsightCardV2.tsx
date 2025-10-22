@@ -25,14 +25,14 @@ import { Input } from "~/components/ui/input"
 import { Separator } from "~/components/ui/separator"
 import type { CommentView, Insight, InsightView } from "~/types"
 
-export interface Comment {
+interface Comment {
 	id: string
 	author: string
 	text: string
 	timestamp: string
 }
 
-export interface InsightCardV2Props {
+interface InsightCardV2Props {
 	insight: Insight
 	onTagClick?: (tag: string) => void
 	onUpvote?: () => void

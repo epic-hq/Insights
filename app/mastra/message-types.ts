@@ -19,12 +19,12 @@ import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
 
 // type MyDataPart = z.infer<typeof dataPartSchema>;
 
-export const tools = {
+const tools = {
 	displayUserQuestions: displayUserQuestionsTool,
 	navigateToPage: navigateToPageTool,
 	saveUserSettingsData: saveUserSettingsDataTool,
 	saveProjectSectionsData: saveProjectSectionsDataTool,
 }
 
-export type UpsightTools = InferMastraUITools<typeof tools>
+type UpsightTools = InferMastraUITools<typeof tools>
 export type UpsightMessage = UIMessage<{}, {}, UpsightTools>

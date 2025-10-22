@@ -21,7 +21,7 @@ export interface PayloadImage {
 	filename?: string
 }
 
-export interface PayloadAuthor {
+interface PayloadAuthor {
 	id: string
 	name: string
 	email?: string
@@ -66,7 +66,7 @@ export interface PayloadPost {
 	results?: string
 }
 
-export interface PayloadResponse<T> {
+interface PayloadResponse<T> {
 	docs: T[]
 	totalDocs: number
 	limit: number
@@ -161,7 +161,7 @@ export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 /**
  * Fetch a single blog post by ID
  */
-export async function getPostById(id: string): Promise<PayloadPost> {
+async function getPostById(id: string): Promise<PayloadPost> {
 	const env = getServerEnv()
 	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts/${id}`, {
 		headers: getHeaders(),
@@ -181,7 +181,7 @@ export async function getRecentPosts(limit = 5): Promise<PayloadPost[]> {
 /**
  * Search posts by query
  */
-export async function searchPosts(query: string, limit = 10): Promise<PayloadPost[]> {
+async function searchPosts(query: string, limit = 10): Promise<PayloadPost[]> {
 	const env = getServerEnv()
 
 	const where: Where = {

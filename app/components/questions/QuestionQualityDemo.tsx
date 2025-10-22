@@ -56,9 +56,9 @@ export default function QuestionQualityDemo() {
 						<div className="space-y-4">
 							<h3 className="font-medium">Try these sample questions:</h3>
 							<div className="grid gap-3">
-								{sampleQuestions.map((sample, index) => (
+								{sampleQuestions.map((sample) => (
 									<div
-										key={index}
+										key={sample.label}
 										className="cursor-pointer rounded-lg border border-border p-3 transition-colors hover:bg-muted/50"
 										onClick={() => handleQuestionSelect(sample.question)}
 									>

@@ -1,39 +1,18 @@
-import * as Module from "./_index"
+import Page from "./dashboard"
 
-describe("Home route", () => {
-	it("should render the dashboard component with data from the loader", async ({ renderStub }) => {
+describe("Dashboard route", () => {
+	it("renders the dashboard layout", async ({ renderStub }) => {
 		const { getByText } = await renderStub({
 			entries: [
 				{
-					id: "home",
-					path: "/",
-					Component: Module.default,
-					loader: Module.loader,
+					id: "dashboard",
+					path: "/dashboard",
+					Component: Page,
 				},
 			],
 		})
 
-		// Check for text that is actually in the Dashboard component
-		expect(getByText("Total Interviews")).not.toBeNull()
-		expect(getByText("Insights Generated")).not.toBeNull()
-	})
-
-	it("should render the dashboard with explicit language set", async ({ renderStub }) => {
-		const { getByText } = await renderStub({
-			entries: [
-				{
-					id: "home",
-					path: "/",
-					Component: Module.default,
-					loader: Module.loader,
-				},
-			],
-			i18n: {
-				lng: "en",
-			},
-		})
-
-		// Check for text that is actually in the Dashboard component
-		expect(getByText("Themes Identified")).not.toBeNull()
+		expect(getByText("Building Your Application")).not.toBeNull()
+		expect(getByText("Data Fetching")).not.toBeNull()
 	})
 })

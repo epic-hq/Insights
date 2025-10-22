@@ -8,7 +8,7 @@ import { type ReactElement, useCallback, useEffect, useRef, useState } from "rea
 // } from 'extendable-media-recorder';
 // import { connect } from 'extendable-media-recorder-wav-encoder';
 
-export type ReactMediaRecorderRenderProps = {
+type ReactMediaRecorderRenderProps = {
 	error: string
 	muteAudio: () => void
 	unMuteAudio: () => void
@@ -25,7 +25,7 @@ export type ReactMediaRecorderRenderProps = {
 	deleteRecording: () => void
 }
 
-export type ReactMediaRecorderHookProps = {
+type ReactMediaRecorderHookProps = {
 	audio?: boolean | MediaTrackConstraints
 	video?: boolean | MediaTrackConstraints
 	screen?: boolean
@@ -38,7 +38,7 @@ export type ReactMediaRecorderHookProps = {
 	stopStreamsOnStop?: boolean
 	askPermissionOnMount?: boolean
 }
-export type ReactMediaRecorderProps = ReactMediaRecorderHookProps & {
+type ReactMediaRecorderProps = ReactMediaRecorderHookProps & {
 	render: (props: ReactMediaRecorderRenderProps) => ReactElement
 }
 
@@ -51,9 +51,9 @@ export type ReactMediaRecorderProps = ReactMediaRecorderHookProps & {
  * A default value is not mandated by the spec.
  * See specs at: https://developer.mozilla.org/en-US/docs/Web/API/MediaDevices/getDisplayMedia#selfbrowsersurface
  */
-export type SelfBrowserSurface = undefined | "include" | "exclude"
+type SelfBrowserSurface = undefined | "include" | "exclude"
 
-export type StatusMessages =
+type StatusMessages =
 	| "media_aborted"
 	| "permission_denied"
 	| "no_specified_media_found"
@@ -69,7 +69,7 @@ export type StatusMessages =
 	| "stopped"
 	| "paused"
 
-export enum RecorderErrors {
+enum RecorderErrors {
 	AbortError = "media_aborted",
 	NotAllowedError = "permission_denied",
 	NotFoundError = "no_specified_media_found",
@@ -359,4 +359,4 @@ export function useMediaRecorder({
 	}
 }
 
-export const ReactMediaRecorder = (props: ReactMediaRecorderProps) => props.render(useMediaRecorder(props))
+const ReactMediaRecorder = (props: ReactMediaRecorderProps) => props.render(useMediaRecorder(props))

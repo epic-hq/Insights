@@ -20,7 +20,7 @@ const createTeamAccountSchema = z.object({
 	name: z.string(),
 	slug: z.string(),
 })
-export type CreateTeamAccountRequest = z.infer<typeof createTeamAccountSchema>
+type CreateTeamAccountRequest = z.infer<typeof createTeamAccountSchema>
 
 export const createTeamAccount = async ({
 	supabase,
@@ -34,13 +34,13 @@ export const createTeamAccount = async ({
 	})
 }
 
-export const updateAccountNameSchema = z.object({
+const updateAccountNameSchema = z.object({
 	account_id: z.uuid(),
 	name: z.string(),
 })
-export type UpdateAccountNameRequest = z.infer<typeof updateAccountNameSchema>
+type UpdateAccountNameRequest = z.infer<typeof updateAccountNameSchema>
 
-export const updateAccountName = async ({
+const updateAccountName = async ({
 	supabase,
 	account_id,
 	name,
@@ -52,13 +52,13 @@ export const updateAccountName = async ({
 	})
 }
 
-export const updateAccountSlugSchema = z.object({
+const updateAccountSlugSchema = z.object({
 	account_id: z.uuid(),
 	slug: z.string(),
 })
-export type UpdateAccountSlugRequest = z.infer<typeof updateAccountSlugSchema>
+type UpdateAccountSlugRequest = z.infer<typeof updateAccountSlugSchema>
 
-export const updateAccountSlug = async ({
+const updateAccountSlug = async ({
 	supabase,
 	account_id,
 	slug,
@@ -70,10 +70,10 @@ export const updateAccountSlug = async ({
 	})
 }
 
-export const getAccountSchema = z.object({
+const getAccountSchema = z.object({
 	account_id: z.uuid(),
 })
-export type GetAccountRequest = z.infer<typeof getAccountSchema>
+type GetAccountRequest = z.infer<typeof getAccountSchema>
 
 export const getAccount = async ({ supabase, account_id }: { supabase: SupabaseClient } & GetAccountRequest) => {
 	// const validatedData = getAccountSchema.parse({ account_id })
@@ -90,10 +90,10 @@ export const getAccount = async ({ supabase, account_id }: { supabase: SupabaseC
 	return { data, error }
 }
 
-export const getAccountMembersSchema = z.object({
+const getAccountMembersSchema = z.object({
 	account_id: z.uuid(),
 })
-export type GetAccountMembersRequest = z.infer<typeof getAccountMembersSchema>
+type GetAccountMembersRequest = z.infer<typeof getAccountMembersSchema>
 
 export const getAccountMembers = async ({
 	supabase,
@@ -110,12 +110,12 @@ export const getAccountMembers = async ({
 	return { data, error }
 }
 
-export const updateAccountUserRoleSchema = z.object({
+const updateAccountUserRoleSchema = z.object({
 	account_id: z.uuid(),
 	user_id: z.uuid(),
 	role: z.enum(["owner", "member"]),
 })
-export type UpdateAccountUserRoleRequest = z.infer<typeof updateAccountUserRoleSchema>
+type UpdateAccountUserRoleRequest = z.infer<typeof updateAccountUserRoleSchema>
 
 export const updateAccountUserRole = async ({
 	supabase,

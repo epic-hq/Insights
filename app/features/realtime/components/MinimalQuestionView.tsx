@@ -27,7 +27,7 @@ interface MinimalQuestionViewProps {
 	interviewId: string
 }
 
-export function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProps) {
+function MinimalQuestionView({ projectId, interviewId }: MinimalQuestionViewProps) {
 	const supabase = createClient()
 	const [allQuestions, setAllQuestions] = useState<MinimalQuestion[]>([])
 	const [loading, setLoading] = useState(true)

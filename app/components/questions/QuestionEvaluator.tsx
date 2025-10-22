@@ -187,8 +187,8 @@ export default function QuestionEvaluator({
 							<div className="mb-4">
 								<h4 className="mb-2 font-medium text-green-800 text-sm dark:text-green-200">✓ Strengths</h4>
 								<ul className="space-y-1 text-sm">
-									{evaluation.strengths.map((strength, index) => (
-										<li key={index} className="text-green-700 dark:text-green-300">
+									{evaluation.strengths.map((strength) => (
+										<li key={strength} className="text-green-700 dark:text-green-300">
 											• {strength}
 										</li>
 									))}
@@ -201,8 +201,8 @@ export default function QuestionEvaluator({
 							<div className="mb-4">
 								<h4 className="mb-2 font-medium text-red-800 text-sm dark:text-red-200">⚠ Issues Found</h4>
 								<div className="space-y-2">
-									{evaluation.issues.map((issue, index) => (
-										<div key={index} className="text-sm">
+									{evaluation.issues.map((issue) => (
+										<div key={issue.description ?? issue.type} className="text-sm">
 											<div className="flex items-center gap-2">
 												<Badge variant={issue.severity === "high" ? "destructive" : "secondary"} className="text-xs">
 													{issue.severity}

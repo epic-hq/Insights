@@ -3,7 +3,7 @@ import consola from "consola"
 
 type JSONValue = string | number | boolean | null | JSONValue[] | { [k: string]: JSONValue }
 
-export interface ProjectContextGeneric {
+interface ProjectContextGeneric {
 	/** Deep merge across ALL kinds */
 	merged: Record<string, JSONValue>
 	/** Deep merge grouped by kind */

@@ -8,9 +8,14 @@
 import { redirect } from "react-router-dom"
 import OnboardingPage from "~/features/onboarding/pages"
 import { userContext } from "~/server/user-context"
-import type { Route } from "./+types/root"
 
-export async function loader({ context }: Route.LoaderArgs) {
+type LoaderArgs = {
+	context: {
+		get: (ctx: typeof userContext) => { user?: unknown } | null | undefined
+	}
+}
+
+export async function loader({ context }: LoaderArgs) {
 	// Get user context to ensure authentication
 	const ctx = context.get(userContext)
 

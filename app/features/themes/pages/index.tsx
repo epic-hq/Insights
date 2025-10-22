@@ -223,8 +223,8 @@ export default function ThemesIndex() {
 		return (
 			<div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
 				<div className="space-y-2 text-center">
-					<h2 className="font-semibold text-2xl text-gray-900">No themes found yet</h2>
-					<p className="max-w-md text-gray-600">
+					<h2 className="font-semibold text-2xl text-foreground">No themes found yet</h2>
+					<p className="max-w-md text-foreground">
 						{/* Generate themes automatically from your evidence to identify patterns and insights. */}
 					</p>
 				</div>
@@ -261,7 +261,7 @@ export default function ThemesIndex() {
 			{showMatrix && matrixData.length > 0 ? (
 				<PersonaThemeMatrix matrixData={matrixData} />
 			) : showMatrix ? (
-				<div className="py-12 text-center text-gray-600">
+				<div className="py-12 text-center text-foreground/60">
 					<p>No persona data available. Add evidence with personas to see the matrix.</p>
 				</div>
 			) : (

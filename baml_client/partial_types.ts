@@ -30,7 +30,7 @@ import type * as types from "./types"
 *
 ******************************************************************************/
 
-export interface StreamState<T> {
+interface StreamState<T> {
   value: T
   state: "Pending" | "Incomplete" | "Complete"
 }

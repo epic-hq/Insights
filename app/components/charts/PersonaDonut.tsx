@@ -16,7 +16,7 @@ interface PersonaDonutProps {
 	style?: CSSProperties
 }
 
-export default function PersonaDonut({ data, centerLabel, size = 160, style }: PersonaDonutProps) {
+export function PersonaDonut({ data, centerLabel, size = 160, style }: PersonaDonutProps) {
 	return (
 		<div style={{ width: size, height: size, position: "relative", ...style }}>
 			<ResponsiveContainer>
@@ -55,3 +55,5 @@ export default function PersonaDonut({ data, centerLabel, size = 160, style }: P
 		</div>
 	)
 }
+
+export default PersonaDonut

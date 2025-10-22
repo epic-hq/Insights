@@ -14,7 +14,7 @@ import {
 } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
-export interface AppSidebarNavItem {
+interface AppSidebarNavItem {
 	key: string
 	title: string
 	description?: string
@@ -22,7 +22,7 @@ export interface AppSidebarNavItem {
 	to: (routes: RouteDefinitions) => string
 }
 
-export interface AppSidebarSection {
+interface AppSidebarSection {
 	key: string
 	title: string
 	items: AppSidebarNavItem[]

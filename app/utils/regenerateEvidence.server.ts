@@ -11,7 +11,7 @@ interface RegenerateEvidenceOptions {
 	userId?: string
 }
 
-export interface RegenerateEvidenceResult {
+interface RegenerateEvidenceResult {
 	processed: number
 	skipped: number
 	errors: Array<{ interviewId: string; message: string }>

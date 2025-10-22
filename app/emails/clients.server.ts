@@ -3,9 +3,9 @@ import consola from "consola"
 import wretch from "wretch"
 import { getServerEnv } from "~/env.server"
 
-export const DEFAULT_FROM_EMAIL = getServerEnv().DEFAULT_FROM_EMAIL
-export const DEFAULT_FROM_NAME = getServerEnv().DEFAULT_FROM_EMAIL_NAME
-export const DEFAULT_FROM = DEFAULT_FROM_NAME ? `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>` : DEFAULT_FROM_EMAIL
+const DEFAULT_FROM_EMAIL = getServerEnv().DEFAULT_FROM_EMAIL
+const DEFAULT_FROM_NAME = getServerEnv().DEFAULT_FROM_EMAIL_NAME
+const DEFAULT_FROM = DEFAULT_FROM_NAME ? `${DEFAULT_FROM_NAME} <${DEFAULT_FROM_EMAIL}>` : DEFAULT_FROM_EMAIL
 
 if (!DEFAULT_FROM_EMAIL) {
 	consola.error("Missing DEFAULT_FROM_EMAIL")
@@ -14,7 +14,7 @@ consola.log("DEFAULT_FROM_EMAIL", DEFAULT_FROM_EMAIL)
 consola.log("DEFAULT_FROM_NAME", DEFAULT_FROM_NAME)
 consola.log("DEFAULT_FROM", DEFAULT_FROM)
 
-export type EmailPayload = {
+type EmailPayload = {
 	to: string | string[]
 	subject: string
 	html?: string

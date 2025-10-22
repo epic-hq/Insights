@@ -18,7 +18,7 @@ import { weatherWorkflow } from "./workflows/weather-workflow"
 // import { getServerEnv } from "~/env.server"
 
 // Create global SupabaseClient for workflows
-export const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
+const supabaseClient = createClient(process.env.SUPABASE_URL!, process.env.SUPABASE_ANON_KEY!)
 
 const STREAM_RESULT_ALIASES_SYMBOL = Symbol("mastraStreamResultAliases")
 
@@ -74,7 +74,7 @@ const attachStreamResultAliases = <T extends StreamableAgent>(agent: T): T => {
 	return agent
 }
 
-export type UserContext = {
+type UserContext = {
 	user_id: string
 	account_id: string
 	project_id: string

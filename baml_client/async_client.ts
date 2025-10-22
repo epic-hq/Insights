@@ -32,7 +32,7 @@ import { DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_CTX, DO_NOT_USE_DI
 /**
  * @deprecated Use RecursivePartialNull from 'baml_client/types' instead.
  */
-export type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
+type RecursivePartialNull<T> = MovedRecursivePartialNull<T>
 
 type TickReason = "Unknown";
 
@@ -45,7 +45,7 @@ type BamlCallOptions = {
   onTick?: (reason: TickReason, log: FunctionLog | null) => void
 }
 
-export class BamlAsyncClient {
+class BamlAsyncClient {
   private runtime: BamlRuntime
   private ctxManager: BamlCtxManager
   private streamClient: BamlStreamClient

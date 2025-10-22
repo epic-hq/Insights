@@ -11,7 +11,7 @@ type QuestionPlanItem = {
 	orderIndex: number
 }
 
-export async function getProjectQuestionPlan(
+async function getProjectQuestionPlan(
 	supabase: SupabaseClient<Database>,
 	projectId: string
 ): Promise<QuestionPlanItem[]> {
@@ -234,7 +234,7 @@ export async function refreshInterviewQuestions(
 	}
 }
 
-export async function getInterviewQuestions(
+async function getInterviewQuestions(
 	supabase: SupabaseClient<Database>,
 	params: { projectId: string; interviewId: string }
 ) {

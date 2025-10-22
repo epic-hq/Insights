@@ -1,5 +1,5 @@
 import { index, prefix, type RouteConfig, route } from "@react-router/dev/routes"
-export const teamsApiRoutes = [] satisfies RouteConfig
+const teamsApiRoutes = [] satisfies RouteConfig
 
 export const teamsAccountRoutes = [
 	// Account-scoped team management under /a/:accountId

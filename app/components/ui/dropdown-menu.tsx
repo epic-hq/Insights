@@ -134,7 +134,10 @@ function DropdownMenuLabel({
 	)
 }
 
-function DropdownMenuSeparator({ className, ...props }: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
+function DropdownMenuSeparator({
+	className,
+	...props
+}: React.ComponentProps<typeof DropdownMenuPrimitive.Separator>) {
 	return (
 		<DropdownMenuPrimitive.Separator
 			data-slot="dropdown-menu-separator"
@@ -200,17 +203,17 @@ function DropdownMenuSubContent({
 
 export {
 	DropdownMenu,
+	DropdownMenuPortal,
 	DropdownMenuTrigger,
 	DropdownMenuContent,
 	DropdownMenuItem,
-	DropdownMenuPortal,
-	DropdownMenuGroup,
 	DropdownMenuCheckboxItem,
-	DropdownMenuRadioGroup,
-	DropdownMenuRadioItem,
+	DropdownMenuGroup,
 	DropdownMenuLabel,
 	DropdownMenuSeparator,
 	DropdownMenuShortcut,
+	DropdownMenuRadioGroup,
+	DropdownMenuRadioItem,
 	DropdownMenuSub,
 	DropdownMenuSubTrigger,
 	DropdownMenuSubContent,

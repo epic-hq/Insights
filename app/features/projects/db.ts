@@ -69,7 +69,7 @@ export const createProject = async ({
 	return await supabase.from("projects").insert(data).select().single()
 }
 
-export const updateProject = async ({
+const updateProject = async ({
 	supabase,
 	id,
 	data,
@@ -81,7 +81,7 @@ export const updateProject = async ({
 	return await supabase.from("projects").update(data).eq("id", id).select().single()
 }
 
-export const deleteProject = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
+const deleteProject = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
 	return await supabase.from("projects").delete().eq("id", id)
 }
 
@@ -105,7 +105,7 @@ export const getProjectSectionKinds = async ({ supabase }: { supabase: SupabaseC
 	return await supabase.from("project_section_kinds").select("id").order("id", { ascending: true })
 }
 
-export const createProjectSection = async ({
+const createProjectSection = async ({
 	supabase,
 	data,
 }: {
@@ -115,7 +115,7 @@ export const createProjectSection = async ({
 	return await supabase.from("project_sections").insert(data).select().single()
 }
 
-export const updateProjectSection = async ({
+const updateProjectSection = async ({
 	supabase,
 	id,
 	data,
@@ -154,7 +154,7 @@ export const upsertProjectSection = async ({
 	return result
 }
 
-export const deleteProjectSection = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
+const deleteProjectSection = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
 	return await supabase.from("project_sections").delete().eq("id", id)
 }
 

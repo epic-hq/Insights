@@ -80,4 +80,4 @@ export function useRecordNow() {
 	}
 }
 
-export type UseRecordNow = typeof useRecordNow
+type UseRecordNow = typeof useRecordNow

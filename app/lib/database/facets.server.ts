@@ -13,13 +13,13 @@ import type { Database } from "~/../supabase/types"
 const GLOBAL_PREFIX = "g:"
 const ACCOUNT_PREFIX = "a:"
 
-export interface FacetCatalogOptions {
+interface FacetCatalogOptions {
 	db: SupabaseClient<Database>
 	accountId: string
 	projectId: string
 }
 
-export interface PersistFacetObservationsOptions {
+interface PersistFacetObservationsOptions {
 	db: SupabaseClient<Database>
 	accountId: string
 	projectId: string

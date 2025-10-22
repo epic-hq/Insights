@@ -98,4 +98,15 @@ function SheetDescription({ className, ...props }: React.ComponentProps<typeof S
 	)
 }
 
-export { Sheet, SheetTrigger, SheetClose, SheetContent, SheetHeader, SheetFooter, SheetTitle, SheetDescription }
+export {
+	Sheet,
+	SheetTrigger,
+	SheetClose,
+	SheetPortal,
+	SheetOverlay,
+	SheetContent,
+	SheetHeader,
+	SheetFooter,
+	SheetTitle,
+	SheetDescription,
+}

@@ -3,7 +3,7 @@ import consola from "consola"
 const DEFAULT_MAX_TOPIC_RESULTS = 200
 const DEFAULT_MAX_LABELS_PER_RESULT = 5
 
-export interface SanitizedSpeakerUtterance {
+interface SanitizedSpeakerUtterance {
 	speaker: string
 	text: string
 	start: number | null
@@ -11,25 +11,25 @@ export interface SanitizedSpeakerUtterance {
 	confidence: number | null
 }
 
-export interface SanitizedTopicLabel {
+interface SanitizedTopicLabel {
 	label: string
 	relevance: number
 }
 
-export interface SanitizedTopicResult {
+interface SanitizedTopicResult {
 	text: string
 	labels: SanitizedTopicLabel[]
 	start_time?: number | null
 	end_time?: number | null
 }
 
-export interface SanitizedTopicDetection {
+interface SanitizedTopicDetection {
 	status?: string
 	summary?: Record<string, number>
 	results?: SanitizedTopicResult[]
 }
 
-export interface SanitizedSentimentResult {
+interface SanitizedSentimentResult {
 	sentiment: string
 	speaker?: string
 	text: string
@@ -38,20 +38,20 @@ export interface SanitizedSentimentResult {
 	confidence: number | null
 }
 
-export interface SanitizedChapter {
+interface SanitizedChapter {
 	start_ms: number
 	end_ms?: number
 	summary?: string
 	title?: string
 }
 
-export interface SanitizeOptions {
+interface SanitizeOptions {
 	maxTopicResults?: number
 	maxLabelsPerResult?: number
 	omitFullTranscript?: boolean
 }
 
-export interface SanitizedTranscriptPayload {
+interface SanitizedTranscriptPayload {
 	full_transcript?: string
 	confidence?: number | null
 	audio_duration?: number | null
@@ -178,7 +178,7 @@ const stripUndefined = (record: Record<string, unknown>) => {
 	return Object.fromEntries(Object.entries(record).filter(([, value]) => value !== undefined))
 }
 
-export function sanitizeTranscriptPayload(payload: unknown, options: SanitizeOptions = {}): SanitizedTranscriptPayload {
+function sanitizeTranscriptPayload(payload: unknown, options: SanitizeOptions = {}): SanitizedTranscriptPayload {
 	if (!payload || typeof payload !== "object") {
 		return { speaker_transcripts: [], topic_detection: null, sentiment_analysis_results: [], chapters: [] }
 	}

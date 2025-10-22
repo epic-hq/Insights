@@ -5,16 +5,16 @@ import type { Database } from "~/types"
 // Database types for annotations system
 type DB = Database["public"]
 export type Annotation = DB["Tables"]["annotations"]["Row"]
-export type AnnotationInsert = DB["Tables"]["annotations"]["Insert"]
-export type AnnotationUpdate = DB["Tables"]["annotations"]["Update"]
+type AnnotationInsert = DB["Tables"]["annotations"]["Insert"]
+type AnnotationUpdate = DB["Tables"]["annotations"]["Update"]
 
-export type Vote = DB["Tables"]["votes"]["Row"]
-export type VoteInsert = DB["Tables"]["votes"]["Insert"]
-export type VoteUpdate = DB["Tables"]["votes"]["Update"]
+type Vote = DB["Tables"]["votes"]["Row"]
+type VoteInsert = DB["Tables"]["votes"]["Insert"]
+type VoteUpdate = DB["Tables"]["votes"]["Update"]
 
-export type EntityFlag = DB["Tables"]["entity_flags"]["Row"]
-export type EntityFlagInsert = DB["Tables"]["entity_flags"]["Insert"]
-export type EntityFlagUpdate = DB["Tables"]["entity_flags"]["Update"]
+type EntityFlag = DB["Tables"]["entity_flags"]["Row"]
+type EntityFlagInsert = DB["Tables"]["entity_flags"]["Insert"]
+type EntityFlagUpdate = DB["Tables"]["entity_flags"]["Update"]
 
 // Entity types that can have annotations
 export type EntityType = "insight" | "persona" | "opportunity" | "interview" | "person"
@@ -22,7 +22,7 @@ export type AnnotationType = "comment" | "ai_suggestion" | "flag" | "note" | "to
 export type FlagType = "hidden" | "archived" | "starred" | "priority"
 
 // Helper types for aggregated data
-export interface AnnotationCounts {
+interface AnnotationCounts {
 	comment: number
 	ai_suggestion: number
 	flag: number

@@ -1,5 +1,5 @@
-import type { ActionFunctionArgs } from "@remix-run/node"
-import { json } from "@remix-run/node"
+import type { ActionFunctionArgs } from "@react-router/node"
+import { json } from "@react-router/node"
 import { refreshInterviewQuestions } from "~/lib/database/project-answers.server"
 import { createSupabaseServerClient } from "~/lib/supabase/client.server"
 

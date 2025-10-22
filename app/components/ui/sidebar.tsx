@@ -56,11 +56,13 @@ function SidebarProvider({
 		if (typeof window === "undefined") return
 
 		const serializedState = openState ? "expanded" : "collapsed"
-		const cookieStoreCandidate = (window as typeof window & {
-			cookieStore?: {
-				set?: (options: { name: string; value: string; expires?: number; path?: string }) => Promise<void>
+		const cookieStoreCandidate = (
+			window as typeof window & {
+				cookieStore?: {
+					set?: (options: { name: string; value: string; expires?: number; path?: string }) => Promise<void>
+				}
 			}
-		}).cookieStore
+		).cookieStore
 
 		if (cookieStoreCandidate?.set) {
 			void cookieStoreCandidate.set({
@@ -672,24 +674,24 @@ export {
 	SidebarContent,
 	SidebarFooter,
 	SidebarGroup,
-	SidebarGroupAction,
 	SidebarGroupContent,
 	SidebarGroupLabel,
+	SidebarGroupAction,
 	SidebarHeader,
-	SidebarInput,
 	SidebarInset,
+	SidebarInput,
 	SidebarMenu,
 	SidebarMenuAction,
-	SidebarMenuBadge,
 	SidebarMenuButton,
 	SidebarMenuItem,
+	SidebarMenuBadge,
 	SidebarMenuSkeleton,
 	SidebarMenuSub,
 	SidebarMenuSubButton,
 	SidebarMenuSubItem,
+	SidebarSeparator,
 	SidebarProvider,
 	SidebarRail,
-	SidebarSeparator,
 	SidebarTrigger,
 	useSidebar,
 }

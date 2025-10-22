@@ -227,4 +227,3 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 	)
 }
 
-export default PlayByPlayTimeline

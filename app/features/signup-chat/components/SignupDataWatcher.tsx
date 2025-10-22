@@ -13,7 +13,7 @@ import { useEffect, useMemo, useState } from "react"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 
-export type SignupData = Record<string, any> | undefined
+type SignupData = Record<string, any> | undefined
 
 interface SignupDataWatcherProps {
 	userId?: string

@@ -1,5 +1,5 @@
 import consola from "consola"
-import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/app/types"
+import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
 
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
@@ -13,7 +13,7 @@ interface EvidenceForTheme {
 	support: string | null
 }
 
-export type AutoGroupThemesOptions = {
+type AutoGroupThemesOptions = {
 	supabase: SupabaseClient
 	account_id: string
 	project_id?: string | null
@@ -22,7 +22,7 @@ export type AutoGroupThemesOptions = {
 	limit?: number // max evidence rows to consider
 }
 
-export type AutoGroupThemesResult = {
+type AutoGroupThemesResult = {
 	created_theme_ids: string[]
 	link_count: number
 	themes: Theme[]

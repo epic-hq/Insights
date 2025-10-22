@@ -29,5 +29,3 @@ export function PageContainer({ children, className, size = "lg", padded = true 
 		</div>
 	)
 }
-
-export default PageContainer

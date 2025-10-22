@@ -10,7 +10,7 @@ const CurrentAccountContext = createContext<CurrentAccountContextType>({
 	accountId: "",
 })
 
-export const useCurrentAccount = () => {
+const useCurrentAccount = () => {
 	const context = useContext(CurrentAccountContext)
 	if (!context) {
 		throw new Error("useCurrentProject must be used within an CurrentProjectContextProvider")

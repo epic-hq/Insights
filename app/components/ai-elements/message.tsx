@@ -1,9 +1,8 @@
 import type { UIMessage } from "ai"
-import type { ComponentProps, HTMLAttributes } from "react"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import type { HTMLAttributes } from "react"
 import { cn } from "~/lib/utils"
 
-export type MessageProps = HTMLAttributes<HTMLDivElement> & {
+type MessageProps = HTMLAttributes<HTMLDivElement> & {
 	from: UIMessage["role"]
 }
 
@@ -19,7 +18,7 @@ export const Message = ({ className, from, ...props }: MessageProps) => (
 	/>
 )
 
-export type MessageContentProps = HTMLAttributes<HTMLDivElement>
+type MessageContentProps = HTMLAttributes<HTMLDivElement>
 
 export const MessageContent = ({ children, className, ...props }: MessageContentProps) => (
 	<div
@@ -34,16 +33,4 @@ export const MessageContent = ({ children, className, ...props }: MessageContent
 	>
 		{children}
 	</div>
-)
-
-export type MessageAvatarProps = ComponentProps<typeof Avatar> & {
-	src: string
-	name?: string
-}
-
-export const MessageAvatar = ({ src, name, className, ...props }: MessageAvatarProps) => (
-	<Avatar className={cn("size-8 ring-1 ring-border", className)} {...props}>
-		<AvatarImage alt="" className="mt-0 mb-0" src={src} />
-		<AvatarFallback>{name?.slice(0, 2) || "ME"}</AvatarFallback>
-	</Avatar>
 )

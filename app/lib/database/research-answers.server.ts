@@ -52,7 +52,7 @@ interface ResearchAnswerEvidence {
 	created_at: string | null
 }
 
-export interface ResearchAnswerNode {
+interface ResearchAnswerNode {
 	id: string
 	question_text: string
 	question_category: string | null
@@ -81,7 +81,7 @@ export interface ResearchAnswerNode {
 	evidence: ResearchAnswerEvidence[]
 }
 
-export interface ResearchQuestionNode {
+interface ResearchQuestionNode {
 	id: string
 	text: string
 	metrics: {
@@ -99,7 +99,7 @@ export interface ResearchQuestionNode {
 	answers: ResearchAnswerNode[]
 }
 
-export interface DecisionQuestionNode {
+interface DecisionQuestionNode {
 	id: string
 	text: string
 	metrics: {
@@ -119,7 +119,7 @@ export interface DecisionQuestionNode {
 	research_questions: ResearchQuestionNode[]
 }
 
-export interface ResearchAnswerRollup {
+interface ResearchAnswerRollup {
 	decision_questions: DecisionQuestionNode[]
 	research_questions_without_decision: ResearchQuestionNode[]
 	orphan_answers: ResearchAnswerNode[]
@@ -405,7 +405,7 @@ export async function getResearchAnswerRollup(
 	}
 }
 
-export async function getDecisionQuestionDetail(supabase: SupabaseClient<Database>, decisionQuestionId: string) {
+async function getDecisionQuestionDetail(supabase: SupabaseClient<Database>, decisionQuestionId: string) {
 	const { data, error } = await supabase
 		.from("decision_questions")
 		.select("id, project_id, text, rationale")
@@ -416,7 +416,7 @@ export async function getDecisionQuestionDetail(supabase: SupabaseClient<Databas
 	return data
 }
 
-export async function getResearchQuestionDetail(supabase: SupabaseClient<Database>, researchQuestionId: string) {
+async function getResearchQuestionDetail(supabase: SupabaseClient<Database>, researchQuestionId: string) {
 	const { data, error } = await supabase
 		.from("research_questions")
 		.select("id, project_id, decision_question_id, text, rationale")
@@ -427,7 +427,7 @@ export async function getResearchQuestionDetail(supabase: SupabaseClient<Databas
 	return data
 }
 
-export async function getProjectAnswerDetail(supabase: SupabaseClient<Database>, projectAnswerId: string) {
+async function getProjectAnswerDetail(supabase: SupabaseClient<Database>, projectAnswerId: string) {
 	const { data, error } = await supabase
 		.from("project_answers")
 		.select(

@@ -36,7 +36,7 @@ import type { Annotation, AnnotationType, EntityType, FlagType, UserFlags, VoteC
 // =============================================================================
 // TODO: Write explanation of how this works and where we can make changes to reduce the number of db calls, potentially batching or changing the query.
 
-export function useAnnotations({
+function useAnnotations({
 	entityType,
 	entityId,
 	annotationType,
@@ -167,7 +167,7 @@ export function useAnnotations({
 // VOTING HOOKS
 // =============================================================================
 
-export function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
 	const fetcher = useFetcher()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
@@ -270,7 +270,7 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 // ENTITY FLAGS HOOKS
 // =============================================================================
 
-export function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
 	const fetcher = useFetcher()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)

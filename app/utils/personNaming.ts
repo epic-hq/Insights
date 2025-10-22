@@ -3,7 +3,7 @@
  * No external dependencies - easy to test
  */
 
-export interface InterviewData {
+interface InterviewData {
 	id: string
 	title?: string | null
 	participant_pseudonym?: string | null

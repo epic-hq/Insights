@@ -224,7 +224,7 @@ export const deletePerson = async ({
  * Get people with validation details for the validation status page
  * Returns people who have validation-related data (outcome, stage, etc.)
  */
-export const getPeopleWithValidation = async ({
+const getPeopleWithValidation = async ({
 	supabase,
 	accountId,
 	projectId,

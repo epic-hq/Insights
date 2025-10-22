@@ -102,7 +102,7 @@ interface BamlAnalysisResponse {
 	recommended_actions?: string[] | null
 }
 
-export interface EvidenceAnalysisResult {
+interface EvidenceAnalysisResult {
 	success: boolean
 	runId?: string
 	globalGoalSummary: string | null

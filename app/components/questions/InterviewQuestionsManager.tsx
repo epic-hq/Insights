@@ -44,10 +44,10 @@ import type { QuestionInput, Tables } from "~/types"
 import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 
 type ManagerResearchMode = ResearchMode
-export type Familiarity = "cold" | "warm"
+type Familiarity = "cold" | "warm"
 type InterviewPromptRow = Tables<"interview_prompts">
 
-export interface InterviewQuestionsManagerProps {
+interface InterviewQuestionsManagerProps {
 	projectId?: string
 	projectPath?: string
 	target_orgs?: string[]
@@ -214,7 +214,7 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 	)
 }
 
-export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
+function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const {
 		projectId,
 		projectPath,

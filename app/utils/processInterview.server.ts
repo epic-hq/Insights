@@ -64,7 +64,7 @@ interface AnalyzeThemesAndPersonaResult {
 	interview: Interview
 }
 
-export interface AnalyzeThemesTaskPayload {
+interface AnalyzeThemesTaskPayload {
 	metadata: InterviewMetadata
 	interview: Interview
 	fullTranscript: string
@@ -73,7 +73,7 @@ export interface AnalyzeThemesTaskPayload {
 	analysisJobId?: string
 }
 
-export interface AttributeAnswersTaskPayload {
+interface AttributeAnswersTaskPayload {
 	metadata: InterviewMetadata
 	interview: Interview
 	fullTranscript: string
@@ -103,7 +103,7 @@ export interface InterviewMetadata {
 	fileName?: string
 }
 
-export interface ExtractedInsight {
+interface ExtractedInsight {
 	category: string
 	tag: string
 	journey_stage?: string
@@ -415,7 +415,7 @@ interface ExtractEvidenceOptions {
 	fullTranscript: string
 }
 
-export interface ExtractEvidenceResult {
+interface ExtractEvidenceResult {
 	personData: { id: string }
 	primaryPersonName: string | null
 	primaryPersonRole: string | null
@@ -1284,7 +1284,7 @@ export async function extractEvidenceAndPeopleCore({
 	}
 }
 
-export async function analyzeThemesAndPersonaCore({
+async function analyzeThemesAndPersonaCore({
 	db,
 	metadata,
 	interviewRecord,
@@ -1733,7 +1733,7 @@ export async function analyzeThemesAndPersonaCore({
 	return { storedInsights: (data as unknown as InsightInsert[]) ?? [], interview: updatedInterview }
 }
 
-export async function attributeAnswersAndFinalizeCore({
+async function attributeAnswersAndFinalizeCore({
 	db,
 	metadata,
 	interviewRecord,
@@ -1977,7 +1977,7 @@ export async function processInterviewTranscript({
  * Webhook-specific version that uses admin client for system operations.
  * Bypasses RLS since webhooks have no user context.
  */
-export async function processInterviewTranscriptWithAdminClient({
+async function processInterviewTranscriptWithAdminClient({
 	metadata,
 	mediaUrl,
 	transcriptData,

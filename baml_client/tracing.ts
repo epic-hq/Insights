@@ -33,4 +33,3 @@ const flush = () => {
 const onLogEvent = (callback: undefined | ((event: BamlLogEvent) => void)) =>
 DO_NOT_USE_DIRECTLY_UNLESS_YOU_KNOW_WHAT_YOURE_DOING_CTX.onLogEvent(callback)
 
-export { traceAsync, traceSync, setTags, flush, onLogEvent }

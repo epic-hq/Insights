@@ -22,7 +22,7 @@ interface KeyDecisionsCardProps {
 	analysisResults?: QuestionAnalysis[]
 }
 
-export function KeyDecisionsCard({
+function KeyDecisionsCard({
 	decisionSummaries,
 	topResearchQuestions,
 	analysisResults = [],

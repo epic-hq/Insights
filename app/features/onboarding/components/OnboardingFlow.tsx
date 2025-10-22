@@ -7,7 +7,7 @@ import ProjectStatusScreen from "./ProjectStatusScreen"
 import QuestionsScreen from "./QuestionsScreen"
 import UploadScreen from "./UploadScreen"
 
-export type OnboardingStep = "welcome" | "questions" | "upload" | "processing" | "complete"
+type OnboardingStep = "welcome" | "questions" | "upload" | "processing" | "complete"
 
 export interface OnboardingData {
 	target_orgs: string[]

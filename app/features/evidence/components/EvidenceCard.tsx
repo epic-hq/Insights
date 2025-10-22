@@ -57,7 +57,7 @@ type EvidenceAnchor = {
 	target?: string | { url?: string | null } | null
 }
 
-export function EvidenceCard({
+function EvidenceCard({
 	evidence,
 	variant = "expanded",
 	people = [],

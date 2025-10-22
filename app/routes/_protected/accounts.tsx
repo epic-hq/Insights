@@ -12,7 +12,7 @@ import { CurrentAccountProvider } from "~/contexts/current-account-context"
 import { currentAccountContext } from "~/server/current-account-context"
 import { userContext } from "~/server/user-context"
 import type { GetAccount, SupabaseClient } from "~/types"
-import type { Route } from "../../types/root"
+import type { Route } from "./+types/accounts"
 
 function isUUID(str: string) {
 	const uuidSchema = z.string().uuid()

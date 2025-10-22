@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { Input } from "~/components/ui/input"
 import { ThemeCard } from "~/features/themes/components/ThemeCard"
 
-export type ThemeLite = {
+type ThemeLite = {
 	id: string
 	name: string
 	statement: string | null

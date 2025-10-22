@@ -56,7 +56,7 @@ const processData = (data: TreeNode[], totalValue: number): TreeNode[] => {
  * Supports proportional areas & nested drill-down. When a node has `children`, Treemap groups them.
  * Now displays percentages in the node labels on separate lines.
  */
-export default function TreeMap({ data, height = 300, style, onClick }: TreeMapProps) {
+export function TreeMap({ data, height = 300, style, onClick }: TreeMapProps) {
 	// Use the data or empty array
 	const rawData = data ?? []
 
@@ -109,3 +109,5 @@ export default function TreeMap({ data, height = 300, style, onClick }: TreeMapP
 		</div>
 	)
 }
+
+export default TreeMap

@@ -286,5 +286,5 @@ export const signupOnboardingWorkflow = createWorkflow({
 
 signupOnboardingWorkflow.commit()
 
-export type SignupWorkflowInput = z.infer<typeof InputSchema>
-export type SignupWorkflowOutput = z.infer<typeof OutputSchema>
+type SignupWorkflowInput = z.infer<typeof InputSchema>
+type SignupWorkflowOutput = z.infer<typeof OutputSchema>

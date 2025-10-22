@@ -3,7 +3,7 @@ import type React from "react"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 
-export interface NavPageLayoutProps {
+interface NavPageLayoutProps {
 	title: string
 	description?: string
 	onBack?: () => void
@@ -30,7 +30,7 @@ export interface NavPageLayoutProps {
 	subnav?: React.ReactNode
 }
 
-export function NavPageLayout({
+function NavPageLayout({
 	title,
 	description,
 	onBack,

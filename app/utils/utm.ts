@@ -1,6 +1,6 @@
 export const UTM_COOKIE_NAME = "utm_params"
 
-export const UTM_PARAM_KEYS = [
+const UTM_PARAM_KEYS = [
 	"utm_source",
 	"utm_medium",
 	"utm_campaign",
@@ -16,7 +16,7 @@ export const UTM_PARAM_KEYS = [
 	"fbclid",
 ] as const
 
-export type UtmParamKey = (typeof UTM_PARAM_KEYS)[number]
+type UtmParamKey = (typeof UTM_PARAM_KEYS)[number]
 
 export type UtmParams = Partial<Record<UtmParamKey, string>>
 

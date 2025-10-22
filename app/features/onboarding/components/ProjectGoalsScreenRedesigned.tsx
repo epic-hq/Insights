@@ -665,7 +665,7 @@ export default function ProjectGoalsScreen({
 				<div className="mb-8">
 					<div className="flex items-center justify-between">
 						<div>
-							<h1 className="font-semibold text-2xl text-gray-900">{project?.name}</h1>
+							<h1 className="font-semibold text-2xl text-foreground">{project?.name}</h1>
 							{/*
 							-- hiding for now. future use --
 							{templateKey === "understand_customer_needs" && (
@@ -696,7 +696,7 @@ export default function ProjectGoalsScreen({
 					{/* Research Goal Accordion */}
 
 					<Card>
-						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Target className="h-5 w-5 text-blue-600" />
@@ -706,7 +706,7 @@ export default function ProjectGoalsScreen({
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<span className="inline-flex">
-												<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 											</span>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
@@ -735,7 +735,7 @@ export default function ProjectGoalsScreen({
 								onChange={(e) => setResearchGoal(e.target.value)}
 								onBlur={handleResearchGoalBlur}
 								rows={2}
-								className="min-h-[72px] font-semibold text-blue-800 text-xl"
+								className="min-h-[72px] font-semibold text-primary text-xl"
 							/>
 							{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
 						</CardContent>
@@ -748,18 +748,18 @@ export default function ProjectGoalsScreen({
 					>
 						<Card>
 							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Clock className="h-5 w-5 text-green-600" />
 											<h2 className="font-semibold text-lg">Type & Scope</h2>
-											<span className="rounded-md bg-gray-100 px-2 py-1 font-medium text-gray-700 text-xs">
+											<span className="rounded-md bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
 												{getResearchModeDisplay(researchMode)} • {interview_duration} min
 											</span>
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
-														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
@@ -782,7 +782,7 @@ export default function ProjectGoalsScreen({
 										<div className="space-y-6">
 											{/* Interview Type */}
 											<div>
-												<label className="mb-3 block font-semibold text-gray-900 text-sm">Conversation Type</label>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Conversation Type</label>
 												<ToggleGroup
 													type="single"
 													value={researchMode}
@@ -838,9 +838,9 @@ export default function ProjectGoalsScreen({
 										<div className="space-y-6">
 											{/* Interview Duration */}
 											<div>
-												<label className="mb-3 block font-semibold text-gray-900 text-sm">
+												<label className="mb-3 block font-semibold text-foreground text-sm">
 													Duration
-													<span className="ml-2 font-normal text-gray-500 text-xs">(min per session)</span>
+													<span className="ml-2 font-normal text-muted-foreground text-xs">(min per session)</span>
 												</label>
 												<div className="space-y-3">
 													<ToggleGroup
@@ -911,7 +911,7 @@ export default function ProjectGoalsScreen({
 
 											{/* Target Conversations */}
 											<div>
-												<label className="mb-3 block font-semibold text-gray-900 text-sm">How many?</label>
+												<label className="mb-3 block font-semibold text-foreground text-sm">How many?</label>
 												<div className="flex items-center gap-3">
 													<Input
 														type="number"
@@ -946,7 +946,7 @@ export default function ProjectGoalsScreen({
 					>
 						<Card>
 							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
@@ -957,7 +957,7 @@ export default function ProjectGoalsScreen({
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
-														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
@@ -980,12 +980,12 @@ export default function ProjectGoalsScreen({
 								<CardContent className="p-6 pt-0">
 									{/* Organizations */}
 									<div className="mb-6">
-										<label className="mb-3 block font-medium text-gray-900 text-sm">Organizations</label>
+										<label className="mb-3 block font-medium text-foreground text-sm">Organizations</label>
 										<div className="mb-3 flex flex-wrap gap-2">
 											{target_orgs.map((org, index) => (
 												<div
 													key={`${org}-${index}`}
-													className="group flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200"
+													className="group flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
 												>
 													<InlineEdit
 														value={org}
@@ -997,14 +997,14 @@ export default function ProjectGoalsScreen({
 															setTargetOrgs(list)
 															saveTargetOrgs(list)
 														}}
-														textClassName="font-medium text-green-800"
-														inputClassName="h-6 py-0 text-green-900"
+														textClassName="font-medium text-green-800 dark:text-green-300"
+														inputClassName="h-6 py-0 text-green-900 dark:text-green-200"
 													/>
 													<button
 														onClick={() => removeOrg(org)}
-														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
 													>
-														<X className="h-3 w-3 text-green-700" />
+														<X className="h-3 w-3 text-green-700 dark:text-green-400" />
 													</button>
 												</div>
 											))}
@@ -1082,12 +1082,12 @@ export default function ProjectGoalsScreen({
 
 									{/* Roles */}
 									<div>
-										<label className="mb-3 block font-medium text-gray-900 text-sm">People's Roles</label>
+										<label className="mb-3 block font-medium text-foreground text-sm">People's Roles</label>
 										<div className="mb-3 flex flex-wrap gap-2">
 											{target_roles.map((role, index) => (
 												<div
 													key={`${role}-${index}`}
-													className="group flex items-center gap-2 rounded-md border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200"
+													className="group flex items-center gap-2 rounded-md border border-purple-300 bg-purple-100 px-3 py-1 text-sm transition-all hover:bg-purple-200 dark:border-purple-700 dark:bg-purple-900/20 dark:hover:bg-purple-800/30"
 												>
 													<InlineEdit
 														value={role}
@@ -1099,14 +1099,14 @@ export default function ProjectGoalsScreen({
 															setTargetRoles(list)
 															saveTargetRoles(list)
 														}}
-														textClassName="font-medium text-purple-800"
-														inputClassName="h-6 py-0 text-purple-900"
+														textClassName="font-medium text-purple-800 dark:text-purple-300"
+														inputClassName="h-6 py-0 text-purple-900 dark:text-purple-200"
 													/>
 													<button
 														onClick={() => removeRole(role)}
-														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-purple-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-purple-700"
 													>
-														<X className="h-3 w-3 text-purple-700" />
+														<X className="h-3 w-3 text-purple-700 dark:text-purple-400" />
 													</button>
 												</div>
 											))}
@@ -1193,7 +1193,7 @@ export default function ProjectGoalsScreen({
 					>
 						<Card>
 							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Option className="h-5 w-5 text-green-600" />
@@ -1205,7 +1205,7 @@ export default function ProjectGoalsScreen({
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
-														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
@@ -1228,7 +1228,7 @@ export default function ProjectGoalsScreen({
 										{decision_questions.map((question, index) => (
 											<div
 												key={`decision-${index}-${question.slice(0, 10)}`}
-												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100"
+												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
 											>
 												<div className="mt-1 flex-shrink-0">
 													<div className="h-2 w-2 rounded-md bg-green-500" />
@@ -1238,15 +1238,15 @@ export default function ProjectGoalsScreen({
 													onSubmit={(val) => updateDecisionQuestion(index, val)}
 													multiline={true}
 													autoSize={true}
-													textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+													textClassName="flex-1 text-foreground text-sm leading-relaxed"
 													inputClassName="text-sm"
 													showEditButton={true}
 												/>
 												<button
 													onClick={() => removeDecisionQuestion(index)}
-													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100"
+													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
 												>
-													<X className="h-3 w-3 text-green-700" />
+													<X className="h-3 w-3 text-green-700 dark:text-green-400" />
 												</button>
 											</div>
 										))}
@@ -1340,7 +1340,7 @@ export default function ProjectGoalsScreen({
 					>
 						<Card>
 							<CollapsibleTrigger asChild>
-								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-gray-50">
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<GraduationCapIcon className="h-5 w-5 text-blue-600" />
@@ -1348,7 +1348,7 @@ export default function ProjectGoalsScreen({
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
-														<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
@@ -1369,7 +1369,7 @@ export default function ProjectGoalsScreen({
 									<div className="mb-6">
 										{/* Assumptions */}
 										{/* <div className="mb-6">
-											<label className="mb-3 block font-medium text-gray-900 text-sm">Assumptions</label>
+											<label className="mb-3 block font-medium text-foreground text-sm">Assumptions</label>
 											<div className="mb-3 space-y-2">
 												{assumptions.map((assumption, index) => (
 													<div
@@ -1383,7 +1383,7 @@ export default function ProjectGoalsScreen({
 															value={assumption}
 															onSubmit={(val) => updateAssumption(index, val)}
 															multiline={false}
-															textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+															textClassName="flex-1 text-foreground text-sm leading-relaxed"
 															inputClassName="text-sm"
 															showEditButton={true}
 														/>
@@ -1465,12 +1465,12 @@ export default function ProjectGoalsScreen({
 
 										{/* Unknowns -> Research Questions */}
 										<div>
-											{/* <label className="mb-3 block font-medium text-gray-900 text-sm">Research Questions (Unknowns)</label> */}
+											{/* <label className="mb-3 block font-medium text-foreground text-sm">Research Questions (Unknowns)</label> */}
 											<div className="mb-3 space-y-2">
 												{unknowns.map((unknown, index) => (
 													<div
 														key={`unknown-${index}-${unknown.slice(0, 10)}`}
-														className="group flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 transition-all hover:bg-amber-100"
+														className="group flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 transition-all hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-800/30"
 													>
 														<div className="mt-0.5 flex-shrink-0">
 															<HelpCircle className="h-4 w-4 text-amber-600" />
@@ -1480,15 +1480,15 @@ export default function ProjectGoalsScreen({
 															onSubmit={(val) => updateUnknown(index, val)}
 															multiline={true}
 															autoSize={true}
-															textClassName="flex-1 text-gray-800 text-sm leading-relaxed"
+															textClassName="flex-1 text-foreground text-sm leading-relaxed"
 															inputClassName="text-sm"
 															showEditButton={true}
 														/>
 														<button
 															onClick={() => removeUnknown(index)}
-															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100"
+															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-amber-700"
 														>
-															<X className="h-3 w-3 text-amber-700" />
+															<X className="h-3 w-3 text-amber-700 dark:text-amber-400" />
 														</button>
 													</div>
 												))}
@@ -1575,14 +1575,14 @@ export default function ProjectGoalsScreen({
 					<Button
 						variant="ghost"
 						onClick={() => setShowCustomInstructions(!showCustomInstructions)}
-						className="flex items-center gap-2 p-0 text-gray-600 text-sm hover:text-gray-900"
+						className="flex items-center gap-2 p-0 text-gray-600 text-sm hover:text-foreground"
 					>
 						{showCustomInstructions ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
 						Custom Instructions
 						<Tooltip>
 							<TooltipTrigger asChild>
 								<span className="inline-flex">
-									<Info className="h-4 w-4 text-gray-400 hover:text-gray-600" />
+									<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 								</span>
 							</TooltipTrigger>
 							<TooltipContent className="max-w-xs">
@@ -1607,7 +1607,7 @@ export default function ProjectGoalsScreen({
 				</div>
 
 				{showNextButton && (
-					<div className="mt-8 border-gray-200 border-t pt-8">
+					<div className="mt-8 border-border border-t pt-8">
 						<div className="flex items-center justify-center">
 							<Button
 								onClick={handleNext}

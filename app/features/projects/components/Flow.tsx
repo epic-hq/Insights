@@ -22,9 +22,9 @@ import { useMemo } from "react"
 // ---------------------------
 // Types
 // ---------------------------
-export type Countish = number | undefined | null
+type Countish = number | undefined | null
 
-export interface FlowCounts {
+interface FlowCounts {
 	questionsTotal?: Countish
 	questionsAnswered?: Countish
 	inputs?: Countish // interviews/conversations/etc
@@ -37,7 +37,7 @@ export interface FlowCounts {
 	opportunities?: Countish
 }
 
-export interface FlowLabels {
+interface FlowLabels {
 	researchGoals?: string // sublabel under Research Goals
 	inputs?: string // sublabel under Inputs
 	evidence?: string // sublabel under Evidence group
@@ -46,7 +46,7 @@ export interface FlowLabels {
 	opportunities?: string // sublabel under Opportunities
 }
 
-export interface FlowDiagramProps {
+interface FlowDiagramProps {
 	counts?: FlowCounts
 	labels?: FlowLabels
 	compact?: boolean // tighter spacing
@@ -287,7 +287,7 @@ export function FlowDiagram({ counts, labels, compact = false, onNodeClick, clas
 // ---------------------------
 // Demo export (for Canvas preview)
 // ---------------------------
-export default function DemoFlowDiagram() {
+function DemoFlowDiagram() {
 	return (
 		<div className="min-h-[60vh] w-full bg-slate-50 py-6">
 			<div className="mx-auto max-w-7xl">
