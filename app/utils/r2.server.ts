@@ -36,7 +36,7 @@ interface R2PresignResult {
 let cachedConfig: R2Config | null = null
 let attemptedLoad = false
 
-function getR2PublicUrl(key: string): string | null {
+function _getR2PublicUrl(key: string): string | null {
 	const config = getR2Config()
 	if (!config) return null
 	const base = config.publicBaseUrl.endsWith("/") ? config.publicBaseUrl.slice(0, -1) : config.publicBaseUrl

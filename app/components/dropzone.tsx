@@ -90,7 +90,7 @@ const DropzoneContent = ({ className }: { className?: string }) => {
 				const isSuccessfullyUploaded = !!successes.find((e) => e === file.name)
 
 				return (
-					<div key={`${file.name}-${idx}`} className="flex items-center gap-x-4 border-b py-2 first:mt-4 last:mb-4 ">
+					<div key={`${file.name}-${idx}`} className="flex items-center gap-x-4 border-b py-2 first:mt-4 last:mb-4">
 						{file.type.startsWith("image/") ? (
 							<div className="flex h-10 w-10 shrink-0 items-center justify-center overflow-hidden rounded border bg-muted">
 								<img src={file.preview} alt={file.name} className="object-cover" />

@@ -14,8 +14,8 @@ import { PlayByPlayTimeline } from "~/features/evidence/components/Chronological
 import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
@@ -700,9 +700,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
 									<p className="font-semibold text-primary text-xs uppercase tracking-wide">Analysis in progress</p>
-									<p className="text-muted-foreground text-sm">
-										{analysisState?.status_detail || progressInfo.label}
-									</p>
+									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
 								</div>
 								<div className="flex flex-col items-end gap-2">
 									<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
@@ -711,7 +709,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											style={{ width: `${progressPercent}%` }}
 										/>
 									</div>
-									<span className="font-medium text-sm text-primary">{progressPercent}%</span>
+									<span className="font-medium text-primary text-sm">{progressPercent}%</span>
 								</div>
 							</div>
 							{isRealtime ? (
@@ -728,7 +726,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 shadow-sm">
 							<p className="font-semibold text-destructive text-xs uppercase tracking-wide">Analysis failed</p>
 							<p className="mt-1 text-destructive text-sm">
-								{analysisState?.status_detail || "The most recent analysis run reported an error. Try again once the issue is resolved."}
+								{analysisState?.status_detail ||
+									"The most recent analysis run reported an error. Try again once the issue is resolved."}
 							</p>
 						</div>
 					)}

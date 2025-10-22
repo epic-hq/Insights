@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { Form, Link, redirect, useActionData, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -10,7 +10,8 @@ import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
 import { getPersonById } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
@@ -131,14 +132,23 @@ export default function PersonDetail() {
 	const { person, catalog, organizations } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { accountId, projectId } = useParams()
+	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
+	const routesByPath = useProjectRoutes(projectPath || "")
+	const routes = accountId && projectId ? routesByIds : routesByPath
 
-	const interviews = person.interview_people || []
+	const interviews = (person.interview_people || []).filter((ip) => ip.interviews?.id)
 	const people_personas = person.people_personas || []
 	const primaryPersona = people_personas.length > 0 ? people_personas[0] : null
 	const persona = primaryPersona?.personas
 	const themeColor = persona?.color_hex || "#6366f1"
 	const name = person.name || "Unnamed Person"
+	const initials = (name || "?")
+		.split(" ")
+		.map((w) => w[0])
+		.join("")
+		.toUpperCase()
+		.slice(0, 2) || "?"
 
 	const facetsByRef = useMemo(() => {
 		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
@@ -218,13 +228,19 @@ export default function PersonDetail() {
 	return (
 		<PageContainer size="lg" padded={false} className="max-w-6xl py-8">
 			<PersonaPeopleSubnav />
-			
+
 			{/* Colored Header Section */}
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
 				{/* Header with persona color */}
 				<div className="h-20 w-full" style={{ backgroundColor: themeColor }}>
 					<div className="flex flex-col p-4 md:flex-row md:items-center md:justify-between">
-						<div>
+						<div className="flex items-center gap-3">
+							<Avatar className="h-12 w-12 border-2" style={{ borderColor: "#ffffff55" }}>
+								{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
+								<AvatarFallback className="bg-white/20 text-white">
+									{initials}
+								</AvatarFallback>
+							</Avatar>
 							<h1 className="font-bold text-2xl text-white">{name}</h1>
 							<div className="flex items-center gap-2 text-white/90">
 								{persona?.name && (
@@ -234,14 +250,28 @@ export default function PersonDetail() {
 										</Badge>
 									</Link>
 								)}
-								{person.segment && <Badge variant="outline" className="border-white/30 text-white">{person.segment}</Badge>}
+								{person.segment && (
+									<Badge variant="outline" className="border-white/30 text-white">
+										{person.segment}
+									</Badge>
+								)}
 							</div>
 						</div>
 						<div className="mt-2 flex gap-2 md:mt-0">
-							<Button asChild variant="outline" size="sm" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+							<Button
+								asChild
+								variant="outline"
+								size="sm"
+								className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+							>
 								<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
 							</Button>
-							<Button asChild variant="outline" size="sm" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
+							<Button
+								asChild
+								variant="outline"
+								size="sm"
+								className="border-white/30 bg-white/10 text-white hover:bg-white/20"
+							>
 								<Link to={routes.people.edit(person.id)}>Edit</Link>
 							</Button>
 						</div>
@@ -270,7 +300,10 @@ export default function PersonDetail() {
 											<h3 className="mb-2 font-medium text-sm">{group.label}</h3>
 											<div className="flex flex-wrap gap-2">
 												{group.facets.map((facet) => (
-													<span key={facet.facet_ref} className="rounded bg-white px-2 py-1 text-xs shadow-sm dark:bg-gray-900">
+													<span
+														key={facet.facet_ref}
+														className="rounded bg-white px-2 py-1 text-xs shadow-sm dark:bg-gray-900"
+													>
 														{facet.label}
 													</span>
 												))}
@@ -335,11 +368,9 @@ export default function PersonDetail() {
 
 							{/* Link Form */}
 							{actionData?.error && (
-								<div className="mt-4 rounded-md bg-destructive/15 p-3 text-destructive text-sm">
-									{actionData.error}
-								</div>
+								<div className="mt-4 rounded-md bg-destructive/15 p-3 text-destructive text-sm">{actionData.error}</div>
 							)}
-							
+
 							{showLinkForm ? (
 								<Form method="post" className="mt-4 space-y-3">
 									<input type="hidden" name="_action" value="link-organization" />
@@ -389,10 +420,11 @@ export default function PersonDetail() {
 											className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
 										>
 											<Link
-												to={routes.interviews.detail(interviewPerson.interview_id)}
+												to={routes.interviews.detail(interviewPerson.interviews?.id || "")}
 												className="font-medium text-blue-600 hover:text-blue-800"
 											>
-												{interviewPerson.interviews?.title || `Interview ${interviewPerson.interview_id.slice(0, 8)}`}
+												{interviewPerson.interviews?.title ||
+													`Interview ${interviewPerson.interviews?.id?.slice(0, 8) || "Unknown"}`}
 											</Link>
 											<p className="text-gray-400 text-xs">
 												{interviewPerson.interviews?.created_at &&
@@ -401,9 +433,7 @@ export default function PersonDetail() {
 										</div>
 									))}
 									{interviews.length > 5 && (
-										<p className="pt-2 text-center text-gray-500">
-											+{interviews.length - 5} more interviews
-										</p>
+										<p className="pt-2 text-center text-gray-500">+{interviews.length - 5} more interviews</p>
 									)}
 								</div>
 							) : (

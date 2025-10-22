@@ -1,9 +1,8 @@
 import consola from "consola"
-import { Users } from "lucide-react"
 import { motion } from "framer-motion"
+import { Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
-import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
 import InsightCardV2 from "~/features/insights/components/InsightCardV2"
@@ -206,7 +205,7 @@ export default function PersonaDetailRoute() {
 	const description = persona.description || "No description available"
 
 	// Get initials for avatar
-	const initials =
+	const _initials =
 		name
 			.split(" ")
 			.map((word: string) => word[0])
@@ -218,12 +217,7 @@ export default function PersonaDetailRoute() {
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
 			<PersonaPeopleSubnav />
 			<div className="mx-auto max-w-6xl px-6 py-10">
-				<DetailPageHeader
-					icon={Users}
-					typeLabel="Persona"
-					title={name}
-					description={description}
-				>
+				<DetailPageHeader icon={Users} typeLabel="Persona" title={name} description={description}>
 					<div className="mt-4 flex gap-2">
 						{/* Action Buttons */}
 						<motion.div
@@ -265,7 +259,7 @@ export default function PersonaDetailRoute() {
 				</DetailPageHeader>
 
 				{/* KPI Stats Section */}
-					{/* <motion.div
+				{/* <motion.div
 						className="grid grid-cols-3 gap-6"
 						initial={{ opacity: 0, y: 20 }}
 						animate={{ opacity: 1, y: 0 }}
@@ -310,149 +304,150 @@ export default function PersonaDetailRoute() {
 					</motion.div> */}
 
 				{/* Main Content */}
-			<div className="mx-auto max-w-6xl px-6 py-12">
-				{/* Persona Details Card */}
-				<Card className="mb-8">
-					<CardHeader className="pb-4">
-						<h2 className="font-semibold text-xl">Details</h2>
-						<p className="text-muted-foreground text-xs">Only showing available fields</p>
-					</CardHeader>
-					<CardContent>
-						<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
-							{[
-								{ label: "Age", value: persona.age },
-								{ label: "Gender", value: persona.gender },
-								{ label: "Location", value: persona.location },
-								{ label: "Education", value: persona.education },
-								{ label: "Occupation", value: persona.occupation },
-								{ label: "Income", value: persona.income },
-								{ label: "Languages", value: persona.languages },
-								{ label: "Segment", value: persona.segment },
-								{ label: "Role", value: persona.role },
-								{
-									label: "Motivations",
-									value:
-										Array.isArray(persona.motivations) && persona.motivations.length > 0
-											? persona.motivations.join(", ")
-											: null,
-								},
-								{
-									label: "Values",
-									value: Array.isArray(persona.values) && persona.values.length > 0 ? persona.values.join(", ") : null,
-								},
-								{
-									label: "Frustrations",
-									value:
-										Array.isArray(persona.frustrations) && persona.frustrations.length > 0
-											? persona.frustrations.join(", ")
-											: null,
-								},
-								{ label: "Preferences", value: persona.preferences },
-								{ label: "Learning Style", value: persona.learning_style },
-								{ label: "Tech Comfort Level", value: persona.tech_comfort_level },
-								{ label: "Frequency of Purchase", value: persona.frequency_of_purchase },
-								{ label: "Frequency of Use", value: persona.frequency_of_use },
-								{
-									label: "Key Tasks",
-									value:
-										Array.isArray(persona.key_tasks) && persona.key_tasks.length > 0
-											? persona.key_tasks.join(", ")
-											: null,
-								},
-								{
-									label: "Tools Used",
-									value:
-										Array.isArray(persona.tools_used) && persona.tools_used.length > 0
-											? persona.tools_used.join(", ")
-											: null,
-								},
-								{ label: "Primary Goal", value: persona.primary_goal },
-								{
-									label: "Secondary Goals",
-									value:
-										Array.isArray(persona.secondary_goals) && persona.secondary_goals.length > 0
-											? persona.secondary_goals.join(", ")
-											: null,
-								},
-								{
-									label: "Sources",
-									value:
-										Array.isArray(persona.sources) && persona.sources.length > 0 ? persona.sources.join(", ") : null,
-								},
-								{
-									label: "Quotes",
-									value:
-										Array.isArray(persona.quotes) && persona.quotes.length > 0
-											? persona.quotes.map((q: string) => `"${q}"`).join(" ")
-											: null,
-								},
-								// {
-								// 	label: "Percentage",
-								// 	value:
-								// 		typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
-								// 			? `${persona.percentage * 100}%`
-								// 			: null,
-								// },
-							]
-								.filter((item) => item.value && String(item.value).trim() !== "")
-								.map((item, _idx) => (
-									<div key={item.label} className="flex">
-										<span className="w-40 font-medium text-muted-foreground">{item.label}:</span>
-										<span className="text-foreground">{item.value}</span>
-									</div>
-								))}
-						</div>
-					</CardContent>
-				</Card>
+				<div className="mx-auto max-w-6xl px-6 py-12">
+					{/* Persona Details Card */}
+					<Card className="mb-8">
+						<CardHeader className="pb-4">
+							<h2 className="font-semibold text-xl">Details</h2>
+							<p className="text-muted-foreground text-xs">Only showing available fields</p>
+						</CardHeader>
+						<CardContent>
+							<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
+								{[
+									{ label: "Age", value: persona.age },
+									{ label: "Gender", value: persona.gender },
+									{ label: "Location", value: persona.location },
+									{ label: "Education", value: persona.education },
+									{ label: "Occupation", value: persona.occupation },
+									{ label: "Income", value: persona.income },
+									{ label: "Languages", value: persona.languages },
+									{ label: "Segment", value: persona.segment },
+									{ label: "Role", value: persona.role },
+									{
+										label: "Motivations",
+										value:
+											Array.isArray(persona.motivations) && persona.motivations.length > 0
+												? persona.motivations.join(", ")
+												: null,
+									},
+									{
+										label: "Values",
+										value:
+											Array.isArray(persona.values) && persona.values.length > 0 ? persona.values.join(", ") : null,
+									},
+									{
+										label: "Frustrations",
+										value:
+											Array.isArray(persona.frustrations) && persona.frustrations.length > 0
+												? persona.frustrations.join(", ")
+												: null,
+									},
+									{ label: "Preferences", value: persona.preferences },
+									{ label: "Learning Style", value: persona.learning_style },
+									{ label: "Tech Comfort Level", value: persona.tech_comfort_level },
+									{ label: "Frequency of Purchase", value: persona.frequency_of_purchase },
+									{ label: "Frequency of Use", value: persona.frequency_of_use },
+									{
+										label: "Key Tasks",
+										value:
+											Array.isArray(persona.key_tasks) && persona.key_tasks.length > 0
+												? persona.key_tasks.join(", ")
+												: null,
+									},
+									{
+										label: "Tools Used",
+										value:
+											Array.isArray(persona.tools_used) && persona.tools_used.length > 0
+												? persona.tools_used.join(", ")
+												: null,
+									},
+									{ label: "Primary Goal", value: persona.primary_goal },
+									{
+										label: "Secondary Goals",
+										value:
+											Array.isArray(persona.secondary_goals) && persona.secondary_goals.length > 0
+												? persona.secondary_goals.join(", ")
+												: null,
+									},
+									{
+										label: "Sources",
+										value:
+											Array.isArray(persona.sources) && persona.sources.length > 0 ? persona.sources.join(", ") : null,
+									},
+									{
+										label: "Quotes",
+										value:
+											Array.isArray(persona.quotes) && persona.quotes.length > 0
+												? persona.quotes.map((q: string) => `"${q}"`).join(" ")
+												: null,
+									},
+									// {
+									// 	label: "Percentage",
+									// 	value:
+									// 		typeof persona.percentage === "number" && !Number.isNaN(persona.percentage)
+									// 			? `${persona.percentage * 100}%`
+									// 			: null,
+									// },
+								]
+									.filter((item) => item.value && String(item.value).trim() !== "")
+									.map((item, _idx) => (
+										<div key={item.label} className="flex">
+											<span className="w-40 font-medium text-muted-foreground">{item.label}:</span>
+											<span className="text-foreground">{item.value}</span>
+										</div>
+									))}
+							</div>
+						</CardContent>
+					</Card>
 
-				<div className="space-y-6">
-					{/* People Section */}
-					{people && people.length > 0 ? (
-						<Card className="mb-8">
-							<CardHeader>
-								<div className="font-semibold text-lg">People ({people.length})</div>
-							</CardHeader>
-							<CardContent>
-								<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-									{people.map((person) => (
-										<MiniPersonCard key={person.id} person={person} />
+					<div className="space-y-6">
+						{/* People Section */}
+						{people && people.length > 0 ? (
+							<Card className="mb-8">
+								<CardHeader>
+									<div className="font-semibold text-lg">People ({people.length})</div>
+								</CardHeader>
+								<CardContent>
+									<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+										{people.map((person) => (
+											<MiniPersonCard key={person.id} person={person} />
+										))}
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card className="max-w-sm">
+								<CardHeader>
+									<h3 className="font-semibold text-lg">People</h3>
+								</CardHeader>
+								<CardContent>
+									<div className="pl-4 text-muted-foreground">No people found</div>
+								</CardContent>
+							</Card>
+						)}
+
+						{/* Insights Section */}
+						{insights && insights.length > 0 ? (
+							<div className="space-y-3">
+								<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
+								<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
+									{insights.map((insight) => (
+										<InsightCardV2 key={insight.id} insight={insight} />
 									))}
 								</div>
-							</CardContent>
-						</Card>
-					) : (
-						<Card className="max-w-sm">
-							<CardHeader>
-								<h3 className="font-semibold text-lg">People</h3>
-							</CardHeader>
-							<CardContent>
-								<div className="pl-4 text-muted-foreground">No people found</div>
-							</CardContent>
-						</Card>
-					)}
-
-					{/* Insights Section */}
-					{insights && insights.length > 0 ? (
-						<div className="space-y-3">
-							<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
-							<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
-								{insights.map((insight) => (
-									<InsightCardV2 key={insight.id} insight={insight} />
-								))}
 							</div>
-						</div>
-					) : (
-						<Card className="max-w-sm">
-							<CardHeader>
-								<h3 className="font-semibold text-lg">Insights</h3>
-							</CardHeader>
-							<CardContent>
-								<div className="pl-4 text-muted-foreground">No insights found</div>
-							</CardContent>
-						</Card>
-					)}
+						) : (
+							<Card className="max-w-sm">
+								<CardHeader>
+									<h3 className="font-semibold text-lg">Insights</h3>
+								</CardHeader>
+								<CardContent>
+									<div className="pl-4 text-muted-foreground">No insights found</div>
+								</CardContent>
+							</Card>
+						)}
+					</div>
 				</div>
-			</div>
 			</div>
 		</div>
 	)

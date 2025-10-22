@@ -287,7 +287,7 @@ export function FlowDiagram({ counts, labels, compact = false, onNodeClick, clas
 // ---------------------------
 // Demo export (for Canvas preview)
 // ---------------------------
-function DemoFlowDiagram() {
+function _DemoFlowDiagram() {
 	return (
 		<div className="min-h-[60vh] w-full bg-slate-50 py-6">
 			<div className="mx-auto max-w-7xl">

@@ -46,7 +46,7 @@ export default function Dashboard({
 	themeTree,
 	tags,
 }: DashboardProps) {
-	const { accountId, projectId, projectPath } = useCurrentProject()
+	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
 	// State for controlling tag count

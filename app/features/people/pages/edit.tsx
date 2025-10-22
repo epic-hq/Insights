@@ -102,6 +102,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const name = formData.get("name") as string
 	const description = formData.get("description") as string
 	const segment = formData.get("segment") as string
+	const image_url = formData.get("image_url") as string
 	const personaId = formData.get("persona_id") as string
 	const selectedFacetRefs = formData
 		.getAll("facetRefs")
@@ -127,6 +128,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				name: name.trim(),
 				description: description?.trim() || null,
 				segment: segment?.trim() || null,
+				image_url: image_url?.trim() || null,
 			},
 		})
 
@@ -261,6 +263,19 @@ export default function EditPerson() {
 						placeholder="Enter person's name"
 						className="mt-1"
 					/>
+				</div>
+
+				<div>
+					<Label htmlFor="image_url">Profile Image URL</Label>
+					<Input
+						id="image_url"
+						name="image_url"
+						type="url"
+						defaultValue={person.image_url || ""}
+						placeholder="https://example.com/avatar.jpg"
+						className="mt-1"
+					/>
+					<p className="mt-1 text-muted-foreground text-xs">Direct image URL shown as the person's avatar.</p>
 				</div>
 
 				<div>

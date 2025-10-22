@@ -213,7 +213,7 @@ export const getInterviewInsights = async ({
 		.eq("interview_id", interviewId)
 }
 
-const getRelatedInterviews = async ({
+const _getRelatedInterviews = async ({
 	supabase,
 	accountId,
 	projectId,

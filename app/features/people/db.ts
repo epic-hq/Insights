@@ -86,7 +86,8 @@ export const getPersonById = async ({
 			people_personas (
 				personas (
 					id,
-					name
+					name,
+					color_hex
 				),
 				confidence_score,
 				source,
@@ -126,9 +127,11 @@ export const getPersonById = async ({
                                 )
                         ),
                         interview_people (
+                                id,
                                 interviews (
                                         id,
                                         title,
+                                        created_at,
                                         insights (
 						id,
 						name,
@@ -224,7 +227,7 @@ export const deletePerson = async ({
  * Get people with validation details for the validation status page
  * Returns people who have validation-related data (outcome, stage, etc.)
  */
-const getPeopleWithValidation = async ({
+const _getPeopleWithValidation = async ({
 	supabase,
 	accountId,
 	projectId,

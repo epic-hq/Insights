@@ -344,139 +344,15 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	// PostHog feature flag to gate Quality Check
 	const { isEnabled: isEvalEnabled } = usePostHogFeatureFlag("ffEvalQuestion")
 
-	const generateQuestions = async () => {
-		if (generating) return
-		setGenerating(true)
-		try {
-			// Create FormData for remix-style API
-			const formData = new FormData()
-			formData.append("project_id", projectId || "")
-			formData.append("custom_instructions", customInstructions || "")
-			// Determine question count:
-			// - Initial generation: time-based target (4/6/8/10)
-			// - Subsequent generations: user-selected count (default 3)
-			// First-time generation target by time; default 30m should produce 8
-			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
-			const initialTarget = countByTime[timeMinutes] ?? 8
-			const count = autoGenerateInitial ? initialTarget : moreCount
-			formData.append("questionCount", String(count))
-			formData.append("interview_time_limit", timeMinutes.toString())
-			formData.append("research_mode", fromManagerResearchMode(researchMode))
-
-			// Add optional fields from props (for onboarding flow)
-			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
-			if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
-			if (research_goal) formData.append("research_goal", research_goal)
-			if (research_goal_details) formData.append("research_goal_details", research_goal_details)
-			if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
-			if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
-
-			const response = await fetch("/api/generate-questions", {
-				method: "POST",
-				body: formData,
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				if (data.success && data.questionSet?.questions) {
-					const newQuestions = data.questionSet.questions as QuestionInput[]
-
-					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => {
-						const baseQuestion: Question = {
-							id: q.id || crypto.randomUUID(),
-							text: q.text || "",
-							categoryId: q.categoryId || "context",
-							scores: {
-								importance: (q.scores?.importance ?? 0.5) as number,
-								goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
-								novelty: (q.scores?.novelty ?? 0.5) as number,
-							},
-							rationale: q.rationale || "",
-							status: "proposed" as const,
-							timesAnswered: 0,
-							source: "ai" as const,
-							isMustHave: (q as QuestionInput & { isMustHave?: boolean }).isMustHave || false,
-						}
-						return {
-							...baseQuestion,
-							estimatedMinutes:
-								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
-								estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
-							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
-							isSelected: true, // Auto-select all generated questions
-							status: "selected" as const, // Set status to selected
-						}
-					})
-
-					// Deduplicate questions by ID against existing and within this batch (and pending list)
-					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, [
-						...questions,
-						...pendingGeneratedQuestions,
-					])
-
-					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
-					setPendingInsertionChoices((prev) => ({
-						...prev,
-						...deduplicatedQuestions.reduce<Record<string, string>>((acc, question) => {
-							acc[question.id] = "end"
-							return acc
-						}, {}),
-					}))
-					setShowPendingModal(true)
-
-					// Reload questions from database to get the freshly saved data
-					await loadQuestions()
-
-					if (autoGenerateInitial) {
-						setAutoGenerateInitial(false)
-						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
-							description: "Questions have been saved and loaded from database.",
-							duration: 5000,
-						})
-					} else {
-						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
-							description: "Questions have been saved and loaded from database.",
-							duration: 4000,
-						})
-					}
-				} else {
-					toast.error("Failed to generate questions", {
-						description: "The response was successful but contained no questions",
-					})
-				}
-			} else {
-				// Handle API error response
-				try {
-					const errorData = await response.json()
-					toast.error("Failed to generate questions", {
-						description: errorData.error || `Server error: ${response.status}`,
-					})
-				} catch {
-					toast.error("Failed to generate questions", {
-						description: `Server error: ${response.status}`,
-					})
-				}
-			}
-		} catch (e) {
-			consola.error("Error generating questions:", e)
-			toast.error("Failed to generate questions", {
-				description: "An unexpected error occurred. Please try again.",
-			})
-		} finally {
-			setGenerating(false)
-			// Ensure spinner resets even if initial auto-generate failed
-			setAutoGenerateInitial(false)
-		}
-	}
-
 	// Auto-generate questions on first load (optional)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: generateQuestions is stable enough for this effect
 	useEffect(() => {
 		if (!autoGenerateOnEmpty) return
 		if (!loading && !hasInitialized && questions.length === 0 && projectId) {
 			setAutoGenerateInitial(true)
 			generateQuestions()
 		}
-	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId, generateQuestions])
+	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId])
 
 	useEffect(() => {
 		return () => {
@@ -742,6 +618,150 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		const categoryAdj = categoryAdjustments[q.categoryId] || 0
 		return Math.max(1.0, Math.min(4.0, baseTime + categoryAdj + familiarityAdjustment))
 	}, [])
+
+	const generateQuestions = useCallback(async () => {
+		if (generating) return
+		setGenerating(true)
+		try {
+			// Create FormData for remix-style API
+			const formData = new FormData()
+			formData.append("project_id", projectId || "")
+			formData.append("custom_instructions", customInstructions || "")
+			// Determine question count:
+			// - Initial generation: time-based target (4/6/8/10)
+			// - Subsequent generations: user-selected count (default 3)
+			// First-time generation target by time; default 30m should produce 8
+			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
+			const initialTarget = countByTime[timeMinutes] ?? 8
+			const count = autoGenerateInitial ? initialTarget : moreCount
+			formData.append("questionCount", String(count))
+			formData.append("interview_time_limit", timeMinutes.toString())
+			formData.append("research_mode", fromManagerResearchMode(researchMode))
+
+			// Add optional fields from props (for onboarding flow)
+			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
+			if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
+			if (research_goal) formData.append("research_goal", research_goal)
+			if (research_goal_details) formData.append("research_goal_details", research_goal_details)
+			if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
+			if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
+
+			const response = await fetch("/api/generate-questions", {
+				method: "POST",
+				body: formData,
+			})
+
+			if (response.ok) {
+				const data = await response.json()
+				if (data.success && data.questionSet?.questions) {
+					const newQuestions = data.questionSet.questions as QuestionInput[]
+
+					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => {
+						const baseQuestion: Question = {
+							id: q.id || crypto.randomUUID(),
+							text: q.text || "",
+							categoryId: q.categoryId || "context",
+							scores: {
+								importance: (q.scores?.importance ?? 0.5) as number,
+								goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
+								novelty: (q.scores?.novelty ?? 0.5) as number,
+							},
+							rationale: q.rationale || "",
+							status: "proposed" as const,
+							timesAnswered: 0,
+							source: "ai" as const,
+							isMustHave: (q as QuestionInput & { isMustHave?: boolean }).isMustHave || false,
+						}
+						return {
+							...baseQuestion,
+							estimatedMinutes:
+								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
+								estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
+							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
+							isSelected: true, // Auto-select all generated questions
+							status: "selected" as const, // Set status to selected
+						}
+					})
+
+					// Deduplicate questions by ID against existing and within this batch (and pending list)
+					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, [
+						...questions,
+						...pendingGeneratedQuestions,
+					])
+
+					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
+					setPendingInsertionChoices((prev) => ({
+						...prev,
+						...deduplicatedQuestions.reduce<Record<string, string>>((acc, question) => {
+							acc[question.id] = "end"
+							return acc
+						}, {}),
+					}))
+					setShowPendingModal(true)
+
+					// Reload questions from database to get the freshly saved data
+					await loadQuestions()
+
+					if (autoGenerateInitial) {
+						setAutoGenerateInitial(false)
+						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
+							description: "Questions have been saved and loaded from database.",
+							duration: 5000,
+						})
+					} else {
+						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
+							description: "Questions have been saved and loaded from database.",
+							duration: 4000,
+						})
+					}
+				} else {
+					toast.error("Failed to generate questions", {
+						description: "The response was successful but contained no questions",
+					})
+				}
+			} else {
+				// Handle API error response
+				try {
+					const errorData = await response.json()
+					toast.error("Failed to generate questions", {
+						description: errorData.error || `Server error: ${response.status}`,
+					})
+				} catch {
+					toast.error("Failed to generate questions", {
+						description: `Server error: ${response.status}`,
+					})
+				}
+			}
+		} catch (e) {
+			consola.error("Error generating questions:", e)
+			toast.error("Failed to generate questions", {
+				description: "An unexpected error occurred. Please try again.",
+			})
+		} finally {
+			setGenerating(false)
+			// Ensure spinner resets even if initial auto-generate failed
+			setAutoGenerateInitial(false)
+		}
+	}, [
+		assumptions,
+		autoGenerateInitial,
+		customInstructions,
+		estimateMinutesPerQuestion,
+		familiarity,
+		generating,
+		loadQuestions,
+		moreCount,
+		pendingGeneratedQuestions,
+		projectId,
+		questions,
+		researchMode,
+		research_goal,
+		research_goal_details,
+		target_orgs,
+		target_roles,
+		timeMinutes,
+		unknowns,
+	])
 
 	const calculateCompositeScore = useCallback((q: Question): number => {
 		const categoryWeight = questionCategories.find((c) => c.id === q.categoryId)?.weight || 1
@@ -1579,6 +1599,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const handleAddContextualQuestion = useCallback(async () => {
 		const text = contextualInput.trim()
 		if (!text) return
+		if (!projectId) {
+			toast.error("Select a project before adding questions")
+			return
+		}
 
 		try {
 			setAddingCustomQuestion(true)
@@ -1589,7 +1613,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				category: contextualCategory,
 				is_selected: true,
 				selected_order: questions.filter((q) => q.isSelected).length,
-				project_id: projectId!,
+				project_id: projectId,
 			}
 
 			// Save to database first
@@ -1597,33 +1621,29 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				.from("interview_prompts")
 				.insert(questionToSave)
 				.select()
-				.single()
+				.single<InterviewPromptRow>()
 
-			if (error) throw error
+			if (error || !savedQuestion) throw error
+			const category = savedQuestion.category ?? "context"
+			const baseQuestion: Question = {
+				id: savedQuestion.id,
+				text: savedQuestion.text,
+				categoryId: category,
+				scores: { importance: 3, goalMatch: 3, novelty: 3 },
+				rationale: savedQuestion.rationale ?? "",
+				status: "selected",
+				timesAnswered: 0,
+				source: "user",
+				isMustHave: false,
+				isSelected: true,
+				selectedOrder: savedQuestion.selected_order ?? null,
+			}
 
 			// Create local question object
 			const newQuestion: Question = {
-				id: savedQuestion.id,
-				text: savedQuestion.text,
-				categoryId: (savedQuestion as any).category || "context",
-				estimatedMinutes: estimateMinutesPerQuestion(
-					{
-						id: savedQuestion.id,
-						text: savedQuestion.text,
-						categoryId: (savedQuestion as any).category || "context",
-						scores: { importance: 3, goalMatch: 3, novelty: 3 },
-						status: "selected",
-						timesAnswered: 0,
-					} as Question,
-					researchMode,
-					familiarity
-				),
-				isMustHave: false,
-				status: "selected",
-				source: "user",
-				scores: { importance: 3, goalMatch: 3, novelty: 3 },
-				isSelected: true,
-				timesAnswered: 0,
+				...baseQuestion,
+				estimatedMinutes:
+					savedQuestion.estimated_time_minutes ?? estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 			}
 
 			// Update local state without flashing
@@ -2001,7 +2021,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 							</div>
 							<div className="flex w-full items-center gap-2">
 								<Textarea
-									ref={contextualInputRef as any}
+									ref={contextualInputRef}
 									placeholder="e.g., What challenges do you face with your current solution?"
 									value={contextualInput}
 									onChange={(e) => setContextualInput(e.target.value)}
@@ -2194,10 +2214,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																								const updated = questions.map((q) =>
 																									q.id === question.id
 																										? {
-																											...q,
-																											text: editingText,
-																											qualityFlag: quality ?? undefined,
-																										}
+																												...q,
+																												text: editingText,
+																												qualityFlag: quality ?? undefined,
+																											}
 																										: q
 																								)
 																								setQuestions(updated)

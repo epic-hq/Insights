@@ -1,3 +1,5 @@
+import { cn } from "~/lib/utils"
+
 interface InterviewMetadataProps {
 	interviewId: string
 	date: string
@@ -17,10 +19,10 @@ export default function InterviewMetadata({
 	segment,
 	duration,
 	transcriptLink,
-	className,
+	className = "",
 }: InterviewMetadataProps) {
 	return (
-		<div className={`max-w-xl space-y-2 rounded-lg border bg-white p-6 shadow dark:bg-gray-900 ${className ?? ""}`}>
+		<div className={cn("max-w-xl space-y-2 rounded-lg border bg-white p-6 shadow dark:bg-gray-900", className)}>
 			<h3 className="mb-2 font-semibold text-lg">Interview Metadata</h3>
 			<div className="text-sm">
 				<span className="font-medium">Interview ID:</span> {interviewId}

@@ -300,7 +300,7 @@ function DecisionQuestionSection({
 	)
 }
 
-function ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onData }: ResearchAnswersProps) {
+function _ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onData }: ResearchAnswersProps) {
 	const [data, setData] = useState<ResearchAnswersData | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)

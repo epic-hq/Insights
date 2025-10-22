@@ -1,4 +1,5 @@
-import type React from "react"
+import type { ElementType, ReactNode } from "react"
+import { useId } from "react"
 import { Link } from "react-router-dom"
 import type { SparklineDatum } from "~/components/charts/SparklineKPI"
 import SparklineKPI from "~/components/charts/SparklineKPI"
@@ -25,13 +26,11 @@ interface StatCardProps {
 }
 
 // Helper function to render icon based on name
-const renderIcon = (iconName?: string, compact = true) => {
-	if (!iconName) return null
-	const titleId = `stat-icon-title-${iconName}`
+const renderIcon = (iconName?: string, compact = true, titleId?: string) => {
+	if (!iconName || !titleId) return null
 	const iconSize = compact ? "h-4 w-4" : "h-5 w-5"
 
-	// Map of icon names to SVG paths
-	const icons: Record<string, React.ReactNode> = {
+	const icons: Record<string, ReactNode> = {
 		users: (
 			<svg
 				xmlns="http://www.w3.org/2000/svg"
@@ -149,7 +148,7 @@ export default function StatCard({
 	compact = true, // Default to compact mode
 }: StatCardProps) {
 	// Use appropriate wrapper based on props
-	const Wrapper: React.ElementType = href
+	const Wrapper: ElementType = href
 		? href.startsWith("/")
 			? Link
 			: "a"
@@ -157,6 +156,10 @@ export default function StatCard({
 			onClick
 			? "button"
 			: "div"
+	const iconTitleId = useId()
+	const trendUpTitleId = useId()
+	const trendDownTitleId = useId()
+	const linkIndicatorTitleId = useId()
 	const isUp = change?.startsWith("+")
 
 	// Determine border style based on highlightColor
@@ -176,7 +179,9 @@ export default function StatCard({
 				style={highlightColor ? { borderLeft: `2px solid ${highlightColor}` } : undefined}
 			>
 				{icon && (
-					<span className="flex-shrink-0 text-gray-400">{renderIcon(icon, /* compact */ true /* -> h-4 w-4 */)}</span>
+					<span className="flex-shrink-0 text-gray-400">
+						{renderIcon(icon, /* compact */ true /* -> h-4 w-4 */, iconTitleId)}
+					</span>
 				)}
 
 				{/* label width = max-w-[9rem]*/}
@@ -208,7 +213,7 @@ export default function StatCard({
 				{/* Header with label and icon */}
 				<div className="mb-2 flex items-center justify-between">
 					<div className="font-medium text-gray-500 text-sm">{label}</div>
-					{icon && <div className="text-gray-400">{renderIcon(icon, compact)}</div>}
+					{icon && <div className="text-gray-400">{renderIcon(icon, compact, iconTitleId)}</div>}
 				</div>
 
 				{/* Main content */}
@@ -226,9 +231,9 @@ export default function StatCard({
 										className="mr-1 h-3 w-3"
 										viewBox="0 0 20 20"
 										fill="currentColor"
-										aria-labelledby="trend-up-title"
+										aria-labelledby={trendUpTitleId}
 									>
-										<title id="trend-up-title">Trending Up</title>
+										<title id={trendUpTitleId}>Trending Up</title>
 										<path
 											fillRule="evenodd"
 											d="M12 7a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0V8.414l-4.293 4.293a1 1 0 01-1.414 0L8 10.414l-4.293 4.293a1 1 0 01-1.414-1.414l5-5a1 1 0 011.414 0L11 10.586 14.586 7H12z"
@@ -241,9 +246,9 @@ export default function StatCard({
 										className="mr-1 h-3 w-3"
 										viewBox="0 0 20 20"
 										fill="currentColor"
-										aria-labelledby="trend-down-title"
+										aria-labelledby={trendDownTitleId}
 									>
-										<title id="trend-down-title">Trending Down</title>
+										<title id={trendDownTitleId}>Trending Down</title>
 										<path
 											fillRule="evenodd"
 											d="M12 13a1 1 0 100 2h5a1 1 0 001-1v-5a1 1 0 10-2 0v2.586l-4.293-4.293a1 1 0 00-1.414 0L8 9.586l-4.293-4.293a1 1 0 00-1.414 1.414l5 5a1 1 0 001.414 0L11 9.414 14.586 13H12z"
@@ -268,9 +273,9 @@ export default function StatCard({
 							className="h-4 w-4 text-gray-400"
 							viewBox="0 0 20 20"
 							fill="currentColor"
-							aria-labelledby="link-indicator-title"
+							aria-labelledby={linkIndicatorTitleId}
 						>
-							<title id="link-indicator-title">View Details</title>
+							<title id={linkIndicatorTitleId}>View Details</title>
 							<path
 								fillRule="evenodd"
 								d="M12.293 5.293a1 1 0 011.414 0l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414-1.414L14.586 11H3a1 1 0 110-2h11.586l-2.293-2.293a1 1 0 010-1.414z"

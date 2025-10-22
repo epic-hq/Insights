@@ -41,7 +41,7 @@ const OpportunityDetail: React.FC<OpportunityDetailProps> = ({ opportunity }) =>
 		opportunity.impact && opportunity.effort ? (opportunity.impact / opportunity.effort).toFixed(1) : "N/A"
 
 	return (
-		<div className="mx-auto max-w-7xl ">
+		<div className="mx-auto max-w-7xl">
 			{/* <PageHeader title={opportunity.title} /> */}
 
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">

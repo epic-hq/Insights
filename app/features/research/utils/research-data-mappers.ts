@@ -200,7 +200,7 @@ export function calculateResearchMetrics(data: ResearchAnswersData | null): Rese
 /**
  * Get top research questions by activity (answered + open answers)
  */
-function getTopResearchQuestions(
+function _getTopResearchQuestions(
 	data: ResearchAnswersData | null,
 	limit = 5
 ): Array<{

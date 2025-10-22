@@ -179,10 +179,7 @@ export async function createAndProcessAnalysisJob({
 			userCustomInstructions: customInstructions,
 		})
 
-		await adminClient
-			.from("analysis_jobs")
-			.update({ trigger_run_id: handle.id })
-			.eq("id", analysisJob.id)
+		await adminClient.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
 
 		const publicToken = await createRunAccessToken(handle.id)
 

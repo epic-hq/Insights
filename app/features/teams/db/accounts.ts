@@ -40,7 +40,7 @@ const updateAccountNameSchema = z.object({
 })
 type UpdateAccountNameRequest = z.infer<typeof updateAccountNameSchema>
 
-const updateAccountName = async ({
+const _updateAccountName = async ({
 	supabase,
 	account_id,
 	name,
@@ -58,7 +58,7 @@ const updateAccountSlugSchema = z.object({
 })
 type UpdateAccountSlugRequest = z.infer<typeof updateAccountSlugSchema>
 
-const updateAccountSlug = async ({
+const _updateAccountSlug = async ({
 	supabase,
 	account_id,
 	slug,

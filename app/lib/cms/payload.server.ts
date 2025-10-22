@@ -161,7 +161,7 @@ export async function getPostBySlug(slug: string): Promise<PayloadPost | null> {
 /**
  * Fetch a single blog post by ID
  */
-async function getPostById(id: string): Promise<PayloadPost> {
+async function _getPostById(id: string): Promise<PayloadPost> {
 	const env = getServerEnv()
 	const response = await fetch(`${env.PAYLOAD_CMS_URL}/api/posts/${id}`, {
 		headers: getHeaders(),
@@ -181,7 +181,7 @@ export async function getRecentPosts(limit = 5): Promise<PayloadPost[]> {
 /**
  * Search posts by query
  */
-async function searchPosts(query: string, limit = 10): Promise<PayloadPost[]> {
+async function _searchPosts(query: string, limit = 10): Promise<PayloadPost[]> {
 	const env = getServerEnv()
 
 	const where: Where = {

@@ -9,12 +9,12 @@ interface CopilotSidebarProps {
 	className?: string
 	projectData?: {
 		projectName?: string
-		personas?: any[]
-		insights?: any[]
-		interviews?: any[]
-		opportunities?: any[]
-		people?: any[]
-		projectStatusData?: any
+		personas?: unknown[]
+		insights?: unknown[]
+		interviews?: unknown[]
+		opportunities?: unknown[]
+		people?: unknown[]
+		projectStatusData?: { currentPhase?: string; progressPercent?: number } | null
 	}
 }
 

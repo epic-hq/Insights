@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useFetcher } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Annotation, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db"
+import type { Annotation, AnnotationMetadata, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db"
 
 // -----------------------------------------------------------------------------
 // How these hooks work & where to optimize DB calls
@@ -105,7 +105,7 @@ function useAnnotations({
 		)
 	}
 
-	const addAISuggestion = (suggestion: string, context?: Record<string, any>) => {
+	const addAISuggestion = (suggestion: string, context?: AnnotationMetadata) => {
 		if (!suggestion.trim()) return
 
 		fetcher.submit(
@@ -322,7 +322,7 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 		}
 	}, [fetcher.state, fetcher.data])
 
-	const setFlag = (flagType: FlagType, flagValue: boolean, metadata?: Record<string, any>) => {
+	const setFlag = (flagType: FlagType, flagValue: boolean, metadata?: AnnotationMetadata) => {
 		// Optimistic update
 		setFlags((prev) => ({
 			...prev,
@@ -343,7 +343,7 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 		)
 	}
 
-	const toggleFlag = (flagType: FlagType, metadata?: Record<string, any>) => {
+	const toggleFlag = (flagType: FlagType, metadata?: AnnotationMetadata) => {
 		const currentValue = flags[flagType]
 		setFlag(flagType, !currentValue, metadata)
 	}

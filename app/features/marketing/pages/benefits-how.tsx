@@ -268,7 +268,7 @@ export function HowItWorks({
 }
 
 // --- Default export renders both blocks stacked inside NavPageLayout
-function UpsightBenefitsAndHowItWorks() {
+function _UpsightBenefitsAndHowItWorks() {
 	return (
 		<NavPageLayout
 			title="Benefits & Workflow"

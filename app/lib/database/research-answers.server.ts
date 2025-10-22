@@ -405,7 +405,7 @@ export async function getResearchAnswerRollup(
 	}
 }
 
-async function getDecisionQuestionDetail(supabase: SupabaseClient<Database>, decisionQuestionId: string) {
+async function _getDecisionQuestionDetail(supabase: SupabaseClient<Database>, decisionQuestionId: string) {
 	const { data, error } = await supabase
 		.from("decision_questions")
 		.select("id, project_id, text, rationale")
@@ -416,7 +416,7 @@ async function getDecisionQuestionDetail(supabase: SupabaseClient<Database>, dec
 	return data
 }
 
-async function getResearchQuestionDetail(supabase: SupabaseClient<Database>, researchQuestionId: string) {
+async function _getResearchQuestionDetail(supabase: SupabaseClient<Database>, researchQuestionId: string) {
 	const { data, error } = await supabase
 		.from("research_questions")
 		.select("id, project_id, decision_question_id, text, rationale")
@@ -427,7 +427,7 @@ async function getResearchQuestionDetail(supabase: SupabaseClient<Database>, res
 	return data
 }
 
-async function getProjectAnswerDetail(supabase: SupabaseClient<Database>, projectAnswerId: string) {
+async function _getProjectAnswerDetail(supabase: SupabaseClient<Database>, projectAnswerId: string) {
 	const { data, error } = await supabase
 		.from("project_answers")
 		.select(

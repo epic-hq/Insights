@@ -81,13 +81,9 @@ export type {
 	AcceptInvitationResponse,
 	CreateAccountResponse,
 	CreateInvitationResponse,
-	
-	
 	GetAccountInvitesResponse,
 	GetAccountMembersResponse,
 	GetAccountResponse,
 	GetAccountsResponse,
-	
 	LookupInvitationResponse,
-	
 }

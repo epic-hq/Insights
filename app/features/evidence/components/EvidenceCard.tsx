@@ -178,36 +178,38 @@ function EvidenceCard({
 			)}
 
 			{/* Media anchor - only show the first valid one */}
-			{hasMediaReplay && mediaAnchors.length > 0 && (() => {
-				const firstAnchor = mediaAnchors[0]
-				const seconds = getAnchorSeconds(firstAnchor) ?? 0
-				const mediaUrl = resolveAnchorMediaUrl(firstAnchor, resolvedMediaUrl)
-				const displayTitle = firstAnchor.title ?? "Replay segment"
-				const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
-				
-				return (
-					<div className="mt-3 px-4">
-						<div className="rounded-md border p-2">
-							<div className="flex items-center gap-2 text-muted-foreground text-xs">
-								<Clock className="h-3.5 w-3.5" />
-								<span>{formatAnchorTime(seconds, null)}</span>
-							</div>
-							{variant === "expanded" ? (
-								isValidUrl ? (
-									<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
-								) : (
-									<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
-								)
-							) : (
+			{hasMediaReplay &&
+				mediaAnchors.length > 0 &&
+				(() => {
+					const firstAnchor = mediaAnchors[0]
+					const seconds = getAnchorSeconds(firstAnchor) ?? 0
+					const mediaUrl = resolveAnchorMediaUrl(firstAnchor, resolvedMediaUrl)
+					const displayTitle = firstAnchor.title ?? "Replay segment"
+					const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
+
+					return (
+						<div className="mt-3 px-4">
+							<div className="rounded-md border p-2">
 								<div className="flex items-center gap-2 text-muted-foreground text-xs">
-									<Play className="h-3 w-3" />
-									<span>{isValidUrl ? "Play clip" : "Unavailable"}</span>
+									<Clock className="h-3.5 w-3.5" />
+									<span>{formatAnchorTime(seconds, null)}</span>
 								</div>
-							)}
+								{variant === "expanded" ? (
+									isValidUrl ? (
+										<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
+									) : (
+										<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
+									)
+								) : (
+									<div className="flex items-center gap-2 text-muted-foreground text-xs">
+										<Play className="h-3 w-3" />
+										<span>{isValidUrl ? "Play clip" : "Unavailable"}</span>
+									</div>
+								)}
+							</div>
 						</div>
-					</div>
-				)
-			})()}
+					)
+				})()}
 
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">

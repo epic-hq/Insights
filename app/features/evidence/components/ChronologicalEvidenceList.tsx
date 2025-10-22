@@ -158,7 +158,10 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 	const timelineItems: TimelineItem[] = displayedTopics.map(({ topic, first, firstSeconds, count }) => {
 		const timeChip =
 			firstSeconds !== null ? (
-				<span className="ml-2 flex shrink-0 rounded bg-background/5 px-1.5 py-0.5 font-medium text-[#FF8A66] text-[10px] uppercase tracking-wide">
+				<span
+					key={first.id}
+					className="ml-2 flex shrink-0 rounded bg-background/5 px-1.5 py-0.5 font-medium text-[#FF8A66] text-[10px] uppercase tracking-wide"
+				>
 					{formatSeconds(firstSeconds)}
 				</span>
 			) : null
@@ -226,4 +229,3 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 		</Card>
 	)
 }
-

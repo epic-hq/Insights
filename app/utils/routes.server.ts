@@ -20,6 +20,6 @@ export function createProjectRoutes(accountId: string, projectId: string): Route
  * Legacy compatibility function - accepts full project path
  * @deprecated Use createProjectRoutes(accountId, projectId) instead
  */
-function createProjectRoutesFromPath(projectPath: string): RouteDefinitions {
+function _createProjectRoutesFromPath(projectPath: string): RouteDefinitions {
 	return createRouteDefinitions(projectPath)
 }

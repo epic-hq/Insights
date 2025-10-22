@@ -25,11 +25,9 @@ export type SupabaseClient = UntypedSupabaseClient<Database>
 
 export type Tables<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Row"]
 
-type TablesInsert<TName extends keyof Database["public"]["Tables"]> =
-	Database["public"]["Tables"][TName]["Insert"]
+type TablesInsert<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Insert"]
 
-type TablesUpdate<TName extends keyof Database["public"]["Tables"]> =
-	Database["public"]["Tables"][TName]["Update"]
+type TablesUpdate<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Update"]
 
 type Enums<EName extends keyof Database["public"]["Enums"]> = Database["public"]["Enums"][EName]
 

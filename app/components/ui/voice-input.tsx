@@ -71,7 +71,7 @@ export function VoiceInput({
 				}}
 				onClick={status === "transcribing" ? () => null : onClickHandler}
 			>
-				<div className="flex h-6 w-6 items-center justify-center ">
+				<div className="flex h-6 w-6 items-center justify-center">
 					{_listening ? (
 						<motion.div
 							className="h-4 w-4 rounded-sm bg-primary"

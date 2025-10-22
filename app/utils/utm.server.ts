@@ -23,7 +23,7 @@ function readUtmCookie(request: Request): UtmParams {
 	}
 }
 
-function serializeUtmCookie(params: UtmParams): string | null {
+function _serializeUtmCookie(params: UtmParams): string | null {
 	if (!hasUtmParams(params)) {
 		return null
 	}

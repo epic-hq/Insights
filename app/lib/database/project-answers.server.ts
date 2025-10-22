@@ -234,7 +234,7 @@ export async function refreshInterviewQuestions(
 	}
 }
 
-async function getInterviewQuestions(
+async function _getInterviewQuestions(
 	supabase: SupabaseClient<Database>,
 	params: { projectId: string; interviewId: string }
 ) {
