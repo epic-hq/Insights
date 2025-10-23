@@ -145,9 +145,11 @@ export const getInterviewById = async ({
 
 export const getInterviewParticipants = async ({
 	supabase,
+	projectId,
 	interviewId,
 }: {
 	supabase: SupabaseClient<Database>
+	projectId: string
 	interviewId: string
 }) => {
 	// Fetch participant data separately to avoid junction table query issues
@@ -159,6 +161,7 @@ export const getInterviewParticipants = async ({
 			transcript_key,
 			display_name,
 			people(
+				project_id,
 				id,
 				name,
 				segment,
@@ -174,6 +177,7 @@ export const getInterviewParticipants = async ({
 				)
 			)
 		`)
+		.eq("project_id", projectId)
 		.eq("interview_id", interviewId)
 }
 

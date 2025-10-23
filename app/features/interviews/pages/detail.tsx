@@ -115,6 +115,22 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					return Response.json({ ok: true, removed: true })
 				}
 
+				// Guard: ensure selected person belongs to this project
+				const { data: personRow, error: personErr } = await supabase
+					.from("people")
+					.select("id, project_id")
+					.eq("id", personId)
+					.single()
+				if (personErr || !personRow) {
+					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
+				}
+				if (personRow.project_id !== projectId) {
+					return Response.json(
+						{ ok: false, error: "Selected person belongs to a different project" },
+						{ status: 400 }
+					)
+				}
+
 				const { error } = await supabase
 					.from("interview_people")
 					.update({ person_id: personId, role, transcript_key: transcriptKey, display_name: displayName })
@@ -140,6 +156,23 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				const role = formData.get("role")?.toString().trim() || null
 				const transcriptKey = formData.get("transcriptKey")?.toString().trim() || null
 				const displayName = formData.get("displayName")?.toString().trim() || null
+
+				// Guard: ensure selected person belongs to this project
+				const { data: personRow, error: personErr } = await supabase
+					.from("people")
+					.select("id, project_id")
+					.eq("id", personId)
+					.single()
+				if (personErr || !personRow) {
+					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
+				}
+				if (personRow.project_id !== projectId) {
+					return Response.json(
+						{ ok: false, error: "Selected person belongs to a different project" },
+						{ status: 400 }
+					)
+				}
+
 				const { error } = await supabase.from("interview_people").insert({
 					interview_id: interviewId,
 					project_id: projectId,
@@ -212,24 +245,62 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			role: string | null
 			transcript_key: string | null
 			display_name: string | null
-			people?: { id?: string; name?: string | null; segment?: string | null }
+			cross_project?: boolean
+			people?: {
+				id?: string
+				name?: string | null
+				segment?: string | null
+				project_id?: string | null
+				people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+			} 
 		}> = []
-		let primaryParticipant: { id?: string; name?: string | null; segment?: string | null } | null = null
+		let primaryParticipant: { id?: string; name?: string | null; segment?: string | null; project_id?: string | null } | null = null
 
 		try {
 			const { data: participantData } = await getInterviewParticipants({
 				supabase,
+				projectId,
 				interviewId: interviewId,
 			})
 
-			participants = (participantData || []).map((row) => ({
-				id: row.id,
-				role: row.role ?? null,
-				transcript_key: row.transcript_key ?? null,
-				display_name: row.display_name ?? null,
-				people: row.people,
-			}))
-			primaryParticipant = participants[0]?.people || null
+			participants = (participantData || []).map((row) => {
+				const person = row.people as
+					| {
+						id: string
+						name: string | null
+						segment: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
+					| undefined
+				const valid = !!person && person.project_id === projectId
+				const minimal = person
+					? {
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+									personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							  }))
+							: undefined,
+					}
+					: undefined
+				return {
+					id: row.id,
+					role: row.role ?? null,
+					transcript_key: row.transcript_key ?? null,
+					display_name: row.display_name ?? null,
+					people: valid ? minimal : undefined,
+					cross_project: !!person && !valid,
+				}
+			})
+			{
+				const found = participants.find((p) => p.people)?.people
+				primaryParticipant = found ?? null
+			}
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error)
 			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
@@ -1166,8 +1237,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										const personId = participant.people?.id
 										const personName = participant.people?.name || participant.display_name || "Unassigned"
 										const primaryPersona = participant.people?.people_personas?.[0]?.personas
+										const isCrossProject = participant.cross_project === true
 
-										if (personId) {
+										if (personId && !isCrossProject) {
 											const evidenceQuery = new URLSearchParams({ person_id: personId })
 											if (personName) evidenceQuery.set("person_name", personName)
 
@@ -1202,6 +1274,23 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 															)}
 														</div>
 													</div>
+												</div>
+											)
+										}
+
+										if (personId && isCrossProject) {
+											return (
+												<div
+													key={participant.id}
+													className="flex items-center justify-between rounded-md border border-dashed bg-amber-50 p-3"
+												>
+													<div className="flex items-center gap-3">
+														<div>
+															<div className="font-medium text-foreground text-sm">{personName}</div>
+															<div className="text-muted-foreground text-xs">Linked to another project — use Edit to relink</div>
+														</div>
+													</div>
+													<Badge variant="outline" className="text-xs">Different project</Badge>
 												</div>
 											)
 										}

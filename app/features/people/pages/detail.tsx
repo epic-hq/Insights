@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useState } from "react"
+import consola from "consola"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
@@ -32,7 +33,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 	const personId = params.personId
 
+	consola.info("PersonDetail loader start", { accountId, projectId, personId, params })
+
 	if (!accountId || !projectId || !personId) {
+		consola.error("PersonDetail loader missing params", { accountId, projectId, personId })
 		throw new Response("Account ID, Project ID, and Person ID are required", { status: 400 })
 	}
 
@@ -49,13 +53,18 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		])
 
 		if (!person) {
+			consola.warn("PersonDetail loader: person not found", { accountId, projectId, personId })
 			throw new Response("Person not found", { status: 404 })
 		}
 		if (organizations.error) {
+			consola.error("PersonDetail loader: organizations fetch error", { error: organizations.error })
 			throw new Response("Failed to load organizations", { status: 500 })
 		}
+		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0 })
 		return { person, catalog, organizations: organizations.data ?? [] }
-	} catch {
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		consola.error("PersonDetail loader error", { accountId, projectId, personId, message, error })
 		throw new Response("Failed to load person", { status: 500 })
 	}
 }

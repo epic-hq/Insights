@@ -2,7 +2,7 @@ import { Building2, Globe, LinkIcon, Mail, MapPin, Phone, UserMinus, Users } fro
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
-import PageContainer from "~/components/layout/PageContainer"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"

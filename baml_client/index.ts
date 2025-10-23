@@ -35,7 +35,7 @@ $ pnpm add @boundaryml/baml
  **/
 import { ThrowIfVersionMismatch } from "@boundaryml/baml";
 
-const version = "0.207.1";
+export const version = "0.207.1";
 
 ThrowIfVersionMismatch(version);
 
@@ -44,5 +44,7 @@ ThrowIfVersionMismatch(version);
 export { b } from "./async_client"
 
 export * from "./types"
+export type { partial_types } from "./partial_types"
 export * from "./tracing"
-
+export { resetBamlEnvVars } from "./globals"
+export { BamlClientHttpError, BamlValidationError, BamlClientFinishReasonError } from "@boundaryml/baml"
