@@ -6,7 +6,14 @@ import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTransc
 export async function action({ request, context, params }: ActionFunctionArgs) {
 	try {
 		const ctx = context.get(userContext)
-		const supabase = ctx.supabase
+		const supabase = ctx?.supabase
+		if (!supabase) {
+			return new Response(JSON.stringify({ error: "Authentication required" }), {
+				status: 401,
+				headers: { "Content-Type": "application/json" },
+			})
+		}
+
 		const { projectId } = params
 		if (!projectId) {
 			return new Response(JSON.stringify({ error: "Missing projectId in URL" }), {
@@ -23,8 +30,9 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			})
 		}
 
-		// Create transcript data object matching expected format
-		const formattedTranscriptData = safeSanitizeTranscriptPayload({
+		// Use incoming transcriptFormatted if provided, otherwise create basic format
+		const incomingSanitized = transcriptFormatted ? safeSanitizeTranscriptPayload(transcriptFormatted) : null
+		const formattedTranscriptData = incomingSanitized || safeSanitizeTranscriptPayload({
 			full_transcript: transcript || "",
 			confidence: 0.8, // Default confidence for realtime
 			audio_duration: audioDuration || null,
@@ -34,9 +42,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			speaker_transcripts: [],
 			topic_detection: {},
 		})
-		const incomingSanitized = transcriptFormatted ? safeSanitizeTranscriptPayload(transcriptFormatted) : null
 
-		const update: Record<string, any> = {
+		const update: Record<string, unknown> = {
 			status: "transcribed",
 			updated_at: new Date().toISOString(),
 		}
@@ -59,7 +66,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 			})
 		}
 
-		// Create analysis job and process immediately (same as upload flow)
+		// Create analysis job and trigger processing via trigger.dev (same as upload flow)
 		if (transcript?.trim()) {
 			try {
 				const { createSupabaseAdminClient } = await import("~/lib/supabase/client.server")
@@ -67,16 +74,16 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 				const adminClient = createSupabaseAdminClient()
 
-				await createAndProcessAnalysisJob({
+				const runInfo = await createAndProcessAnalysisJob({
 					interviewId,
-					transcriptData: incomingSanitized ?? formattedTranscriptData,
+					transcriptData: (incomingSanitized ?? formattedTranscriptData) as unknown as Record<string, unknown>,
 					customInstructions: "",
 					adminClient,
 					mediaUrl,
 					initiatingUserId: ctx?.claims?.sub ?? null,
 				})
 
-				consola.log("Successfully processed analysis for realtime interview:", interviewId)
+				consola.log("Successfully started analysis for realtime interview:", interviewId, "runId:", runInfo.runId)
 			} catch (analysisError) {
 				consola.error("Analysis processing failed for realtime interview:", analysisError)
 				// Continue - don't fail the finalize for analysis errors

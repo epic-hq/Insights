@@ -466,13 +466,11 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceTurn {
-  index: number
-  person_key: string
+  speaker_label?: string | null
   gist: string
   chunk: string
   verbatim: string
   anchors: TurnAnchors
-  confidence: string
   why_it_matters?: string | null
   facet_mentions: FacetMention[]
   says?: string[] | null
@@ -593,13 +591,9 @@ export interface FacetCatalogKind {
 }
 
 export interface FacetMention {
-  index: number
-  parent_index: number
-  person_key: string
   kind_slug: string
   value: string
   quote?: string | null
-  confidence?: number | null
   
 }
 
@@ -750,8 +744,8 @@ export interface OpportunityRecommendation {
 }
 
 export interface Person {
-  person_key: string
-  display_name?: string | null
+  speaker_label?: string | null
+  person_name?: string | null
   inferred_name?: string | null
   role?: string | null
   
@@ -1140,7 +1134,6 @@ export interface ThemeCandidate {
 export interface TurnAnchors {
   start_ms?: number | null
   end_ms?: number | null
-  speaker_label?: string | null
   chapter_title?: string | null
   char_span?: number[] | null
   

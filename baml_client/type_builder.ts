@@ -65,7 +65,7 @@ export default class TypeBuilder {
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
-    EvidenceTurn: ClassViewer<'EvidenceTurn', "index" | "person_key" | "gist" | "chunk" | "verbatim" | "anchors" | "confidence" | "why_it_matters" | "facet_mentions" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
+    EvidenceTurn: ClassViewer<'EvidenceTurn', "speaker_label" | "gist" | "chunk" | "verbatim" | "anchors" | "why_it_matters" | "facet_mentions" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
     EvidenceUnit: ClassViewer<'EvidenceUnit', "person_key" | "person_role" | "topic" | "gist" | "chunk" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
@@ -85,7 +85,7 @@ export default class TypeBuilder {
     
     FacetCatalogKind: ClassViewer<'FacetCatalogKind', "slug" | "label">;
     
-    FacetMention: ClassViewer<'FacetMention', "index" | "parent_index" | "person_key" | "kind_slug" | "value" | "quote" | "confidence">;
+    FacetMention: ClassViewer<'FacetMention', "kind_slug" | "value" | "quote">;
     
     FollowUpQuestion: ClassViewer<'FollowUpQuestion', "id" | "text" | "rationale" | "estimatedMinutes" | "categoryId" | "scores">;
     
@@ -119,7 +119,7 @@ export default class TypeBuilder {
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
     
-    Person: ClassViewer<'Person', "person_key" | "display_name" | "inferred_name" | "role">;
+    Person: ClassViewer<'Person', "speaker_label" | "person_name" | "inferred_name" | "role">;
     
     PersonFacetObservation: ClassViewer<'PersonFacetObservation', "facet_ref" | "candidate" | "kind_slug" | "value" | "source" | "evidence_unit_index" | "confidence" | "notes">;
     
@@ -193,7 +193,7 @@ export default class TypeBuilder {
     
     ThemeCandidate: ClassViewer<'ThemeCandidate', "name" | "statement" | "inclusion_criteria" | "exclusion_criteria" | "synonyms" | "anti_examples" | "links">;
     
-    TurnAnchors: ClassViewer<'TurnAnchors', "start_ms" | "end_ms" | "speaker_label" | "chapter_title" | "char_span">;
+    TurnAnchors: ClassViewer<'TurnAnchors', "start_ms" | "end_ms" | "chapter_title" | "char_span">;
     
     
     BBValues: EnumViewer<'BBValues', "Accountability" | "Achievement" | "Adaptability" | "Adventure" | "Altruism" | "Ambition" | "Authenticity" | "Balance" | "Beauty" | "Being_the_best" | "Belonging" | "Career" | "Caring" | "Collaboration" | "Commitment" | "Community" | "Compassion" | "Competence" | "Confidence" | "Connection" | "Contentment" | "Contribution" | "Cooperation" | "Courage" | "Creativity" | "Curiosity" | "Dignity" | "Diversity" | "Environment" | "Efficiency" | "Equality" | "Ethics" | "Excellence" | "Fairness" | "Faith" | "Family" | "Financial_stability" | "Forgiveness" | "Freedom" | "Friendship" | "Fun" | "Future_generations" | "Generosity" | "Giving_back" | "Grace" | "Gratitude" | "Growth" | "Harmony" | "Health" | "Home" | "Honesty" | "Hope" | "Humility" | "Humor" | "Inclusion" | "Independence" | "Initiative" | "Integrity" | "Intuition" | "Job_security" | "Joy" | "Justice" | "Kindness" | "Knowledge" | "Leadership" | "Learning" | "Legacy" | "Leisure" | "Love" | "Loyalty" | "Making_a_difference" | "Nature" | "Openness" | "Optimism" | "Order" | "Parenting" | "Patience" | "Patriotism" | "Peace" | "Perseverance" | "Personal_fulfillment" | "Power" | "Pride" | "Recognition" | "Reliability" | "Resourcefulness" | "Respect" | "Responsibility" | "Risk_taking" | "Safety" | "Security" | "Self_discipline" | "Self_expression" | "Self_respect" | "Serenity" | "Service" | "Simplicity" | "Spirituality" | "Sportsmanship" | "Stewardship" | "Success" | "Teamwork" | "Thrift" | "Time" | "Tradition" | "Travel" | "Trust" | "Truth" | "Understanding" | "Uniqueness" | "Usefulness" | "Vision" | "Vulnerability" | "Wealth" | "Well_being" | "Wholeheartedness" | "Wisdom">;
@@ -289,7 +289,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceTurn = this.tb.classViewer("EvidenceTurn", [
-          "index","person_key","gist","chunk","verbatim","anchors","confidence","why_it_matters","facet_mentions","says","does","thinks","feels","pains","gains",
+          "speaker_label","gist","chunk","verbatim","anchors","why_it_matters","facet_mentions","says","does","thinks","feels","pains","gains",
         ]);
         
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
@@ -329,7 +329,7 @@ export default class TypeBuilder {
         ]);
         
         this.FacetMention = this.tb.classViewer("FacetMention", [
-          "index","parent_index","person_key","kind_slug","value","quote","confidence",
+          "kind_slug","value","quote",
         ]);
         
         this.FollowUpQuestion = this.tb.classViewer("FollowUpQuestion", [
@@ -397,7 +397,7 @@ export default class TypeBuilder {
         ]);
         
         this.Person = this.tb.classViewer("Person", [
-          "person_key","display_name","inferred_name","role",
+          "speaker_label","person_name","inferred_name","role",
         ]);
         
         this.PersonFacetObservation = this.tb.classViewer("PersonFacetObservation", [
@@ -545,7 +545,7 @@ export default class TypeBuilder {
         ]);
         
         this.TurnAnchors = this.tb.classViewer("TurnAnchors", [
-          "start_ms","end_ms","speaker_label","chapter_title","char_span",
+          "start_ms","end_ms","chapter_title","char_span",
         ]);
         
         

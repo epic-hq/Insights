@@ -5,19 +5,17 @@
 class TurnAnchors {
   start_ms int? @description("Start time in ms when available")
   end_ms int? @description("End time in ms when available")
-  speaker_label string? @description("Transcript speaker label or name")
   chapter_title string? @description("Optional chapter/section title")
   char_span int[]? @description("Optional [start,end] character offsets in transcript")
 }
 
 class EvidenceTurn {
-  index int @description("0-based chronological index in the stream")
-  person_key string @description("Reference to who spoke/acted")
+  speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
   gist string @description("≤12-word essence of the turn; slide-like headline")
   chunk string @description("2–5 sentences capturing the person's full thought")
   verbatim string @description("≤15-word exact quote/snippet from the chunk")
   anchors TurnAnchors @description("Anchors to source for auditability")
-  confidence string @description("low | medium | high")
+  // confidence string @description("low | medium | high")
   why_it_matters string? @description("≤10 words on consequence/importance (e.g., trigger/impact; note if generalizable)")
 	facet_mentions FacetMention[] @description("Facet mentions that appear in this turn")
 
@@ -31,13 +29,12 @@ class EvidenceTurn {
 }
 
 class FacetMention {
-  index int @description("0-based index within the stream for ordering")
-  parent_index int @description("Index of the EvidenceTurn this mention derives from")
-  person_key string @description("Participant key for whom the mention applies")
-  kind_slug string @description("One: goal | pain | behavior | tool | value | workflow | preference | demographic | context | artifact | emotion")
+  // index int @description("0-based index within the stream for ordering")
+  // parent_index int @description("Index of the EvidenceTurn this mention derives from")
+  kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion")
   value string @description("Concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful. For preference/value, compress subject+rationale (job-story style): e.g., 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'.")
   quote string? @description("Optional ≤15-word supporting quote from the parent turn")
-  confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
+  // confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
 }
 
 class Scene {
@@ -49,8 +46,8 @@ class Scene {
 }
 
 class Person {
-	person_key string @description("Stable slug used everywhere else in the payload (e.g., participant-1, interviewer-1). Must be unique per human speaker in the transcript.")
-	display_name string? @description("Literal transcript speaker label, e.g., 'SPEAKER 2' or the provided diarization name")
+  speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
+	person_name string? @description("The person's common name, like John Smith, Sally A., etc.")
 	inferred_name string? @description("Preferred name if confidently inferred from context")
 	role string? @description("their role in the coversation (participant | interviewer | observer | moderator | customer | Sales Rep")
 }
@@ -69,7 +66,7 @@ function ExtractEvidenceFromTranscriptV2(
   language: string,
   facet_catalog: FacetCatalog
 ) -> Extraction {
-  client "CustomGPT4oMini"
+  client "CustomGPT5"
   prompt #"
 You are an expert UX researcher.
 Your task is to produce an exhaustive, chronological Event Stream from an interview transcript so the reader can follow what happened moment by moment, with explicit mention-level signals. Do not summarize; capture every distinct signal as a separate mention. Do not perform catalog linking in this pass.

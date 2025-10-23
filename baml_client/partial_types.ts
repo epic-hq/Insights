@@ -168,13 +168,11 @@ export namespace partial_types {
       quotes: string[]
     }
     export interface EvidenceTurn {
-      index?: number | null
-      person_key?: string | null
+      speaker_label?: string | null
       gist?: string | null
       chunk?: string | null
       verbatim?: string | null
       anchors?: TurnAnchors | null
-      confidence?: string | null
       why_it_matters?: string | null
       facet_mentions: FacetMention[]
       says?: string[] | null
@@ -275,13 +273,9 @@ export namespace partial_types {
       label?: string | null
     }
     export interface FacetMention {
-      index?: number | null
-      parent_index?: number | null
-      person_key?: string | null
       kind_slug?: string | null
       value?: string | null
       quote?: string | null
-      confidence?: number | null
     }
     export interface FollowUpQuestion {
       id?: string | null
@@ -398,8 +392,8 @@ export namespace partial_types {
       recommended_actions: ActionButton[]
     }
     export interface Person {
-      person_key?: string | null
-      display_name?: string | null
+      speaker_label?: string | null
+      person_name?: string | null
       inferred_name?: string | null
       role?: string | null
     }
@@ -714,7 +708,6 @@ export namespace partial_types {
     export interface TurnAnchors {
       start_ms?: number | null
       end_ms?: number | null
-      speaker_label?: string | null
       chapter_title?: string | null
       char_span?: number[] | null
     }

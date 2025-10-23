@@ -125,10 +125,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
 				}
 				if (personRow.project_id !== projectId) {
-					return Response.json(
-						{ ok: false, error: "Selected person belongs to a different project" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
 				}
 
 				const { error } = await supabase
@@ -167,10 +164,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
 				}
 				if (personRow.project_id !== projectId) {
-					return Response.json(
-						{ ok: false, error: "Selected person belongs to a different project" },
-						{ status: 400 }
-					)
+					return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
 				}
 
 				const { error } = await supabase.from("interview_people").insert({
@@ -252,9 +246,14 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				segment?: string | null
 				project_id?: string | null
 				people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-			} 
+			}
 		}> = []
-		let primaryParticipant: { id?: string; name?: string | null; segment?: string | null; project_id?: string | null } | null = null
+		let primaryParticipant: {
+			id?: string
+			name?: string | null
+			segment?: string | null
+			project_id?: string | null
+		} | null = null
 
 		try {
 			const { data: participantData } = await getInterviewParticipants({
@@ -283,8 +282,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 						project_id: person.project_id,
 						people_personas: Array.isArray(person.people_personas)
 							? person.people_personas.map((pp) => ({
-									personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							  }))
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
 							: undefined,
 					}
 					: undefined
@@ -725,11 +724,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const primaryParticipant = participants[0]?.people
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
-	const isProcessing = useMemo(
-		() => (analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false),
-		[analysisState]
-	)
-	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
@@ -737,6 +731,22 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		accessToken: triggerAccessToken,
 	})
 	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
+
+	// Comprehensive processing check: interview not ready OR analysis job active OR progress indicates incomplete
+	const isProcessing = useMemo(() => {
+		// Check interview status - anything before "ready" means still processing
+		const interviewNotReady = interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
+		
+		// Check analysis job status if it exists
+		const analysisJobActive = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
+		
+		// Check progress info from Trigger.dev hook
+		const progressIncomplete = !progressInfo.isComplete && !progressInfo.hasError
+		
+		return interviewNotReady || analysisJobActive || progressIncomplete
+	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
+	
+	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
 	function formatReadable(dateString: string) {
 		const d = new Date(dateString)
@@ -764,7 +774,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</div>
 			)}
 
-			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8 ">
+			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
 					{isProcessing && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
@@ -880,7 +890,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								value={normalizeMultilineText(interview.high_impact_themes)}
 								multiline
 								markdown
-								placeholder="What are the most important insights from this interview?"
+								// placeholder="What are the most important insights from this interview?"
 								onSubmit={(value) => {
 									try {
 										fetcher.submit(
@@ -908,7 +918,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								value={normalizeMultilineText(interview.observations_and_notes)}
 								multiline
 								markdown
-								placeholder="Your observations and analysis notes"
+								// placeholder="Your observations and analysis notes"
 								onSubmit={(value) => {
 									try {
 										fetcher.submit(
@@ -933,16 +943,32 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{/* Empathy Map Section */}
 					<div className="space-y-4">
 						<h3 className="font-semibold text-foreground text-lg">Empathy Map</h3>
-						<EmpathyMapTabs
-							empathyMap={empathyMap}
-							activeTab={activeTab}
-							setActiveTab={setActiveTab}
-							createEvidenceLink={createEvidenceLink}
-						/>
+						{isProcessing && evidence.length === 0 ? (
+							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+								<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
+								<p className="mt-1 text-muted-foreground text-xs">Empathy map will appear once evidence is extracted</p>
+							</div>
+						) : (
+							<EmpathyMapTabs
+								empathyMap={empathyMap}
+								activeTab={activeTab}
+								setActiveTab={setActiveTab}
+								createEvidenceLink={createEvidenceLink}
+							/>
+						)}
 					</div>
 
 					{/* Evidence Timeline Section */}
-					{evidence.length > 0 ? <PlayByPlayTimeline evidence={evidence} className="mb-6" /> : <p>No evidence found</p>}
+					{isProcessing && evidence.length === 0 ? (
+						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+							<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
+							<p className="mt-1 text-muted-foreground text-xs">Evidence timeline will appear once extraction is complete</p>
+						</div>
+					) : evidence.length > 0 ? (
+						<PlayByPlayTimeline evidence={evidence} className="mb-6" />
+					) : (
+						<p className="text-muted-foreground">No evidence found</p>
+					)}
 
 					{/* Transcript Section - Collapsed by default */}
 					<h3 className="font-semibold text-foreground text-lg">Raw Recording Details</h3>
@@ -1018,7 +1044,12 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						)} */}
 
 						{/* Simplified Insights Summary */}
-						{insights.length > 0 && (
+						{isProcessing && insights.length === 0 ? (
+							<div className="rounded-lg border border-dashed bg-muted/30 p-4">
+								<h3 className="mb-2 font-semibold text-foreground">Insights</h3>
+								<p className="text-center text-muted-foreground text-xs">{progressInfo.label}</p>
+							</div>
+						) : insights.length > 0 ? (
 							<div className="rounded-lg border bg-background p-4">
 								<div className="mb-3 flex items-center justify-between">
 									<h3 className="font-semibold text-foreground">Insights</h3>
@@ -1048,7 +1079,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									)}
 								</div>
 							</div>
-						)}
+						) : null}
 
 						{/* Participants Summary - Clean Display */}
 						<div className="rounded-lg border bg-background p-4">
@@ -1287,10 +1318,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 													<div className="flex items-center gap-3">
 														<div>
 															<div className="font-medium text-foreground text-sm">{personName}</div>
-															<div className="text-muted-foreground text-xs">Linked to another project — use Edit to relink</div>
+															<div className="text-muted-foreground text-xs">
+																Linked to another project — use Edit to relink
+															</div>
 														</div>
 													</div>
-													<Badge variant="outline" className="text-xs">Different project</Badge>
+													<Badge variant="outline" className="text-xs">
+														Different project
+													</Badge>
 												</div>
 											)
 										}
