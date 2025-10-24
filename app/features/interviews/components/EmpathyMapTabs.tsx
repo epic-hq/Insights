@@ -106,14 +106,12 @@ export function EmpathyMapTabs({ empathyMap, activeTab, setActiveTab, createEvid
 					<div className="grid gap-6 md:grid-cols-2">
 						<EmpathySection
 							title="Pain Points"
-							emoji="😣"
 							items={empathyMap.pains}
 							createEvidenceLink={createEvidenceLink}
 							emptyMessage="No pain points identified"
 						/>
 						<EmpathySection
 							title="Goals"
-							emoji="🎯"
 							items={empathyMap.gains}
 							createEvidenceLink={createEvidenceLink}
 							emptyMessage="No gains identified"

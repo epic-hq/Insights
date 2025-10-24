@@ -546,7 +546,7 @@ export async function extractEvidenceAndPeopleCore({
 				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
 			})
 		}
-		; (lfTrace as any)?.end?.()
+		;(lfTrace as any)?.end?.()
 	}
 
 	if (!evidenceResponse) {
@@ -646,45 +646,45 @@ export async function extractEvidenceAndPeopleCore({
 		const summary = coerceString((raw as EvidenceParticipant).summary)
 		const segments = Array.isArray((raw as EvidenceParticipant).segments)
 			? ((raw as EvidenceParticipant).segments as unknown[])
-				.map((segment) => coerceString(segment))
-				.filter((segment): segment is string => Boolean(segment))
+					.map((segment) => coerceString(segment))
+					.filter((segment): segment is string => Boolean(segment))
 			: []
 		const personas = Array.isArray((raw as EvidenceParticipant).personas)
 			? ((raw as EvidenceParticipant).personas as unknown[])
-				.map((persona) => coerceString(persona))
-				.filter((persona): persona is string => Boolean(persona))
+					.map((persona) => coerceString(persona))
+					.filter((persona): persona is string => Boolean(persona))
 			: []
 		const facets = Array.isArray((raw as EvidenceParticipant).facets)
 			? ((raw as EvidenceParticipant).facets as unknown[])
-				.map((facet) => {
-					if (!facet || typeof facet !== "object") return null
-					const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
-					const value = coerceString((facet as PersonFacetObservation).value)
-					if (!kind_slug || !value) return null
-					return {
-						...facet,
-						kind_slug,
-						value,
-						source: (facet as PersonFacetObservation).source || "interview",
-					} as PersonFacetObservation
-				})
-				.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+					.map((facet) => {
+						if (!facet || typeof facet !== "object") return null
+						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+						const value = coerceString((facet as PersonFacetObservation).value)
+						if (!kind_slug || !value) return null
+						return {
+							...facet,
+							kind_slug,
+							value,
+							source: (facet as PersonFacetObservation).source || "interview",
+						} as PersonFacetObservation
+					})
+					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
 			: []
 		const scales = Array.isArray((raw as EvidenceParticipant).scales)
 			? ((raw as EvidenceParticipant).scales as unknown[])
-				.map((scale) => {
-					if (!scale || typeof scale !== "object") return null
-					const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
-					const score = (scale as PersonScaleObservation).score
-					if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
-					return {
-						...scale,
-						kind_slug,
-						score,
-						source: (scale as PersonScaleObservation).source || "interview",
-					} as PersonScaleObservation
-				})
-				.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+					.map((scale) => {
+						if (!scale || typeof scale !== "object") return null
+						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+						const score = (scale as PersonScaleObservation).score
+						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+						return {
+							...scale,
+							kind_slug,
+							score,
+							source: (scale as PersonScaleObservation).source || "interview",
+						} as PersonScaleObservation
+					})
+					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
 			: []
 
 		const normalized: NormalizedParticipant = {
@@ -832,12 +832,12 @@ export async function extractEvidenceAndPeopleCore({
 		const snippetForTiming = chunk || gist || verb
 		const anchorSeconds = snippetForTiming?.length
 			? findStartSecondsForSnippet({
-				snippet: snippetForTiming,
-				wordTimeline,
-				segmentTimeline,
-				fullTranscript,
-				durationSeconds,
-			})
+					snippet: snippetForTiming,
+					wordTimeline,
+					segmentTimeline,
+					fullTranscript,
+					durationSeconds,
+				})
 			: null
 		const sanitizedAnchors = rawAnchors
 			.map((anchor) => {
@@ -905,12 +905,12 @@ export async function extractEvidenceAndPeopleCore({
 		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
 		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
 		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
-			; (row as Record<string, unknown>).says = _says
-			; (row as Record<string, unknown>).does = _does
-			; (row as Record<string, unknown>).thinks = _thinks
-			; (row as Record<string, unknown>).feels = _feels
-			; (row as Record<string, unknown>).pains = _pains
-			; (row as Record<string, unknown>).gains = _gains
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -933,7 +933,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
 		if (whyItMatters) {
-			; (row as Record<string, unknown>).context_summary = whyItMatters
+			;(row as Record<string, unknown>).context_summary = whyItMatters
 		}
 
 		// Skip raw mention processing - we'll use Phase 2 persona facets instead
@@ -1106,15 +1106,15 @@ export async function extractEvidenceAndPeopleCore({
 			const needsHash = shouldAttachHash(resolved, participant)
 			const personNameForDb = needsHash
 				? appendHashToName(
-					resolved.name,
-					generateParticipantHash({
-						accountId: metadata.accountId,
-						projectId: metadata.projectId,
-						interviewId: interviewRecord.id,
-						personKey: participantKey,
-						index,
-					})
-				)
+						resolved.name,
+						generateParticipantHash({
+							accountId: metadata.accountId,
+							projectId: metadata.projectId,
+							interviewId: interviewRecord.id,
+							personKey: participantKey,
+							index,
+						})
+					)
 				: resolved.name
 			const personRecord = await upsertPerson(personNameForDb, participantOverrides)
 			personIdByKey.set(participantKey, personRecord.id)
