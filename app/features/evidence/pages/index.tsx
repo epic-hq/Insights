@@ -22,7 +22,7 @@ type EvidenceListPerson = {
 type EvidenceFacetSummary = {
 	kind_slug: string
 	label: string
-	facet_ref: string | null
+	facet_account_id: number
 }
 
 type EvidenceListItem = (Pick<
@@ -195,7 +195,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 		const { data: facetRows, error: facetErr } = await supabase
 			.from("evidence_facet")
-			.select("evidence_id, kind_slug, label, facet_ref")
+			.select("evidence_id, kind_slug, label, facet_account_id")
 			.eq("project_id", projectId)
 			.in("evidence_id", evidenceIds)
 		if (facetErr) throw new Error(`Failed to load evidence facets: ${facetErr.message}`)
@@ -204,14 +204,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			evidence_id: string
 			kind_slug: string | null
 			label: string | null
-			facet_ref: string | null
+			facet_account_id: number | null
 		}>) {
 			if (!row.evidence_id || !row.kind_slug || !row.label) continue
+			if (!row.facet_account_id) continue
 			const list = facetsByEvidence.get(row.evidence_id) ?? []
 			list.push({
 				kind_slug: row.kind_slug,
 				label: row.label,
-				facet_ref: row.facet_ref ?? null,
+				facet_account_id: row.facet_account_id,
 			})
 			facetsByEvidence.set(row.evidence_id, list)
 		}

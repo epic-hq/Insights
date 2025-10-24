@@ -24,11 +24,17 @@ export const getPeople = async ({
 				assigned_at
 			),
 			person_facet (
-				facet_ref,
+				facet_account_id,
 				source,
 				confidence,
 				noted_at,
-				candidate_id
+				facet:facet_account!inner(
+					id,
+					label,
+					kind_id,
+					synonyms,
+					is_active
+				)
 			),
                         person_scale (
                                 kind_slug,
@@ -97,11 +103,17 @@ export const getPersonById = async ({
 				project_id
 			),
 			person_facet (
-				facet_ref,
+				facet_account_id,
 				source,
 				confidence,
 				noted_at,
-				candidate_id
+				facet:facet_account!inner(
+					id,
+					label,
+					kind_id,
+					synonyms,
+					is_active
+				)
 			),
                         person_scale (
                                 kind_slug,
@@ -255,7 +267,7 @@ const _getPeopleWithValidation = async ({
 			company,
 			contact_info,
 			person_facet (
-				facet_ref,
+				facet_account_id,
 				source,
 				confidence
 			),

@@ -129,23 +129,21 @@ create table if not exists evidence_facet (
   account_id uuid not null,
   project_id uuid references projects(id) on delete cascade,
   kind_slug text not null,
-  facet_ref text,
+  facet_account_id integer not null references facet_account(id) on delete cascade,
   label text not null,
   source text not null default 'interview' check (source in ('interview','survey','telemetry','inferred','manual','document')),
   quote text,
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   notes text,
   created_at timestamptz not null default now(),
-  created_by uuid references auth.users(id),
-  constraint evidence_facet_ref_pattern check (
-    facet_ref is null or facet_ref ~ '^(g|a|p):[0-9a-zA-Z-]+$'
-  )
+  created_by uuid references auth.users(id)
 );
 
 create index if not exists idx_evidence_facet_evidence_id on evidence_facet(evidence_id);
 create index if not exists idx_evidence_facet_account_id  on evidence_facet(account_id);
 create index if not exists idx_evidence_facet_project_id  on evidence_facet(project_id);
 create index if not exists idx_evidence_facet_kind_slug   on evidence_facet(kind_slug);
+create index if not exists idx_evidence_facet_facet_account_id on evidence_facet(facet_account_id);
 
 create trigger set_evidence_facet_timestamp
     before insert or update on public.evidence_facet

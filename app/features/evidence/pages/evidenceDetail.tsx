@@ -78,7 +78,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const { data: facetData, error: facetError } = await supabase
 		.from("evidence_facet")
-		.select("kind_slug, label, facet_ref")
+		.select("kind_slug, label, facet_account_id")
 		.eq("evidence_id", evidenceId)
 
 	if (facetError) throw new Error(`Failed to load evidence facets: ${facetError.message}`)
@@ -86,7 +86,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const primaryFacets = (facetData ?? []).map((row) => ({
 		kind_slug: row.kind_slug,
 		label: row.label,
-		facet_ref: row.facet_ref ?? null,
+		facet_account_id: row.facet_account_id ?? 0,
 	}))
 
 	const data = {
@@ -133,20 +133,20 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			if (relatedIds.length > 0) {
 				const { data: relatedFacets, error: relatedFacetError } = await supabase
 					.from("evidence_facet")
-					.select("evidence_id, kind_slug, label, facet_ref")
+					.select("evidence_id, kind_slug, label, facet_account_id")
 					.in("evidence_id", relatedIds)
 				if (relatedFacetError) throw new Error(`Failed to load related evidence facets: ${relatedFacetError.message}`)
 
-				const facetMap = new Map<string, Array<{ kind_slug: string; label: string; facet_ref: string | null }>>()
+				const facetMap = new Map<string, Array<{ kind_slug: string; label: string; facet_account_id: number }>>()
 				for (const row of relatedFacets ?? []) {
 					if (!row || typeof row !== "object") continue
 					const evidence_id = (row as any).evidence_id as string | undefined
 					const kind_slug = (row as any).kind_slug as string | undefined
 					const label = (row as any).label as string | undefined
-					const facet_ref = (row as any).facet_ref as string | null | undefined
-					if (!evidence_id || !kind_slug || !label) continue
+					const facetAccountId = (row as any).facet_account_id as number | null | undefined
+					if (!evidence_id || !kind_slug || !label || !facetAccountId) continue
 					const list = facetMap.get(evidence_id) ?? []
-					list.push({ kind_slug, label, facet_ref: facet_ref ?? null })
+					list.push({ kind_slug, label, facet_account_id: facetAccountId })
 					facetMap.set(evidence_id, list)
 				}
 

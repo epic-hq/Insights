@@ -10,7 +10,7 @@ import type { Evidence } from "~/types"
 type EvidenceFacetChip = {
 	kind_slug: string
 	label: string
-	facet_ref: string | null
+	facet_account_id: number
 }
 
 type EvidenceSnippet = (Pick<
@@ -219,7 +219,7 @@ function EvidenceCard({
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
 	{(evidence.facets ?? []).map((facet, i) => (
-		<Badge key={`${facet.facet_ref ?? facet.label}-${i}`} variant="outline" className="text-xs">
+		<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
 			{facet.label}
 		</Badge>
 	))}

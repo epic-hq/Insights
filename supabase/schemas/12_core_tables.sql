@@ -313,6 +313,7 @@ create table if not exists facet_account (
   slug text not null,
   label text not null,
   synonyms text[] default '{}',
+  is_active boolean not null default true,
   description text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -359,166 +360,23 @@ CREATE POLICY "Account owners can delete"
   USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
 
 
-create table if not exists project_facet (
-  project_id uuid not null references projects(id) on delete cascade,
-  account_id uuid not null references accounts.accounts (id) on delete cascade,
-  facet_ref text not null,
-  scope text not null default 'catalog' check (scope in ('catalog', 'project')),
-  kind_slug text,
-  label text,
-  synonyms text[] default '{}',
-  is_enabled boolean default true,
-  alias text,
-  pinned boolean default false,
-  sort_weight int default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint project_facet_ref_pattern check (
-    (scope = 'catalog' and facet_ref ~ '^(g|a):[0-9]+$' and kind_slug is null and label is null)
-    or (scope = 'project' and facet_ref ~ '^p:[0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12}$' and kind_slug is not null and label is not null)
-  ),
-  primary key (project_id, facet_ref)
-);
-
-CREATE INDEX IF NOT EXISTS idx_project_facet_account ON public.project_facet(account_id);
-
-CREATE TRIGGER set_project_facet_timestamp
-    BEFORE INSERT OR UPDATE ON public.project_facet
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_timestamps();
-
-CREATE TRIGGER set_project_facet_user_tracking
-    BEFORE INSERT OR UPDATE ON public.project_facet
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
-
-ALTER TABLE public.project_facet ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Account members can select"
-  ON public.project_facet
-  FOR SELECT
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
-
-CREATE POLICY "Account members can insert"
-  ON public.project_facet
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account members can update"
-  ON public.project_facet
-  FOR UPDATE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()))
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account owners can delete"
-  ON public.project_facet
-  FOR DELETE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
-
-
-create table if not exists facet_candidate (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts.accounts (id) on delete cascade,
-  project_id uuid not null references projects(id) on delete cascade,
-  person_id uuid references people(id) on delete set null,
-  kind_slug text not null,
-  label text not null,
-  synonyms text[] default '{}',
-  source text not null check (source in ('interview','survey','telemetry','inferred','manual','document')),
-  evidence_id uuid,
-  notes text,
-  status text not null default 'pending' check (status in ('pending','approved','rejected','merged')),
-  resolved_facet_ref text,
-  reviewed_by uuid,
-  reviewed_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint facet_candidate_unique unique (account_id, project_id, kind_slug, label)
-);
-
-CREATE INDEX IF NOT EXISTS idx_facet_candidate_account ON public.facet_candidate(account_id);
-CREATE INDEX IF NOT EXISTS idx_facet_candidate_project ON public.facet_candidate(project_id);
-
-CREATE TRIGGER set_facet_candidate_timestamp
-    BEFORE INSERT OR UPDATE ON public.facet_candidate
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_timestamps();
-
-CREATE TRIGGER set_facet_candidate_user_tracking
-    BEFORE INSERT OR UPDATE ON public.facet_candidate
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
-
-ALTER TABLE public.facet_candidate ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Account members can select"
-  ON public.facet_candidate
-  FOR SELECT
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
-
-CREATE POLICY "Account members can insert"
-  ON public.facet_candidate
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account members can update"
-  ON public.facet_candidate
-  FOR UPDATE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()))
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account owners can delete"
-  ON public.facet_candidate
-  FOR DELETE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
-
-
 create table if not exists person_facet (
   person_id uuid not null references people(id) on delete cascade,
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   project_id uuid not null references projects(id) on delete cascade,
-  facet_ref text not null,
+  facet_account_id int not null references facet_account(id) on delete cascade,
   source text not null check (source in ('interview','survey','telemetry','inferred','manual','document')),
   evidence_id uuid,
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   noted_at timestamptz default now(),
-  candidate_id uuid references facet_candidate(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint person_facet_ref_pattern check (facet_ref ~ '^(g|a|p):[0-9a-zA-Z-]+$'),
-  primary key (person_id, facet_ref)
+  primary key (person_id, facet_account_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_person_facet_account ON public.person_facet(account_id);
 CREATE INDEX IF NOT EXISTS idx_person_facet_project ON public.person_facet(project_id);
+CREATE INDEX IF NOT EXISTS idx_person_facet_facet_account ON public.person_facet(facet_account_id);
 
 CREATE TRIGGER set_person_facet_timestamp
     BEFORE INSERT OR UPDATE ON public.person_facet

@@ -8,13 +8,10 @@ This guide explains the multi-tenant facet catalog, how interview ingestion auto
    - Shared vocabulary shipped with the product.
    - Read-only to tenants; seeds live in migrations + `_NORUN_seed.sql`.
 2. **Account vocabulary** (`facet_account`)
-   - Team-specific terms promoted from the candidate queue.
+   - Team-specific terms (active or disabled) available to ingestion and the UI.
    - Each record references the global kind and optionally links back to a global facet.
-3. **Project view** (`project_facet`)
-   - Enables/disables catalog entries per project.
-   - Supports project-only facets (`scope = 'project'`, `facet_ref` starts with `p:`) and per-project aliases.
 
-Resolution order shown in the UI + BAML: `project overrides → account facets → global seeds`.
+Resolution order shown in the UI + BAML: `account facets → global seeds`.
 
 ## Interview Ingestion Pipeline
 

@@ -20,7 +20,7 @@ import type { Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
-import { getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
+import { FacetResolver, getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
@@ -541,7 +541,7 @@ const evidenceFacetMentionsByIndex: Array<
 	Array<{
 		kindSlug: string
 		label: string
-		facetRef: string | null
+		facetAccountId: number
 		source: string
 		quote: string | null
 		evidenceIndex: number
@@ -552,7 +552,7 @@ const facetMentionsByPersonKey = new Map<
 	Array<{
 		kindSlug: string
 		label: string
-		facetRef: string | null
+		facetAccountId: number
 		quote: string | null
 		evidenceIndex: number
 	}>
@@ -564,6 +564,7 @@ const facetMentionsByPersonKey = new Map<
 
 	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
 	const facetLookup = buildFacetLookup(facetCatalog)
+	const facetResolver = new FacetResolver(db, metadata.accountId)
 	const langfuse = getLangfuseClient()
 	const lfTrace = (langfuse as any).trace?.({
 		name: "baml.extract-evidence",
@@ -904,56 +905,77 @@ const facetMentionsByPersonKey = new Map<
 			? ((ev as { facet_mentions?: FacetMention[] }).facet_mentions as FacetMention[])
 			: []
 		const kindSlugSet = new Set<string>()
-const mentionRows: Array<{
-	kindSlug: string
-	label: string
-	facetRef: string | null
-	source: string
-	quote: string | null
-	evidenceIndex: number
-}> = []
-		const mentionDedup = new Set<string>()
+		const mentionRows: Array<{
+			kindSlug: string
+			label: string
+			facetAccountId: number
+			source: string
+			quote: string | null
+			evidenceIndex: number
+		}> = []
+		const mentionDedup = new Set<number>()
 		for (const mention of facetMentions) {
 			if (!mention || typeof mention !== "object") continue
 			const kindRaw = typeof mention.kind_slug === "string" ? mention.kind_slug.trim().toLowerCase() : ""
 			const labelRaw = sanitizeFacetLabel((mention as FacetMention).value)
 			if (!kindRaw || !labelRaw) continue
-			kindSlugSet.add(kindRaw)
-			const matchedFacet = matchFacetFromLookup(facetLookup, kindRaw, labelRaw)
-			const resolvedLabel = sanitizeFacetLabel(matchedFacet?.alias ?? matchedFacet?.label ?? labelRaw)
+			const resolvedLabel = sanitizeFacetLabel(labelRaw)
 			if (!resolvedLabel) continue
-			const dedupKey = `${kindRaw}|${matchedFacet?.facet_ref ?? resolvedLabel.toLowerCase()}`
-			if (mentionDedup.has(dedupKey)) continue
-			mentionDedup.add(dedupKey)
-const mentionQuote = sanitizeFacetLabel((mention as FacetMention).quote ?? null)
-mentionRows.push({
-	kindSlug: kindRaw,
-	label: resolvedLabel,
-	facetRef: matchedFacet?.facet_ref ?? null,
-	source: "interview",
-	quote: mentionQuote,
-	evidenceIndex,
-})
+
+			const matchedFacet = matchFacetFromLookup(facetLookup, kindRaw, resolvedLabel)
+			const synonyms = Array.isArray(matchedFacet?.synonyms) ? matchedFacet?.synonyms ?? [] : []
+			let facetAccountId: number | null = null
+
+			if (matchedFacet?.facet_ref) {
+				facetAccountId = await facetResolver.ensureFacetForRef(matchedFacet.facet_ref, {
+					kindSlug: kindRaw,
+					label: resolvedLabel,
+					synonyms,
+				})
+			}
+
+			if (!facetAccountId) {
+				facetAccountId = await facetResolver.ensureFacet({
+					kindSlug: kindRaw,
+					label: resolvedLabel,
+					synonyms,
+				})
+			}
+
+			if (!facetAccountId) continue
+			if (mentionDedup.has(facetAccountId)) continue
+			mentionDedup.add(facetAccountId)
+			kindSlugSet.add(kindRaw)
+			const mentionQuote = sanitizeFacetLabel((mention as FacetMention).quote ?? null)
+			mentionRows.push({
+				kindSlug: kindRaw,
+				label: resolvedLabel,
+				facetAccountId,
+				source: "interview",
+				quote: mentionQuote,
+				evidenceIndex,
+			})
 		}
+
 		const kindSlugs = Array.from(kindSlugSet)
 		evidenceFacetKinds.push(kindSlugs)
-evidenceFacetMentionsByIndex.push(mentionRows)
+		evidenceFacetMentionsByIndex.push(mentionRows)
 
-if (mentionRows.length) {
-	const byPerson = facetMentionsByPersonKey.get(personKey) ?? []
-	if (!facetMentionsByPersonKey.has(personKey)) {
-		facetMentionsByPersonKey.set(personKey, byPerson)
-	}
-	for (const mention of mentionRows) {
-		byPerson.push({
-			kindSlug: mention.kindSlug,
-			label: mention.label,
-			facetRef: mention.facetRef,
-			quote: mention.quote,
-			evidenceIndex,
-		})
-	}
-}
+		if (mentionRows.length) {
+			const byPerson = facetMentionsByPersonKey.get(personKey) ?? []
+			if (!facetMentionsByPersonKey.has(personKey)) {
+				facetMentionsByPersonKey.set(personKey, byPerson)
+			}
+			for (const mention of mentionRows) {
+				byPerson.push({
+					kindSlug: mention.kindSlug,
+					label: mention.label,
+					facetAccountId: mention.facetAccountId,
+					quote: mention.quote,
+					evidenceIndex,
+				})
+			}
+		}
 		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
 		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
 		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
@@ -1110,7 +1132,7 @@ if (mentionRows.length) {
 			project_id: string | null
 			evidence_id: string
 			kind_slug: string
-			facet_ref: string | null
+			facet_account_id: number
 			label: string
 			source: string
 			confidence: number
@@ -1127,7 +1149,7 @@ if (mentionRows.length) {
 					project_id: projectIdForInsert,
 					evidence_id: evidenceId,
 					kind_slug: mention.kindSlug,
-					facet_ref: mention.facetRef,
+					facet_account_id: mention.facetAccountId,
 					label: mention.label,
 					source: mention.source,
 					confidence: 0.8,
@@ -1391,56 +1413,53 @@ if (mentionRows.length) {
 			}
 
 			// Fallback: derive facets from direct evidence mentions when synthesis is sparse
-			const existingKeys = new Set(
-				facetObservations.map((obs) => {
-					const base = obs.facet_ref ?? obs.value ?? ""
-					return `${obs.kind_slug.toLowerCase()}|${base.toLowerCase()}`
-				})
-			)
-			const mentionFallback = facetMentionsByPersonKey.get(personKey) ?? []
-			for (const mention of mentionFallback) {
-				const dedupeKey = `${mention.kindSlug.toLowerCase()}|${(mention.facetRef ?? mention.label).toLowerCase()}`
-				if (existingKeys.has(dedupeKey)) continue
-				existingKeys.add(dedupeKey)
-				facetObservations.push({
-					kind_slug: mention.kindSlug,
-					value: mention.label,
-					source: "interview",
-					evidence_unit_index: mention.evidenceIndex,
-					confidence: 0.6,
-					facet_ref: mention.facetRef ?? undefined,
-					notes: mention.quote ? [mention.quote] : undefined,
-					candidate: mention.facetRef
-						? undefined
-						: {
-							kind_slug: mention.kindSlug,
-							label: mention.label,
-							synonyms: [],
-							notes: mention.quote ? [mention.quote] : undefined,
-						},
-				} as PersonFacetObservation)
+		const existingFacetAccountIds = new Set<number>()
+		const existingKindValueKeys = new Set<string>()
+		for (const obs of facetObservations) {
+			if (obs.facet_ref && obs.facet_ref.startsWith("a:")) {
+				const numericId = Number.parseInt(obs.facet_ref.slice(2), 10)
+				if (!Number.isNaN(numericId)) existingFacetAccountIds.add(numericId)
 			}
-
-			const scaleObservations = participantByKey.get(personKey)?.scales ?? []
-			if (facetObservations.length || scaleObservations.length) {
-				observationInputs.push({
-					personId,
-					facets: facetObservations,
-					scales: scaleObservations,
-				})
+			if (obs.value) {
+				existingKindValueKeys.add(`${obs.kind_slug.toLowerCase()}|${obs.value.toLowerCase()}`)
 			}
 		}
-
-		if (observationInputs.length) {
-			await persistFacetObservations({
-				db,
-				accountId: metadata.accountId,
-				projectId: metadata.projectId,
-				observations: observationInputs,
-				evidenceIds: insertedEvidenceIds,
-				reviewerId: metadata.userId ?? null,
+		const mentionFallback = facetMentionsByPersonKey.get(personKey) ?? []
+		for (const mention of mentionFallback) {
+			if (existingFacetAccountIds.has(mention.facetAccountId)) continue
+			const key = `${mention.kindSlug.toLowerCase()}|${mention.label.toLowerCase()}`
+			if (existingKindValueKeys.has(key)) continue
+			existingFacetAccountIds.add(mention.facetAccountId)
+			existingKindValueKeys.add(key)
+			facetObservations.push({
+				kind_slug: mention.kindSlug,
+				value: mention.label,
+				source: "interview",
+				evidence_unit_index: mention.evidenceIndex,
+				confidence: 0.6,
+				facet_ref: `a:${mention.facetAccountId}`,
+				notes: mention.quote ? [mention.quote] : undefined,
 			})
 		}
+		const scaleObservations = participantByKey.get(personKey)?.scales ?? []
+		if (facetObservations.length || scaleObservations.length) {
+			observationInputs.push({
+				personId,
+				facets: facetObservations,
+				scales: scaleObservations,
+			})
+		}
+	}
+
+	if (observationInputs.length) {
+		await persistFacetObservations({
+			db,
+			accountId: metadata.accountId,
+			projectId: metadata.projectId,
+			observations: observationInputs,
+			evidenceIds: insertedEvidenceIds,
+		})
+	}
 	}
 
 	return {
