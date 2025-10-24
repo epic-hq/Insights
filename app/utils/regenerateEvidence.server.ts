@@ -1,8 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { Database } from "~/../supabase/types"
-import { type InterviewMetadata, processInterviewTranscriptWithClient } from "~/utils/processInterview.server"
+import type { InterviewMetadata } from "~/utils/processInterview.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
+import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe"
 
 interface RegenerateEvidenceOptions {
 	supabase: SupabaseClient<Database>
@@ -63,6 +65,7 @@ export async function regenerateEvidenceForProject({
 					"en",
 			}
 
+			// Delete existing evidence to regenerate
 			await supabase.from("evidence").delete().eq("interview_id", interview.id)
 
 			const metadata: InterviewMetadata = {
@@ -77,20 +80,28 @@ export async function regenerateEvidenceForProject({
 				segment: interview.segment || undefined,
 			}
 
-			await processInterviewTranscriptWithClient({
-				metadata,
-				mediaUrl: interview.media_url || "",
-				transcriptData,
-				userCustomInstructions: undefined,
-				client: supabase,
-				existingInterviewId: interview.id,
-			})
+			// Use Trigger.dev task instead of duplicating core logic
+			// This ensures consistent behavior and single source of truth
+			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>(
+				"interview.upload-media-and-transcribe",
+				{
+					metadata,
+					mediaUrl: interview.media_url || "",
+					transcriptData,
+					userCustomInstructions: undefined,
+					existingInterviewId: interview.id,
+					// No analysisJobId for regeneration - this is a background operation
+				}
+			)
+
+			consola.info(`Triggered regeneration for interview ${interview.id}, run ID: ${result.id}`)
 
 			processed += 1
+			consola.success(`Successfully triggered regeneration for interview ${interview.id}`)
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error)
 			errors.push({ interviewId: interview.id, message })
-			consola.warn(`Failed to regenerate evidence for interview ${interview.id}: ${message}`)
+			consola.error(`Failed to trigger regeneration for interview ${interview.id}: ${message}`)
 		}
 	}
 
