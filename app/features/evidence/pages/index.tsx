@@ -19,6 +19,12 @@ type EvidenceListPerson = {
 	personas: Array<{ id: string; name: string }>
 }
 
+type EvidenceFacetSummary = {
+	kind_slug: string
+	label: string
+	facet_ref: string | null
+}
+
 type EvidenceListItem = (Pick<
 	Evidence,
 	| "id"
@@ -30,7 +36,6 @@ type EvidenceListItem = (Pick<
 	| "confidence"
 	| "created_at"
 	| "journey_stage"
-	| "kind_tags"
 	| "method"
 	| "anchors"
 	| "interview_id"
@@ -44,9 +49,10 @@ type EvidenceListItem = (Pick<
 	} | null
 }) & {
 	people: EvidenceListPerson[]
+	facets: EvidenceFacetSummary[]
 }
 
-type EvidenceRow = Omit<EvidenceListItem, "people">
+type EvidenceRow = Omit<EvidenceListItem, "people" | "facets">
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
 	if (request.method.toUpperCase() !== "POST") {
@@ -151,7 +157,6 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				confidence,
 				created_at,
 				journey_stage,
-				kind_tags,
 				method,
 				anchors,
 				interview_id,
@@ -184,8 +189,32 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Join evidence_people -> people to get person names and roles for each evidence
 	const peopleByEvidence = new Map<string, EvidenceListPerson[]>()
+	const facetsByEvidence = new Map<string, EvidenceFacetSummary[]>()
 	if (rows.length) {
 		const evidenceIds = rows.map((e) => e.id)
+
+		const { data: facetRows, error: facetErr } = await supabase
+			.from("evidence_facet")
+			.select("evidence_id, kind_slug, label, facet_ref")
+			.eq("project_id", projectId)
+			.in("evidence_id", evidenceIds)
+		if (facetErr) throw new Error(`Failed to load evidence facets: ${facetErr.message}`)
+
+		for (const row of (facetRows ?? []) as Array<{
+			evidence_id: string
+			kind_slug: string | null
+			label: string | null
+			facet_ref: string | null
+		}>) {
+			if (!row.evidence_id || !row.kind_slug || !row.label) continue
+			const list = facetsByEvidence.get(row.evidence_id) ?? []
+			list.push({
+				kind_slug: row.kind_slug,
+				label: row.label,
+				facet_ref: row.facet_ref ?? null,
+			})
+			facetsByEvidence.set(row.evidence_id, list)
+		}
 
 		const { data: evp, error: epErr } = await supabase
 			.from("evidence_people")
@@ -268,6 +297,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
 		...row,
 		people: peopleByEvidence.get(row.id) ?? [],
+		facets: facetsByEvidence.get(row.id) ?? [],
 	}))
 
 	return {

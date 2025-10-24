@@ -307,6 +307,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const [loadedResearchGoal, setLoadedResearchGoal] = useState("")
 	const [showContextualInput, setShowContextualInput] = useState(false)
 	const contextualInputRef = useRef<HTMLTextAreaElement>(null)
+	const contextualSuggestionsApiPath =
+		projectPath && projectPath.length > 0 ? `${projectPath}/api/contextual-suggestions` : "/api/contextual-suggestions"
 
 	// Load research goal from API
 	useEffect(() => {
@@ -370,17 +372,27 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			const stored = previousSelectionRef.current
 			if (stored && stored.length > 0) return [...stored]
 		}
+		console.log("🧾 getBaseSelectedIds()", {
+			mustHavesOnly,
+			selectedQuestionIds,
+		})
 		return [...selectedQuestionIds]
 	}, [mustHavesOnly, selectedQuestionIds])
 
 	const commitSelection = useCallback(
 		(nextBaseIds: string[]) => {
+			console.log("🧮 commitSelection()", {
+				mustHavesOnly,
+				nextBaseIds,
+				mustHaveCandidates: questions.filter((q) => q.isMustHave).map((q) => q.id),
+			})
 			previousSelectionRef.current = [...nextBaseIds]
 			if (mustHavesOnly) {
 				const filtered = nextBaseIds.filter((id) => {
 					const q = questions.find((question) => question.id === id)
 					return q?.isMustHave
 				})
+				console.log("🧮 commitSelection -> filtered (mustHavesOnly)", filtered)
 				setSelectedQuestionIds(filtered)
 			} else {
 				setSelectedQuestionIds(nextBaseIds)
@@ -558,6 +570,24 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				seen.add(q.id)
 				return q
 			})
+
+			console.log(
+				"📥 LOAD QUESTIONS RESULT",
+				JSON.stringify(
+					{
+						projectId,
+						total: deduped.length,
+						selectedIds,
+						followupCount: deduped.filter((q) => q.rationale?.startsWith("Follow-up to:")).length,
+						exampleFollowups: deduped
+							.filter((q) => q.rationale?.startsWith("Follow-up to:"))
+							.slice(0, 3)
+							.map((q) => ({ id: q.id, text: q.text })),
+					},
+					null,
+					2
+				)
+			)
 
 			setQuestions(deduped)
 			if (selectedIds.length > 0) {
@@ -782,7 +812,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		const targetCount = Math.max(4, tc.base + validationBoost + (familiarity === "cold" ? tc.cold : 0))
 
 		const allQuestionsWithScores = questions
-			.filter((q) => q.status === "proposed") // Only include proposed questions, exclude rejected
+			.filter((q) => q.status === "proposed" || q.status === "selected") // Include proposed and selected questions, exclude rejected/deleted
 			.map((q) => ({
 				...q,
 				compositeScore: calculateCompositeScore(q),
@@ -865,6 +895,15 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		const selectedSet = new Set(idsToUse)
 		const remainingQuestions = allQuestionsWithScores.filter((q) => !selectedSet.has(q.id))
 
+		console.log("📦 questionPack()", {
+			selectedQuestionIds,
+			autoSelectedIds,
+			idsToUse,
+			orderedCount: orderedSelectedQuestions.length,
+			totalQuestions: allQuestionsWithScores.length,
+			exampleIds: orderedSelectedQuestions.slice(0, 5).map((q) => q.id),
+		})
+
 		return {
 			questions: orderedSelectedQuestions,
 			totalEstimatedTime,
@@ -928,10 +967,20 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		async (questionsToSave: Question[], selectedIds: string[]) => {
 			if (!projectId) return
 			try {
+				console.log(
+					"🛟 SAVE INVOKED",
+					JSON.stringify({
+						triggeredAt: new Date().toISOString(),
+						projectId,
+						totalQuestions: questionsToSave.length,
+						selectedCount: selectedIds.length,
+						followupCount: questionsToSave.filter((q) => q.rationale?.startsWith("Follow-up to:")).length,
+					})
+				)
 				setSaving(true)
 
 				// ALLOWED VALUES TABLE FOR DEBUGGING
-				const ALLOWED_STATUS_VALUES = ["proposed", "asked", "answered", "skipped", "rejected"] as const
+				const ALLOWED_STATUS_VALUES = ["proposed", "asked", "answered", "skipped", "rejected", "selected", "backup", "deleted"] as const
 				const ALLOWED_SOURCE_VALUES = ["ai", "user"] as const
 
 				console.group("🔍 SAVE QUESTIONS TO DATABASE DEBUG")
@@ -1009,6 +1058,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 					returned_count: data?.length || 0,
 					upserted_ids: data?.map((d) => d.id.slice(0, 8)).join(", ") || "none",
 				})
+				console.log("📦 Persisted follow-ups in this payload:", promptPayloads.filter((p) => p.rationale?.startsWith("Follow-up to:")))
 				console.groupEnd()
 
 				const keepIds = new Set(promptPayloads.map((p) => p.id))
@@ -1025,6 +1075,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 					}
 				}
 				existingPromptIdsRef.current = Array.from(keepIds)
+				console.log("🧷 existingPromptIdsRef updated", {
+					count: existingPromptIdsRef.current.length,
+					hasNewFollowup: existingPromptIdsRef.current.includes(
+						selectedIds[selectedIds.length - 1] ?? "__none__"
+					),
+				})
 
 				const { error: sectionError } = await supabase.from("project_sections").upsert(
 					{
@@ -2058,21 +2114,21 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				</div>
 
 				{/* Contextual Suggestions - only show when input is active */}
-				{showContextualInput && effectiveResearchGoal && (
-					<ContextualSuggestions
+					{showContextualInput && effectiveResearchGoal && (
+						<ContextualSuggestions
 						researchGoal={
 							effectiveResearchGoal ||
 							"Help startups identify bottlenecks and resolve them through discipline and guidance so they can increase success rates."
 						}
 						currentInput={contextualInput}
 						suggestionType="interview_questions"
-						questionCategory={contextualCategory}
-						existingItems={questions.map((q) => q.text)}
-						onSuggestionClick={handleContextualSuggestionClick}
-						apiPath="api/contextual-suggestions"
-						isActive={true}
-					/>
-				)}
+							questionCategory={contextualCategory}
+							existingItems={questions.map((q) => q.text)}
+							onSuggestionClick={handleContextualSuggestionClick}
+							apiPath={contextualSuggestionsApiPath}
+							isActive={true}
+						/>
+					)}
 
 				{/* Custom Instructions */}
 				{showCustomInstructions && (
@@ -2207,26 +2263,53 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							variant="ghost"
 																							size="icon"
 																							onClick={async () => {
-																								setEvaluatingId(question.id)
-																								const quality = isEvalEnabled
-																									? await evaluateQuestionQuality(editingText)
-																									: null
-																								const updated = questions.map((q) =>
-																									q.id === question.id
-																										? {
-																												...q,
-																												text: editingText,
-																												qualityFlag: quality ?? undefined,
-																											}
-																										: q
-																								)
-																								setQuestions(updated)
-																								setSkipDebounce(true)
-																								await saveQuestionsToDatabase(updated, getBaseSelectedIds())
-																								setTimeout(() => setSkipDebounce(false), 1500)
-																								setEditingId(null)
-																								setEditingText("")
-																								setEvaluatingId(null)
+																								try {
+																									setEvaluatingId(question.id)
+																									const quality = isEvalEnabled
+																										? await evaluateQuestionQuality(editingText)
+																										: null
+
+																									// Use PATCH API to update the question text
+																									const response = await fetch(`/api/questions/${question.id}`, {
+																										method: "PATCH",
+																										headers: { "Content-Type": "application/json" },
+																										body: JSON.stringify({
+																											text: editingText,
+																											table: "interview_prompts",
+																										}),
+																									})
+
+																									if (!response.ok) {
+																										const error = await response.json()
+																										throw new Error(error.error || "Failed to update question")
+																									}
+
+																									const result = await response.json()
+																									if (result.success) {
+																										// Update local state with the saved text
+																										const updated = questions.map((q) =>
+																											q.id === question.id
+																												? {
+																														...q,
+																														text: editingText,
+																														qualityFlag: quality ?? undefined,
+																													}
+																												: q
+																										)
+																										setQuestions(updated)
+																										toast.success("Question updated successfully")
+																									}
+
+																									setEditingId(null)
+																									setEditingText("")
+																									setEvaluatingId(null)
+																								} catch (error) {
+																									console.error("Failed to update question:", error)
+																									toast.error("Failed to update question", {
+																										description: error instanceof Error ? error.message : "Please try again",
+																									})
+																									setEvaluatingId(null)
+																								}
 																							}}
 																							className="text-green-600"
 																						>
@@ -2489,23 +2572,31 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																				))}
 																			</SelectContent>
 																		</Select>
-																		<div className="flex items-center gap-2">
-																			<Button
-																				onClick={async () => {
-																					console.log("🔍 DEBUG: Button clicked, input:", followupInput.trim())
-																					if (!followupInput.trim()) return
+																			<div className="flex items-center gap-2">
+																				<Button
+																					onClick={async () => {
+																						const trimmedInput = followupInput.trim()
+																						console.log("🔍 DEBUG: Button clicked, input:", trimmedInput)
+																						if (!trimmedInput) return
 
-																					try {
-																						setAddingCustomQuestion(true)
-																						console.log("🔍 DEBUG: Starting followup addition")
+																						let nextFollowup: Question | null = null
+																						try {
+																							console.groupCollapsed(
+																								`🧩 FOLLOWUP ADDITION [${question.id.slice(0, 8)} -> ${question.text.slice(0, 40)}]`
+																							)
+																							console.log("• mustHavesOnly:", mustHavesOnly)
+																							console.log("• existing selectedQuestionIds:", selectedQuestionIds)
+																							console.log("• base ids before add:", getBaseSelectedIds())
+																							setAddingCustomQuestion(true)
+																							console.log("🔍 DEBUG: Starting followup addition")
 
-																						// Create the follow-up question
-																						const followupQuestion: Question = {
-																							id: crypto.randomUUID(),
-																							text: followupInput.trim(),
-																							categoryId: followupCategory,
-																							scores: { importance: 0.7, goalMatch: 0.8, novelty: 0.6 },
-																							rationale: `Follow-up to: ${question.text}`,
+																							// Create the follow-up question
+																							const followupQuestion: Question = {
+																								id: crypto.randomUUID(),
+																								text: trimmedInput,
+																								categoryId: followupCategory,
+																								scores: { importance: 0.7, goalMatch: 0.8, novelty: 0.6 },
+																								rationale: `Follow-up to: ${question.text}`,
 																							status: "selected",
 																							timesAnswered: 0,
 																							source: "user",
@@ -2515,10 +2606,11 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																								researchMode,
 																								familiarity
 																							),
-																							selectedOrder: null,
-																							isSelected: true,
-																						}
-																						console.log("🔍 DEBUG: Created followup question:", followupQuestion)
+																								selectedOrder: null,
+																								isSelected: true,
+																							}
+																							nextFollowup = followupQuestion
+																							console.log("🔍 DEBUG: Created followup question:", followupQuestion)
 
 																						// Insert after the current question
 																						const baseIds = getBaseSelectedIds()
@@ -2530,47 +2622,69 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							baseIds
 																						)
 
-																						const newBaseIds = [
-																							...baseIds.slice(0, currentIndex + 1),
-																							followupQuestion.id,
-																							...baseIds.slice(currentIndex + 1),
-																						]
+																						const newBaseIds =
+																							currentIndex >= 0
+																								? [
+																										...baseIds.slice(0, currentIndex + 1),
+																										followupQuestion.id,
+																										...baseIds.slice(currentIndex + 1),
+																									]
+																								: [...baseIds, followupQuestion.id]
 																						console.log("🔍 DEBUG: New baseIds:", newBaseIds)
 
-																						const updatedQuestions = [...questions, followupQuestion]
-																						console.log("🔍 DEBUG: Updated questions count:", updatedQuestions.length)
+																							const insertionIndex = questions.findIndex((q) => q.id === question.id)
+																							const updatedQuestions =
+																								insertionIndex >= 0
+																									? [
+																											...questions.slice(0, insertionIndex + 1),
+																										followupQuestion,
+																										...questions.slice(insertionIndex + 1),
+																									]
+																								: [...questions, followupQuestion]
+																							console.log(
+																								"🔍 DEBUG: Updated questions count:",
+																								updatedQuestions.length,
+																								"insertionIndex:",
+																								insertionIndex
+																							)
 
-																						setQuestions(updatedQuestions)
-																						commitSelection(newBaseIds)
-																						markQuestionAsRecentlyAdded(followupQuestion.id)
+																							setQuestions(updatedQuestions)
+																							setHasInitialized(true)
+																							commitSelection(newBaseIds)
+																							markQuestionAsRecentlyAdded(followupQuestion.id)
+																							console.log("• selection after commit:", newBaseIds)
+																							console.log("• followup payload:", followupQuestion)
 
-																						// Prevent debounced save from racing this change
-																						suppressDeletionRef.current = true
-																						setSkipDebounce(true)
-																						console.log("🔍 DEBUG: About to save to database")
-																						await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+																							// Prevent debounced save from racing this change
+																							suppressDeletionRef.current = true
+																							setSkipDebounce(true)
+																							console.log("🔍 DEBUG: About to save to database")
+																							await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+																							console.log("✅ Follow-up persisted successfully")
 
-																						// Reload from database to ensure UI reflects actual DB state
-																						await loadQuestions()
-																						setTimeout(() => {
+																							setFollowupInput("")
+																							setFollowupCategory(question.categoryId)
+																							setShowingFollowupFor(null)
+																							toast.success("Follow-up question added")
+																						console.log("DEBUG: Followup addition completed")
+
+																						window.setTimeout(() => {
+																								setSkipDebounce(false)
+																								suppressDeletionRef.current = false
+																							}, 3000) // longer timeout to prevent debounced save override
+																						} catch (error) {
+																							console.error("Error adding follow-up:", error)
+																							console.log("• followupDraft:", nextFollowup)
+																							toast.error("Failed to add follow-up question")
 																							setSkipDebounce(false)
 																							suppressDeletionRef.current = false
-																						}, 3000) // longer timeout to prevent debounced save override
-
-																						setFollowupInput("")
-																						setFollowupCategory(question.categoryId)
-																						setShowingFollowupFor(null)
-																						toast.success("Follow-up question added")
-																						console.log("DEBUG: Followup addition completed")
-																					} catch (error) {
-																						console.error("Error adding follow-up:", error)
-																						toast.error("Failed to add follow-up question")
-																					} finally {
-																						setAddingCustomQuestion(false)
-																					}
-																				}}
-																				size="sm"
-																			>
+																						} finally {
+																							console.groupEnd()
+																							setAddingCustomQuestion(false)
+																						}
+																					}}
+																					size="sm"
+																				>
 																				<Plus className="mr-1 h-3 w-3" />
 																				Add Follow-up
 																			</Button>
@@ -2582,11 +2696,11 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																			researchGoal={effectiveResearchGoal}
 																			currentInput={followupInput}
 																			suggestionType="interview_questions"
-																			questionCategory={question.categoryId}
+																			questionCategory={followupCategory}
 																			customInstructions={`Generate deeper follow-up questions specifically for: "${question.text}"`}
 																			existingItems={questions.map((q) => q.text)}
 																			onSuggestionClick={(suggestion) => setFollowupInput(suggestion)}
-																			apiPath="api/contextual-suggestions"
+																			apiPath={contextualSuggestionsApiPath}
 																			isActive={true}
 																			responseCount={3}
 																		/>

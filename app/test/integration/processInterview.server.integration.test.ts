@@ -99,7 +99,11 @@ describe("processInterviewTranscript Integration", () => {
 					headers: null,
 					support: "supports",
 					confidence: "high",
-					kind_tags: { goal: ["speed"], behavior: ["reports"] },
+					supporting_details: null,
+					facet_mentions: [
+						{ kind_slug: "goal", value: "speed" },
+						{ kind_slug: "workflow", value: "reports" },
+					],
 				},
 			],
 			people: [
@@ -311,6 +315,27 @@ describe("processInterviewTranscript Integration", () => {
 				confidence: 0.95,
 			},
 		])
+
+		const { data: evidenceFacets } = await testDb
+			.from("evidence_facet")
+			.select("evidence_id, kind_slug, label, facet_ref")
+			.eq("account_id", TEST_ACCOUNT_ID)
+			.eq("project_id", "test-project-id")
+
+		expect(evidenceFacets).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					kind_slug: "goal",
+					facet_ref: `g:${goalFacetRow.id}`,
+					label: expect.any(String),
+				}),
+				expect.objectContaining({
+					kind_slug: "workflow",
+					facet_ref: null,
+					label: expect.any(String),
+				}),
+			])
+		)
 
 		const { data: scaleRows } = await testDb
 			.from("person_scale")

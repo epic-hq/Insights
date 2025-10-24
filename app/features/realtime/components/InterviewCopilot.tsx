@@ -733,8 +733,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 						try {
 							// Convert turns to speaker_transcripts format for BAML processing
-							const utterances = turns.map((turn, idx) => ({
-								speaker: `Speaker ${idx % 2 === 0 ? 'A' : 'B'}`, // Simple alternating speaker labels
+							// Reverse turns array since it's stored newest-first, but we need chronological order
+							const chronologicalTurns = [...turns].reverse()
+							const utterances = chronologicalTurns.map((turn, idx) => ({
+								speaker: idx % 2 === 0 ? 'A' : 'B', // Simple alternating speaker labels (A, B, not "Speaker A")
 								text: turn.transcript,
 								start: turn.start,
 								end: turn.end,

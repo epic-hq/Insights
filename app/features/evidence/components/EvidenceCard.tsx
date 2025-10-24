@@ -7,7 +7,13 @@ import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
 import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
 
-type EvidenceSnippet = Pick<
+type EvidenceFacetChip = {
+	kind_slug: string
+	label: string
+	facet_ref: string | null
+}
+
+type EvidenceSnippet = (Pick<
 	Evidence,
 	| "id"
 	| "verbatim"
@@ -18,11 +24,10 @@ type EvidenceSnippet = Pick<
 	| "confidence"
 	| "created_at"
 	| "journey_stage"
-	| "kind_tags"
 	| "method"
 	| "anchors"
 	| "interview_id"
-> & { context_summary?: string | null }
+> & { context_summary?: string | null }) & { facets?: EvidenceFacetChip[] }
 
 interface EvidenceCardProps {
 	evidence: EvidenceSnippet
@@ -213,11 +218,11 @@ function EvidenceCard({
 
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
-				{evidence.kind_tags?.map((tag, i) => (
-					<Badge key={i} variant="outline" className="text-xs">
-						{tag}
-					</Badge>
-				))}
+	{(evidence.facets ?? []).map((facet, i) => (
+		<Badge key={`${facet.facet_ref ?? facet.label}-${i}`} variant="outline" className="text-xs">
+			{facet.label}
+		</Badge>
+	))}
 				{evidence.method && (
 					<Badge variant="outline" className="text-xs">
 						{evidence.method}

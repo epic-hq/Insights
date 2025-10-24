@@ -1,8 +1,8 @@
 import consola from "consola"
 import { Edit2, Loader2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
@@ -724,6 +724,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const primaryParticipant = participants[0]?.people
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
+	const revalidator = useRevalidator()
+	const refreshTriggeredRef = useRef(false)
 
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
@@ -732,8 +734,24 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	})
 	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
 
+	useEffect(() => {
+		if (!progressInfo.isComplete) {
+			refreshTriggeredRef.current = false
+			return
+		}
+
+		if (!refreshTriggeredRef.current) {
+			refreshTriggeredRef.current = true
+			revalidator.revalidate()
+		}
+	}, [progressInfo.isComplete, revalidator])
+
 	// Comprehensive processing check: interview not ready OR analysis job active OR progress indicates incomplete
 	const isProcessing = useMemo(() => {
+		if (progressInfo.isComplete) {
+			return false
+		}
+
 		// Check interview status - anything before "ready" means still processing
 		const interviewNotReady = interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
 		
@@ -745,6 +763,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		
 		return interviewNotReady || analysisJobActive || progressIncomplete
 	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
+	const showProcessingBanner = isProcessing && !progressInfo.isComplete
 	
 	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
@@ -776,7 +795,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
-					{isProcessing && (
+					{showProcessingBanner && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>

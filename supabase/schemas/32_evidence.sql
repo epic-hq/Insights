@@ -18,7 +18,6 @@ create table if not exists evidence (
 
   -- semantics
   support text check (support in ('supports','refutes','neutral')) default 'supports',
-  kind_tags text[] default '{}', -- e.g., {pain, goal, motivation, usability_issue}
   personas text[] default '{}', -- todo deprecate
   segments text[] default '{}', -- todo deprecate
   journey_stage text,
@@ -70,7 +69,6 @@ create index if not exists idx_evidence_project_id   on public.evidence(project_
 create index if not exists idx_evidence_interview_id on public.evidence(interview_id);
 create index if not exists idx_evidence_project_answer on public.evidence(project_answer_id);
 create index if not exists idx_evidence_created_at   on public.evidence(created_at desc);
-create index if not exists idx_evidence_kind_tags    on public.evidence using gin (kind_tags);
 create index if not exists idx_evidence_anchors_gin  on public.evidence using gin (anchors jsonb_path_ops);
 
 -- Triggers ----------------------------------------------------------
@@ -123,6 +121,67 @@ BEGIN
     END IF;
   END IF;
 END$$;
+
+-- Evidence facets ---------------------------------------------------
+create table if not exists evidence_facet (
+  id uuid primary key default gen_random_uuid(),
+  evidence_id uuid not null references evidence(id) on delete cascade,
+  account_id uuid not null,
+  project_id uuid references projects(id) on delete cascade,
+  kind_slug text not null,
+  facet_ref text,
+  label text not null,
+  source text not null default 'interview' check (source in ('interview','survey','telemetry','inferred','manual','document')),
+  quote text,
+  confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
+  notes text,
+  created_at timestamptz not null default now(),
+  created_by uuid references auth.users(id),
+  constraint evidence_facet_ref_pattern check (
+    facet_ref is null or facet_ref ~ '^(g|a|p):[0-9a-zA-Z-]+$'
+  )
+);
+
+create index if not exists idx_evidence_facet_evidence_id on evidence_facet(evidence_id);
+create index if not exists idx_evidence_facet_account_id  on evidence_facet(account_id);
+create index if not exists idx_evidence_facet_project_id  on evidence_facet(project_id);
+create index if not exists idx_evidence_facet_kind_slug   on evidence_facet(kind_slug);
+
+create trigger set_evidence_facet_timestamp
+    before insert or update on public.evidence_facet
+    for each row
+execute procedure accounts.trigger_set_timestamps();
+
+create trigger set_evidence_facet_user_tracking
+    before insert or update on public.evidence_facet
+    for each row
+execute procedure accounts.trigger_set_user_tracking();
+
+alter table evidence_facet enable row level security;
+
+create policy "Account members can select"
+  on public.evidence_facet
+  for select
+  to authenticated
+  using (account_id in (select accounts.get_accounts_with_role()));
+
+create policy "Account members can insert"
+  on public.evidence_facet
+  for insert
+  to authenticated
+  with check (account_id in (select accounts.get_accounts_with_role()));
+
+create policy "Account members can update"
+  on public.evidence_facet
+  for update
+  to authenticated
+  using (account_id in (select accounts.get_accounts_with_role()));
+
+create policy "Account owners can delete"
+  on public.evidence_facet
+  for delete
+  to authenticated
+  using (account_id in (select accounts.get_accounts_with_role('owner')));
 
 -- Evidence tags (junction to tags) ----------------------------------
 create table if not exists evidence_tag (

@@ -76,6 +76,19 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		`)
 		.eq("evidence_id", evidenceId)
 
+	const { data: facetData, error: facetError } = await supabase
+		.from("evidence_facet")
+		.select("kind_slug, label, facet_ref")
+		.eq("evidence_id", evidenceId)
+
+	if (facetError) throw new Error(`Failed to load evidence facets: ${facetError.message}`)
+
+	const primaryFacets = (facetData ?? []).map((row) => ({
+		kind_slug: row.kind_slug,
+		label: row.label,
+		facet_ref: row.facet_ref ?? null,
+	}))
+
 	const data = {
 		...evidenceData,
 		people: peopleData || [],
@@ -95,6 +108,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			role: row.role,
 			personas: [], // No personas data needed for now
 		})),
+		facets: primaryFacets,
 	}
 
 	// Related evidence in the same scene/topic
@@ -105,7 +119,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		const { data: related, error: relatedError } = await supabase
 			.from("evidence")
 			.select(
-				"id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, kind_tags, method, anchors, interview_id"
+				"id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, method, anchors, interview_id"
 			)
 			.eq("interview_id", interviewId)
 			.eq("topic", topic)
@@ -113,6 +127,35 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.order("created_at", { ascending: true })
 			.limit(20)
 		if (!relatedError && Array.isArray(related)) relatedEvidence = related
+
+		if (Array.isArray(relatedEvidence) && relatedEvidence.length > 0) {
+			const relatedIds = relatedEvidence.map((ev: any) => ev.id).filter(Boolean)
+			if (relatedIds.length > 0) {
+				const { data: relatedFacets, error: relatedFacetError } = await supabase
+					.from("evidence_facet")
+					.select("evidence_id, kind_slug, label, facet_ref")
+					.in("evidence_id", relatedIds)
+				if (relatedFacetError) throw new Error(`Failed to load related evidence facets: ${relatedFacetError.message}`)
+
+				const facetMap = new Map<string, Array<{ kind_slug: string; label: string; facet_ref: string | null }>>()
+				for (const row of relatedFacets ?? []) {
+					if (!row || typeof row !== "object") continue
+					const evidence_id = (row as any).evidence_id as string | undefined
+					const kind_slug = (row as any).kind_slug as string | undefined
+					const label = (row as any).label as string | undefined
+					const facet_ref = (row as any).facet_ref as string | null | undefined
+					if (!evidence_id || !kind_slug || !label) continue
+					const list = facetMap.get(evidence_id) ?? []
+					list.push({ kind_slug, label, facet_ref: facet_ref ?? null })
+					facetMap.set(evidence_id, list)
+				}
+
+				relatedEvidence = relatedEvidence.map((ev: any) => ({
+					...ev,
+					facets: facetMap.get(ev.id) ?? [],
+				}))
+			}
+		}
 	}
 
 	return {

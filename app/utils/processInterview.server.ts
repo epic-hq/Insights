@@ -249,11 +249,13 @@ function findStartSecondsForSnippet({
 		}
 	}
 
-	const snippetSample = snippet.toLowerCase().slice(0, 120)
+	const normalizedSnippet = normalizeForSearchText(snippet)
+	const snippetSample = normalizedSnippet.slice(0, 160)
 	if (snippetSample && segmentTimeline.length) {
 		for (const segment of segmentTimeline) {
 			if (!segment.text) continue
-			if (segment.text.toLowerCase().includes(snippetSample)) {
+			const segmentNormalized = normalizeForSearchText(segment.text)
+			if (segmentNormalized.includes(snippetSample)) {
 				const start = segment.start
 				if (start !== null) return start
 			}
@@ -261,10 +263,10 @@ function findStartSecondsForSnippet({
 	}
 
 	if (durationSeconds && fullTranscript) {
-		const transcriptLower = fullTranscript.toLowerCase()
-		const index = transcriptLower.indexOf(snippetSample)
+		const transcriptNormalized = normalizeForSearchText(fullTranscript)
+		const index = transcriptNormalized.indexOf(snippetSample)
 		if (index >= 0) {
-			const ratio = transcriptLower.length ? index / transcriptLower.length : 0
+			const ratio = transcriptNormalized.length ? index / transcriptNormalized.length : 0
 			const estimated = durationSeconds * ratio
 			return Number.isFinite(estimated) ? Math.max(0, Math.min(durationSeconds, estimated)) : null
 		}
@@ -286,6 +288,73 @@ function humanizeKey(value?: string | null): string | null {
 	const capitalized = cleaned.replace(/\b\w/g, (char) => char.toUpperCase()).trim()
 	if (!capitalized.length) return null
 	return capitalized
+}
+
+type FacetLookup = Map<string, Map<string, FacetCatalog["facets"][number]>>
+
+function normalizeFacetValue(value: string | null | undefined): string | null {
+	if (!value) return null
+	const trimmed = value.trim().toLowerCase()
+	if (!trimmed.length) return null
+	return trimmed.replace(/\s+/g, " ")
+}
+
+function buildFacetLookup(catalog: FacetCatalog): FacetLookup {
+	const lookup: FacetLookup = new Map()
+	for (const facet of catalog.facets ?? []) {
+		const rawKind = typeof facet.kind_slug === "string" ? facet.kind_slug.trim().toLowerCase() : ""
+		if (!rawKind || !facet.facet_ref) continue
+		const byKind = lookup.get(rawKind) ?? new Map<string, FacetCatalog["facets"][number]>()
+		if (!lookup.has(rawKind)) {
+			lookup.set(rawKind, byKind)
+		}
+		const candidates = new Set<string>()
+		const primary = normalizeFacetValue(facet.alias ?? facet.label)
+		if (primary) candidates.add(primary)
+		const label = normalizeFacetValue(facet.label)
+		if (label) candidates.add(label)
+		for (const synonym of facet.synonyms ?? []) {
+			const normalized = normalizeFacetValue(synonym)
+			if (normalized) candidates.add(normalized)
+		}
+		for (const candidate of candidates) {
+			// Do not overwrite existing entries to preserve the first (usually alias) match
+			if (!byKind.has(candidate)) {
+				byKind.set(candidate, facet)
+			}
+		}
+	}
+	return lookup
+}
+
+function matchFacetFromLookup(
+	lookup: FacetLookup,
+	kindSlug: string,
+	label: string
+): FacetCatalog["facets"][number] | null {
+	const normalized = normalizeFacetValue(label)
+	if (!normalized) return null
+	const canonicalKind = kindSlug.trim().toLowerCase()
+	if (!canonicalKind) return null
+	const kindMap = lookup.get(canonicalKind)
+	if (!kindMap) return null
+	return kindMap.get(normalized) ?? null
+}
+
+function sanitizeFacetLabel(label: string | null | undefined): string | null {
+	if (typeof label !== "string") return null
+	const trimmed = label.replace(/\s+/g, " ").trim()
+	if (!trimmed.length) return null
+	return trimmed.length > 240 ? trimmed.slice(0, 237).trimEnd() + "..." : trimmed
+}
+
+function normalizeForSearchText(value: string | null | undefined): string {
+	if (!value || typeof value !== "string") return ""
+	const replaced = value
+		.replace(/[\u2018\u2019\u201B\u2032]/g, "'")
+		.replace(/[\u201C\u201D\u2033]/g, '"')
+		.replace(/\u00A0/g, " ")
+	return replaced.replace(/\s+/g, " ").trim().toLowerCase()
 }
 
 function sanitizePersonKey(value: unknown, fallback: string): string {
@@ -424,7 +493,7 @@ interface ExtractEvidenceResult {
 	primaryPersonSegments: string[]
 	insertedEvidenceIds: string[]
 	evidenceUnits: EvidenceFromBaml["evidence"]
-	evidenceKindTags: string[][]
+	evidenceFacetKinds: string[][]
 }
 
 export async function extractEvidenceAndPeopleCore({
@@ -467,13 +536,34 @@ export async function extractEvidenceAndPeopleCore({
 
 	let evidenceUnits: EvidenceFromBaml["evidence"] = []
 	let insertedEvidenceIds: string[] = []
-	const evidenceKindTags: string[][] = []
+const evidenceFacetKinds: string[][] = []
+const evidenceFacetMentionsByIndex: Array<
+	Array<{
+		kindSlug: string
+		label: string
+		facetRef: string | null
+		source: string
+		quote: string | null
+		evidenceIndex: number
+	}>
+> = []
+const facetMentionsByPersonKey = new Map<
+	string,
+	Array<{
+		kindSlug: string
+		label: string
+		facetRef: string | null
+		quote: string | null
+		evidenceIndex: number
+	}>
+>()
 	const personKeyForEvidence: string[] = []
 	const personRoleByKey = new Map<string, string | null>()
 	const facetObservationsByPersonKey = new Map<string, PersonFacetObservation[]>()
 	const facetObservationDedup = new Map<string, Set<string>>()
 
 	const facetCatalog = await resolveFacetCatalog(db, metadata.accountId, metadata.projectId)
+	const facetLookup = buildFacetLookup(facetCatalog)
 	const langfuse = getLangfuseClient()
 	const lfTrace = (langfuse as any).trace?.({
 		name: "baml.extract-evidence",
@@ -559,7 +649,7 @@ export async function extractEvidenceAndPeopleCore({
 			primaryPersonSegments: [],
 			insertedEvidenceIds,
 			evidenceUnits,
-			evidenceKindTags,
+			evidenceFacetKinds,
 		}
 	}
 
@@ -761,7 +851,7 @@ export async function extractEvidenceAndPeopleCore({
 			primaryPersonSegments: [],
 			insertedEvidenceIds,
 			evidenceUnits,
-			evidenceKindTags,
+			evidenceFacetKinds,
 		}
 	}
 
@@ -813,18 +903,61 @@ export async function extractEvidenceAndPeopleCore({
 		const facetMentions = Array.isArray((ev as { facet_mentions?: FacetMention[] }).facet_mentions)
 			? ((ev as { facet_mentions?: FacetMention[] }).facet_mentions as FacetMention[])
 			: []
-		const kind_tags = Array.from(
-			new Set(
-				facetMentions
-					.map((mention) => (typeof mention?.kind_slug === "string" ? mention.kind_slug.trim() : ""))
-					.filter((slug): slug is string => Boolean(slug))
-			)
-		)
-		evidenceKindTags.push(kind_tags)
+		const kindSlugSet = new Set<string>()
+const mentionRows: Array<{
+	kindSlug: string
+	label: string
+	facetRef: string | null
+	source: string
+	quote: string | null
+	evidenceIndex: number
+}> = []
+		const mentionDedup = new Set<string>()
+		for (const mention of facetMentions) {
+			if (!mention || typeof mention !== "object") continue
+			const kindRaw = typeof mention.kind_slug === "string" ? mention.kind_slug.trim().toLowerCase() : ""
+			const labelRaw = sanitizeFacetLabel((mention as FacetMention).value)
+			if (!kindRaw || !labelRaw) continue
+			kindSlugSet.add(kindRaw)
+			const matchedFacet = matchFacetFromLookup(facetLookup, kindRaw, labelRaw)
+			const resolvedLabel = sanitizeFacetLabel(matchedFacet?.alias ?? matchedFacet?.label ?? labelRaw)
+			if (!resolvedLabel) continue
+			const dedupKey = `${kindRaw}|${matchedFacet?.facet_ref ?? resolvedLabel.toLowerCase()}`
+			if (mentionDedup.has(dedupKey)) continue
+			mentionDedup.add(dedupKey)
+const mentionQuote = sanitizeFacetLabel((mention as FacetMention).quote ?? null)
+mentionRows.push({
+	kindSlug: kindRaw,
+	label: resolvedLabel,
+	facetRef: matchedFacet?.facet_ref ?? null,
+	source: "interview",
+	quote: mentionQuote,
+	evidenceIndex,
+})
+		}
+		const kindSlugs = Array.from(kindSlugSet)
+		evidenceFacetKinds.push(kindSlugs)
+evidenceFacetMentionsByIndex.push(mentionRows)
+
+if (mentionRows.length) {
+	const byPerson = facetMentionsByPersonKey.get(personKey) ?? []
+	if (!facetMentionsByPersonKey.has(personKey)) {
+		facetMentionsByPersonKey.set(personKey, byPerson)
+	}
+	for (const mention of mentionRows) {
+		byPerson.push({
+			kindSlug: mention.kindSlug,
+			label: mention.label,
+			facetRef: mention.facetRef,
+			quote: mention.quote,
+			evidenceIndex,
+		})
+	}
+}
 		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
 		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
 		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
-		const independence_key = computeIndependenceKey(gist ?? verb, kind_tags)
+		const independence_key = computeIndependenceKey(gist ?? verb, kindSlugs)
 		const rawAnchors =
 			ev && typeof (ev as any).anchors === "object" && (ev as any).anchors !== null
 				? [((ev as any).anchors ?? {}) as Record<string, any>]
@@ -884,7 +1017,6 @@ export async function extractEvidenceAndPeopleCore({
 			method: "interview",
 			modality: "qual",
 			support: "supports",
-			kind_tags,
 			personas: [],
 			segments: [],
 			journey_stage: null,
@@ -953,7 +1085,7 @@ export async function extractEvidenceAndPeopleCore({
 			primaryPersonSegments: [],
 			insertedEvidenceIds,
 			evidenceUnits,
-			evidenceKindTags,
+			evidenceFacetKinds,
 		}
 	}
 
@@ -962,54 +1094,54 @@ export async function extractEvidenceAndPeopleCore({
 	const { data: insertedEvidence, error: evidenceInsertError } = await db
 		.from("evidence")
 		.insert(evidenceRows)
-		.select("id, kind_tags")
+		.select("id")
 	if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
 	insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
 
-	try {
-		const tagsSet = new Set<string>()
-		const insertedEvidenceTyped = (insertedEvidence ?? []) as Array<{ id: string; kind_tags: string[] | null }>
-		insertedEvidenceTyped.forEach((ev) => {
-			for (const t of ev.kind_tags || []) {
-				if (typeof t === "string" && t.trim()) tagsSet.add(t.trim())
-			}
-		})
-		const tags = Array.from(tagsSet)
-
-		const tagIdByName = new Map<string, string>()
-		for (const tagName of tags) {
-			const { data: tagRow, error: tagErr } = await db
-				.from("tags")
-				.upsert(
-					{ account_id: metadata.accountId, tag: tagName, project_id: metadata.projectId },
-					{ onConflict: "account_id,tag" }
-				)
-				.select("id")
-				.single()
-			if (!tagErr && tagRow?.id) tagIdByName.set(tagName, tagRow.id)
+	if (insertedEvidenceIds.length && evidenceFacetMentionsByIndex.length) {
+		try {
+			await db.from("evidence_facet").delete().in("evidence_id", insertedEvidenceIds)
+		} catch (cleanupErr) {
+			consola.warn("Failed to clear existing evidence_facet rows", cleanupErr)
 		}
 
-		for (const ev of insertedEvidenceTyped) {
-			for (const tagName of ev.kind_tags || []) {
-				const tagId = tagIdByName.get(tagName)
-				if (!tagId) continue
-				const { error: etErr } = await db
-					.from("evidence_tag")
-					.insert({
-						evidence_id: ev.id,
-						tag_id: tagId,
-						account_id: metadata.accountId,
-						project_id: metadata.projectId,
-					})
-					.select("id")
-					.single()
-				if (etErr && !etErr.message?.includes("duplicate")) {
-					consola.warn(`Failed linking evidence ${ev.id} to tag ${tagName}: ${etErr.message}`)
-				}
+		const evidenceFacetRows: Array<{
+			account_id: string
+			project_id: string | null
+			evidence_id: string
+			kind_slug: string
+			facet_ref: string | null
+			label: string
+			source: string
+			confidence: number
+			quote: string | null
+		}> = []
+
+		const projectIdForInsert = metadata.projectId ?? null
+		for (let i = 0; i < insertedEvidenceIds.length; i++) {
+			const evidenceId = insertedEvidenceIds[i]
+			const mentions = evidenceFacetMentionsByIndex[i] ?? []
+			for (const mention of mentions) {
+				evidenceFacetRows.push({
+					account_id: metadata.accountId,
+					project_id: projectIdForInsert,
+					evidence_id: evidenceId,
+					kind_slug: mention.kindSlug,
+					facet_ref: mention.facetRef,
+					label: mention.label,
+					source: mention.source,
+					confidence: 0.8,
+					quote: mention.quote,
+				})
 			}
 		}
-	} catch (linkErr) {
-		consola.warn("Failed to create/link tags for evidence", linkErr)
+
+		if (evidenceFacetRows.length) {
+			const { error: facetInsertError } = await db.from("evidence_facet").insert(evidenceFacetRows)
+			if (facetInsertError) {
+				consola.warn("Failed to insert evidence_facet rows", facetInsertError.message)
+			}
+		}
 	}
 
 	const personIdByKey = new Map<string, string>()
@@ -1219,15 +1351,20 @@ export async function extractEvidenceAndPeopleCore({
 			scales: PersonScaleObservation[]
 		}> = []
 
-		for (const [personKey, personaFacets] of personaFacetsByPersonKey.entries()) {
+		const allPersonKeys = new Set<string>([
+			...personaFacetsByPersonKey.keys(),
+			...participantByKey.keys(),
+			...facetMentionsByPersonKey.keys(),
+		])
+
+		for (const personKey of allPersonKeys) {
 			const personId = personIdByKey.get(personKey) || primaryPersonId
 			if (!personId) continue
 
 			const facetObservations: PersonFacetObservation[] = []
+			const personaFacets = personaFacetsByPersonKey.get(personKey) ?? []
 			for (const pf of personaFacets) {
 				if (!pf.kind_slug || !pf.value) continue
-
-				// Map evidence_refs to actual evidence indices for traceability
 				const evidenceIndices = Array.isArray(pf.evidence_refs) ? pf.evidence_refs : []
 				const primaryEvidenceIndex = evidenceIndices[0] ?? undefined
 
@@ -1238,16 +1375,50 @@ export async function extractEvidenceAndPeopleCore({
 					evidence_unit_index: primaryEvidenceIndex,
 					confidence: typeof pf.confidence === "number" ? pf.confidence : 0.8,
 					notes: pf.reasoning ? [pf.reasoning] : undefined,
-					candidate: {
+					facet_ref: pf.facet_ref ?? undefined,
+				}
+				if (!pf.facet_ref) {
+					facetObservation.candidate = {
 						kind_slug: pf.kind_slug,
 						label: pf.value,
 						synonyms: [],
 						notes: pf.reasoning
 							? [`Frequency: ${pf.frequency ?? 1}, Evidence refs: ${evidenceIndices.join(", ")}`]
 							: undefined,
-					},
+					}
 				}
 				facetObservations.push(facetObservation)
+			}
+
+			// Fallback: derive facets from direct evidence mentions when synthesis is sparse
+			const existingKeys = new Set(
+				facetObservations.map((obs) => {
+					const base = obs.facet_ref ?? obs.value ?? ""
+					return `${obs.kind_slug.toLowerCase()}|${base.toLowerCase()}`
+				})
+			)
+			const mentionFallback = facetMentionsByPersonKey.get(personKey) ?? []
+			for (const mention of mentionFallback) {
+				const dedupeKey = `${mention.kindSlug.toLowerCase()}|${(mention.facetRef ?? mention.label).toLowerCase()}`
+				if (existingKeys.has(dedupeKey)) continue
+				existingKeys.add(dedupeKey)
+				facetObservations.push({
+					kind_slug: mention.kindSlug,
+					value: mention.label,
+					source: "interview",
+					evidence_unit_index: mention.evidenceIndex,
+					confidence: 0.6,
+					facet_ref: mention.facetRef ?? undefined,
+					notes: mention.quote ? [mention.quote] : undefined,
+					candidate: mention.facetRef
+						? undefined
+						: {
+							kind_slug: mention.kindSlug,
+							label: mention.label,
+							synonyms: [],
+							notes: mention.quote ? [mention.quote] : undefined,
+						},
+				} as PersonFacetObservation)
 			}
 
 			const scaleObservations = participantByKey.get(personKey)?.scales ?? []
@@ -1259,6 +1430,7 @@ export async function extractEvidenceAndPeopleCore({
 				})
 			}
 		}
+
 		if (observationInputs.length) {
 			await persistFacetObservations({
 				db,
@@ -1280,7 +1452,7 @@ export async function extractEvidenceAndPeopleCore({
 		primaryPersonSegments,
 		insertedEvidenceIds,
 		evidenceUnits,
-		evidenceKindTags,
+		evidenceFacetKinds,
 	}
 }
 
@@ -1449,23 +1621,29 @@ export async function analyzeThemesAndPersonaCore({
 			}
 		}
 
-		const knownCategories = new Set([
-			"context",
-			"pain",
-			"workflow",
-			"goals",
-			"constraints",
-			"willingness",
-			"demographics",
+		const categoryAlias = new Map<string, string>([
+			["context", "context"],
+			["pain", "pain"],
+			["workflow", "workflow"],
+			["goal", "goals"],
+			["goals", "goals"],
+			["constraint", "constraints"],
+			["constraints", "constraints"],
+			["willingness", "willingness"],
+			["demographic", "demographics"],
+			["demographics", "demographics"],
 		])
 
 		if (Array.isArray(evidenceResult.evidenceUnits) && evidenceResult.evidenceUnits.length && metadata.projectId) {
 			for (let i = 0; i < evidenceResult.insertedEvidenceIds.length; i++) {
 				const evId = evidenceResult.insertedEvidenceIds[i]
-				const tags = evidenceResult.evidenceKindTags[i] ?? []
+				const facetKinds = evidenceResult.evidenceFacetKinds[i] ?? []
 
-				const matchCat = (tags || []).find((t) => knownCategories.has(String(t)))
-				const qRep = matchCat ? categoryToQuestion.get(matchCat) : undefined
+				const matchedSlug = (facetKinds || [])
+					.map((slug) => String(slug))
+					.find((slug) => categoryAlias.has(slug))
+				const categoryKey = matchedSlug ? categoryAlias.get(matchedSlug) : undefined
+				const qRep = categoryKey ? categoryToQuestion.get(categoryKey) : undefined
 				if (!qRep) continue
 
 				let answerId: string | null = null
@@ -1501,7 +1679,7 @@ export async function analyzeThemesAndPersonaCore({
 							respondent_person_id: personData.id,
 							question_id: qRep.id,
 							question_text: qRep.text,
-							question_category: qRep.categoryId || matchCat || null,
+								question_category: qRep.categoryId || categoryKey || null,
 							status: "answered",
 							origin: "scripted",
 							answered_at: new Date().toISOString(),
@@ -1527,8 +1705,8 @@ export async function analyzeThemesAndPersonaCore({
 				if (!existingAnswer?.answered_at) {
 					answerUpdatePayload.answered_at = new Date().toISOString()
 				}
-				if (!existingAnswer?.question_category && (qRep?.categoryId || matchCat)) {
-					answerUpdatePayload.question_category = qRep?.categoryId || matchCat || null
+				if (!existingAnswer?.question_category && (qRep?.categoryId || categoryKey)) {
+					answerUpdatePayload.question_category = qRep?.categoryId || categoryKey || null
 				}
 
 				if (Object.keys(answerUpdatePayload).length) {

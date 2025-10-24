@@ -82,7 +82,7 @@ create table if not exists public.interview_prompts (
   category text,
   estimated_time_minutes int,
   is_must_have boolean default false,
-  status text check (status in ('proposed','asked','answered','skipped','rejected')) default 'proposed',
+  status text check (status in ('proposed','asked','answered','skipped','rejected','deleted','selected','backup')) default 'proposed',
   order_index int,
   scores jsonb,
   source text default 'ai',
