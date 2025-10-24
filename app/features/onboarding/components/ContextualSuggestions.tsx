@@ -166,7 +166,7 @@ export default function ContextualSuggestions({
 										}}
 										disabled={isConsumed || isRejected}
 										className={
-											"cursor-pointer rounded-md border px-2 py-1 text-left font-medium text-sm transition-colors sm:px-2.5 " +
+											"cursor-pointer rounded-md border px-2 py-1 text-left font-medium text-sm transition-colors sm:px-2.5" +
 											(isConsumed
 												? "cursor-not-allowed border-slate-200 bg-slate-50 text-slate-400 line-through opacity-50"
 												: isRejected

@@ -112,7 +112,7 @@ export function LazyTranscriptResults({
 						<FileText className="h-5 w-5 text-muted-foreground" />
 						<div>
 							<h3 className="font-medium text-foreground">Interview Transcript</h3>
-							<p className="text-foreground text-sm ">
+							<p className="text-foreground text-sm">
 								{hasFormattedTranscript ? "Full transcript with analysis available" : "Raw transcript available"}
 							</p>
 						</div>

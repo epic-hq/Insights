@@ -215,7 +215,7 @@ export function MiniPersonCard({ person }: { person: PersonWithPersonas }) {
 				</Link>
 				{persona?.name && "id" in persona && persona.id && (
 					<Link to={routes.personas.detail(persona.id)}>
-						<div className="rounded-sm border p-2 text-foreground text-xs ">{persona.name}</div>
+						<div className="rounded-sm border p-2 text-foreground text-xs">{persona.name}</div>
 					</Link>
 				)}
 			</div>

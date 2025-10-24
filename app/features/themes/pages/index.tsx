@@ -235,7 +235,7 @@ export default function ThemesIndex() {
 
 	return (
 		<div className="mx-auto h-full max-w-7xl p-8">
-			<div className="mb-6 ">
+			<div className="mb-6">
 				<div className="flex items-center gap-2">
 					<Button
 						variant={showMatrix ? "default" : "outline"}

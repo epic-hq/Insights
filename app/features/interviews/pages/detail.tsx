@@ -265,27 +265,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							project_id: string | null
+							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -735,17 +735,18 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	// Comprehensive processing check: interview not ready OR analysis job active OR progress indicates incomplete
 	const isProcessing = useMemo(() => {
 		// Check interview status - anything before "ready" means still processing
-		const interviewNotReady = interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
-		
+		const interviewNotReady =
+			interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
+
 		// Check analysis job status if it exists
 		const analysisJobActive = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
-		
+
 		// Check progress info from Trigger.dev hook
 		const progressIncomplete = !progressInfo.isComplete && !progressInfo.hasError
-		
+
 		return interviewNotReady || analysisJobActive || progressIncomplete
 	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
-	
+
 	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
 	function formatReadable(dateString: string) {
@@ -962,7 +963,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{isProcessing && evidence.length === 0 ? (
 						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
 							<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
-							<p className="mt-1 text-muted-foreground text-xs">Evidence timeline will appear once extraction is complete</p>
+							<p className="mt-1 text-muted-foreground text-xs">
+								Evidence timeline will appear once extraction is complete
+							</p>
 						</div>
 					) : evidence.length > 0 ? (
 						<PlayByPlayTimeline evidence={evidence} className="mb-6" />

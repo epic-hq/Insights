@@ -734,7 +734,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 						try {
 							// Convert turns to speaker_transcripts format for BAML processing
 							const utterances = turns.map((turn, idx) => ({
-								speaker: `Speaker ${idx % 2 === 0 ? 'A' : 'B'}`, // Simple alternating speaker labels
+								speaker: `Speaker ${idx % 2 === 0 ? "A" : "B"}`, // Simple alternating speaker labels
 								text: turn.transcript,
 								start: turn.start,
 								end: turn.end,

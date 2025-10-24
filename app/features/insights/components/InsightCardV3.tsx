@@ -59,7 +59,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 							)}
 
 							{(selected.details || selected.evidence) && (
-								<div className="grid grid-cols-1 gap-6 ">
+								<div className="grid grid-cols-1 gap-6">
 									{selected.details && (
 										<div className="space-y-2">
 											<h4 className="font-medium text-foreground text-sm">Details</h4>
@@ -70,7 +70,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 										<div className="space-y-2">
 											<h4 className="font-medium text-foreground text-sm">Evidence</h4>
 											<div className="flex items-center gap-2 rounded-lg bg-blue-400/20 p-3">
-												<Quote className="h-4 w-4 " />
+												<Quote className="h-4 w-4" />
 												<p className="text-muted-foreground text-sm leading-relaxed">{selected.evidence}</p>
 											</div>
 										</div>
