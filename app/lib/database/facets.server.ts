@@ -232,13 +232,12 @@ export async function getFacetCatalog({ db, accountId }: FacetCatalogOptions): P
 	const kinds: FacetCatalogKind[] = (kindRows ?? []).map((row) => ({ slug: row.slug, label: row.label }))
 	const kindIdToSlug = new Map<number, string>((kindRows ?? []).map((row) => [row.id, row.slug]))
 
-	const entries = new Map<string, FacetCatalogEntry>()
+	const entries = new Map<number, FacetCatalogEntry>()
 	let newestTimestamp = getMaxTimestamp(kindRows ?? [])
 
 	for (const row of globalRows ?? []) {
-		const facetRef = `${GLOBAL_PREFIX}${row.id}`
-		entries.set(facetRef, {
-			facet_ref: facetRef,
+		entries.set(row.id, {
+			facet_account_id: row.id,
 			kind_slug: kindIdToSlug.get(row.kind_id) ?? "",
 			label: row.label,
 			synonyms: row.synonyms ?? [],
@@ -247,13 +246,14 @@ export async function getFacetCatalog({ db, accountId }: FacetCatalogOptions): P
 	}
 
 	for (const row of accountRows ?? []) {
-		if (row.is_active === false) continue
-		const facetRef = `${ACCOUNT_PREFIX}${row.id}`
-		entries.set(facetRef, {
-			facet_ref: facetRef,
+		// Include all facets in catalog for display purposes
+		// is_active controls whether they're used in new processing, not visibility
+		entries.set(row.id, {
+			facet_account_id: row.id,
 			kind_slug: kindIdToSlug.get(row.kind_id) ?? "",
 			label: row.label,
 			synonyms: row.synonyms ?? [],
+			alias: undefined, // Account facets don't have aliases (yet)
 		})
 		newestTimestamp = maxTimestamp(newestTimestamp, row.updated_at)
 	}
@@ -301,15 +301,9 @@ export async function persistFacetObservations({
 					evidenceIndex !== null && evidenceIndex !== undefined ? (evidenceIds[evidenceIndex] ?? null) : null
 				const confidence = normalizeConfidence(obs.confidence)
 
-				let facetAccountId: number | null = null
-				if (obs.facet_ref?.trim()) {
-					facetAccountId = await resolver.ensureFacetForRef(obs.facet_ref.trim(), {
-						kindSlug: obs.kind_slug ?? undefined,
-						label: obs.value ?? obs.candidate?.label ?? undefined,
-						synonyms: obs.candidate?.synonyms ?? [],
-					})
-				}
+				let facetAccountId: number | null = obs.facet_account_id ?? null
 
+				// If no ID provided, create/find facet by label
 				if (!facetAccountId && obs.kind_slug && (obs.candidate?.label || obs.value)) {
 					const label = obs.candidate?.label ?? obs.value ?? ""
 					facetAccountId = await resolver.ensureFacet({

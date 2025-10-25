@@ -19,6 +19,7 @@ create table "public"."evidence_facet" (
     "confidence" numeric default 0.8,
     "notes" text,
     "created_at" timestamp with time zone not null default now(),
+    "updated_at" timestamp with time zone not null default now(),
     "created_by" uuid
 );
 

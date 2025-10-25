@@ -146,6 +146,7 @@ const routes = [
 	route("api/process", "./routes/api.process.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),
 	route("api/teams/create", "./routes/api.teams.create.tsx"),
+	route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
 	...voiceRoutes,
 
 	// Resource routes

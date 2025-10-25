@@ -136,6 +136,7 @@ create table if not exists evidence_facet (
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   notes text,
   created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now(),
   created_by uuid references auth.users(id)
 );
 

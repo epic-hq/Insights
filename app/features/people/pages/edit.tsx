@@ -94,8 +94,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			})
 
 			return redirect(routes.people.index())
-		} catch {
-			return { error: "Failed to delete person" }
+		} catch (err) {
+			console.error("Delete person action error:", err)
+			return { error: err instanceof Error ? err.message : "Failed to delete person" }
 		}
 	}
 
@@ -279,7 +280,7 @@ export default function EditPerson() {
 			})
 			.filter((value): value is string => Boolean(value))
 	}, [person.person_facet])
-	const accountFacetOptions = catalog.facets.filter((facet) => facet.facet_ref.startsWith("a:"))
+	const accountFacetOptions = catalog.facets
 	const totalFacetOptions = accountFacetOptions.length
 
 	return (
@@ -372,7 +373,7 @@ export default function EditPerson() {
 							return (
 								<optgroup key={kind.slug} label={kind.label}>
 									{options.map((facet) => (
-										<option key={facet.facet_ref} value={facet.facet_ref}>
+										<option key={facet.facet_account_id} value={`a:${facet.facet_account_id}`}>
 											{facet.alias || facet.label}
 										</option>
 									))}

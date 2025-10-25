@@ -1,11 +1,12 @@
 import consola from "consola"
-import { Edit2, Loader2 } from "lucide-react"
+import { Edit2, Loader2, MoreVertical } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
@@ -872,23 +873,50 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									</Link>
 								)}
 								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
-									<button
-										onClick={() => {
-											try {
-												fetcher.submit(
-													{ interview_id: interview.id },
-													{ method: "post", action: "/api.analysis-retry" }
-												)
-											} catch (e) {
-												consola.error("Retry analysis submit failed", e)
-											}
-										}}
-										disabled={fetcher.state !== "idle" || isProcessing}
-										className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm disabled:opacity-60"
-										title="Re-run AI analysis on this interview"
-									>
-										{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Retry analysis"}
-									</button>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50 disabled:opacity-60"
+												title="Reprocess options"
+											>
+												<MoreVertical className="h-4 w-4" />
+												{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Reprocess"}
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.analysis-retry" }
+														)
+													} catch (e) {
+														consola.error("Retry analysis submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Transcription
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.reprocess-evidence" }
+														)
+													} catch (e) {
+														consola.error("Reprocess evidence submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Evidence Collection
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
 								)}
 								<Link
 									to={routes.interviews.edit(interview.id)}

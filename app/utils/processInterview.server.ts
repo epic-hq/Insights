@@ -303,7 +303,7 @@ function buildFacetLookup(catalog: FacetCatalog): FacetLookup {
 	const lookup: FacetLookup = new Map()
 	for (const facet of catalog.facets ?? []) {
 		const rawKind = typeof facet.kind_slug === "string" ? facet.kind_slug.trim().toLowerCase() : ""
-		if (!rawKind || !facet.facet_ref) continue
+		if (!rawKind || !facet.facet_account_id) continue
 		const byKind = lookup.get(rawKind) ?? new Map<string, FacetCatalog["facets"][number]>()
 		if (!lookup.has(rawKind)) {
 			lookup.set(rawKind, byKind)
@@ -713,6 +713,7 @@ const facetMentionsByPersonKey = new Map<
 	const rawPeople = Array.isArray((evidenceResponse as { people?: EvidenceParticipant[] })?.people)
 		? (((evidenceResponse as { people?: EvidenceParticipant[] }).people ?? []) as EvidenceParticipant[])
 		: []
+	consola.info(`📋 Phase 1 extracted ${rawPeople.length} people from transcript`)
 	const participants: NormalizedParticipant[] = []
 	const participantByKey = new Map<string, NormalizedParticipant>()
 
@@ -924,16 +925,9 @@ const facetMentionsByPersonKey = new Map<
 
 			const matchedFacet = matchFacetFromLookup(facetLookup, kindRaw, resolvedLabel)
 			const synonyms = Array.isArray(matchedFacet?.synonyms) ? matchedFacet?.synonyms ?? [] : []
-			let facetAccountId: number | null = null
+			let facetAccountId: number | null = matchedFacet?.facet_account_id ?? null
 
-			if (matchedFacet?.facet_ref) {
-				facetAccountId = await facetResolver.ensureFacetForRef(matchedFacet.facet_ref, {
-					kindSlug: kindRaw,
-					label: resolvedLabel,
-					synonyms,
-				})
-			}
-
+			// If no match found in catalog, create new facet
 			if (!facetAccountId) {
 				facetAccountId = await facetResolver.ensureFacet({
 					kindSlug: kindRaw,
@@ -1246,9 +1240,11 @@ const facetMentionsByPersonKey = new Map<
 	let primaryPersonOrganization: string | null = null
 	let primaryPersonSegments: string[] = []
 
+	consola.info(`👥 Processing ${participants.length} participants for person records`)
 	if (participants.length) {
 		for (const [index, participant] of participants.entries()) {
 			const participantKey = participant.person_key
+			consola.debug(`  - Creating person record for "${participantKey}" (role: ${participant.role})`)
 			const resolved = resolveName(participant, index)
 			const segments = participant.segments.length ? participant.segments : metadata.segment ? [metadata.segment] : []
 			const participantOverrides: Partial<PeopleInsert> = {
@@ -1379,9 +1375,18 @@ const facetMentionsByPersonKey = new Map<
 			...facetMentionsByPersonKey.keys(),
 		])
 
+		consola.info(`🎯 Processing facets for ${allPersonKeys.size} person_keys`)
+		consola.debug(`  - personaFacetsByPersonKey has keys:`, Array.from(personaFacetsByPersonKey.keys()))
+		consola.debug(`  - participantByKey has keys:`, Array.from(participantByKey.keys()))
+		consola.debug(`  - personIdByKey has keys:`, Array.from(personIdByKey.keys()))
+
 		for (const personKey of allPersonKeys) {
-			const personId = personIdByKey.get(personKey) || primaryPersonId
-			if (!personId) continue
+			const personId = personIdByKey.get(personKey)
+			if (!personId) {
+				consola.warn(`⚠️  Skipping facets for person_key "${personKey}" - no matching person record found`)
+				consola.debug(`Available person_keys in personIdByKey:`, Array.from(personIdByKey.keys()))
+				continue
+			}
 
 			const facetObservations: PersonFacetObservation[] = []
 			const personaFacets = personaFacetsByPersonKey.get(personKey) ?? []
@@ -1397,9 +1402,9 @@ const facetMentionsByPersonKey = new Map<
 					evidence_unit_index: primaryEvidenceIndex,
 					confidence: typeof pf.confidence === "number" ? pf.confidence : 0.8,
 					notes: pf.reasoning ? [pf.reasoning] : undefined,
-					facet_ref: pf.facet_ref ?? undefined,
+					facet_account_id: pf.facet_account_id ?? undefined,
 				}
-				if (!pf.facet_ref) {
+				if (!pf.facet_account_id) {
 					facetObservation.candidate = {
 						kind_slug: pf.kind_slug,
 						label: pf.value,
@@ -1416,9 +1421,8 @@ const facetMentionsByPersonKey = new Map<
 		const existingFacetAccountIds = new Set<number>()
 		const existingKindValueKeys = new Set<string>()
 		for (const obs of facetObservations) {
-			if (obs.facet_ref && obs.facet_ref.startsWith("a:")) {
-				const numericId = Number.parseInt(obs.facet_ref.slice(2), 10)
-				if (!Number.isNaN(numericId)) existingFacetAccountIds.add(numericId)
+			if (obs.facet_account_id) {
+				existingFacetAccountIds.add(obs.facet_account_id)
 			}
 			if (obs.value) {
 				existingKindValueKeys.add(`${obs.kind_slug.toLowerCase()}|${obs.value.toLowerCase()}`)
@@ -1437,7 +1441,7 @@ const facetMentionsByPersonKey = new Map<
 				source: "interview",
 				evidence_unit_index: mention.evidenceIndex,
 				confidence: 0.6,
-				facet_ref: `a:${mention.facetAccountId}`,
+				facet_account_id: mention.facetAccountId,
 				notes: mention.quote ? [mention.quote] : undefined,
 			})
 		}

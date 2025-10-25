@@ -81,7 +81,7 @@ export default class TypeBuilder {
     
     FacetCatalog: ClassViewer<'FacetCatalog', "kinds" | "facets" | "version">;
     
-    FacetCatalogEntry: ClassViewer<'FacetCatalogEntry', "facet_ref" | "kind_slug" | "label" | "alias" | "synonyms">;
+    FacetCatalogEntry: ClassViewer<'FacetCatalogEntry', "facet_account_id" | "kind_slug" | "label" | "alias" | "synonyms">;
     
     FacetCatalogKind: ClassViewer<'FacetCatalogKind', "slug" | "label">;
     
@@ -121,7 +121,7 @@ export default class TypeBuilder {
     
     Person: ClassViewer<'Person', "speaker_label" | "person_name" | "inferred_name" | "role">;
     
-    PersonFacetObservation: ClassViewer<'PersonFacetObservation', "facet_ref" | "candidate" | "kind_slug" | "value" | "source" | "evidence_unit_index" | "confidence" | "notes">;
+    PersonFacetObservation: ClassViewer<'PersonFacetObservation', "facet_account_id" | "candidate" | "kind_slug" | "value" | "source" | "evidence_unit_index" | "confidence" | "notes">;
     
     PersonScaleObservation: ClassViewer<'PersonScaleObservation', "kind_slug" | "score" | "band" | "source" | "evidence_unit_index" | "confidence" | "rationale">;
     
@@ -321,7 +321,7 @@ export default class TypeBuilder {
         ]);
         
         this.FacetCatalogEntry = this.tb.classViewer("FacetCatalogEntry", [
-          "facet_ref","kind_slug","label","alias","synonyms",
+          "facet_account_id","kind_slug","label","alias","synonyms",
         ]);
         
         this.FacetCatalogKind = this.tb.classViewer("FacetCatalogKind", [
@@ -401,7 +401,7 @@ export default class TypeBuilder {
         ]);
         
         this.PersonFacetObservation = this.tb.classViewer("PersonFacetObservation", [
-          "facet_ref","candidate","kind_slug","value","source","evidence_unit_index","confidence","notes",
+          "facet_account_id","candidate","kind_slug","value","source","evidence_unit_index","confidence","notes",
         ]);
         
         this.PersonScaleObservation = this.tb.classViewer("PersonScaleObservation", [

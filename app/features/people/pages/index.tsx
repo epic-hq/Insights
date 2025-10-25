@@ -54,10 +54,10 @@ export default function PeopleIndexPage() {
 	}
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 
-	const facetsByRef = useMemo(() => {
-		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
+	const facetsById = useMemo(() => {
+		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>()
 		for (const facet of catalog.facets) {
-			map.set(facet.facet_ref, {
+			map.set(facet.facet_account_id, {
 				label: facet.label,
 				alias: facet.alias,
 				kind_slug: facet.kind_slug,
@@ -69,18 +69,18 @@ export default function PeopleIndexPage() {
 	const peopleWithFacets = useMemo(() => {
 		return people.map((person) => {
 			const personFacets = (person.person_facet ?? []).map((row) => {
-				const facetMeta = facetsByRef.get(row.facet_ref)
+				const facetMeta = facetsById.get(row.facet_account_id)
 				return {
-					facet_ref: row.facet_ref,
-					label: facetMeta?.alias || facetMeta?.label || row.facet_ref,
+					facet_account_id: row.facet_account_id,
+					label: facetMeta?.alias || facetMeta?.label || `ID:${row.facet_account_id}`,
 					kind_slug: facetMeta?.kind_slug || "",
-					source: row.source || null,
+					source: row.source ?? null,
 					confidence: row.confidence ?? null,
 				}
 			})
 			return { person, facets: personFacets }
 		})
-	}, [people, facetsByRef])
+	}, [people, facetsById])
 
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">

@@ -576,7 +576,7 @@ export interface FacetCatalog {
 }
 
 export interface FacetCatalogEntry {
-  facet_ref: string
+  facet_account_id: number
   kind_slug: string
   label: string
   alias?: string | null
@@ -752,7 +752,7 @@ export interface Person {
 }
 
 export interface PersonFacetObservation {
-  facet_ref?: string | null
+  facet_account_id?: number | null
   candidate?: FacetCandidatePayload | null
   kind_slug: string
   value: string

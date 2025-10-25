@@ -98,13 +98,13 @@ create policy "Account members can update" on public.people
 
 
 ----------------
--- Only account OWNERS should be able to delete records that are owned by an account they belong to
+-- Account members can delete people records
 ----------------
-create policy "Account owners can delete" on public.people
+create policy "Account members can delete" on public.people
     for delete
     to authenticated
     using (
-    account_id IN ( SELECT accounts.get_accounts_with_role('owner'))
+    account_id IN ( SELECT accounts.get_accounts_with_role())
     );
 
 

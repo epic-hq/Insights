@@ -159,10 +159,10 @@ export default function PersonDetail() {
 		.toUpperCase()
 		.slice(0, 2) || "?"
 
-	const facetsByRef = useMemo(() => {
-		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
+	const facetsById = useMemo(() => {
+		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>()
 		for (const facet of catalog.facets) {
-			map.set(facet.facet_ref, {
+			map.set(facet.facet_account_id, {
 				label: facet.label,
 				alias: facet.alias,
 				kind_slug: facet.kind_slug,
@@ -173,16 +173,16 @@ export default function PersonDetail() {
 
 	const personFacets = useMemo(() => {
 		return (person.person_facet ?? []).map((row) => {
-			const meta = facetsByRef.get(row.facet_ref)
+			const meta = facetsById.get(row.facet_account_id)
 			return {
-				facet_ref: row.facet_ref,
-				label: meta?.alias || meta?.label || row.facet_ref,
+				facet_account_id: row.facet_account_id,
+				label: meta?.alias || meta?.label || `ID:${row.facet_account_id}`,
 				kind_slug: meta?.kind_slug || "",
 				source: row.source || null,
 				confidence: row.confidence ?? null,
 			}
 		})
-	}, [person.person_facet, facetsByRef])
+	}, [person.person_facet, facetsById])
 
 	const facetsGrouped = useMemo(() => {
 		const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]))
@@ -310,7 +310,7 @@ export default function PersonDetail() {
 											<div className="flex flex-wrap gap-2">
 												{group.facets.map((facet) => (
 													<span
-														key={facet.facet_ref}
+														key={facet.facet_account_id}
 														className="rounded bg-white px-2 py-1 text-xs shadow-sm dark:bg-gray-900"
 													>
 														{facet.label}

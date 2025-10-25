@@ -262,7 +262,7 @@ export namespace partial_types {
       version?: string | null
     }
     export interface FacetCatalogEntry {
-      facet_ref?: string | null
+      facet_account_id?: number | null
       kind_slug?: string | null
       label?: string | null
       alias?: string | null
@@ -398,7 +398,7 @@ export namespace partial_types {
       role?: string | null
     }
     export interface PersonFacetObservation {
-      facet_ref?: string | null
+      facet_account_id?: number | null
       candidate?: FacetCandidatePayload | null
       kind_slug?: string | null
       value?: string | null
