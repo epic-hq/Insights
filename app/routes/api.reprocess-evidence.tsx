@@ -86,15 +86,27 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			// Extract the necessary fields from transcript_formatted
 			const transcriptFormatted = interview.transcript_formatted as any
-			const fullTranscript = transcriptFormatted?.full_transcript || transcriptFormatted?.text || ""
 			const language = transcriptFormatted?.language || transcriptFormatted?.detected_language || "en"
+
+			// Get speaker transcripts with timing
+			const speakerTranscriptsRaw = (formattedTranscriptData.speaker_transcripts ?? []) as any[]
+			const speakerTranscripts = Array.isArray(speakerTranscriptsRaw) 
+				? speakerTranscriptsRaw.map((u: any) => ({
+						speaker: u.speaker ?? "",
+						text: u.text ?? "",
+						start: u.start ?? null,
+						end: u.end ?? null,
+				  }))
+				: []
+
+			consola.info(` Passing ${speakerTranscripts.length} speaker utterances with timing to AI for reprocessing`)
 
 			const handle = await tasks.trigger<typeof extractEvidenceAndPeopleTask>(
 				"interview.extract-evidence-and-people",
 				{
 					interview: interview as any,
 					transcriptData: formattedTranscriptData as any,
-					fullTranscript,
+					fullTranscript: "", // Legacy field, not used in AI extraction
 					language,
 					metadata,
 					analysisJobId: analysisJob.id,

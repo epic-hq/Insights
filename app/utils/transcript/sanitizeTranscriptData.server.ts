@@ -19,8 +19,8 @@ interface SanitizedTopicLabel {
 interface SanitizedTopicResult {
 	text: string
 	labels: SanitizedTopicLabel[]
-	start_time?: number | null
-	end_time?: number | null
+	start_time: number | null
+	end_time: number | null
 }
 
 interface SanitizedTopicDetection {
@@ -97,9 +97,55 @@ const sanitizeSpeakers = (value: unknown): SanitizedSpeakerUtterance[] => {
 		.filter((item): item is SanitizedSpeakerUtterance => item !== null)
 }
 
+/**
+ * Find the best matching speaker utterance for a given text snippet
+ * Returns the start/end times from the utterance that contains or best matches the text
+ */
+const findTimingForText = (
+	text: string,
+	utterances: SanitizedSpeakerUtterance[]
+): { start: number | null; end: number | null } => {
+	if (!text || !utterances.length) return { start: null, end: null }
+
+	// Normalize text for comparison (lowercase, trim, remove extra whitespace)
+	const normalizedSearchText = text.toLowerCase().trim().replace(/\s+/g, " ")
+
+	// Try to find an utterance that contains this text
+	for (const utterance of utterances) {
+		const normalizedUtteranceText = utterance.text.toLowerCase().trim().replace(/\s+/g, " ")
+		if (normalizedUtteranceText.includes(normalizedSearchText)) {
+			return { start: utterance.start, end: utterance.end }
+		}
+	}
+
+	// If no exact match, find the utterance with the most word overlap
+	const searchWords = new Set(normalizedSearchText.split(" ").filter((w) => w.length > 3))
+	if (searchWords.size === 0) return { start: null, end: null }
+
+	let bestMatch: SanitizedSpeakerUtterance | null = null
+	let bestOverlap = 0
+
+	for (const utterance of utterances) {
+		const utteranceWords = utterance.text.toLowerCase().split(" ").filter((w) => w.length > 3)
+		const overlap = utteranceWords.filter((w) => searchWords.has(w)).length
+		if (overlap > bestOverlap) {
+			bestOverlap = overlap
+			bestMatch = utterance
+		}
+	}
+
+	// Return timing if we found a reasonable match (at least 2 words overlap)
+	if (bestMatch && bestOverlap >= 2) {
+		return { start: bestMatch.start, end: bestMatch.end }
+	}
+
+	return { start: null, end: null }
+}
+
 const sanitizeTopicDetection = (
 	value: unknown,
-	options: Required<Pick<SanitizeOptions, "maxTopicResults" | "maxLabelsPerResult">>
+	options: Required<Pick<SanitizeOptions, "maxTopicResults" | "maxLabelsPerResult">>,
+	utterances: SanitizedSpeakerUtterance[] = []
 ): SanitizedTopicDetection | null => {
 	if (!value || typeof value !== "object") return null
 	const record = value as Record<string, unknown>
@@ -123,9 +169,19 @@ const sanitizeTopicDetection = (
 						.filter((label): label is SanitizedTopicLabel => label !== null)
 						.slice(0, options.maxLabelsPerResult)
 				: []
-			const start = coerceNumber(row.start ?? row.start_time)
-			const end = coerceNumber(row.end ?? row.end_time)
-			return { text, labels, start_time: start, end_time: end }
+
+			// Try to get timing from the raw data first
+			let start = coerceNumber(row.start ?? row.start_time)
+			let end = coerceNumber(row.end ?? row.end_time)
+
+			// If no timing in raw data, try to infer from speaker utterances
+			if ((start === null || start === undefined) && utterances.length > 0 && text) {
+				const timing = findTimingForText(text, utterances)
+				start = timing.start
+				end = timing.end
+			}
+
+			return { text, labels, start_time: start ?? null, end_time: end ?? null }
 		})
 		.filter((item): item is SanitizedTopicResult => item !== null)
 
@@ -207,7 +263,11 @@ function sanitizeTranscriptPayload(payload: unknown, options: SanitizeOptions = 
 
 	const speakerTranscripts = sanitizeSpeakers(raw.speaker_transcripts ?? raw.utterances)
 
-	const topicDetection = sanitizeTopicDetection(raw.topic_detection ?? raw.iab_categories_result, config)
+	const topicDetection = sanitizeTopicDetection(
+		raw.topic_detection ?? raw.iab_categories_result,
+		config,
+		speakerTranscripts
+	)
 	const sentiment = sanitizeSentiment(raw.sentiment_analysis_results ?? raw.sentiment_analysis)
 
 	const chapters = sanitizeChapters(raw.chapters ?? raw.auto_chapters ?? raw.segments)

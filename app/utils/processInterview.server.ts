@@ -25,6 +25,7 @@ import { createPlannedAnswersForInterview } from "~/lib/database/project-answers
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
+import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 // Supabase table types
@@ -537,16 +538,17 @@ export async function extractEvidenceAndPeopleCore({
 	let evidenceUnits: EvidenceFromBaml["evidence"] = []
 	let insertedEvidenceIds: string[] = []
 const evidenceFacetKinds: string[][] = []
-const evidenceFacetMentionsByIndex: Array<
-	Array<{
-		kindSlug: string
-		label: string
-		facetAccountId: number
-		source: string
-		quote: string | null
-		evidenceIndex: number
-	}>
-> = []
+const evidenceFacetRowsToInsert: Array<{
+	account_id: string
+	project_id: string | null
+	evidence_index: number
+	kind_slug: string
+	facet_account_id: number
+	label: string
+	source: string
+	confidence: number
+	quote: string | null
+}> = []
 const facetMentionsByPersonKey = new Map<
 	string,
 	Array<{
@@ -579,6 +581,11 @@ const facetMentionsByPersonKey = new Map<
 		fullTranscript.length > transcriptPreviewLength
 			? `${fullTranscript.slice(0, transcriptPreviewLength)}...`
 			: fullTranscript
+	consola.info(`📊 Extracting evidence with ${chapters.length} chapters`, {
+		chapterSample: chapters.slice(0, 3),
+		transcriptLength: fullTranscript.length,
+	})
+	
 	const lfGeneration = lfTrace?.generation?.({
 		name: "baml.ExtractEvidenceFromTranscriptV2",
 		input: {
@@ -604,8 +611,22 @@ const facetMentionsByPersonKey = new Map<
 	try {
 		// Keep passing the merged facet catalog so the model can ground mentions against the project taxonomy.
 		// Dropping this trims the prompt slightly but increases the odds that facet references drift from known labels.
+		
+		// Get speaker transcripts from sanitized data
+		const speakerTranscriptsRaw = (transcriptData as any).speaker_transcripts ?? []
+		const speakerTranscripts = Array.isArray(speakerTranscriptsRaw) 
+			? speakerTranscriptsRaw.map((u: any) => ({
+					speaker: u.speaker ?? "",
+					text: u.text ?? "",
+					start: u.start ?? null,
+					end: u.end ?? null,
+			  }))
+			: []
+		
+		consola.info(`📝 Passing ${speakerTranscripts.length} speaker utterances with timing to AI`)
+		
 		evidenceResponse = await instrumentedClient.ExtractEvidenceFromTranscriptV2(
-			fullTranscript || "",
+			speakerTranscripts,
 			chapters,
 			language,
 			facetCatalog
@@ -615,6 +636,15 @@ const facetMentionsByPersonKey = new Map<
 			consola.log("[BAML usage] ExtractEvidenceFromTranscriptV2:", usageSummary)
 		}
 		langfuseUsage = mapUsageToLangfuse(usageSummary)
+		
+		// Log evidence response summary
+		const evidenceCount = evidenceResponse?.evidence?.length ?? 0
+		const totalFacetMentions = evidenceResponse?.evidence?.reduce((sum, ev) => {
+			const mentions = (ev as any)?.facet_mentions
+			return sum + (Array.isArray(mentions) ? mentions.length : 0)
+		}, 0) ?? 0
+		consola.info(`🔍 BAML returned ${evidenceCount} evidence units with ${totalFacetMentions} total facet mentions`)
+		
 		lfGeneration?.update?.({
 			output: evidenceResponse,
 			usage: langfuseUsage,
@@ -905,16 +935,15 @@ const facetMentionsByPersonKey = new Map<
 		const facetMentions = Array.isArray((ev as { facet_mentions?: FacetMention[] }).facet_mentions)
 			? ((ev as { facet_mentions?: FacetMention[] }).facet_mentions as FacetMention[])
 			: []
+		
+		if (facetMentions.length > 0) {
+			consola.info(`Evidence ${evidenceIndex} has ${facetMentions.length} facet mentions`)
+		}
+		
 		const kindSlugSet = new Set<string>()
-		const mentionRows: Array<{
-			kindSlug: string
-			label: string
-			facetAccountId: number
-			source: string
-			quote: string | null
-			evidenceIndex: number
-		}> = []
 		const mentionDedup = new Set<number>()
+		const projectIdForInsert = metadata.projectId ?? null
+		
 		for (const mention of facetMentions) {
 			if (!mention || typeof mention !== "object") continue
 			const kindRaw = typeof mention.kind_slug === "string" ? mention.kind_slug.trim().toLowerCase() : ""
@@ -941,33 +970,41 @@ const facetMentionsByPersonKey = new Map<
 			mentionDedup.add(facetAccountId)
 			kindSlugSet.add(kindRaw)
 			const mentionQuote = sanitizeFacetLabel((mention as FacetMention).quote ?? null)
-			mentionRows.push({
-				kindSlug: kindRaw,
+			
+			// Build evidence_facet row directly
+			evidenceFacetRowsToInsert.push({
+				account_id: metadata.accountId,
+				project_id: projectIdForInsert,
+				evidence_index: idx,
+				kind_slug: kindRaw,
+				facet_account_id: facetAccountId,
 				label: resolvedLabel,
-				facetAccountId,
 				source: "interview",
+				confidence: 0.8,
 				quote: mentionQuote,
-				evidenceIndex,
 			})
 		}
 
 		const kindSlugs = Array.from(kindSlugSet)
 		evidenceFacetKinds.push(kindSlugs)
-		evidenceFacetMentionsByIndex.push(mentionRows)
 
-		if (mentionRows.length) {
+		// Track facets by person for persona synthesis
+		if (kindSlugSet.size > 0) {
 			const byPerson = facetMentionsByPersonKey.get(personKey) ?? []
 			if (!facetMentionsByPersonKey.has(personKey)) {
 				facetMentionsByPersonKey.set(personKey, byPerson)
 			}
-			for (const mention of mentionRows) {
-				byPerson.push({
-					kindSlug: mention.kindSlug,
-					label: mention.label,
-					facetAccountId: mention.facetAccountId,
-					quote: mention.quote,
-					evidenceIndex,
-				})
+			// Add facets for this evidence to person's collection
+			for (const row of evidenceFacetRowsToInsert) {
+				if (row.evidence_index === idx) {
+					byPerson.push({
+						kindSlug: row.kind_slug,
+						label: row.label,
+						facetAccountId: row.facet_account_id,
+						quote: row.quote,
+						evidenceIndex,
+					})
+				}
 			}
 		}
 		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
@@ -978,51 +1015,71 @@ const facetMentionsByPersonKey = new Map<
 			ev && typeof (ev as any).anchors === "object" && (ev as any).anchors !== null
 				? [((ev as any).anchors ?? {}) as Record<string, any>]
 				: []
-		const snippetForTiming = chunk || gist || verb
-		const anchorSeconds = snippetForTiming?.length
-			? findStartSecondsForSnippet({
-				snippet: snippetForTiming,
-				wordTimeline,
-				segmentTimeline,
-				fullTranscript,
-				durationSeconds,
-			})
-			: null
+		
+		// Try to get timing from AI-provided anchors first
+		let anchorSeconds: number | null = null
+		if (rawAnchors.length > 0 && rawAnchors[0]) {
+			const firstAnchor = rawAnchors[0]
+			if (typeof firstAnchor.start_ms === 'number') {
+				anchorSeconds = firstAnchor.start_ms / 1000
+				consola.info(`Evidence ${evidenceIndex}: Using AI-provided timing ${firstAnchor.start_ms}ms`)
+			} else if (typeof firstAnchor.start_seconds === 'number') {
+				anchorSeconds = firstAnchor.start_seconds
+				consola.info(`Evidence ${evidenceIndex}: Using AI-provided timing ${firstAnchor.start_seconds}s`)
+			} else {
+				consola.warn(`Evidence ${evidenceIndex}: No timing in anchors`, firstAnchor)
+			}
+		}
+		
+		// Fall back to text search if AI didn't provide timing
+		if (anchorSeconds === null) {
+			const snippetForTiming = chunk || gist || verb
+			anchorSeconds = snippetForTiming?.length
+				? findStartSecondsForSnippet({
+					snippet: snippetForTiming,
+					wordTimeline,
+					segmentTimeline,
+					fullTranscript,
+					durationSeconds,
+				})
+				: null
+		}
 		const sanitizedAnchors = rawAnchors
 			.map((anchor) => {
 				if (!anchor || typeof anchor !== "object") return null
-				const targetValue = anchor.target
-				let nextTarget: string | null = null
-				if (typeof targetValue === "string") {
-					const trimmed = targetValue.trim()
-					if (trimmed.length) {
-						nextTarget = trimmed.toLowerCase() === "transcript" ? (interviewMediaUrl ?? null) : trimmed
-					}
-				} else if (typeof targetValue === "object" && targetValue !== null) {
-					nextTarget = interviewMediaUrl ?? null
-				}
-
-				const result: Record<string, any> = { ...anchor }
+				
+				const result: Record<string, any> = {}
+				
+				// Store timing data
 				if (anchorSeconds !== null) {
-					result.start_seconds = anchorSeconds
 					result.start_ms = Math.round(anchorSeconds * 1000)
 				}
-
-				const fallbackTarget = nextTarget ?? interviewMediaUrl
-				if (fallbackTarget) {
-					result.target = appendTimeParamToUrl(fallbackTarget, anchorSeconds)
-				} else if (nextTarget === null) {
-					result.target = null
+				if (anchor.end_ms !== undefined) {
+					result.end_ms = anchor.end_ms
+				}
+				
+				// Store R2 key (stable identifier) instead of signed URL
+				if (interviewRecord.media_url) {
+					result.media_key = getR2KeyFromPublicUrl(interviewRecord.media_url)
+				}
+				
+				// Preserve optional metadata
+				if (anchor.chapter_title) {
+					result.chapter_title = anchor.chapter_title
+				}
+				if (anchor.char_span) {
+					result.char_span = anchor.char_span
 				}
 
 				return result
 			})
 			.filter((anchor): anchor is Record<string, any> => Boolean(anchor))
-		if (sanitizedAnchors.length === 0 && interviewMediaUrl && anchorSeconds !== null) {
+		
+		// Create default anchor if none exist
+		if (sanitizedAnchors.length === 0 && interviewRecord.media_url && anchorSeconds !== null) {
 			sanitizedAnchors.push({
-				target: appendTimeParamToUrl(interviewMediaUrl, anchorSeconds),
-				start_seconds: anchorSeconds,
 				start_ms: Math.round(anchorSeconds * 1000),
+				media_key: getR2KeyFromPublicUrl(interviewRecord.media_url),
 			})
 		}
 		const row: EvidenceInsert = {
@@ -1114,48 +1171,38 @@ const facetMentionsByPersonKey = new Map<
 	if (evidenceInsertError) throw new Error(`Failed to insert evidence: ${evidenceInsertError.message}`)
 	insertedEvidenceIds = (insertedEvidence ?? []).map((e) => e.id)
 
-	if (insertedEvidenceIds.length && evidenceFacetMentionsByIndex.length) {
+	consola.info(`📋 Evidence insertion complete: ${insertedEvidenceIds.length} evidence rows, ${evidenceFacetRowsToInsert.length} facet rows to insert`)
+	
+	// Map evidence_index to evidence_id and insert facets
+	if (insertedEvidenceIds.length && evidenceFacetRowsToInsert.length) {
 		try {
 			await db.from("evidence_facet").delete().in("evidence_id", insertedEvidenceIds)
 		} catch (cleanupErr) {
 			consola.warn("Failed to clear existing evidence_facet rows", cleanupErr)
 		}
 
-		const evidenceFacetRows: Array<{
-			account_id: string
-			project_id: string | null
-			evidence_id: string
-			kind_slug: string
-			facet_account_id: number
-			label: string
-			source: string
-			confidence: number
-			quote: string | null
-		}> = []
-
-		const projectIdForInsert = metadata.projectId ?? null
-		for (let i = 0; i < insertedEvidenceIds.length; i++) {
-			const evidenceId = insertedEvidenceIds[i]
-			const mentions = evidenceFacetMentionsByIndex[i] ?? []
-			for (const mention of mentions) {
-				evidenceFacetRows.push({
-					account_id: metadata.accountId,
-					project_id: projectIdForInsert,
-					evidence_id: evidenceId,
-					kind_slug: mention.kindSlug,
-					facet_account_id: mention.facetAccountId,
-					label: mention.label,
-					source: mention.source,
-					confidence: 0.8,
-					quote: mention.quote,
-				})
+		// Map evidence_index to evidence_id
+		const finalFacetRows = evidenceFacetRowsToInsert.map((row) => {
+			const { evidence_index, ...rest } = row
+			return {
+				...rest,
+				evidence_id: insertedEvidenceIds[evidence_index],
 			}
-		}
+		})
 
-		if (evidenceFacetRows.length) {
-			const { error: facetInsertError } = await db.from("evidence_facet").insert(evidenceFacetRows)
+		if (finalFacetRows.length) {
+			consola.info(`Attempting to insert ${finalFacetRows.length} evidence_facet rows`)
+			const { error: facetInsertError } = await db.from("evidence_facet").insert(finalFacetRows)
 			if (facetInsertError) {
-				consola.warn("Failed to insert evidence_facet rows", facetInsertError.message)
+				consola.error("Failed to insert evidence_facet rows", {
+					error: facetInsertError.message,
+					code: facetInsertError.code,
+					details: facetInsertError.details,
+					hint: facetInsertError.hint,
+					sampleRow: finalFacetRows[0],
+				})
+			} else {
+				consola.success(`Successfully inserted ${finalFacetRows.length} evidence_facet rows`)
 			}
 		}
 	}
@@ -2064,6 +2111,7 @@ export async function uploadMediaAndTranscribeCore({
 		}
 	}
 
+	// Get full transcript for legacy purposes (not used in AI extraction anymore)
 	const fullTranscript = (sanitizedTranscriptData.full_transcript ?? "") as string
 	const language =
 		(normalizedTranscriptData as any).language || (normalizedTranscriptData as any).detected_language || "en"

@@ -755,17 +755,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 		// Check interview status - anything before "ready" means still processing
 		const interviewNotReady = interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
-		
+
 		// Check analysis job status if it exists
 		const analysisJobActive = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
-		
+
 		// Check progress info from Trigger.dev hook
 		const progressIncomplete = !progressInfo.isComplete && !progressInfo.hasError
-		
+
 		return interviewNotReady || analysisJobActive || progressIncomplete
 	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
 	const showProcessingBanner = isProcessing && !progressInfo.isComplete
-	
+
 	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
 	function formatReadable(dateString: string) {
@@ -877,7 +877,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										<DropdownMenuTrigger asChild>
 											<button
 												disabled={fetcher.state !== "idle" || isProcessing}
-												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50 disabled:opacity-60"
+												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
 												title="Reprocess options"
 											>
 												<MoreVertical className="h-4 w-4" />

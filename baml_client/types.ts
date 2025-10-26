@@ -466,6 +466,7 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceTurn {
+  person_key: string
   speaker_label?: string | null
   gist: string
   chunk: string
@@ -591,6 +592,7 @@ export interface FacetCatalogKind {
 }
 
 export interface FacetMention {
+  person_key: string
   kind_slug: string
   value: string
   quote?: string | null
@@ -744,6 +746,7 @@ export interface OpportunityRecommendation {
 }
 
 export interface Person {
+  person_key: string
   speaker_label?: string | null
   person_name?: string | null
   inferred_name?: string | null
@@ -1101,6 +1104,14 @@ export interface SetRecord {
 }
 
 export interface Source {
+  
+}
+
+export interface SpeakerUtterance {
+  speaker: string
+  text: string
+  start?: number | null
+  end?: number | null
   
 }
 
