@@ -100,7 +100,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							<div className="flex flex-row justify-between">
 								<div className="mt-2 mr-5 text-foreground/60 text-lg dark:text-foreground/60">
 									Recordings & Docs
-									<span className="ml-2 ">({interviews.length})</span>
+									<span className="ml-2">({interviews.length})</span>
 								</div>
 								{/* View Toggle */}
 

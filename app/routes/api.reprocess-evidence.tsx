@@ -1,9 +1,9 @@
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { tasks } from "@trigger.dev/sdk"
+import type { extractEvidenceAndPeopleTask } from "~/../../src/trigger/interview/extractEvidenceAndPeople"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
-import type { extractEvidenceAndPeopleTask } from "~/../../src/trigger/interview/extractEvidenceAndPeople"
 
 /**
  * Reprocess evidence extraction from existing transcript
@@ -43,10 +43,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		if (!interview.transcript_formatted) {
-			return Response.json(
-				{ error: "No transcript available. Please upload or transcribe first." },
-				{ status: 400 }
-			)
+			return Response.json({ error: "No transcript available. Please upload or transcribe first." }, { status: 400 })
 		}
 
 		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted)
@@ -90,29 +87,26 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			// Get speaker transcripts with timing
 			const speakerTranscriptsRaw = (formattedTranscriptData.speaker_transcripts ?? []) as any[]
-			const speakerTranscripts = Array.isArray(speakerTranscriptsRaw) 
+			const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
 				? speakerTranscriptsRaw.map((u: any) => ({
 						speaker: u.speaker ?? "",
 						text: u.text ?? "",
 						start: u.start ?? null,
 						end: u.end ?? null,
-				  }))
+					}))
 				: []
 
 			consola.info(` Passing ${speakerTranscripts.length} speaker utterances with timing to AI for reprocessing`)
 
-			const handle = await tasks.trigger<typeof extractEvidenceAndPeopleTask>(
-				"interview.extract-evidence-and-people",
-				{
-					interview: interview as any,
-					transcriptData: formattedTranscriptData as any,
-					fullTranscript: "", // Legacy field, not used in AI extraction
-					language,
-					metadata,
-					analysisJobId: analysisJob.id,
-					userCustomInstructions: null,
-				}
-			)
+			const handle = await tasks.trigger<typeof extractEvidenceAndPeopleTask>("interview.extract-evidence-and-people", {
+				interview: interview as any,
+				transcriptData: formattedTranscriptData as any,
+				fullTranscript: "", // Legacy field, not used in AI extraction
+				language,
+				metadata,
+				analysisJobId: analysisJob.id,
+				userCustomInstructions: null,
+			})
 
 			await admin.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
 

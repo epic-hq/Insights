@@ -13,28 +13,39 @@ create table if not exists people (
   name text,
   name_hash text generated always as (lower(name)) stored,
   description text,
-	role text,
-	title text,
-	industry text,
-	company text,
+  role text,
+  title text,
+  industry text,
+  company text,
   segment text,
-	image_url text,
+  image_url text,
   age int,
   gender text,
   income int,
   education text,
   occupation text,
-	languages text[],
+  languages text[],
   location text,
-  contact_info jsonb,
+  primary_email text,
+  primary_phone text,
+  linkedin_url text,
+  website_url text,
+  contact_info jsonb default '{}'::jsonb,
   preferences text,
-	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  lifecycle_stage text,
+  timezone text,
+  pronouns text,
+  default_organization_id uuid references public.organizations(id) on delete set null,
+  project_id uuid references projects(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_people_account_id ON public.people(account_id);
+CREATE INDEX IF NOT EXISTS idx_people_default_organization
+    ON public.people (default_organization_id)
+    WHERE default_organization_id IS NOT NULL;
 
 -- Project scoping support
 CREATE INDEX IF NOT EXISTS idx_people_account_project_created
@@ -131,6 +142,12 @@ create table if not exists organizations (
   headquarters_location text,
   billing_address jsonb,
   shipping_address jsonb,
+  parent_organization_id uuid references public.organizations(id) on delete set null,
+  primary_contact_id uuid references public.people(id) on delete set null,
+  lifecycle_stage text,
+  timezone text,
+  crm_external_id text,
+  tags text[],
   notes text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -138,6 +155,10 @@ create table if not exists organizations (
 
 create index if not exists idx_organizations_account_id on public.organizations(account_id);
 create index if not exists idx_organizations_project_id on public.organizations(project_id);
+create index if not exists idx_organizations_primary_contact on public.organizations(primary_contact_id)
+    where primary_contact_id is not null;
+create index if not exists idx_organizations_parent on public.organizations(parent_organization_id)
+    where parent_organization_id is not null;
 create unique index if not exists uniq_organizations_account_lower_name
   on public.organizations (account_id, lower(name));
 

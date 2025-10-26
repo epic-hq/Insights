@@ -2135,34 +2135,76 @@ export type Database = {
       opportunities: {
         Row: {
           account_id: string
+          amount: number | null
+          close_date: string | null
+          confidence: number | null
           created_at: string
+          crm_external_id: string | null
+          currency: string | null
+          description: string | null
           id: string
           kanban_status: string | null
+          metadata: Json
+          next_step: string | null
+          next_step_due: string | null
+          organization_id: string | null
           owner_id: string | null
+          primary_contact_id: string | null
           project_id: string
+          forecast_category: string | null
           related_insight_ids: string[] | null
+          source: string | null
+          stage: string | null
           title: string
           updated_at: string
         }
         Insert: {
           account_id: string
+          amount?: number | null
+          close_date?: string | null
+          confidence?: number | null
           created_at?: string
+          crm_external_id?: string | null
+          currency?: string | null
+          description?: string | null
           id?: string
           kanban_status?: string | null
+          metadata?: Json
+          next_step?: string | null
+          next_step_due?: string | null
+          organization_id?: string | null
           owner_id?: string | null
+          primary_contact_id?: string | null
           project_id: string
+          forecast_category?: string | null
           related_insight_ids?: string[] | null
+          source?: string | null
+          stage?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           account_id?: string
+          amount?: number | null
+          close_date?: string | null
+          confidence?: number | null
           created_at?: string
+          crm_external_id?: string | null
+          currency?: string | null
+          description?: string | null
           id?: string
           kanban_status?: string | null
+          metadata?: Json
+          next_step?: string | null
+          next_step_due?: string | null
+          organization_id?: string | null
           owner_id?: string | null
+          primary_contact_id?: string | null
           project_id?: string
+          forecast_category?: string | null
           related_insight_ids?: string[] | null
+          source?: string | null
+          stage?: string | null
           title?: string
           updated_at?: string
         }
@@ -2172,6 +2214,20 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_primary_contact_id_fkey"
+            columns: ["primary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -2242,6 +2298,7 @@ export type Database = {
           billing_address: Json | null
           company_type: string | null
           created_at: string
+          crm_external_id: string | null
           description: string | null
           domain: string | null
           email: string | null
@@ -2251,13 +2308,18 @@ export type Database = {
           industry: string | null
           legal_name: string | null
           linkedin_url: string | null
+          lifecycle_stage: string | null
           name: string
           notes: string | null
+          parent_organization_id: string | null
           phone: string | null
+          primary_contact_id: string | null
           project_id: string | null
           shipping_address: Json | null
           size_range: string | null
           sub_industry: string | null
+          tags: string[] | null
+          timezone: string | null
           twitter_url: string | null
           updated_at: string
           website_url: string | null
@@ -2268,6 +2330,7 @@ export type Database = {
           billing_address?: Json | null
           company_type?: string | null
           created_at?: string
+          crm_external_id?: string | null
           description?: string | null
           domain?: string | null
           email?: string | null
@@ -2277,13 +2340,18 @@ export type Database = {
           industry?: string | null
           legal_name?: string | null
           linkedin_url?: string | null
+          lifecycle_stage?: string | null
           name: string
           notes?: string | null
+          parent_organization_id?: string | null
           phone?: string | null
+          primary_contact_id?: string | null
           project_id?: string | null
           shipping_address?: Json | null
           size_range?: string | null
           sub_industry?: string | null
+          tags?: string[] | null
+          timezone?: string | null
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
@@ -2294,6 +2362,7 @@ export type Database = {
           billing_address?: Json | null
           company_type?: string | null
           created_at?: string
+          crm_external_id?: string | null
           description?: string | null
           domain?: string | null
           email?: string | null
@@ -2303,13 +2372,18 @@ export type Database = {
           industry?: string | null
           legal_name?: string | null
           linkedin_url?: string | null
+          lifecycle_stage?: string | null
           name?: string
           notes?: string | null
+          parent_organization_id?: string | null
           phone?: string | null
+          primary_contact_id?: string | null
           project_id?: string | null
           shipping_address?: Json | null
           size_range?: string | null
           sub_industry?: string | null
+          tags?: string[] | null
+          timezone?: string | null
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
@@ -2322,6 +2396,20 @@ export type Database = {
             referencedRelation: "projects"
             referencedColumns: ["id"]
           },
+          {
+            foreignKeyName: "organizations_primary_contact_id_fkey"
+            columns: ["primary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_parent_organization_id_fkey"
+            columns: ["parent_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
         ]
       }
       people: {
@@ -2331,6 +2419,7 @@ export type Database = {
           company: string | null
           contact_info: Json | null
           created_at: string
+          default_organization_id: string | null
           description: string | null
           education: string | null
           gender: string | null
@@ -2339,16 +2428,23 @@ export type Database = {
           income: number | null
           industry: string | null
           languages: string[] | null
+          lifecycle_stage: string | null
+          linkedin_url: string | null
           location: string | null
           name: string | null
           name_hash: string | null
           occupation: string | null
           preferences: string | null
+          primary_email: string | null
+          primary_phone: string | null
+          pronouns: string | null
           project_id: string | null
           role: string | null
           segment: string | null
+          timezone: string | null
           title: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           account_id?: string | null
@@ -2356,6 +2452,7 @@ export type Database = {
           company?: string | null
           contact_info?: Json | null
           created_at?: string
+          default_organization_id?: string | null
           description?: string | null
           education?: string | null
           gender?: string | null
@@ -2364,16 +2461,23 @@ export type Database = {
           income?: number | null
           industry?: string | null
           languages?: string[] | null
+          lifecycle_stage?: string | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string | null
           name_hash?: string | null
           occupation?: string | null
           preferences?: string | null
+          primary_email?: string | null
+          primary_phone?: string | null
+          pronouns?: string | null
           project_id?: string | null
           role?: string | null
           segment?: string | null
+          timezone?: string | null
           title?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           account_id?: string | null
@@ -2381,6 +2485,7 @@ export type Database = {
           company?: string | null
           contact_info?: Json | null
           created_at?: string
+          default_organization_id?: string | null
           description?: string | null
           education?: string | null
           gender?: string | null
@@ -2389,16 +2494,23 @@ export type Database = {
           income?: number | null
           industry?: string | null
           languages?: string[] | null
+          lifecycle_stage?: string | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string | null
           name_hash?: string | null
           occupation?: string | null
           preferences?: string | null
+          primary_email?: string | null
+          primary_phone?: string | null
+          pronouns?: string | null
           project_id?: string | null
           role?: string | null
           segment?: string | null
+          timezone?: string | null
           title?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: [
           {
@@ -2406,6 +2518,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_default_organization_id_fkey"
+            columns: ["default_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
             referencedColumns: ["id"]
           },
         ]
@@ -3624,6 +3743,316 @@ export type Database = {
           },
         ]
       }
+      sales_lens_hygiene_events: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          slot_id: string | null
+          summary_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          slot_id?: string | null
+          summary_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          slot_id?: string | null
+          summary_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_hygiene_events_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_hygiene_events_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_summaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lens_slots: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          date_value: string | null
+          description: string | null
+          evidence_refs: Json
+          hygiene: Json
+          id: string
+          label: string | null
+          numeric_value: number | null
+          owner_person_id: string | null
+          owner_person_key: string | null
+          position: number | null
+          related_organization_ids: string[]
+          related_person_ids: string[]
+          slot: string
+          status: string | null
+          summary_id: string
+          text_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          date_value?: string | null
+          description?: string | null
+          evidence_refs?: Json
+          hygiene?: Json
+          id?: string
+          label?: string | null
+          numeric_value?: number | null
+          owner_person_id?: string | null
+          owner_person_key?: string | null
+          position?: number | null
+          related_organization_ids?: string[]
+          related_person_ids?: string[]
+          slot: string
+          status?: string | null
+          summary_id: string
+          text_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          date_value?: string | null
+          description?: string | null
+          evidence_refs?: Json
+          hygiene?: Json
+          id?: string
+          label?: string | null
+          numeric_value?: number | null
+          owner_person_id?: string | null
+          owner_person_key?: string | null
+          position?: number | null
+          related_organization_ids?: string[]
+          related_person_ids?: string[]
+          slot?: string
+          status?: string | null
+          summary_id?: string
+          text_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_slots_owner_person_id_fkey"
+            columns: ["owner_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_slots_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+          referencedRelation: "sales_lens_summaries"
+          referencedColumns: ["id"]
+        },
+      ]
+      }
+      sales_lens_stakeholders: {
+        Row: {
+          account_id: string
+          candidate_person_key: string | null
+          confidence: number | null
+          created_at: string
+          display_name: string
+          evidence_refs: Json
+          id: string
+          influence: string | null
+          labels: string[]
+          organization_id: string | null
+          person_id: string | null
+          person_key: string | null
+          project_id: string
+          role: string | null
+          summary_id: string
+          email: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          candidate_person_key?: string | null
+          confidence?: number | null
+          created_at?: string
+          display_name: string
+          evidence_refs?: Json
+          id?: string
+          influence?: string | null
+          labels?: string[]
+          organization_id?: string | null
+          person_id?: string | null
+          person_key?: string | null
+          project_id: string
+          role?: string | null
+          summary_id: string
+          email?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          candidate_person_key?: string | null
+          confidence?: number | null
+          created_at?: string
+          display_name?: string
+          evidence_refs?: Json
+          id?: string
+          influence?: string | null
+          labels?: string[]
+          organization_id?: string | null
+          person_id?: string | null
+          person_key?: string | null
+          project_id?: string
+          role?: string | null
+          summary_id?: string
+          email?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_stakeholders_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_summaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lens_summaries: {
+        Row: {
+          account_id: string
+          attendee_person_ids: string[]
+          attendee_person_keys: string[]
+          attendee_unlinked: Json
+          computed_at: string
+          computed_by: string | null
+          created_at: string
+          framework: Database["public"]["Enums"]["sales_framework"]
+          hygiene_summary: Json
+          id: string
+          interview_id: string | null
+          metadata: Json
+          opportunity_id: string | null
+          project_id: string
+          source_kind: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          attendee_person_ids?: string[]
+          attendee_person_keys?: string[]
+          attendee_unlinked?: Json
+          computed_at?: string
+          computed_by?: string | null
+          created_at?: string
+          framework: Database["public"]["Enums"]["sales_framework"]
+          hygiene_summary?: Json
+          id?: string
+          interview_id?: string | null
+          metadata?: Json
+          opportunity_id?: string | null
+          project_id: string
+          source_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          attendee_person_ids?: string[]
+          attendee_person_keys?: string[]
+          attendee_unlinked?: Json
+          computed_at?: string
+          computed_by?: string | null
+          created_at?: string
+          framework?: Database["public"]["Enums"]["sales_framework"]
+          hygiene_summary?: Json
+          id?: string
+          interview_id?: string | null
+          metadata?: Json
+          opportunity_id?: string | null
+          project_id?: string
+          source_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_summaries_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_summaries_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_summaries_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       tags: {
         Row: {
           account_id: string
@@ -4557,6 +4986,7 @@ export const Constants = {
         "error",
       ],
       job_status: ["pending", "in_progress", "done", "error", "retry"],
+      sales_framework: ["BANT_GPCT", "SPICED", "MEDDIC", "MAP"],
       research_analysis_question_kind: ["decision", "research"],
     },
   },

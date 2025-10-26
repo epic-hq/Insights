@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
+import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe"
 import type { Database } from "~/../supabase/types"
 import type { InterviewMetadata } from "~/utils/processInterview.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
-import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe"
 
 interface RegenerateEvidenceOptions {
 	supabase: SupabaseClient<Database>
@@ -82,17 +82,14 @@ export async function regenerateEvidenceForProject({
 
 			// Use Trigger.dev task instead of duplicating core logic
 			// This ensures consistent behavior and single source of truth
-			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>(
-				"interview.upload-media-and-transcribe",
-				{
-					metadata,
-					mediaUrl: interview.media_url || "",
-					transcriptData,
-					userCustomInstructions: undefined,
-					existingInterviewId: interview.id,
-					// No analysisJobId for regeneration - this is a background operation
-				}
-			)
+			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
+				metadata,
+				mediaUrl: interview.media_url || "",
+				transcriptData,
+				userCustomInstructions: undefined,
+				existingInterviewId: interview.id,
+				// No analysisJobId for regeneration - this is a background operation
+			})
 
 			consola.info(`Triggered regeneration for interview ${interview.id}, run ID: ${result.id}`)
 

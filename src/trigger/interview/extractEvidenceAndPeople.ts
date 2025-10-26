@@ -47,18 +47,24 @@ export const extractEvidenceAndPeopleTask = task({
 					.eq("id", payload.analysisJobId as string)
 			}
 
-			await client
-				.from("interviews")
-				.update({
-					status: "ready",
-					updated_at: new Date().toISOString(),
-				})
-				.eq("id", payload.interview.id)
+                        await client
+                                .from("interviews")
+                                .update({
+                                        status: "ready",
+                                        updated_at: new Date().toISOString(),
+                                })
+                                .eq("id", payload.interview.id)
 
-			return {
-				interviewId: payload.interview.id,
-				evidenceResult,
-			}
+                        const { generateSalesLensTask } = await import("../sales/generateSalesLens")
+                        await generateSalesLensTask.trigger({
+                                interviewId: payload.interview.id,
+                                computedBy: payload.metadata.userId ?? null,
+                        })
+
+                        return {
+                                interviewId: payload.interview.id,
+                                evidenceResult,
+                        }
 		} catch (error) {
 			if (payload.analysisJobId) {
 				await client

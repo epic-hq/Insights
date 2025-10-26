@@ -35,7 +35,10 @@ export class FacetResolver {
 	private facetCacheBySlug = new Map<string, number>()
 	private globalFacetCache = new Map<number, { label: string; kind_id: number; synonyms: string[] | null }>()
 
-	constructor(private db: SupabaseClient<Database>, private accountId: string) { }
+	constructor(
+		private db: SupabaseClient<Database>,
+		private accountId: string
+	) {}
 
 	private async loadKindMaps() {
 		if (this.kindSlugToId && this.kindIdToSlug) return
@@ -57,7 +60,10 @@ export class FacetResolver {
 		return base.toLowerCase()
 	}
 
-	async ensureFacetForRef(ref: string, fallback: { kindSlug?: string; label?: string; synonyms?: string[] } = {}): Promise<number | null> {
+	async ensureFacetForRef(
+		ref: string,
+		fallback: { kindSlug?: string; label?: string; synonyms?: string[] } = {}
+	): Promise<number | null> {
 		if (!ref) return null
 		const [prefix, rawId] = ref.split(":")
 		if (!rawId) {
@@ -148,10 +154,7 @@ export class FacetResolver {
 		if (existing?.id) {
 			const mergedSynonyms = normalizeSynonyms([...(existing.synonyms ?? []), ...normalizedSynonyms])
 			if (mergedSynonyms.length !== (existing.synonyms ?? []).length) {
-				await this.db
-					.from("facet_account")
-					.update({ synonyms: mergedSynonyms })
-					.eq("id", existing.id)
+				await this.db.from("facet_account").update({ synonyms: mergedSynonyms }).eq("id", existing.id)
 			}
 			this.facetCacheBySlug.set(cacheKey, existing.id)
 			return existing.id
@@ -218,12 +221,15 @@ interface PersistFacetObservationsOptions {
 }
 
 export async function getFacetCatalog({ db, accountId }: FacetCatalogOptions): Promise<FacetCatalog> {
-	const [{ data: kindRows, error: kindError }, { data: globalRows, error: globalError }, { data: accountRows, error: accountError }] =
-		await Promise.all([
-			db.from("facet_kind_global").select("id, slug, label, updated_at").order("id"),
-			db.from("facet_global").select("id, kind_id, label, synonyms, updated_at"),
-			db.from("facet_account").select("id, kind_id, label, synonyms, updated_at, is_active").eq("account_id", accountId),
-		])
+	const [
+		{ data: kindRows, error: kindError },
+		{ data: globalRows, error: globalError },
+		{ data: accountRows, error: accountError },
+	] = await Promise.all([
+		db.from("facet_kind_global").select("id, slug, label, updated_at").order("id"),
+		db.from("facet_global").select("id, kind_id, label, synonyms, updated_at"),
+		db.from("facet_account").select("id, kind_id, label, synonyms, updated_at, is_active").eq("account_id", accountId),
+	])
 
 	if (kindError) throw new Error(`Failed to load facet kinds: ${kindError.message}`)
 	if (globalError) throw new Error(`Failed to load global facets: ${globalError.message}`)
@@ -273,24 +279,28 @@ export async function persistFacetObservations({
 }: PersistFacetObservationsOptions): Promise<void> {
 	const resolver = new FacetResolver(db, accountId)
 	const projectIdValue = projectId ?? null
-	const facetRows: Array<{
-		person_id: string
-		facet_account_id: number
-		source: string
-		evidence_id: string | null
-		confidence: number
-		noted_at: string
-	} & { account_id: string; project_id: string | null }> = []
-	const scaleRows: Array<{
-		person_id: string
-		kind_slug: string
-		score: number
-		band: string | null
-		source: string
-		evidence_id: string | null
-		confidence: number
-		noted_at: string
-	} & { account_id: string; project_id: string | null }> = []
+	const facetRows: Array<
+		{
+			person_id: string
+			facet_account_id: number
+			source: string
+			evidence_id: string | null
+			confidence: number
+			noted_at: string
+		} & { account_id: string; project_id: string | null }
+	> = []
+	const scaleRows: Array<
+		{
+			person_id: string
+			kind_slug: string
+			score: number
+			band: string | null
+			source: string
+			evidence_id: string | null
+			confidence: number
+			noted_at: string
+		} & { account_id: string; project_id: string | null }
+	> = []
 
 	for (const { personId, facets, scales } of observations) {
 		if (Array.isArray(facets)) {
@@ -388,8 +398,6 @@ export async function persistFacetObservations({
 		if (scaleError) consola.warn("Failed to upsert person scales", scaleError.message)
 	}
 }
-
-
 
 function normalizeConfidence(conf?: number | null): number {
 	if (typeof conf === "number" && !Number.isNaN(conf)) {

@@ -746,7 +746,7 @@ export default function ProjectStatusScreen({
 																variant="outline"
 																onClick={() => setShowCustomAnalysis(true)}
 																disabled={isAnalyzing || displayData.totalInterviews === 0}
-																className="hover:bg-blue-700 "
+																className="hover:bg-blue-700"
 																size="sm"
 															>
 																{isAnalyzing ? (

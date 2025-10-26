@@ -242,12 +242,12 @@ export const deletePerson = async ({
 	projectId: string
 }) => {
 	const { data, error } = await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
-	
+
 	if (error) {
 		console.error("Delete person error:", error)
 		throw new Error(`Failed to delete person: ${error.message} (code: ${error.code})`)
 	}
-	
+
 	return { data, error }
 }
 
