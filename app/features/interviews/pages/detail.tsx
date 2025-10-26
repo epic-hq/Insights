@@ -20,6 +20,7 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
+import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 // Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
@@ -901,7 +902,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	}
 
 	return (
-		<div className="relative mx-auto mt-6 max-w-6xl">
+		<div className="relative mx-auto mt-6 max-w-6xl pb-5">
 			{/* Loading Overlay */}
 			{showBlockingOverlay && (
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -922,20 +923,48 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
 								</div>
 								<div className="flex flex-col items-end gap-2">
-									<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
-										<div
-											className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
-											style={{ width: `${progressPercent}%` }}
-										/>
+									<div className="flex items-center gap-3">
+										<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
+											<div
+												className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
+												style={{ width: `${progressPercent}%` }}
+											/>
+										</div>
+										<span className="font-medium text-primary text-sm">{progressPercent}%</span>
 									</div>
-									<span className="font-medium text-primary text-sm">{progressPercent}%</span>
+									{analysisState?.trigger_run_id && (
+										<button
+											type="button"
+											onClick={() => {
+												if (confirm("Are you sure you want to cancel this analysis? This action cannot be undone.")) {
+													try {
+														fetcher.submit(
+															{ runId: analysisState.trigger_run_id, analysisJobId: analysisState.id },
+															{ method: "post", action: "/api.cancel-analysis-run" }
+														)
+													} catch (e) {
+														consola.error("Cancel analysis submit failed", e)
+													}
+												}
+											}}
+											disabled={fetcher.state !== "idle"}
+											className="inline-flex items-center gap-2 border border-red-500/20 bg-red-50 px-3 py-1.5 font-medium text-red-700 text-xs hover:bg-red-100 disabled:opacity-60"
+										>
+											{fetcher.state !== "idle" ? "Cancelling..." : "Cancel"}
+
+										</button>
+									)}
 								</div>
 							</div>
 							{isRealtime ? (
-								<p className="mt-2 text-muted-foreground text-xs">Live updates via Trigger.dev</p>
+								<p className="mt-2 text-muted-foreground text-xs">&nbsp;</p>
 							) : tokenErrorRunId === activeRunId ? (
 								<p className="mt-2 text-muted-foreground text-xs">
 									Live updates temporarily unavailable; showing interview status.
+								</p>
+							) : analysisState?.trigger_run_id ? (
+								<p className="mt-2 text-muted-foreground text-xs">
+									Real-time updates unavailable; monitoring via database polling.
 								</p>
 							) : null}
 						</div>
@@ -1166,7 +1195,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					)}
 
 					{/* Transcript Section - Collapsed by default */}
-					<h3 className="font-semibold text-foreground text-lg">Raw Recording Details</h3>
+					<h3 className="font-semibold text-foreground text-lg">Recording</h3>
 
 					{interview.media_url && (
 						<div className="mb-4">
@@ -1187,6 +1216,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							hasFormattedTranscript={interview.hasFormattedTranscript}
 						/>
 					</div>
+
+					{/* Questions Asked Section */}
+					<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
 				</div>
 				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:w-80 lg:flex-shrink-0">
 					<div className="space-y-4">

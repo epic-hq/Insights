@@ -1104,6 +1104,7 @@ export async function extractEvidenceAndPeopleCore({
 			confidence: confidenceStr,
 			verbatim: verb,
 			anchors: sanitizedAnchors as unknown as Json,
+			is_question: ev.isQuestion ?? false,
 		}
 
 		const _says = Array.isArray(ev?.says) ? (ev.says as string[]) : []

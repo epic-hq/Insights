@@ -730,6 +730,7 @@ export type Database = {
           id: string
           independence_key: string | null
           interview_id: string | null
+          is_question: boolean | null
           journey_stage: string | null
           method: string | null
           modality: string
@@ -765,6 +766,7 @@ export type Database = {
           id?: string
           independence_key?: string | null
           interview_id?: string | null
+          is_question?: boolean | null
           journey_stage?: string | null
           method?: string | null
           modality?: string
@@ -800,6 +802,7 @@ export type Database = {
           id?: string
           independence_key?: string | null
           interview_id?: string | null
+          is_question?: boolean | null
           journey_stage?: string | null
           method?: string | null
           modality?: string

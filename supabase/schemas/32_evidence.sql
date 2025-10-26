@@ -36,6 +36,7 @@ create table if not exists evidence (
   anchors jsonb not null default '[]'::jsonb, -- [{type, target, start?, end?}]
   context_summary text, -- 1–2 sentence situational summary and relevance
   citation text,
+  is_question boolean default false, -- TRUE if this evidence contains a question
 
   -- empathy map facets (optional arrays of short phrases)
   says text[] default '{}',
@@ -62,6 +63,8 @@ comment on column evidence.chunk        is 'Multi-sentence excerpt capturing the
 comment on column evidence.gist         is 'Pithy headline conveying the most important takeaway at a glance.';
 comment on column evidence.anchors      is 'JSONB array of deep-link anchors. Each: {type, target, start?, end?}.';
 comment on column evidence.context_summary is '1–2 sentences to situate the quote and explain why it matters.';
+comment on column evidence.citation is 'Source citation or reference information.';
+comment on column evidence.is_question is 'TRUE if this evidence contains a question from any speaker. Useful for filtering question-response patterns.';
 
 -- Indexes -----------------------------------------------------------
 create index if not exists idx_evidence_account_id   on public.evidence(account_id);
