@@ -964,9 +964,14 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	}, [getBaseSelectedIds, onSelectedQuestionsChange, questions])
 
 	const saveQuestionsToDatabase = useCallback(
-		async (questionsToSave: Question[], selectedIds: string[]) => {
+		async (
+			questionsToSave: Question[],
+			selectedIds: string[],
+			options?: { refresh?: boolean }
+		) => {
 			if (!projectId) return
 			try {
+				const followupCount = questionsToSave.filter((q) => q.rationale?.startsWith("Follow-up to:")).length
 				console.log(
 					"🛟 SAVE INVOKED",
 					JSON.stringify({
@@ -974,8 +979,19 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						projectId,
 						totalQuestions: questionsToSave.length,
 						selectedCount: selectedIds.length,
-						followupCount: questionsToSave.filter((q) => q.rationale?.startsWith("Follow-up to:")).length,
+						followupCount,
 					})
+				)
+				console.log(
+					"🧾 SAVE QUESTIONS SNAPSHOT",
+					questionsToSave.map((q, index) => ({
+						index,
+						id: q.id,
+						textPreview: q.text.slice(0, 40),
+						status: q.status,
+						isSelected: q.isSelected,
+						rationalePreview: q.rationale ? q.rationale.slice(0, 60) : null,
+					}))
 				)
 				setSaving(true)
 
@@ -992,6 +1008,17 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 					"Questions Count": questionsToSave.length,
 					"Selected IDs Count": selectedIds.length,
 				})
+
+				const previousIds = new Set(existingPromptIdsRef.current)
+				const questionLookup = new Map(questionsToSave.map((q) => [q.id, q]))
+				const missingSelected = selectedIds.filter((id) => !questionLookup.has(id))
+				if (missingSelected.length > 0) {
+					console.warn("⚠️ SAVE WARNING: Missing selected questions in payload", {
+						selectedIds,
+						missingSelected,
+						knownIds: questionsToSave.map((q) => q.id),
+					})
+				}
 
 				const withOrder = questionsToSave.map((q, _index) => {
 					const selectedIndex = selectedIds.indexOf(q.id)
@@ -1044,6 +1071,30 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 					must_have_count: promptPayloads.filter((p) => p.is_must_have).length,
 				})
 
+				try {
+					void fetch("/api/questions/save-debug", {
+						method: "post",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							projectId,
+							selectedIds,
+							previousIds: Array.from(previousIds),
+							payloads: promptPayloads.map((p, index) => ({
+								index,
+								id: p.id,
+								order_index: p.order_index,
+								rationale: p.rationale,
+								status: p.status,
+								is_selected: p.is_selected,
+							})),
+						}),
+					})
+				} catch (error) {
+					console.warn("Failed to send save-debug payload", error)
+				}
+
 				const { data, error: promptError } = await supabase
 					.from("interview_prompts")
 					.upsert(promptPayloads, { onConflict: "id" })
@@ -1052,6 +1103,18 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				if (promptError) {
 					console.error("❌ DATABASE ERROR:", promptError)
 					throw promptError
+				}
+
+				const insertedIds = new Set(data?.map((row) => row.id))
+				const newlyCreatedIds = promptPayloads
+					.filter((payload) => !previousIds.has(payload.id))
+					.map((payload) => payload.id)
+				if (newlyCreatedIds.length > 0) {
+					const missing = newlyCreatedIds.filter((id) => !insertedIds.has(id))
+					if (missing.length > 0) {
+						console.error("❌ Missing inserted prompt IDs from response", { missing, newlyCreatedIds })
+						throw new Error(`Failed to confirm persistence for prompts: ${missing.join(", ")}`)
+					}
 				}
 
 				console.log("✅ DATABASE RESPONSE:", {
@@ -1081,6 +1144,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 						selectedIds[selectedIds.length - 1] ?? "__none__"
 					),
 				})
+
+				if (options?.refresh) {
+					await loadQuestions()
+				}
 
 				const { error: sectionError } = await supabase.from("project_sections").upsert(
 					{
@@ -1120,6 +1187,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			customInstructions,
 			categoryTimeAllocations,
 			estimateMinutesPerQuestion,
+			loadQuestions,
 		]
 	)
 
@@ -1268,6 +1336,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			const reorderedVisible = [...visibleIds]
 			const [removed] = reorderedVisible.splice(fromIndex, 1)
 			reorderedVisible.splice(toIndex, 0, removed)
+
+			// Rebuild questions array to reflect new visible ordering while keeping non-visible items in place
+			const questionById = new Map(questions.map((q) => [q.id, q]))
 			const baseIds = getBaseSelectedIds()
 			const visibleSet = new Set(visibleIds)
 			let visiblePointer = 0
@@ -1276,11 +1347,26 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				const replacement = reorderedVisible[visiblePointer++]
 				return replacement
 			})
+			const targetVisibleOrder = [...reorderedVisible]
+			const reorderedQuestions = questions.map((question) => {
+				if (!visibleSet.has(question.id)) {
+					return question
+				}
+				const replacementId = targetVisibleOrder.shift()
+				if (!replacementId) {
+					return question
+				}
+				const replacement = questionById.get(replacementId)
+				return replacement ?? question
+			})
 			commitSelection(newBaseIds)
-			markQuestionAsRecentlyAdded(removed)
+			setQuestions(reorderedQuestions)
+			if (removed) {
+				markQuestionAsRecentlyAdded(removed)
+			}
 			setHasInitialized(true)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(questions, newBaseIds)
+			await saveQuestionsToDatabase(reorderedQuestions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
 		[
@@ -1806,7 +1892,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 					return next
 				})
 
-				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+						await saveQuestionsToDatabase(updatedQuestions, newBaseIds, { refresh: true })
 
 				// Reload from database to ensure UI reflects actual DB state
 				await loadQuestions()
@@ -2622,37 +2708,67 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							baseIds
 																						)
 
-																						const newBaseIds =
-																							currentIndex >= 0
-																								? [
-																										...baseIds.slice(0, currentIndex + 1),
-																										followupQuestion.id,
-																										...baseIds.slice(currentIndex + 1),
-																									]
-																								: [...baseIds, followupQuestion.id]
-																						console.log("🔍 DEBUG: New baseIds:", newBaseIds)
+						let newBaseIds =
+							currentIndex >= 0
+								? [
+										...baseIds.slice(0, currentIndex + 1),
+										followupQuestion.id,
+										...baseIds.slice(currentIndex + 1),
+								  ]
+								: [...baseIds, followupQuestion.id]
+						if (!newBaseIds.includes(followupQuestion.id)) {
+							newBaseIds = [...newBaseIds, followupQuestion.id]
+							console.warn("⚠️ Follow-up ID missing from computed baseIds. Appending manually.", {
+								originalBaseIds: baseIds,
+								appendedId: followupQuestion.id,
+								result: newBaseIds,
+							})
+						}
+						console.log("🔍 DEBUG: New baseIds:", newBaseIds)
 
-																							const insertionIndex = questions.findIndex((q) => q.id === question.id)
-																							const updatedQuestions =
-																								insertionIndex >= 0
-																									? [
-																											...questions.slice(0, insertionIndex + 1),
-																										followupQuestion,
-																										...questions.slice(insertionIndex + 1),
-																									]
-																								: [...questions, followupQuestion]
-																							console.log(
-																								"🔍 DEBUG: Updated questions count:",
-																								updatedQuestions.length,
-																								"insertionIndex:",
-																								insertionIndex
-																							)
+						let updatedQuestions: Question[] = []
+						let insertionIndexRef = -1
+						setQuestions((prevQuestions) => {
+							const insertionIndex = prevQuestions.findIndex((q) => q.id === question.id)
+							insertionIndexRef = insertionIndex
+							const nextQuestions =
+								insertionIndex >= 0
+									? [
+											...prevQuestions.slice(0, insertionIndex + 1),
+											followupQuestion,
+											...prevQuestions.slice(insertionIndex + 1),
+									  ]
+									: [...prevQuestions, followupQuestion]
+							updatedQuestions = nextQuestions
+							return nextQuestions
+						})
+						if (!updatedQuestions.length) {
+							updatedQuestions = [...questions, followupQuestion]
+							console.warn("⚠️ FOLLOWUP fallback path triggered; using previous questions snapshot.", {
+								fallbackCount: updatedQuestions.length,
+							})
+						}
+						console.log(
+							"🔍 DEBUG: Updated questions count:",
+							updatedQuestions.length,
+							"insertionIndex:",
+							insertionIndexRef
+						)
+						console.log(
+							"🧾 FOLLOWUP UPDATED QUESTIONS SNAPSHOT",
+							updatedQuestions.map((q, idx) => ({
+								idx,
+								id: q.id,
+								textPreview: q.text.slice(0, 40),
+								rationalePreview: q.rationale?.slice(0, 60) ?? null,
+								status: q.status,
+							}))
+						)
 
-																							setQuestions(updatedQuestions)
-																							setHasInitialized(true)
-																							commitSelection(newBaseIds)
-																							markQuestionAsRecentlyAdded(followupQuestion.id)
-																							console.log("• selection after commit:", newBaseIds)
+							setHasInitialized(true)
+							commitSelection(newBaseIds)
+							markQuestionAsRecentlyAdded(followupQuestion.id)
+							console.log("• selection after commit:", newBaseIds)
 																							console.log("• followup payload:", followupQuestion)
 
 																							// Prevent debounced save from racing this change

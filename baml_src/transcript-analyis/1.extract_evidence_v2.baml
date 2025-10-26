@@ -19,6 +19,7 @@ class EvidenceTurn {
   // confidence string @description("low | medium | high")
   why_it_matters string? @description("≤10 words on consequence/importance (e.g., trigger/impact; note if generalizable)")
 	facet_mentions FacetMention[] @description("Facet mentions that appear in this turn")
+  isQuestion bool? @description("TRUE if this turn contains a question (any speaker). Useful for filtering question-response patterns.")
 
   // Empathy map (high-signal only; leave empty if none)
   says string[]? @description("High-signal quotes only; 0–2 (≤120 chars). Use when wording carries unique meaning beyond verbatim.")
@@ -106,6 +107,7 @@ Skip generic filler unless it informs a concrete outcome.
 - **anchors.start_ms**: CRITICAL - ALWAYS use the `start` field from the corresponding SpeakerUtterance. This timing is already in milliseconds and is REQUIRED for video playback functionality.
 - anchors: include start_ms (REQUIRED), end_ms when available, speaker label, optional chapter_title.
 - confidence: low | medium | high. Map evidence strength: direct quote ≥ concrete behavior ≥ inferred belief.
+- **isQuestion**: Set to TRUE if this turn contains any question (explicit questions, requests for clarification, probes, etc.) regardless of speaker. FALSE or omit if no questions. Useful for filtering question-response patterns and conversation analysis.
 - empathy map: only when high-signal; 0–2 items per field; do not repeat gist/verbatim/facet values; leave empty if not useful.
  - why_it_matters: ≤10 words; express the consequence or importance (e.g., "blocks timely status updates").
 
