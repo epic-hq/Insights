@@ -2,6 +2,7 @@ import consola from "consola"
 import { motion } from "framer-motion"
 import { Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
+import { BackButton } from "~/components/ui/back-button"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
@@ -216,6 +217,9 @@ export default function PersonaDetailRoute() {
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
 			<PersonaPeopleSubnav />
+			<div className="mb-4 mt-4">
+				<BackButton />
+			</div>
 			<div className="mx-auto max-w-6xl px-6 py-10">
 				<DetailPageHeader icon={Users} typeLabel="Persona" title={name} description={description}>
 					<div className="mt-4 flex gap-2">

@@ -2,6 +2,7 @@ import { ChevronLeft, Grid3X3, List } from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
@@ -290,9 +291,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const filteredRows = filterPersonId
 		? rows.filter((row) => {
-				const people = peopleByEvidence.get(row.id) ?? []
-				return people.some((person) => person.id === filterPersonId)
-			})
+			const people = peopleByEvidence.get(row.id) ?? []
+			return people.some((person) => person.id === filterPersonId)
+		})
 		: rows
 
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
@@ -335,21 +336,19 @@ export default function EvidenceIndex() {
 	return (
 		<div className="space-y-4 p-4 sm:p-6">
 			{/* Mobile-friendly header */}
+			<BackButton />
 			<div className="flex items-center gap-3">
-				<Button variant="ghost" size="sm" onClick={() => window.history.back()} className="h-8 w-8 p-0">
-					<ChevronLeft className="h-4 w-4" />
-				</Button>
-				<div className="flex-1">
-					<h1 className="font-semibold text-xl">Evidence</h1>
+				<div className="flex-1 font-semibold text-xl">
+					<span className="l">Evidence</span>
 					{filteredByRQ && (
-						<Badge variant="outline" className="mt-1 w-fit text-xs">
+						<Badge variant="outline" className="mt-1 w-fit">
 							Filtered by Research Question
 						</Badge>
 					)}
 					{filteredByPerson && (
-						<Badge variant="outline" className="mt-1 w-fit text-xs">
-							{filteredByPerson.name ? `Participant: ${filteredByPerson.name}` : "Filtered by participant"}
-						</Badge>
+						<span>
+							{filteredByPerson.name ? ` for: ${filteredByPerson.name}` : "Filtered by participant"}
+						</span>
 					)}
 				</div>
 			</div>

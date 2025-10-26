@@ -16,6 +16,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
+import Breadcrumbs from "~/components/navigation/Breadcrumbs"
+import { BackButton } from "~/components/ui/back-button"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -237,6 +239,9 @@ export default function PersonDetail() {
 	return (
 		<PageContainer size="lg" padded={false} className="max-w-6xl py-8">
 			<PersonaPeopleSubnav />
+			<div className="mb-4 mt-4">
+				<BackButton />
+			</div>
 
 			{/* Colored Header Section */}
 			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">

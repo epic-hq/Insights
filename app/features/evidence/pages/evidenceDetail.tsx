@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { BackButton } from "~/components/ui/back-button"
 import { Button } from "~/components/ui/button"
 import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
@@ -172,17 +173,16 @@ export default function EvidenceDetail() {
 	return (
 		<div className="space-y-4 p-4 sm:p-6">
 			{/* Mobile-friendly header */}
-			<div className="flex items-center gap-3">
-				<Button variant="ghost" size="sm" onClick={() => window.history.back()} className="h-8 w-8 p-0">
-					<ChevronLeft className="h-4 w-4" />
-				</Button>
-				<div className="flex-1">
-					{interview && <p className="text-muted-foreground text-sm">From interview: {interview.title}</p>}
-				</div>
-			</div>
+			<div className="flex items-center gap-3" />
 
 			{/* Full Evidence Card - Centered with max width */}
 			<PageContainer size="sm" padded={false} className="max-w-2xl">
+				<div className="mt-4 mb-4">
+					<BackButton />
+				</div>
+				<div className="flex-1">
+					{interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}
+				</div>
 				<EvidenceCard
 					evidence={evidence}
 					people={evidence.people || []}

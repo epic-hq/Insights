@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
-import { BackButton } from "~/components/ui/BackButton"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
@@ -953,10 +953,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
+						<BackButton />
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
 								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
-									<BackButton to={routes.interviews.index()} label="" position="relative" />
 									{interview.title || "Untitled Interview"}
 								</div>
 								<div className="flex flex-wrap items-center gap-3">
@@ -1121,8 +1121,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												type="button"
 												onClick={() => setSelectedPersonId(speaker.id)}
 												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
-														? "bg-primary text-primary-foreground shadow-sm"
-														: "bg-muted text-muted-foreground hover:bg-muted/80"
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
 													}`}
 											>
 												{speaker.name}
