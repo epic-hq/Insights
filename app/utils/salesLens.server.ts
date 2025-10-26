@@ -133,35 +133,32 @@ export async function buildInitialSalesLensExtraction(
 		new Set((attendeeRows ?? []).map((row) => row.person_id).filter((id): id is string => Boolean(id)))
 	)
 
-        type PeopleRow = Pick<
-                Tables<"people">,
-                "id" | "name" | "role" | "title" | "company" | "primary_email" | "default_organization_id"
-        >
-        // Cache the mini-CRM contact attributes we need for stakeholder linkage and evidence.
-        const peopleById = new Map<
-                string,
-                Pick<
-                        PeopleRow,
-                        "name" | "role" | "title" | "company" | "primary_email" | "default_organization_id"
-                >
-        >()
+	type PeopleRow = Pick<
+		Tables<"people">,
+		"id" | "name" | "role" | "title" | "company" | "primary_email" | "default_organization_id"
+	>
+	// Cache the mini-CRM contact attributes we need for stakeholder linkage and evidence.
+	const peopleById = new Map<
+		string,
+		Pick<PeopleRow, "name" | "role" | "title" | "company" | "primary_email" | "default_organization_id">
+	>()
 	if (personIds.length > 0) {
 		const { data: people, error: peopleError } = await db
 			.from("people")
-                        .select<PeopleRow>("id, name, role, title, company, primary_email, default_organization_id")
+			.select<PeopleRow>("id, name, role, title, company, primary_email, default_organization_id")
 			.in("id", personIds)
 		if (peopleError) {
 			consola.warn("Failed to load people for sales lens", peopleError)
 		} else {
 			for (const person of people ?? []) {
-                                peopleById.set(person.id, {
-                                        name: person.name ?? null,
-                                        role: person.role ?? null,
-                                        title: person.title ?? null,
-                                        company: person.company ?? null,
-                                        primary_email: person.primary_email ?? null,
-                                        default_organization_id: person.default_organization_id ?? null,
-                                })
+				peopleById.set(person.id, {
+					name: person.name ?? null,
+					role: person.role ?? null,
+					title: person.title ?? null,
+					company: person.company ?? null,
+					primary_email: person.primary_email ?? null,
+					default_organization_id: person.default_organization_id ?? null,
+				})
 			}
 		}
 	}
@@ -208,13 +205,13 @@ export async function buildInitialSalesLensExtraction(
 			displayName: name,
 			role,
 			influence: influenceFromRole(role),
-                        labels: [],
-                        organizationId: person?.default_organization_id ?? null,
-                        email: person?.primary_email ?? null,
-                        confidence: attendee.person_id ? 0.7 : 0.4,
-                        evidence: pickEvidence(index),
-                }
-        })
+			labels: [],
+			organizationId: person?.default_organization_id ?? null,
+			email: person?.primary_email ?? null,
+			confidence: attendee.person_id ? 0.7 : 0.4,
+			evidence: pickEvidence(index),
+		}
+	})
 
 	const stakeholders = decorateStakeholders(stakeholderDrafts)
 	const primaryStakeholder = stakeholders[0]

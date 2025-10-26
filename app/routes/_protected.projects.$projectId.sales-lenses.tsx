@@ -45,18 +45,18 @@ type LoaderFramework = {
 		relatedNames: string[]
 		evidenceCount: number
 	}>
-        stakeholders: Array<{
-                id: string
-                displayName: string
-                role: string | null
-                influence: string | null
-                labels: string[]
-                confidence: number | null
-                personName: string | null
-                personKey: string | null
-                email: string | null
-                organizationName: string | null
-        }>
+	stakeholders: Array<{
+		id: string
+		displayName: string
+		role: string | null
+		influence: string | null
+		labels: string[]
+		confidence: number | null
+		personName: string | null
+		personKey: string | null
+		email: string | null
+		organizationName: string | null
+	}>
 }
 
 type LoaderData = {
@@ -148,59 +148,59 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				.in("summary_id", summaryIds)
 		: { data: [] as SalesLensHygieneEventRow[] }
 
-        const peopleIds = new Set<string>()
-        const organizationIds = new Set<string>()
+	const peopleIds = new Set<string>()
+	const organizationIds = new Set<string>()
 	for (const summary of latestByFramework.values()) {
 		for (const personId of summary.attendee_person_ids ?? []) {
 			if (personId) peopleIds.add(personId)
 		}
-                for (const slot of summary.sales_lens_slots ?? []) {
-                        if (slot.owner_person_id) peopleIds.add(slot.owner_person_id)
-                        for (const related of slot.related_person_ids ?? []) {
-                                if (related) peopleIds.add(related)
-                        }
-                        for (const relatedOrg of slot.related_organization_ids ?? []) {
-                                if (relatedOrg) organizationIds.add(relatedOrg)
-                        }
-                }
-                for (const stakeholder of summary.sales_lens_stakeholders ?? []) {
-                        if (stakeholder.person_id) {
-                                peopleIds.add(stakeholder.person_id)
-                        }
-                        if (stakeholder.organization_id) {
-                                organizationIds.add(stakeholder.organization_id)
-                        }
-                }
-        }
+		for (const slot of summary.sales_lens_slots ?? []) {
+			if (slot.owner_person_id) peopleIds.add(slot.owner_person_id)
+			for (const related of slot.related_person_ids ?? []) {
+				if (related) peopleIds.add(related)
+			}
+			for (const relatedOrg of slot.related_organization_ids ?? []) {
+				if (relatedOrg) organizationIds.add(relatedOrg)
+			}
+		}
+		for (const stakeholder of summary.sales_lens_stakeholders ?? []) {
+			if (stakeholder.person_id) {
+				peopleIds.add(stakeholder.person_id)
+			}
+			if (stakeholder.organization_id) {
+				organizationIds.add(stakeholder.organization_id)
+			}
+		}
+	}
 
-        const { data: peopleRows } = peopleIds.size
-                ? await ctx.supabase
+	const { data: peopleRows } = peopleIds.size
+		? await ctx.supabase
 				.from("people")
 				.select<Pick<Tables<"people">, "id" | "name" | "role" | "title">>("id, name, role, title")
 				.in("id", Array.from(peopleIds))
-                : { data: [] as Array<Pick<Tables<"people">, "id" | "name" | "role" | "title">> }
+		: { data: [] as Array<Pick<Tables<"people">, "id" | "name" | "role" | "title">> }
 
-        const peopleById = new Map<string, { name: string | null; role: string | null; title: string | null }>()
-        for (const person of peopleRows ?? []) {
-                peopleById.set(person.id, {
-                        name: person.name ?? null,
-                        role: person.role ?? null,
-                        title: person.title ?? null,
-                })
-        }
+	const peopleById = new Map<string, { name: string | null; role: string | null; title: string | null }>()
+	for (const person of peopleRows ?? []) {
+		peopleById.set(person.id, {
+			name: person.name ?? null,
+			role: person.role ?? null,
+			title: person.title ?? null,
+		})
+	}
 
-        // Pull organization display names so stakeholder rows can surface company context.
-        const { data: organizationRows } = organizationIds.size
-                ? await ctx.supabase
-                                .from("organizations")
-                                .select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
-                                .in("id", Array.from(organizationIds))
-                : { data: [] as Array<Pick<Tables<"organizations">, "id" | "name">> }
+	// Pull organization display names so stakeholder rows can surface company context.
+	const { data: organizationRows } = organizationIds.size
+		? await ctx.supabase
+				.from("organizations")
+				.select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
+				.in("id", Array.from(organizationIds))
+		: { data: [] as Array<Pick<Tables<"organizations">, "id" | "name">> }
 
-        const organizationsById = new Map<string, { name: string | null }>()
-        for (const organization of organizationRows ?? []) {
-                organizationsById.set(organization.id, { name: organization.name ?? null })
-        }
+	const organizationsById = new Map<string, { name: string | null }>()
+	for (const organization of organizationRows ?? []) {
+		organizationsById.set(organization.id, { name: organization.name ?? null })
+	}
 
 	const hygieneEventsBySummary = new Map<string, SalesLensHygieneEventRow[]>()
 	for (const event of hygieneEventsData ?? []) {
@@ -238,25 +238,23 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		})
 
-                const stakeholderRows = Array.isArray(summary.sales_lens_stakeholders) ? summary.sales_lens_stakeholders : []
-                const stakeholderViews = stakeholderRows.map((stakeholder) => {
-                        const linkedPerson = stakeholder.person_id ? peopleById.get(stakeholder.person_id) : undefined
-                        const organization = stakeholder.organization_id
-                                ? organizationsById.get(stakeholder.organization_id)
-                                : undefined
-                        return {
-                                id: stakeholder.id,
-                                displayName: stakeholder.display_name,
-                                role: stakeholder.role ?? null,
-                                influence: stakeholder.influence ?? null,
-                                labels: Array.isArray(stakeholder.labels) ? stakeholder.labels : [],
-                                confidence: typeof stakeholder.confidence === "number" ? stakeholder.confidence : null,
-                                personName: linkedPerson?.name ?? null,
-                                personKey: stakeholder.person_key ?? stakeholder.candidate_person_key ?? null,
-                                email: stakeholder.email ?? null,
-                                organizationName: organization?.name ?? null,
-                        }
-                })
+		const stakeholderRows = Array.isArray(summary.sales_lens_stakeholders) ? summary.sales_lens_stakeholders : []
+		const stakeholderViews = stakeholderRows.map((stakeholder) => {
+			const linkedPerson = stakeholder.person_id ? peopleById.get(stakeholder.person_id) : undefined
+			const organization = stakeholder.organization_id ? organizationsById.get(stakeholder.organization_id) : undefined
+			return {
+				id: stakeholder.id,
+				displayName: stakeholder.display_name,
+				role: stakeholder.role ?? null,
+				influence: stakeholder.influence ?? null,
+				labels: Array.isArray(stakeholder.labels) ? stakeholder.labels : [],
+				confidence: typeof stakeholder.confidence === "number" ? stakeholder.confidence : null,
+				personName: linkedPerson?.name ?? null,
+				personKey: stakeholder.person_key ?? stakeholder.candidate_person_key ?? null,
+				email: stakeholder.email ?? null,
+				organizationName: organization?.name ?? null,
+			}
+		})
 
 		const attendeeNames = (summary.attendee_person_ids ?? [])
 			.map((id) => peopleById.get(id)?.name ?? null)
@@ -512,20 +510,18 @@ function StakeholderList({ stakeholders, unlinked }: StakeholderListProps) {
 								</Badge>
 							))}
 						</div>
-                                                <div className="flex flex-wrap gap-3 text-muted-foreground text-xs">
-                                                        {stakeholder.role ? <span>Role: {stakeholder.role}</span> : null}
-                                                        {stakeholder.influence ? <span>Influence: {stakeholder.influence}</span> : null}
-                                                        {typeof stakeholder.confidence === "number" ? (
-                                                                <span>Confidence: {Math.round(stakeholder.confidence * 100)}%</span>
-                                                        ) : null}
-                                                        {stakeholder.personKey ? <span>Person key: {stakeholder.personKey}</span> : null}
-                                                        {stakeholder.email ? <span>{stakeholder.email}</span> : null}
-                                                        {stakeholder.organizationName ? (
-                                                                <span>Org: {stakeholder.organizationName}</span>
-                                                        ) : null}
-                                                </div>
-                                        </div>
-                                ))}
+						<div className="flex flex-wrap gap-3 text-muted-foreground text-xs">
+							{stakeholder.role ? <span>Role: {stakeholder.role}</span> : null}
+							{stakeholder.influence ? <span>Influence: {stakeholder.influence}</span> : null}
+							{typeof stakeholder.confidence === "number" ? (
+								<span>Confidence: {Math.round(stakeholder.confidence * 100)}%</span>
+							) : null}
+							{stakeholder.personKey ? <span>Person key: {stakeholder.personKey}</span> : null}
+							{stakeholder.email ? <span>{stakeholder.email}</span> : null}
+							{stakeholder.organizationName ? <span>Org: {stakeholder.organizationName}</span> : null}
+						</div>
+					</div>
+				))}
 				{unlinked.length > 0 ? (
 					<div className="flex flex-col gap-1 rounded-md border border-dotted p-3">
 						<p className="font-medium text-muted-foreground text-sm">Unlinked attendees pending review</p>
