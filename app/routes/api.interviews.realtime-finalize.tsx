@@ -32,16 +32,18 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 		// Use incoming transcriptFormatted if provided, otherwise create basic format
 		const incomingSanitized = transcriptFormatted ? safeSanitizeTranscriptPayload(transcriptFormatted) : null
-		const formattedTranscriptData = incomingSanitized || safeSanitizeTranscriptPayload({
-			full_transcript: transcript || "",
-			confidence: 0.8, // Default confidence for realtime
-			audio_duration: audioDuration || null,
-			processing_duration: 0,
-			file_type: "realtime",
-			original_filename: `realtime-${interviewId}`,
-			speaker_transcripts: [],
-			topic_detection: {},
-		})
+		const formattedTranscriptData =
+			incomingSanitized ||
+			safeSanitizeTranscriptPayload({
+				full_transcript: transcript || "",
+				confidence: 0.8, // Default confidence for realtime
+				audio_duration: audioDuration || null,
+				processing_duration: 0,
+				file_type: "realtime",
+				original_filename: `realtime-${interviewId}`,
+				speaker_transcripts: [],
+				topic_detection: {},
+			})
 
 		const update: Record<string, unknown> = {
 			status: "transcribed",

@@ -176,6 +176,7 @@ export namespace partial_types {
       anchors?: TurnAnchors | null
       why_it_matters?: string | null
       facet_mentions: FacetMention[]
+      isQuestion?: boolean | null
       says?: string[] | null
       does?: string[] | null
       thinks?: string[] | null

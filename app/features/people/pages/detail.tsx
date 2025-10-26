@@ -1,8 +1,10 @@
-import { useEffect, useMemo, useState } from "react"
 import consola from "consola"
+import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
@@ -12,12 +14,9 @@ import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganizatio
 import { getPersonById } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
-import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
-import Breadcrumbs from "~/components/navigation/Breadcrumbs"
-import { BackButton } from "~/components/ui/back-button"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -154,12 +153,13 @@ export default function PersonDetail() {
 	const persona = primaryPersona?.personas
 	const themeColor = persona?.color_hex || "#6366f1"
 	const name = person.name || "Unnamed Person"
-	const initials = (name || "?")
-		.split(" ")
-		.map((w) => w[0])
-		.join("")
-		.toUpperCase()
-		.slice(0, 2) || "?"
+	const initials =
+		(name || "?")
+			.split(" ")
+			.map((w) => w[0])
+			.join("")
+			.toUpperCase()
+			.slice(0, 2) || "?"
 
 	const facetsById = useMemo(() => {
 		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>()
@@ -239,7 +239,7 @@ export default function PersonDetail() {
 	return (
 		<PageContainer size="lg" padded={false} className="max-w-6xl py-8">
 			<PersonaPeopleSubnav />
-			<div className="mb-4 mt-4">
+			<div className="mt-4 mb-4">
 				<BackButton />
 			</div>
 
@@ -251,9 +251,7 @@ export default function PersonDetail() {
 						<div className="flex items-center gap-3">
 							<Avatar className="h-12 w-12 border-2" style={{ borderColor: "#ffffff55" }}>
 								{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
-								<AvatarFallback className="bg-white/20 text-white">
-									{initials}
-								</AvatarFallback>
+								<AvatarFallback className="bg-white/20 text-white">{initials}</AvatarFallback>
 							</Avatar>
 							<h1 className="font-bold text-2xl text-white">{name}</h1>
 							<div className="flex items-center gap-2 text-white/90">

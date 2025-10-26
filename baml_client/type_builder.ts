@@ -65,7 +65,7 @@ export default class TypeBuilder {
     
     EvidenceSet: ClassViewer<'EvidenceSet', "facts" | "goals" | "pains" | "behaviors" | "triggers" | "success" | "quotes">;
     
-    EvidenceTurn: ClassViewer<'EvidenceTurn', "person_key" | "speaker_label" | "gist" | "chunk" | "verbatim" | "anchors" | "why_it_matters" | "facet_mentions" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
+    EvidenceTurn: ClassViewer<'EvidenceTurn', "person_key" | "speaker_label" | "gist" | "chunk" | "verbatim" | "anchors" | "why_it_matters" | "facet_mentions" | "isQuestion" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
     EvidenceUnit: ClassViewer<'EvidenceUnit', "person_key" | "person_role" | "topic" | "gist" | "chunk" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
@@ -291,7 +291,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceTurn = this.tb.classViewer("EvidenceTurn", [
-          "person_key","speaker_label","gist","chunk","verbatim","anchors","why_it_matters","facet_mentions","says","does","thinks","feels","pains","gains",
+          "person_key","speaker_label","gist","chunk","verbatim","anchors","why_it_matters","facet_mentions","isQuestion","says","does","thinks","feels","pains","gains",
         ]);
         
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [

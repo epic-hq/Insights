@@ -1045,6 +1045,7 @@ export async function extractEvidenceAndPeopleCore({
 				})
 				: null
 		}
+
 		const sanitizedAnchors = rawAnchors
 			.map((anchor) => {
 				if (!anchor || typeof anchor !== "object") return null
