@@ -6,6 +6,8 @@ type EmpathyMapItem = {
 	text: string
 	evidenceId: string
 	anchors?: unknown
+	personId?: string
+	personName?: string
 }
 
 type EmpathyMapData = {
@@ -67,7 +69,7 @@ function EmpathySection({
 
 export function EmpathyMapTabs({ empathyMap, activeTab, setActiveTab, createEvidenceLink }: EmpathyMapTabsProps) {
 	return (
-		<div className="w-full">
+		<div className="w-full max-w-6xl">
 			{/* Tab Navigation */}
 			<div className="mb-6 flex space-x-1 rounded-lg bg-gray-100/50 p-1 dark:bg-gray-900/50">
 				<button

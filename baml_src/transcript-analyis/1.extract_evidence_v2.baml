@@ -34,7 +34,7 @@ class FacetMention {
   // parent_index int @description("Index of the EvidenceTurn this mention derives from")
   person_key string @description("REQUIRED: Exact match to Person.person_key. Must match the person_key of the parent EvidenceTurn.")
   kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion")
-  value string @description("Concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful. For preference/value, compress subject+rationale (job-story style): e.g., 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'.")
+  value string @description("CRITICAL: Human-readable descriptive text (≤12 words), NOT an ID or reference number. Examples: 'Healthcare Professional', 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'. NEVER use formats like 'ID:123' or numeric references. Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful.")
   quote string? @description("Optional ≤15-word supporting quote from the parent turn")
   // confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
 }

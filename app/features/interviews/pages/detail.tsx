@@ -393,10 +393,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			throw new Response(`Error fetching insights: ${msg}`, { status: 500 })
 		}
 
-		// Fetch evidence related to this interview
+		// Fetch evidence related to this interview with person associations
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
-			.select("*")
+			.select(`
+				*,
+				evidence_people (
+					person_id,
+					role,
+					people (
+						id,
+						name,
+						segment
+					)
+				)
+			`)
 			.eq("interview_id", interviewId)
 			.order("created_at", { ascending: false })
 
@@ -405,7 +416,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		// Process empathy map data in the loader for better performance
-		type EmpathyMapItem = { text: string; evidenceId: string; anchors?: unknown }
+		type EmpathyMapItem = {
+			text: string
+			evidenceId: string
+			anchors?: unknown
+			personId?: string
+			personName?: string
+		}
 		const empathyMap = {
 			says: [] as EmpathyMapItem[],
 			does: [] as EmpathyMapItem[],
@@ -418,12 +435,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		if (evidence) {
 			evidence.forEach((e) => {
 				const evidenceId = e.id
+				// Extract person info from evidence_people junction
+				const personData =
+					Array.isArray(e.evidence_people) && e.evidence_people.length > 0 ? e.evidence_people[0] : null
+				const personId = personData?.people?.id
+				const personName = personData?.people?.name
 
 				// Process each empathy map category
 				if (Array.isArray(e.says)) {
 					e.says.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -431,7 +453,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.does)) {
 					e.does.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -439,7 +461,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.thinks)) {
 					e.thinks.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -447,7 +469,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.feels)) {
 					e.feels.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -455,7 +477,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.pains)) {
 					e.pains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -463,7 +485,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.gains)) {
 					e.gains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -553,6 +575,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
+	const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
 
 	useEffect(() => {
 		setAnalysisState(analysisJob)
@@ -728,6 +751,100 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const revalidator = useRevalidator()
 	const refreshTriggeredRef = useRef(false)
 
+	// Extract unique speakers from empathy map data
+	const uniqueSpeakers = useMemo(() => {
+		const speakerMap = new Map<string, { id: string; name: string; count: number }>()
+
+		// Collect all speakers from empathy map items
+		const allItems = [
+			...empathyMap.says,
+			...empathyMap.does,
+			...empathyMap.thinks,
+			...empathyMap.feels,
+			...empathyMap.pains,
+			...empathyMap.gains,
+		]
+
+		allItems.forEach((item) => {
+			if (item.personId && item.personName) {
+				const existing = speakerMap.get(item.personId)
+				if (existing) {
+					existing.count++
+				} else {
+					speakerMap.set(item.personId, {
+						id: item.personId,
+						name: item.personName,
+						count: 1,
+					})
+				}
+			}
+		})
+
+		// Sort by count (most evidence first), then by name
+		return Array.from(speakerMap.values()).sort((a, b) => {
+			if (b.count !== a.count) return b.count - a.count
+			return a.name.localeCompare(b.name)
+		})
+	}, [empathyMap])
+
+	useEffect(() => {
+		if (uniqueSpeakers.length === 0) {
+			setSelectedPersonId(null)
+			return
+		}
+
+		setSelectedPersonId((current) => {
+			if (current && uniqueSpeakers.some((speaker) => speaker.id === current)) {
+				return current
+			}
+
+			return uniqueSpeakers[0]?.id ?? null
+		})
+	}, [uniqueSpeakers])
+
+	const activePersonId = useMemo(() => {
+		return selectedPersonId ?? uniqueSpeakers[0]?.id ?? null
+	}, [selectedPersonId, uniqueSpeakers])
+
+	// Filter empathy map by selected person
+	const filteredEmpathyMap = useMemo(() => {
+		if (!activePersonId) {
+			// Default: show participants (non-interviewer roles)
+			// Filter out items from people with "interviewer" role
+			const filterNonInterviewer = (items: typeof empathyMap.says) => {
+				return items.filter((item) => {
+					if (!item.personId) return true // Include items without person attribution
+					// Check if this person is an interviewer
+					const participant = participants.find((p) => p.people?.id === item.personId)
+					return participant?.role?.toLowerCase() !== "interviewer"
+				})
+			}
+
+			return {
+				says: filterNonInterviewer(empathyMap.says),
+				does: filterNonInterviewer(empathyMap.does),
+				thinks: filterNonInterviewer(empathyMap.thinks),
+				feels: filterNonInterviewer(empathyMap.feels),
+				pains: filterNonInterviewer(empathyMap.pains),
+				gains: filterNonInterviewer(empathyMap.gains),
+			}
+		}
+
+		// Filter by selected person
+		const filterByPerson = (items: typeof empathyMap.says) => {
+			return items.filter((item) => item.personId === activePersonId)
+		}
+
+		return {
+			says: filterByPerson(empathyMap.says),
+			does: filterByPerson(empathyMap.does),
+			thinks: filterByPerson(empathyMap.thinks),
+			feels: filterByPerson(empathyMap.feels),
+			pains: filterByPerson(empathyMap.pains),
+			gains: filterByPerson(empathyMap.gains),
+		}
+	}, [activePersonId, empathyMap, participants])
+
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
 		runId: activeRunId ?? undefined,
@@ -754,7 +871,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 
 		// Check interview status - anything before "ready" means still processing
-		const interviewNotReady = interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
+		const interviewNotReady =
+			interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
 
 		// Check analysis job status if it exists
 		const analysisJobActive = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
@@ -989,7 +1107,35 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Empathy Map Section */}
 					<div className="space-y-4">
-						<h3 className="font-semibold text-foreground text-lg">Empathy Map</h3>
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<span className="font-semibold text-foreground text-lg">People</span>
+
+							{/* Person Selector Pills */}
+							{uniqueSpeakers.length > 0 ? (
+								<div className="flex flex-wrap items-center gap-2">
+									{uniqueSpeakers.map((speaker) => {
+										const isActive = activePersonId === speaker.id
+										return (
+											<button
+												key={speaker.id}
+												type="button"
+												onClick={() => setSelectedPersonId(speaker.id)}
+												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
+														? "bg-primary text-primary-foreground shadow-sm"
+														: "bg-muted text-muted-foreground hover:bg-muted/80"
+													}`}
+											>
+												{speaker.name}
+												<span className="ml-1.5 opacity-70">({speaker.count})</span>
+											</button>
+										)
+									})}
+								</div>
+							) : (
+								<span className="text-muted-foreground text-sm">No participants with empathy map data yet</span>
+							)}
+						</div>
+
 						{isProcessing && evidence.length === 0 ? (
 							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
 								<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
@@ -997,7 +1143,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							</div>
 						) : (
 							<EmpathyMapTabs
-								empathyMap={empathyMap}
+								empathyMap={filteredEmpathyMap}
 								activeTab={activeTab}
 								setActiveTab={setActiveTab}
 								createEvidenceLink={createEvidenceLink}
@@ -1009,7 +1155,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					{isProcessing && evidence.length === 0 ? (
 						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
 							<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
-							<p className="mt-1 text-muted-foreground text-xs">Evidence timeline will appear once extraction is complete</p>
+							<p className="mt-1 text-muted-foreground text-xs">
+								Evidence timeline will appear once extraction is complete
+							</p>
 						</div>
 					) : evidence.length > 0 ? (
 						<PlayByPlayTimeline evidence={evidence} className="mb-6" />
