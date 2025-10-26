@@ -3,13 +3,14 @@
 
 // === Event Stream model ===
 class TurnAnchors {
-  start_ms int? @description("Start time in ms when available")
-  end_ms int? @description("End time in ms when available")
+  start_ms int? @description("CRITICAL: Start time in milliseconds. Extract from transcript timestamps or chapter data. This is REQUIRED for video playback.")
+  end_ms int? @description("End time in milliseconds when available")
   chapter_title string? @description("Optional chapter/section title")
   char_span int[]? @description("Optional [start,end] character offsets in transcript")
 }
 
 class EvidenceTurn {
+  person_key string @description("REQUIRED: Exact match to Person.person_key (e.g., 'participant-1', 'interviewer-1'). Must reference a person defined in the people array.")
   speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
   gist string @description("≤12-word essence of the turn; slide-like headline")
   chunk string @description("2–5 sentences capturing the person's full thought")
@@ -18,6 +19,7 @@ class EvidenceTurn {
   // confidence string @description("low | medium | high")
   why_it_matters string? @description("≤10 words on consequence/importance (e.g., trigger/impact; note if generalizable)")
 	facet_mentions FacetMention[] @description("Facet mentions that appear in this turn")
+  isQuestion bool? @description("TRUE if this turn contains a question (any speaker). Useful for filtering question-response patterns.")
 
   // Empathy map (high-signal only; leave empty if none)
   says string[]? @description("High-signal quotes only; 0–2 (≤120 chars). Use when wording carries unique meaning beyond verbatim.")
@@ -31,8 +33,9 @@ class EvidenceTurn {
 class FacetMention {
   // index int @description("0-based index within the stream for ordering")
   // parent_index int @description("Index of the EvidenceTurn this mention derives from")
+  person_key string @description("REQUIRED: Exact match to Person.person_key. Must match the person_key of the parent EvidenceTurn.")
   kind_slug string @description("One: goal | pain | behavior | tool | value | requirements | preference | demographic | context | artifact | emotion")
-  value string @description("Concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful. For preference/value, compress subject+rationale (job-story style): e.g., 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'.")
+  value string @description("CRITICAL: Human-readable descriptive text (≤12 words), NOT an ID or reference number. Examples: 'Healthcare Professional', 'prefers explicit topic mapping for workflow', 'requires calendar integration to schedule study'. NEVER use formats like 'ID:123' or numeric references. Prefer verb+object or noun+modifier. Include trigger/condition and objective when helpful.")
   quote string? @description("Optional ≤15-word supporting quote from the parent turn")
   // confidence float? @description("Discrete buckets recommended: 1, 0.75, 0.5, 0.25, 0")
 }
@@ -46,6 +49,7 @@ class Scene {
 }
 
 class Person {
+  person_key string @description("REQUIRED: Deterministic slug like 'participant-1', 'participant-2', 'interviewer-1'. Number based on first appearance order. This MUST be used consistently in all EvidenceTurn and FacetMention references.")
   speaker_label string? @description("Literal transcript speaker label, e.g., 'SPEAKER A', 'Speaker B' or the provided diarization name")
 	person_name string? @description("The person's common name, like John Smith, Sally A., etc.")
 	inferred_name string? @description("Preferred name if confidently inferred from context")
@@ -60,8 +64,15 @@ class Extraction {
 	 scenes Scene[]
 }
 
+class SpeakerUtterance {
+  speaker string @description("Speaker label like 'SPEAKER A', 'SPEAKER B'")
+  text string @description("The utterance text")
+  start int? @description("Start time in milliseconds")
+  end int? @description("End time in milliseconds")
+}
+
 function ExtractEvidenceFromTranscriptV2(
-  transcript: string,
+  speaker_transcripts: SpeakerUtterance[],
   chapters: Chapter[],
   language: string,
   facet_catalog: FacetCatalog
@@ -89,23 +100,25 @@ Skip generic filler unless it informs a concrete outcome.
 
 ## EvidenceTurn
 - index: 0-based chronological index (strictly ascending) and equals its position in the stream.
-- person_key: exact match (character-for-character) to the `person_key` defined for that person in `people`. Never invent a new slug at the turn level.
+- **person_key**: REQUIRED. Exact match (character-for-character) to the `person_key` defined for that person in `people`. Never invent a new slug at the turn level. CRITICAL: Distinguish between interviewer and participant - if someone is asking questions, they're likely the interviewer; if answering, they're the participant.
 - gist: ≤12 words; no labels like "Quote:".
 - chunk: 2–5 sentences of the participant’s words.
 - verbatim: ≤15-word quote from the chunk.
-- anchors: include start_ms when available, speaker label, optional chapter_title.
+- **anchors.start_ms**: CRITICAL - ALWAYS use the `start` field from the corresponding SpeakerUtterance. This timing is already in milliseconds and is REQUIRED for video playback functionality.
+- anchors: include start_ms (REQUIRED), end_ms when available, speaker label, optional chapter_title.
 - confidence: low | medium | high. Map evidence strength: direct quote ≥ concrete behavior ≥ inferred belief.
+- **isQuestion**: Set to TRUE if this turn contains any question (explicit questions, requests for clarification, probes, etc.) regardless of speaker. FALSE or omit if no questions. Useful for filtering question-response patterns and conversation analysis.
 - empathy map: only when high-signal; 0–2 items per field; do not repeat gist/verbatim/facet values; leave empty if not useful.
  - why_it_matters: ≤10 words; express the consequence or importance (e.g., "blocks timely status updates").
 
 ## FacetMention (extraction-only, no linking)
 - parent_index: points to the `EvidenceTurn.index` where the signal appeared.
+- **person_key**: REQUIRED. Must match the exact slug from `people` AND match the person_key of the parent EvidenceTurn. CRITICAL: Assign facets to the person who EXPRESSED the trait/behavior, not the person being discussed. If the interviewer asks "What tools do you use?", the participant's answer creates facets for the PARTICIPANT, not the interviewer.
 - kind_slug: one of goal | pain | behavior | tool | value | workflow | preference | demographic | context | artifact | emotion.
 - value: concrete, atomic (≤12 words). Prefer verb+object or noun+modifier. Include frequency/recency when stated (e.g., "daily", "last week"). Include trigger/condition and objective when helpful. For preference/value, compress subject + rationale into one field when possible: e.g., "values integrated planning + calendar (tracks progress)", "prefers explicit topic mapping for workflow", "requires calendar integration to schedule study".
 - quote: include when it strengthens auditability; ≤15 words.
 - confidence: one of 1, 0.75, 0.5, 0.25, 0.
 - Output one FacetMention per distinct signal in a turn; do not merge similar mentions across turns.
-- person_key: must match the exact slug from `people`. If multiple people appear in a turn (e.g., collaborative utterance), duplicate the mention with the correct key for each speaker.
 
 ## Scenes
 - Create a new scene when the topic/goal shifts meaningfully.
@@ -120,8 +133,9 @@ Skip generic filler unless it informs a concrete outcome.
 - Prefer fewer, higher-quality turns over many weak ones; but do not drop distinct signals (emit mentions instead).
 - Output facet_mentions both nested in EvidenceTurn AND as a flattened top-level array (this enables phase-2 persona synthesis).
 
-Transcript (language={{ language }})
-{{ transcript }}
+Speaker Transcripts (language={{ language }})
+Each utterance includes speaker label, text, and timing in milliseconds:
+{{ speaker_transcripts }}
 
 Chapters (optional; may help anchoring)
 {{ chapters }}

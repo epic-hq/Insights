@@ -1,11 +1,12 @@
 import consola from "consola"
-import { Edit2, Loader2 } from "lucide-react"
-import { useEffect, useMemo, useState } from "react"
+import { Edit2, Loader2, MoreVertical } from "lucide-react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import type { Database } from "~/../supabase/types"
-import { BackButton } from "~/components/ui/BackButton"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
@@ -265,27 +266,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-							id: string
-							name: string | null
-							segment: string | null
-							project_id: string | null
-							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-							[key: string]: unknown
-					  }
+						id: string
+						name: string | null
+						segment: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-							id: person.id,
-							name: person.name,
-							segment: person.segment,
-							project_id: person.project_id,
-							people_personas: Array.isArray(person.people_personas)
-								? person.people_personas.map((pp) => ({
-										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-									}))
-								: undefined,
-						}
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
+							: undefined,
+					}
 					: undefined
 				return {
 					id: row.id,
@@ -392,10 +393,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			throw new Response(`Error fetching insights: ${msg}`, { status: 500 })
 		}
 
-		// Fetch evidence related to this interview
+		// Fetch evidence related to this interview with person associations
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
-			.select("*")
+			.select(`
+				*,
+				evidence_people (
+					person_id,
+					role,
+					people (
+						id,
+						name,
+						segment
+					)
+				)
+			`)
 			.eq("interview_id", interviewId)
 			.order("created_at", { ascending: false })
 
@@ -404,7 +416,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		// Process empathy map data in the loader for better performance
-		type EmpathyMapItem = { text: string; evidenceId: string; anchors?: unknown }
+		type EmpathyMapItem = {
+			text: string
+			evidenceId: string
+			anchors?: unknown
+			personId?: string
+			personName?: string
+		}
 		const empathyMap = {
 			says: [] as EmpathyMapItem[],
 			does: [] as EmpathyMapItem[],
@@ -417,12 +435,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		if (evidence) {
 			evidence.forEach((e) => {
 				const evidenceId = e.id
+				// Extract person info from evidence_people junction
+				const personData =
+					Array.isArray(e.evidence_people) && e.evidence_people.length > 0 ? e.evidence_people[0] : null
+				const personId = personData?.people?.id
+				const personName = personData?.people?.name
 
 				// Process each empathy map category
 				if (Array.isArray(e.says)) {
 					e.says.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -430,7 +453,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.does)) {
 					e.does.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -438,7 +461,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.thinks)) {
 					e.thinks.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -446,7 +469,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.feels)) {
 					e.feels.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -454,7 +477,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.pains)) {
 					e.pains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -462,7 +485,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.gains)) {
 					e.gains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -552,6 +575,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
+	const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
 
 	useEffect(() => {
 		setAnalysisState(analysisJob)
@@ -724,6 +748,102 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const primaryParticipant = participants[0]?.people
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
+	const revalidator = useRevalidator()
+	const refreshTriggeredRef = useRef(false)
+
+	// Extract unique speakers from empathy map data
+	const uniqueSpeakers = useMemo(() => {
+		const speakerMap = new Map<string, { id: string; name: string; count: number }>()
+
+		// Collect all speakers from empathy map items
+		const allItems = [
+			...empathyMap.says,
+			...empathyMap.does,
+			...empathyMap.thinks,
+			...empathyMap.feels,
+			...empathyMap.pains,
+			...empathyMap.gains,
+		]
+
+		allItems.forEach((item) => {
+			if (item.personId && item.personName) {
+				const existing = speakerMap.get(item.personId)
+				if (existing) {
+					existing.count++
+				} else {
+					speakerMap.set(item.personId, {
+						id: item.personId,
+						name: item.personName,
+						count: 1,
+					})
+				}
+			}
+		})
+
+		// Sort by count (most evidence first), then by name
+		return Array.from(speakerMap.values()).sort((a, b) => {
+			if (b.count !== a.count) return b.count - a.count
+			return a.name.localeCompare(b.name)
+		})
+	}, [empathyMap])
+
+	useEffect(() => {
+		if (uniqueSpeakers.length === 0) {
+			setSelectedPersonId(null)
+			return
+		}
+
+		setSelectedPersonId((current) => {
+			if (current && uniqueSpeakers.some((speaker) => speaker.id === current)) {
+				return current
+			}
+
+			return uniqueSpeakers[0]?.id ?? null
+		})
+	}, [uniqueSpeakers])
+
+	const activePersonId = useMemo(() => {
+		return selectedPersonId ?? uniqueSpeakers[0]?.id ?? null
+	}, [selectedPersonId, uniqueSpeakers])
+
+	// Filter empathy map by selected person
+	const filteredEmpathyMap = useMemo(() => {
+		if (!activePersonId) {
+			// Default: show participants (non-interviewer roles)
+			// Filter out items from people with "interviewer" role
+			const filterNonInterviewer = (items: typeof empathyMap.says) => {
+				return items.filter((item) => {
+					if (!item.personId) return true // Include items without person attribution
+					// Check if this person is an interviewer
+					const participant = participants.find((p) => p.people?.id === item.personId)
+					return participant?.role?.toLowerCase() !== "interviewer"
+				})
+			}
+
+			return {
+				says: filterNonInterviewer(empathyMap.says),
+				does: filterNonInterviewer(empathyMap.does),
+				thinks: filterNonInterviewer(empathyMap.thinks),
+				feels: filterNonInterviewer(empathyMap.feels),
+				pains: filterNonInterviewer(empathyMap.pains),
+				gains: filterNonInterviewer(empathyMap.gains),
+			}
+		}
+
+		// Filter by selected person
+		const filterByPerson = (items: typeof empathyMap.says) => {
+			return items.filter((item) => item.personId === activePersonId)
+		}
+
+		return {
+			says: filterByPerson(empathyMap.says),
+			does: filterByPerson(empathyMap.does),
+			thinks: filterByPerson(empathyMap.thinks),
+			feels: filterByPerson(empathyMap.feels),
+			pains: filterByPerson(empathyMap.pains),
+			gains: filterByPerson(empathyMap.gains),
+		}
+	}, [activePersonId, empathyMap, participants])
 
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
@@ -732,8 +852,24 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	})
 	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
 
+	useEffect(() => {
+		if (!progressInfo.isComplete) {
+			refreshTriggeredRef.current = false
+			return
+		}
+
+		if (!refreshTriggeredRef.current) {
+			refreshTriggeredRef.current = true
+			revalidator.revalidate()
+		}
+	}, [progressInfo.isComplete, revalidator])
+
 	// Comprehensive processing check: interview not ready OR analysis job active OR progress indicates incomplete
 	const isProcessing = useMemo(() => {
+		if (progressInfo.isComplete) {
+			return false
+		}
+
 		// Check interview status - anything before "ready" means still processing
 		const interviewNotReady =
 			interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
@@ -746,6 +882,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 		return interviewNotReady || analysisJobActive || progressIncomplete
 	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
+	const showProcessingBanner = isProcessing && !progressInfo.isComplete
 
 	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
@@ -777,7 +914,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
-					{isProcessing && (
+					{showProcessingBanner && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
@@ -816,10 +953,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
+						<BackButton />
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
 								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
-									<BackButton to={routes.interviews.index()} label="" position="relative" />
 									{interview.title || "Untitled Interview"}
 								</div>
 								<div className="flex flex-wrap items-center gap-3">
@@ -854,23 +991,50 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									</Link>
 								)}
 								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
-									<button
-										onClick={() => {
-											try {
-												fetcher.submit(
-													{ interview_id: interview.id },
-													{ method: "post", action: "/api.analysis-retry" }
-												)
-											} catch (e) {
-												consola.error("Retry analysis submit failed", e)
-											}
-										}}
-										disabled={fetcher.state !== "idle" || isProcessing}
-										className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm disabled:opacity-60"
-										title="Re-run AI analysis on this interview"
-									>
-										{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Retry analysis"}
-									</button>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+												title="Reprocess options"
+											>
+												<MoreVertical className="h-4 w-4" />
+												{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Reprocess"}
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.analysis-retry" }
+														)
+													} catch (e) {
+														consola.error("Retry analysis submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Transcription
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.reprocess-evidence" }
+														)
+													} catch (e) {
+														consola.error("Reprocess evidence submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Evidence Collection
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
 								)}
 								<Link
 									to={routes.interviews.edit(interview.id)}
@@ -943,7 +1107,35 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Empathy Map Section */}
 					<div className="space-y-4">
-						<h3 className="font-semibold text-foreground text-lg">Empathy Map</h3>
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<span className="font-semibold text-foreground text-lg">People</span>
+
+							{/* Person Selector Pills */}
+							{uniqueSpeakers.length > 0 ? (
+								<div className="flex flex-wrap items-center gap-2">
+									{uniqueSpeakers.map((speaker) => {
+										const isActive = activePersonId === speaker.id
+										return (
+											<button
+												key={speaker.id}
+												type="button"
+												onClick={() => setSelectedPersonId(speaker.id)}
+												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+													}`}
+											>
+												{speaker.name}
+												<span className="ml-1.5 opacity-70">({speaker.count})</span>
+											</button>
+										)
+									})}
+								</div>
+							) : (
+								<span className="text-muted-foreground text-sm">No participants with empathy map data yet</span>
+							)}
+						</div>
+
 						{isProcessing && evidence.length === 0 ? (
 							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
 								<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
@@ -951,7 +1143,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							</div>
 						) : (
 							<EmpathyMapTabs
-								empathyMap={empathyMap}
+								empathyMap={filteredEmpathyMap}
 								activeTab={activeTab}
 								setActiveTab={setActiveTab}
 								createEvidenceLink={createEvidenceLink}

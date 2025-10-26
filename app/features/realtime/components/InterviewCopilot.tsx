@@ -519,16 +519,16 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 			if (rec && rec.state === "recording" && typeof rec.pause === "function") {
 				try {
 					rec.pause()
-				} catch {}
+				} catch { }
 			}
-		} catch {}
+		} catch { }
 		// Accumulate elapsed time until now
 		try {
 			if (recordStartRef.current != null) {
 				elapsedMsRef.current += performance.now() - recordStartRef.current
 				recordStartRef.current = null
 			}
-		} catch {}
+		} catch { }
 		setStreamStatus("paused")
 	}, [stopDurationTimer])
 
@@ -556,7 +556,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					if (rec && rec.state === "paused" && typeof rec.resume === "function") {
 						rec.resume()
 					}
-				} catch {}
+				} catch { }
 
 				node.port.onmessage = (e) => {
 					bufferRef.current.push(e.data as Float32Array)
@@ -609,18 +609,18 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							// Signal end of stream to upstream to flush final results
 							try {
 								wsRef.current.send("__end__")
-							} catch {}
+							} catch { }
 							await new Promise((r) => setTimeout(r, 300))
 						}
 					}
 					wsRef.current.close()
-				} catch {}
+				} catch { }
 			}
 			wsRef.current = null
 			try {
 				nodeRef.current?.disconnect()
 				ctxRef.current?.close()
-			} catch {}
+			} catch { }
 			nodeRef.current = null
 			ctxRef.current = null
 			bufferRef.current = []
@@ -633,7 +633,7 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 					elapsedMsRef.current += performance.now() - recordStartRef.current
 					recordStartRef.current = null
 				}
-			} catch {}
+			} catch { }
 
 			// finalize or abort recording
 			void (async () => {
@@ -653,13 +653,13 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 								try {
 									rec.addEventListener?.("stop", handler as any)
 								} catch {
-									;(rec as any).onstop = handler
+									; (rec as any).onstop = handler
 								}
 							})
 							if (rec.state !== "inactive") {
 								try {
 									rec.stop()
-								} catch {}
+								} catch { }
 							}
 							blob = await Promise.race<Blob>([
 								stopped,
@@ -733,8 +733,10 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 
 						try {
 							// Convert turns to speaker_transcripts format for BAML processing
-							const utterances = turns.map((turn, idx) => ({
-								speaker: `Speaker ${idx % 2 === 0 ? "A" : "B"}`, // Simple alternating speaker labels
+							// Reverse turns array since it's stored newest-first, but we need chronological order
+							const chronologicalTurns = [...turns].reverse()
+							const utterances = chronologicalTurns.map((turn, idx) => ({
+								speaker: idx % 2 === 0 ? 'A' : 'B', // Simple alternating speaker labels (A, B, not "Speaker A")
 								text: turn.transcript,
 								start: turn.start,
 								end: turn.end,

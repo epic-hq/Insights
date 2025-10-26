@@ -5,6 +5,7 @@ import {
 	uploadMediaAndTranscribeCore,
 	workflowRetryConfig,
 } from "~/utils/processInterview.server"
+import { transcribeAudioFromUrl } from "~/utils/assemblyai.server"
 
 function errorMessage(error: unknown) {
 	return error instanceof Error ? error.message : String(error)
@@ -18,7 +19,7 @@ export const uploadMediaAndTranscribeTask = task({
 		let interviewId = payload.existingInterviewId ?? null
 
 		try {
-			metadata.set("stageLabel", "Normalizing transcript")
+			metadata.set("stageLabel", "Processing media")
 			metadata.set("progressPercent", 10)
 			if (payload.analysisJobId) {
 				metadata.set("analysisJobId", payload.analysisJobId)
@@ -35,13 +36,45 @@ export const uploadMediaAndTranscribeTask = task({
 					.from("analysis_jobs")
 					.update({
 						status: "in_progress",
-						status_detail: "Normalizing transcript",
+						status_detail: "Processing media",
 						progress: 10,
 					})
 					.eq("id", payload.analysisJobId as string)
 			}
 
-			const uploadResult = await uploadMediaAndTranscribeCore({ ...payload, client })
+			// Check if we have transcript data or need to transcribe
+			let transcriptData = payload.transcriptData
+			let needsTranscription = false
+
+			// If transcriptData is empty/minimal and we have a mediaUrl, we need to transcribe
+			if (payload.mediaUrl && (!transcriptData || Object.keys(transcriptData).length < 3)) {
+				needsTranscription = true
+			}
+
+			if (needsTranscription && payload.mediaUrl) {
+				metadata.set("stageLabel", "Transcribing audio")
+				metadata.set("progressPercent", 20)
+
+				try {
+					transcriptData = await transcribeAudioFromUrl(payload.mediaUrl)
+					metadata.set("stageLabel", "Transcription complete")
+					metadata.set("progressPercent", 30)
+				} catch (transcriptionError) {
+					console.error("Transcription failed:", transcriptionError)
+					throw new Error(`Transcription failed: ${transcriptionError instanceof Error ? transcriptionError.message : String(transcriptionError)}`)
+				}
+			}
+
+			// Create normalized payload with transcript data
+			const normalizedPayload = {
+				...payload,
+				transcriptData,
+			}
+
+			const uploadResult = await uploadMediaAndTranscribeCore({
+				...normalizedPayload,
+				client,
+			})
 			interviewId = uploadResult.interview.id
 
 			metadata.set("interviewId", uploadResult.interview.id)
@@ -69,7 +102,7 @@ export const uploadMediaAndTranscribeTask = task({
 
 			if (!nextResult.ok) {
 				throw new Error(
-					nextResult.error?.message ?? "Failed to extract people and evidence from interview transcript."
+					"Failed to extract people and evidence from interview transcript."
 				)
 			}
 

@@ -138,6 +138,7 @@ const routes = [
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/questions/:questionId", "./routes/api.questions.$questionId.tsx"),
+	route("api/questions/save-debug", "./routes/api.questions.save-debug.tsx"),
 	route("api/generate-research-structure", "./routes/api.generate-research-structure.tsx"),
 	route("api/migrate-research-structure", "./routes/api.migrate-research-structure.tsx"),
 	route("api/check-research-structure", "./routes/api.check-research-structure.tsx"),
@@ -146,6 +147,7 @@ const routes = [
 	route("api/process", "./routes/api.process.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),
 	route("api/teams/create", "./routes/api.teams.create.tsx"),
+	route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
 	...voiceRoutes,
 
 	// Resource routes

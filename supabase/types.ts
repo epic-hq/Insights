@@ -265,18 +265,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_token: {
-        Args: { length: number }
-        Returns: string
-      }
+      generate_token: { Args: { length: number }; Returns: string }
       get_accounts_with_role: {
         Args: { passed_in_role?: Database["accounts"]["Enums"]["account_role"] }
         Returns: string[]
       }
-      get_config: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_config: { Args: never; Returns: Json }
       has_role_on_account: {
         Args: {
           account_id: string
@@ -284,10 +278,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_set: {
-        Args: { field_name: string }
-        Returns: boolean
-      }
+      is_set: { Args: { field_name: string }; Returns: boolean }
     }
     Enums: {
       account_role: "owner" | "member" | "viewer"
@@ -366,8 +357,8 @@ export type Database = {
           progress: number | null
           status: Database["public"]["Enums"]["job_status"]
           status_detail: string | null
-          trigger_run_id: string | null
           transcript_data: Json
+          trigger_run_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -380,8 +371,8 @@ export type Database = {
           progress?: number | null
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
-          trigger_run_id?: string | null
           transcript_data: Json
+          trigger_run_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -394,8 +385,8 @@ export type Database = {
           progress?: number | null
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
-          trigger_run_id?: string | null
           transcript_data?: Json
+          trigger_run_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
@@ -740,7 +731,6 @@ export type Database = {
           independence_key: string | null
           interview_id: string | null
           journey_stage: string | null
-          kind_tags: string[] | null
           method: string | null
           modality: string
           pains: string[] | null
@@ -776,7 +766,6 @@ export type Database = {
           independence_key?: string | null
           interview_id?: string | null
           journey_stage?: string | null
-          kind_tags?: string[] | null
           method?: string | null
           modality?: string
           pains?: string[] | null
@@ -812,7 +801,6 @@ export type Database = {
           independence_key?: string | null
           interview_id?: string | null
           journey_stage?: string | null
-          kind_tags?: string[] | null
           method?: string | null
           modality?: string
           pains?: string[] | null
@@ -855,6 +843,79 @@ export type Database = {
           },
           {
             foreignKeyName: "evidence_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_facet: {
+        Row: {
+          account_id: string
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          evidence_id: string
+          facet_account_id: number
+          id: string
+          kind_slug: string
+          label: string
+          notes: string | null
+          project_id: string | null
+          quote: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          evidence_id: string
+          facet_account_id: number
+          id?: string
+          kind_slug: string
+          label: string
+          notes?: string | null
+          project_id?: string | null
+          quote?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          evidence_id?: string
+          facet_account_id?: number
+          id?: string
+          kind_slug?: string
+          label?: string
+          notes?: string | null
+          project_id?: string | null
+          quote?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_facet_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_facet_facet_account_id_fkey"
+            columns: ["facet_account_id"]
+            isOneToOne: false
+            referencedRelation: "facet_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_facet_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -988,6 +1049,7 @@ export type Database = {
           description: string | null
           global_facet_id: number | null
           id: number
+          is_active: boolean
           kind_id: number
           label: string
           slug: string
@@ -1000,6 +1062,7 @@ export type Database = {
           description?: string | null
           global_facet_id?: number | null
           id?: number
+          is_active?: boolean
           kind_id: number
           label: string
           slug: string
@@ -1012,6 +1075,7 @@ export type Database = {
           description?: string | null
           global_facet_id?: number | null
           id?: number
+          is_active?: boolean
           kind_id?: number
           label?: string
           slug?: string
@@ -1031,78 +1095,6 @@ export type Database = {
             columns: ["kind_id"]
             isOneToOne: false
             referencedRelation: "facet_kind_global"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      facet_candidate: {
-        Row: {
-          account_id: string
-          created_at: string
-          evidence_id: string | null
-          id: string
-          kind_slug: string
-          label: string
-          notes: string | null
-          person_id: string | null
-          project_id: string
-          resolved_facet_ref: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          source: string
-          status: string
-          synonyms: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          account_id: string
-          created_at?: string
-          evidence_id?: string | null
-          id?: string
-          kind_slug: string
-          label: string
-          notes?: string | null
-          person_id?: string | null
-          project_id: string
-          resolved_facet_ref?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          source: string
-          status?: string
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string
-          created_at?: string
-          evidence_id?: string | null
-          id?: string
-          kind_slug?: string
-          label?: string
-          notes?: string | null
-          person_id?: string | null
-          project_id?: string
-          resolved_facet_ref?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          source?: string
-          status?: string
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "facet_candidate_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "facet_candidate_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -2557,11 +2549,10 @@ export type Database = {
       person_facet: {
         Row: {
           account_id: string
-          candidate_id: string | null
           confidence: number | null
           created_at: string
           evidence_id: string | null
-          facet_ref: string
+          facet_account_id: number
           noted_at: string | null
           person_id: string
           project_id: string
@@ -2570,11 +2561,10 @@ export type Database = {
         }
         Insert: {
           account_id: string
-          candidate_id?: string | null
           confidence?: number | null
           created_at?: string
           evidence_id?: string | null
-          facet_ref: string
+          facet_account_id: number
           noted_at?: string | null
           person_id: string
           project_id: string
@@ -2583,11 +2573,10 @@ export type Database = {
         }
         Update: {
           account_id?: string
-          candidate_id?: string | null
           confidence?: number | null
           created_at?: string
           evidence_id?: string | null
-          facet_ref?: string
+          facet_account_id?: number
           noted_at?: string | null
           person_id?: string
           project_id?: string
@@ -2596,10 +2585,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "person_facet_candidate_id_fkey"
-            columns: ["candidate_id"]
+            foreignKeyName: "person_facet_facet_account_id_fkey"
+            columns: ["facet_account_id"]
             isOneToOne: false
-            referencedRelation: "facet_candidate"
+            referencedRelation: "facet_account"
             referencedColumns: ["id"]
           },
           {
@@ -3141,62 +3130,6 @@ export type Database = {
           },
         ]
       }
-      project_facet: {
-        Row: {
-          account_id: string
-          alias: string | null
-          created_at: string
-          facet_ref: string
-          is_enabled: boolean | null
-          kind_slug: string | null
-          label: string | null
-          pinned: boolean | null
-          project_id: string
-          scope: string
-          sort_weight: number | null
-          synonyms: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          account_id: string
-          alias?: string | null
-          created_at?: string
-          facet_ref: string
-          is_enabled?: boolean | null
-          kind_slug?: string | null
-          label?: string | null
-          pinned?: boolean | null
-          project_id: string
-          scope?: string
-          sort_weight?: number | null
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string
-          alias?: string | null
-          created_at?: string
-          facet_ref?: string
-          is_enabled?: boolean | null
-          kind_slug?: string | null
-          label?: string | null
-          pinned?: boolean | null
-          project_id?: string
-          scope?: string
-          sort_weight?: number | null
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_facet_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       project_people: {
         Row: {
           created_at: string | null
@@ -3414,7 +3347,7 @@ export type Database = {
       project_sections: {
         Row: {
           content_md: string
-          content_tsv: unknown | null
+          content_tsv: unknown
           created_at: string
           created_by: string | null
           id: string
@@ -3427,7 +3360,7 @@ export type Database = {
         }
         Insert: {
           content_md: string
-          content_tsv?: unknown | null
+          content_tsv?: unknown
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3440,7 +3373,7 @@ export type Database = {
         }
         Update: {
           content_md?: string
-          content_tsv?: unknown | null
+          content_tsv?: unknown
           created_at?: string
           created_by?: string | null
           id?: string
@@ -4210,7 +4143,7 @@ export type Database = {
       project_sections_latest: {
         Row: {
           content_md: string | null
-          content_tsv: unknown | null
+          content_tsv: unknown
           created_at: string | null
           id: string | null
           kind: string | null
@@ -4282,14 +4215,7 @@ export type Database = {
         Args: { p_insight_id: string }
         Returns: undefined
       }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
-      create_account: {
-        Args: { name?: string; slug?: string }
-        Returns: Json
-      }
+      create_account: { Args: { name?: string; slug?: string }; Returns: Json }
       create_account_id: {
         Args: { name?: string; primary_owner_user_id?: string; slug?: string }
         Returns: string
@@ -4307,26 +4233,14 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: Json
       }
-      delete_invitation: {
-        Args: { invitation_id: string }
-        Returns: undefined
-      }
-      get_account: {
-        Args: { account_id: string }
-        Returns: Json
-      }
+      delete_invitation: { Args: { invitation_id: string }; Returns: undefined }
+      get_account: { Args: { account_id: string }; Returns: Json }
       get_account_billing_status: {
         Args: { account_id: string }
         Returns: Json
       }
-      get_account_by_slug: {
-        Args: { slug: string }
-        Returns: Json
-      }
-      get_account_id: {
-        Args: { slug: string }
-        Returns: string
-      }
+      get_account_by_slug: { Args: { slug: string }; Returns: Json }
+      get_account_id: { Args: { slug: string }; Returns: string }
       get_account_invitations: {
         Args: {
           account_id: string
@@ -4343,10 +4257,7 @@ export type Database = {
         }
         Returns: Json
       }
-      get_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_accounts: { Args: never; Returns: Json }
       get_annotation_counts: {
         Args: {
           p_entity_id: string
@@ -4358,14 +4269,8 @@ export type Database = {
           count: number
         }[]
       }
-      get_personal_account: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_user_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_personal_account: { Args: never; Returns: Json }
+      get_user_accounts: { Args: never; Returns: Json }
       get_user_flags: {
         Args: {
           p_entity_id: string
@@ -4398,82 +4303,17 @@ export type Database = {
           upvotes: number
         }[]
       }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       invoke_edge_function: {
         Args: { func_name: string; payload: Json }
         Returns: undefined
       }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
-      }
-      list_invitations_for_current_user: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      list_invitations_for_current_user: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      list_invitations_for_current_user: { Args: never; Returns: Json }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
         Returns: Json
       }
-      process_embedding_queue: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      process_transcribe_queue: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      process_embedding_queue: { Args: never; Returns: string }
+      process_transcribe_queue: { Args: never; Returns: string }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
         Returns: undefined
@@ -4499,18 +4339,12 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
+        SetofOptions: {
+          from: "*"
+          to: "account_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       sync_insight_tags: {
         Args: {
@@ -4551,30 +4385,6 @@ export type Database = {
         Args: { p_signup_data: Json; p_user_id: string }
         Returns: undefined
       }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
     }
     Enums: {
       interview_status:
@@ -4602,7 +4412,7 @@ type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
 
 type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
 
-type Tables<
+export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
@@ -4631,7 +4441,7 @@ type Tables<
       : never
     : never
 
-type TablesInsert<
+export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -4656,7 +4466,7 @@ type TablesInsert<
       : never
     : never
 
-type TablesUpdate<
+export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -4681,7 +4491,7 @@ type TablesUpdate<
       : never
     : never
 
-type Enums<
+export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -4698,7 +4508,7 @@ type Enums<
     ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
     : never
 
-type CompositeTypes<
+export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
@@ -4715,7 +4525,7 @@ type CompositeTypes<
     ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
     : never
 
-const Constants = {
+export const Constants = {
   accounts: {
     Enums: {
       account_role: ["owner", "member", "viewer"],

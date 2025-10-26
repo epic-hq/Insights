@@ -1,13 +1,20 @@
 import { motion } from "framer-motion"
 import { Clock, Play } from "lucide-react"
-import { useMemo, useState } from "react"
+import { useEffect, useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { SimpleMediaPlayer } from "~/components/ui/SimpleMediaPlayer"
 import { cn } from "~/lib/utils"
 import type { Evidence } from "~/types"
+import { generateMediaUrl, getAnchorStartSeconds, type MediaAnchor } from "~/utils/media-url.client"
 
-type EvidenceSnippet = Pick<
+type EvidenceFacetChip = {
+	kind_slug: string
+	label: string
+	facet_account_id: number
+}
+
+type EvidenceSnippet = (Pick<
 	Evidence,
 	| "id"
 	| "verbatim"
@@ -18,11 +25,10 @@ type EvidenceSnippet = Pick<
 	| "confidence"
 	| "created_at"
 	| "journey_stage"
-	| "kind_tags"
 	| "method"
 	| "anchors"
 	| "interview_id"
-> & { context_summary?: string | null }
+> & { context_summary?: string | null }) & { facets?: EvidenceFacetChip[] }
 
 interface EvidenceCardProps {
 	evidence: EvidenceSnippet
@@ -72,7 +78,7 @@ function EvidenceCard({
 	const interviewUrl = projectPath && interviewId ? `${projectPath}/interviews/${interviewId}` : null
 
 	const anchors = Array.isArray(evidence.anchors) ? (evidence.anchors as EvidenceAnchor[]) : []
-	const resolvedMediaUrl = interview?.media_url ?? null
+	const fallbackMediaUrl = interview?.media_url ?? null
 
 	const getStageColor = (stage?: string) => {
 		if (!stage) return "#3b82f6"
@@ -178,46 +184,21 @@ function EvidenceCard({
 			)}
 
 			{/* Media anchor - only show the first valid one */}
-			{hasMediaReplay &&
-				mediaAnchors.length > 0 &&
-				(() => {
-					const firstAnchor = mediaAnchors[0]
-					const seconds = getAnchorSeconds(firstAnchor) ?? 0
-					const mediaUrl = resolveAnchorMediaUrl(firstAnchor, resolvedMediaUrl)
-					const displayTitle = firstAnchor.title ?? "Replay segment"
-					const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
-
-					return (
-						<div className="mt-3 px-4">
-							<div className="rounded-md border p-2">
-								<div className="flex items-center gap-2 text-muted-foreground text-xs">
-									<Clock className="h-3.5 w-3.5" />
-									<span>{formatAnchorTime(seconds, null)}</span>
-								</div>
-								{variant === "expanded" ? (
-									isValidUrl ? (
-										<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
-									) : (
-										<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
-									)
-								) : (
-									<div className="flex items-center gap-2 text-muted-foreground text-xs">
-										<Play className="h-3 w-3" />
-										<span>{isValidUrl ? "Play clip" : "Unavailable"}</span>
-									</div>
-								)}
-							</div>
-						</div>
-					)
-				})()}
+			{hasMediaReplay && mediaAnchors.length > 0 && (
+				<MediaAnchorPlayer
+					anchor={mediaAnchors[0] as MediaAnchor}
+					fallbackMediaUrl={fallbackMediaUrl}
+					variant={variant}
+				/>
+			)}
 
 			{/* Tags and metadata */}
 			<div className="mt-3 flex flex-wrap items-center gap-1 px-4 pb-2 text-muted-foreground text-xs">
-				{evidence.kind_tags?.map((tag, i) => (
-					<Badge key={i} variant="outline" className="text-xs">
-						{tag}
-					</Badge>
-				))}
+	{(evidence.facets ?? []).map((facet, i) => (
+		<Badge key={`${facet.facet_account_id}-${i}`} variant="outline" className="text-xs">
+			{facet.label}
+		</Badge>
+	))}
 				{evidence.method && (
 					<Badge variant="outline" className="text-xs">
 						{evidence.method}
@@ -274,27 +255,6 @@ function formatSupportLabel(s?: string | null) {
 	return s.charAt(0).toUpperCase() + s.slice(1)
 }
 
-function resolveAnchorMediaUrl(anchor: EvidenceAnchor, fallback?: string | null): string | null {
-	if (typeof anchor.target === "string" && anchor.target.startsWith("http")) return anchor.target
-	if (anchor.target && typeof anchor.target === "object" && anchor.target.url) return anchor.target.url
-	return fallback ?? null
-}
-
-function formatAnchorTime(start?: string | number | null, end?: string | number | null) {
-	const formattedStart = formatSingleTime(start)
-	const formattedEnd = formatSingleTime(end)
-	if (formattedStart && formattedEnd) return `${formattedStart} – ${formattedEnd}`
-	return formattedStart ?? "Unknown"
-}
-
-function formatSingleTime(value?: string | number | null) {
-	if (value == null) return null
-	const num = typeof value === "number" ? value : Number.parseFloat(String(value))
-	if (Number.isFinite(num)) return secondsToTimestamp(num)
-	if (typeof value === "string" && value.includes(":")) return value
-	return null
-}
-
 function secondsToTimestamp(seconds: number) {
 	const total = Math.max(0, Math.floor(seconds))
 	const h = Math.floor(total / 3600)
@@ -303,4 +263,66 @@ function secondsToTimestamp(seconds: number) {
 	return h > 0
 		? `${h}:${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`
 		: `${m}:${s.toString().padStart(2, "0")}`
+}
+
+// Component to handle media anchor playback with fresh signed URLs
+function MediaAnchorPlayer({
+	anchor,
+	fallbackMediaUrl,
+	variant,
+}: {
+	anchor: MediaAnchor
+	fallbackMediaUrl?: string | null
+	variant?: "mini" | "expanded"
+}) {
+	const [mediaUrl, setMediaUrl] = useState<string | null>(null)
+	const [isLoading, setIsLoading] = useState(true)
+
+	useEffect(() => {
+		let cancelled = false
+
+		async function loadMediaUrl() {
+			setIsLoading(true)
+			const url = await generateMediaUrl(anchor, fallbackMediaUrl)
+			if (!cancelled) {
+				setMediaUrl(url)
+				setIsLoading(false)
+			}
+		}
+
+		loadMediaUrl()
+
+		return () => {
+			cancelled = true
+		}
+	}, [anchor, fallbackMediaUrl])
+
+	const seconds = getAnchorStartSeconds(anchor)
+	const displayTitle = (anchor as any).title ?? "Replay segment"
+	const isValidUrl = mediaUrl && mediaUrl !== "Unknown" && !mediaUrl.includes("undefined")
+
+	return (
+		<div className="mt-3 px-4">
+			<div className="rounded-md border p-2">
+				<div className="flex items-center gap-2 text-muted-foreground text-xs">
+					<Clock className="h-3.5 w-3.5" />
+					<span>{secondsToTimestamp(seconds)}</span>
+				</div>
+				{variant === "expanded" ? (
+					isLoading ? (
+						<div className="mt-2 text-muted-foreground text-sm">Loading media...</div>
+					) : isValidUrl ? (
+						<SimpleMediaPlayer mediaUrl={mediaUrl} startTime={seconds} title={displayTitle} />
+					) : (
+						<div className="mt-2 text-muted-foreground text-sm">Media unavailable</div>
+					)
+				) : (
+					<div className="flex items-center gap-2 text-muted-foreground text-xs">
+						<Play className="h-3 w-3" />
+						<span>{isLoading ? "Loading..." : isValidUrl ? "Play clip" : "Unavailable"}</span>
+					</div>
+				)}
+			</div>
+		</div>
+	)
 }

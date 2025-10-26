@@ -1,3 +1,4 @@
+import slugify from "@sindresorhus/slugify"
 import { Loader2, Trash2 } from "lucide-react"
 import { useMemo } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
@@ -93,8 +94,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			})
 
 			return redirect(routes.people.index())
-		} catch {
-			return { error: "Failed to delete person" }
+		} catch (err) {
+			console.error("Delete person action error:", err)
+			return { error: err instanceof Error ? err.message : "Failed to delete person" }
 		}
 	}
 
@@ -151,31 +153,84 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		}
 
 		// Synchronize facet assignments
+		let selectedFacetAccountIds = selectedFacetRefs
+			.map((ref) => {
+				const match = /^a:(\d+)$/.exec(ref)
+				return match ? Number.parseInt(match[1], 10) : null
+			})
+			.filter((value): value is number => Number.isFinite(value))
+
+		if (newFacetKind && newFacetLabel) {
+			const synonyms = newFacetSynonyms
+				.split(",")
+				.map((value) => value.trim())
+				.filter(Boolean)
+			const { data: kindRow, error: kindError } = await supabase
+				.from("facet_kind_global")
+				.select("id")
+				.eq("slug", newFacetKind)
+				.maybeSingle()
+			if (kindError) {
+				return { error: `Failed to resolve facet kind: ${kindError.message}` }
+			}
+			if (!kindRow?.id) {
+				return { error: "Unknown facet kind selected" }
+			}
+
+			const facetSlug = slugify(newFacetLabel, { separator: "_" }).toLowerCase() || `facet_${Date.now()}`
+			const insertPayload = {
+				account_id: accountId,
+				kind_id: kindRow.id,
+				label: newFacetLabel,
+				slug: facetSlug,
+				synonyms,
+				is_active: true,
+			}
+
+			const { data: upsertedFacet, error: facetInsertError } = await supabase
+				.from("facet_account")
+				.upsert(insertPayload, { onConflict: "account_id,kind_id,slug" })
+				.select("id")
+				.single()
+			if (facetInsertError) {
+				return { error: `Failed to create facet: ${facetInsertError.message}` }
+			}
+			if (upsertedFacet?.id) {
+				selectedFacetAccountIds = Array.from(new Set([...selectedFacetAccountIds, upsertedFacet.id]))
+			}
+		}
+
 		const { data: existingFacetRows, error: existingFacetError } = await supabase
 			.from("person_facet")
-			.select("facet_ref")
+			.select("facet_account_id")
 			.eq("person_id", personId)
 			.eq("project_id", projectId)
 		if (existingFacetError) {
 			return { error: `Failed to load existing facets: ${existingFacetError.message}` }
 		}
-		const existingRefs = new Set((existingFacetRows ?? []).map((row) => row.facet_ref))
-		const desiredRefs = new Set(selectedFacetRefs)
-		const toInsert = selectedFacetRefs.filter((ref) => !existingRefs.has(ref))
-		const toRemove = Array.from(existingRefs).filter((ref) => !desiredRefs.has(ref))
+
+		const existingIds = new Set(
+			(existingFacetRows ?? [])
+				.map((row) => row.facet_account_id)
+				.filter((value): value is number => typeof value === "number" && Number.isFinite(value))
+		)
+		const desiredIds = new Set(selectedFacetAccountIds)
+
+		const toInsert = selectedFacetAccountIds.filter((id) => !existingIds.has(id))
+		const toRemove = Array.from(existingIds).filter((id) => !desiredIds.has(id))
 
 		if (toInsert.length) {
-			const insertPayload = toInsert.map((facetRef) => ({
+			const insertPayload = toInsert.map((facetId) => ({
 				account_id: accountId,
 				project_id: projectId,
 				person_id: personId,
-				facet_ref: facetRef,
-				source: "manual",
+				facet_account_id: facetId,
+				source: "manual" as const,
 				confidence: 0.8,
 			}))
 			const { error: insertError } = await supabase
 				.from("person_facet")
-				.upsert(insertPayload, { onConflict: "person_id,facet_ref" })
+				.upsert(insertPayload, { onConflict: "person_id,facet_account_id" })
 			if (insertError) {
 				return { error: `Failed to add facets: ${insertError.message}` }
 			}
@@ -187,33 +242,9 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				.delete()
 				.eq("person_id", personId)
 				.eq("project_id", projectId)
-				.in("facet_ref", toRemove)
+				.in("facet_account_id", toRemove)
 			if (deleteError) {
 				return { error: `Failed to remove facets: ${deleteError.message}` }
-			}
-		}
-
-		if (newFacetKind && newFacetLabel) {
-			const synonyms = newFacetSynonyms
-				.split(",")
-				.map((value) => value.trim())
-				.filter(Boolean)
-			const candidatePayload = {
-				account_id: accountId,
-				project_id: projectId,
-				person_id: personId,
-				kind_slug: newFacetKind,
-				label: newFacetLabel,
-				synonyms: synonyms.length ? synonyms : null,
-				notes: newFacetNotes || null,
-				source: "manual" as const,
-				status: "pending" as const,
-			}
-			const { error: candidateError } = await supabase.from("facet_candidate").upsert(candidatePayload, {
-				onConflict: "account_id,project_id,kind_slug,label",
-			})
-			if (candidateError) {
-				return { error: `Failed to create facet candidate: ${candidateError.message}` }
 			}
 		}
 
@@ -239,11 +270,18 @@ export default function EditPerson() {
 	// Get current persona from junction table
 	const people_personas = person.people_personas || []
 	const currentPersona = people_personas.length > 0 ? people_personas[0].personas : null
-	const selectedFacetRefs = useMemo(
-		() => (person.person_facet ?? []).map((facet) => facet.facet_ref),
-		[person.person_facet]
-	)
-	const totalFacetOptions = catalog.facets.length
+	const selectedFacetRefs = useMemo(() => {
+		return (person.person_facet ?? [])
+			.map((facet) => {
+				if (typeof facet.facet_account_id === "number") {
+					return `a:${facet.facet_account_id}`
+				}
+				return null
+			})
+			.filter((value): value is string => Boolean(value))
+	}, [person.person_facet])
+	const accountFacetOptions = catalog.facets
+	const totalFacetOptions = accountFacetOptions.length
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
@@ -335,7 +373,7 @@ export default function EditPerson() {
 							return (
 								<optgroup key={kind.slug} label={kind.label}>
 									{options.map((facet) => (
-										<option key={facet.facet_ref} value={facet.facet_ref}>
+										<option key={facet.facet_account_id} value={`a:${facet.facet_account_id}`}>
 											{facet.alias || facet.label}
 										</option>
 									))}

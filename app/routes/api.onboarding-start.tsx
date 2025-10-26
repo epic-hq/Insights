@@ -409,6 +409,7 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: "Failed to queue analysis" }, { status: 500 })
 			}
 		} else {
+			// Handle audio/video files - store file first, then trigger Trigger.dev task for transcription
 			const audioSpan = trace?.span?.({
 				name: "ingest.audio",
 				metadata: {
@@ -421,17 +422,6 @@ Please extract insights that specifically address these research questions and h
 					type: file.type,
 				},
 			})
-			// Handle audio/video files - store file first, then upload to AssemblyAI with webhook
-			const apiKey = process.env.ASSEMBLYAI_API_KEY
-			if (!apiKey) {
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: "AssemblyAI API key not configured",
-				})
-				traceEndPayload = { level: "ERROR", statusMessage: "AssemblyAI API key not configured" }
-				return Response.json({ error: "AssemblyAI API key not configured" }, { status: 500 })
-			}
-
 			// Store audio file in Cloudflare R2 first using shared utility
 			const fileBuffer = await file.arrayBuffer()
 			const fileBlob = new Blob([fileBuffer], { type: file.type })
@@ -477,122 +467,42 @@ Please extract insights that specifically address these research questions and h
 			// Update interview with media URL
 			await supabase.from("interviews").update({ media_url: storedMediaUrl }).eq("id", interview.id)
 
-			// Start transcription with webhook
-			// In production: use PRODUCTION_HOST
-			// In development: prefer PUBLIC_TUNNEL_URL (e.g., ngrok) so AssemblyAI can reach your machine
-			const host =
-				process.env.NODE_ENV === "production"
-					? PRODUCTION_HOST
-					: (() => {
-							const tunnel = process.env.PUBLIC_TUNNEL_URL
-							if (!tunnel) return PRODUCTION_HOST
-							return tunnel.startsWith("http") ? tunnel : `https://${tunnel}`
-						})()
-			const webhookUrl = `${host}/api/assemblyai-webhook`
+			// Create empty transcript data for Trigger.dev task (will be populated during transcription)
+			const transcriptData = safeSanitizeTranscriptPayload({
+				full_transcript: "",
+				confidence: 0,
+				audio_duration: null,
+				processing_duration: 0,
+				file_type: "audio",
+				original_filename: file.name,
+			})
 
-			consola.log("AssemblyAI Webhook: Starting transcription with webhook URL:", webhookUrl)
-
-			const transcriptionSpan = (audioSpan ?? trace)?.span?.({
-				name: "assembly.transcription",
-				metadata: {
+			try {
+				const runInfo = await createAndProcessAnalysisJob({
 					interviewId: interview.id,
-				},
-				input: {
-					webhookHost: host,
-				},
-			})
-
-			const transcriptResp = await fetch("https://api.assemblyai.com/v2/transcript", {
-				method: "POST",
-				headers: {
-					Authorization: apiKey,
-					"Content-Type": "application/json",
-				},
-				body: JSON.stringify({
-					audio_url: storedMediaUrl, // Use R2 public URL - AssemblyAI downloads from R2
-					webhook_url: webhookUrl,
-					// Add the same parameters as working version
-					speaker_labels: true,
-					iab_categories: true,
-					format_text: true,
-					punctuate: true,
-					// auto_chapters: true,
-					sentiment_analysis: false,
-					auto_highlights: true,
-					summarization: true,
-					summary_model: "informative",
-					summary_type: "bullets",
-				}),
-			})
-
-			if (!transcriptResp.ok) {
-				const errorText = await transcriptResp.text()
-				consola.error("AssemblyAI transcription failed:", transcriptResp.status, errorText)
-				transcriptionSpan?.end?.({
-					level: "ERROR",
-					statusMessage: `Transcription request failed: ${transcriptResp.status}`,
-					metadata: { responseBody: errorText?.slice(0, 500) ?? null },
+					transcriptData,
+					customInstructions,
+					adminClient: supabaseAdmin,
+					mediaUrl: storedMediaUrl,
+					initiatingUserId: user.sub,
+					langfuseParent: audioSpan ?? trace,
 				})
-				audioSpan?.end?.({
-					level: "ERROR",
-					statusMessage: "Transcription request failed",
-				})
-				traceEndPayload = { level: "ERROR", statusMessage: "Transcription request failed" }
-				return Response.json({ error: "Transcription request failed" }, { status: 500 })
-			}
-
-			const { id: assemblyai_id } = (await transcriptResp.json()) as { id: string }
-			transcriptionSpan?.end?.({
-				output: {
-					assemblyTranscriptId: assemblyai_id,
-					status: transcriptResp.status,
-				},
-			})
-
-			// Create upload job record for tracking - use admin client to bypass RLS
-			const { error: uploadJobError } = await supabaseAdmin.from("upload_jobs").insert({
-				interview_id: interview.id,
-				file_name: file.name,
-				file_type: file.type,
-				external_url: storedMediaUrl, // R2 public URL
-				assemblyai_id: assemblyai_id,
-				status: "in_progress",
-				status_detail: "Transcription in progress",
-				custom_instructions: customInstructions,
-			})
-
-			if (uploadJobError) {
-				consola
-					.error(
-						"Failed to create upload job:",
-						uploadJobError
-					)(audioSpan ?? trace)
-					?.event?.({
-						name: "upload-job.create.error",
-						metadata: {
-							interviewId: interview.id,
-							message: uploadJobError.message,
-						},
-					})
-				// Continue anyway - webhook will handle completion
-			} else {
-				;(audioSpan ?? trace)?.event?.({
-					name: "upload-job.created",
+				if (runInfo && "runId" in runInfo) {
+					triggerRunInfo = runInfo
+				}
+			} catch (analysisError) {
+				const message = analysisError instanceof Error ? analysisError.message : "Failed to queue analysis"
+				consola.error("Failed to queue analysis job:", analysisError)
+				audioSpan?.event?.({
+					name: "trigger-dev.error",
 					metadata: {
 						interviewId: interview.id,
-						assemblyId: assemblyai_id,
+						message,
 					},
 				})
+				traceEndPayload = { level: "ERROR", statusMessage: message }
+				return Response.json({ error: "Failed to queue analysis" }, { status: 500 })
 			}
-
-			consola.log("Transcription started with ID:", assemblyai_id)
-			audioSpan?.end?.({
-				output: {
-					interviewId: interview.id,
-					storedMediaUrl,
-					assemblyTranscriptId: assemblyai_id,
-				},
-			})
 		}
 
 		// Mark onboarding completed when first interview is uploaded

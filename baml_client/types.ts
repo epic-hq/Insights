@@ -466,6 +466,7 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceTurn {
+  person_key: string
   speaker_label?: string | null
   gist: string
   chunk: string
@@ -473,6 +474,7 @@ export interface EvidenceTurn {
   anchors: TurnAnchors
   why_it_matters?: string | null
   facet_mentions: FacetMention[]
+  isQuestion?: boolean | null
   says?: string[] | null
   does?: string[] | null
   thinks?: string[] | null
@@ -576,7 +578,7 @@ export interface FacetCatalog {
 }
 
 export interface FacetCatalogEntry {
-  facet_ref: string
+  facet_account_id: number
   kind_slug: string
   label: string
   alias?: string | null
@@ -591,6 +593,7 @@ export interface FacetCatalogKind {
 }
 
 export interface FacetMention {
+  person_key: string
   kind_slug: string
   value: string
   quote?: string | null
@@ -744,6 +747,7 @@ export interface OpportunityRecommendation {
 }
 
 export interface Person {
+  person_key: string
   speaker_label?: string | null
   person_name?: string | null
   inferred_name?: string | null
@@ -752,7 +756,7 @@ export interface Person {
 }
 
 export interface PersonFacetObservation {
-  facet_ref?: string | null
+  facet_account_id?: number | null
   candidate?: FacetCandidatePayload | null
   kind_slug: string
   value: string
@@ -1101,6 +1105,14 @@ export interface SetRecord {
 }
 
 export interface Source {
+  
+}
+
+export interface SpeakerUtterance {
+  speaker: string
+  text: string
+  start?: number | null
+  end?: number | null
   
 }
 

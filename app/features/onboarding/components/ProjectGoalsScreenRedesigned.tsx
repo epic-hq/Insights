@@ -638,16 +638,14 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-											}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-											}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
 										>
 											{step.title}
 										</span>
@@ -798,7 +796,7 @@ export default function ProjectGoalsScreen({
 													<ToggleGroupItem
 														value="exploratory"
 														aria-label="Exploratory"
-														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 													>
 														<div className="flex w-full items-center justify-between">
 															<span className="font-medium">Exploratory</span>
@@ -808,7 +806,7 @@ export default function ProjectGoalsScreen({
 													<ToggleGroupItem
 														value="validation"
 														aria-label="Validation"
-														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-blue-500 data-[state=on]:bg-blue-50"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 													>
 														<div className="flex w-full items-center justify-between">
 															<span className="font-medium">Validation</span>
@@ -818,7 +816,7 @@ export default function ProjectGoalsScreen({
 													<ToggleGroupItem
 														value="user_testing"
 														aria-label="User Testing"
-														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-purple-500 data-[state=on]:bg-purple-50"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 													>
 														<div className="flex w-full items-center justify-between">
 															<span className="font-medium">User Testing</span>
@@ -858,28 +856,28 @@ export default function ProjectGoalsScreen({
 														<ToggleGroupItem
 															value="15"
 															aria-label="15 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 														>
 															15
 														</ToggleGroupItem>
 														<ToggleGroupItem
 															value="30"
 															aria-label="30 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 														>
 															30
 														</ToggleGroupItem>
 														<ToggleGroupItem
 															value="45"
 															aria-label="45 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 														>
 															45
 														</ToggleGroupItem>
 														<ToggleGroupItem
 															value="60"
 															aria-label="60 minutes"
-															className="rounded-lg border-2 data-[state=on]:border-green-500 data-[state=on]:bg-green-50"
+															className="rounded-lg border-2 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
 														>
 															60
 														</ToggleGroupItem>
@@ -997,7 +995,7 @@ export default function ProjectGoalsScreen({
 															setTargetOrgs(list)
 															saveTargetOrgs(list)
 														}}
-														textClassName="font-medium text-green-800 dark:text-green-300"
+														textClassName="flex-shrink-0 font-medium text-green-800 dark:text-green-300"
 														inputClassName="h-6 py-0 text-green-900 dark:text-green-200"
 													/>
 													<button
@@ -1099,7 +1097,7 @@ export default function ProjectGoalsScreen({
 															setTargetRoles(list)
 															saveTargetRoles(list)
 														}}
-														textClassName="font-medium text-purple-800 dark:text-purple-300"
+														textClassName="flex-shrink-0 font-medium text-purple-800 dark:text-purple-300"
 														inputClassName="h-6 py-0 text-purple-900 dark:text-purple-200"
 													/>
 													<button
@@ -1238,7 +1236,7 @@ export default function ProjectGoalsScreen({
 													onSubmit={(val) => updateDecisionQuestion(index, val)}
 													multiline={true}
 													autoSize={true}
-													textClassName="flex-1 text-foreground text-sm leading-relaxed"
+													textClassName="flex-shrink-0 text-foreground text-sm leading-relaxed"
 													inputClassName="text-sm"
 													showEditButton={true}
 												/>
@@ -1480,7 +1478,7 @@ export default function ProjectGoalsScreen({
 															onSubmit={(val) => updateUnknown(index, val)}
 															multiline={true}
 															autoSize={true}
-															textClassName="flex-1 text-foreground text-sm leading-relaxed"
+															textClassName="flex-shrink-0 text-foreground text-sm leading-relaxed"
 															inputClassName="text-sm"
 															showEditButton={true}
 														/>

@@ -11,7 +11,7 @@ flowchart TD
     tbl_interview_prompts["interview_prompts"]
     tbl_project_answers["project_answers"]
     tbl_evidence["evidence"]
-    tbl_evidence_tag["evidence_tag"]
+    tbl_evidence_facet["evidence_facet"]
     tbl_evidence_people["evidence_people"]
     tbl_personas["personas"]
     tbl_people["people"]
@@ -23,7 +23,7 @@ flowchart TD
   plan_mgr -- saves --> tbl_interview_prompts
   process_svc -- saves --> tbl_evidence
   process_svc -- saves --> tbl_project_answers
-  process_svc -- saves --> tbl_evidence_tag
+  process_svc -- saves --> tbl_evidence_facet
   process_svc -- saves --> tbl_evidence_people
   process_svc -- saves --> tbl_personas
   process_svc -- saves --> tbl_people
@@ -37,7 +37,7 @@ flowchart TD
   tbl_interviews -->|reads| interview_detail_page
   tbl_evidence -->|reads| interview_detail_page
   tbl_project_answers -->|reads| interview_detail_page
-  tbl_evidence_tag -->|reads| interview_detail_page
+  tbl_evidence_facet -->|reads| interview_detail_page
   tbl_evidence_people -->|reads| interview_detail_page
   tbl_personas -->|reads| interview_detail_page
   tbl_people -->|reads| interview_detail_page

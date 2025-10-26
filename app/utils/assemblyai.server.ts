@@ -1,125 +1,72 @@
 import { env } from "node:process"
+import { AssemblyAI } from "assemblyai"
 import consola from "consola"
 
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
-const ASSEMBLY_API_URL = "https://api.assemblyai.com/v2"
-
-// Upload a remote file to AssemblyAI then transcribe
-export async function transcribeRemoteFile(url: string): Promise<Record<string, any>> {
-	const apiKey = process.env.ASSEMBLYAI_API_KEY
-	if (!apiKey) throw new Error("ASSEMBLYAI_API_KEY env var not set")
-
-	// 1. Fetch the remote bytes (stream)
-	const remoteResp = await fetch(url)
-	if (!remoteResp.ok || !remoteResp.body) {
-		throw new Error(`Failed to download file for upload: ${remoteResp.status}`)
-	}
-
-	// 2. Stream upload to AssemblyAI /upload
-	const uploadResp = await fetch(`${ASSEMBLY_API_URL}/upload`, {
-		method: "POST",
-		headers: { Authorization: apiKey },
-		body: remoteResp.body, // pass-through stream
-		// Node.js (undici) requires duplex when the body is a stream
-		// Cast to any to satisfy TypeScript until lib definitions include it
-		duplex: "half",
-	} as any)
-	if (!uploadResp.ok) {
-		const text = await uploadResp.text()
-		throw new Error(`AssemblyAI upload failed: ${uploadResp.status} ${text}`)
-	}
-	const { upload_url } = (await uploadResp.json()) as { upload_url: string }
-
-	// 3. Start transcript with the upload_url
-	return await transcribeAudioFromUrl(upload_url)
-}
-
-// Keep the original public-URL transcription helper
-export async function transcribeAudioFromUrl(url: string): Promise<Record<string, any>> {
+// Initialize AssemblyAI client
+function getAssemblyAIClient() {
 	const apiKey = env.ASSEMBLYAI_API_KEY
 	if (!apiKey) {
 		throw new Error("ASSEMBLYAI_API_KEY not set in environment variables")
 	}
-	// 1. Submit new transcription job
-	const createResp = await fetch(`${ASSEMBLY_API_URL}/transcript`, {
-		method: "POST",
-		headers: {
-			"Content-Type": "application/json",
-			Authorization: apiKey,
-		},
-		body: JSON.stringify({
-			audio_url: url,
-			// additional recommended params
-			speaker_labels: true,
-			iab_categories: true,
-			format_text: true,
-			punctuate: true,
-			auto_chapters: true,
-			sentiment_analysis: false,
-		}),
+	return new AssemblyAI({ apiKey })
+}
+
+// Transcribe a file from R2 storage
+// Note: Files are already on Cloudflare R2, no need to upload to AssemblyAI
+// Just pass the R2 URL directly to the transcription API
+export async function transcribeRemoteFile(url: string): Promise<Record<string, any>> {
+	// R2 URLs are already accessible, pass directly to AssemblyAI
+	return await transcribeAudioFromUrl(url)
+}
+
+// Transcribe audio from a public URL using AssemblyAI SDK
+export async function transcribeAudioFromUrl(url: string): Promise<Record<string, any>> {
+	const client = getAssemblyAIClient()
+
+	// Submit transcription with recommended parameters
+	// Using slam-1 speech model for better accuracy
+	const transcript = await client.transcripts.transcribe({
+		audio: url,
+		speech_model: "slam-1", // Latest high-accuracy speech model
+		speaker_labels: true,
+		iab_categories: true,
+		format_text: true,
+		punctuate: true,
+		auto_chapters: true,
+		sentiment_analysis: false,
 	})
-	if (!createResp.ok) {
-		const t = await createResp.text()
-		throw new Error(`AssemblyAI create transcript failed: ${createResp.status} ${t}`)
-	}
-	const { id } = (await createResp.json()) as { id: string }
 
-	// 2. Poll until completion
-	// Extended timeout for large files: 30 minutes (360 attempts × 5s = 1800s)
-	let attempts = 0
-	const maxAttempts = 360 // 30 minutes total
-	while (attempts < maxAttempts) {
-		await new Promise((r) => setTimeout(r, 5000)) // 5s interval
-		const statusResp = await fetch(`${ASSEMBLY_API_URL}/transcript/${id}`, {
-			headers: {
-				Authorization: apiKey,
-			},
-		})
-		if (!statusResp.ok) {
-			const t = await statusResp.text()
-			throw new Error(`AssemblyAI status check failed: ${statusResp.status} ${t}`)
-		}
-		const data = (await statusResp.json()) as any
-		if (data.status === "completed") {
-			// consola.log("AssemblyAI transcription completed")
-			const sanitized = safeSanitizeTranscriptPayload({
-				assembly_id: data.id,
-				full_transcript: data.text || "",
-				speaker_transcripts: data.utterances || [],
-				sentiment_analysis_results: data.sentiment_analysis_results || [],
-				topic_detection: data.iab_categories_result || {},
-				language_code: data.language_code,
-				confidence: data.confidence,
-				audio_duration: data.audio_duration,
-				word_count: data.words?.length || 0,
-				speaker_count: data.utterances ? new Set(data.utterances.map((u: any) => u.speaker)).size : 0,
-				is_processed: true, // Mark as successfully processed
-				processed_at: new Date().toISOString(), // Set processing timestamp
-				auto_chapters: data.auto_chapters || data.chapters || [],
-				original_filename: data.audio_url || null,
-			})
-			consola.log("Transcription completed", {
-				audio_duration: sanitized.audio_duration,
-				word_count: sanitized.word_count,
-				speaker_segments: sanitized.speaker_transcripts.length,
-				topic_results: sanitized.topic_detection?.results?.length ?? 0,
-			})
-			return sanitized
-		}
-		if (data.status === "error") {
-			throw new Error(`Transcription error: ${data.error}`)
-		}
-		attempts++
-
-		// Log progress every 2 minutes (24 attempts)
-		if (attempts % 24 === 0) {
-			consola.info(
-				`Transcription in progress... ${Math.round((attempts / maxAttempts) * 100)}% of timeout elapsed (${Math.round((attempts * 5) / 60)} minutes)`
-			)
-		}
+	// Check for errors
+	if (transcript.status === "error") {
+		throw new Error(`Transcription error: ${transcript.error}`)
 	}
-	throw new Error(
-		`Transcription timed out after ${Math.round((maxAttempts * 5) / 60)} minutes. Large files may require longer processing time.`
-	)
+
+	// Sanitize and format the response
+	const sanitized = safeSanitizeTranscriptPayload({
+		assembly_id: transcript.id,
+		full_transcript: transcript.text || "",
+		speaker_transcripts: transcript.utterances || [],
+		sentiment_analysis_results: transcript.sentiment_analysis_results || [],
+		topic_detection: transcript.iab_categories_result || {},
+		language_code: transcript.language_code,
+		confidence: transcript.confidence,
+		audio_duration: transcript.audio_duration,
+		word_count: transcript.words?.length || 0,
+		speaker_count: transcript.utterances ? new Set(transcript.utterances.map((u) => u.speaker)).size : 0,
+		is_processed: true,
+		processed_at: new Date().toISOString(),
+		auto_chapters: transcript.chapters || [],
+		original_filename: url,
+	})
+
+	consola.log("Transcription completed", {
+		audio_duration: sanitized.audio_duration,
+		word_count: sanitized.word_count,
+		speaker_segments: sanitized.speaker_transcripts.length,
+		topic_results: sanitized.topic_detection?.results?.length ?? 0,
+	})
+
+	return sanitized
 }

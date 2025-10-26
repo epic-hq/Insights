@@ -2,6 +2,7 @@ import { ChevronLeft, Grid3X3, List } from "lucide-react"
 import { useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
@@ -19,6 +20,12 @@ type EvidenceListPerson = {
 	personas: Array<{ id: string; name: string }>
 }
 
+type EvidenceFacetSummary = {
+	kind_slug: string
+	label: string
+	facet_account_id: number
+}
+
 type EvidenceListItem = (Pick<
 	Evidence,
 	| "id"
@@ -30,7 +37,6 @@ type EvidenceListItem = (Pick<
 	| "confidence"
 	| "created_at"
 	| "journey_stage"
-	| "kind_tags"
 	| "method"
 	| "anchors"
 	| "interview_id"
@@ -44,9 +50,10 @@ type EvidenceListItem = (Pick<
 	} | null
 }) & {
 	people: EvidenceListPerson[]
+	facets: EvidenceFacetSummary[]
 }
 
-type EvidenceRow = Omit<EvidenceListItem, "people">
+type EvidenceRow = Omit<EvidenceListItem, "people" | "facets">
 
 export async function action({ context, params, request }: ActionFunctionArgs) {
 	if (request.method.toUpperCase() !== "POST") {
@@ -151,7 +158,6 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 				confidence,
 				created_at,
 				journey_stage,
-				kind_tags,
 				method,
 				anchors,
 				interview_id,
@@ -184,8 +190,33 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Join evidence_people -> people to get person names and roles for each evidence
 	const peopleByEvidence = new Map<string, EvidenceListPerson[]>()
+	const facetsByEvidence = new Map<string, EvidenceFacetSummary[]>()
 	if (rows.length) {
 		const evidenceIds = rows.map((e) => e.id)
+
+		const { data: facetRows, error: facetErr } = await supabase
+			.from("evidence_facet")
+			.select("evidence_id, kind_slug, label, facet_account_id")
+			.eq("project_id", projectId)
+			.in("evidence_id", evidenceIds)
+		if (facetErr) throw new Error(`Failed to load evidence facets: ${facetErr.message}`)
+
+		for (const row of (facetRows ?? []) as Array<{
+			evidence_id: string
+			kind_slug: string | null
+			label: string | null
+			facet_account_id: number | null
+		}>) {
+			if (!row.evidence_id || !row.kind_slug || !row.label) continue
+			if (!row.facet_account_id) continue
+			const list = facetsByEvidence.get(row.evidence_id) ?? []
+			list.push({
+				kind_slug: row.kind_slug,
+				label: row.label,
+				facet_account_id: row.facet_account_id,
+			})
+			facetsByEvidence.set(row.evidence_id, list)
+		}
 
 		const { data: evp, error: epErr } = await supabase
 			.from("evidence_people")
@@ -260,14 +291,15 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const filteredRows = filterPersonId
 		? rows.filter((row) => {
-				const people = peopleByEvidence.get(row.id) ?? []
-				return people.some((person) => person.id === filterPersonId)
-			})
+			const people = peopleByEvidence.get(row.id) ?? []
+			return people.some((person) => person.id === filterPersonId)
+		})
 		: rows
 
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
 		...row,
 		people: peopleByEvidence.get(row.id) ?? [],
+		facets: facetsByEvidence.get(row.id) ?? [],
 	}))
 
 	return {
@@ -304,21 +336,19 @@ export default function EvidenceIndex() {
 	return (
 		<div className="space-y-4 p-4 sm:p-6">
 			{/* Mobile-friendly header */}
+			<BackButton />
 			<div className="flex items-center gap-3">
-				<Button variant="ghost" size="sm" onClick={() => window.history.back()} className="h-8 w-8 p-0">
-					<ChevronLeft className="h-4 w-4" />
-				</Button>
-				<div className="flex-1">
-					<h1 className="font-semibold text-xl">Evidence</h1>
+				<div className="flex-1 font-semibold text-xl">
+					<span className="l">Evidence</span>
 					{filteredByRQ && (
-						<Badge variant="outline" className="mt-1 w-fit text-xs">
+						<Badge variant="outline" className="mt-1 w-fit">
 							Filtered by Research Question
 						</Badge>
 					)}
 					{filteredByPerson && (
-						<Badge variant="outline" className="mt-1 w-fit text-xs">
-							{filteredByPerson.name ? `Participant: ${filteredByPerson.name}` : "Filtered by participant"}
-						</Badge>
+						<span>
+							{filteredByPerson.name ? ` for: ${filteredByPerson.name}` : "Filtered by participant"}
+						</span>
 					)}
 				</div>
 			</div>

@@ -41,7 +41,7 @@ interface EnhancedPersonCardProps {
 }
 
 interface PersonFacetSummary {
-	facet_ref: string
+	facet_account_id: number
 	label: string
 	kind_slug: string
 	source: string | null
@@ -146,7 +146,7 @@ export default function EnhancedPersonCard({ person, className, facets }: Enhanc
 						{topFacets.length > 0 && (
 							<div className="mb-3 flex flex-wrap gap-2">
 								{topFacets.map((facet) => (
-									<Badge key={`${person.id}-${facet.facet_ref}`} variant="secondary" className="capitalize">
+									<Badge key={`${person.id}-${facet.facet_account_id}`} variant="secondary" className="capitalize">
 										{facet.label}
 									</Badge>
 								))}
