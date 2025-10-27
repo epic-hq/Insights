@@ -7,7 +7,6 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { getProjects } from "~/features/projects/db"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Project, Project_Section } from "~/types"
 
@@ -153,18 +152,11 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 
 export default function Index() {
 	const { projects, latest_sections } = useLoaderData<typeof loader>()
-	const { auth, user_settings } = useRouteLoaderData("routes/_ProtectedLayout") as {
+	const { auth } = useRouteLoaderData("routes/_ProtectedLayout") as {
 		auth: { accountId: string }
-		user_settings: { last_used_project_id?: string | null }
 	}
 
-	// Choose a project: last used if available, else first project
-	const lastUsed = user_settings?.last_used_project_id || undefined
-	const selectedProjectId = (projects || []).find((p) => p.id === lastUsed)?.id || projects?.[0]?.id || undefined
-
 	const accountBase = `/a/${auth.accountId}`
-	const _projectBase = selectedProjectId ? `${accountBase}/${selectedProjectId}` : null
-	const _routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
 
 	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
 	const salesProjects = (projects || []).filter((project) => project.workflow_type === "sales")

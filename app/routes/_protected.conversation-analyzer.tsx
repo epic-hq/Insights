@@ -59,6 +59,8 @@ export default function ConversationAnalyzerRoute() {
 				if (parsed.status === "completed") {
 					setActiveAnalysis(parsed)
 					setActiveAnalysisId(null)
+				} else if (parsed.status === "processing") {
+					setActiveAnalysis(parsed)
 				}
 
 				if (parsed.status === "failed") {
@@ -104,8 +106,10 @@ export default function ConversationAnalyzerRoute() {
 					const others = current.filter((item) => item.id !== parsed.id)
 					return [parsed, ...others]
 				})
+				setActiveAnalysis(parsed)
+			} else {
+				setActiveAnalysis(null)
 			}
-			setActiveAnalysis(null)
 			setActiveAnalysisId(payload.analysisId)
 			;(event.currentTarget as HTMLFormElement).reset()
 		} catch (submitError) {
