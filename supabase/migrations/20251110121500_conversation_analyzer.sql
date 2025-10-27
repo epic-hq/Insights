@@ -47,34 +47,49 @@ EXECUTE PROCEDURE accounts.trigger_set_timestamps();
 
 ALTER TABLE public.conversation_analyses ENABLE ROW LEVEL SECURITY;
 
-CREATE POLICY IF NOT EXISTS "Account members can read conversation analyses" ON public.conversation_analyses
-    FOR SELECT
-    TO authenticated
-    USING (
-        account_id IN (
-            SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
-        )
-    );
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_analyses' AND policyname = 'Account members can read conversation analyses') THEN
+        CREATE POLICY "Account members can read conversation analyses" ON public.conversation_analyses
+            FOR SELECT
+            TO authenticated
+            USING (
+                account_id IN (
+                    SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
+                )
+            );
+    END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Account members can insert conversation analyses" ON public.conversation_analyses
-    FOR INSERT
-    TO authenticated
-    WITH CHECK (
-        account_id IN (
-            SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
-        )
-    );
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_analyses' AND policyname = 'Account members can insert conversation analyses') THEN
+        CREATE POLICY "Account members can insert conversation analyses" ON public.conversation_analyses
+            FOR INSERT
+            TO authenticated
+            WITH CHECK (
+                account_id IN (
+                    SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
+                )
+            );
+    END IF;
+END $$;
 
-CREATE POLICY IF NOT EXISTS "Account members can update conversation analyses" ON public.conversation_analyses
-    FOR UPDATE
-    TO authenticated
-    USING (
-        account_id IN (
-            SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
-        )
-    )
-    WITH CHECK (
-        account_id IN (
-            SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
-        )
-    );
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_policies WHERE tablename = 'conversation_analyses' AND policyname = 'Account members can update conversation analyses') THEN
+        CREATE POLICY "Account members can update conversation analyses" ON public.conversation_analyses
+            FOR UPDATE
+            TO authenticated
+            USING (
+                account_id IN (
+                    SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
+                )
+            )
+            WITH CHECK (
+                account_id IN (
+                    SELECT account_id FROM accounts.account_user WHERE user_id = auth.uid()
+                )
+            );
+    END IF;
+END $$;

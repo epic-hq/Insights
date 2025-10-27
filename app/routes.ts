@@ -42,6 +42,7 @@ const routes = [
 			...projectsRoutes,
 			// Account-scoped team routes
 			...teamRoutes,
+			route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
@@ -49,6 +50,7 @@ const routes = [
 				index("./features/projects/pages/project-index.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
+				route("sales-lenses", "./routes/_protected.projects.$projectId.sales-lenses.tsx"),
 				...interviewsRoutes,
 				...insightsRoutes,
 				...evidenceRoutes,
@@ -151,7 +153,6 @@ const routes = [
 	route("api.research-answers", "./routes/api.research-answers.tsx"),
 	route("api/teams/create", "./routes/api.teams.create.tsx"),
 	route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
-	route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),
 	...voiceRoutes,
 
 	// Resource routes

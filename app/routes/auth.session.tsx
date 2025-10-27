@@ -1,6 +1,6 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { json, redirect } from "react-router"
+import { redirect } from "react-router"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 /**
@@ -16,20 +16,20 @@ export async function action({ request }: ActionFunctionArgs) {
 		const refresh_token = body?.refresh_token as string | undefined
 
 		if (!access_token || !refresh_token) {
-			return json({ error: "Missing tokens" }, { status: 400 })
+			return Response.json({ error: "Missing tokens" }, { status: 400 })
 		}
 
 		const { error } = await supabase.auth.setSession({ access_token, refresh_token })
 		if (error) {
 			consola.error("auth.session setSession error:", error)
-			return json({ error: error.message }, { status: 400 })
+			return Response.json({ error: error.message }, { status: 400 })
 		}
 
 		// Redirect through login_success to preserve existing flow
 		return redirect("/login_success", { headers })
 	} catch (err) {
 		consola.error("auth.session action error:", err)
-		return json({ error: "Internal error" }, { status: 500 })
+		return Response.json({ error: "Internal error" }, { status: 500 })
 	}
 }
 

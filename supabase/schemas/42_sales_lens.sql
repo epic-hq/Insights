@@ -1,7 +1,12 @@
 -- Sales lens summaries capture extracted sales methodology data from interviews.
 -- Tables include summaries (per framework), granular slots, stakeholder roster, and hygiene events.
 
-create type if not exists sales_framework as enum ('BANT_GPCT','SPICED','MEDDIC','MAP');
+do $$
+begin
+    if not exists (select 1 from pg_type where typname = 'sales_framework') then
+        create type sales_framework as enum ('BANT_GPCT','SPICED','MEDDIC','MAP');
+    end if;
+end $$;
 
 create table if not exists sales_lens_summaries (
   id uuid primary key default gen_random_uuid(),

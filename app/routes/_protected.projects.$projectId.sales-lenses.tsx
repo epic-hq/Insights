@@ -1,6 +1,7 @@
+
 import { formatDistanceToNow } from "date-fns"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
-import { json, redirect, useFetcher, useLoaderData } from "react-router"
+import { redirect, useFetcher, useLoaderData } from "react-router"
 import { z } from "zod"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -9,11 +10,11 @@ import { userContext } from "~/server/user-context"
 import type { Tables } from "~/types"
 
 const severityBadge: Record<string, { variant?: "default" | "secondary" | "destructive" | "outline"; color?: string }> =
-	{
-		info: { variant: "outline", color: "blue" },
-		warning: { variant: "outline", color: "yellow" },
-		critical: { variant: "destructive" },
-	}
+{
+	info: { variant: "outline", color: "blue" },
+	warning: { variant: "outline", color: "yellow" },
+	critical: { variant: "destructive" },
+}
 
 type LoaderFramework = {
 	summaryId: string
@@ -143,9 +144,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const { data: hygieneEventsData } = summaryIds.length
 		? await ctx.supabase
-				.from("sales_lens_hygiene_events")
-				.select<SalesLensHygieneEventRow>("id, summary_id, slot_id, code, severity, message")
-				.in("summary_id", summaryIds)
+			.from("sales_lens_hygiene_events")
+			.select<SalesLensHygieneEventRow>("id, summary_id, slot_id, code, severity, message")
+			.in("summary_id", summaryIds)
 		: { data: [] as SalesLensHygieneEventRow[] }
 
 	const peopleIds = new Set<string>()
@@ -175,9 +176,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const { data: peopleRows } = peopleIds.size
 		? await ctx.supabase
-				.from("people")
-				.select<Pick<Tables<"people">, "id" | "name" | "role" | "title">>("id, name, role, title")
-				.in("id", Array.from(peopleIds))
+			.from("people")
+			.select<Pick<Tables<"people">, "id" | "name" | "role" | "title">>("id, name, role, title")
+			.in("id", Array.from(peopleIds))
 		: { data: [] as Array<Pick<Tables<"people">, "id" | "name" | "role" | "title">> }
 
 	const peopleById = new Map<string, { name: string | null; role: string | null; title: string | null }>()
@@ -192,9 +193,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Pull organization display names so stakeholder rows can surface company context.
 	const { data: organizationRows } = organizationIds.size
 		? await ctx.supabase
-				.from("organizations")
-				.select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
-				.in("id", Array.from(organizationIds))
+			.from("organizations")
+			.select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
+			.in("id", Array.from(organizationIds))
 		: { data: [] as Array<Pick<Tables<"organizations">, "id" | "name">> }
 
 	const organizationsById = new Map<string, { name: string | null }>()
@@ -274,18 +275,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		const unlinkedAttendees = Array.isArray(summary.attendee_unlinked)
 			? summary.attendee_unlinked
-					.map((entry) =>
-						entry && typeof entry === "object"
-							? {
-									displayName: "displayName" in entry ? String(entry.displayName) : "Unknown attendee",
-									role: "role" in entry && entry.role ? String(entry.role) : null,
-									personKey: "personKey" in entry && entry.personKey ? String(entry.personKey) : null,
-								}
-							: null
-					)
-					.filter((candidate): candidate is { displayName: string; role: string | null; personKey: string | null } =>
-						Boolean(candidate)
-					)
+				.map((entry) =>
+					entry && typeof entry === "object"
+						? {
+							displayName: "displayName" in entry ? String(entry.displayName) : "Unknown attendee",
+							role: "role" in entry && entry.role ? String(entry.role) : null,
+							personKey: "personKey" in entry && entry.personKey ? String(entry.personKey) : null,
+						}
+						: null
+				)
+				.filter((candidate): candidate is { displayName: string; role: string | null; personKey: string | null } =>
+					Boolean(candidate)
+				)
 			: []
 
 		frameworks.push({
@@ -327,7 +328,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 
 	const parsed = salesLensActionSchema.safeParse(payload)
 	if (!parsed.success) {
-		return json(
+		return Response.json(
 			{
 				success: false as const,
 				errors: parsed.error.flatten(),
@@ -342,14 +343,18 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 			interviewId: parsed.data.interviewId!,
 			computedBy: ctx.claims.sub ?? null,
 		})
-		return json({ success: true as const, intent: parsed.data.intent })
+		return Response.json({ success: true as const, intent: parsed.data.intent })
 	}
 
 	if (parsed.data.intent === "commit") {
-		return json({ success: true as const, intent: parsed.data.intent, message: "CRM write-back coming soon." })
+		return Response.json({
+			success: true as const,
+			intent: parsed.data.intent,
+			message: "CRM write-back coming soon.",
+		})
 	}
 
-	return json({ success: false as const }, { status: 400 })
+	return Response.json({ success: false as const }, { status: 400 })
 }
 
 export default function ProjectSalesLensesPage() {
