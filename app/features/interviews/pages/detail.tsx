@@ -198,12 +198,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 	const interviewId = params.interviewId
 
-	consola.info("🔍 Interview Detail Loader Started:", {
-		accountId,
-		projectId,
-		interviewId,
-		params,
-	})
+	// consola.info("🔍 Interview Detail Loader Started:", {
+	// 	accountId,
+	// 	projectId,
+	// 	interviewId,
+	// 	params,
+	// })
 
 	if (!accountId || !projectId || !interviewId) {
 		consola.error("❌ Missing required parameters:", { accountId, projectId, interviewId })
@@ -332,8 +332,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Debug transcript availability
 		consola.info("Transcript availability check:", {
 			interviewId,
-			hasTranscript: !!transcriptMeta?.transcript,
-			hasFormattedTranscript: !!transcriptMeta?.transcript_formatted,
+			hasTranscript: transcriptMeta?.transcript,
+			hasFormattedTranscript: transcriptMeta?.transcript_formatted,
 			transcriptLength: transcriptMeta?.transcript?.length || 0,
 			transcriptFormattedType: typeof transcriptMeta?.transcript_formatted,
 		})

@@ -49,6 +49,23 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		const formattedTranscriptData = hasTranscript ? safeSanitizeTranscriptPayload(interview.transcript_formatted) : null
 
+		// Generate fresh presigned URL from R2 key if needed
+		let mediaUrlForTask = interview.media_url || ""
+		if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
+			// It's an R2 key, generate presigned URL
+			const { createR2PresignedUrl } = await import("~/utils/r2.server")
+			const presigned = createR2PresignedUrl({
+				key: mediaUrlForTask,
+				expiresInSeconds: 24 * 60 * 60, // 24 hours
+			})
+			if (presigned) {
+				mediaUrlForTask = presigned.url
+				consola.log(`Generated presigned URL for retry of interview ${interviewId}`)
+			} else {
+				consola.error(`Failed to generate presigned URL for R2 key: ${mediaUrlForTask}`)
+			}
+		}
+
 		const admin = createSupabaseAdminClient()
 
 		try {
@@ -60,7 +77,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					transcriptData: {}, // Empty transcript data - will be populated during transcription
 					customInstructions,
 					adminClient: admin,
-					mediaUrl: interview.media_url || "",
+					mediaUrl: mediaUrlForTask,
 					initiatingUserId: userId,
 				})
 				console.log("Re-transcription triggered successfully")
@@ -72,7 +89,7 @@ export async function action({ request }: ActionFunctionArgs) {
 					transcriptData: formattedTranscriptData as unknown as Record<string, unknown>,
 					customInstructions,
 					adminClient: admin,
-					mediaUrl: interview.media_url || "",
+					mediaUrl: mediaUrlForTask,
 					initiatingUserId: userId,
 				})
 				console.log("Re-analysis triggered successfully")

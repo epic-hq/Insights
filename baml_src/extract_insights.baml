@@ -341,18 +341,19 @@ function ExtractInsights(transcript: string, userCustomInstructions: string) -> 
     4. Provide actionable direction for product decisions
 
     ## Key Takeaway Formatting
-    - `highImpactThemes` must contain up to three bullets that mention the specific decision or research question they serve (use the exact question text or a concise alias).
-    - Write each takeaway as "Question Label — conclusion" so the relationship is unambiguous.
-    - Do not restate raw facts; synthesize the implication relative to the question.
+- `highImpactThemes` must contain up to three bullets that mention the specific decision or research question they serve (use the exact question text or a concise alias).
+- Write each takeaway as "Question Label — conclusion" so the relationship is unambiguous.
+- Do not restate raw facts; synthesize the implication relative to the question.
+- REQUIRED: Always generate at least 1 highImpactTheme, even if it's a general takeaway about the interview.
 
-    Custom research focus:
-    {{userCustomInstructions}}
+Custom research focus:
+{{userCustomInstructions}}
 
-    Interview transcript:
-    {{ transcript }}
+Interview transcript:
+{{ transcript }}
 
-    Output format:
-    {{ ctx.output_format }}
+Output format:
+{{ ctx.output_format }}
   "#
 }
 
@@ -368,6 +369,53 @@ function CreateSet(instructions: string) -> Set {
 		Output format:
 		{{ ctx.output_format }}
 	"#
+}
+
+function GenerateKeyTakeawaysFromEvidence(evidence: EvidenceUnit[], userCustomInstructions: string) -> InterviewExtraction {
+  client "CustomGPT4oMini"
+  prompt #"
+    Generate targeted insights and key takeaways from this structured interview evidence data.
+
+    Focus on extracting succinct takeaways that answer:
+    - How do the interviewee's responses support or challenge our core assumptions?
+    - What specific evidence validates or contradicts our hypotheses?
+    - Which research questions does this interview help answer and how?
+    - What unexpected findings emerged that we didn't anticipate?
+
+    For each insight, be specific about:
+    - Whether it SUPPORTS, REFUTES, or is NEUTRAL toward existing assumptions
+    - The strength of evidence (direct quote vs. implied behavior)
+    - How this finding impacts our understanding of the problem space
+    - What follow-up questions this raises for future research
+
+    Prioritize insights that:
+    1. Directly answer key research/decision questions
+    2. Challenge or validate core product assumptions
+    3. Reveal unexpected user behaviors or needs
+    4. Provide actionable direction for product decisions
+
+    ## Key Takeaway Formatting
+    - `highImpactThemes` must contain up to three bullets that mention the specific decision or research question they serve (use the exact question text or a concise alias).
+    - Write each takeaway as "Question Label — conclusion" so the relationship is unambiguous.
+    - Do not restate raw facts; synthesize the implication relative to the question.
+    - REQUIRED: Always generate at least 1 highImpactTheme, even if it's a general takeaway about the interview.
+
+    ## Evidence Analysis Guidelines
+    - Analyze patterns across multiple evidence units, not just individual quotes
+    - Look for contradictions or tensions in the data
+    - Identify themes that emerge from combining different types of evidence
+    - Consider the context and timing of responses (anchors)
+    - Weight evidence by modality (observations > stated preferences > behaviors)
+
+    Custom research focus:
+    {{userCustomInstructions}}
+
+    Structured Evidence Data:
+    {{ evidence }}
+
+    Output format:
+    {{ ctx.output_format }}
+  "#
 }
 
 test create_set_Personas {

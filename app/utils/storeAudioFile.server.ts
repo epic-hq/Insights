@@ -3,7 +3,8 @@ import type { LangfuseSpanClient, LangfuseTraceClient } from "langfuse"
 import { createR2PresignedUrl, uploadToR2 } from "~/utils/r2.server"
 
 interface StoreAudioResult {
-	mediaUrl: string | null
+	mediaUrl: string | null // R2 key for storage
+	presignedUrl?: string // Temporary presigned URL for immediate use
 	error?: string
 }
 
@@ -107,7 +108,7 @@ export async function storeAudioFile({
 			return { mediaUrl: null, error: uploadResult.error ?? "Failed to upload audio" }
 		}
 
-		// Generate a presigned URL valid for 24 hours (enough time for AssemblyAI to download)
+		// Generate a presigned URL valid for 24 hours (for immediate use like AssemblyAI transcription)
 		const presignedResult = createR2PresignedUrl({
 			key: filename,
 			expiresInSeconds: 24 * 60 * 60, // 24 hours
@@ -122,16 +123,22 @@ export async function storeAudioFile({
 			return { mediaUrl: null, error: "Failed to generate presigned URL for R2 file" }
 		}
 
-		consola.log("Audio file stored successfully in R2:", presignedResult.url)
+		consola.log("Audio file stored successfully in R2. Key:", filename)
 		uploadSpan?.end?.({
 			output: {
-				mediaUrl: presignedResult.url,
+				r2Key: filename,
+				presignedUrl: presignedResult.url,
 				bytesUploaded: payload.length,
 				contentType: mimeType,
 				expiresAt: presignedResult.expiresAt,
 			},
 		})
-		return { mediaUrl: presignedResult.url }
+		
+		// Return R2 key for DB storage and presigned URL for immediate use
+		return { 
+			mediaUrl: filename, // Store just the key in DB
+			presignedUrl: presignedResult.url // Use this for immediate transcription
+		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unknown error"
 		consola.error("Error storing audio file in R2:", error)

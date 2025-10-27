@@ -71,15 +71,15 @@ export const middleware: Route.MiddlewareFunction[] = [
 				accounts: accounts || [],
 				currentAccount,
 			})
-			consola.log(
-				"_ProtectedLayout Authentication middleware success, {",
-				{
-					// user_settings,
-					// accounts,
-					currentAccount,
-				},
-				"\n"
-			)
+			// consola.log(
+			// 	"_ProtectedLayout Authentication middleware success, {",
+			// 	{
+			// 		// user_settings,
+			// 		// accounts,
+			// 		currentAccount,
+			// 	},
+			// 	"\n"
+			// )
 
 			// Check if signup process is completed
 			const signupCompleted = user_settings?.signup_data?.completed === true

@@ -439,10 +439,11 @@ Please extract insights that specifically address these research questions and h
 				langfuseParent: audioSpan ?? trace,
 			})
 
-			const storedMediaUrl = storageResult.mediaUrl
+			const r2Key = storageResult.mediaUrl
+			const presignedUrl = storageResult.presignedUrl
 			const storageError = storageResult.error
 
-			if (storageError || !storedMediaUrl) {
+			if (storageError || !r2Key || !presignedUrl) {
 				consola.error("R2 upload failed:", storageError)
 				audioSpan?.end?.({
 					level: "ERROR",
@@ -452,20 +453,21 @@ Please extract insights that specifically address these research questions and h
 				return Response.json({ error: `Failed to store audio file: ${storageError}` }, { status: 500 })
 			}
 
-			consola.log("Audio file stored successfully in R2:", storedMediaUrl)
+			consola.log("Audio file stored successfully in R2. Key:", r2Key)
 			audioSpan?.end?.({
 				output: {
-					mediaUrl: storedMediaUrl,
+					r2Key,
+					presignedUrl,
 				},
 			})
 			trace?.update?.({
 				metadata: {
-					storedMediaUrl,
+					r2Key,
 				},
 			})
 
-			// Update interview with media URL
-			await supabase.from("interviews").update({ media_url: storedMediaUrl }).eq("id", interview.id)
+			// Update interview with R2 key (not presigned URL)
+			await supabase.from("interviews").update({ media_url: r2Key }).eq("id", interview.id)
 
 			// Create empty transcript data for Trigger.dev task (will be populated during transcription)
 			const transcriptData = safeSanitizeTranscriptPayload({
@@ -483,7 +485,7 @@ Please extract insights that specifically address these research questions and h
 					transcriptData,
 					customInstructions,
 					adminClient: supabaseAdmin,
-					mediaUrl: storedMediaUrl,
+					mediaUrl: presignedUrl, // Use presigned URL for immediate transcription
 					initiatingUserId: user.sub,
 					langfuseParent: audioSpan ?? trace,
 				})

@@ -31,18 +31,18 @@ async function parse_account_id_from_params({
 	supabase: SupabaseClient
 	userAccounts?: Array<{ account_id: string; slug: string | null }>
 }) {
-	consola.log("parse_account_id_from_params:", {
-		account_id_or_slug,
-		hasUserAccounts: !!userAccounts,
-		userAccountsCount: userAccounts?.length,
-	})
+	// consola.log("parse_account_id_from_params:", {
+	// 	account_id_or_slug,
+	// 	hasUserAccounts: !!userAccounts,
+	// 	userAccountsCount: userAccounts?.length,
+	// })
 
 	// If UUID, validate against user's accounts and return the account
 	if (isUUID(account_id_or_slug || "")) {
 		// Validate user has access to this account
 		if (userAccounts && userAccounts.length > 0) {
 			const userAccount = userAccounts.find((acc) => acc.account_id === account_id_or_slug)
-			consola.log("Found user account:", !!userAccount)
+			// consola.log("Found user account:", !!userAccount)
 			if (!userAccount) {
 				consola.error("User does not have access to account:", account_id_or_slug)
 				throw new Response("You must be a member of an account to access it", { status: 403 })
@@ -102,12 +102,12 @@ export const middleware: Route.MiddlewareFunction[] = [
 				slug: acc.slug,
 			}))
 
-			consola.log("_protected/accounts middleware:", {
-				account_id_or_slug,
-				hasAccounts: !!ctx.accounts,
-				accountsCount: ctx.accounts?.length,
-				userAccountsCount: userAccounts?.length,
-			})
+			// consola.log("_protected/accounts middleware:", {
+			// 	account_id_or_slug,
+			// 	hasAccounts: !!ctx.accounts,
+			// 	accountsCount: ctx.accounts?.length,
+			// 	userAccountsCount: userAccounts?.length,
+			// })
 
 			const parsed_account = await parse_account_id_from_params({
 				user_id: ctx.account_id,

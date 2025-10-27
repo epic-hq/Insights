@@ -69,15 +69,29 @@ export async function regenerateEvidenceForProject({
 			await supabase.from("evidence").delete().eq("interview_id", interview.id)
 
 			const metadata: InterviewMetadata = {
-				accountId,
-				projectId,
-				userId,
+				accountId: interview.account_id,
+				userId: interview.created_by || undefined,
+				projectId: interview.project_id || undefined,
 				interviewTitle: interview.title || undefined,
-				interviewDate: interview.interview_date
-					? new Date(interview.interview_date).toISOString().split("T")[0]
-					: undefined,
+				interviewDate: interview.interview_date || undefined,
 				participantName: interview.participant_pseudonym || undefined,
+				duration_sec: interview.duration_sec || undefined,
 				segment: interview.segment || undefined,
+			}
+
+			// Generate fresh presigned URL from R2 key if needed
+			let mediaUrlForTask = interview.media_url || ""
+			if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
+				// It's an R2 key, generate presigned URL
+				const { createR2PresignedUrl } = await import("~/utils/r2.server")
+				const presigned = createR2PresignedUrl({
+					key: mediaUrlForTask,
+					expiresInSeconds: 24 * 60 * 60, // 24 hours
+				})
+				if (presigned) {
+					mediaUrlForTask = presigned.url
+					consola.log(`Generated presigned URL for regeneration of interview ${interview.id}`)
+				}
 			}
 
 			// Use Trigger.dev task instead of duplicating core logic
@@ -86,7 +100,7 @@ export async function regenerateEvidenceForProject({
 				"interview.upload-media-and-transcribe",
 				{
 					metadata,
-					mediaUrl: interview.media_url || "",
+					mediaUrl: mediaUrlForTask,
 					transcriptData,
 					userCustomInstructions: undefined,
 					existingInterviewId: interview.id,

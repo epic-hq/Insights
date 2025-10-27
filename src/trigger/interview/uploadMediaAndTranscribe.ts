@@ -15,6 +15,28 @@ export const uploadMediaAndTranscribeTask = task({
 	id: "interview.upload-media-and-transcribe",
 	retry: workflowRetryConfig,
 	run: async (payload: UploadMediaAndTranscribePayload) => {
+		console.log("=== UPLOAD MEDIA AND TRANSCRIBE TASK START ===")
+		console.log("Payload received:", JSON.stringify(payload, null, 2))
+
+		const {
+			analysisJobId,
+			metadata: payloadMetadata,
+			transcriptData,
+			mediaUrl,
+			existingInterviewId,
+			userCustomInstructions,
+		} = payload
+
+		console.log("📊 Extracted parameters:")
+		console.log("- analysisJobId:", analysisJobId)
+		console.log("- existingInterviewId:", existingInterviewId)
+		console.log("- mediaUrl:", mediaUrl)
+		console.log("- mediaUrl type:", typeof mediaUrl)
+		console.log("- mediaUrl length:", mediaUrl?.length)
+		console.log("- mediaUrl starts with http:", mediaUrl?.startsWith("http"))
+		console.log("- mediaUrl starts with https:", mediaUrl?.startsWith("https"))
+		console.log("- transcriptData:", JSON.stringify(transcriptData, null, 2))
+
 		const client = createSupabaseAdminClient()
 		let interviewId = payload.existingInterviewId ?? null
 
@@ -24,11 +46,11 @@ export const uploadMediaAndTranscribeTask = task({
 			if (payload.analysisJobId) {
 				metadata.set("analysisJobId", payload.analysisJobId)
 			}
-			if (payload.metadata.accountId) {
-				metadata.set("accountId", payload.metadata.accountId)
+			if (payloadMetadata.accountId) {
+				metadata.set("accountId", payloadMetadata.accountId)
 			}
-			if (payload.metadata.projectId) {
-				metadata.set("projectId", payload.metadata.projectId)
+			if (payloadMetadata.projectId) {
+				metadata.set("projectId", payloadMetadata.projectId)
 			}
 
 			if (payload.analysisJobId) {
@@ -46,9 +68,24 @@ export const uploadMediaAndTranscribeTask = task({
 			let transcriptData = payload.transcriptData
 			let needsTranscription = false
 
-			// If transcriptData is empty/minimal and we have a mediaUrl, we need to transcribe
-			if (payload.mediaUrl && (!transcriptData || Object.keys(transcriptData).length < 3)) {
+			// For retries (existingInterviewId present), always transcribe if we have media
+			const isRetry = payload.existingInterviewId && payload.analysisJobId
+			if (isRetry && payload.mediaUrl) {
+				console.log("🔄 This is a retry - forcing transcription")
 				needsTranscription = true
+			} else if (payload.mediaUrl) {
+				// For initial uploads, check if we already have meaningful transcript data
+				const hasMeaningfulTranscript =
+					transcriptData &&
+					transcriptData.full_transcript &&
+					transcriptData.full_transcript.trim().length > 0
+
+				if (!hasMeaningfulTranscript) {
+					console.log("📝 No meaningful transcript data found - will transcribe")
+					needsTranscription = true
+				} else {
+					console.log("📋 Already have transcript data - skipping transcription")
+				}
 			}
 
 			if (needsTranscription && payload.mediaUrl) {
@@ -56,13 +93,42 @@ export const uploadMediaAndTranscribeTask = task({
 				metadata.set("progressPercent", 20)
 
 				try {
-					transcriptData = await transcribeAudioFromUrl(payload.mediaUrl)
+					// Generate fresh presigned URL from R2 key for AssemblyAI
+					console.log("🎵 Starting transcription process...")
+					console.log("- Original mediaUrl:", payload.mediaUrl)
+					const { createR2PresignedUrl } = await import("~/utils/r2.server")
+					let transcriptionUrl = payload.mediaUrl
+
+					// If mediaUrl is an R2 key (no protocol), generate presigned URL
+					if (!payload.mediaUrl.startsWith("http://") && !payload.mediaUrl.startsWith("https://")) {
+						console.log("- Detected R2 key, generating presigned URL...")
+						const presigned = createR2PresignedUrl({
+							key: payload.mediaUrl,
+							expiresInSeconds: 24 * 60 * 60, // 24 hours for transcription
+						})
+
+						if (!presigned) {
+							console.error("- ❌ Presigned URL generation failed!")
+							throw new Error("Failed to generate presigned URL for transcription")
+						}
+
+						transcriptionUrl = presigned.url
+						console.log("- ✅ Generated presigned URL for transcription:", transcriptionUrl.slice(0, 100) + "...")
+					} else {
+						console.log("- Using provided URL directly (already presigned)")
+					}
+
+					console.log("🔄 Calling transcribeAudioFromUrl with URL:", transcriptionUrl.slice(0, 100) + "...")
+					transcriptData = await transcribeAudioFromUrl(transcriptionUrl)
+					console.log("✅ Transcription completed successfully")
 					metadata.set("stageLabel", "Transcription complete")
 					metadata.set("progressPercent", 30)
 				} catch (transcriptionError) {
-					console.error("Transcription failed:", transcriptionError)
+					console.error("❌ Transcription failed:", transcriptionError)
 					throw new Error(`Transcription failed: ${transcriptionError instanceof Error ? transcriptionError.message : String(transcriptionError)}`)
 				}
+			} else {
+				console.log("⏭️ Skipping transcription - no mediaUrl or already has transcript")
 			}
 
 			// Create normalized payload with transcript data
