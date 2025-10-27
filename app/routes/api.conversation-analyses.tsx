@@ -2,7 +2,7 @@ import { randomUUID } from "node:crypto"
 
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
-import { type ActionFunctionArgs, json } from "react-router"
+import { type ActionFunctionArgs } from "react-router"
 import type { analyzeConversationRecordingTask } from "~/../src/trigger/conversation/analyzeRecording"
 import { insertConversationAnalysis } from "~/lib/conversation-analyses/db.server"
 import { userContext } from "~/server/user-context"
@@ -10,20 +10,20 @@ import { conversationContextSchema } from "~/utils/conversationAnalysis.server"
 import { storeConversationAudio } from "~/utils/storeConversationAudio.server"
 
 export async function action({ request, context }: ActionFunctionArgs) {
-	if (request.method !== "POST") {
-		return json({ error: "Method not allowed" }, { status: 405 })
-	}
+        if (request.method !== "POST") {
+                return Response.json({ error: "Method not allowed" }, { status: 405 })
+        }
 
 	const ctx = context.get(userContext)
-	if (!ctx?.account_id || !ctx?.supabase) {
-		return json({ error: "Unauthorized" }, { status: 401 })
-	}
+        if (!ctx?.account_id || !ctx?.supabase) {
+                return Response.json({ error: "Unauthorized" }, { status: 401 })
+        }
 
 	const formData = await request.formData()
 	const file = formData.get("file") as File | null
-	if (!file) {
-		return json({ error: "Missing audio file" }, { status: 400 })
-	}
+        if (!file) {
+                return Response.json({ error: "Missing audio file" }, { status: 400 })
+        }
 
 	const attendeesRaw = (formData.get("attendees") as string | null) ?? ""
 	const contextPayload = conversationContextSchema.parse({
@@ -46,9 +46,9 @@ export async function action({ request, context }: ActionFunctionArgs) {
 	})
 
 	if (!storageResult.mediaUrl) {
-		consola.error("Failed to store conversation audio", storageResult.error)
-		return json({ error: storageResult.error ?? "Failed to store audio" }, { status: 500 })
-	}
+                consola.error("Failed to store conversation audio", storageResult.error)
+                return Response.json({ error: storageResult.error ?? "Failed to store audio" }, { status: 500 })
+        }
 
 	const record = await insertConversationAnalysis({
 		db: ctx.supabase,
@@ -63,8 +63,8 @@ export async function action({ request, context }: ActionFunctionArgs) {
 		context: contextPayload,
 	})
 
-	return json({
-		analysisId: record.id,
-		triggerRunId: triggerHandle.id,
-	})
+        return Response.json({
+                analysisId: record.id,
+                triggerRunId: triggerHandle.id,
+        })
 }
