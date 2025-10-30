@@ -1,30 +1,20 @@
-# Conversation Analyzer User Guide
+# Conversation Insights Quickstart
 
-The Conversation Analyzer turns any uploaded meeting recording into a structured sales summary.
+Use the built-in interview pipeline to analyse ad-hoc conversations—no separate workflow required.
 
-## When to use it
-- Rapidly understand ad-hoc calls that sit outside a formal project.
-- Capture stakeholder goals and objections before entering data into a CRM.
-- Identify open questions and recommended next steps for follow-up emails or MAPs.
+## Capture options
+- **Record Now** (Home page): spins up a quick project, records in real time, and pipes the call through the standard interview analysis.
+- **Upload an interview**: visit `/interviews/upload` within a project to drop in an existing file.
+- **Attach from a person profile**: hit "Attach Recording" on a person detail page to start the upload flow with that contact pre-selected.
 
-## How it works
-1. Navigate to **Home → Conversation Analyzer**.
-2. Upload an audio or video file (MP3, WAV, MP4, WEBM, etc.).
-3. Optionally add a meeting title, attendee list, and analyst notes. These hints feed the model context and show up in the UI.
-4. Submit. The task uploads the file, queues a Trigger.dev run, transcribes the recording, and calls the BAML `AnalyzeStandaloneConversation` function.
-5. Refresh happens automatically every few seconds. Once complete you’ll see:
-   - Executive summary
-   - Questions asked (with speaker attribution and evidence)
-   - Participant goals
-   - Key takeaways with supporting snippets
-   - Recommended next steps and open questions
+## Automatic goal backfill
+- During transcript processing, if the destination project has no `research_goal` section the system calls the BAML `AnalyzeStandaloneConversation` function.
+- The generated overview is saved as the initial project goal, giving discovery teams an instant starting point.
 
-## Interpreting the output
-- Confidence values are normalised to 0–1. Low confidence suggests manual review.
-- Evidence snippets link back to the transcript text saved in Supabase for auditing.
-- “Recommended next steps” can be copied directly into follow-up emails or MAP tasks.
+## Output
+- Transcripts, structured insights, and the auto-generated goal live on the interview just like any other recording.
+- Key takeaways, open questions, and recommended follow-ups are available in the interview insights view.
 
-## Managing results
-- Recent analyses appear in the right-hand column. Selecting one loads the details panel.
-- Failed jobs surface the error returned by transcription or the model. Re-upload after fixing the source file if needed.
-- Sales teams can jump directly into CRM hygiene by launching a **Sales Workspace** from the Home page.
+## Tips
+- Add participants to the project first so interview linkage (and downstream CRM workflows) stay accurate.
+- Re-run Record Now on the same project to keep all related calls, insights, and goal refinements in one place.

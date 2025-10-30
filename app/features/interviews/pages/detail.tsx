@@ -225,7 +225,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		if (!interviewData) {
-			consola.error("❌ Interview not found:", { interviewId, projectId, accountId })
+			consola.error("❌ Interview not found (RLS filtered):", { interviewId, projectId, accountId })
 			throw new Response("Interview not found", { status: 404 })
 		}
 

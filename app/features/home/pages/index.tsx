@@ -1,5 +1,5 @@
 import consola from "consola"
-import { ArrowRight, Handshake, Hash, House, Mic, Sparkles, Target } from "lucide-react"
+import { ArrowRight, Handshake, Hash, House, Mic, Target } from "lucide-react"
 import { useState } from "react"
 import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
@@ -7,6 +7,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { getProjects } from "~/features/projects/db"
+import { useRecordNow } from "~/hooks/useRecordNow"
 import { userContext } from "~/server/user-context"
 import type { Project, Project_Section } from "~/types"
 
@@ -164,10 +165,10 @@ export default function Index() {
 	const navigate = useNavigate()
 	const [creatingSales, setCreatingSales] = useState(false)
 	const [salesError, setSalesError] = useState<string | null>(null)
+	const { recordNow, isRecording } = useRecordNow()
 
-	// Lightweight entry point for standalone call analysis.
-	function handleOpenConversationAnalyzer() {
-		navigate("/conversation-analyzer")
+	async function handleRecordNow() {
+		await recordNow()
 	}
 
 	// Creates a sales-focused project and routes directly to the sales lens view.
@@ -251,25 +252,24 @@ export default function Index() {
 					</CardContent>
 				</Card>
 
-				<Card className="group relative overflow-hidden border-2 transition-all hover:border-purple-500 hover:shadow-lg">
+				<Card className="group relative overflow-hidden border-2 transition-all hover:border-red-500 hover:shadow-lg">
 					<CardHeader className="pb-6">
 						<CardTitle className="flex flex-row text-2xl">
-							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-purple-100 dark:bg-purple-900/20">
-								<Sparkles className="h-8 w-8 text-purple-600 dark:text-purple-400" />
+							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/20">
+								<Mic className="h-8 w-8 text-red-600 dark:text-red-400" />
 							</div>
-							<div className="px-2 pt-3">Conversation Analyzer</div>
+							<div className="px-2 pt-3">Record Now</div>
 						</CardTitle>
-						<CardDescription className="text-base">
-							Upload a recording and get extracted questions, buyer goals, and ready-to-send follow-ups.
-						</CardDescription>
+						<CardDescription className="text-base">Record live and get instant insights.</CardDescription>
 					</CardHeader>
 					<CardContent className="pt-0">
 						<Button
 							size="lg"
-							className="w-full bg-purple-600 hover:bg-purple-700 group-hover:bg-purple-700"
-							onClick={handleOpenConversationAnalyzer}
+							className="w-full bg-red-600 hover:bg-red-700 group-hover:bg-red-700"
+							onClick={handleRecordNow}
+							disabled={isRecording}
 						>
-							Analyze a conversation
+							{isRecording ? "Starting…" : "Record Now"}
 							<Mic className="ml-2 h-5 w-5" />
 						</Button>
 					</CardContent>

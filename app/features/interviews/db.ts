@@ -95,7 +95,7 @@ export const getInterviewById = async ({
 }) => {
 	// Fetch interview with related participants and insights (including tags)
 	consola.log("getInterviewById", projectId, id)
-	return await supabase
+	const { data, error } = await supabase
 		.from("interviews")
 		.select(`
 		title,
@@ -140,7 +140,17 @@ export const getInterviewById = async ({
 		.eq("id", id)
 		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
-		.single()
+
+	if (error) {
+		return { data: null, error }
+	}
+
+	// Handle case where no interview is found (RLS filtered it out)
+	if (!data || data.length === 0) {
+		return { data: null, error: { message: "Interview not found", code: "PGRST116" } }
+	}
+
+	return { data: data[0], error: null }
 }
 
 export const getInterviewParticipants = async ({

@@ -25,6 +25,7 @@ import { createPlannedAnswersForInterview } from "~/lib/database/project-answers
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
+import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
 import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -2303,6 +2304,38 @@ export async function processInterviewTranscriptWithClient({
 		storedInsights: analysisResult.storedInsights,
 		fullTranscript: uploadResult.fullTranscript,
 	})
+
+	const projectId = uploadResult.metadata.projectId ?? analysisResult.interview.project_id
+	if (projectId) {
+		const { data: existingGoal } = await db
+			.from("project_sections")
+			.select("id")
+			.eq("project_id", projectId)
+			.eq("kind", "research_goal")
+			.limit(1)
+			.maybeSingle()
+
+		if (!existingGoal) {
+			try {
+				const conversationAnalysis = await generateConversationAnalysis({
+					transcript: uploadResult.fullTranscript,
+					context: undefined,
+				})
+
+				await db.from("project_sections").insert({
+					project_id: projectId,
+					kind: "research_goal",
+					content_md: conversationAnalysis.overview,
+					meta: {
+						source: "conversation_analysis",
+						generated_at: new Date().toISOString(),
+					},
+				})
+			} catch (goalError) {
+				consola.warn("Failed to backfill research goal from conversation analysis", goalError)
+			}
+		}
+	}
 
 	return { stored: analysisResult.storedInsights, interview: analysisResult.interview }
 }

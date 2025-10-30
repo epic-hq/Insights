@@ -32,7 +32,6 @@ const routes = [
 	layout("./routes/_ProtectedLayout.tsx", [
 		// Home dashboard for logged-in users
 		...homeRoutes,
-		route("conversation-analyzer", "./routes/_protected.conversation-analyzer.tsx"),
 		...teamsRoutes,
 		...docsRoutes,
 
@@ -97,6 +96,7 @@ const routes = [
 
 			// Account-scoped quick record API: creates project + interview
 			route("api/interviews/record-now", "./routes/api.interviews.record-now.tsx"),
+			route("api/people/search", "./routes/api.people.search.tsx"),
 		]),
 	]),
 
@@ -136,14 +136,11 @@ const routes = [
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
-	route("api/test-generate-themes", "./routes/api/test-generate-themes.tsx"),
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/questions/:questionId", "./routes/api.questions.$questionId.tsx"),
 	route("api/questions/save-debug", "./routes/api.questions.save-debug.tsx"),
-	route("api/conversation-analyses", "./routes/api.conversation-analyses.tsx"),
-	route("api/conversation-analyses/:analysisId", "./routes/api.conversation-analyses.$analysisId.tsx"),
 	route("api/generate-research-structure", "./routes/api.generate-research-structure.tsx"),
 	route("api/migrate-research-structure", "./routes/api.migrate-research-structure.tsx"),
 	route("api/check-research-structure", "./routes/api.check-research-structure.tsx"),
