@@ -449,6 +449,19 @@ export function VoiceChatWidget({ accountId, projectId }: VoiceChatWidgetProps) 
                                 try {
                                         await room.localParticipant.setMicrophoneEnabled(true)
                                         setMicEnabled(true)
+                                        const payload = {
+                                                type: "session_init" as const,
+                                                sessionId: activeSession.sessionId,
+                                                roomName: activeSession.roomName,
+                                                accountId: accountId ?? "",
+                                                projectId: projectId ?? "",
+                                                mode,
+                                                interviewId: snapshotRef.current.interviewId,
+                                        }
+                                        await room.localParticipant.publishData(
+                                                new TextEncoder().encode(JSON.stringify(payload)),
+                                                DataPacket_Kind.RELIABLE,
+                                        )
                                 } catch (err) {
                                         console.error("[VoiceChat] failed to enable microphone", err)
                                 }

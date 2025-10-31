@@ -2,6 +2,7 @@ import { randomUUID } from "node:crypto"
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
 import { createVoiceSessionToken } from "~/features/project-chat/server/livekit.server"
+import { startVoiceAgentSession } from "~/features/project-chat/server/voice-agent.server"
 import {
         computeMissingDiscoveryFields,
         computeMissingPostSalesFields,
@@ -47,6 +48,16 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
                                 sessionId,
                                 projectId,
                                 accountId,
+                                userId,
+                                mode: payload.mode,
+                                interviewId: payload.interviewId,
+                        })
+
+                        await startVoiceAgentSession({
+                                sessionId,
+                                roomName: tokenPayload.roomName,
+                                accountId,
+                                projectId,
                                 userId,
                                 mode: payload.mode,
                                 interviewId: payload.interviewId,

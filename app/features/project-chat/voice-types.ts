@@ -146,3 +146,17 @@ export const voiceAgentMessageSchema = z.union([
 ])
 
 export type VoiceAgentMessage = z.infer<typeof voiceAgentMessageSchema>
+
+export const voiceAgentClientInitSchema = z.object({
+        type: z.literal("session_init"),
+        sessionId: z.string(),
+        roomName: z.string(),
+        accountId: z.string(),
+        projectId: z.string(),
+        mode: z.enum(voiceModes),
+        interviewId: z.string().optional(),
+})
+
+export const voiceAgentClientMessageSchema = z.union([voiceAgentClientInitSchema])
+
+export type VoiceAgentClientMessage = z.infer<typeof voiceAgentClientMessageSchema>
