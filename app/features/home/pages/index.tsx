@@ -1,6 +1,7 @@
 import consola from "consola"
 import { ArrowRight, Handshake, Hash, House, Mic, Target } from "lucide-react"
-import { useState } from "react"
+import { usePostHog } from "posthog-js/react"
+import { useEffect, useState } from "react"
 import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
@@ -20,6 +21,10 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	}
 	const { supabase, account_id } = ctx // account_id is now team account from middleware
 	const user_settings = ctx.user_settings
+	if (!supabase || !account_id) {
+		consola.error("home loader database or account_id not found")
+		return redirect("/login")
+	}
 
 	// Use account_id from middleware (already resolved to team account)
 	consola.log("home loader account_id:", account_id)
@@ -166,6 +171,25 @@ export default function Index() {
 	const [creatingSales, setCreatingSales] = useState(false)
 	const [salesError, setSalesError] = useState<string | null>(null)
 	const { recordNow, isRecording } = useRecordNow()
+	const posthog = usePostHog()
+
+	// Check PostHog feature flag for Sales CRM
+	const [salesCrmEnabled, setSalesCrmEnabled] = useState(false)
+	const [salesCrmLoading, setSalesCrmLoading] = useState(true)
+
+	useEffect(() => {
+		if (!posthog) {
+			setSalesCrmLoading(false)
+			return
+		}
+
+		// Wait for flags to be loaded
+		posthog.onFeatureFlags(() => {
+			const flagValue = posthog.isFeatureEnabled("ffSalesCRM")
+			setSalesCrmEnabled(flagValue || false)
+			setSalesCrmLoading(false)
+		})
+	}, [posthog])
 
 	async function handleRecordNow() {
 		await recordNow()
@@ -226,31 +250,35 @@ export default function Index() {
 					</CardContent>
 				</Card>
 
-				<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
-					<CardHeader className="pb-4">
-						<CardTitle className="flex flex-row text-2xl">
-							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
-								<Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-							</div>
-							<div className="px-2 pt-3">Sales Hygiene Workspace</div>
-						</CardTitle>
-						<CardDescription className="text-base">
-							Map MEDDIC/BANT data, draft MAPs, and coach revenue teams on CRM completeness.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="space-y-3 pt-0">
-						{salesError && <p className="text-destructive text-sm">{salesError}</p>}
-						<Button
-							size="lg"
-							className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:bg-emerald-700"
-							onClick={handleCreateSalesWorkspace}
-							disabled={creatingSales}
-						>
-							{creatingSales ? "Creating…" : "Launch sales workspace"}
-							<ArrowRight className="ml-2 h-5 w-5" />
-						</Button>
-					</CardContent>
-				</Card>
+				{salesCrmLoading
+					? null
+					: salesCrmEnabled && (
+						<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
+							<CardHeader className="pb-4">
+								<CardTitle className="flex flex-row text-2xl">
+									<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
+										<Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+									</div>
+									<div className="px-2 pt-3">Sales Hygiene Workspace</div>
+								</CardTitle>
+								<CardDescription className="text-base">
+									Map MEDDIC/BANT data, draft MAPs, and coach revenue teams on CRM completeness.
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-3 pt-0">
+								{salesError && <p className="text-destructive text-sm">{salesError}</p>}
+								<Button
+									size="lg"
+									className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:bg-emerald-700"
+									onClick={handleCreateSalesWorkspace}
+									disabled={creatingSales}
+								>
+									{creatingSales ? "Creating…" : "Launch sales workspace"}
+									<ArrowRight className="ml-2 h-5 w-5" />
+								</Button>
+							</CardContent>
+						</Card>
+					)}
 
 				<Card className="group relative overflow-hidden border-2 transition-all hover:border-red-500 hover:shadow-lg">
 					<CardHeader className="pb-6">
