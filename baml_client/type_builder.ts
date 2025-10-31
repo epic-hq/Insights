@@ -43,6 +43,14 @@ export default class TypeBuilder {
     
     ContextualSuggestions: ClassViewer<'ContextualSuggestions', "decision_questions" | "assumptions" | "unknowns" | "organizations" | "roles" | "interview_questions">;
     
+    ConversationAnalysis: ClassViewer<'ConversationAnalysis', "overview" | "duration_estimate" | "questions" | "participant_goals" | "key_takeaways" | "open_questions" | "recommended_next_steps">;
+    
+    ConversationQuestion: ClassViewer<'ConversationQuestion', "question" | "asked_by" | "intent" | "evidence_snippet" | "confidence">;
+    
+    ConversationRecommendation: ClassViewer<'ConversationRecommendation', "focus_area" | "action" | "rationale">;
+    
+    ConversationTakeaway: ClassViewer<'ConversationTakeaway', "priority" | "summary" | "evidence_snippets">;
+    
     DecisionQuestionAnswer: ClassViewer<'DecisionQuestionAnswer', "decision_question_id" | "strategic_insight" | "supporting_findings" | "research_question_ids" | "confidence" | "reasoning" | "recommended_actions">;
     
     DecisionQuestionItem: ClassViewer<'DecisionQuestionItem', "id" | "text" | "rationale">;
@@ -118,6 +126,8 @@ export default class TypeBuilder {
     NoteSnippet: ClassViewer<'NoteSnippet', "tag" | "text" | "speaker" | "timestamp">;
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
+    
+    ParticipantGoal: ClassViewer<'ParticipantGoal', "speaker" | "goal" | "evidence_snippet" | "confidence">;
     
     Person: ClassViewer<'Person', "person_key" | "speaker_label" | "person_name" | "inferred_name" | "role">;
     
@@ -206,7 +216,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","ParticipantGoal","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -244,6 +254,22 @@ export default class TypeBuilder {
         
         this.ContextualSuggestions = this.tb.classViewer("ContextualSuggestions", [
           "decision_questions","assumptions","unknowns","organizations","roles","interview_questions",
+        ]);
+        
+        this.ConversationAnalysis = this.tb.classViewer("ConversationAnalysis", [
+          "overview","duration_estimate","questions","participant_goals","key_takeaways","open_questions","recommended_next_steps",
+        ]);
+        
+        this.ConversationQuestion = this.tb.classViewer("ConversationQuestion", [
+          "question","asked_by","intent","evidence_snippet","confidence",
+        ]);
+        
+        this.ConversationRecommendation = this.tb.classViewer("ConversationRecommendation", [
+          "focus_area","action","rationale",
+        ]);
+        
+        this.ConversationTakeaway = this.tb.classViewer("ConversationTakeaway", [
+          "priority","summary","evidence_snippets",
         ]);
         
         this.DecisionQuestionAnswer = this.tb.classViewer("DecisionQuestionAnswer", [
@@ -396,6 +422,10 @@ export default class TypeBuilder {
         
         this.OpportunityRecommendation = this.tb.classViewer("OpportunityRecommendation", [
           "title","description","revenue_potential","effort_estimate","target_personas","supporting_insights","competitive_advantage","recommended_actions",
+        ]);
+        
+        this.ParticipantGoal = this.tb.classViewer("ParticipantGoal", [
+          "speaker","goal","evidence_snippet","confidence",
         ]);
         
         this.Person = this.tb.classViewer("Person", [

@@ -362,6 +362,40 @@ export interface ContextualSuggestions {
   
 }
 
+export interface ConversationAnalysis {
+  overview: string
+  duration_estimate?: string | null
+  questions: ConversationQuestion[]
+  participant_goals: ParticipantGoal[]
+  key_takeaways: ConversationTakeaway[]
+  open_questions: string[]
+  recommended_next_steps: ConversationRecommendation[]
+  
+}
+
+export interface ConversationQuestion {
+  question: string
+  asked_by?: string | null
+  intent?: string | null
+  evidence_snippet?: string | null
+  confidence: number
+  
+}
+
+export interface ConversationRecommendation {
+  focus_area: string
+  action: string
+  rationale: string
+  
+}
+
+export interface ConversationTakeaway {
+  priority: "high" | "medium" | "low"
+  summary: string
+  evidence_snippets: string[]
+  
+}
+
 export interface DecisionQuestionAnswer {
   decision_question_id: string
   strategic_insight: string
@@ -743,6 +777,14 @@ export interface OpportunityRecommendation {
   supporting_insights: string[]
   competitive_advantage: string
   recommended_actions: ActionButton[]
+  
+}
+
+export interface ParticipantGoal {
+  speaker?: string | null
+  goal: string
+  evidence_snippet?: string | null
+  confidence: number
   
 }
 

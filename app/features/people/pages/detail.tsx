@@ -1,7 +1,7 @@
 import consola from "consola"
 import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, Link, redirect, useActionData, useLoaderData, useParams } from "react-router-dom"
+import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { BackButton } from "~/components/ui/back-button"
@@ -143,6 +143,7 @@ export default function PersonDetail() {
 	const actionData = useActionData<typeof action>()
 	const { projectPath } = useCurrentProject()
 	const { accountId, projectId } = useParams()
+	const navigate = useNavigate()
 	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
 	const routesByPath = useProjectRoutes(projectPath || "")
 	const routes = accountId && projectId ? routesByIds : routesByPath
@@ -236,6 +237,12 @@ export default function PersonDetail() {
 		}
 	}, [actionData?.error])
 
+	const handleAttachRecording = () => {
+		if (!person.id) return
+		const destination = `${routes.interviews.upload()}?personId=${person.id}`
+		navigate(destination)
+	}
+
 	return (
 		<PageContainer size="lg" padded={false} className="max-w-6xl py-8">
 			<PersonaPeopleSubnav />
@@ -270,6 +277,14 @@ export default function PersonDetail() {
 							</div>
 						</div>
 						<div className="mt-2 flex gap-2 md:mt-0">
+							<Button
+								variant="default"
+								size="sm"
+								className="bg-white text-primary hover:bg-white/90"
+								onClick={handleAttachRecording}
+							>
+								Attach Recording
+							</Button>
 							<Button
 								asChild
 								variant="outline"

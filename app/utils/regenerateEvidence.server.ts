@@ -1,10 +1,10 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
+import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe"
 import type { Database } from "~/../supabase/types"
 import type { InterviewMetadata } from "~/utils/processInterview.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
-import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe"
 
 interface RegenerateEvidenceOptions {
 	supabase: SupabaseClient<Database>

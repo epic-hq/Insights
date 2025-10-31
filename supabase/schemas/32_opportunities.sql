@@ -3,19 +3,39 @@
 create table if not exists opportunities (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
-	project_id uuid not null references projects (id) on delete cascade,
+  project_id uuid not null references projects (id) on delete cascade,
   title text not null,
   owner_id uuid references auth.users (id),
+  organization_id uuid references public.organizations (id) on delete set null,
+  primary_contact_id uuid references public.people (id) on delete set null,
+  description text,
   kanban_status text check (kanban_status in ('Explore','Validate','Build')),
+  stage text,
+  forecast_category text,
+  amount numeric,
+  currency text,
+  close_date date,
+  next_step text,
+  next_step_due date,
+  confidence numeric,
+  source text,
+  crm_external_id text,
   related_insight_ids uuid[],
+  metadata jsonb not null default '{}'::jsonb,
   created_at timestamptz not null default now(),
-	updated_at timestamptz not null default now()
+  updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_opportunities_account_id ON public.opportunities(account_id);
 CREATE INDEX idx_opportunities_project_id ON public.opportunities(project_id);
 CREATE INDEX idx_opportunities_title ON public.opportunities(title);
+CREATE INDEX IF NOT EXISTS idx_opportunities_organization ON public.opportunities(organization_id)
+    WHERE organization_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_opportunities_stage ON public.opportunities(stage)
+    WHERE stage IS NOT NULL;
+CREATE INDEX IF NOT EXISTS idx_opportunities_close_date ON public.opportunities(close_date)
+    WHERE close_date IS NOT NULL;
 
 -- protect the timestamps by setting created_at and updated_at to be read-only and managed by a trigger
 CREATE TRIGGER set_opportunities_timestamp

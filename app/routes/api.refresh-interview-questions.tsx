@@ -1,11 +1,10 @@
 import type { ActionFunctionArgs } from "@react-router/node"
-import { json } from "@react-router/node"
 import { refreshInterviewQuestions } from "~/lib/database/project-answers.server"
 import { createSupabaseServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	if (request.method !== "POST") {
-		return json({ error: "Method not allowed" }, { status: 405 })
+		return Response.json({ error: "Method not allowed" }, { status: 405 })
 	}
 
 	try {
@@ -14,7 +13,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const interviewId = formData.get("interviewId") as string
 
 		if (!projectId || !interviewId) {
-			return json({ error: "Missing projectId or interviewId" }, { status: 400 })
+			return Response.json({ error: "Missing projectId or interviewId" }, { status: 400 })
 		}
 
 		const supabase = createSupabaseServerClient(request)
@@ -22,9 +21,9 @@ export async function action({ request }: ActionFunctionArgs) {
 		// Refresh the interview questions to sync with current interview_prompts
 		await refreshInterviewQuestions(supabase, { projectId, interviewId })
 
-		return json({ success: true })
+		return Response.json({ success: true })
 	} catch (error) {
 		console.error("Error refreshing interview questions:", error)
-		return json({ error: "Failed to refresh interview questions" }, { status: 500 })
+		return Response.json({ error: "Failed to refresh interview questions" }, { status: 500 })
 	}
 }

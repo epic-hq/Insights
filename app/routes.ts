@@ -41,6 +41,7 @@ const routes = [
 			...projectsRoutes,
 			// Account-scoped team routes
 			...teamRoutes,
+			route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),
 
 			// Nested project detail children
 			route(":projectId", "./routes/_protected/projects.tsx", [
@@ -48,6 +49,7 @@ const routes = [
 				index("./features/projects/pages/project-index.tsx"),
 				// Mobile routes
 				...dashboardRoutes,
+				route("sales-lenses", "./routes/_protected.projects.$projectId.sales-lenses.tsx"),
 				...interviewsRoutes,
 				...insightsRoutes,
 				...evidenceRoutes,
@@ -94,6 +96,7 @@ const routes = [
 
 			// Account-scoped quick record API: creates project + interview
 			route("api/interviews/record-now", "./routes/api.interviews.record-now.tsx"),
+			route("api/people/search", "./routes/api.people.search.tsx"),
 		]),
 	]),
 
@@ -133,7 +136,6 @@ const routes = [
 	route("api/user-profile", "./routes/api/user-profile.ts"),
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
-	route("api/test-generate-themes", "./routes/api/test-generate-themes.tsx"),
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),

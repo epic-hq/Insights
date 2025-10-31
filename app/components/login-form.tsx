@@ -1,4 +1,5 @@
 import { useState } from "react"
+import { useSearchParams } from "react-router"
 import { Button } from "~/components/ui/button"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
@@ -6,6 +7,7 @@ import { cn } from "~/lib/utils"
 export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRef<"div">) {
 	const [error, setError] = useState<string | null>(null)
 	const [isLoading, setIsLoading] = useState(false)
+	const [searchParams] = useSearchParams()
 
 	const handleSocialLogin = async (e: React.FormEvent) => {
 		e.preventDefault()
@@ -14,10 +16,13 @@ export function LoginForm({ className, ...props }: React.ComponentPropsWithoutRe
 		setError(null)
 
 		try {
+			// Get the redirect URL from query params, fallback to /home
+			const redirectUrl = searchParams.get("redirect") || "/home"
+
 			const { error } = await supabase.auth.signInWithOAuth({
 				provider: "google",
 				options: {
-					redirectTo: `${window.location.origin}/auth/oauth?next=/home`,
+					redirectTo: `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectUrl)}`,
 				},
 			})
 

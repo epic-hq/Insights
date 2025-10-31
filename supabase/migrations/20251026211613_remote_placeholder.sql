@@ -1,0 +1,5 @@
+-- Placeholder migration to align local history with the remote database.
+-- The remote environment already applied the changes associated with version 20251026211613.
+-- No schema modifications are performed here because the remote change has been
+-- synced by other means. This file exists so `supabase db diff` sees the version locally.
+-- If you recover the original SQL for this migration, replace this comment with it.

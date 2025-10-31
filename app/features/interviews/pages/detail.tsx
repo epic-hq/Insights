@@ -78,6 +78,23 @@ function toAnalysisJobSummary(row: Database["public"]["Tables"]["analysis_jobs"]
 	}
 }
 
+type ConversationAnalysisForDisplay = {
+	summary: string | null
+	keyTakeaways: Array<{
+		priority: "high" | "medium" | "low"
+		summary: string
+		evidenceSnippets: string[]
+	}>
+	openQuestions: string[]
+	recommendations: Array<{
+		focusArea: string
+		action: string
+		rationale: string
+	}>
+	status: "pending" | "processing" | "completed" | "failed"
+	updatedAt: string | null
+}
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.interview?.title || "Interview"} | Insights` },
@@ -226,7 +243,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		if (!interviewData) {
-			consola.error("❌ Interview not found:", { interviewId, projectId, accountId })
+			consola.error("❌ Interview not found (RLS filtered):", { interviewId, projectId, accountId })
 			throw new Response("Interview not found", { status: 404 })
 		}
 
@@ -234,6 +251,65 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			interviewId: interviewData.id,
 			title: interviewData.title,
 		})
+
+		const conversationAnalysis = (() => {
+			const raw = interviewData.conversation_analysis as Record<string, unknown> | null | undefined
+			if (!raw || typeof raw !== "object") return null
+
+			const parseStringArray = (value: unknown): string[] => {
+				if (!Array.isArray(value)) return []
+				return value
+					.map((item) => (typeof item === "string" ? item.trim() : null))
+					.filter((item): item is string => Boolean(item && item.length > 0))
+			}
+
+			const parseKeyTakeaways = (): ConversationAnalysisForDisplay["keyTakeaways"] => {
+				const value = raw.key_takeaways as unknown
+				if (!Array.isArray(value)) return []
+				return value
+					.map((item) => {
+						if (!item || typeof item !== "object") return null
+						const entry = item as { [key: string]: unknown }
+						const summary = typeof entry.summary === "string" ? entry.summary.trim() : ""
+						if (!summary) return null
+						const priority =
+							entry.priority === "high" || entry.priority === "medium" || entry.priority === "low"
+								? entry.priority
+								: "medium"
+						const evidenceSnippets = parseStringArray(entry.evidence_snippets)
+						return { priority, summary, evidenceSnippets }
+					})
+					.filter(
+						(item): item is { priority: "high" | "medium" | "low"; summary: string; evidenceSnippets: string[] } =>
+							item !== null
+					)
+			}
+
+			const parseRecommendations = (): ConversationAnalysisForDisplay["recommendations"] => {
+				const value = raw.recommended_next_steps as unknown
+				if (!Array.isArray(value)) return []
+				return value
+					.map((item) => {
+						if (!item || typeof item !== "object") return null
+						const entry = item as { [key: string]: unknown }
+						const focusArea = typeof entry.focus_area === "string" ? entry.focus_area.trim() : ""
+						const action = typeof entry.action === "string" ? entry.action.trim() : ""
+						const rationale = typeof entry.rationale === "string" ? entry.rationale.trim() : ""
+						if (!focusArea && !action && !rationale) return null
+						return { focusArea, action, rationale }
+					})
+					.filter((item): item is { focusArea: string; action: string; rationale: string } => item !== null)
+			}
+
+			return {
+				summary: typeof raw.overview === "string" ? raw.overview : null,
+				keyTakeaways: parseKeyTakeaways(),
+				openQuestions: parseStringArray(raw.open_questions),
+				recommendations: parseRecommendations(),
+				status: "completed" as const,
+				updatedAt: interviewData.updated_at,
+			}
+		})()
 
 		// Fetch participant data separately to avoid junction table query issues
 		let participants: Array<{
@@ -540,6 +616,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			peopleOptions: peopleOptions || [],
 			creatorName,
 			analysisJob,
+			conversationAnalysis,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -565,8 +642,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions, creatorName, analysisJob } =
-		useLoaderData<typeof loader>()
+	const {
+		accountId,
+		projectId,
+		interview,
+		insights,
+		evidence,
+		empathyMap,
+		peopleOptions,
+		creatorName,
+		analysisJob,
+		conversationAnalysis,
+	} = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
 	const navigation = useNavigation()
@@ -747,6 +834,28 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const participants = interview.participants || []
 	const primaryParticipant = participants[0]?.people
+	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
+	const conversationUpdatedLabel =
+		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
+			? formatReadable(conversationAnalysis.updatedAt)
+			: null
+
+	const badgeStylesForPriority = (
+		priority: "high" | "medium" | "low"
+	): {
+		variant: "default" | "secondary" | "destructive" | "outline"
+		color?: "blue" | "green" | "red" | "purple" | "yellow" | "orange" | "indigo"
+	} => {
+		switch (priority) {
+			case "high":
+				return { variant: "destructive", color: "red" }
+			case "medium":
+				return { variant: "secondary", color: "orange" }
+			default:
+				return { variant: "outline", color: "green" }
+		}
+	}
+
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
 	const revalidator = useRevalidator()
@@ -1079,6 +1188,36 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<div className="space-y-4">
 						<div>
 							<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
+							{aiKeyTakeaways.length > 0 && (
+								<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
+									<div className="flex items-center justify-between gap-4">
+										<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
+										{conversationUpdatedLabel && (
+											<span className="text-muted-foreground text-xs">Updated {conversationUpdatedLabel}</span>
+										)}
+									</div>
+									<ul className="space-y-3">
+										{aiKeyTakeaways.map((takeaway, index) => {
+											const badgeStyles = badgeStylesForPriority(takeaway.priority)
+											return (
+												<li key={`${takeaway.summary}-${index}`} className="flex gap-3">
+													<Badge variant={badgeStyles.variant} color={badgeStyles.color} className="mt-0.5 uppercase">
+														{takeaway.priority}
+													</Badge>
+													<div className="space-y-1">
+														<p className="font-medium text-foreground leading-snug">{takeaway.summary}</p>
+														{takeaway.evidenceSnippets.length > 0 && (
+															<p className="text-muted-foreground text-sm">
+																&ldquo;{takeaway.evidenceSnippets[0]}&rdquo;
+															</p>
+														)}
+													</div>
+												</li>
+											)
+										})}
+									</ul>
+								</div>
+							)}
 							<InlineEdit
 								textClassName="text-foreground"
 								value={normalizeMultilineText(interview.high_impact_themes)}

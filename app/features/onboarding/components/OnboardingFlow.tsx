@@ -26,6 +26,7 @@ export interface OnboardingData {
 	triggerRunId?: string
 	triggerAccessToken?: string | null
 	error?: string
+	personId?: string
 }
 
 interface OnboardingFlowProps {
@@ -61,6 +62,7 @@ export default function OnboardingFlow({
 	const [searchParams] = useSearchParams()
 	const navigate = useNavigate()
 	const isOnboarding = searchParams.get("onboarding") === "true"
+	const preselectedPersonId = searchParams.get("personId") ?? undefined
 
 	// Start at upload step if we have existing project context
 	const [currentStep, setCurrentStep] = useState<OnboardingStep>(existingProject ? "upload" : "welcome")
@@ -77,6 +79,7 @@ export default function OnboardingFlow({
 		questions: existingProject?.questions || [],
 		projectId,
 		triggerAccessToken: null,
+		personId: preselectedPersonId,
 	})
 
 	const handleWelcomeNext = useCallback(
@@ -136,6 +139,9 @@ export default function OnboardingFlow({
 				// accountId will be retrieved from authenticated user by API
 				if (uploadProjectId) {
 					formData.append("projectId", uploadProjectId)
+				}
+				if (data.personId) {
+					formData.append("personId", data.personId)
 				}
 
 				// Call the new onboarding-start API

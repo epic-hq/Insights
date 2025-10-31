@@ -86,6 +86,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		const file = formData.get("file") as File | null
 		const onboardingDataStr = formData.get("onboardingData") as string
 		const projectId = formData.get("projectId") as UUID
+		const personId = formData.get("personId") as string | null
 
 		trace = (langfuse as any).trace?.({
 			name: "api.onboarding-start",
@@ -276,12 +277,36 @@ ${questionsInput.map((q, i) => `${i + 1}. ${q}`).join("\n")}
 
 Please extract insights that specifically address these research questions and help understand ${primaryRole} at ${primaryOrg} better.`
 
+		let linkedPerson: { id: string; name: string | null; project_id: string | null } | null = null
+		if (personId) {
+			const { data: person, error: personError } = await supabase
+				.from("people")
+				.select("id, name, project_id")
+				.eq("id", personId)
+				.maybeSingle()
+
+			if (personError || !person) {
+				consola.error("Failed to resolve person for recording", personError)
+				return Response.json({ error: "Unable to link person to interview" }, { status: 400 })
+			}
+
+			if (person.project_id && projectId && person.project_id !== projectId) {
+				consola.warn("Person project mismatch", { personProject: person.project_id, requestedProject: projectId })
+			}
+
+			linkedPerson = person
+		}
+
+		const interviewDate = new Date()
+		const dateLabel = format(interviewDate, "MMM d, yyyy")
+		const titleFromPerson = linkedPerson?.name ? `${linkedPerson.name} • ${dateLabel}` : undefined
+
 		const interviewData: InterviewInsert = {
-			account_id: user.sub, // Personal ownership for RLS compatibility
+			account_id: teamAccountId,
 			project_id: finalProjectId,
-			title: file.name,
-			interview_date: format(new Date(), "yyyy-MM-dd"),
-			participant_pseudonym: "Participant 1",
+			title: titleFromPerson ?? file.name,
+			interview_date: format(interviewDate, "yyyy-MM-dd"),
+			participant_pseudonym: linkedPerson?.name ?? "Participant 1",
 			segment: null,
 			media_url: null, // Will be set by upload worker
 			media_type: mediaTypeInput, // Store the selected media type
@@ -336,6 +361,12 @@ Please extract insights that specifically address these research questions and h
 			projectId: finalProjectId,
 			interviewId: interview.id,
 		})
+
+		if (linkedPerson) {
+			await supabase
+				.from("interview_people")
+				.upsert({ interview_id: interview.id, person_id: linkedPerson.id }, { onConflict: "interview_id,person_id" })
+		}
 
 		consola.log("Created interview:", interview.id)
 

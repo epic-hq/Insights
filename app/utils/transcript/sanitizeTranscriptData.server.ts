@@ -126,7 +126,10 @@ const findTimingForText = (
 	let bestOverlap = 0
 
 	for (const utterance of utterances) {
-		const utteranceWords = utterance.text.toLowerCase().split(" ").filter((w) => w.length > 3)
+		const utteranceWords = utterance.text
+			.toLowerCase()
+			.split(" ")
+			.filter((w) => w.length > 3)
 		const overlap = utteranceWords.filter((w) => searchWords.has(w)).length
 		if (overlap > bestOverlap) {
 			bestOverlap = overlap

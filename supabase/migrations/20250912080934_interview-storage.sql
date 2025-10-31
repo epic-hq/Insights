@@ -1,8 +1,8 @@
 -- Storage: interview recordings bucket and policies (declarative)
 
--- Create public bucket for interview recordings
-insert into storage.buckets (id, name, public)
-values ('interview-recordings', 'interview-recordings', true)
+-- Create bucket for interview recordings
+insert into storage.buckets (id, name)
+values ('interview-recordings', 'interview-recordings')
 on conflict (id) do nothing;
 
 -- Policies scoped to this bucket

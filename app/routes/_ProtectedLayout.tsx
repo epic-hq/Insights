@@ -19,7 +19,10 @@ export const middleware: Route.MiddlewareFunction[] = [
 			const user = await getAuthenticatedUser(request)
 			consola.log("middleware user", user?.aud, ": ", user?.sub, ": ", user?.email)
 			if (!user) {
-				throw redirect("/login")
+				// Preserve the original URL for deep linking after login
+				const url = new URL(request.url)
+				const redirectParam = encodeURIComponent(url.pathname + url.search)
+				throw redirect(`/login?redirect=${redirectParam}`)
 			}
 
 			// Extract JWT from user claims (assumes JWT is available as user?.jwt or similar)

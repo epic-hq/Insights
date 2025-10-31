@@ -82,7 +82,7 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 			return { ok: true }
 		}
 		default:
-		return { ok: false, error: "Unknown intent" }
+			return { ok: false, error: "Unknown intent" }
 	}
 }
 
@@ -117,8 +117,8 @@ export default function FacetCatalogPage() {
 						<div className="space-y-6">
 							{Array.from(facetsByKind.entries()).map(([kind, list]) => (
 								<div key={kind} className="space-y-3">
-									<h3 className="font-semibold text-foreground text-sm flex items-center gap-2">
-										<Badge variant="outline" className="uppercase tracking-wide text-xs">
+									<h3 className="flex items-center gap-2 font-semibold text-foreground text-sm">
+										<Badge variant="outline" className="text-xs uppercase tracking-wide">
 											{kind || "Unknown kind"}
 										</Badge>
 										<span className="text-muted-foreground text-xs">{list.length} facets</span>
@@ -142,7 +142,7 @@ export default function FacetCatalogPage() {
 															{facet.is_active ? "Active" : "Disabled"}
 														</Badge>
 													</TableCell>
-													<TableCell className="text-right space-x-2">
+													<TableCell className="space-x-2 text-right">
 														<toggleFetcher.Form method="post">
 															<input type="hidden" name="intent" value="toggle" />
 															<input type="hidden" name="facetId" value={facet.id} />

@@ -18,9 +18,6 @@ export function usePostHogFeatureFlag(flagKey: string): {
 			return
 		}
 
-		// Set person properties if needed (as per your example)
-		// posthog.setPersonPropertiesForFlags({'email': 'value'})
-
 		// Wait for flags to be loaded
 		posthog.onFeatureFlags(() => {
 			const flagValue = posthog.isFeatureEnabled(flagKey)
@@ -31,7 +28,7 @@ export function usePostHogFeatureFlag(flagKey: string): {
 		// Also check immediately in case flags are already loaded
 		const currentValue = posthog.isFeatureEnabled(flagKey)
 		if (currentValue !== undefined) {
-			setIsEnabled(Boolean(currentValue))
+			setIsEnabled(currentValue)
 			setIsLoading(false)
 		}
 	}, [posthog, flagKey])

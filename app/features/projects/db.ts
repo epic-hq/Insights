@@ -24,16 +24,7 @@ export const getProjects = async ({
 	consola.log("getProjects accountId: ", accountId)
 	return await supabase
 		.from("projects")
-		.select(`
-			*
-			// project_people (
-			// 	people (
-			// 		id,
-			// 		name,
-			// 		segment
-			// 	)
-			// )
-		`)
+		.select("*")
 		.eq("account_id", accountId)
 		.order("created_at", { ascending: false })
 }

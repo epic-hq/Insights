@@ -1,13 +1,14 @@
 import consola from "consola"
-import { ArrowRight, Hash, House, Mic, Target } from "lucide-react"
-import { useState } from "react"
+import { ArrowRight, Handshake, Hash, House, Mic, Target } from "lucide-react"
+import { usePostHog } from "posthog-js/react"
+import { useEffect, useState } from "react"
 import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { getProjects } from "~/features/projects/db"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
+import { useRecordNow } from "~/hooks/useRecordNow"
 import { userContext } from "~/server/user-context"
 import type { Project, Project_Section } from "~/types"
 
@@ -20,6 +21,10 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	}
 	const { supabase, account_id } = ctx // account_id is now team account from middleware
 	const user_settings = ctx.user_settings
+	if (!supabase || !account_id) {
+		consola.error("home loader database or account_id not found")
+		return redirect("/login")
+	}
 
 	// Use account_id from middleware (already resolved to team account)
 	consola.log("home loader account_id:", account_id)
@@ -95,6 +100,7 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 
 	const researchGoal = sections.find((s) => s.kind === "research_goal")
 	const interviewCount = sections.filter((s) => s.kind === "interview").length
+	const workflowLabel = project.workflow_type === "sales" ? "Sales" : "Research"
 
 	return (
 		<Card className="group cursor-pointer transition-all hover:shadow-md">
@@ -120,11 +126,16 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 										</div>
 									)}
 								</div>
-								{project.status && (
-									<Badge variant="secondary" className="h-5 px-1.5 text-xs">
-										{project.status}
+								<div className="flex flex-col items-end gap-1">
+									<Badge variant="outline" className="h-5 px-2 text-xs">
+										{workflowLabel}
 									</Badge>
-								)}
+									{project.status && (
+										<Badge variant="secondary" className="h-5 px-1.5 text-xs">
+											{project.status}
+										</Badge>
+									)}
+								</div>
 							</div>
 
 							{researchGoal && (
@@ -147,41 +158,63 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 
 export default function Index() {
 	const { projects, latest_sections } = useLoaderData<typeof loader>()
-	const { auth, user_settings } = useRouteLoaderData("routes/_ProtectedLayout") as {
+	const { auth } = useRouteLoaderData("routes/_ProtectedLayout") as {
 		auth: { accountId: string }
-		user_settings: { last_used_project_id?: string | null }
 	}
 
-	// Choose a project: last used if available, else first project
-	const lastUsed = user_settings?.last_used_project_id || undefined
-	const selectedProjectId = (projects || []).find((p) => p.id === lastUsed)?.id || projects?.[0]?.id || undefined
-
 	const accountBase = `/a/${auth.accountId}`
-	const _projectBase = selectedProjectId ? `${accountBase}/${selectedProjectId}` : null
-	const _routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
+
+	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
+	const salesProjects = (projects || []).filter((project) => project.workflow_type === "sales")
 
 	const navigate = useNavigate()
-	const [creating, setCreating] = useState(false)
+	const [creatingSales, setCreatingSales] = useState(false)
+	const [salesError, setSalesError] = useState<string | null>(null)
+	const { recordNow, isRecording } = useRecordNow()
+	const posthog = usePostHog()
+
+	// Check PostHog feature flag for Sales CRM
+	const [salesCrmEnabled, setSalesCrmEnabled] = useState(false)
+	const [salesCrmLoading, setSalesCrmLoading] = useState(true)
+
+	useEffect(() => {
+		if (!posthog) {
+			setSalesCrmLoading(false)
+			return
+		}
+
+		// Wait for flags to be loaded
+		posthog.onFeatureFlags(() => {
+			const flagValue = posthog.isFeatureEnabled("ffSalesCRM")
+			setSalesCrmEnabled(flagValue || false)
+			setSalesCrmLoading(false)
+		})
+	}, [posthog])
 
 	async function handleRecordNow() {
+		await recordNow()
+	}
+
+	// Creates a sales-focused project and routes directly to the sales lens view.
+	async function handleCreateSalesWorkspace() {
 		try {
-			setCreating(true)
-			const res = await fetch(`${accountBase}/api/interviews/record-now`, { method: "POST" })
-			const data = await res.json()
-			if (!res.ok) {
-				consola.error("Record Now failed:", data?.error)
-				return navigate(`${accountBase}/projects/new?from=record`)
+			setSalesError(null)
+			setCreatingSales(true)
+			const response = await fetch(`${accountBase}/api/sales/create-workspace`, { method: "POST" })
+			const payload = await response.json().catch(() => ({ error: "Failed to create workspace" }))
+
+			if (!response.ok || !payload?.projectId) {
+				const message = payload?.error ?? "Unable to create workspace"
+				setSalesError(message)
+				return
 			}
-			const { projectId, interviewId } = data
-			if (projectId && interviewId) {
-				return navigate(`/a/${auth.accountId}/${projectId}/interviews/${interviewId}/realtime`)
-			}
-			navigate(`${accountBase}/projects/new?from=record`)
-		} catch (e) {
-			consola.error("Record Now error:", e)
-			navigate(`${accountBase}/projects/new?from=record`)
+
+			navigate(`/a/${auth.accountId}/${payload.projectId}/sales-lenses`)
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to create workspace"
+			setSalesError(message)
 		} finally {
-			setCreating(false)
+			setCreatingSales(false)
 		}
 	}
 
@@ -194,31 +227,59 @@ export default function Index() {
 			</div>
 
 			{/* Main Action Cards */}
-			<div className="mb-12 grid gap-8 md:grid-cols-2">
-				{/* Plan New Research Project */}
+			<div className="mb-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
 				<Card className="group relative overflow-hidden border-2 transition-all hover:border-blue-500 hover:shadow-lg">
 					<CardHeader className="pb-6">
 						<CardTitle className="flex flex-row text-2xl">
 							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/20">
 								<Target className="h-8 w-8 text-blue-600 dark:text-blue-400" />
 							</div>
-							<div className="px-2 pt-3">New Research Project</div>
+							<div className="px-2 pt-3">Discovery Research</div>
 						</CardTitle>
 						<CardDescription className="text-base">
-							Clarify Goals &gt; Develop Interview Guide &gt; Collect Interviews.
+							Clarify hypotheses, build interview guides, and orchestrate customer discovery work.
 						</CardDescription>
 					</CardHeader>
 					<CardContent className="pt-0">
 						<Button asChild size="lg" className="w-full group-hover:bg-blue-600">
 							<Link to={`${accountBase}/projects/new`}>
-								Start Planning
+								Start planning
 								<ArrowRight className="ml-2 h-5 w-5" />
 							</Link>
 						</Button>
 					</CardContent>
 				</Card>
 
-				{/* Record Now */}
+				{salesCrmLoading
+					? null
+					: salesCrmEnabled && (
+						<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
+							<CardHeader className="pb-4">
+								<CardTitle className="flex flex-row text-2xl">
+									<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
+										<Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+									</div>
+									<div className="px-2 pt-3">Sales Hygiene Workspace</div>
+								</CardTitle>
+								<CardDescription className="text-base">
+									Map MEDDIC/BANT data, draft MAPs, and coach revenue teams on CRM completeness.
+								</CardDescription>
+							</CardHeader>
+							<CardContent className="space-y-3 pt-0">
+								{salesError && <p className="text-destructive text-sm">{salesError}</p>}
+								<Button
+									size="lg"
+									className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:bg-emerald-700"
+									onClick={handleCreateSalesWorkspace}
+									disabled={creatingSales}
+								>
+									{creatingSales ? "Creating…" : "Launch sales workspace"}
+									<ArrowRight className="ml-2 h-5 w-5" />
+								</Button>
+							</CardContent>
+						</Card>
+					)}
+
 				<Card className="group relative overflow-hidden border-2 transition-all hover:border-red-500 hover:shadow-lg">
 					<CardHeader className="pb-6">
 						<CardTitle className="flex flex-row text-2xl">
@@ -227,16 +288,16 @@ export default function Index() {
 							</div>
 							<div className="px-2 pt-3">Record Now</div>
 						</CardTitle>
-						<CardDescription className="text-base">Record Live Now and get Instant Insights.</CardDescription>
+						<CardDescription className="text-base">Record live and get instant insights.</CardDescription>
 					</CardHeader>
 					<CardContent className="pt-0">
 						<Button
 							size="lg"
 							className="w-full bg-red-600 hover:bg-red-700 group-hover:bg-red-700"
 							onClick={handleRecordNow}
-							disabled={creating}
+							disabled={isRecording}
 						>
-							{creating ? "Starting…" : "Record Now"}
+							{isRecording ? "Starting…" : "Record Now"}
 							<Mic className="ml-2 h-5 w-5" />
 						</Button>
 					</CardContent>
@@ -245,37 +306,74 @@ export default function Index() {
 
 			{/* Existing Projects Section */}
 
-			<div className="space-y-3">
-				<div className="mb-6 flex items-center justify-between">
-					<div>
-						<h2 className="font-semibold text-2xl">Existing Projects</h2>
-						<p className="hidden text-muted-foreground text-sm md:block">Continue working on your research projects</p>
+			<div className="space-y-8">
+				<section className="space-y-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<h2 className="font-semibold text-2xl">Discovery projects</h2>
+							<p className="hidden text-muted-foreground text-sm md:block">
+								Continue refining your research programs and interview guides.
+							</p>
+						</div>
+						{researchProjects.length > 4 && (
+							<Button variant="outline" asChild>
+								<Link to={`${accountBase}/projects`}>
+									View all
+									<ArrowRight className="ml-2 h-4 w-4" />
+								</Link>
+							</Button>
+						)}
 					</div>
-				</div>
-				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-					{projects.slice(0, 4).map((project) => {
-						const projectSections = latest_sections.filter((section) => section.project_id === project.id)
-						return (
-							<CompactProjectCard
-								key={project.id}
-								project={project}
-								projectPath={`${accountBase}/${project.id}`}
-								sections={projectSections}
-							/>
-						)
-					})}
-				</div>
-
-				<div className="flex flex-wrap">
-					{projects?.length > 4 && (
-						<Button variant="outline" asChild>
-							<Link to={`${accountBase}/projects`}>
-								View All ({projects.length})
-								<ArrowRight className="ml-2 h-4 w-4" />
-							</Link>
-						</Button>
+					{researchProjects.length ? (
+						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+							{researchProjects.slice(0, 4).map((project) => {
+								const projectSections = latest_sections.filter((section) => section.project_id === project.id)
+								return (
+									<CompactProjectCard
+										key={project.id}
+										project={project}
+										projectPath={`${accountBase}/${project.id}`}
+										sections={projectSections}
+									/>
+								)
+							})}
+						</div>
+					) : (
+						<p className="text-muted-foreground text-sm">
+							No discovery projects yet. Start one above to capture interviews.
+						</p>
 					)}
-				</div>
+				</section>
+
+				<section className="space-y-4">
+					<div className="flex items-center justify-between">
+						<div>
+							<h2 className="font-semibold text-2xl">Sales workspaces</h2>
+							<p className="hidden text-muted-foreground text-sm md:block">
+								Track stakeholder hygiene, objections, and MAPs across your deals.
+							</p>
+						</div>
+					</div>
+					{salesProjects.length ? (
+						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+							{salesProjects.slice(0, 4).map((project) => {
+								const projectSections = latest_sections.filter((section) => section.project_id === project.id)
+								return (
+									<CompactProjectCard
+										key={project.id}
+										project={project}
+										projectPath={`${accountBase}/${project.id}/sales-lenses`}
+										sections={projectSections}
+									/>
+								)
+							})}
+						</div>
+					) : (
+						<p className="text-muted-foreground text-sm">
+							Launch a sales workspace to see MEDDIC coverage and draft MAPs automatically.
+						</p>
+					)}
+				</section>
 			</div>
 		</div>
 	)

@@ -6,6 +6,40 @@
 
 create extension if not exists vector;
 
+-- Organizations -------------------------------------------------------------------
+create table if not exists organizations (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid references accounts.accounts (id) on delete cascade,
+  project_id uuid references projects(id) on delete cascade,
+  name text not null,
+  legal_name text,
+  description text,
+  industry text,
+  sub_industry text,
+  company_type text,
+  size_range text,
+  employee_count int,
+  annual_revenue numeric,
+  phone text,
+  email text,
+  website_url text,
+  linkedin_url text,
+  twitter_url text,
+  domain text,
+  headquarters_location text,
+  billing_address jsonb,
+  shipping_address jsonb,
+  parent_organization_id uuid references public.organizations(id) on delete set null,
+  primary_contact_id uuid, -- Will reference people(id) after people table is created
+  lifecycle_stage text,
+  timezone text,
+  crm_external_id text,
+  tags text[],
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- People
 create table if not exists people (
   id uuid primary key default gen_random_uuid(),
@@ -13,28 +47,39 @@ create table if not exists people (
   name text,
   name_hash text generated always as (lower(name)) stored,
   description text,
-	role text,
-	title text,
-	industry text,
-	company text,
+  role text,
+  title text,
+  industry text,
+  company text,
   segment text,
-	image_url text,
+  image_url text,
   age int,
   gender text,
   income int,
   education text,
   occupation text,
-	languages text[],
+  languages text[],
   location text,
-  contact_info jsonb,
+  primary_email text,
+  primary_phone text,
+  linkedin_url text,
+  website_url text,
+  contact_info jsonb default '{}'::jsonb,
   preferences text,
-	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  lifecycle_stage text,
+  timezone text,
+  pronouns text,
+  default_organization_id uuid references public.organizations(id) on delete set null,
+  project_id uuid references projects(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_people_account_id ON public.people(account_id);
+CREATE INDEX IF NOT EXISTS idx_people_default_organization
+    ON public.people (default_organization_id)
+    WHERE default_organization_id IS NOT NULL;
 
 -- Project scoping support
 CREATE INDEX IF NOT EXISTS idx_people_account_project_created
@@ -107,40 +152,6 @@ create policy "Account members can delete" on public.people
     account_id IN ( SELECT accounts.get_accounts_with_role())
     );
 
-
--- Organizations -------------------------------------------------------------------
-create table if not exists organizations (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid references accounts.accounts (id) on delete cascade,
-  project_id uuid references projects(id) on delete cascade,
-  name text not null,
-  legal_name text,
-  description text,
-  industry text,
-  sub_industry text,
-  company_type text,
-  size_range text,
-  employee_count int,
-  annual_revenue numeric,
-  phone text,
-  email text,
-  website_url text,
-  linkedin_url text,
-  twitter_url text,
-  domain text,
-  headquarters_location text,
-  billing_address jsonb,
-  shipping_address jsonb,
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists idx_organizations_account_id on public.organizations(account_id);
-create index if not exists idx_organizations_project_id on public.organizations(project_id);
-create unique index if not exists uniq_organizations_account_lower_name
-  on public.organizations (account_id, lower(name));
-
 create trigger set_organizations_timestamp
     before insert or update on public.organizations
     for each row
@@ -180,6 +191,20 @@ create policy "Account owners can delete" on public.organizations
     using (
         account_id in (select accounts.get_accounts_with_role('owner'))
     );
+
+-- Add foreign key constraint for organizations.primary_contact_id now that people table exists
+alter table public.organizations
+    add constraint organizations_primary_contact_id_fkey
+        foreign key (primary_contact_id) references public.people(id) on delete set null;
+
+create index if not exists idx_organizations_account_id on public.organizations(account_id);
+create index if not exists idx_organizations_project_id on public.organizations(project_id);
+create index if not exists idx_organizations_primary_contact on public.organizations(primary_contact_id)
+    where primary_contact_id is not null;
+create index if not exists idx_organizations_parent on public.organizations(parent_organization_id)
+    where parent_organization_id is not null;
+create unique index if not exists uniq_organizations_account_lower_name
+  on public.organizations (account_id, lower(name));
 
 
 -- People <> Organizations Junction -------------------------------------------------

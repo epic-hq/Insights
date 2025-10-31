@@ -24,7 +24,9 @@ import { FacetResolver, getFacetCatalog, persistFacetObservations } from "~/lib/
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
+import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema"
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
+import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
 import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
@@ -616,11 +618,11 @@ export async function extractEvidenceAndPeopleCore({
 		const speakerTranscriptsRaw = (transcriptData as any).speaker_transcripts ?? []
 		const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
 			? speakerTranscriptsRaw.map((u: any) => ({
-				speaker: u.speaker ?? "",
-				text: u.text ?? "",
-				start: u.start ?? null,
-				end: u.end ?? null,
-			}))
+					speaker: u.speaker ?? "",
+					text: u.text ?? "",
+					start: u.start ?? null,
+					end: u.end ?? null,
+				}))
 			: []
 
 		consola.info(`📝 Passing ${speakerTranscripts.length} speaker utterances with timing to AI`)
@@ -668,7 +670,7 @@ export async function extractEvidenceAndPeopleCore({
 				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
 			})
 		}
-		; (lfTrace as any)?.end?.()
+		;(lfTrace as any)?.end?.()
 	}
 
 	if (!evidenceResponse) {
@@ -769,45 +771,45 @@ export async function extractEvidenceAndPeopleCore({
 		const summary = coerceString((raw as EvidenceParticipant).summary)
 		const segments = Array.isArray((raw as EvidenceParticipant).segments)
 			? ((raw as EvidenceParticipant).segments as unknown[])
-				.map((segment) => coerceString(segment))
-				.filter((segment): segment is string => Boolean(segment))
+					.map((segment) => coerceString(segment))
+					.filter((segment): segment is string => Boolean(segment))
 			: []
 		const personas = Array.isArray((raw as EvidenceParticipant).personas)
 			? ((raw as EvidenceParticipant).personas as unknown[])
-				.map((persona) => coerceString(persona))
-				.filter((persona): persona is string => Boolean(persona))
+					.map((persona) => coerceString(persona))
+					.filter((persona): persona is string => Boolean(persona))
 			: []
 		const facets = Array.isArray((raw as EvidenceParticipant).facets)
 			? ((raw as EvidenceParticipant).facets as unknown[])
-				.map((facet) => {
-					if (!facet || typeof facet !== "object") return null
-					const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
-					const value = coerceString((facet as PersonFacetObservation).value)
-					if (!kind_slug || !value) return null
-					return {
-						...facet,
-						kind_slug,
-						value,
-						source: (facet as PersonFacetObservation).source || "interview",
-					} as PersonFacetObservation
-				})
-				.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+					.map((facet) => {
+						if (!facet || typeof facet !== "object") return null
+						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+						const value = coerceString((facet as PersonFacetObservation).value)
+						if (!kind_slug || !value) return null
+						return {
+							...facet,
+							kind_slug,
+							value,
+							source: (facet as PersonFacetObservation).source || "interview",
+						} as PersonFacetObservation
+					})
+					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
 			: []
 		const scales = Array.isArray((raw as EvidenceParticipant).scales)
 			? ((raw as EvidenceParticipant).scales as unknown[])
-				.map((scale) => {
-					if (!scale || typeof scale !== "object") return null
-					const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
-					const score = (scale as PersonScaleObservation).score
-					if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
-					return {
-						...scale,
-						kind_slug,
-						score,
-						source: (scale as PersonScaleObservation).source || "interview",
-					} as PersonScaleObservation
-				})
-				.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+					.map((scale) => {
+						if (!scale || typeof scale !== "object") return null
+						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+						const score = (scale as PersonScaleObservation).score
+						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+						return {
+							...scale,
+							kind_slug,
+							score,
+							source: (scale as PersonScaleObservation).source || "interview",
+						} as PersonScaleObservation
+					})
+					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
 			: []
 
 		const normalized: NormalizedParticipant = {
@@ -1037,12 +1039,12 @@ export async function extractEvidenceAndPeopleCore({
 			const snippetForTiming = chunk || gist || verb
 			anchorSeconds = snippetForTiming?.length
 				? findStartSecondsForSnippet({
-					snippet: snippetForTiming,
-					wordTimeline,
-					segmentTimeline,
-					fullTranscript,
-					durationSeconds,
-				})
+						snippet: snippetForTiming,
+						wordTimeline,
+						segmentTimeline,
+						fullTranscript,
+						durationSeconds,
+					})
 				: null
 		}
 
@@ -1113,12 +1115,12 @@ export async function extractEvidenceAndPeopleCore({
 		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
 		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
 		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
-			; (row as Record<string, unknown>).says = _says
-			; (row as Record<string, unknown>).does = _does
-			; (row as Record<string, unknown>).thinks = _thinks
-			; (row as Record<string, unknown>).feels = _feels
-			; (row as Record<string, unknown>).pains = _pains
-			; (row as Record<string, unknown>).gains = _gains
+		;(row as Record<string, unknown>).says = _says
+		;(row as Record<string, unknown>).does = _does
+		;(row as Record<string, unknown>).thinks = _thinks
+		;(row as Record<string, unknown>).feels = _feels
+		;(row as Record<string, unknown>).pains = _pains
+		;(row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -1141,7 +1143,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
 		if (whyItMatters) {
-			; (row as Record<string, unknown>).context_summary = whyItMatters
+			;(row as Record<string, unknown>).context_summary = whyItMatters
 		}
 
 		// Skip raw mention processing - we'll use Phase 2 persona facets instead
@@ -1308,15 +1310,15 @@ export async function extractEvidenceAndPeopleCore({
 			const needsHash = shouldAttachHash(resolved, participant)
 			const personNameForDb = needsHash
 				? appendHashToName(
-					resolved.name,
-					generateParticipantHash({
-						accountId: metadata.accountId,
-						projectId: metadata.projectId,
-						interviewId: interviewRecord.id,
-						personKey: participantKey,
-						index,
-					})
-				)
+						resolved.name,
+						generateParticipantHash({
+							accountId: metadata.accountId,
+							projectId: metadata.projectId,
+							interviewId: interviewRecord.id,
+							personKey: participantKey,
+							index,
+						})
+					)
 				: resolved.name
 			const personRecord = await upsertPerson(personNameForDb, participantOverrides)
 			personIdByKey.set(participantKey, personRecord.id)
@@ -2305,6 +2307,113 @@ export async function processInterviewTranscriptWithClient({
 		storedInsights: analysisResult.storedInsights,
 		fullTranscript: uploadResult.fullTranscript,
 	})
+
+	const attendees = [metadata.interviewerName, metadata.participantName].filter(
+		(value): value is string => typeof value === "string" && value.trim().length > 0
+	)
+
+	let conversationAnalysis: ConversationAnalysis | null = null
+
+	try {
+		conversationAnalysis = await generateConversationAnalysis({
+			transcript: uploadResult.fullTranscript,
+			context: {
+				meetingTitle: metadata.interviewTitle || analysisResult.interview.title || undefined,
+				attendees: attendees.length ? attendees : undefined,
+			},
+		})
+
+		const normalizedConversationAnalysis = {
+			overview: conversationAnalysis.overview,
+			duration_estimate: conversationAnalysis.duration_estimate ?? null,
+			questions: conversationAnalysis.questions,
+			participant_goals: conversationAnalysis.participant_goals,
+			key_takeaways: conversationAnalysis.key_takeaways,
+			open_questions: conversationAnalysis.open_questions,
+			recommended_next_steps: conversationAnalysis.recommended_next_steps,
+		}
+
+		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
+			? (analysisResult.interview.high_impact_themes ?? []).filter(
+					(value): value is string => typeof value === "string" && value.trim().length > 0
+			  )
+			: []
+
+		let takeawayStrings = existingThemes
+		if (!existingThemes.length && conversationAnalysis.key_takeaways.length) {
+			takeawayStrings = conversationAnalysis.key_takeaways.map((takeaway) => {
+				const priorityLabel = takeaway.priority ? `[${takeaway.priority.toUpperCase()}] ` : ""
+				const snippet = Array.isArray(takeaway.evidence_snippets) ? takeaway.evidence_snippets[0] : undefined
+				const snippetText = snippet ? ` — ${snippet}` : ""
+				return `${priorityLabel}${takeaway.summary}${snippetText}`.trim()
+			})
+		}
+
+		const openQuestionsText = conversationAnalysis.open_questions.length
+			? conversationAnalysis.open_questions.map((item, idx) => `${idx + 1}. ${item}`).join("\n")
+			: analysisResult.interview.open_questions_and_next_steps ?? null
+
+		const { data: updatedInterview, error: analysisUpdateError } = await db
+			.from("interviews")
+			.update({
+				conversation_analysis: normalizedConversationAnalysis,
+				high_impact_themes: takeawayStrings.length ? takeawayStrings : null,
+				open_questions_and_next_steps: openQuestionsText,
+			})
+			.eq("id", analysisResult.interview.id)
+			.select("conversation_analysis, high_impact_themes, open_questions_and_next_steps")
+			.single()
+
+		if (analysisUpdateError) {
+			consola.warn("Failed to persist conversation analysis on interview", analysisUpdateError)
+		} else {
+			analysisResult.interview.conversation_analysis = updatedInterview?.conversation_analysis ?? normalizedConversationAnalysis
+			analysisResult.interview.high_impact_themes = updatedInterview?.high_impact_themes ?? takeawayStrings
+			analysisResult.interview.open_questions_and_next_steps =
+				updatedInterview?.open_questions_and_next_steps ?? openQuestionsText ?? null
+		}
+	} catch (analysisError) {
+		consola.warn("Failed to generate conversation analysis for interview", analysisError)
+	}
+
+	const projectId = uploadResult.metadata.projectId ?? analysisResult.interview.project_id
+	if (projectId) {
+		const { data: existingGoal } = await db
+			.from("project_sections")
+			.select("id")
+			.eq("project_id", projectId)
+			.eq("kind", "research_goal")
+			.limit(1)
+			.maybeSingle()
+
+		if (!existingGoal) {
+			try {
+				if (!conversationAnalysis) {
+					conversationAnalysis = await generateConversationAnalysis({
+						transcript: uploadResult.fullTranscript,
+						context: {
+							meetingTitle: metadata.interviewTitle || analysisResult.interview.title || undefined,
+							attendees: attendees.length ? attendees : undefined,
+						},
+					})
+				}
+
+				if (conversationAnalysis?.overview) {
+					await db.from("project_sections").insert({
+						project_id: projectId,
+						kind: "research_goal",
+						content_md: conversationAnalysis.overview,
+						meta: {
+							source: "conversation_analysis",
+							generated_at: new Date().toISOString(),
+						},
+					})
+				}
+			} catch (goalError) {
+				consola.warn("Failed to backfill research goal from conversation analysis", goalError)
+			}
+		}
+	}
 
 	return { stored: analysisResult.storedInsights, interview: analysisResult.interview }
 }
