@@ -291,9 +291,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	const filteredRows = filterPersonId
 		? rows.filter((row) => {
-			const people = peopleByEvidence.get(row.id) ?? []
-			return people.some((person) => person.id === filterPersonId)
-		})
+				const people = peopleByEvidence.get(row.id) ?? []
+				return people.some((person) => person.id === filterPersonId)
+			})
 		: rows
 
 	const enriched: EvidenceListItem[] = filteredRows.map((row) => ({
@@ -346,9 +346,7 @@ export default function EvidenceIndex() {
 						</Badge>
 					)}
 					{filteredByPerson && (
-						<span>
-							{filteredByPerson.name ? ` for: ${filteredByPerson.name}` : "Filtered by participant"}
-						</span>
+						<span>{filteredByPerson.name ? ` for: ${filteredByPerson.name}` : "Filtered by participant"}</span>
 					)}
 				</div>
 			</div>

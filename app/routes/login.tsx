@@ -1,7 +1,6 @@
 import consola from "consola"
 import { useEffect } from "react"
-import { useSearchParams } from "react-router"
-import { type ActionFunctionArgs, Link, redirect, useFetcher } from "react-router"
+import { type ActionFunctionArgs, Link, redirect, useFetcher, useSearchParams } from "react-router"
 import { LogoBrand } from "~/components/branding"
 import { LoginForm } from "~/components/login-form"
 import { Button } from "~/components/ui/button"

@@ -1,6 +1,6 @@
 import consola from "consola"
-import { z } from "zod"
 import type { LoaderFunctionArgs } from "react-router"
+import { z } from "zod"
 
 import { userContext } from "~/server/user-context"
 
@@ -47,14 +47,9 @@ export async function loader({ request, context }: LoaderFunctionArgs) {
 
 	if (search) {
 		const escaped = search.replace(/%/g, "\\%").replace(/_/g, "\\_")
-		query = query.or(
-			[
-				`name.ilike.%${escaped}%`,
-				primaryEmailClause(escaped),
-				`company.ilike.%${escaped}%`,
-			].join(","),
-			{ foreignTable: undefined }
-		)
+		query = query.or([`name.ilike.%${escaped}%`, primaryEmailClause(escaped), `company.ilike.%${escaped}%`].join(","), {
+			foreignTable: undefined,
+		})
 	}
 
 	const { data, error } = await query

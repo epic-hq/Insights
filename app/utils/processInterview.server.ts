@@ -20,11 +20,11 @@ import type { Json } from "~/../supabase/types"
 import { runEvidenceAnalysis } from "~/features/research/analysis/runEvidenceAnalysis.server"
 import { autoGroupThemesAndApply } from "~/features/themes/db.autoThemes.server"
 import { createBamlCollector, mapUsageToLangfuse, summarizeCollectorUsage } from "~/lib/baml/collector.server"
+import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema"
 import { FacetResolver, getFacetCatalog, persistFacetObservations } from "~/lib/database/facets.server"
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
-import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema"
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
 import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
 import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
@@ -2336,7 +2336,7 @@ export async function processInterviewTranscriptWithClient({
 		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
 			? (analysisResult.interview.high_impact_themes ?? []).filter(
 					(value): value is string => typeof value === "string" && value.trim().length > 0
-			  )
+				)
 			: []
 
 		let takeawayStrings = existingThemes
@@ -2351,7 +2351,7 @@ export async function processInterviewTranscriptWithClient({
 
 		const openQuestionsText = conversationAnalysis.open_questions.length
 			? conversationAnalysis.open_questions.map((item, idx) => `${idx + 1}. ${item}`).join("\n")
-			: analysisResult.interview.open_questions_and_next_steps ?? null
+			: (analysisResult.interview.open_questions_and_next_steps ?? null)
 
 		const { data: updatedInterview, error: analysisUpdateError } = await db
 			.from("interviews")
@@ -2367,7 +2367,8 @@ export async function processInterviewTranscriptWithClient({
 		if (analysisUpdateError) {
 			consola.warn("Failed to persist conversation analysis on interview", analysisUpdateError)
 		} else {
-			analysisResult.interview.conversation_analysis = updatedInterview?.conversation_analysis ?? normalizedConversationAnalysis
+			analysisResult.interview.conversation_analysis =
+				updatedInterview?.conversation_analysis ?? normalizedConversationAnalysis
 			analysisResult.interview.high_impact_themes = updatedInterview?.high_impact_themes ?? takeawayStrings
 			analysisResult.interview.open_questions_and_next_steps =
 				updatedInterview?.open_questions_and_next_steps ?? openQuestionsText ?? null

@@ -343,27 +343,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-						id: string
-						name: string | null
-						segment: string | null
-						project_id: string | null
-						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-						[key: string]: unknown
-					}
+							id: string
+							name: string | null
+							segment: string | null
+							project_id: string | null
+							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+							[key: string]: unknown
+					  }
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-						id: person.id,
-						name: person.name,
-						segment: person.segment,
-						project_id: person.project_id,
-						people_personas: Array.isArray(person.people_personas)
-							? person.people_personas.map((pp) => ({
-								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-							}))
-							: undefined,
-					}
+							id: person.id,
+							name: person.name,
+							segment: person.segment,
+							project_id: person.project_id,
+							people_personas: Array.isArray(person.people_personas)
+								? person.people_personas.map((pp) => ({
+										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+									}))
+								: undefined,
+						}
 					: undefined
 				return {
 					id: row.id,
@@ -1060,7 +1060,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											className="inline-flex items-center gap-2 border border-red-500/20 bg-red-50 px-3 py-1.5 font-medium text-red-700 text-xs hover:bg-red-100 disabled:opacity-60"
 										>
 											{fetcher.state !== "idle" ? "Cancelling..." : "Cancel"}
-
 										</button>
 									)}
 								</div>
@@ -1288,10 +1287,11 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												key={speaker.id}
 												type="button"
 												onClick={() => setSelectedPersonId(speaker.id)}
-												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
-													? "bg-primary text-primary-foreground shadow-sm"
-													: "bg-muted text-muted-foreground hover:bg-muted/80"
-													}`}
+												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${
+													isActive
+														? "bg-primary text-primary-foreground shadow-sm"
+														: "bg-muted text-muted-foreground hover:bg-muted/80"
+												}`}
 											>
 												{speaker.name}
 												<span className="ml-1.5 opacity-70">({speaker.count})</span>

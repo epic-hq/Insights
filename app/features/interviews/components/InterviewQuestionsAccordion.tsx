@@ -83,7 +83,7 @@ export function InterviewQuestionsAccordion({ interviewId, projectId, accountId 
 			<div className="mb-4 flex items-center justify-between">
 				<h3 className="font-semibold text-foreground text-lg">Questions Asked</h3>
 				<Badge variant="secondary" className="text-xs">
-					{questions.length} question{questions.length !== 1 ? 's' : ''}
+					{questions.length} question{questions.length !== 1 ? "s" : ""}
 				</Badge>
 			</div>
 
@@ -97,23 +97,21 @@ export function InterviewQuestionsAccordion({ interviewId, projectId, accountId 
 								<div className="flex items-center gap-2">
 									<span className="font-medium">{speakerName}</span>
 									<Badge variant="outline" className="text-xs">
-										{speakerQuestions.length} question{speakerQuestions.length !== 1 ? 's' : ''}
+										{speakerQuestions.length} question{speakerQuestions.length !== 1 ? "s" : ""}
 									</Badge>
 								</div>
 							</AccordionTrigger>
 							<AccordionContent>
 								<div className="space-y-3">
 									{speakerQuestions.map((question) => (
-										<div key={question.id} className="border bg-muted/30 rounded-md p-3">
+										<div key={question.id} className="rounded-md border bg-muted/30 p-3">
 											<div className="flex items-start justify-between gap-2">
 												<div className="flex-1">
 													<p className="mb-2 text-foreground text-sm">
 														{question.verbatim || question.chunk || "Question text"}
 													</p>
 													{question.gist && question.gist !== question.verbatim && (
-														<p className="text-muted-foreground text-xs italic">
-															{question.gist}
-														</p>
+														<p className="text-muted-foreground text-xs italic">{question.gist}</p>
 													)}
 												</div>
 												<Link
@@ -124,10 +122,8 @@ export function InterviewQuestionsAccordion({ interviewId, projectId, accountId 
 												</Link>
 											</div>
 											{question.context_summary && (
-												<div className="mt-2 border-t border-muted pt-2">
-													<p className="text-muted-foreground text-xs">
-														{question.context_summary}
-													</p>
+												<div className="mt-2 border-muted border-t pt-2">
+													<p className="text-muted-foreground text-xs">{question.context_summary}</p>
 												</div>
 											)}
 										</div>

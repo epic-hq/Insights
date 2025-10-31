@@ -253,32 +253,32 @@ export default function Index() {
 				{salesCrmLoading
 					? null
 					: salesCrmEnabled && (
-						<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
-							<CardHeader className="pb-4">
-								<CardTitle className="flex flex-row text-2xl">
-									<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
-										<Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-									</div>
-									<div className="px-2 pt-3">Sales Hygiene Workspace</div>
-								</CardTitle>
-								<CardDescription className="text-base">
-									Map MEDDIC/BANT data, draft MAPs, and coach revenue teams on CRM completeness.
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-3 pt-0">
-								{salesError && <p className="text-destructive text-sm">{salesError}</p>}
-								<Button
-									size="lg"
-									className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:bg-emerald-700"
-									onClick={handleCreateSalesWorkspace}
-									disabled={creatingSales}
-								>
-									{creatingSales ? "Creating…" : "Launch sales workspace"}
-									<ArrowRight className="ml-2 h-5 w-5" />
-								</Button>
-							</CardContent>
-						</Card>
-					)}
+							<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
+								<CardHeader className="pb-4">
+									<CardTitle className="flex flex-row text-2xl">
+										<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
+											<Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
+										</div>
+										<div className="px-2 pt-3">Sales Hygiene Workspace</div>
+									</CardTitle>
+									<CardDescription className="text-base">
+										Map MEDDIC/BANT data, draft MAPs, and coach revenue teams on CRM completeness.
+									</CardDescription>
+								</CardHeader>
+								<CardContent className="space-y-3 pt-0">
+									{salesError && <p className="text-destructive text-sm">{salesError}</p>}
+									<Button
+										size="lg"
+										className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:bg-emerald-700"
+										onClick={handleCreateSalesWorkspace}
+										disabled={creatingSales}
+									>
+										{creatingSales ? "Creating…" : "Launch sales workspace"}
+										<ArrowRight className="ml-2 h-5 w-5" />
+									</Button>
+								</CardContent>
+							</Card>
+						)}
 
 				<Card className="group relative overflow-hidden border-2 transition-all hover:border-red-500 hover:shadow-lg">
 					<CardHeader className="pb-6">

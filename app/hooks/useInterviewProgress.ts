@@ -48,7 +48,10 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 	const realtimeRunId = shouldSubscribeToRun ? runId : undefined
 
-	const { run, error: realtimeError } = useRealtimeRun<typeof uploadMediaAndTranscribeTask>(realtimeRunId, realtimeOptions)
+	const { run, error: realtimeError } = useRealtimeRun<typeof uploadMediaAndTranscribeTask>(
+		realtimeRunId,
+		realtimeOptions
+	)
 	const isRealtime = Boolean(runId && accessToken && run && !realtimeError)
 
 	// Log realtime errors for debugging

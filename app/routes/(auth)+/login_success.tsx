@@ -43,7 +43,16 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		origin: requestUrl.origin,
 	})
 
-	const destination = inviteRedirect ?? next
+	const shouldUseLastUsed = isDefaultHomeDestination(next, requestUrl.origin)
+	let destination = inviteRedirect ?? next
+
+	if (!inviteRedirect && shouldUseLastUsed) {
+		const lastUsedPath = await resolveLastUsedProjectRedirect({ supabase, userId: user.id })
+		if (lastUsedPath) {
+			destination = lastUsedPath
+		}
+	}
+
 	consola.log("[LOGIN_SUCCESS] redirecting to:", destination)
 	return redirect(destination, { headers })
 }
@@ -239,6 +248,64 @@ function extractInviteToken(next: string, origin: string): string | null {
 		const parsed = new URL(next, origin)
 		return parsed.searchParams.get("invite_token")
 	} catch {
+		return null
+	}
+}
+
+function isDefaultHomeDestination(next: string, origin: string): boolean {
+	try {
+		const parsed = new URL(next, origin)
+		return parsed.pathname === "/home"
+	} catch {
+		return next === "/home"
+	}
+}
+
+async function resolveLastUsedProjectRedirect({
+	supabase,
+	userId,
+}: {
+	supabase: SupabaseClient
+	userId: string
+}): Promise<string | null> {
+	try {
+		const { data: settings, error } = await supabase
+			.from("user_settings")
+			.select("last_used_account_id, last_used_project_id")
+			.eq("user_id", userId)
+			.single()
+
+		if (error) {
+			consola.warn("[LOGIN_SUCCESS] Failed to resolve user_settings for redirect:", error.message)
+			return null
+		}
+
+		const accountId = settings?.last_used_account_id
+		const projectId = settings?.last_used_project_id
+
+		if (!accountId || !projectId) {
+			return null
+		}
+
+		const { data: project, error: projectError } = await supabase
+			.from("projects")
+			.select("id")
+			.eq("id", projectId)
+			.eq("account_id", accountId)
+			.single()
+
+		if (projectError || !project) {
+			consola.warn("[LOGIN_SUCCESS] Last used project unavailable, falling back to home", {
+				accountId,
+				projectId,
+				error: projectError?.message,
+			})
+			return null
+		}
+
+		return `/a/${accountId}/${project.id}`
+	} catch (error) {
+		consola.warn("[LOGIN_SUCCESS] Error resolving last used redirect:", error)
 		return null
 	}
 }

@@ -133,11 +133,11 @@ export async function storeAudioFile({
 				expiresAt: presignedResult.expiresAt,
 			},
 		})
-		
+
 		// Return R2 key for DB storage and presigned URL for immediate use
-		return { 
+		return {
 			mediaUrl: filename, // Store just the key in DB
-			presignedUrl: presignedResult.url // Use this for immediate transcription
+			presignedUrl: presignedResult.url, // Use this for immediate transcription
 		}
 	} catch (error) {
 		const message = error instanceof Error ? error.message : "Unknown error"

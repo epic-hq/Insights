@@ -96,17 +96,14 @@ export async function regenerateEvidenceForProject({
 
 			// Use Trigger.dev task instead of duplicating core logic
 			// This ensures consistent behavior and single source of truth
-			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>(
-				"interview.upload-media-and-transcribe",
-				{
-					metadata,
-					mediaUrl: mediaUrlForTask,
-					transcriptData,
-					userCustomInstructions: undefined,
-					existingInterviewId: interview.id,
-					// No analysisJobId for regeneration - this is a background operation
-				}
-			)
+			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
+				metadata,
+				mediaUrl: mediaUrlForTask,
+				transcriptData,
+				userCustomInstructions: undefined,
+				existingInterviewId: interview.id,
+				// No analysisJobId for regeneration - this is a background operation
+			})
 
 			consola.info(`Triggered regeneration for interview ${interview.id}, run ID: ${result.id}`)
 

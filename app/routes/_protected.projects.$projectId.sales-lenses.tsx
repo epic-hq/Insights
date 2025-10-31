@@ -1,4 +1,3 @@
-
 import { formatDistanceToNow } from "date-fns"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { redirect, useFetcher, useLoaderData } from "react-router"
@@ -10,11 +9,11 @@ import { userContext } from "~/server/user-context"
 import type { Tables } from "~/types"
 
 const severityBadge: Record<string, { variant?: "default" | "secondary" | "destructive" | "outline"; color?: string }> =
-{
-	info: { variant: "outline", color: "blue" },
-	warning: { variant: "outline", color: "yellow" },
-	critical: { variant: "destructive" },
-}
+	{
+		info: { variant: "outline", color: "blue" },
+		warning: { variant: "outline", color: "yellow" },
+		critical: { variant: "destructive" },
+	}
 
 type LoaderFramework = {
 	summaryId: string
@@ -144,10 +143,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const { data: hygieneEventsData } = summaryIds.length
 		? await ctx.supabase
-			.from("sales_lens_hygiene_events")
-			.select<SalesLensHygieneEventRow>("id, summary_id, slot_id, code, severity, message")
-			.in("summary_id", summaryIds)
-		: { data: [] as SalesLensHygieneEventRow[] }
+				.from("sales_lens_hygiene_events")
+				.select<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>("id, summary_id, slot_id, code, severity, message")
+				.in("summary_id", summaryIds)
+		: { data: [] as Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">> }
 
 	const peopleIds = new Set<string>()
 	const organizationIds = new Set<string>()
@@ -176,9 +175,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	const { data: peopleRows } = peopleIds.size
 		? await ctx.supabase
-			.from("people")
-			.select<Pick<Tables<"people">, "id" | "name" | "role" | "title">>("id, name, role, title")
-			.in("id", Array.from(peopleIds))
+				.from("people")
+				.select<Pick<Tables<"people">, "id" | "name" | "role" | "title">>("id, name, role, title")
+				.in("id", Array.from(peopleIds))
 		: { data: [] as Array<Pick<Tables<"people">, "id" | "name" | "role" | "title">> }
 
 	const peopleById = new Map<string, { name: string | null; role: string | null; title: string | null }>()
@@ -193,9 +192,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Pull organization display names so stakeholder rows can surface company context.
 	const { data: organizationRows } = organizationIds.size
 		? await ctx.supabase
-			.from("organizations")
-			.select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
-			.in("id", Array.from(organizationIds))
+				.from("organizations")
+				.select<Pick<Tables<"organizations">, "id" | "name">>("id, name")
+				.in("id", Array.from(organizationIds))
 		: { data: [] as Array<Pick<Tables<"organizations">, "id" | "name">> }
 
 	const organizationsById = new Map<string, { name: string | null }>()
@@ -203,7 +202,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		organizationsById.set(organization.id, { name: organization.name ?? null })
 	}
 
-	const hygieneEventsBySummary = new Map<string, SalesLensHygieneEventRow[]>()
+	const hygieneEventsBySummary = new Map<string, Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>>()
 	for (const event of hygieneEventsData ?? []) {
 		const list = hygieneEventsBySummary.get(event.summary_id) ?? []
 		list.push(event)
@@ -275,18 +274,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		const unlinkedAttendees = Array.isArray(summary.attendee_unlinked)
 			? summary.attendee_unlinked
-				.map((entry) =>
-					entry && typeof entry === "object"
-						? {
-							displayName: "displayName" in entry ? String(entry.displayName) : "Unknown attendee",
-							role: "role" in entry && entry.role ? String(entry.role) : null,
-							personKey: "personKey" in entry && entry.personKey ? String(entry.personKey) : null,
-						}
-						: null
-				)
-				.filter((candidate): candidate is { displayName: string; role: string | null; personKey: string | null } =>
-					Boolean(candidate)
-				)
+					.map((entry) =>
+						entry && typeof entry === "object"
+							? {
+									displayName: "displayName" in entry ? String(entry.displayName) : "Unknown attendee",
+									role: "role" in entry && entry.role ? String(entry.role) : null,
+									personKey: "personKey" in entry && entry.personKey ? String(entry.personKey) : null,
+								}
+							: null
+					)
+					.filter((candidate): candidate is { displayName: string; role: string | null; personKey: string | null } =>
+						Boolean(candidate)
+					)
 			: []
 
 		frameworks.push({

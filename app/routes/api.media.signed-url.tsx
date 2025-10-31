@@ -49,7 +49,10 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	if (!key) {
 		consola.warn("Unable to resolve media key from request", { bodyKey: body.key, bodyMediaUrl: body.mediaUrl })
-		return Response.json({ error: "Unable to resolve media key. Provide either 'key' (R2 path) or 'mediaUrl' (full URL or R2 path)" }, { status: 400 })
+		return Response.json(
+			{ error: "Unable to resolve media key. Provide either 'key' (R2 path) or 'mediaUrl' (full URL or R2 path)" },
+			{ status: 400 }
+		)
 	}
 
 	const expiresInSeconds =
