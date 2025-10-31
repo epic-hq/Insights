@@ -51,7 +51,10 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
 
 	const accounts = useMemo<AccountRecord[]>(() => {
-		if (!protectedData?.accounts) return []
+		if (!protectedData?.accounts) {
+			console.log("[TeamSwitcher] No accounts data")
+			return []
+		}
 		let accountsList: AccountRecord[] = []
 
 		if (typeof protectedData.accounts === "string") {
@@ -66,8 +69,17 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			accountsList = protectedData.accounts
 		}
 
+		console.log("[TeamSwitcher] Accounts data:", accountsList.map(acc => ({
+			id: acc.account_id,
+			name: acc.name,
+			projectsCount: acc.projects?.length || 0,
+			projectNames: acc.projects?.map(p => p.name) || []
+		})))
+
 		// Filter out personal accounts from the team switcher dropdown
-		return accountsList.filter((acct) => !acct.personal_account)
+		const filtered = accountsList.filter((acct) => !acct.personal_account)
+		console.log("[TeamSwitcher] Filtered accounts:", filtered.length)
+		return filtered
 	}, [protectedData?.accounts])
 
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
@@ -122,7 +134,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 
 		const basePath = `/a/${acctId}/${projId}`
 		const routes = createRouteDefinitions(basePath)
-		navigate(routes.dashboard())
+		navigate(routes.accountHome())
 		setOpen(false)
 	}
 

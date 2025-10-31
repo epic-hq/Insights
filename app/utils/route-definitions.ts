@@ -19,6 +19,7 @@ export interface RouteDefinitions {
 	dashboard: () => string
 	help: () => string
 	docs: () => string
+	accountHome: () => string
 
 	// Interviews
 	interviews: {
@@ -117,10 +118,8 @@ export interface RouteDefinitions {
 		dashboard: () => string
 	}
 
-	// Teams
-	team: {
-		members: () => string
-	}
+	// Sales
+	salesBase: () => string
 
 	// Authentication
 	auth: {
@@ -164,6 +163,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		dashboard: () => `${base}/dashboard`,
 		help: () => PATHS.HELP,
 		docs: () => PATHS.DOCS,
+		accountHome: () => `${base.replace(/\/[^/]+$/, "")}/home`,
 
 		// Interviews
 		interviews: {
@@ -252,6 +252,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			researchWorkflow: () => `${base}/research-workflow`,
 		},
 
+		// Teams
+		team: {
+			members: () => `/a/${extractAccountId(projectPath)}/team/manage`,
+		},
+
 		// Projects (note: these are at account level, not project level)
 		projects: {
 			index: () => `/a/${extractAccountId(projectPath)}/projects`,
@@ -265,10 +270,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			dashboard: () => `${base}/dashboard`,
 		},
 
-		// Teams
-		team: {
-			members: () => `/a/${extractAccountId(projectPath)}/team/manage`,
-		},
+		// Sales
+		salesBase: () => base,
 
 		// Authentication
 		auth: {
