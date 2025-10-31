@@ -26,6 +26,7 @@ create table if not exists interviews (
 	media_type text, -- type of content: interview, focus-group, customer-call, user-testing
 	transcript text,
 	transcript_formatted jsonb,
+	conversation_analysis jsonb,
 	high_impact_themes text[],
 	relevant_answers text[],
 	open_questions_and_next_steps text,
@@ -89,3 +90,7 @@ create policy "Account owners can delete interviews" on public.interviews
     for delete
     to authenticated
     using (account_id in (select accounts.get_accounts_with_role('owner')));
+
+-- Backwards compatibility view while we generalise nomenclature
+create or replace view public.conversations as
+select * from public.interviews;

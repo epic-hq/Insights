@@ -526,78 +526,6 @@ export type Database = {
           },
         ]
       }
-      conversation_analyses: {
-        Row: {
-          account_id: string
-          created_at: string
-          created_by: string | null
-          detected_questions: Json | null
-          duration_seconds: number | null
-          error_message: string | null
-          id: string
-          key_takeaways: Json | null
-          open_questions: Json | null
-          participant_goals: Json | null
-          recording_url: string
-          recommendations: Json | null
-          status: Database["public"]["Enums"]["conversation_analysis_status"]
-          summary: string | null
-          transcript: string | null
-          updated_at: string
-        }
-        Insert: {
-          account_id: string
-          created_at?: string
-          created_by?: string | null
-          detected_questions?: Json | null
-          duration_seconds?: number | null
-          error_message?: string | null
-          id?: string
-          key_takeaways?: Json | null
-          open_questions?: Json | null
-          participant_goals?: Json | null
-          recording_url: string
-          recommendations?: Json | null
-          status?: Database["public"]["Enums"]["conversation_analysis_status"]
-          summary?: string | null
-          transcript?: string | null
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string
-          created_at?: string
-          created_by?: string | null
-          detected_questions?: Json | null
-          duration_seconds?: number | null
-          error_message?: string | null
-          id?: string
-          key_takeaways?: Json | null
-          open_questions?: Json | null
-          participant_goals?: Json | null
-          recording_url?: string
-          recommendations?: Json | null
-          status?: Database["public"]["Enums"]["conversation_analysis_status"]
-          summary?: string | null
-          transcript?: string | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "conversation_analyses_account_id_fkey"
-            columns: ["account_id"]
-            isOneToOne: false
-            referencedRelation: "accounts"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversation_analyses_created_by_fkey"
-            columns: ["created_by"]
-            isOneToOne: false
-            referencedRelation: "users"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       decision_question_metrics: {
         Row: {
           decision_question_id: string
@@ -1718,6 +1646,7 @@ export type Database = {
           account_id: string
           created_at: string
           created_by: string | null
+          conversation_analysis: Json | null
           duration_sec: number | null
           high_impact_themes: string[] | null
           id: string
@@ -1742,6 +1671,7 @@ export type Database = {
           account_id: string
           created_at?: string
           created_by?: string | null
+          conversation_analysis?: Json | null
           duration_sec?: number | null
           high_impact_themes?: string[] | null
           id?: string
@@ -1766,6 +1696,7 @@ export type Database = {
           account_id?: string
           created_at?: string
           created_by?: string | null
+          conversation_analysis?: Json | null
           duration_sec?: number | null
           high_impact_themes?: string[] | null
           id?: string
@@ -4478,6 +4409,63 @@ export type Database = {
       }
     }
     Views: {
+      conversations: {
+        Row: {
+          account_id: string
+          created_at: string
+          created_by: string | null
+          conversation_analysis: Json | null
+          duration_sec: number | null
+          high_impact_themes: string[] | null
+          id: string
+          interview_date: string | null
+          interviewer_id: string | null
+          media_type: string | null
+          media_url: string | null
+          observations_and_notes: string | null
+          open_questions_and_next_steps: string | null
+          participant_pseudonym: string | null
+          project_id: string
+          relevant_answers: string[] | null
+          segment: string | null
+          status: Database["public"]["Enums"]["interview_status"]
+          title: string | null
+          transcript: string | null
+          transcript_formatted: Json | null
+          updated_at: string
+          updated_by: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_interviewer_id_fkey"
+            columns: ["interviewer_id"]
+            isOneToOne: false
+            referencedRelation: "users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_question_summary: {
         Row: {
           answered_answer_count: number | null
@@ -4900,11 +4888,6 @@ export type Database = {
         | "tagged"
         | "archived"
         | "error"
-      conversation_analysis_status:
-        | "pending"
-        | "processing"
-        | "completed"
-        | "failed"
       job_status: "pending" | "in_progress" | "done" | "error" | "retry"
       project_workflow_type: "research" | "sales" | "conversation_analysis"
       research_analysis_question_kind: "decision" | "research"
@@ -5063,7 +5046,6 @@ export const Constants = {
         "archived",
         "error",
       ],
-      conversation_analysis_status: ["pending", "processing", "completed", "failed"],
       job_status: ["pending", "in_progress", "done", "error", "retry"],
       project_workflow_type: ["research", "sales", "conversation_analysis"],
       sales_framework: ["BANT_GPCT", "SPICED", "MEDDIC", "MAP"],

@@ -24,6 +24,7 @@ import { FacetResolver, getFacetCatalog, persistFacetObservations } from "~/lib/
 import { createPlannedAnswersForInterview } from "~/lib/database/project-answers.server"
 import { getLangfuseClient } from "~/lib/langfuse.server"
 import { getServerClient } from "~/lib/supabase/client.server"
+import type { ConversationAnalysis } from "~/lib/conversation-analyses/schema"
 import type { Database, InsightInsert, Interview, InterviewInsert } from "~/types"
 import { generateConversationAnalysis } from "~/utils/conversationAnalysis.server"
 import { getR2KeyFromPublicUrl } from "~/utils/r2.server"
@@ -2305,6 +2306,74 @@ export async function processInterviewTranscriptWithClient({
 		fullTranscript: uploadResult.fullTranscript,
 	})
 
+	const attendees = [metadata.interviewerName, metadata.participantName].filter(
+		(value): value is string => typeof value === "string" && value.trim().length > 0
+	)
+
+	let conversationAnalysis: ConversationAnalysis | null = null
+
+	try {
+		conversationAnalysis = await generateConversationAnalysis({
+			transcript: uploadResult.fullTranscript,
+			context: {
+				meetingTitle: metadata.interviewTitle || analysisResult.interview.title || undefined,
+				attendees: attendees.length ? attendees : undefined,
+			},
+		})
+
+		const normalizedConversationAnalysis = {
+			overview: conversationAnalysis.overview,
+			duration_estimate: conversationAnalysis.duration_estimate ?? null,
+			questions: conversationAnalysis.questions,
+			participant_goals: conversationAnalysis.participant_goals,
+			key_takeaways: conversationAnalysis.key_takeaways,
+			open_questions: conversationAnalysis.open_questions,
+			recommended_next_steps: conversationAnalysis.recommended_next_steps,
+		}
+
+		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
+			? (analysisResult.interview.high_impact_themes ?? []).filter(
+					(value): value is string => typeof value === "string" && value.trim().length > 0
+			  )
+			: []
+
+		let takeawayStrings = existingThemes
+		if (!existingThemes.length && conversationAnalysis.key_takeaways.length) {
+			takeawayStrings = conversationAnalysis.key_takeaways.map((takeaway) => {
+				const priorityLabel = takeaway.priority ? `[${takeaway.priority.toUpperCase()}] ` : ""
+				const snippet = Array.isArray(takeaway.evidence_snippets) ? takeaway.evidence_snippets[0] : undefined
+				const snippetText = snippet ? ` — ${snippet}` : ""
+				return `${priorityLabel}${takeaway.summary}${snippetText}`.trim()
+			})
+		}
+
+		const openQuestionsText = conversationAnalysis.open_questions.length
+			? conversationAnalysis.open_questions.map((item, idx) => `${idx + 1}. ${item}`).join("\n")
+			: analysisResult.interview.open_questions_and_next_steps ?? null
+
+		const { data: updatedInterview, error: analysisUpdateError } = await db
+			.from("interviews")
+			.update({
+				conversation_analysis: normalizedConversationAnalysis,
+				high_impact_themes: takeawayStrings.length ? takeawayStrings : null,
+				open_questions_and_next_steps: openQuestionsText,
+			})
+			.eq("id", analysisResult.interview.id)
+			.select("conversation_analysis, high_impact_themes, open_questions_and_next_steps")
+			.single()
+
+		if (analysisUpdateError) {
+			consola.warn("Failed to persist conversation analysis on interview", analysisUpdateError)
+		} else {
+			analysisResult.interview.conversation_analysis = updatedInterview?.conversation_analysis ?? normalizedConversationAnalysis
+			analysisResult.interview.high_impact_themes = updatedInterview?.high_impact_themes ?? takeawayStrings
+			analysisResult.interview.open_questions_and_next_steps =
+				updatedInterview?.open_questions_and_next_steps ?? openQuestionsText ?? null
+		}
+	} catch (analysisError) {
+		consola.warn("Failed to generate conversation analysis for interview", analysisError)
+	}
+
 	const projectId = uploadResult.metadata.projectId ?? analysisResult.interview.project_id
 	if (projectId) {
 		const { data: existingGoal } = await db
@@ -2317,20 +2386,27 @@ export async function processInterviewTranscriptWithClient({
 
 		if (!existingGoal) {
 			try {
-				const conversationAnalysis = await generateConversationAnalysis({
-					transcript: uploadResult.fullTranscript,
-					context: undefined,
-				})
+				if (!conversationAnalysis) {
+					conversationAnalysis = await generateConversationAnalysis({
+						transcript: uploadResult.fullTranscript,
+						context: {
+							meetingTitle: metadata.interviewTitle || analysisResult.interview.title || undefined,
+							attendees: attendees.length ? attendees : undefined,
+						},
+					})
+				}
 
-				await db.from("project_sections").insert({
-					project_id: projectId,
-					kind: "research_goal",
-					content_md: conversationAnalysis.overview,
-					meta: {
-						source: "conversation_analysis",
-						generated_at: new Date().toISOString(),
-					},
-				})
+				if (conversationAnalysis?.overview) {
+					await db.from("project_sections").insert({
+						project_id: projectId,
+						kind: "research_goal",
+						content_md: conversationAnalysis.overview,
+						meta: {
+							source: "conversation_analysis",
+							generated_at: new Date().toISOString(),
+						},
+					})
+				}
 			} catch (goalError) {
 				consola.warn("Failed to backfill research goal from conversation analysis", goalError)
 			}

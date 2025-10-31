@@ -24,6 +24,7 @@ export const getInterviews = async ({
 			high_impact_themes,
 			observations_and_notes,
 			open_questions_and_next_steps,
+			conversation_analysis,
 			status,
 			media_url,
 			media_type,
