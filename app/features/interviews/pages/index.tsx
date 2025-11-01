@@ -1,7 +1,7 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { Grid, List, Upload } from "lucide-react"
+import { Grid, List, MessageSquare, MessagesSquare, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router"
@@ -89,48 +89,48 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const [viewMode, setViewMode] = useState<"cards" | "table">("table")
 
 	return (
-		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
+		<div className="relative min-h-screen bg-background">
 			{/* Clean Header - Metro Style */}
-			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
+			<div className="border-b border-border bg-card px-6 py-8">
 				<PageContainer size="lg" padded={false} className="max-w-6xl">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<h1 className="text-3xl text-foreground dark:text-foreground">Encounters</h1>
-
-							<div className="flex flex-row justify-between">
-								<div className="mt-2 mr-5 text-foreground/60 text-lg dark:text-foreground/60">
-									Conversations, Recordings & Documents
-									<span className="ml-2">({interviews.length})</span>
-								</div>
-								{/* View Toggle */}
-
-								<ToggleGroup
-									type="single"
-									value={viewMode}
-									onValueChange={(v) => v && setViewMode(v)}
-									size="sm"
-									className="shrink-0"
-								>
-									<ToggleGroupItem value="cards" aria-label="Cards">
-										<Grid className="h-4 w-4" />
-									</ToggleGroupItem>
-									<ToggleGroupItem value="table" aria-label="Table">
-										<List className="h-4 w-4" />
-									</ToggleGroupItem>
-								</ToggleGroup>
-							</div>
+					<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+						<div className="space-y-3">
+							<h1 className="flex items-center gap-2 text-3xl font-semibold text-foreground">
+								<MessagesSquare />
+								Recordings
+							</h1>
+							<p className="text-muted-foreground">
+								Conversations, recordings, and documents
+								<span className="ml-2 text-sm">({interviews.length})</span>
+							</p>
 						</div>
 
-						<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-							{/* Actions */}
-							<div className="flex flex-col gap-2 sm:flex-row sm:gap-3">
-								<Button asChild variant="default" className="gap-2">
-									<Link to={routes.interviews.upload()}>
-										<Upload className="h-4 w-4" />
-										Upload / Record Media
-									</Link>
-								</Button>
-							</div>
+						{/* Actions */}
+						<div className="flex w-full flex-col gap-3 sm:w-auto sm:flex-row sm:items-center sm:justify-end">
+							<ToggleGroup
+								type="single"
+								value={viewMode}
+								onValueChange={(v) => v && setViewMode(v)}
+								size="sm"
+								className="justify-end sm:w-auto"
+							>
+								<ToggleGroupItem value="cards" aria-label="Cards" className="sm:px-3">
+									<Grid className="h-4 w-4" />
+								</ToggleGroupItem>
+								<ToggleGroupItem value="table" aria-label="Table" className="sm:px-3">
+									<List className="h-4 w-4" />
+								</ToggleGroupItem>
+							</ToggleGroup>
+							<Button
+								asChild
+								variant="default"
+								className="w-full break-words whitespace-normal text-sm sm:w-auto sm:whitespace-nowrap"
+							>
+				<Link to={routes.interviews.upload()}>
+					<Upload className="h-4 w-4" />
+					Upload / Record Media
+				</Link>
+			</Button>
 						</div>
 					</div>
 				</PageContainer>

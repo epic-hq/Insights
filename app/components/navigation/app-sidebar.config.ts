@@ -62,7 +62,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			{
 				// keep key "conversations" for count mapping; label is Encounters
 				key: "conversations",
-				title: "Encounters",
+				title: "Recordings",
 				description: "Calls, meetings, uploads",
 				icon: File,
 				to: (routes) => routes.interviews.index(),

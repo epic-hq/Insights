@@ -281,7 +281,7 @@ export function AppSidebar() {
 									const isActive = href ? location.pathname === href : false
 
 									return (
-										<SidebarMenuItem key={item.key}>
+										<SidebarMenuItem key={item.key} className="py-0.5">
 											{href ? (
 												<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
 													<NavLink to={href} className="flex items-center gap-2">
@@ -311,7 +311,7 @@ export function AppSidebar() {
 						<SidebarGroupLabel>Revenue</SidebarGroupLabel>
 						<SidebarGroupContent>
 							<SidebarMenu>
-								<SidebarMenuItem>
+								<SidebarMenuItem className="py-0">
 									<SidebarMenuButton
 										onClick={() => setShowValidationView(!showValidationView)}
 										tooltip={buildTooltip(showValidationView ? "Dashboard View" : "Validation Status")}
@@ -325,7 +325,7 @@ export function AppSidebar() {
 										<span>{showValidationView ? "Dashboard View" : "Validation Status"}</span>
 									</SidebarMenuButton>
 								</SidebarMenuItem>
-								<SidebarMenuItem>
+								<SidebarMenuItem className="py-0.5">
 									<SidebarMenuButton>
 										<HandshakeIcon className="h-4 w-4" />
 										<span>Opportunities</span>
@@ -341,7 +341,7 @@ export function AppSidebar() {
 				{/* Utility Links - closer to user profile */}
 				<SidebarMenu>
 					{/* Invite Team Modal */}
-					<SidebarMenuItem>
+					<SidebarMenuItem className="py-0.5">
 						<InviteTeamModal collapsed={isCollapsed} accountId={effectiveAccountId} />
 					</SidebarMenuItem>
 
@@ -351,7 +351,7 @@ export function AppSidebar() {
 						const isActive = href ? location.pathname === href : false
 
 						return (
-							<SidebarMenuItem key={item.key}>
+							<SidebarMenuItem key={item.key} className="py-0.5">
 								{href ? (
 									<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
 										<NavLink to={href} className="flex items-center gap-2">
