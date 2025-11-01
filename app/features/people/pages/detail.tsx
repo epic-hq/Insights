@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
@@ -12,15 +13,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
 import { getPersonById } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
-import { createProjectRoutes } from "~/utils/routes.server"
 import type { Insight } from "~/types"
+import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -269,22 +270,30 @@ export default function PersonDetail() {
 	const metadataNode =
 		metadataItems.length > 0
 			? metadataItems.map((item) => (
-					<span key={item} className="font-medium text-sm text-muted-foreground">
-						{item}
-					</span>
-				))
+				<span key={item} className="font-medium text-muted-foreground text-sm">
+					{item}
+				</span>
+			))
 			: undefined
-	const badgeNode = persona?.name ? (
-		<Link to={routes.personas.detail(persona.id)}>
-			<Badge
-				variant="secondary"
-				className="text-xs font-medium"
-				style={{ backgroundColor: `${themeColor}1a`, color: themeColor, borderColor: themeColor }}
-			>
-				Persona: {persona.name}
-			</Badge>
-		</Link>
-	) : undefined
+	const avatarNode = (
+		<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
+			{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
+			<AvatarFallback style={{ backgroundColor: `${themeColor}33`, color: themeColor }}>{initials}</AvatarFallback>
+		</Avatar>
+	)
+	const personaBadgeNode = persona?.name ? (
+		<div className="flex justify-start mb-3">
+			<Link to={routes.personas.detail(persona.id)}>
+				<Badge
+					variant="secondary"
+					className="font-medium text-xs"
+					style={{ backgroundColor: `${themeColor}1a`, color: themeColor, borderColor: themeColor }}
+				>
+					Persona: {persona.name}
+				</Badge>
+			</Link>
+		</div>
+	) : null
 	const quickFacts: Array<{ label: string; value: string }> = [
 		person.segment ? { label: "Segment", value: person.segment } : null,
 		person.title ? { label: "Role", value: person.title } : null,
@@ -296,235 +305,133 @@ export default function PersonDetail() {
 		{ label: "Interviews", value: String(interviewLinks.length) },
 	].filter((fact): fact is { label: string; value: string } => Boolean(fact?.value))
 
-return (
-	<div className="relative min-h-screen bg-muted/20">
-		<PersonaPeopleSubnav />
-		<PageContainer className="space-y-8 pb-16">
-			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<BackButton />
-				<div className="flex flex-wrap gap-2">
-					<Button variant="outline" size="sm" onClick={handleAttachRecording}>
-						Attach Recording
-					</Button>
-					<Button asChild variant="outline" size="sm">
-						<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
-					</Button>
-					<Button asChild variant="outline" size="sm">
-						<Link to={routes.people.edit(person.id)}>Edit Person</Link>
-					</Button>
-				</div>
-			</div>
-
-			<DetailPageHeader
-				icon={UserCircle}
-				typeLabel="Person"
-				title={name}
-				description={descriptionText}
-				metadata={metadataNode}
-				badges={badgeNode}
-			/>
-
-			<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
-				<div className="space-y-6">
-					<Card>
-						<CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center">
-							<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
-								{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
-								<AvatarFallback style={{ backgroundColor: `${themeColor}33`, color: themeColor }}>
-									{initials}
-								</AvatarFallback>
-							</Avatar>
-							<div className="space-y-3">
-								<div className="flex flex-wrap gap-2">
-									{person.segment && (
-										<Badge variant="outline" className="text-xs">
-											Segment: {person.segment}
-										</Badge>
-									)}
-									{person.title && (
-										<Badge variant="outline" className="text-xs">
-											Role: {person.title}
-										</Badge>
-									)}
-								</div>
-								{person.description && <p className="text-sm text-muted-foreground">{person.description}</p>}
-							</div>
-						</CardContent>
-					</Card>
-
-					{facetsGrouped.length > 0 && (
-						<Card>
-							<CardHeader>
-								<CardTitle>Key Attributes</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-4">
-								{facetsGrouped.map((group) => (
-									<div key={group.kind_slug} className="space-y-2">
-										<h4 className="font-medium text-sm">{group.label}</h4>
-										<div className="flex flex-wrap gap-2">
-											{group.facets.map((facet) => (
-												<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
-													{facet.label}
-												</Badge>
-											))}
-										</div>
-									</div>
-								))}
-							</CardContent>
-						</Card>
-					)}
-
-					<Card>
-						<CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-							<div>
-								<CardTitle>Organizations</CardTitle>
-								<p className="text-sm text-muted-foreground">Accounts linked to this participant.</p>
-							</div>
-							{availableOrganizations.length > 0 && !showLinkForm && (
-								<Button variant="outline" size="sm" onClick={() => setShowLinkForm(true)}>
-									Link organization
-								</Button>
-							)}
-						</CardHeader>
-						<CardContent className="space-y-4">
-							{sortedLinkedOrganizations.length > 0 ? (
-								<div className="space-y-3">
-									{sortedLinkedOrganizations.map((link) => {
-										const organization = link.organization
-										if (!organization) return null
-										return (
-											<div
-												key={link.id}
-												className="flex items-center justify-between rounded-lg border border-border/60 bg-background p-3"
-											>
-												<div>
-													<Link
-														to={routes.organizations.detail(organization.id)}
-														className="font-medium text-sm text-foreground hover:text-primary"
-													>
-														{organization.name}
-													</Link>
-													<div className="text-xs text-muted-foreground">
-														{link.role || "Linked participant"}
-													</div>
-												</div>
-												<Form method="post">
-													<input type="hidden" name="_action" value="unlink-organization" />
-													<input type="hidden" name="organization_id" value={organization.id} />
-													<Button type="submit" variant="ghost" size="sm" className="text-muted-foreground">
-														Remove
-													</Button>
-												</Form>
-											</div>
-										)
-									})}
-								</div>
-							) : (
-								<div className="rounded-lg border border-dashed p-6 text-center text-sm text-muted-foreground">
-									No organizations linked yet
-								</div>
-							)}
-
-							{actionData?.error && (
-								<div className="rounded-md bg-destructive/15 p-3 text-sm text-destructive">{actionData.error}</div>
-							)}
-
-							{showLinkForm && availableOrganizations.length > 0 && (
-								<Form method="post" className="space-y-3 rounded-lg border border-dashed p-4">
-									<input type="hidden" name="_action" value="link-organization" />
-									<Select name="organization_id" defaultValue={availableOrganizations[0]?.id ?? ""}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select organization" />
-										</SelectTrigger>
-										<SelectContent>
-											{availableOrganizations.map((org) => (
-												<SelectItem key={org.id} value={org.id}>
-													{org.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									<Input name="role" placeholder="Role or relationship" />
-									<div className="flex gap-2">
-										<Button type="submit" size="sm">
-											Link
-										</Button>
-										<Button type="button" variant="ghost" size="sm" onClick={() => setShowLinkForm(false)}>
-											Cancel
-										</Button>
-									</div>
-								</Form>
-							)}
-						</CardContent>
-					</Card>
-
-					{relatedInsights.length > 0 && (
-						<section className="space-y-3">
-							<h2 className="font-semibold text-lg text-foreground">Related Insights</h2>
-							<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-								{relatedInsights.map((insight) => (
-									<InsightCardV3 key={insight.id} insight={insight} />
-								))}
-							</div>
-						</section>
-					)}
-				</div>
-
-				<div className="space-y-6">
-					<div className="grid gap-4 md:grid-cols-2">
-						<Card className="max-w-sm">
-							<CardHeader>
-								<CardTitle>Quick Facts</CardTitle>
-							</CardHeader>
-							<CardContent className="space-y-3">
-								{quickFacts.map((fact) => (
-									<div key={fact.label}>
-										<div className="text-xs uppercase tracking-wide text-muted-foreground">{fact.label}</div>
-										<div className="font-medium text-sm text-foreground">{fact.value}</div>
-									</div>
-								))}
-							</CardContent>
-						</Card>
-
-						<Card className="max-w-sm">
-							<CardHeader>
-								<CardTitle>Interview History</CardTitle>
-							</CardHeader>
-							<CardContent>
-								{interviewLinks.length > 0 ? (
-									<div className="space-y-3">
-										{interviewLinks.slice(0, 4).map((link) => (
-											<div
-												key={link.id}
-												className="rounded-lg border border-border/60 bg-background p-3 hover:border-primary/40"
-											>
-												<Link
-													to={routes.interviews.detail(link.interviews?.id || "")}
-													className="font-medium text-foreground hover:text-primary"
-												>
-													{link.interviews?.title || `Interview ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
-												</Link>
-												<p className="text-xs text-muted-foreground">
-													{link.interviews?.created_at &&
-														new Date(link.interviews.created_at).toLocaleDateString()}
-												</p>
-											</div>
-										))}
-										{interviewLinks.length > 4 && (
-											<p className="text-center text-xs text-muted-foreground">
-												+{interviewLinks.length - 4} more interviews
-											</p>
-										)}
-									</div>
-								) : (
-									<p className="text-sm text-muted-foreground">No interviews yet</p>
-								)}
-							</CardContent>
-						</Card>
+	return (
+		<div className="relative min-h-screen bg-muted/20">
+			<PersonaPeopleSubnav />
+			<PageContainer className="space-y-8 pb-16">
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+					<BackButton />
+					<div className="flex flex-wrap gap-2">
+						<Button variant="outline" size="sm" onClick={handleAttachRecording}>
+							Attach Recording
+						</Button>
+						<Button asChild variant="outline" size="sm">
+							<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
+						</Button>
+						<Button asChild variant="outline" size="sm">
+							<Link to={routes.people.edit(person.id)}>Edit Person</Link>
+						</Button>
 					</div>
 				</div>
-			</div>
-		</PageContainer>
-	</div>
-)
+
+				<DetailPageHeader
+					icon={UserCircle}
+					typeLabel="Person"
+					title={name}
+					description={descriptionText}
+					metadata={metadataNode}
+					avatar={avatarNode}
+					aboveDescription={personaBadgeNode}
+					organizations={{
+						sortedLinkedOrganizations,
+						availableOrganizations,
+						showLinkForm,
+						setShowLinkForm,
+						actionData,
+						routes,
+					}}
+				/>
+
+				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
+					<div className="space-y-6">
+						{facetsGrouped.length > 0 && (
+							<Card>
+								<CardHeader>
+									<CardTitle>Key Attributes</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
+									{facetsGrouped.map((group) => (
+										<div key={group.kind_slug} className="space-y-2">
+											<h4 className="font-medium text-sm">{group.label}</h4>
+											<div className="flex flex-wrap gap-2">
+												{group.facets.map((facet) => (
+													<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
+														{facet.label}
+													</Badge>
+												))}
+											</div>
+										</div>
+									))}
+								</CardContent>
+							</Card>
+						)}
+
+						{relatedInsights.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="font-semibold text-foreground text-lg">Related Insights</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{relatedInsights.map((insight) => (
+										<InsightCardV3 key={insight.id} insight={insight} />
+									))}
+								</div>
+							</section>
+						)}
+					</div>
+
+					<div className="space-y-6">
+						<div className="grid gap-4 md:grid-cols-2">
+							<Card className="max-w-sm">
+								<CardHeader>
+									<CardTitle>Quick Facts</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-3">
+									{quickFacts.map((fact) => (
+										<div key={fact.label}>
+											<div className="text-muted-foreground text-xs uppercase tracking-wide">{fact.label}</div>
+											<div className="font-medium text-foreground text-sm">{fact.value}</div>
+										</div>
+									))}
+								</CardContent>
+							</Card>
+
+							<Card className="max-w-sm">
+								<CardHeader>
+									<CardTitle>Interview History</CardTitle>
+								</CardHeader>
+								<CardContent>
+									{interviewLinks.length > 0 ? (
+										<div className="space-y-3">
+											{interviewLinks.slice(0, 4).map((link) => (
+												<div
+													key={link.id}
+													className="rounded-lg border border-border/60 bg-background p-3 hover:border-primary/40"
+												>
+													<Link
+														to={routes.interviews.detail(link.interviews?.id || "")}
+														className="font-medium text-foreground hover:text-primary"
+													>
+														{link.interviews?.title || `Interview ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
+													</Link>
+													<p className="text-muted-foreground text-xs">
+														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</div>
+											))}
+											{interviewLinks.length > 4 && (
+												<p className="text-center text-muted-foreground text-xs">
+													+{interviewLinks.length - 4} more interviews
+												</p>
+											)}
+										</div>
+									) : (
+										<p className="text-muted-foreground text-sm">No interviews yet</p>
+									)}
+								</CardContent>
+							</Card>
+						</div>
+					</div>
+				</div>
+			</PageContainer>
+		</div>
+	)
 }
