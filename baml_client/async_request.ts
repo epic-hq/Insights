@@ -22,7 +22,7 @@ import type { BamlRuntime, BamlCtxManager, ClientRegistry, Image, Audio, Pdf, Vi
 import { toBamlError, HTTPRequest } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
 import type * as types from "./types"
-import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, ConversationAnalysis, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetMention, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, Interviewee, KindTags, NoteSnippet, OpportunityRecommendation, ParticipantGoal, Person, PersonFacetObservation, PersonScaleObservation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SuggestedQuestion, ThemeCandidate, TurnAnchors} from "./types"
+import type {ActionButton, Anchor, AutoGroupThemesResponse, AutoInsightsResponse, BBValues, BatchEvaluationResult, Category, Chapter, ContextualSuggestions, ConversationAnalysis, ConversationQuestion, ConversationRecommendation, ConversationTakeaway, DecisionQuestionAnswer, DecisionQuestionItem, DecisionQuestionOut, Emotions, EvidenceAnalysisResponse, EvidenceExtraction, EvidenceItem, EvidenceLinkProposal, EvidenceLinkResult, EvidenceParticipant, EvidenceQuestionLink, EvidenceSet, EvidenceTurn, EvidenceUnit, ExecutiveInsight, ExecutiveSummary, ExtractedInsight, Extraction, FacetCandidatePayload, FacetCatalog, FacetCatalogEntry, FacetCatalogKind, FacetMention, FollowUpQuestion, FollowUpQuestionScores, FollowUpSet, GapAnalysis, GenerateInputs, HistoryItem, InsightMatch, InterviewDoc, InterviewExtraction, InterviewMetadata, InterviewPromptItem, InterviewPromptOut, KindTags, NoteSnippet, OpportunityRecommendation, Participant, ParticipantGoal, Person, PersonFacetObservation, PersonScaleObservation, Persona, Persona1, PersonaAnalysis, PersonaAssignmentDecision, PersonaExtraction, PersonaFacet, PersonaSet, ProjectAnalysis, ProjectNameDescription, ProjectTemplateOut, Question, QuestionAnalysisSummary, QuestionContext, QuestionEvaluation, QuestionImprovement, QuestionIssue, QuestionPolicy, QuestionSet, ResearchGoal, ResearchPlanOut, ResearchQuestion, ResearchQuestionAnswer, ResearchQuestionItem, ResearchQuestionOut, ResearchQuestionSuggestions, ResearchStructure, Scene, Scores, Set, SetRecord, Source, SpeakerUtterance, Spectrum, SuggestedQuestion, ThemeCandidate, TurnAnchors} from "./types"
 import type TypeBuilder from "./type_builder"
 
 type TickReason = "Unknown";
@@ -89,7 +89,7 @@ export class AsyncHttpRequest {
   }
   
   async AssignPersonaToInterview(
-      interview_transcript: string,interviewee_info: string,existing_personas: string,
+      interview_transcript: string,participant_info: string,existing_personas: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -100,7 +100,7 @@ export class AsyncHttpRequest {
       return await this.runtime.buildRequest(
         "AssignPersonaToInterview",
         {
-          "interview_transcript": interview_transcript,"interviewee_info": interviewee_info,"existing_personas": existing_personas
+          "interview_transcript": interview_transcript,"participant_info": participant_info,"existing_personas": existing_personas
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),
@@ -845,7 +845,7 @@ export class AsyncHttpStreamRequest {
   }
   
   async AssignPersonaToInterview(
-      interview_transcript: string,interviewee_info: string,existing_personas: string,
+      interview_transcript: string,participant_info: string,existing_personas: string,
       __baml_options__?: BamlCallOptions
   ): Promise<HTTPRequest> {
     try {
@@ -856,7 +856,7 @@ export class AsyncHttpStreamRequest {
       return await this.runtime.buildRequest(
         "AssignPersonaToInterview",
         {
-          "interview_transcript": interview_transcript,"interviewee_info": interviewee_info,"existing_personas": existing_personas
+          "interview_transcript": interview_transcript,"participant_info": participant_info,"existing_personas": existing_personas
         },
         this.ctxManager.cloneContext(),
         __baml_options__?.tb?.__tb(),

@@ -75,7 +75,7 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 					return (
 						<Badge
 							variant="secondary"
-							className="border px-2 py-0.5 text-xs font-medium"
+							className="border px-2 py-0.5 font-medium text-xs"
 							style={
 								color
 									? {
@@ -101,12 +101,12 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 					return organization.id ? (
 						<Link
 							to={routes.organizations.detail(organization.id)}
-							className="text-sm text-foreground transition-colors hover:text-primary"
+							className="text-foreground text-sm transition-colors hover:text-primary"
 						>
 							{organization.name ?? "View organization"}
 						</Link>
 					) : (
-						<span className="text-sm text-foreground">{organization.name}</span>
+						<span className="text-foreground text-sm">{organization.name}</span>
 					)
 				},
 				enableSorting: false,
@@ -183,11 +183,7 @@ export function PeopleDataTable({ rows }: PeopleDataTableProps) {
 									className="cursor-pointer select-none"
 								>
 									{flexRender(header.column.columnDef.header, header.getContext())}
-									{header.column.getIsSorted() === "asc"
-										? " ↑"
-										: header.column.getIsSorted() === "desc"
-											? " ↓"
-											: ""}
+									{header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
 								</TableHead>
 							))}
 						</TableRow>

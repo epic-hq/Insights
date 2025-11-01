@@ -42,7 +42,9 @@ export function DetailPageHeader({
 					{avatar && <div className="flex-shrink-0">{avatar}</div>}
 					<div className="flex-1">
 						<CardTitle className="font-bold text-3xl text-foreground">{title}</CardTitle>
-						{metadata && <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">{metadata}</div>}
+						{metadata && (
+							<div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">{metadata}</div>
+						)}
 						{badges && <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">{badges}</div>}
 					</div>
 				</div>

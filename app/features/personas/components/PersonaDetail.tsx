@@ -143,11 +143,11 @@ const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) =
 					</div>
 				</div>
 
-				{/* Interviewee List Section */}
+				{/* Participant List Section */}
 				<div className="mt-6 rounded-lg bg-gray-50 p-4 md:col-span-2 dark:bg-gray-800">
-					<h2 className="mb-3 font-semibold text-lg">Interviewees in this Persona</h2>
+					<h2 className="mb-3 font-semibold text-lg">Participants in this Persona</h2>
 					<div className="grid grid-cols-1 gap-3 md:grid-cols-2 lg:grid-cols-3">
-						{/* Filter interviewees by persona */}
+						{/* Filter participants by persona */}
 						{interviews
 							.filter((interview) => interview.segment === persona.name)
 							.map((interview) => (
@@ -171,10 +171,10 @@ const PersonaDetail: React.FC<PersonaDetailProps> = ({ personas, interviews }) =
 								</div>
 							))}
 
-						{/* Show message if no interviewees match this persona */}
+						{/* Show message if no participants match this persona */}
 						{interviews.filter((interview) => interview.segment === persona.name).length === 0 && (
 							<div className="col-span-full py-4 text-center text-gray-500">
-								No interviewees found for this persona.
+								No participants found for this persona.
 							</div>
 						)}
 					</div>

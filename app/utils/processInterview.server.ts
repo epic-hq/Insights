@@ -11,8 +11,10 @@ import posthog from "posthog-js"
 import { b } from "~/../baml_client"
 import type {
 	EvidenceParticipant,
+	EvidenceUnit,
 	FacetCatalog,
 	FacetMention,
+	InterviewExtraction,
 	PersonFacetObservation,
 	PersonScaleObservation,
 } from "~/../baml_client/types"
@@ -67,13 +69,17 @@ export interface AnalyzeThemesAndPersonaResult {
 	interview: Interview
 }
 
-export interface AnalyzeThemesTaskPayload {
+export interface GenerateInterviewInsightsTaskPayload {
 	metadata: InterviewMetadata
 	interview: Interview
 	fullTranscript: string
 	userCustomInstructions?: string
 	evidenceResult: ExtractEvidenceResult
 	analysisJobId?: string
+}
+
+export interface AnalyzeThemesTaskPayload extends GenerateInterviewInsightsTaskPayload {
+	interviewInsights: InterviewExtraction
 }
 
 export interface AttributeAnswersTaskPayload {
@@ -497,6 +503,37 @@ interface ExtractEvidenceResult {
 	insertedEvidenceIds: string[]
 	evidenceUnits: EvidenceFromBaml["evidence"]
 	evidenceFacetKinds: string[][]
+}
+
+interface GenerateInterviewInsightsOptions {
+	evidenceUnits: EvidenceUnit[]
+	userCustomInstructions?: string
+}
+
+export async function generateInterviewInsightsFromEvidenceCore({
+	evidenceUnits,
+	userCustomInstructions,
+}: GenerateInterviewInsightsOptions): Promise<InterviewExtraction> {
+	const instructions = userCustomInstructions ?? ""
+
+	let lastErr: unknown = null
+	for (let attempt = 0; attempt < 3; attempt++) {
+		try {
+			const response = await b.GenerateKeyTakeawaysFromEvidence(evidenceUnits, instructions)
+			consola.log("BAML generateInterviewInsights response:", response)
+			return response
+		} catch (error) {
+			lastErr = error
+			const delayMs = 500 * (attempt + 1)
+			consola.warn(
+				`GenerateKeyTakeawaysFromEvidence failed (attempt ${attempt + 1}/3), retrying in ${delayMs}ms`,
+				error
+			)
+			await new Promise((resolve) => setTimeout(resolve, delayMs))
+		}
+	}
+
+	throw lastErr
 }
 
 export async function extractEvidenceAndPeopleCore({
@@ -1540,6 +1577,7 @@ export async function analyzeThemesAndPersonaCore({
 	fullTranscript,
 	userCustomInstructions,
 	evidenceResult,
+	interviewInsights,
 }: {
 	db: SupabaseClient<Database>
 	metadata: InterviewMetadata
@@ -1547,6 +1585,7 @@ export async function analyzeThemesAndPersonaCore({
 	fullTranscript: string
 	userCustomInstructions?: string
 	evidenceResult: ExtractEvidenceResult
+	interviewInsights?: InterviewExtraction
 }): Promise<AnalyzeThemesAndPersonaResult> {
 	try {
 		await autoGroupThemesAndApply({
@@ -1559,7 +1598,7 @@ export async function analyzeThemesAndPersonaCore({
 		consola.warn("Auto theme generation failed; continuing without themes", themeErr)
 	}
 
-	async function extractInsightsWithRetry(text: string, instructions: string, attempts = 2) {
+	async function extractTranscriptInsightsWithRetry(text: string, instructions: string, attempts = 2) {
 		let lastErr: unknown = null
 		for (let i = 0; i <= attempts; i++) {
 			try {
@@ -1574,18 +1613,32 @@ export async function analyzeThemesAndPersonaCore({
 		throw lastErr
 	}
 
-	type ExtractInsightsResponse = Awaited<ReturnType<typeof b.ExtractInsights>>
-	let response: ExtractInsightsResponse
-	try {
-		response = await extractInsightsWithRetry(fullTranscript, userCustomInstructions || "")
-		consola.log("BAML extractInsights response:", response)
-	} catch (err) {
-		const errMsg = err instanceof Error ? err.message : String(err)
-		consola.error("ExtractInsights ultimately failed after retries:", errMsg)
-		throw new Error(`Insights extraction failed: ${errMsg}`)
+	let response: InterviewExtraction
+	if (interviewInsights) {
+		response = interviewInsights
+	} else {
+		try {
+			response = await generateInterviewInsightsFromEvidenceCore({
+				evidenceUnits: evidenceResult.evidenceUnits,
+				userCustomInstructions,
+			})
+		} catch (err) {
+			consola.warn(
+				"GenerateKeyTakeawaysFromEvidence ultimately failed, falling back to transcript-based extraction",
+				err
+			)
+			try {
+				response = await extractTranscriptInsightsWithRetry(fullTranscript, userCustomInstructions || "")
+				consola.log("BAML extractInsights response:", response)
+			} catch (fallbackErr) {
+				const errMsg = fallbackErr instanceof Error ? fallbackErr.message : String(fallbackErr)
+				consola.error("ExtractInsights ultimately failed after retries:", errMsg)
+				throw new Error(`Insights extraction failed: ${errMsg}`)
+			}
+		}
 	}
 
-	const { insights, interviewee, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
+	const { insights, participant, highImpactThemes, openQuestionsAndNextSteps, observationsAndNotes } = response
 
 	if (!insights?.length) {
 		return { storedInsights: [], interview: interviewRecord }
@@ -1634,18 +1687,19 @@ export async function analyzeThemesAndPersonaCore({
 	}
 
 	const personData = evidenceResult.personData
-	const personName = interviewee?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
+	const personName = participant?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
 	const personUpdatePayload: PeopleUpdate = {
 		name: personName,
-		description: interviewee?.participantDescription?.trim() || evidenceResult.primaryPersonDescription || null,
-		segment: interviewee?.segment?.trim() || evidenceResult.primaryPersonSegments[0] || metadata.segment || null,
-		contact_info: interviewee?.contactInfo || null,
+		description: participant?.participantDescription?.trim() || evidenceResult.primaryPersonDescription || null,
+		segment: participant?.segment?.trim() || evidenceResult.primaryPersonSegments[0] || metadata.segment || null,
+		contact_info: participant?.contactInfo || null,
 		company: evidenceResult.primaryPersonOrganization || null,
 		role: evidenceResult.primaryPersonRole || null,
+		preferences: participant?.facetSummary ?? null,
 	}
 	const { error: personUpdateErr } = await db.from("people").update(personUpdatePayload).eq("id", personData.id)
 	if (personUpdateErr) {
-		consola.warn("Failed to update primary person with interviewee details", personUpdateErr.message)
+		consola.warn("Failed to update primary person with participant details", personUpdateErr.message)
 	}
 
 	try {
@@ -1841,10 +1895,11 @@ export async function analyzeThemesAndPersonaCore({
 			consola.warn(`Failed to fetch existing personas: ${personasError.message}`)
 		}
 
-		const intervieweeInfo = JSON.stringify({
+		const participantInfo = JSON.stringify({
 			name: personName,
-			segment: interviewee?.segment || metadata.segment || null,
-			description: interviewee?.participantDescription || null,
+			segment: participant?.segment || metadata.segment || null,
+			description: participant?.participantDescription || null,
+			facetSummary: participant?.facetSummary || null,
 		})
 
 		const existingPersonasForBaml = JSON.stringify(
@@ -1855,7 +1910,7 @@ export async function analyzeThemesAndPersonaCore({
 			}))
 		)
 
-		const personaDecision = await b.AssignPersonaToInterview(fullTranscript, intervieweeInfo, existingPersonasForBaml)
+		const personaDecision = await b.AssignPersonaToInterview(fullTranscript, participantInfo, existingPersonasForBaml)
 
 		consola.log("Persona assignment decision:", personaDecision)
 
@@ -1915,7 +1970,7 @@ export async function analyzeThemesAndPersonaCore({
 	await db
 		.from("interviews")
 		.update({
-			segment: interviewee?.segment ?? null,
+			segment: participant?.segment ?? null,
 			high_impact_themes: highImpactThemes ?? null,
 			open_questions_and_next_steps: openQuestionsAndNextSteps ?? null,
 			observations_and_notes: observationsAndNotes ?? null,
@@ -2290,6 +2345,11 @@ export async function processInterviewTranscriptWithClient({
 		fullTranscript: uploadResult.fullTranscript,
 	})
 
+	const interviewInsights = await generateInterviewInsightsFromEvidenceCore({
+		evidenceUnits: evidenceResult.evidenceUnits,
+		userCustomInstructions,
+	})
+
 	const analysisResult = await analyzeThemesAndPersonaCore({
 		db,
 		metadata: uploadResult.metadata,
@@ -2297,6 +2357,7 @@ export async function processInterviewTranscriptWithClient({
 		fullTranscript: uploadResult.fullTranscript,
 		userCustomInstructions,
 		evidenceResult,
+		interviewInsights,
 	})
 
 	await attributeAnswersAndFinalizeCore({

@@ -23,7 +23,11 @@ export default function UploadButton() {
 
 		// Show success notification
 		const insightCount = result.stored?.length || 0
-		showNotification(`Interview processed successfully! Generated ${insightCount} insights. Next: Review insights or add another interview.`, "success", 5000)
+		showNotification(
+			`Interview processed successfully! Generated ${insightCount} insights. Next: Review insights or add another interview.`,
+			"success",
+			5000
+		)
 
 		// Revalidate all route data to refresh dashboard/project status
 		revalidator.revalidate()

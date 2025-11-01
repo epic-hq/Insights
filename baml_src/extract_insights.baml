@@ -255,7 +255,7 @@ class ExtractedInsight {
 	name string @description("Short Text description of the insight in up to 5 words")
 	pain string | null @description("Pain, discomfort, or friction the user experiences in doing a task")
 	details string | null @description("The why or cause of the pain. Details and background leading to or causing the pain. Multiple sentences or bullet points as needed.")
-	evidence string | null @description("A verbatim quote from the interviewee in their own words. Include time stamp at end in parentheses.")
+	evidence string | null @description("A verbatim quote from the participant in their own words. Include time stamp at end in parentheses.")
 	desiredOutcome string | null @description("Desired outcome or benefit the user wants to achieve")
 
 	// Research validation fields
@@ -271,7 +271,7 @@ class ExtractedInsight {
 	category string @description("The topical theme or category of the insight to help us group similar insights") @@dynamic
 	journeyStage string @description("User journey stage in the application or process of insight, e.g. Awareness, Onboarding, Planning, Learning, Assessing, Progress, Community, Support, Other")
 	jtbd string | null @description("The user story or **Job to be done** style phrasing of what the user wants to accomplish, eg When I … I want to … so I can …")
-	contradictions string | null @description("Potential contradictions and themes explicitly or implicitly by omission, things that the interviewee doesn't say, e.g. given an opportunity to discuss A,B,C, they only discussed A. Does the user discuss opposing claims?")
+	contradictions string | null @description("Potential contradictions and themes explicitly or implicitly by omission, things that the participant doesn't say, e.g. given an opportunity to discuss A,B,C, they only discussed A. Does the user discuss opposing claims?")
 	relatedTags string[] @description("Related tags or keywords to the insight. Make tags conceptual, not UI feature names (e.g. social_accountability, not leaderboard)")
 }
 
@@ -285,23 +285,24 @@ class InterviewMetadata {
 // upload media (video, audio, etc.) create interview record points to media file
 // get file -> send to AssemblyAI to transcribe -> TEXT FILE -> add into interview record (string)
 // --> extract insights & metadata (about interview)
-// -> save interview wrapper, interviewee, insights :: Some DB Mapping
+// -> save interview wrapper, participant, insights :: Some DB Mapping
 
-class Interviewee {
-	name string | null	@description("Interviewee name, or null if not identifiable from transcript")
-	persona string | null	@description("A more fine-grained personalization within the segment that captures the interviewee's specific experiences, behavior, and preferences. up to 3 words. Null if unclear.")
+class Participant {
+	name string | null	@description("Participant name, or null if not identifiable from transcript")
+	persona string | null	@description("A more fine-grained personalization within the segment that captures the participant's specific experiences, behavior, and preferences. up to 3 words. Null if unclear.")
 	participantDescription string | null @description("A concise narrative: who they are, their workflow, top frustrations, aspirations, and any standout quotes that define them. <= 7 sentences. Null if insufficient information.")
-	segment string? @description("Interviewee segment, eg. Teacher, Student, Parent, etc.")
-	contactInfo string? @description("Interviewee contact information if given")
+	facetSummary string | null @description("Summarize the participant's key persona facets, motivations, and behavioral signals surfaced in the interview. <= 5 sentences. Null if insufficient information.")
+	segment string? @description("Participant segment, eg. Teacher, Student, Parent, etc.")
+	contactInfo string? @description("Participant contact information if given")
 }
 
 class InterviewExtraction {
 	metadata InterviewMetadata
-	interviewee Interviewee
+	participant Participant
 	insights ExtractedInsight[]
-	relevantAnswers string[] @description("List of relevant answers from the interview to the business goal, key decisions, and research questions.")
-	observationsAndNotes string @description("Pithy takeaways about their attitude, needs, and relevance to the research goals")
-	highImpactThemes string[] @description("List the 3 strongest takeaways and explicitly tie each to a decision or research question (e.g., 'Decision Q: Pricing — Customers balk at annual contracts')")
+	relevantAnswers string[] @description("List of participant responses that directly address the research objectives, business goals, and key decisions.")
+	observationsAndNotes string @description("Concise participant description capturing their attitude, needs, and why they matter for the research objectives.")
+	highImpactThemes string[] @description("Interview key takeaways. List the 3 strongest takeaways and explicitly tie each to a decision or research question (e.g., 'Decision Q: Pricing — Customers balk at annual contracts')")
 	openQuestionsAndNextSteps string @description("What next steps should we take to validate our hypotheses or address our knowledge gaps? Pithy statements.")
 }
 
@@ -323,7 +324,7 @@ function ExtractInsights(transcript: string, userCustomInstructions: string) -> 
     Extract targeted insights from this interview transcript that directly address research questions and validate/refute key assumptions.
 
     Focus on extracting succinct takeaways that answer:
-    - How do the interviewee's responses support or challenge our core assumptions?
+    - How do the participant's responses support or challenge our core assumptions?
     - What specific evidence validates or contradicts our hypotheses?
     - Which research questions does this interview help answer and how?
     - What unexpected findings emerged that we didn't anticipate?
@@ -339,6 +340,11 @@ function ExtractInsights(transcript: string, userCustomInstructions: string) -> 
     2. Challenge or validate core product assumptions
     3. Reveal unexpected user behaviors or needs
     4. Provide actionable direction for product decisions
+
+    ## Participant Profile Requirements
+    - Populate `participant.participantDescription` with a vivid, objective summary of who the participant is, their workflow, and why they matter for the project (<= 7 sentences).
+    - Populate `participant.facetSummary` with the most important persona facets, motivations, and behavioral signals that emerged. Connect facets to supporting evidence where possible.
+    - Ensure `relevantAnswers` contains verbatim or paraphrased responses that directly answer our research objectives, including timestamps when available.
 
     ## Key Takeaway Formatting
 - `highImpactThemes` must contain up to three bullets that mention the specific decision or research question they serve (use the exact question text or a concise alias).
@@ -377,7 +383,7 @@ function GenerateKeyTakeawaysFromEvidence(evidence: EvidenceUnit[], userCustomIn
     Generate targeted insights and key takeaways from this structured interview evidence data.
 
     Focus on extracting succinct takeaways that answer:
-    - How do the interviewee's responses support or challenge our core assumptions?
+    - How do the participant's responses support or challenge our core assumptions?
     - What specific evidence validates or contradicts our hypotheses?
     - Which research questions does this interview help answer and how?
     - What unexpected findings emerged that we didn't anticipate?
@@ -393,6 +399,11 @@ function GenerateKeyTakeawaysFromEvidence(evidence: EvidenceUnit[], userCustomIn
     2. Challenge or validate core product assumptions
     3. Reveal unexpected user behaviors or needs
     4. Provide actionable direction for product decisions
+
+    ## Participant Profile Requirements
+    - Populate `participant.participantDescription` with a vivid, objective summary of who the participant is, their workflow, and why they matter for the project (<= 7 sentences).
+    - Populate `participant.facetSummary` with the most important persona facets, motivations, and behavioral signals that emerged. Connect facets to supporting evidence where possible.
+    - Ensure `relevantAnswers` contains verbatim or paraphrased responses that directly answer our research objectives, including timestamps when available.
 
     ## Key Takeaway Formatting
     - `highImpactThemes` must contain up to three bullets that mention the specific decision or research question they serve (use the exact question text or a concise alias).

@@ -20,8 +20,8 @@ const mockAssignPersona = b.AssignPersonaToInterview as ReturnType<typeof vi.fn>
 
 /**
  * Integration test for processInterviewTranscript to verify:
- * 1. People records are created from interviewee data
- * 2. Personas are created from interviewee.persona
+ * 1. People records are created from participant data
+ * 2. Personas are created from participant.persona
  * 3. Tags are created from insights.relatedTags arrays
  * 4. Junction tables are populated correctly
  */
@@ -32,7 +32,7 @@ describe("processInterviewTranscript Integration", () => {
 		mockAssignPersona.mockReset()
 		mockAssignPersona.mockResolvedValue({ action: "assign_existing", persona_id: null, confidence_score: 0.4 } as any)
 		mockExtractEvidence.mockResolvedValue({ facet_catalog_version: "test", evidence: [], people: [] } as any)
-		mockExtractInsights.mockResolvedValue({ insights: [], interviewee: null } as any)
+		mockExtractInsights.mockResolvedValue({ insights: [], participant: null } as any)
 		await cleanupTestData()
 		await seedTestData()
 	})
@@ -160,7 +160,7 @@ describe("processInterviewTranscript Integration", () => {
 					novelty: 1,
 				},
 			],
-			interviewee: {
+			participant: {
 				name: "John Smith",
 				persona: "Product Manager",
 				participantDescription: "Senior PM at tech company with 5 years experience",
@@ -361,7 +361,7 @@ describe("processInterviewTranscript Integration", () => {
 					relatedTags: ["test_tag"],
 				},
 			],
-			interviewee: {
+			participant: {
 				name: "Jane Doe",
 				persona: null,
 				segment: "Student",

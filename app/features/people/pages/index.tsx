@@ -114,45 +114,46 @@ export default function PeopleIndexPage() {
 		<>
 			<PersonaPeopleSubnav />
 			<PageContainer className="space-y-6">
-			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<div className="flex items-start gap-3">
-					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
-						<UserCircle className="h-6 w-6" />
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+					<div className="flex items-start gap-3">
+						<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+							<UserCircle className="h-6 w-6" />
+						</div>
+						<div>
+							<h1 className="font-semibold text-3xl text-foreground">People</h1>
+							<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+								Track the people behind your interviews. Explore linked personas, signals, and engagement recency from
+								one view.
+							</p>
+						</div>
 					</div>
-					<div>
-						<h1 className="font-semibold text-3xl text-foreground">People</h1>
-						<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-							Track the people behind your interviews. Explore linked personas, signals, and engagement recency from one view.
-						</p>
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+						<ToggleGroup
+							type="single"
+							value={viewMode}
+							onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
+							className="w-full sm:w-auto"
+							variant="outline"
+							size="sm"
+						>
+							<ToggleGroupItem value="cards" aria-label="Card view">
+								<LayoutGrid className="h-4 w-4" />
+							</ToggleGroupItem>
+							<ToggleGroupItem value="table" aria-label="Table view">
+								<TableIcon className="h-4 w-4" />
+							</ToggleGroupItem>
+						</ToggleGroup>
+						<Button asChild variant="outline" className="w-full sm:w-auto">
+							<Link to={routes.people.new()}>Add Person</Link>
+						</Button>
 					</div>
 				</div>
-				<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-					<ToggleGroup
-						type="single"
-						value={viewMode}
-						onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
-						className="w-full sm:w-auto"
-						variant="outline"
-						size="sm"
-					>
-						<ToggleGroupItem value="cards" aria-label="Card view">
-							<LayoutGrid className="h-4 w-4" />
-						</ToggleGroupItem>
-						<ToggleGroupItem value="table" aria-label="Table view">
-							<TableIcon className="h-4 w-4" />
-						</ToggleGroupItem>
-					</ToggleGroup>
-					<Button asChild variant="outline" className="w-full sm:w-auto">
-						<Link to={routes.people.new()}>Add Person</Link>
-					</Button>
-				</div>
-			</div>
 
 				{people.length === 0 ? (
 					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
 						<div className="mx-auto max-w-md space-y-4">
-							<h3 className="font-semibold text-xl text-foreground">No people yet</h3>
-							<p className="text-sm text-muted-foreground">
+							<h3 className="font-semibold text-foreground text-xl">No people yet</h3>
+							<p className="text-muted-foreground text-sm">
 								Add your first person to start tracking research participants and contacts.
 							</p>
 							<Button asChild>

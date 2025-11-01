@@ -129,9 +129,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 		<TooltipProvider>
 			<div className="mx-auto max-w-7xl p-0">
 				<div className="mb-6 flex items-center justify-between">
-					<div className="flex items-center gap-4">
-						{/* Left side empty for now */}
-					</div>
+					<div className="flex items-center gap-4">{/* Left side empty for now */}</div>
 
 					<div className="flex items-center gap-4">
 						<ToggleGroup
@@ -158,8 +156,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 							<TooltipContent className="max-w-sm">
 								<div className="space-y-2">
 									<p>
-										<strong>Coverage:</strong> What percentage of interviews about this theme include this persona?
-										High coverage means this theme affects most people in this group.
+										<strong>Coverage:</strong> What percentage of interviews about this theme include this persona? High
+										coverage means this theme affects most people in this group.
 									</p>
 									<p>
 										<strong>Strength:</strong> How many pieces of evidence support this theme for this persona? Higher
@@ -220,89 +218,33 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 								<tbody>
 									{isTransposed
 										? // Transposed view: themes as rows, personas as columns
-										transposedData.map((themeRow) => (
-											<tr
-												key={themeRow.theme}
-												className={`hover:bg-gray-50 ${selectedTheme === themeRow.theme ? "bg-blue-50" : ""}`}
-											>
-												<td
-													className="cursor-pointer border-b p-3 font-medium"
-													onClick={() => setSelectedTheme(selectedTheme === themeRow.theme ? null : themeRow.theme)}
-												>
-													{themeRow.theme}
-												</td>
-												{themeRow.personas.map((personaCell) => {
-													if (!personaCell.nEff && !personaCell.coverage)
-														return (
-															<td key={personaCell.personaName} className="border-b p-3">
-																-
-															</td>
-														)
-
-													const value = getCellValue(personaCell, viewMode)
-													const colorClass = getCellColor(value, personaCell.wedge, viewMode)
-
-													return (
-														<td key={personaCell.personaName} className="border-b p-3">
-															<div className={`inline-flex items-center rounded-lg border px-3 py-2 ${colorClass}`}>
-																<span className="font-medium">{formatCellValue(value, viewMode)}</span>
-																{personaCell.wedge && (
-																	<Badge
-																		variant="outline"
-																		className="ml-2 border-purple-600 bg-purple-600 text-white text-xs"
-																	>
-																		Wedge
-																	</Badge>
-																)}
-															</div>
-														</td>
-													)
-												})}
-											</tr>
-										))
-										: // Default view: personas as rows, themes as columns
-										data.map(
-											(personaData: {
-												persona: string
-												themes: Array<{
-													themeId: string
-													themeName: string
-													nEff: number
-													coverage: number
-													wedge: boolean
-												}>
-											}) => (
+											transposedData.map((themeRow) => (
 												<tr
-													key={personaData.persona}
-													className={`hover:bg-gray-50 ${selectedPersona === personaData.persona ? "bg-blue-50" : ""}`}
+													key={themeRow.theme}
+													className={`hover:bg-gray-50 ${selectedTheme === themeRow.theme ? "bg-blue-50" : ""}`}
 												>
 													<td
 														className="cursor-pointer border-b p-3 font-medium"
-														onClick={() =>
-															setSelectedPersona(selectedPersona === personaData.persona ? null : personaData.persona)
-														}
+														onClick={() => setSelectedTheme(selectedTheme === themeRow.theme ? null : themeRow.theme)}
 													>
-														{personaData.persona}
+														{themeRow.theme}
 													</td>
-													{themes.map((themeName) => {
-														const themeData = personaData.themes.find(
-															(t: { themeName: string }) => t.themeName === themeName
-														)
-														if (!themeData)
+													{themeRow.personas.map((personaCell) => {
+														if (!personaCell.nEff && !personaCell.coverage)
 															return (
-																<td key={themeName} className="border-b p-3">
+																<td key={personaCell.personaName} className="border-b p-3">
 																	-
 																</td>
 															)
 
-														const value = getCellValue(themeData, viewMode)
-														const colorClass = getCellColor(value, themeData.wedge, viewMode)
+														const value = getCellValue(personaCell, viewMode)
+														const colorClass = getCellColor(value, personaCell.wedge, viewMode)
 
 														return (
-															<td key={themeName} className="border-b p-3">
+															<td key={personaCell.personaName} className="border-b p-3">
 																<div className={`inline-flex items-center rounded-lg border px-3 py-2 ${colorClass}`}>
 																	<span className="font-medium">{formatCellValue(value, viewMode)}</span>
-																	{themeData.wedge && (
+																	{personaCell.wedge && (
 																		<Badge
 																			variant="outline"
 																			className="ml-2 border-purple-600 bg-purple-600 text-white text-xs"
@@ -315,8 +257,64 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 														)
 													})}
 												</tr>
-											)
-										)}
+											))
+										: // Default view: personas as rows, themes as columns
+											data.map(
+												(personaData: {
+													persona: string
+													themes: Array<{
+														themeId: string
+														themeName: string
+														nEff: number
+														coverage: number
+														wedge: boolean
+													}>
+												}) => (
+													<tr
+														key={personaData.persona}
+														className={`hover:bg-gray-50 ${selectedPersona === personaData.persona ? "bg-blue-50" : ""}`}
+													>
+														<td
+															className="cursor-pointer border-b p-3 font-medium"
+															onClick={() =>
+																setSelectedPersona(selectedPersona === personaData.persona ? null : personaData.persona)
+															}
+														>
+															{personaData.persona}
+														</td>
+														{themes.map((themeName) => {
+															const themeData = personaData.themes.find(
+																(t: { themeName: string }) => t.themeName === themeName
+															)
+															if (!themeData)
+																return (
+																	<td key={themeName} className="border-b p-3">
+																		-
+																	</td>
+																)
+
+															const value = getCellValue(themeData, viewMode)
+															const colorClass = getCellColor(value, themeData.wedge, viewMode)
+
+															return (
+																<td key={themeName} className="border-b p-3">
+																	<div className={`inline-flex items-center rounded-lg border px-3 py-2 ${colorClass}`}>
+																		<span className="font-medium">{formatCellValue(value, viewMode)}</span>
+																		{themeData.wedge && (
+																			<Badge
+																				variant="outline"
+																				className="ml-2 border-purple-600 bg-purple-600 text-white text-xs"
+																			>
+																				Wedge
+																			</Badge>
+																		)}
+																	</div>
+																</td>
+															)
+														})}
+													</tr>
+												)
+											)}
 								</tbody>
 							</table>
 						</div>
@@ -472,9 +470,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 														<div className="flex-1">
 															<div className="mb-2 flex items-center gap-2">
 																<h4 className="font-medium">{theme.themeName}</h4>
-																{theme.wedge && (
-																	<Badge className="bg-purple-600 text-white text-xs">Wedge</Badge>
-																)}
+																{theme.wedge && <Badge className="bg-purple-600 text-white text-xs">Wedge</Badge>}
 															</div>
 															<div className="grid grid-cols-2 gap-4 text-sm">
 																<div>
@@ -544,9 +540,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 													<div className="flex-1">
 														<div className="mb-2 flex items-center gap-2">
 															<h4 className="font-medium">{data.persona}</h4>
-															{data.wedge && (
-																<Badge className="bg-purple-600 text-white text-xs">Wedge</Badge>
-															)}
+															{data.wedge && <Badge className="bg-purple-600 text-white text-xs">Wedge</Badge>}
 														</div>
 														<div className="grid grid-cols-2 gap-4 text-sm">
 															<div>

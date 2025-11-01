@@ -642,15 +642,15 @@ export async function validateR2PresignedUrl(url: string): Promise<boolean> {
 
 		// Parse the AMZ date (format: YYYYMMDDTHHMMSSZ)
 		const amzDate = dateParam
-		const year = parseInt(amzDate.slice(0, 4))
-		const month = parseInt(amzDate.slice(4, 6)) - 1 // JS months are 0-based
-		const day = parseInt(amzDate.slice(6, 8))
-		const hour = parseInt(amzDate.slice(9, 11))
-		const minute = parseInt(amzDate.slice(11, 13))
-		const second = parseInt(amzDate.slice(13, 15))
+		const year = Number.parseInt(amzDate.slice(0, 4), 10)
+		const month = Number.parseInt(amzDate.slice(4, 6), 10) - 1 // JS months are 0-based
+		const day = Number.parseInt(amzDate.slice(6, 8), 10)
+		const hour = Number.parseInt(amzDate.slice(9, 11), 10)
+		const minute = Number.parseInt(amzDate.slice(11, 13), 10)
+		const second = Number.parseInt(amzDate.slice(13, 15), 10)
 
 		const signedAt = new Date(Date.UTC(year, month, day, hour, minute, second))
-		const expiresIn = parseInt(expiresParam)
+		const expiresIn = Number.parseInt(expiresParam, 10)
 		const expiresAt = new Date(signedAt.getTime() + expiresIn * 1000)
 		const now = new Date()
 
@@ -660,7 +660,7 @@ export async function validateR2PresignedUrl(url: string): Promise<boolean> {
 			consola.warn("Presigned URL expired or expiring soon", {
 				expiresAt: expiresAt.toISOString(),
 				now: now.toISOString(),
-				bufferMinutes: 5
+				bufferMinutes: 5,
 			})
 			return false
 		}

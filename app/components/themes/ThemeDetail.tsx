@@ -41,25 +41,25 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 		return foundTheme
 	}, [themeId, themeTree])
 
-	// Find interviewees who evidence this theme
-	const relatedInterviewees = useMemo(() => {
+	// Find participants whose interviews evidence this theme
+	const relatedParticipants = useMemo(() => {
 		if (!themeId || !theme?.name) return []
 
-		// Get unique interviewee IDs from insights related to this theme
-		const intervieweeIds = new Set<string>()
+		// Get unique interview IDs from insights related to this theme
+		const interviewIds = new Set<string>()
 
 		// Find insights related to this theme
 		insights.forEach((insight) => {
 			if (insight.category === theme.name) {
 				// If the insight has an interview_id, add it to the set
 				if (insight.interview_id) {
-					intervieweeIds.add(insight.interview_id)
+					interviewIds.add(insight.interview_id)
 				}
 			}
 		})
 
-		// Get full interviewee data
-		return interviews.filter((interview) => intervieweeIds.has(interview.id))
+		// Get full participant interview data
+		return interviews.filter((interview) => interviewIds.has(interview.id))
 	}, [insights, interviews, themeId, theme])
 
 	// Filter insights related to this theme
@@ -148,13 +148,13 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 				</div>
 			</div>
 
-			{/* Interviewees who evidence this theme */}
+			{/* Participants whose interviews evidence this theme */}
 			<div className="mb-8 rounded-lg bg-white p-4 shadow dark:bg-gray-900">
-				<h3 className="mb-4 font-medium text-lg">Interviewees who mentioned this theme</h3>
+				<h3 className="mb-4 font-medium text-lg">Participants who mentioned this theme</h3>
 
-				{relatedInterviewees.length > 0 ? (
+				{relatedParticipants.length > 0 ? (
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
-						{relatedInterviewees.map((interview) => (
+						{relatedParticipants.map((interview) => (
 							<div
 								key={interview.id}
 								className="rounded-lg border border-gray-200 p-3 transition-shadow hover:shadow-md dark:border-gray-700"
@@ -184,7 +184,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 						))}
 					</div>
 				) : (
-					<p className="py-4 text-center text-gray-500">No interviewees found for this theme.</p>
+					<p className="py-4 text-center text-gray-500">No participants found for this theme.</p>
 				)}
 			</div>
 

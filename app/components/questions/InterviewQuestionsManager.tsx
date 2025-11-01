@@ -2382,10 +2382,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																										const updated = questions.map((q) =>
 																											q.id === question.id
 																												? {
-																													...q,
-																													text: editingText,
-																													qualityFlag: quality ?? undefined,
-																												}
+																														...q,
+																														text: editingText,
+																														qualityFlag: quality ?? undefined,
+																													}
 																												: q
 																										)
 																										setQuestions(updated)
@@ -2718,10 +2718,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																						let newBaseIds =
 																							currentIndex >= 0
 																								? [
-																									...baseIds.slice(0, currentIndex + 1),
-																									followupQuestion.id,
-																									...baseIds.slice(currentIndex + 1),
-																								]
+																										...baseIds.slice(0, currentIndex + 1),
+																										followupQuestion.id,
+																										...baseIds.slice(currentIndex + 1),
+																									]
 																								: [...baseIds, followupQuestion.id]
 																						if (!newBaseIds.includes(followupQuestion.id)) {
 																							newBaseIds = [...newBaseIds, followupQuestion.id]
@@ -2746,10 +2746,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																							const nextQuestions =
 																								insertionIndex >= 0
 																									? [
-																										...prevQuestions.slice(0, insertionIndex + 1),
-																										followupQuestion,
-																										...prevQuestions.slice(insertionIndex + 1),
-																									]
+																											...prevQuestions.slice(0, insertionIndex + 1),
+																											followupQuestion,
+																											...prevQuestions.slice(insertionIndex + 1),
+																										]
 																									: [...prevQuestions, followupQuestion]
 																							updatedQuestions = nextQuestions
 																							return nextQuestions

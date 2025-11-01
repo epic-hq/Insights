@@ -396,7 +396,7 @@ class PersonaAssignmentDecision {
 
 function AssignPersonaToInterview(
   interview_transcript: string,
-  interviewee_info: string,
+  participant_info: string,
   existing_personas: string
 ) -> PersonaAssignmentDecision {
   client "CustomGPT4oMini"
@@ -404,21 +404,21 @@ function AssignPersonaToInterview(
     You are an expert UX researcher tasked with intelligently assigning an interview participant to either an existing persona or creating a new one.
 
     DECISION CRITERIA:
-    1. ASSIGN TO EXISTING if the interviewee shows >70% alignment with an existing persona in:
+    1. ASSIGN TO EXISTING if the participant shows >70% alignment with an existing persona in:
        - Core motivations and goals
        - Key behaviors and patterns
        - Primary pain points and frustrations
        - Decision-making triggers
        - Tech comfort level and preferences
 
-    2. CREATE NEW if the interviewee represents a distinct archetype that:
+    2. CREATE NEW if the participant represents a distinct archetype that:
        - Has fundamentally different motivations or goals
        - Shows unique behavioral patterns not captured by existing personas
        - Has different pain points or success definitions
        - Represents a new segment or user type
 
     ANALYSIS PROCESS:
-    1. Extract key characteristics from the interview transcript and interviewee info
+    1. Extract key characteristics from the interview transcript and participant info
     2. Compare against each existing persona systematically
     3. Calculate alignment percentage for each existing persona
     4. If highest alignment is >70%, assign to that persona
@@ -427,8 +427,8 @@ function AssignPersonaToInterview(
     INTERVIEW TRANSCRIPT:
     {{ interview_transcript }}
 
-    INTERVIEWEE INFO:
-    {{ interviewee_info }}
+    PARTICIPANT INFO:
+    {{ participant_info }}
 
     EXISTING PERSONAS:
     {{ existing_personas }}

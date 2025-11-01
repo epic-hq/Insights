@@ -81,7 +81,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 									</Badge>
 								))}
 								{persona.tags.length > 2 ? (
-									<span className="text-muted-foreground text-[10px]">+{persona.tags.length - 2} more</span>
+									<span className="text-[10px] text-muted-foreground">+{persona.tags.length - 2} more</span>
 								) : null}
 							</div>
 						</div>
@@ -181,11 +181,7 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 									className="cursor-pointer select-none"
 								>
 									{flexRender(header.column.columnDef.header, header.getContext())}
-									{header.column.getIsSorted() === "asc"
-										? " ↑"
-										: header.column.getIsSorted() === "desc"
-											? " ↓"
-											: ""}
+									{header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
 								</TableHead>
 							))}
 						</TableRow>

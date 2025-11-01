@@ -81,10 +81,10 @@ const personas = [
 	},
 ]
 
-// Sample interviews with detailed interviewee data
+// Sample interviews with detailed participant data
 const interviews = [
 	{
-		id: "interviewee-1",
+		id: "participant-1",
 		date: "2025-07-01",
 		participant: "Alex Johnson",
 		status: "ready" as const,
@@ -103,7 +103,7 @@ const interviews = [
 		transcriptPreview: "The dashboard is promising but needs work on the mobile experience...",
 	},
 	{
-		id: "interviewee-2",
+		id: "participant-2",
 		date: "2025-07-02",
 		participant: "Maria Rodriguez",
 		status: "transcribed" as const,
@@ -123,7 +123,7 @@ const interviews = [
 			"I appreciate the stability of the platform, but sometimes find it difficult to locate specific features...",
 	},
 	{
-		id: "interviewee-3",
+		id: "participant-3",
 		date: "2025-07-03",
 		participant: "David Chen",
 		status: "processing" as const,
@@ -142,7 +142,7 @@ const interviews = [
 		transcriptPreview: "My main concerns are around security and compliance requirements...",
 	},
 	{
-		id: "interviewee-4",
+		id: "participant-4",
 		date: "2025-07-04",
 		participant: "Sarah Williams",
 		status: "ready" as const,
@@ -161,7 +161,7 @@ const interviews = [
 		transcriptPreview: "I'm really impressed with the direction you're taking with the new interface...",
 	},
 	{
-		id: "interviewee-5",
+		id: "participant-5",
 		date: "2025-07-05",
 		participant: "Michael Lee",
 		status: "ready" as const,

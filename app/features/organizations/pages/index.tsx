@@ -8,7 +8,10 @@ import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
-import { OrganizationsDataTable, type OrganizationTableRow } from "~/features/organizations/components/OrganizationsDataTable"
+import {
+	OrganizationsDataTable,
+	type OrganizationTableRow,
+} from "~/features/organizations/components/OrganizationsDataTable"
 import { getOrganizations } from "~/features/organizations/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -98,26 +101,27 @@ export default function OrganizationsIndexPage() {
 							<Building2 className="h-7 w-7" />
 							Organizations
 						</h1>
-						<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
-							Understand which accounts are active, who you know inside each one, and how those relationships are evolving.
+						<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+							Understand which accounts are active, who you know inside each one, and how those relationships are
+							evolving.
 						</p>
 					</div>
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
-							<ToggleGroup
-								type="single"
-								value={viewMode}
-								onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
-								className="w-full sm:w-auto"
-								variant="outline"
-								size="sm"
-							>
-								<ToggleGroupItem value="cards" aria-label="Card view">
-									<LayoutGrid className="h-4 w-4" />
-								</ToggleGroupItem>
-								<ToggleGroupItem value="table" aria-label="Table view">
-									<TableIcon className="h-4 w-4" />
-								</ToggleGroupItem>
-							</ToggleGroup>
+						<ToggleGroup
+							type="single"
+							value={viewMode}
+							onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
+							className="w-full sm:w-auto"
+							variant="outline"
+							size="sm"
+						>
+							<ToggleGroupItem value="cards" aria-label="Card view">
+								<LayoutGrid className="h-4 w-4" />
+							</ToggleGroupItem>
+							<ToggleGroupItem value="table" aria-label="Table view">
+								<TableIcon className="h-4 w-4" />
+							</ToggleGroupItem>
+						</ToggleGroup>
 						<div className="flex w-full gap-2 sm:w-auto">
 							<Button asChild variant="ghost" className="flex-1 sm:flex-none">
 								<Link to={routes.people.index()}>View People</Link>
@@ -132,8 +136,8 @@ export default function OrganizationsIndexPage() {
 				{organizations.length === 0 ? (
 					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
 						<div className="mx-auto max-w-md space-y-4">
-							<h3 className="font-semibold text-xl text-foreground">No organizations yet</h3>
-							<p className="text-sm text-muted-foreground">
+							<h3 className="font-semibold text-foreground text-xl">No organizations yet</h3>
+							<p className="text-muted-foreground text-sm">
 								Add an organization to start linking people, tracking roles, and capturing account insights.
 							</p>
 							<Button asChild>

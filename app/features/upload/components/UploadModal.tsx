@@ -34,7 +34,9 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown")
 
-		setProcessingMessage(isTextFile ? "📝 Reading and analyzing your transcript..." : "🎙️ Transcribing your audio/video...")
+		setProcessingMessage(
+			isTextFile ? "📝 Reading and analyzing your transcript..." : "🎙️ Transcribing your audio/video..."
+		)
 
 		try {
 			if (!accountId || !projectId) {
@@ -65,7 +67,9 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 			const result = await response.json()
 
-			setProcessingMessage(isTextFile ? "✅ Insights extracted! Ready for analysis." : "✅ Analysis complete! Insights discovered.")
+			setProcessingMessage(
+				isTextFile ? "✅ Insights extracted! Ready for analysis." : "✅ Analysis complete! Insights discovered."
+			)
 
 			// Show success notification with onboarding context
 			showNotification(
@@ -187,7 +191,8 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 											{isDragActive ? "Drop file here" : "Drop transcript file here or click to browse"}
 										</p>
 										<p className="text-gray-500 text-xs dark:text-gray-400">
-											Text files (.txt, .md) process instantly • Audio/video files are transcribed first • All content becomes searchable insights
+											Text files (.txt, .md) process instantly • Audio/video files are transcribed first • All content
+											becomes searchable insights
 										</p>
 									</div>
 								)}

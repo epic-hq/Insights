@@ -72,7 +72,7 @@ export function useProjectDataAvailability(): ProjectDataAvailability {
 			}
 		}
 
-		setState(prev => ({ ...prev, isLoading: true }))
+		setState((prev) => ({ ...prev, isLoading: true }))
 		checkDataAvailability()
 	}, [projectId])
 

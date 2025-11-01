@@ -213,7 +213,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 												{filterValue && (
 													<button
 														type="button"
-														className="ml-2 rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:bg-muted/80 transition-colors"
+														className="ml-2 rounded border border-border bg-muted px-2 py-1 text-muted-foreground text-xs transition-colors hover:bg-muted/80"
 														onClick={() => col?.setFilterValue(undefined)}
 													>
 														Clear
