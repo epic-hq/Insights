@@ -50,11 +50,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+		; (rows || []).forEach((interview) => {
+			const primaryParticipant = interview.interview_people?.[0]
+			const segment = primaryParticipant?.people?.segment || "Unknown"
+			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+		})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -127,7 +127,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 								<Button asChild variant="default" className="gap-2">
 									<Link to={routes.interviews.upload()}>
 										<Upload className="h-4 w-4" />
-										Add Interview
+										z
 									</Link>
 								</Button>
 							</div>
@@ -248,13 +248,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-														interview.status === "ready"
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
 															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 															: interview.status === "transcribed"
 																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
 																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-													}`}
+														}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>

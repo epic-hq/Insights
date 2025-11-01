@@ -14,6 +14,7 @@ import {
 	Settings,
 	SquareCheckBig,
 	Target,
+	Upload,
 	Users,
 	Zap,
 } from "lucide-react"
@@ -26,6 +27,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useValidationView } from "~/contexts/ValidationViewContext"
 import type { DecoratedResearchQuestion } from "~/features/onboarding/components/KeyDecisionsCard"
 import { ProjectEditButton } from "~/features/projects/components/ProjectEditButton"
 import { AnalyzeStageValidation } from "~/features/projects/pages/validationStatus"
@@ -81,7 +83,6 @@ export default function ProjectStatusScreen({
 	const [projectSections, setProjectSections] = useState<Project_Section[]>(initialSections || [])
 	const [loading, setLoading] = useState(!initialSections)
 	const [showFlowView, _setShowFlowView] = useState(false)
-	const [showValidationView, setShowValidationView] = useState(false)
 	const [researchMetrics, setResearchMetrics] = useState<{ answered: number; open: number; total: number }>({
 		answered: 0,
 		open: 0,
@@ -92,6 +93,7 @@ export default function ProjectStatusScreen({
 	const [targetConversations, setTargetConversations] = useState<number>(10)
 	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
+	const { showValidationView } = useValidationView()
 	const projectPath =
 		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
 	const routes = useProjectRoutes(projectPath)
@@ -299,7 +301,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-					(researchRollup?.research_questions_without_decision?.length || 0) > 0
+				(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -378,22 +380,6 @@ export default function ProjectStatusScreen({
 						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
 					</div>
 					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
-						{/* Validation View Toggle - Feature Flagged */}
-						{isValidationEnabled && (
-							<Button
-								variant={showValidationView ? "default" : "outline"}
-								size="sm"
-								onClick={() => setShowValidationView(!showValidationView)}
-								className={
-									showValidationView
-										? "bg-emerald-600 text-white hover:bg-emerald-700"
-										: "border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 hover:text-emerald-800 dark:from-emerald-950/20 dark:to-green-950/20 dark:text-emerald-300 dark:hover:from-emerald-900/30 dark:hover:to-green-900/30"
-								}
-							>
-								<SquareCheckBig className="mr-2 h-4 w-4" />
-								{showValidationView ? "Dashboard View" : "Validation Status"}
-							</Button>
-						)}
 						{/* Flow View Toggle Button */}
 						{/* <Button
 							variant={showFlowView ? "default" : "outline"}
@@ -611,7 +597,7 @@ export default function ProjectStatusScreen({
 											}}
 										>
 											<PlusCircle className="mr-3 h-5 w-5" />
-											Add Interview
+											Upload / Record Media
 										</Button>
 										<Button
 											variant="outline"
@@ -829,8 +815,8 @@ export default function ProjectStatusScreen({
 											className="flex w-full justify-start border-green-600 bg-green-600 text-white hover:bg-green-700 sm:max-w-64"
 											variant="default"
 										>
-											<PlusCircle className="mr-2 h-4 w-4" />
-											Add Interview
+											<Upload className="mr-2 h-4 w-4" />
+											Upload / Record Media
 										</Button>
 										{openQuestions.length > 0 && (
 											<Button

@@ -2,7 +2,15 @@ import consola from "consola"
 import { ArrowRight, Handshake, Hash, House } from "lucide-react"
 import { usePostHog } from "posthog-js/react"
 import { useEffect, useState } from "react"
-import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import {
+	Link,
+	type LoaderFunctionArgs,
+	redirect,
+	useLoaderData,
+	useNavigate,
+	useParams,
+	useRouteLoaderData,
+} from "react-router"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -78,21 +86,15 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	if (salesProjects.length > 0) {
 		const primarySalesProject = salesProjects[0]
 		try {
-			consola.log("[HOME] Sales workspace KPI queries starting", { account_id, primarySalesProjectId: primarySalesProject.id })
+			consola.log("[HOME] Sales workspace KPI queries starting", {
+				account_id,
+				primarySalesProjectId: primarySalesProject.id,
+			})
 
 			const [organizationsResult, peopleResult, opportunitiesResult] = await Promise.all([
-				supabase
-					.from("organizations")
-					.select("id", { count: "exact", head: true })
-					.eq("account_id", account_id),
-				supabase
-					.from("people")
-					.select("id", { count: "exact", head: true })
-					.eq("account_id", account_id),
-				supabase
-					.from("opportunities")
-					.select("id", { count: "exact", head: true })
-					.eq("account_id", account_id),
+				supabase.from("organizations").select("id", { count: "exact", head: true }).eq("account_id", account_id),
+				supabase.from("people").select("id", { count: "exact", head: true }).eq("account_id", account_id),
+				supabase.from("opportunities").select("id", { count: "exact", head: true }).eq("account_id", account_id),
 			])
 
 			consola.log("[HOME] Sales workspace KPI query results", {
@@ -220,11 +222,15 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 
 export default function Index() {
 	const { projects, latest_sections, salesWorkspace } = useLoaderData<typeof loader>()
-	const { auth } = useRouteLoaderData("routes/_ProtectedLayout") as {
-		auth: { accountId: string }
+	const params = useParams()
+	const accountId = params.accountId as string
+
+	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout") as {
+		accounts?: Array<{ account_id: string; name?: string; slug?: string }>
 	}
 
-	const accountBase = `/a/${auth.accountId}`
+	const currentAccount = accounts?.find((acc) => acc.account_id === accountId)
+	const accountBase = `/a/${accountId}`
 
 	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
 
@@ -252,16 +258,15 @@ export default function Index() {
 	}, [posthog])
 
 	const salesProject = salesWorkspace?.project ?? null
-	const salesProjectColor =
-		salesProject != null ? stringToColor(salesProject.slug || salesProject.name || "S") : null
+	const salesProjectColor = salesProject != null ? stringToColor(salesProject.slug || salesProject.name || "S") : null
 	const salesProjectInitials =
 		salesProject != null
 			? (salesProject.slug || salesProject.name || "S")
-					.split(" ")
-					.map((n) => n[0])
-					.join("")
-					.toUpperCase()
-					.slice(0, 2)
+				.split(" ")
+				.map((n) => n[0])
+				.join("")
+				.toUpperCase()
+				.slice(0, 2)
 			: ""
 
 	// Use the route helper for consistent path construction
@@ -282,7 +287,7 @@ export default function Index() {
 				return
 			}
 
-			navigate(`/a/${auth.accountId}/${payload.projectId}/sales-lenses`)
+			navigate(`/a/${accountId}/${payload.projectId}/sales-lenses`)
 		} catch (error) {
 			const message = error instanceof Error ? error.message : "Failed to create workspace"
 			setSalesError(message)
@@ -295,7 +300,15 @@ export default function Index() {
 		<div className="mx-auto w-full max-w-7xl px-6 py-8">
 			<div className="mb-4 flex items-center gap-2">
 				<House className="h-6 w-6" />
-				<h1 className="font-semibold text-2xl">Home</h1>
+				<div className="flex items-center gap-2">
+					{currentAccount?.name && <span className="font-medium text-xl">{currentAccount.name}</span>}
+					{currentAccount?.slug && (
+						<Badge variant="secondary" className="h-6 px-2 text-xs">
+							<Hash className="mr-1 h-3 w-3" />
+							{currentAccount.slug}
+						</Badge>
+					)}
+				</div>
 			</div>
 
 			{/* Main Action Cards */}
@@ -329,7 +342,6 @@ export default function Index() {
 							</CardContent>
 						</Card>
 					)}
-
 			</div>
 
 			{/* Existing Projects Section */}
@@ -393,10 +405,7 @@ export default function Index() {
 						{salesWorkspace?.project ? (
 							<Card>
 								<CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
-									<Link
-										to={`${salesBase!}/sales-lenses`}
-										className="flex flex-1 items-center gap-3"
-									>
+									<Link to={`${salesBase!}/sales-lenses`} className="flex flex-1 items-center gap-3">
 										<Avatar
 											className="h-12 w-12 border"
 											style={salesProjectColor ? { borderColor: salesProjectColor } : undefined}
@@ -424,26 +433,17 @@ export default function Index() {
 										</div>
 									</Link>
 									<div className="flex flex-wrap gap-3">
-										<Link
-											to={`${salesBase!}/organizations`}
-											className="inline-flex"
-										>
+										<Link to={`${salesBase!}/organizations`} className="inline-flex">
 											<Badge variant="outline" className="px-3 py-1.5 text-sm">
 												{salesWorkspace.kpis.organizations} Organizations
 											</Badge>
 										</Link>
-										<Link
-											to={`${salesBase!}/people`}
-											className="inline-flex"
-										>
+										<Link to={`${salesBase!}/people`} className="inline-flex">
 											<Badge variant="outline" className="px-3 py-1.5 text-sm">
 												{salesWorkspace.kpis.people} People
 											</Badge>
 										</Link>
-										<Link
-											to={`${salesBase!}/opportunities`}
-											className="inline-flex"
-										>
+										<Link to={`${salesBase!}/opportunities`} className="inline-flex">
 											<Badge variant="outline" className="px-3 py-1.5 text-sm">
 												{salesWorkspace.kpis.opportunities} Opportunities
 											</Badge>

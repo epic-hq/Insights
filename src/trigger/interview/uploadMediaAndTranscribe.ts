@@ -96,11 +96,44 @@ export const uploadMediaAndTranscribeTask = task({
 					// Generate fresh presigned URL from R2 key for AssemblyAI
 					console.log("🎵 Starting transcription process...")
 					console.log("- Original mediaUrl:", payload.mediaUrl)
-					const { createR2PresignedUrl } = await import("~/utils/r2.server")
+					const { createR2PresignedUrl, validateR2PresignedUrl, extractR2KeyFromUrl } = await import("~/utils/r2.server")
 					let transcriptionUrl = payload.mediaUrl
 
-					// If mediaUrl is an R2 key (no protocol), generate presigned URL
-					if (!payload.mediaUrl.startsWith("http://") && !payload.mediaUrl.startsWith("https://")) {
+					// Check if mediaUrl is already a presigned URL
+					if (payload.mediaUrl.startsWith("http://") || payload.mediaUrl.startsWith("https://")) {
+						console.log("- Provided URL appears to be presigned, validating...")
+
+						// Validate the existing presigned URL
+						const isValid = await validateR2PresignedUrl(payload.mediaUrl)
+						if (!isValid) {
+							console.log("- ❌ Presigned URL is invalid/expired, attempting to regenerate...")
+
+							// Try to extract the R2 key from the URL to regenerate
+							const r2Key = extractR2KeyFromUrl(payload.mediaUrl)
+							if (r2Key) {
+								console.log("- Extracted R2 key, generating fresh presigned URL...")
+								const freshPresigned = createR2PresignedUrl({
+									key: r2Key,
+									expiresInSeconds: 24 * 60 * 60, // 24 hours for transcription
+								})
+
+								if (freshPresigned) {
+									transcriptionUrl = freshPresigned.url
+									console.log("- ✅ Generated fresh presigned URL for transcription:", transcriptionUrl.slice(0, 100) + "...")
+								} else {
+									console.error("- ❌ Failed to generate fresh presigned URL!")
+									throw new Error("Failed to generate fresh presigned URL for transcription")
+								}
+							} else {
+								console.error("- ❌ Could not extract R2 key from invalid URL!")
+								throw new Error("Could not extract R2 key from invalid presigned URL")
+							}
+						} else {
+							console.log("- ✅ Presigned URL is valid, using directly")
+							transcriptionUrl = payload.mediaUrl
+						}
+					} else {
+						// mediaUrl is an R2 key, generate presigned URL
 						console.log("- Detected R2 key, generating presigned URL...")
 						const presigned = createR2PresignedUrl({
 							key: payload.mediaUrl,
@@ -114,12 +147,30 @@ export const uploadMediaAndTranscribeTask = task({
 
 						transcriptionUrl = presigned.url
 						console.log("- ✅ Generated presigned URL for transcription:", transcriptionUrl.slice(0, 100) + "...")
-					} else {
-						console.log("- Using provided URL directly (already presigned)")
 					}
 
 					console.log("🔄 Calling transcribeAudioFromUrl with URL:", transcriptionUrl.slice(0, 100) + "...")
-					transcriptData = await transcribeAudioFromUrl(transcriptionUrl)
+
+					// Add timeout wrapper around transcription (10 minutes max as requested)
+					const transcriptionPromise = transcribeAudioFromUrl(transcriptionUrl)
+					const timeoutPromise = new Promise((_, reject) => {
+						setTimeout(() => reject(new Error("Transcription timeout: no response after 10 minutes")), 10 * 60 * 1000)
+					})
+
+					// Add progress tracking during transcription
+					const progressPromise = new Promise((resolve, reject) => {
+						const progressInterval = setInterval(() => {
+							// Check if transcription is still running and update progress
+							metadata.set("progressPercent", Math.min(25, (metadata.get("progressPercent") as number || 20) + 1))
+						}, 30 * 1000) // Update every 30 seconds
+
+						transcriptionPromise
+							.then(resolve)
+							.catch(reject)
+							.finally(() => clearInterval(progressInterval))
+					})
+
+					transcriptData = await Promise.race([progressPromise, timeoutPromise]) as any
 					console.log("✅ Transcription completed successfully")
 					metadata.set("stageLabel", "Transcription complete")
 					metadata.set("progressPercent", 30)

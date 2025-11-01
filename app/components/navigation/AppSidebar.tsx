@@ -1,3 +1,4 @@
+import { SquareCheckBig } from "lucide-react"
 import { useMemo } from "react"
 import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import {
@@ -16,6 +17,9 @@ import {
 	useSidebar,
 } from "~/components/ui/sidebar"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { useValidationView } from "~/contexts/ValidationViewContext"
+import { useCurrentProjectData } from "~/hooks/useCurrentProjectData"
+import { useProjectDataAvailability } from "~/hooks/useProjectDataAvailability"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { UserProfile } from "../auth/UserProfile"
 import { Logo, LogoBrand } from "../branding"
@@ -50,6 +54,9 @@ export function AppSidebar() {
 	const location = useLocation()
 	const { state } = useSidebar()
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
+	const { hasAnalysisData } = useProjectDataAvailability()
+	const { project } = useCurrentProjectData()
+	const { showValidationView, setShowValidationView } = useValidationView()
 
 	const accounts = useMemo(() => {
 		if (!protectedData?.accounts) return [] as AccountRecord[]
@@ -99,6 +106,18 @@ export function AppSidebar() {
 	const canNavigate = Boolean(effectiveAccountId && effectiveProjectId)
 	const isCollapsed = state === "collapsed"
 
+	// Filter sections based on data availability
+	const visibleSections = useMemo(() => {
+		return APP_SIDEBAR_SECTIONS.filter((section) => {
+			// Show analyze section only if there's analysis data (interviews or evidence)
+			if (section.key === "analyze") {
+				return hasAnalysisData
+			}
+			// Show all other sections
+			return true
+		})
+	}, [hasAnalysisData])
+
 	const buildTooltip = (title: string) => (isCollapsed ? title : undefined)
 
 	return (
@@ -111,7 +130,7 @@ export function AppSidebar() {
 			</SidebarHeader>
 
 			<SidebarContent>
-				{APP_SIDEBAR_SECTIONS.map((section) => (
+				{visibleSections.map((section) => (
 					<SidebarGroup key={section.key}>
 						{section.key !== "home" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
 						<SidebarGroupContent>
@@ -142,6 +161,31 @@ export function AppSidebar() {
 						</SidebarGroupContent>
 					</SidebarGroup>
 				))}
+
+				{/* Validation Status Toggle for Sales Projects */}
+				{project?.workflow_type === "sales" && (
+					<SidebarGroup>
+						<SidebarGroupLabel>Revenue</SidebarGroupLabel>
+						<SidebarGroupContent>
+							<SidebarMenu>
+								<SidebarMenuItem>
+									<SidebarMenuButton
+										onClick={() => setShowValidationView(!showValidationView)}
+										tooltip={buildTooltip(showValidationView ? "Dashboard View" : "Validation Status")}
+										className={
+											showValidationView
+												? "bg-emerald-600 text-white hover:bg-emerald-700"
+												: "border-emerald-200 bg-gradient-to-r from-emerald-50 to-green-50 text-emerald-700 hover:from-emerald-100 hover:to-green-100 hover:text-emerald-800 dark:from-emerald-950/20 dark:to-green-950/20 dark:text-emerald-300 dark:hover:from-emerald-900/30 dark:hover:to-green-900/30"
+										}
+									>
+										<SquareCheckBig className="h-4 w-4" />
+										<span>{showValidationView ? "Dashboard View" : "Validation Status"}</span>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+							</SidebarMenu>
+						</SidebarGroupContent>
+					</SidebarGroup>
+				)}
 			</SidebarContent>
 
 			<SidebarFooter>

@@ -627,6 +627,74 @@ export function createR2PresignedUrl(options: R2PresignOptions): R2PresignResult
 	}
 }
 
+// Validate if a presigned R2 URL is still valid and accessible
+export async function validateR2PresignedUrl(url: string): Promise<boolean> {
+	try {
+		// Extract query parameters to check expiry
+		const urlObj = new URL(url)
+		const expiresParam = urlObj.searchParams.get("X-Amz-Expires")
+		const dateParam = urlObj.searchParams.get("X-Amz-Date")
+
+		if (!expiresParam || !dateParam) {
+			consola.warn("Presigned URL missing required parameters")
+			return false
+		}
+
+		// Parse the AMZ date (format: YYYYMMDDTHHMMSSZ)
+		const amzDate = dateParam
+		const year = parseInt(amzDate.slice(0, 4))
+		const month = parseInt(amzDate.slice(4, 6)) - 1 // JS months are 0-based
+		const day = parseInt(amzDate.slice(6, 8))
+		const hour = parseInt(amzDate.slice(9, 11))
+		const minute = parseInt(amzDate.slice(11, 13))
+		const second = parseInt(amzDate.slice(13, 15))
+
+		const signedAt = new Date(Date.UTC(year, month, day, hour, minute, second))
+		const expiresIn = parseInt(expiresParam)
+		const expiresAt = new Date(signedAt.getTime() + expiresIn * 1000)
+		const now = new Date()
+
+		// Check if expired (with 5-minute buffer for safety)
+		const bufferMs = 5 * 60 * 1000
+		if (expiresAt.getTime() - bufferMs < now.getTime()) {
+			consola.warn("Presigned URL expired or expiring soon", {
+				expiresAt: expiresAt.toISOString(),
+				now: now.toISOString(),
+				bufferMinutes: 5
+			})
+			return false
+		}
+
+		// Try a HEAD request to verify the URL is accessible
+		const response = await fetch(url, { method: "HEAD" })
+		if (!response.ok) {
+			consola.warn("Presigned URL validation failed with status:", response.status)
+			return false
+		}
+
+		return true
+	} catch (error) {
+		consola.error("Error validating presigned URL:", error)
+		return false
+	}
+}
+
+// Extract R2 key from a presigned URL
+export function extractR2KeyFromUrl(url: string): string | null {
+	try {
+		const urlObj = new URL(url)
+		// Remove the endpoint and bucket from the path
+		const config = getR2Config()
+		if (!config) return null
+
+		const pathWithoutBucket = urlObj.pathname.replace(`/${config.bucket}/`, "")
+		return decodeURIComponent(pathWithoutBucket)
+	} catch (error) {
+		consola.error("Error extracting R2 key from URL:", error)
+		return null
+	}
+}
+
 function getR2Config(): R2Config | null {
 	if (cachedConfig) return cachedConfig
 	if (attemptedLoad) return null

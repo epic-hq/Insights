@@ -94,7 +94,7 @@ export default function AccountOverview() {
 			</div>
 
 			{accounts.length === 0 && (
-				<div className="text-center py-12">
+				<div className="py-12 text-center">
 					<p className="text-muted-foreground">No accounts found. Please contact support.</p>
 				</div>
 			)}

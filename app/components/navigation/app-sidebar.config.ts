@@ -29,22 +29,29 @@ interface AppSidebarSection {
 }
 
 export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
+	// {
+	// 	key: "home",
+	// 	title: "Home",
+	// 	items: [
+	// 		{
+	// 			key: "dashboard",
+	// 			title: "Home",
+	// 			icon: Home,
+	// 			to: (routes) => routes.dashboard(),
+	// 		},
+	// 	],
+	// },
 	{
-		key: "home",
-		title: "Home",
+		key: "research",
+		title: "Discovery",
 		items: [
 			{
-				key: "dashboard",
+				key: "home",
 				title: "Home",
-				icon: Home,
-				to: (routes) => routes.dashboard(),
+				description: "Running Report",
+				icon: Compass,
+				to: (routes) => routes.projects.dashboard(),
 			},
-		],
-	},
-	{
-		key: "plan",
-		title: "Plan",
-		items: [
 			{
 				key: "research-goal",
 				title: "Research Goal",
@@ -63,25 +70,25 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	},
 	{
 		key: "engage",
-		title: "Connect",
+		title: "Customers",
 		items: [
 			{
 				key: "people",
-				title: "People",
+				title: "Contacts",
 				description: "See who you met",
 				icon: Users,
 				to: (routes) => routes.people.index(),
 			},
 			{
 				key: "record-upload-media",
-				title: "Record or Upload",
+				title: "Upload / Record",
 				description: "Import calls, clips & decks",
 				icon: Mic,
 				to: (routes) => routes.interviews.upload(),
 			},
 			{
-				key: "interactions",
-				title: "Interactions",
+				key: "conversations",
+				title: "Conversations",
 				description: "See what you recorded",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
@@ -90,15 +97,8 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	},
 	{
 		key: "analyze",
-		title: "Analyze",
+		title: "Insights",
 		items: [
-			{
-				key: "status",
-				title: "Status",
-				description: "Running Report",
-				icon: Compass,
-				to: (routes) => routes.projects.dashboard(),
-			},
 			{
 				key: "personas",
 				title: "Personas",
