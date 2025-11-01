@@ -71,7 +71,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	},
 	{
 		key: "analyze",
-		title: "Analyze",
+		title: "Analysis",
 		items: [
 			{
 				key: "personas",
@@ -113,7 +113,9 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				description: "Companies & groups",
 				icon: Building2,
 				// Simple deep-link via query param (adjust if you add a helper)
-				to: (routes) => `${routes.people.index()}?tab=orgs`,
+				to: (routes) => {
+					return routes.organizations.index()
+				},
 			},
 		],
 	},

@@ -3,10 +3,12 @@ import { motion } from "framer-motion"
 import { Users } from "lucide-react"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData, useParams } from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { BackButton } from "~/components/ui/back-button"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader } from "~/components/ui/card"
-import InsightCardV2 from "~/features/insights/components/InsightCardV2"
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -145,11 +147,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				name,
 				category,
 				pain,
+				details,
+				desired_outcome,
+				evidence,
 				journey_stage,
 				emotional_response,
 				insight_tags (
 					tags (
-						tag
+						tag,
+						term,
+						definition
 					)
 				)
 			)
@@ -206,7 +213,7 @@ export default function PersonaDetailRoute() {
 	const description = persona.description || "No description available"
 
 	// Get initials for avatar
-	const _initials =
+	const initials =
 		name
 			.split(" ")
 			.map((word: string) => word[0])
@@ -214,52 +221,65 @@ export default function PersonaDetailRoute() {
 			.toUpperCase()
 			.slice(0, 2) || "?"
 
+	const avatar = (
+		<Avatar
+			className="h-20 w-20 border-4 border-white shadow-lg dark:border-gray-800"
+			style={{ borderColor: `${themeColor}20` }}
+		>
+			<AvatarImage src={persona.image_url || undefined} alt={name} />
+			<AvatarFallback className="font-semibold text-white text-xl" style={{ backgroundColor: themeColor }}>
+				{initials}
+			</AvatarFallback>
+		</Avatar>
+	)
+
 	return (
 		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
 			<PersonaPeopleSubnav />
-			<div className="mt-4 mb-4">
+			<div className="mt-4 mb-4 flex items-center justify-between">
 				<BackButton />
+				<div className="flex gap-2">
+					<motion.div
+						className="flex gap-3"
+						initial={{ opacity: 0, scale: 0.9 }}
+						animate={{ opacity: 1, scale: 1 }}
+						transition={{ delay: 0.5, duration: 0.3 }}
+					>
+						<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
+							<Link to={routes.personas.edit(persona.id)}>Edit Persona</Link>
+						</Button>
+						<Button
+							disabled={true}
+							variant="default"
+							style={{ backgroundColor: themeColor }}
+							className="text-white hover:opacity-90"
+							onClick={async () => {
+								const formData = new FormData()
+								formData.append("personaId", persona.id)
+								formData.append("projectId", projectId)
+								try {
+									const res = await fetch("/api/generate-persona-insights", {
+										method: "POST",
+										body: formData,
+									})
+									if (res.ok) {
+										window.location.reload()
+									} else {
+										alert("Failed to generate insights")
+									}
+								} catch (_e) {
+									alert("Error generating insights")
+								}
+							}}
+						>
+							Generate Insights
+						</Button>
+					</motion.div>
+				</div>
 			</div>
 			<div className="mx-auto max-w-6xl px-6 py-10">
-				<DetailPageHeader icon={Users} typeLabel="Persona" title={name} description={description}>
-					<div className="mt-4 flex gap-2">
-						{/* Action Buttons */}
-						<motion.div
-							className="flex justify-center gap-3 md:justify-start"
-							initial={{ opacity: 0, scale: 0.9 }}
-							animate={{ opacity: 1, scale: 1 }}
-							transition={{ delay: 0.5, duration: 0.3 }}
-						>
-							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-								<Link to={routes.personas.edit(persona.id)}>Edit Persona</Link>
-							</Button>
-							<Button
-								variant="default"
-								style={{ backgroundColor: themeColor }}
-								className="text-white hover:opacity-90"
-								onClick={async () => {
-									const formData = new FormData()
-									formData.append("personaId", persona.id)
-									formData.append("projectId", projectId)
-									try {
-										const res = await fetch("/api/generate-persona-insights", {
-											method: "POST",
-											body: formData,
-										})
-										if (res.ok) {
-											window.location.reload()
-										} else {
-											alert("Failed to generate insights")
-										}
-									} catch (_e) {
-										alert("Error generating insights")
-									}
-								}}
-							>
-								Generate Insights
-							</Button>
-						</motion.div>
-					</div>
+				<DetailPageHeader icon={Users} typeLabel="Persona" title={name} description={description} avatar={avatar}>
+					{/* Action buttons moved to top right */}
 				</DetailPageHeader>
 
 				{/* KPI Stats Section */}
@@ -312,8 +332,10 @@ export default function PersonaDetailRoute() {
 					{/* Persona Details Card */}
 					<Card className="mb-8">
 						<CardHeader className="pb-4">
-							<h2 className="font-semibold text-xl">Details</h2>
-							<p className="text-muted-foreground text-xs">Only showing available fields</p>
+							<div className="flex flex-row gap-2">
+								<div className="font-semibold text-xl">Details</div>
+								<span className="mt-1 text-md text-muted-foreground">(available)</span>
+							</div>
 						</CardHeader>
 						<CardContent>
 							<div className="grid grid-cols-1 gap-x-8 gap-y-2 md:grid-cols-2">
@@ -409,7 +431,9 @@ export default function PersonaDetailRoute() {
 						{people && people.length > 0 ? (
 							<Card className="mb-8">
 								<CardHeader>
-									<div className="font-semibold text-lg">People ({people.length})</div>
+									<div className="font-semibold text-lg">
+										People <Badge variant="secondary">{people.length}</Badge>
+									</div>
 								</CardHeader>
 								<CardContent>
 									<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
@@ -433,10 +457,12 @@ export default function PersonaDetailRoute() {
 						{/* Insights Section */}
 						{insights && insights.length > 0 ? (
 							<div className="space-y-3">
-								<h3 className="font-semibold text-xl">Related Insights ({insights.length})</h3>
+								<h3 className="font-semibold text-xl">
+									Related Insights <Badge variant="secondary">{insights.length}</Badge>
+								</h3>
 								<div className="grid grid-cols-1 gap-6 lg:grid-cols-2 xl:grid-cols-3">
 									{insights.map((insight) => (
-										<InsightCardV2 key={insight.id} insight={insight} />
+										<InsightCardV3 key={insight.id} insight={insight as Insight} />
 									))}
 								</div>
 							</div>

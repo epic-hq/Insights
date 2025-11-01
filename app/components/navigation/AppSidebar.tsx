@@ -1,5 +1,5 @@
 // app/components/layout/AppSidebar.tsx
-import { Briefcase, Building2, Handshake, SquareCheckBig, Users } from "lucide-react"
+import { Briefcase, Building2, Handshake, HandshakeIcon, SquareCheckBig, Users } from "lucide-react"
 import { useMemo } from "react"
 import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
 import { Badge } from "~/components/ui/badge" // ⬅️ for right-aligned counts
@@ -21,10 +21,10 @@ import {
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useValidationView } from "~/contexts/ValidationViewContext"
 import { useCurrentProjectData } from "~/hooks/useCurrentProjectData"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectDataAvailability } from "~/hooks/useProjectDataAvailability"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useSidebarCounts } from "~/hooks/useSidebarCounts" // ⬅️ counts hook
-import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { UserProfile } from "../auth/UserProfile"
 import { Logo, LogoBrand } from "../branding"
 import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
@@ -110,10 +110,9 @@ export function AppSidebar() {
 	const canNavigate = Boolean(effectiveAccountId && effectiveProjectId)
 	const isCollapsed = state === "collapsed"
 	const salesProject = useMemo(() => {
-		const account =
-			(accounts.find((acct) => acct.account_id === effectiveAccountId) ||
-				fallbackAccount ||
-				null) as AccountRecord | null
+		const account = (accounts.find((acct) => acct.account_id === effectiveAccountId) ||
+			fallbackAccount ||
+			null) as AccountRecord | null
 		const fromAccounts =
 			account?.projects?.find((proj) => (proj as ProjectRecord | null)?.workflow_type === "sales") || null
 
@@ -197,22 +196,27 @@ export function AppSidebar() {
 		const baseSections = salesSection ? [...visibleSections, salesSection] : visibleSections
 
 		// Filter items within sections based on feature flags
-		return baseSections.map((section) => ({
-			...section,
-			items: section.items.filter((item) => {
-				// Hide "Insights" item when sales CRM is enabled
-				if (item.key === "insights" && salesCrmEnabled) {
-					return false
-				}
-				return true
-			}),
-		})).filter((section) => section.items.length > 0) // Remove sections with no items
+		return baseSections
+			.map((section) => ({
+				...section,
+				items: section.items.filter((item) => {
+					// Hide "Insights" item when sales CRM is enabled
+					if (item.key === "insights" && salesCrmEnabled) {
+						return false
+					}
+					return true
+				}),
+			}))
+			.filter((section) => section.items.length > 0) // Remove sections with no items
 	}, [visibleSections, salesSection, salesCrmEnabled])
 
 	// ────────────────────────────────────────────────────────────────
 	// Counts → show small badges on matching items
 	// Map your item keys to count keys (leave unmapped to skip)
-	const COUNT_KEY_BY_ITEM: Record<string, "encounters" | "personas" | "themes" | "insights" | "people" | "organizations" | "accounts" | "deals" | "contacts"> = {
+	const COUNT_KEY_BY_ITEM: Record<
+		string,
+		"encounters" | "personas" | "themes" | "insights" | "people" | "organizations" | "accounts" | "deals" | "contacts"
+	> = {
 		// Discovery (your current keys)
 		conversations: "encounters", // your "Conversations" list = encounters
 		personas: "personas",
@@ -319,6 +323,12 @@ export function AppSidebar() {
 									>
 										<SquareCheckBig className="h-4 w-4" />
 										<span>{showValidationView ? "Dashboard View" : "Validation Status"}</span>
+									</SidebarMenuButton>
+								</SidebarMenuItem>
+								<SidebarMenuItem>
+									<SidebarMenuButton>
+										<HandshakeIcon className="h-4 w-4" />
+										<span>Opportunities</span>
 									</SidebarMenuButton>
 								</SidebarMenuItem>
 							</SidebarMenu>

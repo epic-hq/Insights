@@ -16,6 +16,8 @@ interface DetailPageHeaderProps {
 	badges?: ReactNode
 	/** Optional description/bio content */
 	description?: string | null
+	/** Optional avatar to display */
+	avatar?: ReactNode
 	/** Optional additional content in the card body */
 	children?: ReactNode
 }
@@ -27,6 +29,7 @@ export function DetailPageHeader({
 	metadata,
 	badges,
 	description,
+	avatar,
 	children,
 }: DetailPageHeaderProps) {
 	return (
@@ -35,9 +38,14 @@ export function DetailPageHeader({
 				<Badge variant="secondary" className="w-fit gap-1 text-xs">
 					<Icon className="h-3.5 w-3.5" /> {typeLabel}
 				</Badge>
-				<CardTitle className="font-bold text-3xl text-foreground">{title}</CardTitle>
-				{metadata && <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">{metadata}</div>}
-				{badges && <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">{badges}</div>}
+				<div className="flex items-center gap-4">
+					{avatar && <div className="flex-shrink-0">{avatar}</div>}
+					<div className="flex-1">
+						<CardTitle className="font-bold text-3xl text-foreground">{title}</CardTitle>
+						{metadata && <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">{metadata}</div>}
+						{badges && <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">{badges}</div>}
+					</div>
+				</div>
 			</CardHeader>
 			{(description || children) && (
 				<CardContent>

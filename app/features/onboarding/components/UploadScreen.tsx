@@ -169,13 +169,12 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 
 					{/* Upload Area */}
 					<div
-						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${
-							isDragOver
+						className={`rounded-lg border-2 border-dashed p-6 transition-all duration-200 ${isDragOver
 								? "border-blue-500 bg-blue-500/10"
 								: selectedFile
 									? "border-green-500 bg-green-500/10"
 									: "border-muted bg-muted/50 hover:bg-muted/80"
-						}`}
+							}`}
 						onDragOver={handleDragOver}
 						onDragLeave={handleDragLeave}
 						onDrop={handleDrop}
@@ -220,11 +219,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								variant={mediaType === "interview" ? "default" : "outline"}
 								onClick={() => setMediaType("interview")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "interview"
+								className={`h-10 text-xs ${mediaType === "interview"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-								}`}
+									}`}
 							>
 								User Interview
 							</Button>
@@ -232,11 +230,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								variant={mediaType === "focus-group" ? "default" : "outline"}
 								onClick={() => setMediaType("focus-group")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "focus-group"
+								className={`h-10 text-xs ${mediaType === "focus-group"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-								}`}
+									}`}
 							>
 								Focus Group
 							</Button>
@@ -244,11 +241,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								variant={mediaType === "customer-call" ? "default" : "outline"}
 								onClick={() => setMediaType("customer-call")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "customer-call"
+								className={`h-10 text-xs ${mediaType === "customer-call"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-								}`}
+									}`}
 							>
 								Customer Call
 							</Button>
@@ -256,11 +252,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								variant={mediaType === "user-testing" ? "default" : "outline"}
 								onClick={() => setMediaType("user-testing")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "user-testing"
+								className={`h-10 text-xs ${mediaType === "user-testing"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-								}`}
+									}`}
 							>
 								User Testing
 							</Button>
@@ -268,11 +263,10 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								variant={mediaType === "document" ? "default" : "outline"}
 								onClick={() => setMediaType("document")}
 								size="sm"
-								className={`h-10 text-xs ${
-									mediaType === "document"
+								className={`h-10 text-xs ${mediaType === "document"
 										? "bg-primary text-primary-foreground hover:bg-primary/90"
 										: "border-border bg-transparent text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-								}`}
+									}`}
 							>
 								Background Document
 							</Button>
@@ -295,17 +289,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 				)}
 			</div>
 
-			{/* Header */}
-			<div className="border-border bg-background p-2">
-				<div className="flex items-center justify-between">
-					<div className="flex items-center gap-3">
-						<Button variant="ghost" onClick={onBack} className="h-8 w-8 text-foreground">
-							<ChevronLeft className="h-4 w-4" />
-							Back
-						</Button>
-					</div>
-				</div>
-			</div>
+
 		</div>
 	)
 }

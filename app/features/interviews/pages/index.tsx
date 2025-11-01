@@ -95,11 +95,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 				<PageContainer size="lg" padded={false} className="max-w-6xl">
 					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 						<div>
-							<h1 className="text-3xl text-foreground dark:text-foreground">Interactions</h1>
+							<h1 className="text-3xl text-foreground dark:text-foreground">Encounters</h1>
 
 							<div className="flex flex-row justify-between">
 								<div className="mt-2 mr-5 text-foreground/60 text-lg dark:text-foreground/60">
-									Recordings & Docs
+									Conversations, Recordings & Documents
 									<span className="ml-2">({interviews.length})</span>
 								</div>
 								{/* View Toggle */}

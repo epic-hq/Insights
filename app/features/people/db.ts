@@ -150,8 +150,12 @@ export const getPersonById = async ({
 						name,
 						category,
 						pain,
+						details,
+						desired_outcome,
+						evidence,
 						journey_stage,
-						emotional_response
+						emotional_response,
+						project_id
 					)
 				)
 			)

@@ -233,6 +233,10 @@ export default function Index() {
 	const accountBase = `/a/${accountId}`
 
 	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
+	const primaryResearchProject = researchProjects[0] ?? null
+	const primaryProjectPath = primaryResearchProject ? `${accountBase}/${primaryResearchProject.id}` : ""
+	const primaryProjectRoutes = useProjectRoutes(primaryProjectPath)
+	const manageFacetsPath = primaryResearchProject ? primaryProjectRoutes.facets() : null
 
 	const navigate = useNavigate()
 	const [creatingSales, setCreatingSales] = useState(false)
@@ -355,9 +359,16 @@ export default function Index() {
 								Continue refining your research programs and interview guides.
 							</p>
 						</div>
-						<Button variant="outline" asChild>
-							<Link to={`${accountBase}/projects/new`}>New Project</Link>
-						</Button>
+						<div className="flex flex-wrap items-center gap-2">
+							{manageFacetsPath ? (
+								<Button variant="ghost" asChild>
+									<Link to={manageFacetsPath}>Manage facets</Link>
+								</Button>
+							) : null}
+							<Button variant="outline" asChild>
+								<Link to={`${accountBase}/projects/new`}>New Project</Link>
+							</Button>
+						</div>
 					</div>
 					{researchProjects.length ? (
 						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
