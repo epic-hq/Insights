@@ -211,22 +211,66 @@ export const uploadMediaAndTranscribeTask = task({
 			const { extractEvidenceAndPeopleTask } = await import("./extractEvidenceAndPeople")
 			metadata.set("stageLabel", "Extracting evidence and participants")
 			metadata.set("progressPercent", 55)
-			const nextResult = await extractEvidenceAndPeopleTask.triggerAndWait({
+			const evidenceResultRun = await extractEvidenceAndPeopleTask.triggerAndWait({
 				...uploadResult,
 				analysisJobId: payload.analysisJobId,
 				userCustomInstructions: payload.userCustomInstructions,
 			})
 
-			if (!nextResult.ok) {
-				throw new Error(
+			if (!evidenceResultRun.ok) {
+				const message =
+					evidenceResultRun.error?.message ??
 					"Failed to extract people and evidence from interview transcript."
-				)
+				throw new Error(message)
 			}
 
+			if (!evidenceResultRun.output) {
+				throw new Error("Evidence extraction completed without a result payload.")
+			}
+
+			const extractedOutput = evidenceResultRun.output
+
 			metadata.set("stageLabel", "Evidence extraction complete")
+			metadata.set("progressPercent", 65)
+
+			let interviewForAnalysis = uploadResult.interview
+			const { data: refreshedInterview } = await client
+				.from("interviews")
+				.select("*")
+				.eq("id", uploadResult.interview.id)
+				.maybeSingle()
+
+			if (refreshedInterview) {
+				interviewForAnalysis = refreshedInterview as typeof interviewForAnalysis
+			}
+
+			const { analyzeThemesAndPersonaTask } = await import("./analyzeThemesAndPersona")
+			metadata.set("stageLabel", "Synthesizing interview insights")
+			metadata.set("progressPercent", 75)
+
+			const analysisResult = await analyzeThemesAndPersonaTask.triggerAndWait({
+				metadata: uploadResult.metadata,
+				interview: interviewForAnalysis,
+				fullTranscript: uploadResult.fullTranscript,
+				userCustomInstructions: payload.userCustomInstructions,
+				evidenceResult: extractedOutput.evidenceResult,
+				analysisJobId: payload.analysisJobId,
+			})
+
+			if (!analysisResult.ok) {
+				const message =
+					analysisResult.error?.message ?? "Failed to analyze themes and personas for interview."
+				throw new Error(message)
+			}
+
+			if (!analysisResult.output) {
+				throw new Error("Interview analysis completed without a result payload.")
+			}
+
+			metadata.set("stageLabel", "Analysis pipeline complete")
 			metadata.set("progressPercent", 100)
 
-			return nextResult.output
+			return analysisResult.output
 		} catch (error) {
 			metadata.set("stageLabel", "Processing failed")
 			metadata.set("progressPercent", 0)

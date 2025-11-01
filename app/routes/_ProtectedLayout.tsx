@@ -105,7 +105,11 @@ export const middleware: Route.MiddlewareFunction[] = [
 				const pathname = url.pathname
 
 				// Don't redirect if already in onboarding or project creation
-				if (!pathname.includes("/projects/new") && !pathname.includes("onboarding=true") && !pathname.includes("/home")) {
+				if (
+					!pathname.includes("/projects/new") &&
+					!pathname.includes("onboarding=true") &&
+					!pathname.includes("/home")
+				) {
 					consola.log("No projects found. Redirecting to account home.")
 					throw redirect(`/a/${currentAccount.account_id}/home`)
 				}

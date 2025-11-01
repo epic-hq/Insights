@@ -708,7 +708,7 @@ export interface InterviewDoc {
 
 export interface InterviewExtraction {
   metadata: InterviewMetadata
-  interviewee: Interviewee
+  participant: Participant
   insights: ExtractedInsight[]
   relevantAnswers: string[]
   observationsAndNotes: string
@@ -741,15 +741,6 @@ export interface InterviewPromptOut {
   
 }
 
-export interface Interviewee {
-  name?: string | null
-  persona?: string | null
-  participantDescription?: string | null
-  segment?: string | null
-  contactInfo?: string | null
-  
-}
-
 export interface KindTags {
   problem?: string[] | null
   goal?: string[] | null
@@ -777,6 +768,16 @@ export interface OpportunityRecommendation {
   supporting_insights: string[]
   competitive_advantage: string
   recommended_actions: ActionButton[]
+  
+}
+
+export interface Participant {
+  name?: string | null
+  persona?: string | null
+  participantDescription?: string | null
+  facetSummary?: string | null
+  segment?: string | null
+  contactInfo?: string | null
   
 }
 

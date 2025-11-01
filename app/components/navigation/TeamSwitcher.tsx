@@ -74,12 +74,15 @@ export function TeamSwitcher({ accounts: propAccounts, collapsed = false }: Team
 			accountsList = protectedData.accounts
 		}
 
-		console.log("[TeamSwitcher] Accounts data:", accountsList.map(acc => ({
-			id: acc.account_id,
-			name: acc.name,
-			projectsCount: acc.projects?.length || 0,
-			projectNames: acc.projects?.map(p => p.name) || []
-		})))
+		console.log(
+			"[TeamSwitcher] Accounts data:",
+			accountsList.map((acc) => ({
+				id: acc.account_id,
+				name: acc.name,
+				projectsCount: acc.projects?.length || 0,
+				projectNames: acc.projects?.map((p) => p.name) || [],
+			}))
+		)
 
 		// Filter out personal accounts from the team switcher dropdown
 		const filtered = accountsList.filter((acct) => !acct.personal_account)

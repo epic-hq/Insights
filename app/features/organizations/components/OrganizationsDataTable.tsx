@@ -65,7 +65,7 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 						return <span className="text-muted-foreground text-xs">—</span>
 					}
 					return (
-						<div className="flex flex-col text-sm text-foreground">
+						<div className="flex flex-col text-foreground text-sm">
 							{industry && <span>{industry}</span>}
 							{sizeRange && <span className="text-muted-foreground text-xs">{sizeRange}</span>}
 						</div>
@@ -89,14 +89,16 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 								<Link
 									key={contact.id}
 									to={routes.people.detail(contact.id)}
-									className="rounded-full bg-muted px-2 py-0.5 text-xs text-foreground transition-colors hover:bg-primary/10 hover:text-primary"
+									className="rounded-full bg-muted px-2 py-0.5 text-foreground text-xs transition-colors hover:bg-primary/10 hover:text-primary"
 								>
 									{contact.name || "Unnamed"}
 									{contact.segment ? <span className="ml-1 text-muted-foreground">({contact.segment})</span> : null}
 								</Link>
 							))}
 							{remaining > 0 ? (
-								<span className="rounded-full bg-muted px-2 py-0.5 text-xs text-muted-foreground">+{remaining} more</span>
+								<span className="rounded-full bg-muted px-2 py-0.5 text-muted-foreground text-xs">
+									+{remaining} more
+								</span>
 							) : null}
 						</div>
 					)
@@ -169,11 +171,7 @@ export function OrganizationsDataTable({ rows }: OrganizationsDataTableProps) {
 									className="cursor-pointer select-none"
 								>
 									{flexRender(header.column.columnDef.header, header.getContext())}
-									{header.column.getIsSorted() === "asc"
-										? " ↑"
-										: header.column.getIsSorted() === "desc"
-											? " ↓"
-											: ""}
+									{header.column.getIsSorted() === "asc" ? " ↑" : header.column.getIsSorted() === "desc" ? " ↓" : ""}
 								</TableHead>
 							))}
 						</TableRow>

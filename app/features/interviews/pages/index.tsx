@@ -50,11 +50,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-		; (rows || []).forEach((interview) => {
-			const primaryParticipant = interview.interview_people?.[0]
-			const segment = primaryParticipant?.people?.segment || "Unknown"
-			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-		})
+	;(rows || []).forEach((interview) => {
+		const primaryParticipant = interview.interview_people?.[0]
+		const segment = primaryParticipant?.people?.segment || "Unknown"
+		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+	})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -91,11 +91,11 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	return (
 		<div className="relative min-h-screen bg-background">
 			{/* Clean Header - Metro Style */}
-			<div className="border-b border-border bg-card px-6 py-8">
+			<div className="border-border border-b bg-card px-6 py-8">
 				<PageContainer size="lg" padded={false} className="max-w-6xl">
 					<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 						<div className="space-y-3">
-							<h1 className="flex items-center gap-2 text-3xl font-semibold text-foreground">
+							<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
 								<MessagesSquare />
 								Recordings
 							</h1>
@@ -124,13 +124,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 							<Button
 								asChild
 								variant="default"
-								className="w-full break-words whitespace-normal text-sm sm:w-auto sm:whitespace-nowrap"
+								className="w-full whitespace-normal break-words text-sm sm:w-auto sm:whitespace-nowrap"
 							>
-				<Link to={routes.interviews.upload()}>
-					<Upload className="h-4 w-4" />
-					Upload / Record Media
-				</Link>
-			</Button>
+								<Link to={routes.interviews.upload()}>
+									<Upload className="h-4 w-4" />
+									Upload / Record Media
+								</Link>
+							</Button>
 						</div>
 					</div>
 				</PageContainer>
@@ -248,12 +248,13 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
-														? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
-														: interview.status === "transcribed"
-															? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
-															: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-														}`}
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
+														interview.status === "ready"
+															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
+															: interview.status === "transcribed"
+																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
+																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
+													}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>

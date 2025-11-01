@@ -111,7 +111,7 @@ export default class TypeBuilder {
     
     InterviewDoc: ClassViewer<'InterviewDoc', "source" | "snippets">;
     
-    InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "interviewee" | "insights" | "relevantAnswers" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
+    InterviewExtraction: ClassViewer<'InterviewExtraction', "metadata" | "participant" | "insights" | "relevantAnswers" | "observationsAndNotes" | "highImpactThemes" | "openQuestionsAndNextSteps">;
     
     InterviewMetadata: ClassViewer<'InterviewMetadata', "title" | "date" | "interviewer" | "durationMin">;
     
@@ -119,13 +119,13 @@ export default class TypeBuilder {
     
     InterviewPromptOut: ClassViewer<'InterviewPromptOut', "id" | "rq_ids" | "text" | "followups" | "bias_checks">;
     
-    Interviewee: ClassViewer<'Interviewee', "name" | "persona" | "participantDescription" | "segment" | "contactInfo">;
-    
     KindTags: ClassViewer<'KindTags', "problem" | "goal" | "behavior" | "emotion" | "context" | "artifact">;
     
     NoteSnippet: ClassViewer<'NoteSnippet', "tag" | "text" | "speaker" | "timestamp">;
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
+    
+    Participant: ClassViewer<'Participant', "name" | "persona" | "participantDescription" | "facetSummary" | "segment" | "contactInfo">;
     
     ParticipantGoal: ClassViewer<'ParticipantGoal', "speaker" | "goal" | "evidence_snippet" | "confidence">;
     
@@ -216,7 +216,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","Interviewee","KindTags","NoteSnippet","OpportunityRecommendation","ParticipantGoal","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","Participant","ParticipantGoal","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -393,7 +393,7 @@ export default class TypeBuilder {
         ]);
         
         this.InterviewExtraction = this.tb.classViewer("InterviewExtraction", [
-          "metadata","interviewee","insights","relevantAnswers","observationsAndNotes","highImpactThemes","openQuestionsAndNextSteps",
+          "metadata","participant","insights","relevantAnswers","observationsAndNotes","highImpactThemes","openQuestionsAndNextSteps",
         ]);
         
         this.InterviewMetadata = this.tb.classViewer("InterviewMetadata", [
@@ -408,10 +408,6 @@ export default class TypeBuilder {
           "id","rq_ids","text","followups","bias_checks",
         ]);
         
-        this.Interviewee = this.tb.classViewer("Interviewee", [
-          "name","persona","participantDescription","segment","contactInfo",
-        ]);
-        
         this.KindTags = this.tb.classViewer("KindTags", [
           "problem","goal","behavior","emotion","context","artifact",
         ]);
@@ -422,6 +418,10 @@ export default class TypeBuilder {
         
         this.OpportunityRecommendation = this.tb.classViewer("OpportunityRecommendation", [
           "title","description","revenue_potential","effort_estimate","target_personas","supporting_insights","competitive_advantage","recommended_actions",
+        ]);
+        
+        this.Participant = this.tb.classViewer("Participant", [
+          "name","persona","participantDescription","facetSummary","segment","contactInfo",
         ]);
         
         this.ParticipantGoal = this.tb.classViewer("ParticipantGoal", [

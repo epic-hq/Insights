@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  Interviewee,  KindTags,  NoteSnippet,  OpportunityRecommendation,  ParticipantGoal,  Person,  PersonFacetObservation,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TurnAnchors } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  KindTags,  NoteSnippet,  OpportunityRecommendation,  Participant,  ParticipantGoal,  Person,  PersonFacetObservation,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TurnAnchors } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -364,7 +364,7 @@ export namespace partial_types {
     }
     export interface InterviewExtraction {
       metadata?: InterviewMetadata | null
-      interviewee?: Interviewee | null
+      participant?: Participant | null
       insights: ExtractedInsight[]
       relevantAnswers: string[]
       observationsAndNotes?: string | null
@@ -389,13 +389,6 @@ export namespace partial_types {
       followups: string[]
       bias_checks: string[]
     }
-    export interface Interviewee {
-      name?: string | null
-      persona?: string | null
-      participantDescription?: string | null
-      segment?: string | null
-      contactInfo?: string | null
-    }
     export interface KindTags {
       problem?: string[] | null
       goal?: string[] | null
@@ -419,6 +412,14 @@ export namespace partial_types {
       supporting_insights: string[]
       competitive_advantage?: string | null
       recommended_actions: ActionButton[]
+    }
+    export interface Participant {
+      name?: string | null
+      persona?: string | null
+      participantDescription?: string | null
+      facetSummary?: string | null
+      segment?: string | null
+      contactInfo?: string | null
     }
     export interface ParticipantGoal {
       speaker?: string | null

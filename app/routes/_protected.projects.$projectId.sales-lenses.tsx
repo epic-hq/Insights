@@ -144,9 +144,15 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { data: hygieneEventsData } = summaryIds.length
 		? await ctx.supabase
 				.from("sales_lens_hygiene_events")
-				.select<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>("id, summary_id, slot_id, code, severity, message")
+				.select<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>(
+					"id, summary_id, slot_id, code, severity, message"
+				)
 				.in("summary_id", summaryIds)
-		: { data: [] as Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">> }
+		: {
+				data: [] as Array<
+					Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">
+				>,
+			}
 
 	const peopleIds = new Set<string>()
 	const organizationIds = new Set<string>()
@@ -202,7 +208,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		organizationsById.set(organization.id, { name: organization.name ?? null })
 	}
 
-	const hygieneEventsBySummary = new Map<string, Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>>()
+	const hygieneEventsBySummary = new Map<
+		string,
+		Array<Pick<SalesLensHygieneEventRow, "id" | "summary_id" | "slot_id" | "code" | "severity" | "message">>
+	>()
 	for (const event of hygieneEventsData ?? []) {
 		const list = hygieneEventsBySummary.get(event.summary_id) ?? []
 		list.push(event)

@@ -301,7 +301,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-				(researchRollup?.research_questions_without_decision?.length || 0) > 0
+					(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")

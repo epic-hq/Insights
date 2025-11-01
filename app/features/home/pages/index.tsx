@@ -284,11 +284,11 @@ export default function Index() {
 	const salesProjectInitials =
 		salesProject != null
 			? (salesProject.slug || salesProject.name || "S")
-				.split(" ")
-				.map((n) => n[0])
-				.join("")
-				.toUpperCase()
-				.slice(0, 2)
+					.split(" ")
+					.map((n) => n[0])
+					.join("")
+					.toUpperCase()
+					.slice(0, 2)
 			: ""
 
 	// Use the route helper for consistent path construction
@@ -322,7 +322,10 @@ export default function Index() {
 		<div className="min-h-screen bg-slate-50">
 			<PageContainer className="space-y-10 py-12">
 				<section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 shadow-xl">
-					<div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 45%)" }} />
+					<div
+						className="absolute inset-0 opacity-60"
+						style={{ backgroundImage: "radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 45%)" }}
+					/>
 					<div className="relative flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between">
 						<div className="space-y-4">
 							<div className="flex items-center gap-3 text-slate-300">
@@ -343,18 +346,21 @@ export default function Index() {
 								</div>
 							</div>
 							<p className="max-w-2xl text-slate-200/80 text-sm">
-								Plan interviews, surface insights, and keep teams aligned on where to focus next. Start a new project or revisit the research that matters most right now.
+								Plan interviews, surface insights, and keep teams aligned on where to focus next. Start a new project or
+								revisit the research that matters most right now.
 							</p>
 							<div className="flex flex-wrap gap-3">
 								<Button size="sm" variant="secondary" asChild className="bg-white text-slate-900 hover:bg-slate-100">
 									<Link to={`${accountBase}/projects/new`}>
-										<Plus className="mr-2 h-4 w-4" />New Project
+										<Plus className="mr-2 h-4 w-4" />
+										New Project
 									</Link>
 								</Button>
 								{manageFacetsPath ? (
 									<Button size="sm" variant="outline" asChild className="border-white/30 text-white hover:bg-white/10">
 										<Link to={manageFacetsPath}>
-											<Settings className="mr-2 h-4 w-4" />Manage facets
+											<Settings className="mr-2 h-4 w-4" />
+											Manage facets
 										</Link>
 									</Button>
 								) : null}
@@ -404,7 +410,9 @@ export default function Index() {
 								</div>
 								<div>
 									<p className="text-white/70 text-xs uppercase tracking-wide">Sales workspace</p>
-									<p className="font-semibold text-xl">{salesWorkspaceActive ? "Active" : salesCrmEnabled ? "Available" : "Beta"}</p>
+									<p className="font-semibold text-xl">
+										{salesWorkspaceActive ? "Active" : salesCrmEnabled ? "Available" : "Beta"}
+									</p>
 								</div>
 							</div>
 						</div>
@@ -422,7 +430,8 @@ export default function Index() {
 						<div className="flex flex-wrap items-center gap-2">
 							<Button variant="default" asChild>
 								<Link to={`${accountBase}/projects/new`}>
-									<Plus className="mr-2 h-4 w-4" />New Project
+									<Plus className="mr-2 h-4 w-4" />
+									New Project
 								</Link>
 							</Button>
 						</div>
@@ -452,7 +461,8 @@ export default function Index() {
 								</div>
 								<Button variant="secondary" asChild>
 									<Link to={`${accountBase}/projects/new`}>
-										<Plus className="mr-2 h-4 w-4" />Create project
+										<Plus className="mr-2 h-4 w-4" />
+										Create project
 									</Link>
 								</Button>
 							</CardContent>
@@ -465,9 +475,7 @@ export default function Index() {
 						<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 							<div>
 								<h2 className="font-semibold text-2xl text-foreground">Sales workspace</h2>
-								<p className="text-muted-foreground text-sm">
-									Monitor CRM hygiene and MAP progress at a glance.
-								</p>
+								<p className="text-muted-foreground text-sm">Monitor CRM hygiene and MAP progress at a glance.</p>
 							</div>
 							{salesWorkspace?.project ? (
 								<Button asChild>

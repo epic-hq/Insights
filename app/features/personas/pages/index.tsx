@@ -49,8 +49,8 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 
 type PersonaRow = Awaited<ReturnType<typeof loader>> extends { personas: infer T }
 	? T extends Array<infer U>
-	? U
-	: never
+		? U
+		: never
 	: never
 
 export default function Personas() {

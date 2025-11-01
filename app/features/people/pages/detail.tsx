@@ -282,7 +282,7 @@ export default function PersonDetail() {
 		</Avatar>
 	)
 	const personaBadgeNode = persona?.name ? (
-		<div className="flex justify-start mb-3">
+		<div className="mb-3 flex justify-start">
 			<Link to={routes.personas.detail(persona.id)}>
 				<Badge
 					variant="secondary"
@@ -345,25 +345,25 @@ export default function PersonDetail() {
 				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
 					<div className="space-y-6">
 						{facetsGrouped.length > 0 && (
-							<Card>
-								<CardHeader>
-									<CardTitle>Key Attributes</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									{facetsGrouped.map((group) => (
-										<div key={group.kind_slug} className="space-y-2">
-											<h4 className="font-medium text-sm">{group.label}</h4>
-											<div className="flex flex-wrap gap-2">
-												{group.facets.map((facet) => (
-													<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
-														{facet.label}
-													</Badge>
-												))}
+							<div>Key Attributes
+								<Card>
+
+									<CardContent className="space-y-4">
+										{facetsGrouped.map((group) => (
+											<div key={group.kind_slug} className="space-y-2">
+												<h4 className="font-medium text-sm">{group.label}</h4>
+												<div className="flex flex-wrap gap-2">
+													{group.facets.map((facet) => (
+														<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
+															{facet.label}
+														</Badge>
+													))}
+												</div>
 											</div>
-										</div>
-									))}
-								</CardContent>
-							</Card>
+										))}
+									</CardContent>
+								</Card>
+							</div>
 						)}
 
 						{relatedInsights.length > 0 && (

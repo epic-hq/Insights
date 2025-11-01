@@ -13,14 +13,14 @@ interface InterviewData {
 }
 
 /**
- * Generate a person name from AI-extracted interviewee data
+ * Generate a person name from AI-extracted participant data
  */
-export function buildPersonNameFromAI(interviewee: {
+export function buildPersonNameFromAI(participant: {
 	name?: string | null
 	age?: number | null
 	occupation?: string | null
 }): string | null {
-	return interviewee?.name?.trim() || null
+	return participant?.name?.trim() || null
 }
 
 /**

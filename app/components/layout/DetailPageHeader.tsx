@@ -1,11 +1,11 @@
 import type { LucideIcon } from "lucide-react"
 import type { ReactNode } from "react"
+import { Form, Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
-import { Form, Link } from "react-router-dom"
 
 interface DetailPageHeaderProps {
 	/** Icon component to display in the badge */
@@ -60,7 +60,9 @@ export function DetailPageHeader({
 						{avatar && <div className="flex-shrink-0">{avatar}</div>}
 						<div className="flex-1">
 							<CardTitle className="font-bold text-3xl text-foreground">{title}</CardTitle>
-							{metadata && <div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">{metadata}</div>}
+							{metadata && (
+								<div className="flex flex-wrap items-center gap-3 text-muted-foreground text-sm">{metadata}</div>
+							)}
 							{badges && <div className="flex flex-wrap gap-2 text-muted-foreground text-xs">{badges}</div>}
 						</div>
 					</div>
@@ -71,7 +73,7 @@ export function DetailPageHeader({
 						{description && <p className="text-muted-foreground">{description}</p>}
 
 						{organizations && (
-							<div className="space-y-4 pt-4 border-t border-border/50">
+							<div className="space-y-4 border-border/50 border-t pt-4">
 								<div className="flex items-center justify-between">
 									<div>
 										<h4 className="font-medium text-sm">Organizations</h4>
@@ -121,7 +123,9 @@ export function DetailPageHeader({
 								)}
 
 								{organizations.actionData?.error && (
-									<div className="rounded-md bg-destructive/15 p-3 text-destructive text-sm">{organizations.actionData.error}</div>
+									<div className="rounded-md bg-destructive/15 p-3 text-destructive text-sm">
+										{organizations.actionData.error}
+									</div>
 								)}
 
 								{organizations.showLinkForm && organizations.availableOrganizations.length > 0 && (
@@ -144,7 +148,12 @@ export function DetailPageHeader({
 											<Button type="submit" size="sm">
 												Link
 											</Button>
-											<Button type="button" variant="ghost" size="sm" onClick={() => organizations.setShowLinkForm(false)}>
+											<Button
+												type="button"
+												variant="ghost"
+												size="sm"
+												onClick={() => organizations.setShowLinkForm(false)}
+											>
 												Cancel
 											</Button>
 										</div>

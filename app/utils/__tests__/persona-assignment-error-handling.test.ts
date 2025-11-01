@@ -48,7 +48,7 @@ describe("Persona Assignment Error Handling", () => {
 		// Test with empty transcript
 		const result = await b.AssignPersonaToInterview(
 			"", // Empty transcript
-			'{"name": null}', // Minimal interviewee info
+			'{"name": null}', // Minimal participant info
 			"[]" // No existing personas
 		)
 

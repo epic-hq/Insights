@@ -22,24 +22,41 @@ export const analyzeThemesAndPersonaTask = task({
 		const client = createSupabaseAdminClient()
 
 		try {
-			if (payload.analysisJobId) {
-				await client
-					.from("analysis_jobs")
-					.update({
-						status_detail: "Analyzing themes and personas",
-						progress: 75,
-					})
-					.eq("id", payload.analysisJobId as string)
-			}
+                        const { generateInterviewInsightsTask } = await import("./generateInterviewInsights")
+                        const insightsResult = await generateInterviewInsightsTask.triggerAndWait({
+                                metadata: payload.metadata,
+                                interview: payload.interview,
+                                fullTranscript: payload.fullTranscript,
+                                userCustomInstructions: payload.userCustomInstructions,
+                                evidenceResult: payload.evidenceResult,
+                                analysisJobId: payload.analysisJobId,
+                        })
 
-			const analysisResult = await analyzeThemesAndPersonaCore({
-				db: client,
-				metadata: payload.metadata,
-				interviewRecord: payload.interview,
-				fullTranscript: payload.fullTranscript,
-				userCustomInstructions: payload.userCustomInstructions,
-				evidenceResult: payload.evidenceResult,
-			})
+                        if (!insightsResult.ok) {
+                                throw new Error(
+                                        insightsResult.error?.message ?? "Failed to synthesize interview insights."
+                                )
+                        }
+
+                        if (payload.analysisJobId) {
+                                await client
+                                        .from("analysis_jobs")
+                                        .update({
+                                                status_detail: "Analyzing themes and personas",
+                                                progress: 75,
+                                        })
+                                        .eq("id", payload.analysisJobId as string)
+                        }
+
+                        const analysisResult = await analyzeThemesAndPersonaCore({
+                                db: client,
+                                metadata: payload.metadata,
+                                interviewRecord: payload.interview,
+                                fullTranscript: payload.fullTranscript,
+                                userCustomInstructions: payload.userCustomInstructions,
+                                evidenceResult: payload.evidenceResult,
+                                interviewInsights: insightsResult.output.interviewInsights,
+                        })
 
 			if (payload.analysisJobId) {
 				await client
