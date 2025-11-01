@@ -1,12 +1,11 @@
 import type { LucideIcon } from "lucide-react"
 import {
 	BookOpen,
+	Building2,
 	Compass,
 	File,
-	Home,
 	Lightbulb,
 	ListChecks,
-	Mic,
 	Sparkles,
 	Target,
 	UserCircle,
@@ -14,7 +13,7 @@ import {
 } from "lucide-react"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
-interface AppSidebarNavItem {
+export interface AppSidebarNavItem {
 	key: string
 	title: string
 	description?: string
@@ -22,74 +21,49 @@ interface AppSidebarNavItem {
 	to: (routes: RouteDefinitions) => string
 }
 
-interface AppSidebarSection {
+export interface AppSidebarSection {
 	key: string
 	title: string
 	items: AppSidebarNavItem[]
 }
 
+/**
+ * Order:
+ * 1) Discovery
+ * 2) Analyze
+ * 3) Directory  ⟵ moved here (above any Revenue-specific controls in the sidebar)
+ */
 export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
-	// {
-	// 	key: "home",
-	// 	title: "Home",
-	// 	items: [
-	// 		{
-	// 			key: "dashboard",
-	// 			title: "Home",
-	// 			icon: Home,
-	// 			to: (routes) => routes.dashboard(),
-	// 		},
-	// 	],
-	// },
 	{
-		key: "research",
+		key: "discovery",
 		title: "Discovery",
 		items: [
 			{
-				key: "home",
-				title: "Home",
-				description: "Running Report",
+				key: "overview",
+				title: "Overview",
+				description: "Running report",
 				icon: Compass,
 				to: (routes) => routes.projects.dashboard(),
 			},
 			{
-				key: "research-goal",
-				title: "Research Goal",
-				description: "Set objectives & success signals",
+				key: "objectives",
+				title: "Objectives",
+				description: "Learning goals & signals",
 				icon: Target,
 				to: (routes) => routes.projects.setup(),
 			},
 			{
-				key: "interview-questions",
-				title: "Interview Questions",
-				description: "Design prompts for interviews",
+				key: "guide",
+				title: "Guide",
+				description: "Interview & prompt sets",
 				icon: ListChecks,
 				to: (routes) => routes.questions.index(),
 			},
-		],
-	},
-	{
-		key: "engage",
-		title: "Customers",
-		items: [
 			{
-				key: "people",
-				title: "Contacts",
-				description: "See who you met",
-				icon: Users,
-				to: (routes) => routes.people.index(),
-			},
-			{
-				key: "record-upload-media",
-				title: "Upload / Record",
-				description: "Import calls, clips & decks",
-				icon: Mic,
-				to: (routes) => routes.interviews.upload(),
-			},
-			{
+				// keep key "conversations" for count mapping; label is Encounters
 				key: "conversations",
-				title: "Conversations",
-				description: "See what you recorded",
+				title: "Encounters",
+				description: "Calls, meetings, uploads",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
 			},
@@ -97,38 +71,60 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	},
 	{
 		key: "analyze",
-		title: "Insights",
+		title: "Analyze",
 		items: [
 			{
 				key: "personas",
 				title: "Personas",
-				description: "Group patterns by segment",
+				description: "Segments & patterns",
 				icon: UserCircle,
 				to: (routes) => routes.personas.index(),
 			},
 			{
-				key: "themes",
-				title: "Themes",
-				description: "Track signals & resonance",
+				key: "topics",
+				title: "Topics",
+				description: "Signals & themes",
 				icon: Sparkles,
 				to: (routes) => routes.themes.index(),
 			},
 			{
 				key: "insights",
-				title: "Insights",
-				description: "Publish findings & next steps",
+				title: "Findings",
+				description: "Published insights & next steps",
 				icon: Lightbulb,
 				to: (routes) => routes.insights.index(),
 			},
 		],
 	},
+	{
+		key: "directory",
+		title: "Directory",
+		items: [
+			{
+				key: "people",
+				title: "People",
+				description: "All individuals",
+				icon: Users,
+				to: (routes) => routes.people.index(), // implement tab switching inside the page
+			},
+			{
+				key: "organizations",
+				title: "Organizations",
+				description: "Companies & groups",
+				icon: Building2,
+				// Simple deep-link via query param (adjust if you add a helper)
+				to: (routes) => `${routes.people.index()}?tab=orgs`,
+			},
+		],
+	},
 ]
 
+/** Footer / global utilities (Directory removed to avoid duplication) */
 export const APP_SIDEBAR_UTILITY_LINKS: AppSidebarNavItem[] = [
 	{
 		key: "docs",
 		title: "Docs",
-		description: "Documentation & Help",
+		description: "Help & guides",
 		icon: BookOpen,
 		to: (routes) => routes.docs(),
 	},

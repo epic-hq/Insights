@@ -2,7 +2,8 @@ import { Grid3X3, List } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { PageContainer } from "~/components/layout/PageContainer"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { PersonaThemeMatrix } from "~/features/themes/components/PersonaThemeMatrix"
 import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
 import { userContext } from "~/server/user-context"
@@ -12,6 +13,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const projectId = params.projectId
 	if (!projectId) throw new Response("Missing projectId", { status: 400 })
+	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
 
 	// 1) Load themes for project
 	const { data: themes, error: tErr } = await supabase
@@ -216,57 +218,57 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function ThemesIndex() {
 	const { themes, matrixData } = useLoaderData<typeof loader>()
-	const [showMatrix, setShowMatrix] = useState(true)
+	const [viewMode, setViewMode] = useState<"table" | "cards">("table")
 
 	// Show generate button when no themes exist
 	if (themes.length === 0) {
 		return (
-			<div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
-				<div className="space-y-2 text-center">
-					<h2 className="font-semibold text-2xl text-foreground">No themes found yet</h2>
-					<p className="max-w-md text-foreground">
-						{/* Generate themes automatically from your evidence to identify patterns and insights. */}
-					</p>
-				</div>
-				{/* <GenerateThemesButton /> */}
-			</div>
+			<PageContainer className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
+				<h2 className="font-semibold text-2xl text-foreground">No themes yet</h2>
+				<p className="max-w-md text-foreground/70 text-sm">
+					Add themes or connect evidence to personas to unlock persona coverage insights.
+				</p>
+			</PageContainer>
 		)
 	}
 
 	return (
-		<div className="mx-auto h-full max-w-7xl p-8">
-			<div className="mb-6">
-				<div className="flex items-center gap-2">
-					<Button
-						variant={showMatrix ? "default" : "outline"}
-						size="sm"
-						onClick={() => setShowMatrix(true)}
-						className="flex items-center gap-2"
-					>
-						<Grid3X3 className="h-4 w-4" />
-						Matrix View
-					</Button>
-					<Button
-						variant={showMatrix ? "outline" : "default"}
-						size="sm"
-						onClick={() => setShowMatrix(false)}
-						className="flex items-center gap-2"
-					>
-						<List className="h-4 w-4" />
-						Studio View
-					</Button>
+		<PageContainer className="space-y-8">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div className="space-y-1.5">
+					<h1 className="font-semibold text-3xl text-foreground">Topics by Persona</h1>
+					{/* <p className="max-w-2xl text-sm text-foreground/70">
+						Compare how personas engage with your themes. Purple highlights call out wedge opportunities where a persona
+						over-indexes.
+					</p> */}
 				</div>
+				<ToggleGroup
+					type="single"
+					value={viewMode}
+					onValueChange={(next) => next && setViewMode(next as "table" | "cards")}
+					size="sm"
+					className="shrink-0"
+				>
+					<ToggleGroupItem value="table" aria-label="Table view" className="gap-2">
+						<Grid3X3 className="h-4 w-4" />
+						Table
+					</ToggleGroupItem>
+					<ToggleGroupItem value="cards" aria-label="Card view" className="gap-2">
+						<List className="h-4 w-4" />
+						Cards
+					</ToggleGroupItem>
+				</ToggleGroup>
 			</div>
 
-			{showMatrix && matrixData.length > 0 ? (
+			{viewMode === "table" && matrixData.length > 0 ? (
 				<PersonaThemeMatrix matrixData={matrixData} />
-			) : showMatrix ? (
+			) : viewMode === "table" ? (
 				<div className="py-12 text-center text-foreground/60">
 					<p>No persona data available. Add evidence with personas to see the matrix.</p>
 				</div>
 			) : (
 				<ThemeStudio themes={themes} />
 			)}
-		</div>
+		</PageContainer>
 	)
 }

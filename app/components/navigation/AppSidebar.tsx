@@ -1,6 +1,8 @@
-import { SquareCheckBig } from "lucide-react"
+// app/components/layout/AppSidebar.tsx
+import { Briefcase, Building2, Handshake, SquareCheckBig, Users } from "lucide-react"
 import { useMemo } from "react"
 import { Link, NavLink, useLocation, useRouteLoaderData } from "react-router-dom"
+import { Badge } from "~/components/ui/badge" // ⬅️ for right-aligned counts
 import {
 	Sidebar,
 	SidebarContent,
@@ -21,6 +23,8 @@ import { useValidationView } from "~/contexts/ValidationViewContext"
 import { useCurrentProjectData } from "~/hooks/useCurrentProjectData"
 import { useProjectDataAvailability } from "~/hooks/useProjectDataAvailability"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useSidebarCounts } from "~/hooks/useSidebarCounts" // ⬅️ counts hook
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { UserProfile } from "../auth/UserProfile"
 import { Logo, LogoBrand } from "../branding"
 import { APP_SIDEBAR_SECTIONS, APP_SIDEBAR_UTILITY_LINKS } from "./app-sidebar.config"
@@ -32,6 +36,7 @@ interface ProjectRecord {
 	account_id: string
 	name?: string | null
 	slug?: string | null
+	workflow_type?: string | null
 }
 
 interface AccountRecord {
@@ -57,6 +62,7 @@ export function AppSidebar() {
 	const { hasAnalysisData } = useProjectDataAvailability()
 	const { project } = useCurrentProjectData()
 	const { showValidationView, setShowValidationView } = useValidationView()
+	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
 
 	const accounts = useMemo(() => {
 		if (!protectedData?.accounts) return [] as AccountRecord[]
@@ -73,7 +79,6 @@ export function AppSidebar() {
 	const fallbackProject = useMemo(() => {
 		if (projectId) return { id: projectId }
 
-		// Respect user's last used project preference
 		const lastUsedProjectId = protectedData?.user_settings?.last_used_project_id
 		if (lastUsedProjectId && fallbackAccount?.projects?.length) {
 			const lastUsedProject = fallbackAccount.projects.find((p) => p.id === lastUsedProjectId)
@@ -83,11 +88,10 @@ export function AppSidebar() {
 			}
 			console.warn("[AppSidebar] last_used_project_id not found in current account projects:", {
 				lastUsedProjectId,
-				availableProjects: fallbackAccount.projects.map((p) => p.id),
+				availableProjects: fallbackAccount?.projects?.map((p) => p.id),
 			})
 		}
 
-		// Final fallback to first project
 		if (fallbackAccount?.projects?.length) {
 			console.log("[AppSidebar] Falling back to first project:", fallbackAccount.projects[0].id)
 			return fallbackAccount.projects[0] || null
@@ -105,18 +109,151 @@ export function AppSidebar() {
 	const routes = useProjectRoutes(effectiveProjectPath)
 	const canNavigate = Boolean(effectiveAccountId && effectiveProjectId)
 	const isCollapsed = state === "collapsed"
+	const salesProject = useMemo(() => {
+		const account =
+			(accounts.find((acct) => acct.account_id === effectiveAccountId) ||
+				fallbackAccount ||
+				null) as AccountRecord | null
+		const fromAccounts =
+			account?.projects?.find((proj) => (proj as ProjectRecord | null)?.workflow_type === "sales") || null
+
+		if (fromAccounts) {
+			return fromAccounts
+		}
+
+		if (project?.workflow_type === "sales" && effectiveAccountId && projectId) {
+			return {
+				id: projectId,
+				account_id: effectiveAccountId,
+				name: project?.name,
+				slug: project?.slug,
+				workflow_type: "sales",
+			} satisfies ProjectRecord
+		}
+
+		return null
+	}, [accounts, effectiveAccountId, fallbackAccount, project, projectId])
+
+	const salesProjectBasePath = useMemo(() => {
+		if (!salesProject) return null
+		const accountIdForSales = salesProject.account_id || effectiveAccountId
+		if (!accountIdForSales || !salesProject.id) return null
+		return `/a/${accountIdForSales}/${salesProject.id}`
+	}, [salesProject, effectiveAccountId])
+
+	const salesRoutes = useProjectRoutes(salesProjectBasePath ?? "")
 
 	// Filter sections based on data availability
 	const visibleSections = useMemo(() => {
 		return APP_SIDEBAR_SECTIONS.filter((section) => {
-			// Show analyze section only if there's analysis data (interviews or evidence)
 			if (section.key === "analyze") {
 				return hasAnalysisData
 			}
-			// Show all other sections
 			return true
 		})
 	}, [hasAnalysisData])
+
+	const salesSection = useMemo(() => {
+		if (!salesCrmEnabled || !salesProject || !salesProjectBasePath) {
+			return null
+		}
+
+		const base = salesRoutes.salesBase()
+		if (!base) return null
+
+		return {
+			key: "sales",
+			title: "Sales",
+			items: [
+				{
+					key: "sales-lenses",
+					title: "Sales Lenses",
+					icon: Handshake,
+					to: () => `${base}/sales-lenses`,
+				},
+				{
+					key: "accounts",
+					title: "Organizations",
+					icon: Building2,
+					to: () => `${base}/organizations`,
+				},
+				{
+					key: "contacts",
+					title: "People",
+					icon: Users,
+					to: () => `${base}/people`,
+				},
+				{
+					key: "deals",
+					title: "Opportunities",
+					icon: Briefcase,
+					to: () => `${base}/opportunities`,
+				},
+			],
+		}
+	}, [salesCrmEnabled, salesProject, salesProjectBasePath, salesRoutes])
+
+	const sectionsToRender = useMemo(() => {
+		const baseSections = salesSection ? [...visibleSections, salesSection] : visibleSections
+
+		// Filter items within sections based on feature flags
+		return baseSections.map((section) => ({
+			...section,
+			items: section.items.filter((item) => {
+				// Hide "Insights" item when sales CRM is enabled
+				if (item.key === "insights" && salesCrmEnabled) {
+					return false
+				}
+				return true
+			}),
+		})).filter((section) => section.items.length > 0) // Remove sections with no items
+	}, [visibleSections, salesSection, salesCrmEnabled])
+
+	// ────────────────────────────────────────────────────────────────
+	// Counts → show small badges on matching items
+	// Map your item keys to count keys (leave unmapped to skip)
+	const COUNT_KEY_BY_ITEM: Record<string, "encounters" | "personas" | "themes" | "insights" | "people" | "organizations" | "accounts" | "deals" | "contacts"> = {
+		// Discovery (your current keys)
+		conversations: "encounters", // your "Conversations" list = encounters
+		personas: "personas",
+		topics: "themes", // "Topics" item = themes count
+		insights: "insights",
+
+		// Directory
+		people: "people",
+		organizations: "organizations",
+
+		// Revenue (future keys, safe to keep here)
+		accounts: "accounts",
+		deals: "deals",
+		contacts: "contacts",
+	}
+
+	const { counts, loading: countsLoading } = useSidebarCounts(effectiveProjectId, project?.workflow_type)
+
+	const renderRightBadge = (itemKey: string, isActive: boolean) => {
+		const countKey = COUNT_KEY_BY_ITEM[itemKey]
+		const countVal = countKey ? counts[countKey] : undefined
+
+		if (typeof countVal === "number") {
+			return (
+				<Badge
+					variant={isActive ? "secondary" : "outline"}
+					className="ml-2 rounded-full px-2 py-0.5 text-[10px] leading-4"
+				>
+					{countVal}
+				</Badge>
+			)
+		}
+
+		// Optional: subtle placeholder while loading counts
+		if (countsLoading && countKey) {
+			return <span className="ml-2 h-4 w-6 animate-pulse rounded-full bg-muted-foreground/20" />
+		}
+
+		return null
+	}
+	// ────────────────────────────────────────────────────────────────
 
 	const buildTooltip = (title: string) => (isCollapsed ? title : undefined)
 
@@ -130,7 +267,7 @@ export function AppSidebar() {
 			</SidebarHeader>
 
 			<SidebarContent>
-				{visibleSections.map((section) => (
+				{sectionsToRender.map((section) => (
 					<SidebarGroup key={section.key}>
 						{section.key !== "home" && <SidebarGroupLabel>{section.title}</SidebarGroupLabel>}
 						<SidebarGroupContent>
@@ -143,15 +280,17 @@ export function AppSidebar() {
 										<SidebarMenuItem key={item.key}>
 											{href ? (
 												<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
-													<NavLink to={href}>
+													<NavLink to={href} className="flex items-center gap-2">
 														<item.icon />
 														<span>{item.title}</span>
+														{renderRightBadge(item.key, isActive)}
 													</NavLink>
 												</SidebarMenuButton>
 											) : (
-												<SidebarMenuButton disabled tooltip={item.title}>
+												<SidebarMenuButton disabled tooltip={item.title} className="flex items-center gap-2">
 													<item.icon />
 													<span>{item.title}</span>
+													{renderRightBadge(item.key, isActive)}
 												</SidebarMenuButton>
 											)}
 										</SidebarMenuItem>
@@ -205,13 +344,13 @@ export function AppSidebar() {
 							<SidebarMenuItem key={item.key}>
 								{href ? (
 									<SidebarMenuButton asChild isActive={isActive} tooltip={buildTooltip(item.title)}>
-										<NavLink to={href}>
+										<NavLink to={href} className="flex items-center gap-2">
 											<item.icon />
 											<span>{item.title}</span>
 										</NavLink>
 									</SidebarMenuButton>
 								) : (
-									<SidebarMenuButton disabled tooltip={item.title}>
+									<SidebarMenuButton disabled tooltip={item.title} className="flex items-center gap-2">
 										<item.icon />
 										<span>{item.title}</span>
 									</SidebarMenuButton>
