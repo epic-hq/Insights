@@ -197,7 +197,7 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 								<div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full border border-border bg-muted">
 									<Upload className="h-6 w-6 text-muted-foreground" />
 								</div>
-								<p className="mb-3 text-foreground text-sm">Drop your Video, Audio, or Text/MD file (45MB Limit)</p>
+								<p className="mb-3 text-foreground text-sm">Drop your conversation file here - we'll extract insights, themes, and user patterns automatically</p>
 								<Button
 									onClick={triggerFileInput}
 									variant="outline"
@@ -282,14 +282,12 @@ export default function UploadScreen({ onNext, onBack, projectId, error }: Uploa
 					disabled={!selectedFile}
 					className="h-12 w-full bg-primary font-medium text-primary-foreground hover:bg-primary/90 disabled:bg-muted disabled:text-muted-foreground"
 				>
-					{selectedFile ? "Start Analysis" : "Select a file to continue"}
+					{selectedFile ? "Process & Discover Insights" : "Select a file to continue"}
 				</Button>
 				{selectedFile && (
-					<p className="mt-2 text-center text-muted-foreground text-xs">Ready to process: {selectedFile.name}</p>
+					<p className="mt-2 text-center text-muted-foreground text-xs">🚀 Ready to transform your conversation into research insights!</p>
 				)}
 			</div>
-
-
 		</div>
 	)
 }

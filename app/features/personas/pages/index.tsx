@@ -47,7 +47,11 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	return { personas: personas || [] }
 }
 
-type PersonaRow = Awaited<ReturnType<typeof loader>> extends { personas: infer T } ? (T extends Array<infer U> ? U : never) : never
+type PersonaRow = Awaited<ReturnType<typeof loader>> extends { personas: infer T }
+	? T extends Array<infer U>
+	? U
+	: never
+	: never
 
 export default function Personas() {
 	const { personas } = useLoaderData<typeof loader>()
@@ -76,11 +80,7 @@ export default function Personas() {
 				: typeof persona.pains === "string"
 					? [persona.pains]
 					: []
-			const tags = Array.isArray(persona.tags)
-				? persona.tags
-				: typeof persona.tags === "string"
-					? [persona.tags]
-					: []
+			const tags = Array.isArray(persona.tags) ? persona.tags : typeof persona.tags === "string" ? [persona.tags] : []
 
 			return {
 				id: persona.id,
@@ -106,30 +106,30 @@ export default function Personas() {
 							<UserCircle className="h-6 w-6" />
 						</div>
 						<div>
-							<h1 className="font-semibold text-3xl text-foreground">User Personas</h1>
-							<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+							<h1 className="font-semibold text-3xl text-foreground">Personas</h1>
+							<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
 								Research-based archetypes summarizing motivations, pains, and patterns across your interviews.
 							</p>
 						</div>
 					</div>
 					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
 						{personas.length > 0 ? (
-								<ToggleGroup
-									type="single"
-									value={viewMode}
-									onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
-									className="w-full sm:w-auto"
-									variant="outline"
-									size="sm"
-								>
-									<ToggleGroupItem value="cards" aria-label="Card view">
-										<LayoutGrid className="h-4 w-4" />
-									</ToggleGroupItem>
-									<ToggleGroupItem value="table" aria-label="Table view">
-										<TableIcon className="h-4 w-4" />
-									</ToggleGroupItem>
-								</ToggleGroup>
-							) : null}
+							<ToggleGroup
+								type="single"
+								value={viewMode}
+								onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
+								className="w-full sm:w-auto"
+								variant="outline"
+								size="sm"
+							>
+								<ToggleGroupItem value="cards" aria-label="Card view">
+									<LayoutGrid className="h-4 w-4" />
+								</ToggleGroupItem>
+								<ToggleGroupItem value="table" aria-label="Table view">
+									<TableIcon className="h-4 w-4" />
+								</ToggleGroupItem>
+							</ToggleGroup>
+						) : null}
 						<div className="flex w-full gap-2 sm:w-auto">
 							<GeneratePersonasButton />
 							<Button asChild variant="outline" size="sm" className="flex-1 sm:flex-none">
@@ -147,8 +147,8 @@ export default function Personas() {
 									<Users className="h-10 w-10 text-muted-foreground" />
 								</div>
 							</div>
-							<h3 className="font-semibold text-xl text-foreground">No personas yet</h3>
-							<p className="text-sm text-muted-foreground">
+							<h3 className="font-semibold text-foreground text-xl">No personas yet</h3>
+							<p className="text-muted-foreground text-sm">
 								Generate personas from your research data or create them manually to understand your users better.
 							</p>
 							<div className="flex justify-center gap-3">

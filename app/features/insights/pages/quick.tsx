@@ -76,15 +76,15 @@ export default function QuickInsights() {
 	return (
 		<PageContainer className="space-y-6">
 			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-				<div>
+				{/* <div>
 					<h1 className="font-semibold text-3xl text-foreground">Quick Insights</h1>
 					<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
 						Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for your
 						team.
 					</p>
-				</div>
+				</div> */}
 				<div className="relative w-full max-w-md">
-					<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						className="pl-9"
 						placeholder="Search by insight, pain, tags, personas…"

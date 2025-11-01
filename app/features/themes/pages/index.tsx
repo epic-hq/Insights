@@ -1,4 +1,4 @@
-import { Search } from "lucide-react"
+import { Grid3X3, List, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
@@ -271,7 +271,7 @@ export default function ThemesIndex() {
 					</p> */}
 				</div>
 				<div className="relative w-full max-w-md">
-					<Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						className="pl-9"
 						placeholder="Search by insight, pain, tags, personas…"
@@ -282,9 +282,10 @@ export default function ThemesIndex() {
 			</div>
 			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
 				<div className="space-y-1.5">
-					<h2 className="font-medium text-xl text-foreground">Project Insights</h2>
-					<p className="max-w-2xl text-sm text-foreground/70">
-						Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for your team.
+					<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
+					<p className="max-w-2xl text-foreground/70 text-sm">
+						Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for
+						your team.
 					</p>
 				</div>
 				<ToggleGroup

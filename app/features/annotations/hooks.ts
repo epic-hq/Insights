@@ -246,6 +246,19 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 		}
 	}, [fetcher, entityType, entityId, routes])
 
+	const removeVote = () => {
+		if (fetcher.state === "submitting") return
+
+		fetcher.submit(
+			{
+				action: "remove-vote",
+				entityType,
+				entityId,
+			},
+			{ method: "POST", action: routes.api.votes() }
+		)
+	}
+
 	const upvote = () => vote(1)
 	const downvote = () => vote(-1)
 
@@ -254,6 +267,7 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 		isLoading,
 		error,
 		vote,
+		removeVote,
 		upvote,
 		downvote,
 		refetch: () => {
@@ -425,20 +439,17 @@ export function useEntityAnnotations({
 			? {
 					upvotes: votingHook.voteCounts.upvotes,
 					downvotes: votingHook.voteCounts.downvotes,
-				}
+			  }
 			: { upvotes: 0, downvotes: 0 },
 		userVote: includeVoting ? { vote_value: votingHook.voteCounts.user_vote } : null,
 		submitVote: includeVoting
 			? ({ vote_value, _action }: { vote_value?: number; _action?: string }) => {
-					if (_action === "remove") {
-						// Remove current vote by voting the same value again
-						if (votingHook.voteCounts.user_vote !== 0) {
-							votingHook.vote(votingHook.voteCounts.user_vote as 1 | -1)
-						}
-					} else if (vote_value) {
-						votingHook.vote(vote_value as 1 | -1)
-					}
+				if (_action === "remove") {
+					votingHook.removeVote()
+				} else if (vote_value) {
+					votingHook.vote(vote_value as 1 | -1)
 				}
+			}
 			: () => {},
 
 		// Flags data

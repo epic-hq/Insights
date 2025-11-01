@@ -39,7 +39,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 			formData.append("projectId", projectId)
 			formData.append("userCustomInstructions", "")
 
-			setProcessingMessage("Processing transcript with AI...")
+			setProcessingMessage("🎯 Processing transcript with AI...")
 			const response = await fetch("/api/upload-file", {
 				method: "POST",
 				body: formData,
@@ -52,7 +52,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 
 			const result: ProcessingResult = await response.json()
 
-			setProcessingMessage("Processing complete!")
+			setProcessingMessage("✨ Processing complete! Insights ready for review.")
 
 			// Store results for debugging (accessible via window object in dev tools)
 			if (typeof window !== "undefined") {
@@ -188,7 +188,7 @@ export default function AddInterview({ open, onClose, onSuccess, accountId, proj
 												{processingMessage || "Processing transcript..."}
 											</p>
 											<p className="text-blue-700 text-xs dark:text-blue-300">
-												Extracting insights and metadata from your interview
+												Transforming your conversation into actionable research insights
 											</p>
 										</div>
 									</div>

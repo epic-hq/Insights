@@ -1,5 +1,5 @@
 import consola from "consola"
-import { ArrowRight, Handshake, Hash, House } from "lucide-react"
+import { ArrowRight, BarChart3, FolderOpen, Handshake, Hash, House, Plus, Settings, Target, Users } from "lucide-react"
 import { usePostHog } from "posthog-js/react"
 import { useEffect, useState } from "react"
 import {
@@ -11,6 +11,7 @@ import {
 	useParams,
 	useRouteLoaderData,
 } from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -238,6 +239,11 @@ export default function Index() {
 	const primaryProjectRoutes = useProjectRoutes(primaryProjectPath)
 	const manageFacetsPath = primaryResearchProject ? primaryProjectRoutes.facets() : null
 
+	const totalProjects = projects?.length ?? 0
+	const totalResearchProjects = researchProjects.length
+	const latestInterviewSections = latest_sections.filter((section) => section.kind === "interview").length
+	const salesWorkspaceActive = Boolean(salesWorkspace?.project)
+
 	const navigate = useNavigate()
 	const [creatingSales, setCreatingSales] = useState(false)
 	const [salesError, setSalesError] = useState<string | null>(null)
@@ -246,6 +252,18 @@ export default function Index() {
 	// Check PostHog feature flag for Sales CRM
 	const [salesCrmEnabled, setSalesCrmEnabled] = useState(false)
 	const [salesCrmLoading, setSalesCrmLoading] = useState(true)
+
+	// Computed values that depend on state
+	const isSalesCtaDisabled = salesCrmLoading || (!salesWorkspaceActive && !salesCrmEnabled)
+	const salesCtaLabel = salesCrmLoading
+		? "Checking access…"
+		: salesWorkspaceActive
+			? "Open sales workspace"
+			: salesCrmEnabled
+				? creatingSales
+					? "Creating…"
+					: "Launch sales workspace"
+				: "Sales workspace coming soon"
 
 	useEffect(() => {
 		if (!posthog) {
@@ -301,72 +319,111 @@ export default function Index() {
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-7xl px-6 py-8">
-			<div className="mb-4 flex items-center gap-2">
-				<House className="h-6 w-6" />
-				<div className="flex items-center gap-2">
-					{currentAccount?.name && <span className="font-medium text-xl">{currentAccount.name}</span>}
-					{currentAccount?.slug && (
-						<Badge variant="secondary" className="h-6 px-2 text-xs">
-							<Hash className="mr-1 h-3 w-3" />
-							{currentAccount.slug}
-						</Badge>
-					)}
-				</div>
-			</div>
-
-			{/* Main Action Cards */}
-			<div className="mb-12 grid gap-8 md:grid-cols-2 lg:grid-cols-3">
-				{salesCrmLoading
-					? null
-					: salesCrmEnabled &&
-					!salesWorkspace?.project && (
-						<Card className="group relative overflow-hidden border-2 transition-all hover:border-green-500 hover:shadow-lg">
-							<CardHeader className="pb-4">
-								<CardTitle className="flex flex-row text-2xl">
-									<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-emerald-100 dark:bg-emerald-900/20">
-										<Handshake className="h-8 w-8 text-emerald-600 dark:text-emerald-400" />
-									</div>
-									<div className="px-2 pt-3">Sales Hygiene Workspace</div>
-								</CardTitle>
-								<CardDescription className="text-base">
-									Map MEDDIC/BANT data, draft MAPs, and coach revenue teams on CRM completeness.
-								</CardDescription>
-							</CardHeader>
-							<CardContent className="space-y-3 pt-0">
-								<Button
-									size="lg"
-									className="w-full bg-emerald-600 hover:bg-emerald-700 group-hover:bg-emerald-700"
-									onClick={handleCreateSalesWorkspace}
-									disabled={creatingSales}
-								>
-									{creatingSales ? "Creating…" : "Launch sales workspace"}
-									<ArrowRight className="ml-2 h-5 w-5" />
+		<div className="min-h-screen bg-slate-50">
+			<PageContainer className="space-y-10 py-12">
+				<section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 shadow-xl">
+					<div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 45%)" }} />
+					<div className="relative flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between">
+						<div className="space-y-4">
+							<div className="flex items-center gap-3 text-slate-300">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700/70">
+									<House className="h-5 w-5" />
+								</div>
+								<div className="space-y-1">
+									<p className="text-slate-300/80 text-xs uppercase tracking-wider">Workspace</p>
+									<h1 className="font-semibold text-2xl text-white lg:text-3xl">
+										{currentAccount?.name || "Your Research Hub"}
+									</h1>
+									{currentAccount?.slug && (
+										<Badge variant="secondary" className="bg-white/10 text-white text-xs">
+											<Hash className="mr-1 h-3 w-3" />
+											{currentAccount.slug}
+										</Badge>
+									)}
+								</div>
+							</div>
+							<p className="max-w-2xl text-slate-200/80 text-sm">
+								Plan interviews, surface insights, and keep teams aligned on where to focus next. Start a new project or revisit the research that matters most right now.
+							</p>
+							<div className="flex flex-wrap gap-3">
+								<Button size="sm" variant="secondary" asChild className="bg-white text-slate-900 hover:bg-slate-100">
+									<Link to={`${accountBase}/projects/new`}>
+										<Plus className="mr-2 h-4 w-4" />New Project
+									</Link>
 								</Button>
-							</CardContent>
-						</Card>
-					)}
-			</div>
+								{manageFacetsPath ? (
+									<Button size="sm" variant="outline" asChild className="border-white/30 text-white hover:bg-white/10">
+										<Link to={manageFacetsPath}>
+											<Settings className="mr-2 h-4 w-4" />Manage facets
+										</Link>
+									</Button>
+								) : null}
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={handleCreateSalesWorkspace}
+									disabled={isSalesCtaDisabled}
+									className="text-white hover:bg-white/10"
+								>
+									<Handshake className="mr-2 h-4 w-4" />
+									{salesCtaLabel}
+								</Button>
+							</div>
+						</div>
+						<div className="relative grid gap-4 rounded-2xl bg-white/5 p-5 text-slate-100 text-sm md:grid-cols-2">
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<FolderOpen className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Active projects</p>
+									<p className="font-semibold text-xl">{totalResearchProjects}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<Users className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Interview sections</p>
+									<p className="font-semibold text-xl">{latestInterviewSections}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<Target className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Total initiatives</p>
+									<p className="font-semibold text-xl">{totalProjects}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<BarChart3 className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Sales workspace</p>
+									<p className="font-semibold text-xl">{salesWorkspaceActive ? "Active" : salesCrmEnabled ? "Available" : "Beta"}</p>
+								</div>
+							</div>
+						</div>
+					</div>
+				</section>
 
-			{/* Existing Projects Section */}
-
-			<div className="space-y-8">
 				<section className="space-y-4">
-					<div className="flex items-center justify-between">
+					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 						<div>
-							<h2 className="font-semibold text-2xl">Discovery projects</h2>
-							<p className="hidden text-muted-foreground text-sm md:block">
-								Continue refining your research programs and interview guides.
+							<h2 className="font-semibold text-2xl text-foreground">Discovery projects</h2>
+							<p className="text-muted-foreground text-sm">
+								Plan, execute, and analyze conversations to drive better insights and outcomes.
 							</p>
 						</div>
 						<div className="flex flex-wrap items-center gap-2">
-							{manageFacetsPath ? (
-								<Button variant="ghost" asChild>
-									<Link to={manageFacetsPath}>Manage facets</Link>
-								</Button>
-							) : null}
-							<Button variant="outline" asChild>
-								<Link to={`${accountBase}/projects/new`}>New Project</Link>
+							<Button variant="default" asChild>
+								<Link to={`${accountBase}/projects/new`}>
+									<Plus className="mr-2 h-4 w-4" />New Project
+								</Link>
 							</Button>
 						</div>
 					</div>
@@ -385,18 +442,30 @@ export default function Index() {
 							})}
 						</div>
 					) : (
-						<p className="text-muted-foreground text-sm">
-							No discovery projects yet. Start one above to capture interviews.
-						</p>
+						<Card className="border-dashed">
+							<CardContent className="flex flex-col items-start gap-4 p-6 md:flex-row md:items-center md:justify-between">
+								<div>
+									<h3 className="font-semibold text-foreground text-lg">No discovery projects yet</h3>
+									<p className="text-muted-foreground text-sm">
+										Kick off your first project to start capturing interviews.
+									</p>
+								</div>
+								<Button variant="secondary" asChild>
+									<Link to={`${accountBase}/projects/new`}>
+										<Plus className="mr-2 h-4 w-4" />Create project
+									</Link>
+								</Button>
+							</CardContent>
+						</Card>
 					)}
 				</section>
 
 				{salesCrmEnabled && (
 					<section className="space-y-4">
-						<div className="flex items-center justify-between">
+						<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
 							<div>
-								<h2 className="font-semibold text-2xl">Sales workspace</h2>
-								<p className="hidden text-muted-foreground text-sm md:block">
+								<h2 className="font-semibold text-2xl text-foreground">Sales workspace</h2>
+								<p className="text-muted-foreground text-sm">
 									Monitor CRM hygiene and MAP progress at a glance.
 								</p>
 							</div>
@@ -408,8 +477,8 @@ export default function Index() {
 									</Link>
 								</Button>
 							) : (
-								<Button onClick={handleCreateSalesWorkspace} disabled={creatingSales}>
-									{creatingSales ? "Creating…" : "Launch sales workspace"}
+								<Button onClick={handleCreateSalesWorkspace} disabled={isSalesCtaDisabled}>
+									{salesCtaLabel}
 								</Button>
 							)}
 						</div>
@@ -463,13 +532,16 @@ export default function Index() {
 								</CardContent>
 							</Card>
 						) : (
-							<p className="text-muted-foreground text-sm">
-								Launch a sales workspace to see MEDDIC coverage and draft MAPs automatically.
-							</p>
+							<Card className="border-dashed">
+								<CardContent className="space-y-3 p-6 text-muted-foreground text-sm">
+									<p>Launch a sales workspace to see MEDDIC coverage and draft MAPs automatically.</p>
+									{salesError && <p className="text-destructive">{salesError}</p>}
+								</CardContent>
+							</Card>
 						)}
 					</section>
 				)}
-			</div>
+			</PageContainer>
 		</div>
 	)
 }
