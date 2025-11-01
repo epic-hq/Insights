@@ -89,11 +89,16 @@ const routes = [
 				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
 				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
-				// Project-setup agent chat API (project-scoped)
-				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
+                                // Project-setup agent chat API (project-scoped)
+                                route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
+                                // Project chat voice agent turn handler
+                                route(
+                                        "api/project-chat/voice-turn",
+                                        "./routes/_protected.projects.$projectId.api.project-chat.voice-turn.tsx"
+                                ),
 
-				// Interview transcript API (project-scoped)
-				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
+                                // Interview transcript API (project-scoped)
+                                route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
 			]),
 
 			// Account-scoped quick record API: creates project + interview
