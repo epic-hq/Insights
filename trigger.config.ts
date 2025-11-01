@@ -46,6 +46,7 @@ export default defineConfig({
 					{ name: "R2_ENDPOINT", value: process.env.R2_ENDPOINT || "" },
 					{ name: "R2_REGION", value: process.env.R2_REGION || "" },
 					{ name: "TRIGGER_SECRET_KEY", value: process.env.TRIGGER_SECRET_KEY || "" },
+					{ name: "ENABLE_PERSONA_ANALYSIS", value: process.env.ENABLE_PERSONA_ANALYSIS || "" },
 				];
 			}),
 		],

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
@@ -269,22 +270,30 @@ export default function PersonDetail() {
 	const metadataNode =
 		metadataItems.length > 0
 			? metadataItems.map((item) => (
-					<span key={item} className="font-medium text-muted-foreground text-sm">
-						{item}
-					</span>
-				))
+				<span key={item} className="font-medium text-muted-foreground text-sm">
+					{item}
+				</span>
+			))
 			: undefined
-	const badgeNode = persona?.name ? (
-		<Link to={routes.personas.detail(persona.id)}>
-			<Badge
-				variant="secondary"
-				className="font-medium text-xs"
-				style={{ backgroundColor: `${themeColor}1a`, color: themeColor, borderColor: themeColor }}
-			>
-				Persona: {persona.name}
-			</Badge>
-		</Link>
-	) : undefined
+	const avatarNode = (
+		<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
+			{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
+			<AvatarFallback style={{ backgroundColor: `${themeColor}33`, color: themeColor }}>{initials}</AvatarFallback>
+		</Avatar>
+	)
+	const personaBadgeNode = persona?.name ? (
+		<div className="mb-3 flex justify-start">
+			<Link to={routes.personas.detail(persona.id)}>
+				<Badge
+					variant="secondary"
+					className="font-medium text-xs"
+					style={{ backgroundColor: `${themeColor}1a`, color: themeColor, borderColor: themeColor }}
+				>
+					Persona: {persona.name}
+				</Badge>
+			</Link>
+		</div>
+	) : null
 	const quickFacts: Array<{ label: string; value: string }> = [
 		person.segment ? { label: "Segment", value: person.segment } : null,
 		person.title ? { label: "Role", value: person.title } : null,
@@ -321,140 +330,41 @@ export default function PersonDetail() {
 					title={name}
 					description={descriptionText}
 					metadata={metadataNode}
-					badges={badgeNode}
+					avatar={avatarNode}
+					aboveDescription={personaBadgeNode}
+					organizations={{
+						sortedLinkedOrganizations,
+						availableOrganizations,
+						showLinkForm,
+						setShowLinkForm,
+						actionData,
+						routes,
+					}}
 				/>
 
 				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
 					<div className="space-y-6">
-						<Card>
-							<CardContent className="flex flex-col gap-4 p-6 md:flex-row md:items-center">
-								<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
-									{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
-									<AvatarFallback style={{ backgroundColor: `${themeColor}33`, color: themeColor }}>
-										{initials}
-									</AvatarFallback>
-								</Avatar>
-								<div className="space-y-3">
-									<div className="flex flex-wrap gap-2">
-										{person.segment && (
-											<Badge variant="outline" className="text-xs">
-												Segment: {person.segment}
-											</Badge>
-										)}
-										{person.title && (
-											<Badge variant="outline" className="text-xs">
-												Role: {person.title}
-											</Badge>
-										)}
-									</div>
-									{person.description && <p className="text-muted-foreground text-sm">{person.description}</p>}
-								</div>
-							</CardContent>
-						</Card>
-
 						{facetsGrouped.length > 0 && (
-							<Card>
-								<CardHeader>
-									<CardTitle>Key Attributes</CardTitle>
-								</CardHeader>
-								<CardContent className="space-y-4">
-									{facetsGrouped.map((group) => (
-										<div key={group.kind_slug} className="space-y-2">
-											<h4 className="font-medium text-sm">{group.label}</h4>
-											<div className="flex flex-wrap gap-2">
-												{group.facets.map((facet) => (
-													<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
-														{facet.label}
-													</Badge>
-												))}
-											</div>
-										</div>
-									))}
-								</CardContent>
-							</Card>
-						)}
+							<div>Key Attributes
+								<Card>
 
-						<Card>
-							<CardHeader className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
-								<div>
-									<CardTitle>Organizations</CardTitle>
-									<p className="text-muted-foreground text-sm">Accounts linked to this participant.</p>
-								</div>
-								{availableOrganizations.length > 0 && !showLinkForm && (
-									<Button variant="outline" size="sm" onClick={() => setShowLinkForm(true)}>
-										Link organization
-									</Button>
-								)}
-							</CardHeader>
-							<CardContent className="space-y-4">
-								{sortedLinkedOrganizations.length > 0 ? (
-									<div className="space-y-3">
-										{sortedLinkedOrganizations.map((link) => {
-											const organization = link.organization
-											if (!organization) return null
-											return (
-												<div
-													key={link.id}
-													className="flex items-center justify-between rounded-lg border border-border/60 bg-background p-3"
-												>
-													<div>
-														<Link
-															to={routes.organizations.detail(organization.id)}
-															className="font-medium text-foreground text-sm hover:text-primary"
-														>
-															{organization.name}
-														</Link>
-														<div className="text-muted-foreground text-xs">{link.role || "Linked participant"}</div>
-													</div>
-													<Form method="post">
-														<input type="hidden" name="_action" value="unlink-organization" />
-														<input type="hidden" name="organization_id" value={organization.id} />
-														<Button type="submit" variant="ghost" size="sm" className="text-muted-foreground">
-															Remove
-														</Button>
-													</Form>
+									<CardContent className="space-y-4">
+										{facetsGrouped.map((group) => (
+											<div key={group.kind_slug} className="space-y-2">
+												<h4 className="font-medium text-sm">{group.label}</h4>
+												<div className="flex flex-wrap gap-2">
+													{group.facets.map((facet) => (
+														<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
+															{facet.label}
+														</Badge>
+													))}
 												</div>
-											)
-										})}
-									</div>
-								) : (
-									<div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
-										No organizations linked yet
-									</div>
-								)}
-
-								{actionData?.error && (
-									<div className="rounded-md bg-destructive/15 p-3 text-destructive text-sm">{actionData.error}</div>
-								)}
-
-								{showLinkForm && availableOrganizations.length > 0 && (
-									<Form method="post" className="space-y-3 rounded-lg border border-dashed p-4">
-										<input type="hidden" name="_action" value="link-organization" />
-										<Select name="organization_id" defaultValue={availableOrganizations[0]?.id ?? ""}>
-											<SelectTrigger>
-												<SelectValue placeholder="Select organization" />
-											</SelectTrigger>
-											<SelectContent>
-												{availableOrganizations.map((org) => (
-													<SelectItem key={org.id} value={org.id}>
-														{org.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Input name="role" placeholder="Role or relationship" />
-										<div className="flex gap-2">
-											<Button type="submit" size="sm">
-												Link
-											</Button>
-											<Button type="button" variant="ghost" size="sm" onClick={() => setShowLinkForm(false)}>
-												Cancel
-											</Button>
-										</div>
-									</Form>
-								)}
-							</CardContent>
-						</Card>
+											</div>
+										))}
+									</CardContent>
+								</Card>
+							</div>
+						)}
 
 						{relatedInsights.length > 0 && (
 							<section className="space-y-3">
