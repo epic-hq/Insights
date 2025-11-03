@@ -2,6 +2,7 @@ import type { UIMessage } from "ai"
 import type { InferMastraUITools } from "./ai-tool-type-helpers"
 import { displayUserQuestionsTool } from "./tools/display-user-questions"
 import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context"
+import { fetchInterviewContextTool } from "./tools/fetch-interview-context"
 import { navigateToPageTool } from "./tools/navigate-to-page"
 import { saveProjectSectionsDataTool } from "./tools/save-project-sections-data"
 import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
@@ -23,6 +24,7 @@ import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
 export const tools = {
         displayUserQuestions: displayUserQuestionsTool,
         fetchProjectStatusContext: fetchProjectStatusContextTool,
+        fetchInterviewContext: fetchInterviewContextTool,
         navigateToPage: navigateToPageTool,
         saveUserSettingsData: saveUserSettingsDataTool,
         saveProjectSectionsData: saveProjectSectionsDataTool,

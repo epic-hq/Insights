@@ -8,6 +8,7 @@ import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
 import { projectSetupAgent } from "./agents/project-setup-agent"
 import { projectStatusAgent } from "./agents/project-status-agent"
+import { interviewStatusAgent } from "./agents/interview-status-agent"
 import { researchAssistantAgent } from "./agents/research-assistant-agent"
 import { signupAgent } from "./agents/signup-agent"
 import { weatherAgent } from "./agents/weather-agent"
@@ -90,6 +91,7 @@ const agents = {
         signupAgent: attachStreamResultAliases(signupAgent),
         projectSetupAgent: attachStreamResultAliases(projectSetupAgent),
         projectStatusAgent: attachStreamResultAliases(projectStatusAgent),
+        interviewStatusAgent: attachStreamResultAliases(interviewStatusAgent),
         researchAssistantAgent: attachStreamResultAliases(researchAssistantAgent),
 	webLeadAgent: attachStreamResultAliases(webLeadAgent),
 }
