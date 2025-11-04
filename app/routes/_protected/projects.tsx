@@ -1,40 +1,25 @@
 /**
- * Handles protected project routes, including project context resolution and authentication middleware.
- * Ensures only authenticated users can access project-specific resources and provides project data to child routes.
+ * Project Layout Route - Provides 3-column layout for all project pages
+ * Left: AppSidebar for navigation
+ * Center: Main content area (<Outlet />)
+ * Right: ProjectStatusAgent chat sidebar
  */
-import consola from "consola"
-import { Outlet, redirect } from "react-router"
+import { Outlet, redirect, useLoaderData } from "react-router"
 import { z } from "zod"
-import { CurrentProjectProvider } from "~/contexts/current-project-context"
+import consola from "consola"
+import { SidebarProvider, SidebarInset } from "~/components/ui/sidebar"
+import { AppSidebar } from "~/components/navigation/AppSidebar"
+import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
+import { convertMessages } from "@mastra/core/agent"
+import type { UpsightMessage } from "~/mastra/message-types"
+import { memory } from "~/mastra/memory"
+import { getProjectStatusData } from "~/utils/project-status.server"
+import { CurrentProjectProvider, useCurrentProject } from "~/contexts/current-project-context"
 import { getProjectById } from "~/features/projects/db"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
-import type { GetAccount, Project } from "~/types"
 import type { Route } from "./+types/projects"
-
-function isUUID(str: string) {
-	const uuidSchema = z.string().uuid()
-	const isValid = uuidSchema.safeParse(str).success
-	return isValid
-}
-
-// Placeholder: Replace with actual project fetching logic
-async function _parse_project_id_from_params({
-	project_id_or_slug,
-	supabase,
-}: {
-	project_id_or_slug: string
-	supabase: any // SupabaseClient
-}) {
-	if (isUUID(project_id_or_slug || "")) {
-		// TODO: Replace with actual RPC or query to fetch project by UUID
-		const project: Project = {} as Project
-		return project
-	}
-	// TODO: Replace with actual RPC or query to fetch project by slug
-	const project: Project = {} as Project
-	return project
-}
+import type { GetAccount, Project } from "~/types"
 
 // Server-side Authentication Middleware
 export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
@@ -71,13 +56,62 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		// const currentProject = context.get(currentProjectContext)
 		const ctx = context.get(userContext)
 		const { supabase } = ctx
+		
+		if (!supabase) {
+			throw new Response("Database connection not available", { status: 500 })
+		}
+		
 		const _accountId = params?.accountId
 		const projectId = params?.projectId
 		const project = await getProjectById({ supabase, id: projectId })
 
+		// Load project status (latest analysis or fallback counts)
+		const statusData = await getProjectStatusData(projectId, supabase)
+
+		let initialChatMessages: UpsightMessage[] = []
+
+		try {
+			const userId = ctx.claims.sub
+			if (userId) {
+				const resourceId = `projectStatusAgent-${userId}-${projectId}`
+				const threads = await memory.getThreadsByResourceIdPaginated({
+					resourceId,
+					orderBy: "createdAt",
+					sortDirection: "DESC",
+					page: 0,
+					perPage: 100,
+				})
+
+				let threadId = ""
+				if (!(threads?.total > 0)) {
+					const newThread = await memory.createThread({
+						resourceId,
+						title: `Project Status ${projectId}`,
+						metadata: { user_id: userId, project_id: projectId, account_id: _accountId },
+					})
+					threadId = newThread.id
+				} else {
+					threadId = threads.threads[0].id
+				}
+
+				const { messagesV2 } = await memory.query({
+					threadId,
+					selectBy: { last: 50 },
+				})
+
+				if (messagesV2 && messagesV2.length > 0) {
+					initialChatMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+				}
+			}
+		} catch (error) {
+			console.error("project-status chat history load failed", error)
+		}
+
 		return {
 			projectId,
 			project: project.data,
+			statusData,
+			initialChatMessages,
 		}
 	} catch (error) {
 		consola.error("_protected/projects loader error:", error)
@@ -85,13 +119,96 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 	}
 }
 
+// Helper function (keeping for compatibility)
+function isUUID(str: string) {
+	const uuidSchema = z.string().uuid()
+	const isValid = uuidSchema.safeParse(str).success
+	return isValid
+}
+
+// Placeholder: Replace with actual project fetching logic
+async function _parse_project_id_from_params({
+	project_id_or_slug,
+	supabase,
+}: {
+	project_id_or_slug: string
+	supabase: any // SupabaseClient
+}) {
+	if (isUUID(project_id_or_slug || "")) {
+		// TODO: Replace with actual RPC or query to fetch project by UUID
+		const project: Project = {} as Project
+		return project
+	}
+	// TODO: Replace with actual RPC or query to fetch project by slug
+	const project: Project = {} as Project
+	return project
+}
+
+// Layout component with 3-column structure
+function ProjectLayout({
+	statusData,
+	initialChatMessages,
+	project,
+}: {
+	statusData: any
+	initialChatMessages: UpsightMessage[]
+	project: any
+}) {
+	const { accountId, projectId } = useCurrentProject()
+
+	// Build comprehensive system context for the project status agent
+	const projectSystemContext = `
+Project: ${project?.name || "Project"}
+Interviews conducted: ${statusData?.totalInterviews || 0}
+Evidence collected: ${statusData?.totalEvidence || 0}
+Insights generated: ${statusData?.totalInsights || 0}
+Personas identified: ${statusData?.totalPersonas || 0}
+Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
+`.trim()
+
+	return (
+		<SidebarProvider>
+			{/* Left Sidebar - Navigation */}
+			<AppSidebar />
+
+			{/* Main Content Area */}
+			<SidebarInset className="flex flex-col h-screen overflow-hidden">
+				<div className="flex flex-1 min-h-0">
+					{/* Center Column - Main Content */}
+					<main className="flex-1 overflow-auto">
+						<Outlet />
+					</main>
+
+					{/* Right Sidebar - Project Status Agent */}
+					<aside className="w-96 border-l bg-background flex flex-col">
+						<div className="flex-1 min-h-0 p-4">
+							{accountId && projectId && (
+								<ProjectStatusAgentChat
+									accountId={accountId}
+									projectId={projectId}
+									initialMessages={initialChatMessages}
+									systemContext={projectSystemContext}
+								/>
+							)}
+						</div>
+					</aside>
+				</div>
+			</SidebarInset>
+		</SidebarProvider>
+	)
+}
+
 export default function Projects() {
-	// const currentProject = useLoaderData<typeof loader>()
-	// consola.log("Projects currentProjectContext:", currentProject)
+	const loaderData = useLoaderData<typeof loader>()
+	const { statusData, initialChatMessages, project } = loaderData
 
 	return (
 		<CurrentProjectProvider>
-			<Outlet />
+			<ProjectLayout
+				statusData={statusData}
+				initialChatMessages={initialChatMessages}
+				project={project}
+			/>
 		</CurrentProjectProvider>
 	)
 }

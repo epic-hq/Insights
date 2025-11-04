@@ -1,6 +1,12 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
-import type { Database, Project_SectionInsert, Project_SectionUpdate, ProjectInsert, ProjectUpdate } from "~/types"
+import type { Database } from "supabase/types"
+
+// Type aliases for better readability
+type ProjectInsert = Database["public"]["Tables"]["projects"]["Insert"]
+type ProjectUpdate = Database["public"]["Tables"]["projects"]["Update"]
+type Project_SectionInsert = Database["public"]["Tables"]["project_sections"]["Insert"]
+type Project_SectionUpdate = Database["public"]["Tables"]["project_sections"]["Update"]
 
 // Default ordering for sections if no explicit position is provided
 const DEFAULT_SECTION_POSITION: Record<string, number> = {

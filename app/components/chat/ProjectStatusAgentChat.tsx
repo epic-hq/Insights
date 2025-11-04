@@ -1,0 +1,155 @@
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
+import consola from "consola"
+import { motion } from "framer-motion"
+import { BotMessageSquare } from "lucide-react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Input } from "~/components/ui/input"
+import { Textarea } from "~/components/ui/textarea"
+import { cn } from "~/lib/utils"
+import type { UpsightMessage } from "~/mastra/message-types"
+
+interface ProjectStatusAgentChatProps {
+	accountId: string
+	projectId: string
+	initialMessages?: UpsightMessage[]
+	systemContext: string
+}
+
+export function ProjectStatusAgentChat({
+	accountId,
+	projectId,
+	initialMessages = [],
+	systemContext,
+}: ProjectStatusAgentChatProps) {
+	const [input, setInput] = useState("")
+	const messagesEndRef = useRef<HTMLDivElement | null>(null)
+	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
+
+	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+		transport: new DefaultChatTransport({
+			api: routes.api.chat.projectStatus(),
+			body: { system: systemContext },
+		}),
+		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+	})
+
+	const visibleMessages = useMemo(() => (messages ?? []).slice(-12), [messages])
+
+	useEffect(() => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+		}
+	}, [visibleMessages])
+
+	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const trimmed = input.trim()
+		if (!trimmed) return
+		sendMessage({ text: trimmed })
+		setInput("")
+	}
+
+	const isBusy = status === "streaming" || status === "submitted"
+	const isError = status === "error"
+
+	return (
+		<div className="flex h-full flex-col">
+			<Card className="flex h-full flex-col border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
+				<CardHeader className="flex-shrink-0 p-3 pb-2 sm:p-4">
+					<CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+						<BotMessageSquare className="h-4 w-4 text-blue-600" />
+						Ask Project Assistant
+						{visibleMessages.length > 0 && (
+							<span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-white text-xs">
+								{visibleMessages.length}
+							</span>
+						)}
+					</CardTitle>
+				</CardHeader>
+				<CardContent className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
+					<div className="min-h-0 flex-1 overflow-hidden">
+						{visibleMessages.length === 0 ? (
+							<p className="text-muted-foreground text-xs sm:text-sm">
+								No questions yet. Try "What evidence do we have for our top assumption?"
+							</p>
+						) : (
+							<div className="h-full space-y-3 overflow-y-auto text-xs sm:text-sm">
+								{visibleMessages.map((message, index) => {
+									const key = message.id || `${message.role}-${index}`
+									const isUser = message.role === "user"
+									const textParts =
+										message.parts?.map((part) => {
+											if (part.type === "text") return part.text
+											if (part.type === "tool-call") {
+												return `Requesting tool: ${part.toolName ?? "unknown"}`
+											}
+											if (part.type === "tool-result") {
+												return `Tool result: ${part.toolName ?? "unknown"}`
+											}
+											return ""
+										}) ?? []
+									const messageText = textParts.filter(Boolean).join("\n").trim()
+									return (
+										<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+											<div className="max-w-[85%]">
+												<div className="mb-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+													{isUser ? "You" : "Project Assistant"}
+												</div>
+												<div
+													className={cn(
+														"whitespace-pre-wrap rounded-lg px-3 py-2 shadow-sm",
+														isUser ? "bg-blue-600 text-white" : "bg-background text-foreground ring-1 ring-border/60"
+													)}
+												>
+													{messageText ? (
+														isUser ? (
+															<span className="whitespace-pre-wrap">{messageText}</span>
+														) : (
+															<span className="whitespace-pre-wrap">{messageText}</span>
+														)
+													) : !isUser ? (
+														<span className="text-muted-foreground italic">Thinking...</span>
+													) : (
+														<span className="text-muted-foreground">(No text response)</span>
+													)}
+												</div>
+											</div>
+										</div>
+									)
+								})}
+								<div ref={messagesEndRef} />
+							</div>
+						)}
+					</div>
+
+					<div className="mt-3 flex-shrink-0">
+						<form onSubmit={handleSubmit} className="space-y-2">
+							<Textarea
+								value={input}
+								onChange={(event) => setInput(event.currentTarget.value)}
+								placeholder="Ask.."
+								rows={2}
+								disabled={isBusy}
+								className="min-h-[72px] resize-none"
+							/>
+							<div className="flex items-center justify-between gap-2">
+								<span className="text-muted-foreground text-xs" aria-live="polite">
+									{isError ? "Something went wrong. Try again." : isBusy ? "Thinking..." : null}
+								</span>
+								<button
+									type="submit"
+									disabled={!input.trim() || isBusy}
+									className="rounded bg-blue-600 px-3 py-1 font-medium text-sm text-white hover:bg-blue-700 disabled:cursor-not-allowed disabled:opacity-50"
+								>
+									Send
+								</button>
+							</div>
+						</form>
+					</div>
+				</CardContent>
+			</Card>
+		</div>
+	)
+}
