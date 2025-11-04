@@ -2,16 +2,17 @@ import { createTool } from "@mastra/core/tools"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
-import type { Database } from "~/types"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import type { Database } from "~/types"
 import { getProjectStatusData } from "~/utils/project-status.server"
 
 const DEFAULT_INSIGHT_LIMIT = 8
-const DEFAULT_EVIDENCE_LIMIT = 6
+const DEFAULT_EVIDENCE_LIMIT = 24
 const DEFAULT_PERSON_LIMIT = 12
 const DEFAULT_PERSONA_LIMIT = 8
 const DEFAULT_THEME_LIMIT = 12
 const DEFAULT_INTERVIEW_LIMIT = 12
+const DEFAULT_PERSON_EVIDENCE_LIMIT = 5
 
 const detailScopes = [
 	"status",
@@ -41,12 +42,14 @@ type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & 
 	> | null
 }
 type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & {
-	person?: (Database["public"]["Tables"]["people"]["Row"] & {
+	person?:
+	| (Database["public"]["Tables"]["people"]["Row"] & {
 		people_personas?: Array<{
 			persona_id: string | null
 			personas?: Database["public"]["Tables"]["personas"]["Row"] | null
 		}> | null
-	}) | null
+	})
+	| null
 }
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
@@ -56,6 +59,9 @@ type PersonaInsightsRow = Database["public"]["Tables"]["persona_insights"]["Row"
 type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"] & {
 	insights?: Array<{ id: string | null }> | null
 	evidence?: Array<{ id: string | null }> | null
+}
+type InterviewPeopleRow = Database["public"]["Tables"]["interview_people"]["Row"] & {
+	interview?: Pick<Database["public"]["Tables"]["interviews"]["Row"], "id" | "title" | "interview_date" | "status"> | null
 }
 
 function normalizeDate(value: unknown) {
@@ -192,6 +198,19 @@ const themeSchema = z.object({
 		.optional(),
 })
 
+const personEvidenceSchema = z.object({
+	id: z.string(),
+	gist: z.string().nullable(),
+	verbatim: z.string().nullable(),
+	context_summary: z.string().nullable(),
+	modality: z.string().nullable(),
+	created_at: z.string().nullable(),
+	interview_id: z.string().nullable(),
+	interviewTitle: z.string().nullable(),
+	interviewDate: z.string().nullable(),
+	interviewStatus: z.string().nullable(),
+})
+
 const personSchema = z.object({
 	personId: z.string(),
 	name: z.string().nullable(),
@@ -211,10 +230,22 @@ const personSchema = z.object({
 				id: z.string(),
 				name: z.string().nullable(),
 				color_hex: z.string().nullable(),
-			})
+				})
 		)
 		.optional(),
 	contactInfo: z.unknown().nullable().optional(),
+	interviews: z
+		.array(
+			z.object({
+				id: z.string(),
+				title: z.string().nullable(),
+				interview_date: z.string().nullable(),
+				status: z.string().nullable(),
+				evidenceCount: z.number(),
+			})
+		)
+		.optional(),
+	evidence: z.array(personEvidenceSchema).optional(),
 })
 
 const personaSchema = z.object({
@@ -272,6 +303,7 @@ type InsightPayload = z.infer<typeof insightSchema>
 type EvidencePayload = z.infer<typeof evidenceSchema>
 type ThemePayload = z.infer<typeof themeSchema>
 type PersonPayload = z.infer<typeof personSchema>
+type PersonEvidencePayload = z.infer<typeof personEvidenceSchema>
 type PersonaPayload = z.infer<typeof personaSchema>
 type InterviewPayload = z.infer<typeof interviewSchema>
 
@@ -292,52 +324,28 @@ export const fetchProjectStatusContextTool = createTool({
 		"Load project status context, including research sections, insights, evidence, people, and personas for accessible projects.",
 	inputSchema: z.object({
 		projectId: z.string().optional().describe("Project ID to load. Defaults to the current project in context."),
-		scopes: z
-			.array(z.enum(detailScopes))
+		scopes: z.array(z.enum(detailScopes)).optional().describe("Optional list of data groups to fetch."),
+		insightLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of insights to return."),
+		evidenceLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of evidence items to return."),
+		themeLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of themes to return."),
+		peopleLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of people to return."),
+		personaLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of personas to return."),
+		interviewLimit: z.number().int().min(1).max(100).optional().describe("Maximum number of interviews to return."),
+		peopleSearch: z
+			.string()
 			.optional()
-			.describe("Optional list of data groups to fetch."),
-		insightLimit: z
+			.describe("Optional case-insensitive search string to match people by name or display name."),
+		includePersonEvidence: z
+			.boolean()
+			.optional()
+			.describe("When true, include recent evidence snippets linked to the matched people."),
+		personEvidenceLimit: z
 			.number()
 			.int()
 			.min(1)
 			.max(50)
 			.optional()
-			.describe("Maximum number of insights to return."),
-		evidenceLimit: z
-			.number()
-			.int()
-			.min(1)
-			.max(50)
-			.optional()
-			.describe("Maximum number of evidence items to return."),
-		themeLimit: z
-			.number()
-			.int()
-			.min(1)
-			.max(50)
-			.optional()
-			.describe("Maximum number of themes to return."),
-		peopleLimit: z
-			.number()
-			.int()
-			.min(1)
-			.max(100)
-			.optional()
-			.describe("Maximum number of people to return."),
-		personaLimit: z
-			.number()
-			.int()
-			.min(1)
-			.max(50)
-			.optional()
-			.describe("Maximum number of personas to return."),
-		interviewLimit: z
-			.number()
-			.int()
-			.min(1)
-			.max(100)
-			.optional()
-			.describe("Maximum number of interviews to return."),
+			.describe("Maximum number of evidence snippets to include per person when includePersonEvidence is true."),
 		includeEvidence: z
 			.boolean()
 			.optional()
@@ -379,6 +387,11 @@ export const fetchProjectStatusContextTool = createTool({
 		const peopleLimit = context?.peopleLimit ?? DEFAULT_PERSON_LIMIT
 		const personaLimit = context?.personaLimit ?? DEFAULT_PERSONA_LIMIT
 		const interviewLimit = context?.interviewLimit ?? DEFAULT_INTERVIEW_LIMIT
+		const personSearch = (context?.peopleSearch ?? "").trim()
+		const sanitizedPersonSearch = personSearch.replace(/[%*"'()]/g, "").trim()
+		const includePersonEvidence =
+			context?.includePersonEvidence ?? (sanitizedPersonSearch.length > 0 ? true : false)
+		const personEvidenceLimit = context?.personEvidenceLimit ?? DEFAULT_PERSON_EVIDENCE_LIMIT
 
 		consola.info("fetch-project-status-context: execute start", {
 			projectId,
@@ -391,6 +404,9 @@ export const fetchProjectStatusContextTool = createTool({
 			peopleLimit,
 			personaLimit,
 			interviewLimit,
+			peopleSearch: sanitizedPersonSearch,
+			includePersonEvidence,
+			personEvidenceLimit,
 		})
 
 		if (!projectId) {
@@ -409,10 +425,7 @@ export const fetchProjectStatusContextTool = createTool({
 		}
 
 		try {
-			const {
-				data: project,
-				error: projectError,
-			} = await supabase
+			const { data: project, error: projectError } = await supabase
 				.from("projects")
 				.select("id, account_id, name, description, created_at, updated_at")
 				.eq("id", projectId)
@@ -441,18 +454,10 @@ export const fetchProjectStatusContextTool = createTool({
 			}
 
 			if (accountId && project.account_id && project.account_id !== accountId) {
-				consola.warn("fetch-project-status-context: account mismatch", {
+				consola.info("fetch-project-status-context: runtime account differs from project account", {
 					expectedAccountId: accountId,
 					projectAccountId: project.account_id,
 				})
-				return {
-					success: false,
-					message:
-						"Project is not accessible for the current account context. Confirm account_id before calling the tool.",
-					projectId,
-					projectName: project.name,
-					scopes,
-				}
 			}
 
 			const data: ToolData = {}
@@ -616,7 +621,9 @@ export const fetchProjectStatusContextTool = createTool({
 				try {
 					const { data: themes, error } = await supabase
 						.from("themes")
-						.select("id, name, statement, inclusion_criteria, exclusion_criteria, synonyms, anti_examples, created_at, updated_at")
+						.select(
+							"id, name, statement, inclusion_criteria, exclusion_criteria, synonyms, anti_examples, created_at, updated_at"
+						)
 						.eq("project_id", projectId)
 						.order("updated_at", { ascending: false })
 						.limit(themeLimit)
@@ -631,7 +638,9 @@ export const fetchProjectStatusContextTool = createTool({
 					if (includeEvidence && themeIds.length > 0) {
 						const { data: themeEvidence, error: themeEvidenceError } = await supabase
 							.from("theme_evidence")
-							.select("theme_id, confidence, rationale, evidence:evidence_id(id, gist, context_summary, verbatim, modality, created_at, interview_id)")
+							.select(
+								"theme_id, confidence, rationale, evidence:evidence_id(id, gist, context_summary, verbatim, modality, created_at, interview_id)"
+							)
 							.in("theme_id", themeIds)
 
 						if (themeEvidenceError) {
@@ -687,47 +696,166 @@ export const fetchProjectStatusContextTool = createTool({
 
 			if (scopeSet.has("people")) {
 				try {
-					const { data: projectPeople, error } = await supabase
+					let peopleQuery = supabase
 						.from("project_people")
 						.select(
 							"id, person_id, role, interview_count, first_seen_at, last_seen_at, created_at, updated_at, person:person_id(id, name, segment, role, title, company, description, location, image_url, contact_info, people_personas(persona_id, personas(id, name, color_hex)))"
 						)
 						.eq("project_id", projectId)
+
+					if (sanitizedPersonSearch) {
+						const pattern = `*${sanitizedPersonSearch}*`
+						const orConditions = [
+							`person.name.ilike.${pattern}`,
+							`role.ilike.${pattern}`,
+						]
+						peopleQuery = peopleQuery.or(orConditions.join(","))
+					}
+
+					const { data: projectPeople, error } = await peopleQuery
 						.order("interview_count", { ascending: false, nullsFirst: false })
 						.limit(peopleLimit)
 
 					if (error) throw error
 
-					const serialized: PersonPayload[] =
-						(projectPeople as ProjectPeopleRow[] | null)?.map((row) => {
-							const person = row.person
-							const personas =
-								person?.people_personas
-									?.map((entry) => entry?.personas)
-									.filter((persona): persona is Database["public"]["Tables"]["personas"]["Row"] => Boolean(persona))
-									.map((persona) => ({
-										id: persona.id,
-										name: persona.name ?? null,
-										color_hex: (persona as { color_hex?: string | null })?.color_hex ?? null,
-									})) ?? []
+					const peopleRows = (projectPeople as ProjectPeopleRow[] | null) ?? []
+					const personIds = peopleRows
+						.map((row) => row.person?.id ?? row.person_id)
+						.filter((id): id is string => Boolean(id))
 
-							return {
-								personId: person?.id ?? row.person_id,
-								name: person?.name ?? null,
-								segment: person?.segment ?? null,
-								role: row.role ?? person?.role ?? null,
-								title: (person as { title?: string | null })?.title ?? null,
-								company: (person as { company?: string | null })?.company ?? null,
-								description: person?.description ?? null,
-								location: person?.location ?? null,
-								image_url: person?.image_url ?? null,
-								firstSeenAt: normalizeDate(row.first_seen_at),
-								lastSeenAt: normalizeDate(row.last_seen_at),
-								interviewCount: row.interview_count ?? null,
-								personas,
-								contactInfo: person?.contact_info ?? null,
+					const interviewPeopleMap = new Map<string, InterviewPeopleRow[]>()
+					const interviewIds = new Set<string>()
+
+					if (personIds.length > 0) {
+						const { data: interviewPeople, error: interviewPeopleError } = await supabase
+							.from("interview_people")
+							.select(
+								"person_id, interview_id, interview:interview_id(id, title, interview_date, status)"
+							)
+							.eq("project_id", projectId)
+							.in("person_id", personIds)
+							.order("created_at", { ascending: false })
+
+						if (interviewPeopleError) {
+							consola.warn(
+								"fetch-project-status-context: failed to load interview_people for people scope",
+								interviewPeopleError
+							)
+						} else {
+							for (const row of (interviewPeople as InterviewPeopleRow[] | null) ?? []) {
+								const existing = interviewPeopleMap.get(row.person_id) ?? []
+								existing.push(row)
+								interviewPeopleMap.set(row.person_id, existing)
+								const targetInterviewId = row.interview_id ?? row.interview?.id
+								if (targetInterviewId) {
+									interviewIds.add(targetInterviewId)
+								}
 							}
-						}) ?? []
+						}
+					}
+
+					const evidenceByInterview = new Map<string, EvidenceRow[]>()
+
+					if (includePersonEvidence && interviewIds.size > 0) {
+						const totalEvidenceLimit = personEvidenceLimit * Math.max(peopleRows.length, 1)
+						const { data: evidenceRows, error: evidenceError } = await supabase
+							.from("evidence")
+							.select("id, gist, verbatim, context_summary, modality, created_at, interview_id")
+							.eq("project_id", projectId)
+							.in("interview_id", Array.from(interviewIds))
+							.order("created_at", { ascending: false })
+							.limit(totalEvidenceLimit)
+
+						if (evidenceError) {
+							consola.warn("fetch-project-status-context: failed to load evidence for people scope", evidenceError)
+						} else {
+							for (const evidence of (evidenceRows as EvidenceRow[] | null) ?? []) {
+								if (!evidence.interview_id) continue
+								const existing = evidenceByInterview.get(evidence.interview_id) ?? []
+								existing.push(evidence)
+								evidenceByInterview.set(evidence.interview_id, existing)
+							}
+						}
+					}
+
+					const serialized: PersonPayload[] = peopleRows.map((row) => {
+						const person = row.person
+						const personas =
+							person?.people_personas
+								?.map((entry) => entry?.personas)
+								.filter((persona): persona is Database["public"]["Tables"]["personas"]["Row"] => Boolean(persona))
+								.map((persona) => ({
+									id: persona.id,
+									name: persona.name ?? null,
+									color_hex: (persona as { color_hex?: string | null })?.color_hex ?? null,
+								})) ?? []
+
+						const personId = person?.id ?? row.person_id
+						const interviewsForPerson = (interviewPeopleMap.get(personId) ?? [])
+							.map((entry) => {
+								const interviewId = entry.interview_id ?? entry.interview?.id
+								if (!interviewId) return null
+								const interviewDate = normalizeDate(entry.interview?.interview_date)
+								const evidenceGroup = evidenceByInterview.get(interviewId) ?? []
+								return {
+									id: interviewId,
+									title: entry.interview?.title ?? null,
+									interview_date: interviewDate,
+									status: entry.interview?.status ?? null,
+									evidenceCount: evidenceGroup.length,
+								}
+							})
+							.filter(
+								(entry): entry is { id: string; title: string | null; interview_date: string | null; status: string | null; evidenceCount: number } =>
+									Boolean(entry)
+							)
+
+						let evidenceSnippets: PersonEvidencePayload[] | undefined
+						if (includePersonEvidence && interviewsForPerson.length > 0) {
+							const collected: PersonEvidencePayload[] = []
+							for (const interview of interviewsForPerson) {
+								const evidenceGroup = evidenceByInterview.get(interview.id) ?? []
+								for (const snippet of evidenceGroup) {
+									if (collected.length >= personEvidenceLimit) break
+									collected.push({
+										id: snippet.id,
+										gist: snippet.gist ?? null,
+										verbatim: snippet.verbatim ?? null,
+										context_summary: snippet.context_summary ?? null,
+										modality: snippet.modality ?? null,
+										created_at: normalizeDate(snippet.created_at),
+										interview_id: snippet.interview_id,
+										interviewTitle: interview.title ?? null,
+										interviewDate: interview.interview_date ?? null,
+										interviewStatus: interview.status ?? null,
+									})
+								}
+								if (collected.length >= personEvidenceLimit) break
+							}
+							if (collected.length > 0) {
+								evidenceSnippets = collected
+							}
+						}
+
+						return {
+							personId,
+							name: person?.name ?? null,
+							segment: person?.segment ?? null,
+							role: row.role ?? person?.role ?? null,
+							title: (person as { title?: string | null })?.title ?? null,
+							company: (person as { company?: string | null })?.company ?? null,
+							description: person?.description ?? null,
+							location: person?.location ?? null,
+							image_url: person?.image_url ?? null,
+							firstSeenAt: normalizeDate(row.first_seen_at),
+							lastSeenAt: normalizeDate(row.last_seen_at),
+							interviewCount: row.interview_count ?? null,
+							personas,
+							contactInfo: person?.contact_info ?? null,
+							interviews: interviewsForPerson.length > 0 ? interviewsForPerson : undefined,
+							evidence: evidenceSnippets,
+						}
+					})
 
 					data.people = serialized
 				} catch (error) {
@@ -752,14 +880,14 @@ export const fetchProjectStatusContextTool = createTool({
 					const personaRows: PersonaRow[] = personas ?? []
 					const personaIds = personaRows.map((persona) => persona.id)
 					const personaInsightMap = new Map<string, Set<string>>()
-					const personaPeopleMap = new Map<string, Array<{ id: string; name: string | null; segment: string | null; role: string | null }>>()
+					const personaPeopleMap = new Map<
+						string,
+						Array<{ id: string; name: string | null; segment: string | null; role: string | null }>
+					>()
 
 					if (personaIds.length > 0) {
 						const [personaInsightsResult, personaPeopleResult] = await Promise.all([
-							supabase
-								.from("persona_insights")
-								.select("persona_id, insight_id")
-								.in("persona_id", personaIds),
+							supabase.from("persona_insights").select("persona_id, insight_id").in("persona_id", personaIds),
 							supabase
 								.from("people_personas")
 								.select("persona_id, people:person_id(id, name, segment, role)")
@@ -883,6 +1011,9 @@ export const fetchProjectStatusContextTool = createTool({
 			}
 			if (!includeEvidence && scopeSet.has("evidence")) {
 				message += " Evidence details omitted by includeEvidence=false."
+			}
+			if (!includePersonEvidence && scopeSet.has("people")) {
+				message += " Person evidence omitted by includePersonEvidence=false."
 			}
 
 			return {

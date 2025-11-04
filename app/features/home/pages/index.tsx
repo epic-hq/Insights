@@ -1,5 +1,5 @@
 import consola from "consola"
-import { ArrowRight, BarChart3, FolderOpen, Handshake, Hash, House, Plus, Settings, Target, Users } from "lucide-react"
+import { ArrowRight, Hash, Plus } from "lucide-react"
 import { usePostHog } from "posthog-js/react"
 import { useEffect, useState } from "react"
 import {
@@ -234,14 +234,7 @@ export default function Index() {
 	const accountBase = `/a/${accountId}`
 
 	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
-	const primaryResearchProject = researchProjects[0] ?? null
-	const primaryProjectPath = primaryResearchProject ? `${accountBase}/${primaryResearchProject.id}` : ""
-	const primaryProjectRoutes = useProjectRoutes(primaryProjectPath)
-	const manageFacetsPath = primaryResearchProject ? primaryProjectRoutes.facets() : null
 
-	const totalProjects = projects?.length ?? 0
-	const totalResearchProjects = researchProjects.length
-	const latestInterviewSections = latest_sections.filter((section) => section.kind === "interview").length
 	const salesWorkspaceActive = Boolean(salesWorkspace?.project)
 
 	const navigate = useNavigate()
@@ -319,104 +312,12 @@ export default function Index() {
 	}
 
 	return (
-		<div className="min-h-screen bg-slate-50">
+		<div className="min-h-screen bg-background">
 			<PageContainer className="space-y-10 py-12">
-				<section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 shadow-xl">
-					<div
-						className="absolute inset-0 opacity-60"
-						style={{ backgroundImage: "radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 45%)" }}
-					/>
-					<div className="relative flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between">
-						<div className="space-y-4">
-							<div className="flex items-center gap-3 text-slate-300">
-								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700/70">
-									<House className="h-5 w-5" />
-								</div>
-								<div className="space-y-1">
-									<p className="text-slate-300/80 text-xs uppercase tracking-wider">Workspace</p>
-									<h1 className="font-semibold text-2xl text-white lg:text-3xl">
-										{currentAccount?.name || "Your Research Hub"}
-									</h1>
-									{currentAccount?.slug && (
-										<Badge variant="secondary" className="bg-white/10 text-white text-xs">
-											<Hash className="mr-1 h-3 w-3" />
-											{currentAccount.slug}
-										</Badge>
-									)}
-								</div>
-							</div>
-							<p className="max-w-2xl text-slate-200/80 text-sm">
-								Plan interviews, surface insights, and keep teams aligned on where to focus next. Start a new project or
-								revisit the research that matters most right now.
-							</p>
-							<div className="flex flex-wrap gap-3">
-								<Button size="sm" variant="secondary" asChild className="bg-white text-slate-900 hover:bg-slate-100">
-									<Link to={`${accountBase}/projects/new`}>
-										<Plus className="mr-2 h-4 w-4" />
-										New Project
-									</Link>
-								</Button>
-								{manageFacetsPath ? (
-									<Button size="sm" variant="outline" asChild className="border-white/30 text-white hover:bg-white/10">
-										<Link to={manageFacetsPath}>
-											<Settings className="mr-2 h-4 w-4" />
-											Manage facets
-										</Link>
-									</Button>
-								) : null}
-								<Button
-									variant="ghost"
-									size="sm"
-									onClick={handleCreateSalesWorkspace}
-									disabled={isSalesCtaDisabled}
-									className="text-white hover:bg-white/10"
-								>
-									<Handshake className="mr-2 h-4 w-4" />
-									{salesCtaLabel}
-								</Button>
-							</div>
-						</div>
-						<div className="relative grid gap-4 rounded-2xl bg-white/5 p-5 text-slate-100 text-sm md:grid-cols-2">
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-									<FolderOpen className="h-5 w-5" />
-								</div>
-								<div>
-									<p className="text-white/70 text-xs uppercase tracking-wide">Active projects</p>
-									<p className="font-semibold text-xl">{totalResearchProjects}</p>
-								</div>
-							</div>
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-									<Users className="h-5 w-5" />
-								</div>
-								<div>
-									<p className="text-white/70 text-xs uppercase tracking-wide">Interview sections</p>
-									<p className="font-semibold text-xl">{latestInterviewSections}</p>
-								</div>
-							</div>
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-									<Target className="h-5 w-5" />
-								</div>
-								<div>
-									<p className="text-white/70 text-xs uppercase tracking-wide">Total initiatives</p>
-									<p className="font-semibold text-xl">{totalProjects}</p>
-								</div>
-							</div>
-							<div className="flex items-center gap-3">
-								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
-									<BarChart3 className="h-5 w-5" />
-								</div>
-								<div>
-									<p className="text-white/70 text-xs uppercase tracking-wide">Sales workspace</p>
-									<p className="font-semibold text-xl">
-										{salesWorkspaceActive ? "Active" : salesCrmEnabled ? "Available" : "Beta"}
-									</p>
-								</div>
-							</div>
-						</div>
-					</div>
+				<section className="text-center">
+					<h1 className="font-semibold text-3xl text-foreground">
+						{currentAccount?.name || "Your Research Hub"}
+					</h1>
 				</section>
 
 				<section className="space-y-4">
@@ -493,7 +394,7 @@ export default function Index() {
 						{salesWorkspace?.project ? (
 							<Card>
 								<CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
-									<Link to={`${salesBase!}/sales-lenses`} className="flex flex-1 items-center gap-3">
+									<Link to={`${salesBase}/sales-lenses`} className="flex flex-1 items-center gap-3">
 										<Avatar
 											className="h-12 w-12 border"
 											style={salesProjectColor ? { borderColor: salesProjectColor } : undefined}
@@ -521,17 +422,17 @@ export default function Index() {
 										</div>
 									</Link>
 									<div className="flex flex-wrap gap-3">
-										<Link to={`${salesBase!}/organizations`} className="inline-flex">
+										<Link to={`${salesBase}/organizations`} className="inline-flex">
 											<Badge variant="outline" className="px-3 py-1.5 text-sm">
 												{salesWorkspace.kpis.organizations} Organizations
 											</Badge>
 										</Link>
-										<Link to={`${salesBase!}/people`} className="inline-flex">
+										<Link to={`${salesBase}/people`} className="inline-flex">
 											<Badge variant="outline" className="px-3 py-1.5 text-sm">
 												{salesWorkspace.kpis.people} People
 											</Badge>
 										</Link>
-										<Link to={`${salesBase!}/opportunities`} className="inline-flex">
+										<Link to={`${salesBase}/opportunities`} className="inline-flex">
 											<Badge variant="outline" className="px-3 py-1.5 text-sm">
 												{salesWorkspace.kpis.opportunities} Opportunities
 											</Badge>

@@ -1,10 +1,46 @@
-import { Link, useLoaderData, useNavigate } from "react-router"
+import { Link, type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router"
+
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { userContext } from "~/server/user-context"
 
-export async function loader({ context }: any) {
+type Project = {
+	id: string
+	account_id: string
+	name: string | null
+	description: string | null
+	status: string | null
+	slug: string | null
+	created_at: string
+	updated_at: string
+}
+
+type UserAccount = {
+	account_id: string
+	account_role: string
+	is_primary_owner: boolean
+	name: string | null
+	slug: string | null
+	personal_account: boolean | null
+	created_at: string
+	updated_at: string
+	projects: Project[]
+}
+
+type AccountSummary = UserAccount & {
+	projectCount: number
+}
+
+type User = {
+	email?: string
+	user_metadata?: {
+		full_name?: string
+	}
+}
+
+export async function loader({ context }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	if (!ctx?.claims) {
 		throw new Response("Unauthorized", { status: 401 })
@@ -12,9 +48,16 @@ export async function loader({ context }: any) {
 
 	const { supabase, accounts = [] } = ctx
 
+	if (!supabase) {
+		throw new Response("Database connection not available", { status: 500 })
+	}
+
+	// Filter business accounts from user context (accounts already include personal_account field)
+	const businessAccounts = accounts.filter((account: UserAccount) => !account.personal_account)
+
 	// Get project counts for each account
 	const accountSummaries = await Promise.all(
-		accounts.map(async (account: any) => {
+		businessAccounts.map(async (account: UserAccount) => {
 			const { count: projectCount } = await supabase
 				.from("projects")
 				.select("*", { count: "exact", head: true })
@@ -43,12 +86,10 @@ function getInitials(name: string) {
 }
 
 export default function AccountOverview() {
-	const { accounts, user } = useLoaderData<typeof loader>()
+	const { accounts } = useLoaderData<{ accounts: AccountSummary[]; user: User }>()
 	const navigate = useNavigate()
 
-	const displayName = user?.user_metadata?.full_name || user?.email || "User"
-
-	// If user only has one account, redirect to that account's home
+	// If user only has one business account, redirect to that account's home
 	if (accounts.length === 1) {
 		const account = accounts[0]
 		navigate(`/a/${account.account_id}/home`, { replace: true })
@@ -57,15 +98,12 @@ export default function AccountOverview() {
 
 	return (
 		<div className="mx-auto w-full max-w-4xl px-6 py-8">
-			<div className="mb-8 text-center">
-				<h1 className="font-semibold text-3xl">Welcome back, {displayName.split(" ")[0]}!</h1>
-				<p className="mt-2 text-muted-foreground">
-					Choose an account to continue working with your research and sales data.
-				</p>
+			<div className="mb-6">
+				<h2 className="font-semibold text-2xl">Accounts</h2>
 			</div>
 
 			<div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-				{accounts.map((account: any) => (
+				{accounts.map((account: AccountSummary) => (
 					<Card key={account.account_id} className="group cursor-pointer transition-all hover:shadow-md">
 						<Link to={`/a/${account.account_id}/home`} className="block">
 							<CardHeader className="pb-4">
@@ -76,7 +114,14 @@ export default function AccountOverview() {
 										</AvatarFallback>
 									</Avatar>
 									<div className="min-w-0 flex-1">
-										<CardTitle className="truncate text-lg">{account.name || "Unnamed Account"}</CardTitle>
+										<div className="flex items-center gap-2">
+											<CardTitle className="truncate text-lg">{account.name || "Unnamed Account"}</CardTitle>
+											{account.is_primary_owner && (
+												<Badge variant="secondary" className="text-xs">
+													Owner
+												</Badge>
+											)}
+										</div>
 										<CardDescription className="text-sm">
 											{account.projectCount} {account.projectCount === 1 ? "project" : "projects"}
 										</CardDescription>
