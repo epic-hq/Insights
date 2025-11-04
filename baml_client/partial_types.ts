@@ -222,7 +222,7 @@ export namespace partial_types {
       personas?: string[] | null
       segments?: string[] | null
       journey_stage?: string | null
-      anchors: Anchor[]
+      anchors?: Anchor[] | null
       confidence?: string | null
       context_summary?: string | null
       independence_key?: string | null

@@ -1,6 +1,6 @@
 import { task } from "@trigger.dev/sdk"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
-import { evidenceUnitsSchema } from "~/lib/validation/baml-validation"
+import { normalizeEvidenceUnits } from "~/lib/validation/baml-validation"
 import {
 	type AnalyzeThemesTaskPayload,
 	analyzeThemesAndPersonaCore,
@@ -24,12 +24,12 @@ export const analyzeThemesAndPersonaTask = task({
 		if (!payload.evidenceResult) {
 			throw new Error("Missing evidenceResult in payload")
 		}
-		const validatedEvidenceUnits = evidenceUnitsSchema.parse(
-			payload.evidenceResult.evidenceUnits
-		)
+		const normalizedEvidenceUnits = normalizeEvidenceUnits(payload.evidenceResult.evidenceUnits, {
+			defaultAnchorTarget: payload.interview.media_url ?? payload.interview.id,
+		})
 		const evidenceResult = {
 			...payload.evidenceResult,
-			evidenceUnits: validatedEvidenceUnits,
+			evidenceUnits: normalizedEvidenceUnits,
 		}
 
 		const client = createSupabaseAdminClient()

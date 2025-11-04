@@ -5,9 +5,9 @@
 // I think there may be too many things going on in this? Is there a way to simplify the facet data the AI has to generate?
 
 class Anchor {
-  type string @description("av | doc | web | message | log")
-  target string @description("media_id | doc_id | URL | stream id")
-  start string @description("av: ms (number-as-string OK); doc: p14#para3; web: selector; log: ISO time")
+  type string? @description("av | doc | web | message | log")
+  target string? @description("media_id | doc_id | URL | stream id")
+  start string? @description("av: ms (number-as-string OK); doc: p14#para3; web: selector; log: ISO time")
   end string? @description("optional end position")
   speaker string? @description("Optional: speaker label or name if available")
   chapter_title string? @description("Optional: chapter/section title for quick context")
@@ -84,19 +84,19 @@ class EvidenceParticipant {
 }
 
 class EvidenceUnit {
-  person_key string @description("Reference to EvidenceParticipant.person_key for the primary speaker")
+  person_key string? @description("Reference to EvidenceParticipant.person_key for the primary speaker")
   person_role string? @description("Legacy helper; prefer participant.role")
   topic string? @description("Optional short label for the thematic focus of this chunk")
-  gist string @description("≤12-word essence of the chunk; write like a slide headline")
-  chunk string @description("Multi-sentence excerpt capturing the participant's full thought")
-  verbatim string @description("Exact quote or concise snippet. Keep short and citable.")
-  support string @description("supports | refutes | neutral")
-  kind_tags KindTags @description("Canonical tag buckets for clustering")
+  gist string? @description("≤12-word essence of the chunk; write like a slide headline")
+  chunk string? @description("Multi-sentence excerpt capturing the participant's full thought")
+  verbatim string? @description("Exact quote or concise snippet. Keep short and citable.")
+  support string? @description("supports | refutes | neutral")
+  kind_tags KindTags? @description("Canonical tag buckets for clustering")
   personas string[]? @description("Optional persona labels if obvious from context")
   segments string[]? @description("Optional segment labels if obvious from context")
   journey_stage string? @description("Optional journey stage if clear")
-  anchors Anchor[] @description("At least one deep-link anchor to source")
-  confidence string @description("low | medium | high")
+  anchors Anchor[]? @description("At least one deep-link anchor to source")
+  confidence string? @description("low | medium | high")
   context_summary string? @description("1–2 sentences: who/where/what; why it matters")
   independence_key string? @description("Stable signature for dedupe (e.g., normalized gist + main tag)")
 
@@ -104,7 +104,7 @@ class EvidenceUnit {
   says string[]? @description("Short quotes the user says out loud; keep each entry under ~120 characters.")
   does string[]? @description("Observable actions/behaviors; short imperative phrases, under ~120 characters.")
   thinks string[]? @description("Internal thoughts/beliefs; concise first-person statements, under ~120 characters.")
-  feels string[]? @description("Emotions with brief context; e.g., 'Frustrated with long load times'.")
+  feels string[]? @description("Emotions with context; e.g., 'Frustrated with long load times'.")
   pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases in specific context.")
   gains string[]? @description("Goals, desires, positive outcomes/benefits/success factors; short phrases in specific context.")
 }

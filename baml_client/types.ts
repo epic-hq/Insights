@@ -305,9 +305,9 @@ export interface ActionButton {
 }
 
 export interface Anchor {
-  type: string
-  target: string
-  start: string
+  type?: string | null
+  target?: string | null
+  start?: string | null
   end?: string | null
   speaker?: string | null
   chapter_title?: string | null
@@ -519,19 +519,19 @@ export interface EvidenceTurn {
 }
 
 export interface EvidenceUnit {
-  person_key: string
+  person_key?: string | null
   person_role?: string | null
   topic?: string | null
-  gist: string
-  chunk: string
-  verbatim: string
-  support: string
-  kind_tags: KindTags
+  gist?: string | null
+  chunk?: string | null
+  verbatim?: string | null
+  support?: string | null
+  kind_tags?: KindTags | null
   personas?: string[] | null
   segments?: string[] | null
   journey_stage?: string | null
-  anchors: Anchor[]
-  confidence: string
+  anchors?: Anchor[] | null
+  confidence?: string | null
   context_summary?: string | null
   independence_key?: string | null
   says?: string[] | null
