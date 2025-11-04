@@ -281,7 +281,7 @@ export default function EditInterview() {
 					<Input
 						id="media_url"
 						name="media_url"
-						type="url"
+						type="text"
 						defaultValue={interview.media_url || ""}
 						placeholder="https://..."
 						className="mt-1"

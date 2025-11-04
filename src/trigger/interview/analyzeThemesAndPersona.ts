@@ -1,5 +1,6 @@
 import { task } from "@trigger.dev/sdk"
 import { createSupabaseAdminClient } from "~/lib/supabase/client.server"
+import { evidenceUnitsSchema } from "~/lib/validation/baml-validation"
 import {
 	type AnalyzeThemesTaskPayload,
 	analyzeThemesAndPersonaCore,
@@ -19,48 +20,60 @@ export const analyzeThemesAndPersonaTask = task({
 			}
 		}
 
+		// Validate payload structure
+		if (!payload.evidenceResult) {
+			throw new Error("Missing evidenceResult in payload")
+		}
+		const validatedEvidenceUnits = evidenceUnitsSchema.parse(
+			payload.evidenceResult.evidenceUnits
+		)
+		const evidenceResult = {
+			...payload.evidenceResult,
+			evidenceUnits: validatedEvidenceUnits,
+		}
+
 		const client = createSupabaseAdminClient()
 
 		try {
-                        const { generateInterviewInsightsTask } = await import("./generateInterviewInsights")
-                        const insightsResult = await generateInterviewInsightsTask.triggerAndWait({
-                                metadata: payload.metadata,
-                                interview: payload.interview,
-                                fullTranscript: payload.fullTranscript,
-                                userCustomInstructions: payload.userCustomInstructions,
-                                evidenceResult: payload.evidenceResult,
-                                analysisJobId: payload.analysisJobId,
-                        })
+			const { generateInterviewInsightsTask } = await import("./generateInterviewInsights")
+			const insightsResult = await generateInterviewInsightsTask.triggerAndWait({
+				metadata: payload.metadata,
+				interview: payload.interview,
+				fullTranscript: payload.fullTranscript,
+				userCustomInstructions: payload.userCustomInstructions,
+				evidenceResult,
+				analysisJobId: payload.analysisJobId,
+			})
 
-                        if (!insightsResult.ok) {
-                                throw new Error(
-                                        insightsResult.error?.message ?? "Failed to synthesize interview insights."
-                                )
-                        }
-
-                        if (payload.analysisJobId) {
-                                await client
-                                        .from("analysis_jobs")
-                                        .update({
-                                                status_detail: "Analyzing themes and personas",
-                                                progress: 75,
-                                        })
-                                        .eq("id", payload.analysisJobId as string)
-                        }
-
-                        const analysisResult = await analyzeThemesAndPersonaCore({
-                                db: client,
-                                metadata: payload.metadata,
-                                interviewRecord: payload.interview,
-                                fullTranscript: payload.fullTranscript,
-                                userCustomInstructions: payload.userCustomInstructions,
-                                evidenceResult: payload.evidenceResult,
-                                interviewInsights: insightsResult.output.interviewInsights,
-                        })
+			if (!insightsResult.ok) {
+				throw new Error(
+					insightsResult.error?.message ?? "Failed to synthesize interview insights."
+				)
+			}
 
 			if (payload.analysisJobId) {
 				await client
-					.from("analysis_jobs")
+					.from("analysis_jobs" as const)
+					.update({
+						status_detail: "Analyzing themes and personas",
+						progress: 75,
+					})
+					.eq("id", payload.analysisJobId as string)
+			}
+
+			const analysisResult = await analyzeThemesAndPersonaCore({
+				db: client,
+				metadata: payload.metadata,
+				interviewRecord: payload.interview,
+				fullTranscript: payload.fullTranscript,
+				userCustomInstructions: payload.userCustomInstructions,
+				evidenceResult,
+				interviewInsights: insightsResult.output.interviewInsights,
+			})
+
+			if (payload.analysisJobId) {
+				await client
+					.from("analysis_jobs" as const)
 					.update({
 						status_detail: "Attributing answers",
 						progress: 85,
@@ -73,7 +86,7 @@ export const analyzeThemesAndPersonaTask = task({
 				metadata: payload.metadata,
 				interview: analysisResult.interview,
 				fullTranscript: payload.fullTranscript,
-				insertedEvidenceIds: payload.evidenceResult.insertedEvidenceIds,
+				insertedEvidenceIds: evidenceResult.insertedEvidenceIds,
 				storedInsights: analysisResult.storedInsights,
 				analysisJobId: payload.analysisJobId,
 			})
@@ -86,7 +99,7 @@ export const analyzeThemesAndPersonaTask = task({
 		} catch (error) {
 			if (payload.analysisJobId) {
 				await client
-					.from("analysis_jobs")
+					.from("analysis_jobs" as const)
 					.update({
 						status: "error",
 						status_detail: "Theme analysis failed",
@@ -95,7 +108,7 @@ export const analyzeThemesAndPersonaTask = task({
 					.eq("id", payload.analysisJobId as string)
 			}
 
-			await client.from("interviews").update({ status: "error" }).eq("id", payload.interview.id)
+			await client.from("interviews" as const).update({ status: "error" }).eq("id", payload.interview.id)
 
 			throw error
 		}

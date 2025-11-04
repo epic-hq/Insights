@@ -1138,7 +1138,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	return (
 		<div className="relative mx-auto mt-6 max-w-6xl">
-			<InterviewCopilotDrawer
+			{/* <InterviewCopilotDrawer
 				open={isChatOpen}
 				onOpenChange={setIsChatOpen}
 				accountId={accountId}
@@ -1147,7 +1147,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				interviewTitle={interviewTitle}
 				systemContext={interviewSystemContext}
 				initialPrompt={initialInterviewPrompt}
-			/>
+			/> */}
 			{/* Loading Overlay */}
 			{showBlockingOverlay && (
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -1254,16 +1254,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
-								<Button
-									type="button"
-									variant="secondary"
-									className="inline-flex items-center gap-2"
-									onClick={() => setIsChatOpen(true)}
-								>
-									<BotMessageSquare className="h-4 w-4" />
-									{/* <SparkleIcon className="h-4 w-4" /> */}
-									Ask Assistant
-								</Button>
+
 								{enableRecording && (
 									<Link
 										to={routes.interviews.realtime(interview.id)}
@@ -1315,6 +1306,21 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												disabled={fetcher.state !== "idle" || isProcessing}
 											>
 												Rerun Evidence Collection
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.reanalyze-themes" }
+														)
+													} catch (e) {
+														consola.error("Re-analyze themes submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Re-analyze Themes
 											</DropdownMenuItem>
 										</DropdownMenuContent>
 									</DropdownMenu>

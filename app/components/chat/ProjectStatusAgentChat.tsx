@@ -90,15 +90,15 @@ export function ProjectStatusAgentChat({
 						)}
 						{isCollapsed && (
 							<div
-								onClick={() => setIsCollapsed(false)}
+								onClick={() => setIsCollapsed(!isCollapsed)}
 								className="mx-auto flex cursor-pointer flex-col items-center gap-1 transition-opacity hover:opacity-80"
-								aria-label="Expand chat"
+								aria-label="Toggle chat"
 								role="button"
 								tabIndex={0}
 								onKeyDown={(e) => {
 									if (e.key === "Enter" || e.key === " ") {
 										e.preventDefault()
-										setIsCollapsed(false)
+										setIsCollapsed(!isCollapsed)
 									}
 								}}
 							>

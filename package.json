@@ -99,6 +99,7 @@
     "i18next": "25.3.1",
     "i18next-browser-languagedetector": "8.2.0",
     "i18next-http-backend": "3.0.2",
+    "import-in-the-middle": "2.0.0",
     "isbot": "5.1.28",
     "jsdom": "27.0.1",
     "langfuse": "3.38.5",

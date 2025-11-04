@@ -30,11 +30,11 @@ import type { Database } from "~/../supabase/types"
 import { AgentStatusDisplay } from "~/components/agent/AgentStatusDisplay"
 import { Logo, LogoBrand } from "~/components/branding"
 import type { TreeNode } from "~/components/charts/TreeMap"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
-import { PageContainer } from "~/components/layout/PageContainer"
 // Hooks for current project routing
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { BottomActionBar } from "~/features/dashboard/components/BottomActionBar"
@@ -75,11 +75,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 	// TODO: use db calls instead unless exception
 	// Fetch project
-	const { data: project } = await supabase
-		.from("projects")
-		.select("*")
-		.eq("id", projectId)
-		.single()
+	const { data: project } = await supabase.from("projects").select("*").eq("id", projectId).single()
 
 	if (!project) {
 		throw new Response("Project not found", { status: 404 })
@@ -404,7 +400,7 @@ export default function MetroIndex() {
 		<div className="relative flex min-h-screen bg-background text-foreground">
 			{/* Main Content */}
 			<div className={`flex-1 transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
-				<PageContainer>
+				<PageContainer className="mx-auto flex flex-col justify-center">
 					{/* Project Status */}
 					<ProjectStatusScreen
 						projectName={project?.name || ""}

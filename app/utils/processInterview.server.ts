@@ -112,18 +112,9 @@ export interface InterviewMetadata {
 	fileName?: string
 }
 
-interface ExtractedInsight {
-	category: string
-	tag: string
-	journey_stage?: string
-	jtbd?: string
-	motivation?: string
-	pain?: string
-	desired_outcome?: string
-	emotional_response?: string
-	opportunity_ideas?: string[]
-	confidence?: "low" | "medium" | "high"
-	contradictions?: string
+export interface GenerateInterviewInsightsOptions {
+	evidenceUnits: EvidenceUnit[]
+	userCustomInstructions?: string
 }
 
 function sanitizeVerbatim(input: unknown): string | null {
@@ -282,13 +273,6 @@ function findStartSecondsForSnippet({
 	}
 
 	return null
-}
-
-function appendTimeParamToUrl(url: string, seconds: number | null): string {
-	if (!url || seconds === null || !Number.isFinite(seconds) || seconds < 0) return url
-	const rounded = Math.round(seconds)
-	const separator = url.includes("?") ? "&" : "?"
-	return `${url}${separator}t=${rounded}`
 }
 
 function humanizeKey(value?: string | null): string | null {
@@ -505,17 +489,27 @@ interface ExtractEvidenceResult {
 	evidenceFacetKinds: string[][]
 }
 
-interface GenerateInterviewInsightsOptions {
-	evidenceUnits: EvidenceUnit[]
-	userCustomInstructions?: string
-}
-
 export async function generateInterviewInsightsFromEvidenceCore({
 	evidenceUnits,
 	userCustomInstructions,
 }: GenerateInterviewInsightsOptions): Promise<InterviewExtraction> {
 	const instructions = userCustomInstructions ?? ""
 
+	// Source function guarantees evidenceUnits is an array
+	if (evidenceUnits.length === 0) {
+		consola.warn("evidenceUnits is empty, returning minimal response")
+		return {
+			insights: [],
+			participant: {},
+			highImpactThemes: [],
+			openQuestionsAndNextSteps: "",
+			observationsAndNotes: "",
+			metadata: { title: "" },
+			relevantAnswers: [],
+		}
+	}
+
+	// No validation needed - source guarantees correct EvidenceUnit[] structure
 	let lastErr: unknown = null
 	for (let attempt = 0; attempt < 3; attempt++) {
 		try {
@@ -607,7 +601,7 @@ export async function extractEvidenceAndPeopleCore({
 	const facetLookup = buildFacetLookup(facetCatalog)
 	const facetResolver = new FacetResolver(db, metadata.accountId)
 	const langfuse = getLangfuseClient()
-	const lfTrace = (langfuse as any).trace?.({
+	const lfTrace = (langfuse as unknown as { trace?: (options: Record<string, unknown>) => unknown })?.trace?.({
 		name: "baml.extract-evidence",
 		metadata: {
 			accountId: metadata.accountId,
@@ -652,14 +646,14 @@ export async function extractEvidenceAndPeopleCore({
 		// Dropping this trims the prompt slightly but increases the odds that facet references drift from known labels.
 
 		// Get speaker transcripts from sanitized data
-		const speakerTranscriptsRaw = (transcriptData as any).speaker_transcripts ?? []
+		const speakerTranscriptsRaw = (transcriptData as Record<string, unknown>).speaker_transcripts
 		const speakerTranscripts = Array.isArray(speakerTranscriptsRaw)
-			? speakerTranscriptsRaw.map((u: any) => ({
-					speaker: u.speaker ?? "",
-					text: u.text ?? "",
-					start: u.start ?? null,
-					end: u.end ?? null,
-				}))
+			? (speakerTranscriptsRaw as Array<Record<string, unknown>>).map((u) => ({
+				speaker: typeof u.speaker === "string" ? u.speaker : "",
+				text: typeof u.text === "string" ? u.text : "",
+				start: typeof u.start === "number" || typeof u.start === "string" ? u.start : null,
+				end: typeof u.end === "number" || typeof u.end === "string" ? u.end : null,
+			}))
 			: []
 
 		consola.info(`📝 Passing ${speakerTranscripts.length} speaker utterances with timing to AI`)
@@ -680,7 +674,7 @@ export async function extractEvidenceAndPeopleCore({
 		const evidenceCount = evidenceResponse?.evidence?.length ?? 0
 		const totalFacetMentions =
 			evidenceResponse?.evidence?.reduce((sum, ev) => {
-				const mentions = (ev as any)?.facet_mentions
+				const mentions = (ev as { facet_mentions?: unknown[] }).facet_mentions
 				return sum + (Array.isArray(mentions) ? mentions.length : 0)
 			}, 0) ?? 0
 		consola.info(`🔍 BAML returned ${evidenceCount} evidence units with ${totalFacetMentions} total facet mentions`)
@@ -707,7 +701,7 @@ export async function extractEvidenceAndPeopleCore({
 				metadata: usageSummary ? { tokenUsage: usageSummary } : undefined,
 			})
 		}
-		;(lfTrace as any)?.end?.()
+		; (lfTrace as any)?.end?.()
 	}
 
 	if (!evidenceResponse) {
@@ -725,7 +719,14 @@ export async function extractEvidenceAndPeopleCore({
 	}
 
 	consola.log("🔍 Raw BAML evidence response:", JSON.stringify(evidenceResponse, null, 2))
+	consola.log("🔍 evidenceResponse.evidence type:", typeof evidenceResponse?.evidence)
+	consola.log("🔍 evidenceResponse.evidence isArray:", Array.isArray(evidenceResponse?.evidence))
 	evidenceUnits = Array.isArray(evidenceResponse?.evidence) ? evidenceResponse.evidence : []
+
+	// Validate the return structure
+	if (!Array.isArray(evidenceUnits)) {
+		throw new Error(`extractEvidenceAndPeopleCore: evidenceUnits must be an array, got ${typeof evidenceUnits}`)
+	}
 	const scenes = Array.isArray(evidenceResponse?.scenes) ? evidenceResponse.scenes : []
 
 	// ═══════════════════════════════════════════════════════════════
@@ -808,45 +809,45 @@ export async function extractEvidenceAndPeopleCore({
 		const summary = coerceString((raw as EvidenceParticipant).summary)
 		const segments = Array.isArray((raw as EvidenceParticipant).segments)
 			? ((raw as EvidenceParticipant).segments as unknown[])
-					.map((segment) => coerceString(segment))
-					.filter((segment): segment is string => Boolean(segment))
+				.map((segment) => coerceString(segment))
+				.filter((segment): segment is string => Boolean(segment))
 			: []
 		const personas = Array.isArray((raw as EvidenceParticipant).personas)
 			? ((raw as EvidenceParticipant).personas as unknown[])
-					.map((persona) => coerceString(persona))
-					.filter((persona): persona is string => Boolean(persona))
+				.map((persona) => coerceString(persona))
+				.filter((persona): persona is string => Boolean(persona))
 			: []
 		const facets = Array.isArray((raw as EvidenceParticipant).facets)
 			? ((raw as EvidenceParticipant).facets as unknown[])
-					.map((facet) => {
-						if (!facet || typeof facet !== "object") return null
-						const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
-						const value = coerceString((facet as PersonFacetObservation).value)
-						if (!kind_slug || !value) return null
-						return {
-							...facet,
-							kind_slug,
-							value,
-							source: (facet as PersonFacetObservation).source || "interview",
-						} as PersonFacetObservation
-					})
-					.filter((facet): facet is PersonFacetObservation => Boolean(facet))
+				.map((facet) => {
+					if (!facet || typeof facet !== "object") return null
+					const kind_slug = coerceString((facet as PersonFacetObservation).kind_slug)
+					const value = coerceString((facet as PersonFacetObservation).value)
+					if (!kind_slug || !value) return null
+					return {
+						...facet,
+						kind_slug,
+						value,
+						source: (facet as PersonFacetObservation).source || "interview",
+					} as PersonFacetObservation
+				})
+				.filter((facet): facet is PersonFacetObservation => Boolean(facet))
 			: []
 		const scales = Array.isArray((raw as EvidenceParticipant).scales)
 			? ((raw as EvidenceParticipant).scales as unknown[])
-					.map((scale) => {
-						if (!scale || typeof scale !== "object") return null
-						const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
-						const score = (scale as PersonScaleObservation).score
-						if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
-						return {
-							...scale,
-							kind_slug,
-							score,
-							source: (scale as PersonScaleObservation).source || "interview",
-						} as PersonScaleObservation
-					})
-					.filter((scale): scale is PersonScaleObservation => Boolean(scale))
+				.map((scale) => {
+					if (!scale || typeof scale !== "object") return null
+					const kind_slug = coerceString((scale as PersonScaleObservation).kind_slug)
+					const score = (scale as PersonScaleObservation).score
+					if (!kind_slug || typeof score !== "number" || Number.isNaN(score)) return null
+					return {
+						...scale,
+						kind_slug,
+						score,
+						source: (scale as PersonScaleObservation).source || "interview",
+					} as PersonScaleObservation
+				})
+				.filter((scale): scale is PersonScaleObservation => Boolean(scale))
 			: []
 
 		const normalized: NormalizedParticipant = {
@@ -930,9 +931,9 @@ export async function extractEvidenceAndPeopleCore({
 	const sceneTopicByIndex = new Map<number, string>()
 	for (const scene of scenes ?? []) {
 		const startIndex =
-			typeof (scene as { start_index?: number }).start_index === "number" ? (scene as any).start_index : null
-		const endIndex = typeof (scene as { end_index?: number }).end_index === "number" ? (scene as any).end_index : null
-		const topicRaw = typeof (scene as { topic?: string }).topic === "string" ? (scene as any).topic : null
+			typeof (scene as { start_index?: number }).start_index === "number" ? (scene as { start_index?: number }).start_index : null
+		const endIndex = typeof (scene as { end_index?: number }).end_index === "number" ? (scene as { end_index?: number }).end_index : null
+		const topicRaw = typeof (scene as { topic?: string }).topic === "string" ? (scene as { topic?: string }).topic : null
 		if (startIndex === null || startIndex === undefined || topicRaw === null) continue
 		const topic = sanitizeVerbatim(topicRaw) ?? null
 		const end = endIndex !== null && endIndex !== undefined ? endIndex : startIndex
@@ -952,7 +953,6 @@ export async function extractEvidenceAndPeopleCore({
 	}
 
 	const evidenceRows: EvidenceInsert[] = []
-	const interviewMediaUrl = typeof interviewRecord.media_url === "string" ? interviewRecord.media_url : null
 	const durationSeconds =
 		typeof (transcriptData as { audio_duration?: unknown }).audio_duration === "number"
 			? (transcriptData as { audio_duration?: number }).audio_duration
@@ -1047,7 +1047,7 @@ export async function extractEvidenceAndPeopleCore({
 				}
 			}
 		}
-		const confidenceStr = (ev as { confidence?: EvidenceInsert["confidence"] }).confidence ?? "medium"
+		const confidenceStr: string = ((ev as { confidence?: EvidenceInsert["confidence"] }).confidence || "medium") as string
 		const weight_quality = confidenceStr === "high" ? 0.95 : confidenceStr === "low" ? 0.6 : 0.8
 		const weight_relevance = confidenceStr === "high" ? 0.9 : confidenceStr === "low" ? 0.6 : 0.8
 		const independence_key = computeIndependenceKey(gist ?? verb, kindSlugs)
@@ -1076,12 +1076,12 @@ export async function extractEvidenceAndPeopleCore({
 			const snippetForTiming = chunk || gist || verb
 			anchorSeconds = snippetForTiming?.length
 				? findStartSecondsForSnippet({
-						snippet: snippetForTiming,
-						wordTimeline,
-						segmentTimeline,
-						fullTranscript,
-						durationSeconds,
-					})
+					snippet: snippetForTiming,
+					wordTimeline,
+					segmentTimeline,
+					fullTranscript,
+					durationSeconds,
+				})
 				: null
 		}
 
@@ -1152,12 +1152,12 @@ export async function extractEvidenceAndPeopleCore({
 		const _feels = Array.isArray(ev?.feels) ? (ev.feels as string[]) : []
 		const _pains = Array.isArray(ev?.pains) ? (ev.pains as string[]) : []
 		const _gains = Array.isArray(ev?.gains) ? (ev.gains as string[]) : []
-		;(row as Record<string, unknown>).says = _says
-		;(row as Record<string, unknown>).does = _does
-		;(row as Record<string, unknown>).thinks = _thinks
-		;(row as Record<string, unknown>).feels = _feels
-		;(row as Record<string, unknown>).pains = _pains
-		;(row as Record<string, unknown>).gains = _gains
+			; (row as Record<string, unknown>).says = _says
+			; (row as Record<string, unknown>).does = _does
+			; (row as Record<string, unknown>).thinks = _thinks
+			; (row as Record<string, unknown>).feels = _feels
+			; (row as Record<string, unknown>).pains = _pains
+			; (row as Record<string, unknown>).gains = _gains
 
 		empathyStats.says += _says.length
 		empathyStats.does += _does.length
@@ -1180,7 +1180,7 @@ export async function extractEvidenceAndPeopleCore({
 
 		const whyItMatters = sanitizeVerbatim((ev as { why_it_matters?: string }).why_it_matters)
 		if (whyItMatters) {
-			;(row as Record<string, unknown>).context_summary = whyItMatters
+			; (row as Record<string, unknown>).context_summary = whyItMatters
 		}
 
 		// Skip raw mention processing - we'll use Phase 2 persona facets instead
@@ -1347,15 +1347,15 @@ export async function extractEvidenceAndPeopleCore({
 			const needsHash = shouldAttachHash(resolved, participant)
 			const personNameForDb = needsHash
 				? appendHashToName(
-						resolved.name,
-						generateParticipantHash({
-							accountId: metadata.accountId,
-							projectId: metadata.projectId,
-							interviewId: interviewRecord.id,
-							personKey: participantKey,
-							index,
-						})
-					)
+					resolved.name,
+					generateParticipantHash({
+						accountId: metadata.accountId,
+						projectId: metadata.projectId,
+						interviewId: interviewRecord.id,
+						personKey: participantKey,
+						index,
+					})
+				)
 				: resolved.name
 			const personRecord = await upsertPerson(personNameForDb, participantOverrides)
 			personIdByKey.set(participantKey, personRecord.id)
@@ -2396,8 +2396,8 @@ export async function processInterviewTranscriptWithClient({
 
 		const existingThemes = Array.isArray(analysisResult.interview.high_impact_themes)
 			? (analysisResult.interview.high_impact_themes ?? []).filter(
-					(value): value is string => typeof value === "string" && value.trim().length > 0
-				)
+				(value): value is string => typeof value === "string" && value.trim().length > 0
+			)
 			: []
 
 		let takeawayStrings = existingThemes

@@ -12,11 +12,7 @@ import {
 	ListTree,
 	Loader2,
 	MessageCircleQuestionIcon,
-	Mic2Icon,
 	Pencil,
-	PlusCircle,
-	Settings,
-	SquareCheckBig,
 	Target,
 	Upload,
 	Users,
@@ -25,7 +21,6 @@ import {
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRevalidator } from "react-router"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
-import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -421,7 +416,7 @@ export default function ProjectStatusScreen({
 			)}
 
 			{/* Compact Header - Mobile Responsive */}
-			<div className="border-border border-b bg-background px-4 py-4 sm:px-6">
+			<div className="border-border border-b bg-background px-4 py-4 sm:px-3">
 				<div className="flex max-w-none flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div className="group relative">
 						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
@@ -797,9 +792,7 @@ export default function ProjectStatusScreen({
 														{displayData.totalInterviews === 0 ? (
 															<p>Add interviews to see emerging insights.</p>
 														) : (
-															<p>
-																Analyze latest conversations and see how they align with your goals and questions.
-															</p>
+															<p>Analyze latest conversations and see how they align with your goals and questions.</p>
 														)}
 													</TooltipContent>
 												</Tooltip>
