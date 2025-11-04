@@ -1,10 +1,12 @@
 import { useChat } from "@ai-sdk/react"
+import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { Edit2, Loader2, MessageCircleQuestionIcon } from "lucide-react"
+import { BotMessageSquare, Edit2, Loader2, MessageCircleQuestionIcon, SparkleIcon } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
+import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
 import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
@@ -12,21 +14,22 @@ import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle } from "~/components/ui/sheet"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet"
 import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
-import { cn } from "~/lib/utils"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
+import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
-import type { UpsightMessage } from "~/mastra/message-types"
 
 // Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
 function normalizeMultilineText(value: unknown): string {
@@ -443,6 +446,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		}
 
+		let assistantMessages: UpsightMessage[] = []
+		const userId = ctx.claims.sub
+		if (userId) {
+			const resourceId = `interviewStatusAgent-${userId}-${interviewId}`
+			try {
+				const threads = await memory.getThreadsByResourceIdPaginated({
+					resourceId,
+					orderBy: "createdAt",
+					sortDirection: "DESC",
+					page: 0,
+					perPage: 1,
+				})
+				const threadId = threads?.threads?.[0]?.id
+				if (threadId) {
+					const { messagesV2 } = await memory.query({
+						threadId,
+						selectBy: { last: 50 },
+					})
+					assistantMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+				}
+			} catch (error) {
+				consola.warn("Failed to load assistant history", { resourceId, error })
+			}
+		}
+
 		const loaderResult = {
 			accountId,
 			projectId,
@@ -453,6 +481,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			peopleOptions: peopleOptions || [],
 			creatorName,
 			analysisJob,
+			assistantMessages,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -461,6 +490,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			interviewId: interview.id,
 			insightsCount: insights?.length || 0,
 			evidenceCount: evidence?.length || 0,
+			assistantMessages: assistantMessages.length,
 		})
 
 		return loaderResult
@@ -478,8 +508,18 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 }
 
 export default function InterviewDetail({ enableRecording = false }: { enableRecording?: boolean }) {
-	const { accountId, projectId, interview, insights, evidence, empathyMap, peopleOptions, creatorName, analysisJob } =
-		useLoaderData<typeof loader>()
+	const {
+		accountId,
+		projectId,
+		interview,
+		insights,
+		evidence,
+		empathyMap,
+		peopleOptions,
+		creatorName,
+		analysisJob,
+		assistantMessages,
+	} = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
 	const navigation = useNavigation()
@@ -657,82 +697,102 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return <div>Error: Missing interview data</div>
 	}
 
-        const participants = interview.participants || []
-        const [isChatOpen, setIsChatOpen] = useState(false)
-        const interviewTitle = interview.title || "Untitled Interview"
-        const primaryParticipant = participants[0]?.people
-        const activeRunId = analysisState?.trigger_run_id ?? null
-        const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
-        const isProcessing = useMemo(
-                () => (analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false),
-                [analysisState]
-        )
-        const keyTakeawaysDraft = useMemo(
-                () => normalizeMultilineText(interview.high_impact_themes).trim(),
-                [interview.high_impact_themes]
-        )
-        const notesDraft = useMemo(
-                () => normalizeMultilineText(interview.observations_and_notes).trim(),
-                [interview.observations_and_notes]
-        )
-        const personalFacetSummary = useMemo(() => {
-                if (!participants.length) return ""
+	const participants = interview.participants || []
+	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
+	const interviewTitle = interview.title || "Untitled Interview"
+	const primaryParticipant = participants[0]?.people
+	const activeRunId = analysisState?.trigger_run_id ?? null
+	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
+	const isProcessing = useMemo(
+		() => (analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false),
+		[analysisState]
+	)
 
-                const lines = participants
-                        .map((participant) => {
-                                const person = (participant.people as {
-                                        name?: string | null
-                                        segment?: string | null
-                                        people_personas?: Array<{ personas?: { name?: string | null } | null }>
-                                } | null) || null
-                                const personaNames = Array.from(
-                                        new Set(
-                                                (person?.people_personas || [])
-                                                        .map((entry) => entry?.personas?.name)
-                                                        .filter((name): name is string => typeof name === "string" && name.trim())
-                                        )
-                                )
+	useEffect(() => {
+		if (assistantMessages.length > 0) {
+			setIsChatOpen(true)
+		}
+	}, [assistantMessages.length])
+	const keyTakeawaysDraft = useMemo(
+		() => normalizeMultilineText(interview.high_impact_themes).trim(),
+		[interview.high_impact_themes]
+	)
+	const notesDraft = useMemo(
+		() => normalizeMultilineText(interview.observations_and_notes).trim(),
+		[interview.observations_and_notes]
+	)
+	const personalFacetSummary = useMemo(() => {
+		if (!participants.length) return ""
 
-                                const facets: string[] = []
-                                if (participant.role) facets.push(`Role: ${participant.role}`)
-                                if (person?.segment) facets.push(`Segment: ${person.segment}`)
-                                if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`)
+		const lines = participants
+			.map((participant) => {
+				const person =
+					(participant.people as {
+						name?: string | null
+						segment?: string | null
+						people_personas?: Array<{ personas?: { name?: string | null } | null }>
+					} | null) || null
+				const personaNames = Array.from(
+					new Set(
+						(person?.people_personas || [])
+							.map((entry) => entry?.personas?.name)
+							.filter((name): name is string => typeof name === "string" && name.trim())
+					)
+				)
 
-                                const displayName =
-                                        person?.name ||
-                                        participant.display_name ||
-                                        (participant.transcript_key ? `Speaker ${participant.transcript_key}` : null)
+				const facets: string[] = []
+				if (participant.role) facets.push(`Role: ${participant.role}`)
+				if (person?.segment) facets.push(`Segment: ${person.segment}`)
+				if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`)
 
-                                if (!displayName && facets.length === 0) {
-                                        return null
-                                }
+				const displayName =
+					person?.name ||
+					participant.display_name ||
+					(participant.transcript_key ? `Speaker ${participant.transcript_key}` : null)
 
-                                return `- ${(displayName || "Participant").trim()}${facets.length ? ` (${facets.join("; ")})` : ""}`
-                        })
-                        .filter((line): line is string => Boolean(line))
+				if (!displayName && facets.length === 0) {
+					return null
+				}
 
-                return lines.slice(0, 8).join("\n")
-        }, [participants])
+				return `- ${(displayName || "Participant").trim()}${facets.length ? ` (${facets.join("; ")})` : ""}`
+			})
+			.filter((line): line is string => Boolean(line))
 
-        const interviewSystemContext = useMemo(() => {
-                const sections: string[] = []
-                sections.push(`Interview title: ${interviewTitle}`)
-                if (interview.segment) sections.push(`Target segment: ${interview.segment}`)
-                if (keyTakeawaysDraft) sections.push(`Key takeaways draft:\n${keyTakeawaysDraft}`)
-                if (personalFacetSummary) sections.push(`Personal facets:\n${personalFacetSummary}`)
-                if (notesDraft) sections.push(`Notes:\n${notesDraft}`)
+		return lines.slice(0, 8).join("\n")
+	}, [participants])
 
-                const combined = sections.filter(Boolean).join("\n\n")
-                if (combined.length > 2000) {
-                        return `${combined.slice(0, 2000)}…`
-                }
+	const interviewSystemContext = useMemo(() => {
+		const sections: string[] = []
+		sections.push(`Interview title: ${interviewTitle}`)
+		if (interview.segment) sections.push(`Target segment: ${interview.segment}`)
+		if (keyTakeawaysDraft) sections.push(`Key takeaways draft:\n${keyTakeawaysDraft}`)
+		if (personalFacetSummary) sections.push(`Personal facets:\n${personalFacetSummary}`)
+		if (notesDraft) sections.push(`Notes:\n${notesDraft}`)
 
-                return combined
-        }, [interviewTitle, interview.segment, keyTakeawaysDraft, personalFacetSummary, notesDraft])
+		const combined = sections.filter(Boolean).join("\n\n")
+		if (combined.length > 2000) {
+			return `${combined.slice(0, 2000)}…`
+		}
 
-        const initialInterviewPrompt =
-                "Summarize the key takeaways from this interview and list 2 next steps that consider the participant's personal facets."
+		return combined
+	}, [interviewTitle, interview.segment, keyTakeawaysDraft, personalFacetSummary, notesDraft])
+
+	const initialInterviewPrompt =
+		"Summarize the key takeaways from this interview and list 2 next steps that consider the participant's personal facets."
 	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
+	const formatStatusLabel = (status: string) =>
+		status
+			.split("_")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" ")
+	const analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null
+	const analysisStatusTone = analysisState?.status
+		? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status)
+			? "bg-primary/10 text-primary"
+			: analysisState.status === "error"
+				? "bg-destructive/10 text-destructive"
+				: "bg-muted text-muted-foreground"
+		: ""
 
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
@@ -755,21 +815,21 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		return lower.replace(/^(\w{3}) (\d{2}), /, "$1-$2 ")
 	}
 
-        return (
-                <div className="relative mx-auto mt-6 max-w-6xl">
-                        <InterviewCopilotDrawer
-                                open={isChatOpen}
-                                onOpenChange={setIsChatOpen}
-                                accountId={accountId}
-                                projectId={projectId}
-                                interviewId={interview.id}
-                                interviewTitle={interviewTitle}
-                                systemContext={interviewSystemContext}
-                                initialPrompt={initialInterviewPrompt}
-                        />
-                        {/* Loading Overlay */}
-                        {showBlockingOverlay && (
-                                <div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+	return (
+		<div className="relative mx-auto mt-6 max-w-6xl">
+			<InterviewCopilotDrawer
+				open={isChatOpen}
+				onOpenChange={setIsChatOpen}
+				accountId={accountId}
+				projectId={projectId}
+				interviewId={interview.id}
+				interviewTitle={interviewTitle}
+				systemContext={interviewSystemContext}
+				initialPrompt={initialInterviewPrompt}
+			/>
+			{/* Loading Overlay */}
+			{showBlockingOverlay && (
+				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
 					<div className="flex flex-col items-center gap-3 rounded-lg border bg-card p-6 shadow-lg">
 						<Loader2 className="h-8 w-8 animate-spin text-primary" />
 						<p className="font-medium text-sm">{overlayLabel}</p>
@@ -777,16 +837,14 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</div>
 			)}
 
-			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8 ">
+			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
 					{isProcessing && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
 									<p className="font-semibold text-primary text-xs uppercase tracking-wide">Analysis in progress</p>
-									<p className="text-muted-foreground text-sm">
-										{analysisState?.status_detail || progressInfo.label}
-									</p>
+									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
 								</div>
 								<div className="flex flex-col items-end gap-2">
 									<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
@@ -795,7 +853,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 											style={{ width: `${progressPercent}%` }}
 										/>
 									</div>
-									<span className="font-medium text-sm text-primary">{progressPercent}%</span>
+									<span className="font-medium text-primary text-sm">{progressPercent}%</span>
 								</div>
 							</div>
 							{isRealtime ? (
@@ -812,7 +870,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 shadow-sm">
 							<p className="font-semibold text-destructive text-xs uppercase tracking-wide">Analysis failed</p>
 							<p className="mt-1 text-destructive text-sm">
-								{analysisState?.status_detail || "The most recent analysis run reported an error. Try again once the issue is resolved."}
+								{analysisState?.status_detail ||
+									"The most recent analysis run reported an error. Try again once the issue is resolved."}
 							</p>
 						</div>
 					)}
@@ -823,7 +882,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							<div className="flex-1">
 								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
 									<BackButton to={routes.interviews.index()} label="" position="relative" />
-                                                                        {interviewTitle}
+									{interviewTitle}
 								</div>
 								<div className="flex flex-wrap items-center gap-3">
 									{/* Show participant from junction table if available, fallback to legacy field */}
@@ -846,19 +905,21 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<span className="text-muted-foreground text-sm">{formatReadable(interview.created_at)}</span>
 								</div>
 							</div>
-                                                        <div className="flex items-center gap-2">
-                                                                <Button
-                                                                        type="button"
-                                                                        variant="secondary"
-                                                                        className="inline-flex items-center gap-2"
-                                                                        onClick={() => setIsChatOpen(true)}
-                                                                >
-                                                                        <MessageCircleQuestionIcon className="h-4 w-4" />
-                                                                        Ask Copilot
-                                                                </Button>
-                                                                {enableRecording && (
-                                                                        <Link
-                                                                                to={routes.interviews.realtime(interview.id)}
+							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									variant="secondary"
+									className="inline-flex items-center gap-2"
+									onClick={() => setIsChatOpen(true)}
+								>
+									<BotMessageSquare className="h-4 w-4" />
+									{/* <SparkleIcon className="h-4 w-4" /> */}
+
+									Ask Assistant
+								</Button>
+								{enableRecording && (
+									<Link
+										to={routes.interviews.realtime(interview.id)}
 										className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-blue-500 focus-visible:outline-2 focus-visible:outline-blue-600 focus-visible:outline-offset-2"
 										title="Start realtime transcription and copilot"
 									>
@@ -1359,145 +1420,149 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 }
 
 function InterviewCopilotDrawer({
-        open,
-        onOpenChange,
-        accountId,
-        projectId,
-        interviewId,
-        interviewTitle,
-        systemContext,
-        initialPrompt,
+	open,
+	onOpenChange,
+	accountId,
+	projectId,
+	interviewId,
+	interviewTitle,
+	systemContext,
+	initialPrompt,
 }: {
-        open: boolean
-        onOpenChange: (open: boolean) => void
-        accountId: string
-        projectId: string
-        interviewId: string
-        interviewTitle: string
-        systemContext: string
-        initialPrompt: string
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	accountId: string
+	projectId: string
+	interviewId: string
+	interviewTitle: string
+	systemContext: string
+	initialPrompt: string
 }) {
-        const [input, setInput] = useState("")
-        const [initialMessageSent, setInitialMessageSent] = useState(false)
-        const messagesEndRef = useRef<HTMLDivElement | null>(null)
-        const { messages, sendMessage, status } = useChat<UpsightMessage>({
-                transport: new DefaultChatTransport({
-                        api: `/a/${accountId}/${projectId}/api/chat/interview/${interviewId}`,
-                        body: { system: systemContext },
-                }),
-                sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
-        })
+	const [input, setInput] = useState("")
+	const [initialMessageSent, setInitialMessageSent] = useState(false)
+	const messagesEndRef = useRef<HTMLDivElement | null>(null)
+	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+		transport: new DefaultChatTransport({
+			api: `/a/${accountId}/${projectId}/api/chat/interview/${interviewId}`,
+			body: { system: systemContext },
+		}),
+		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+	})
 
-        const visibleMessages = useMemo(() => (messages ?? []).slice(-20), [messages])
+	const visibleMessages = useMemo(() => (messages ?? []).slice(-20), [messages])
 
-        useEffect(() => {
-                if (open && !initialMessageSent && visibleMessages.length === 0) {
-                        sendMessage({ text: initialPrompt })
-                        setInitialMessageSent(true)
-                }
-        }, [open, initialMessageSent, visibleMessages.length, sendMessage, initialPrompt])
+	useEffect(() => {
+		if (open && !initialMessageSent && visibleMessages.length === 0) {
+			sendMessage({ text: initialPrompt })
+			setInitialMessageSent(true)
+		}
+	}, [open, initialMessageSent, visibleMessages.length, sendMessage, initialPrompt])
 
-        useEffect(() => {
-                if (messagesEndRef.current) {
-                        messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
-                }
-        }, [visibleMessages])
+	useEffect(() => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+		}
+	}, [visibleMessages])
 
-        const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-                event.preventDefault()
-                const trimmed = input.trim()
-                if (!trimmed) return
-                sendMessage({ text: trimmed })
-                setInput("")
-        }
+	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const trimmed = input.trim()
+		if (!trimmed) return
+		sendMessage({ text: trimmed })
+		setInput("")
+	}
 
-        const isBusy = status === "streaming" || status === "submitted"
-        const isError = status === "error"
+	const isBusy = status === "streaming" || status === "submitted"
+	const isError = status === "error"
 
-        return (
-                <Sheet open={open} onOpenChange={onOpenChange}>
-                        <SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
-                                <SheetHeader className="border-b border-border bg-muted/40 p-4">
-                                        <SheetTitle className="flex items-center gap-2 text-lg">
-                                                <MessageCircleQuestionIcon className="h-4 w-4 text-primary" />
-                                                Interview Copilot
-                                        </SheetTitle>
-                                        <SheetDescription className="text-xs text-muted-foreground">
-                                                Ask follow-up questions about {interviewTitle}.
-                                        </SheetDescription>
-                                </SheetHeader>
-                                <div className="flex flex-1 flex-col gap-4 p-4">
-                                        <div className="flex-1 overflow-y-auto rounded-lg border border-border/60 bg-background/80 p-3">
-                                                {visibleMessages.length === 0 ? (
-                                                        <p className="text-muted-foreground text-sm">
-                                                                Gathering the latest takeaways from this interview…
-                                                        </p>
-                                                ) : (
-                                                        <div className="space-y-3 text-sm">
-                                                                {visibleMessages.map((message, index) => {
-                                                                        const key = message.id || `${message.role}-${index}`
-                                                                        const isUser = message.role === "user"
-                                                                        const textParts =
-                                                                                message.parts?.map((part) => {
-                                                                                        if (part.type === "text") return part.text
-                                                                                        if (part.type === "tool-call") {
-                                                                                                return `Calling tool: ${part.toolName ?? "unknown"}`
-                                                                                        }
-                                                                                        if (part.type === "tool-result") {
-                                                                                                return `Tool result: ${part.toolName ?? "unknown"}`
-                                                                                        }
-                                                                                        return ""
-                                                                                }) ?? []
-                                                                        const messageText = textParts.filter(Boolean).join("\n").trim()
-                                                                        return (
-                                                                                <div key={key} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
-                                                                                        <div className="max-w-[90%]">
-                                                                                                <div className="mb-1 text-muted-foreground text-[10px] uppercase tracking-wide">
-                                                                                                        {isUser ? "You" : "Interview Copilot"}
-                                                                                                </div>
-                                                                                                <div
-                                                                                                        className={cn(
-                                                                                                                "whitespace-pre-wrap rounded-lg px-3 py-2 text-sm shadow-sm",
-                                                                                                                isUser
-                                                                                                                        ? "bg-primary text-primary-foreground"
-                                                                                                                        : "bg-card text-foreground ring-1 ring-border/60"
-                                                                                                        )}
-                                                                                                >
-                                                                                                        {messageText || (
-                                                                                                                <span className="text-muted-foreground">(No text response)</span>
-                                                                                                        )}
-                                                                                                </div>
-                                                                                        </div>
-                                                                                </div>
-                                                                        )
-                                                                })}
-                                                                <div ref={messagesEndRef} />
-                                                        </div>
-                                                )}
-                                        </div>
-                                        <form onSubmit={handleSubmit} className="space-y-2">
-                                                <Textarea
-                                                        value={input}
-                                                        onChange={(event) => setInput(event.currentTarget.value)}
-                                                        placeholder="Ask about evidence, themes, or next steps"
-                                                        rows={3}
-                                                        disabled={isBusy}
-                                                />
-                                                <div className="flex items-center justify-between gap-2">
-                                                        <span className="text-muted-foreground text-xs" aria-live="polite">
-                                                                {isError
-                                                                        ? "Something went wrong. Try again."
-                                                                        : isBusy
-                                                                        ? "Thinking…"
-                                                                        : "Keep questions short and specific."}
-                                                        </span>
-                                                        <Button type="submit" size="sm" disabled={!input.trim() || isBusy}>
-                                                                Send
-                                                        </Button>
-                                                </div>
-                                        </form>
-                                </div>
-                        </SheetContent>
-                </Sheet>
-        )
+	return (
+		<Sheet open={open} onOpenChange={onOpenChange}>
+			<SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+				<SheetHeader className="border-border border-b bg-muted/40 p-4">
+					<SheetTitle className="flex items-center gap-2 text-lg">
+						<BotMessageSquare className="h-4 w-4 text-primary" />
+						UpSight Assistant
+					</SheetTitle>
+
+				</SheetHeader>
+				<div className="flex flex-1 flex-col gap-4 p-4">
+					<div className="flex-1 p-3">
+						{visibleMessages.length === 0 ? (
+							<p className="text-muted-foreground text-sm">Gathering the latest takeaways from this interview…</p>
+						) : (
+							<div className="space-y-3 text-sm">
+								{visibleMessages.map((message, index) => {
+									const key = message.id || `${message.role}-${index}`
+									const isUser = message.role === "user"
+									const textParts =
+										message.parts?.map((part) => {
+											if (part.type === "text") return part.text
+											if (part.type === "tool-call") {
+												return `Calling tool: ${part.toolName ?? "unknown"}`
+											}
+											if (part.type === "tool-result") {
+												return `Tool result: ${part.toolName ?? "unknown"}`
+											}
+											return ""
+										}) ?? []
+									const messageText = textParts.filter(Boolean).join("\n").trim()
+									return (
+										<div key={key} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+											<div className="max-w-[90%]">
+												<div className="mb-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+													{isUser ? "You" : "Assistant"}
+												</div>
+												<div
+													className={cn(
+														"whitespace-pre-wrap rounded-lg px-3 py-2 text-sm shadow-sm",
+														isUser
+															? "bg-primary text-primary-foreground"
+															: "bg-card text-foreground ring-1 ring-border/60"
+													)}
+												>
+													{messageText ? (
+														isUser ? (
+															<span className="whitespace-pre-wrap">{messageText}</span>
+														) : (
+															<Streamdown className="prose prose-sm max-w-none text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+																{messageText}
+															</Streamdown>
+														)
+													) : (
+														<span className="text-muted-foreground">(No text response)</span>
+													)}
+												</div>
+											</div>
+										</div>
+									)
+								})}
+								<div ref={messagesEndRef} />
+							</div>
+						)}
+					</div>
+					<form onSubmit={handleSubmit} className="space-y-2">
+						<Textarea
+							value={input}
+							onChange={(event) => setInput(event.currentTarget.value)}
+							placeholder="Ask about evidence, themes, or next steps"
+							rows={3}
+							disabled={isBusy}
+						/>
+						<div className="flex items-center justify-between gap-2">
+							<span className="text-muted-foreground text-xs" aria-live="polite">
+								{isError
+									? "Something went wrong. Try again."
+									: isBusy
+										? "Thinking…"
+										: "Keep questions short and specific."}
+							</span>
+							<Button type="submit" size="sm" disabled={!input.trim() || isBusy}>
+								Send
+							</Button>
+						</div>
+					</form>
+				</div>
+			</SheetContent>
+		</Sheet>
+	)
 }

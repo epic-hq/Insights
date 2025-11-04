@@ -158,7 +158,7 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 	const timelineItems: TimelineItem[] = displayedTopics.map(({ topic, first, firstSeconds, count }) => {
 		const timeChip =
 			firstSeconds !== null ? (
-				<span className="ml-2 flex shrink-0 rounded bg-background/5 px-1.5 py-0.5 font-medium text-[#FF8A66] text-[10px] uppercase tracking-wide">
+				<span key={first.id} className="ml-2 flex shrink-0 rounded bg-background/5 px-1.5 py-0.5 font-medium text-[#FF8A66] text-[10px] uppercase tracking-wide">
 					{formatSeconds(firstSeconds)}
 				</span>
 			) : null
@@ -183,7 +183,7 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 			<CardHeader className="bg-muted/30 pb-3">
 				<CardTitle className="flex items-center gap-2 text-lg">
 					<CalendarIcon className="h-5 w-5 text-muted-foreground" />
-					Play-by-Play Timeline
+					Conversation Timeline
 					<Badge variant="secondary" className="ml-2">
 						{topicGroups.length}
 					</Badge>
