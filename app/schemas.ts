@@ -116,8 +116,38 @@ export const projectGoalsSchema = z.object({
 	settings: z.record(z.string(), z.unknown()).nullable(),
 })
 
+// Personas detail schema (used by fetch-personas tool)
+export const personasDetailSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	description: nullableString,
+	colorHex: nullableString,
+	primaryGoal: nullableString,
+	motivations: z.array(z.string()).nullable(),
+	frustrations: z.array(z.string()).nullable(),
+	peopleCount: z.number(),
+	createdAt: nullableString,
+	updatedAt: nullableString,
+})
+
+// Theme detail schema (used by fetch-themes tool)
+export const themeDetailSchema = z.object({
+	id: z.string(),
+	name: z.string(),
+	statement: nullableString,
+	inclusionCriteria: nullableString,
+	exclusionCriteria: nullableString,
+	synonyms: z.array(z.string()).nullable(),
+	antiExamples: z.array(z.string()).nullable(),
+	evidenceCount: z.number(),
+	createdAt: nullableString,
+	updatedAt: nullableString,
+})
+
 // Type exports - use these instead of z.infer<typeof schema> everywhere
 export type PersonDetail = z.infer<typeof personDetailSchema>
 export type EvidenceDetail = z.infer<typeof evidenceDetailSchema>
 export type ContactInfo = z.infer<typeof contactInfoSchema>
 export type ProjectGoals = z.infer<typeof projectGoalsSchema>
+export type ThemeDetail = z.infer<typeof themeDetailSchema>
+export type PersonasDetail = z.infer<typeof personasDetailSchema>

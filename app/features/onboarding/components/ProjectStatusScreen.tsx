@@ -6,8 +6,6 @@ import {
 	ArrowRight,
 	BookOpen,
 	BotMessageSquare,
-	ChevronDown,
-	ChevronUp,
 	Eye,
 	Headphones,
 	Lightbulb,
@@ -15,8 +13,8 @@ import {
 	Loader2,
 	MessageCircleQuestionIcon,
 	Mic2Icon,
-	PlusCircle,
 	Pencil,
+	PlusCircle,
 	Settings,
 	SquareCheckBig,
 	Target,
@@ -32,7 +30,6 @@ import { Button } from "~/components/ui/button"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
-import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useValidationView } from "~/contexts/ValidationViewContext"
@@ -351,7 +348,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-					(researchRollup?.research_questions_without_decision?.length || 0) > 0
+				(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -416,7 +413,7 @@ export default function ProjectStatusScreen({
 	}
 
 	return (
-		<div className="relative min-h-screen bg-background text-foreground">
+		<>
 			{isAnalyzing && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
 					<Loader2 className="h-8 w-8 animate-spin text-foreground" />
@@ -425,8 +422,8 @@ export default function ProjectStatusScreen({
 
 			{/* Compact Header - Mobile Responsive */}
 			<div className="border-border border-b bg-background px-4 py-4 sm:px-6">
-				<div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div className="relative group">
+				<div className="flex max-w-none flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+					<div className="group relative">
 						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
 						<button
 							onClick={() => {
@@ -434,209 +431,191 @@ export default function ProjectStatusScreen({
 									window.location.href = routes.projects.edit(projectId)
 								}
 							}}
-							className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-muted rounded"
+							className="-right-6 -translate-y-1/2 absolute top-1/2 rounded p-1 opacity-0 transition-opacity duration-200 hover:bg-muted group-hover:opacity-100"
 							aria-label="Edit project"
 							title="Edit project"
 						>
 							<Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
 						</button>
 					</div>
-					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
-						{isSetupChatEnabled && (
-							<Button
-								variant="outline"
-								size="sm"
-								onClick={() => {
-									if (routes) {
-										window.location.href = (routes as any).projects.projectChat()
-									}
-								}}
-								className="border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
-							>
-								<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
-							</Button>
-						)}
-					</div>
 				</div>
 			</div>
 
+			{/* Conditional Content Views */}
 			{showValidationView ? (
 				/* Validation View - Feature Flagged */
 				<div className="min-h-screen flex-1 bg-background">
-					<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-						<AnalyzeStageValidation />
-					</div>
+					<AnalyzeStageValidation />
 				</div>
 			) : showFlowView ? (
 				/* Flow View - Mobile Responsive Layout */
 				<div className="min-h-screen flex-1 bg-background">
-					<div className="mx-auto max-w-7xl px-4 py-6 sm:px-6 sm:py-8">
-						<div className="grid min-h-[80vh] grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
-							{/* Left Side: Flow Diagram - Mobile Responsive */}
-							<div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 lg:pr-8">
-								{/* Research Goals */}
-								<motion.div
-									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-blue-200 bg-blue-50 p-6 text-center transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/20"
-									whileHover={{ scale: 1.02 }}
-									onClick={() => {
-										if (routes) {
-											window.location.href = routes.projects.setup()
-										}
-									}}
-								>
-									<Target className="mx-auto mb-3 h-8 w-8 text-blue-600" />
-									<h3 className="mb-2 font-semibold text-blue-800 text-xl dark:text-blue-300">Research Goals</h3>
-									<div className="text-blue-600 dark:text-blue-400">
-										{researchMetrics.answered}/{Math.max(1, researchMetrics.total)} Questions
+					<div className="grid min-h-[80vh] grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+						{/* Left Side: Flow Diagram - Mobile Responsive */}
+						<div className="flex flex-col items-center justify-center space-y-4 sm:space-y-6 lg:pr-8">
+							{/* Research Goals */}
+							<motion.div
+								className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-blue-200 bg-blue-50 p-6 text-center transition-all hover:shadow-lg dark:border-blue-800 dark:bg-blue-950/20"
+								whileHover={{ scale: 1.02 }}
+								onClick={() => {
+									if (routes) {
+										window.location.href = routes.projects.setup()
+									}
+								}}
+							>
+								<Target className="mx-auto mb-3 h-8 w-8 text-blue-600" />
+								<h3 className="mb-2 font-semibold text-blue-800 text-xl dark:text-blue-300">Research Goals</h3>
+								<div className="text-blue-600 dark:text-blue-400">
+									{researchMetrics.answered}/{Math.max(1, researchMetrics.total)} Questions
+								</div>
+							</motion.div>
+
+							<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+
+							{/* Interviews */}
+							<motion.div
+								className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-green-200 bg-green-50 p-6 text-center transition-all hover:shadow-lg dark:border-green-800 dark:bg-green-950/20"
+								whileHover={{ scale: 1.02 }}
+								onClick={() => {
+									if (routes) {
+										window.location.href = routes.interviews.index()
+									}
+								}}
+							>
+								<Headphones className="mx-auto mb-3 h-8 w-8 text-green-600" />
+								<h3 className="mb-2 font-semibold text-green-800 text-xl dark:text-green-300">Interviews</h3>
+								<div className="text-green-600 dark:text-green-400">{statusData?.totalInterviews || 0} Conducted</div>
+							</motion.div>
+
+							<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+
+							{/* Evidence */}
+							<motion.div
+								className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-purple-200 bg-purple-50 p-6 text-center transition-all hover:shadow-lg dark:border-purple-800 dark:bg-purple-950/20"
+								whileHover={{ scale: 1.02 }}
+								onClick={() => {
+									if (routes) {
+										window.location.href = routes.evidence.index()
+									}
+								}}
+							>
+								<BookOpen className="mx-auto mb-3 h-8 w-8 text-purple-600" />
+								<h3 className="mb-2 font-semibold text-purple-800 text-xl dark:text-purple-300">Evidence</h3>
+								<div className="text-purple-600 dark:text-purple-400">{statusData?.totalEvidence || 0} Pieces</div>
+							</motion.div>
+
+							<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+
+							{/* Personas */}
+							<motion.div
+								className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-orange-200 bg-orange-50 p-6 text-center transition-all hover:shadow-lg dark:border-orange-800 dark:bg-orange-950/20"
+								whileHover={{ scale: 1.02 }}
+								onClick={() => {
+									if (routes) {
+										window.location.href = routes.personas.index()
+									}
+								}}
+							>
+								<Users className="mx-auto mb-3 h-8 w-8 text-orange-600" />
+								<h3 className="mb-2 font-semibold text-orange-800 text-xl dark:text-orange-300">Personas</h3>
+								<div className="text-orange-600 dark:text-orange-400">
+									{statusData?.totalPersonas || personas?.length || 0} Identified
+								</div>
+							</motion.div>
+
+							<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
+
+							{/* Insights */}
+							<motion.div
+								className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-indigo-200 bg-indigo-50 p-6 text-center transition-all hover:shadow-lg dark:border-indigo-800 dark:bg-indigo-950/20"
+								whileHover={{ scale: 1.02 }}
+								onClick={() => {
+									if (routes) {
+										window.location.href = routes.insights.index()
+									}
+								}}
+							>
+								<Lightbulb className="mx-auto mb-3 h-8 w-8 text-indigo-600" />
+								<h3 className="mb-2 font-semibold text-indigo-800 text-xl dark:text-indigo-300">Insights</h3>
+								<div className="text-indigo-600 dark:text-indigo-400">
+									{statusData?.totalInsights || insights?.length || 0} Generated
+								</div>
+							</motion.div>
+						</div>
+
+						{/* Right Side: Data Details - Mobile Responsive */}
+						<div className="space-y-6 overflow-y-auto sm:space-y-8 lg:border-gray-200 lg:border-l lg:pl-8 lg:dark:border-gray-700">
+							{effectiveAccountId && effectiveProjectId && (
+								<ProjectStatusAgentChat
+									accountId={effectiveAccountId}
+									projectId={effectiveProjectId}
+									initialMessages={initialChatMessages}
+									systemContext={projectSystemContext}
+								/>
+							)}
+							<div className="space-y-6">
+								<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
+									<Target className="h-6 w-6 text-blue-600" />
+									Research Progress
+								</h3>
+								<div className="space-y-4">
+									<div className="flex items-center justify-between">
+										<span className="text-muted-foreground">Questions Answered</span>
+										<span className="font-semibold text-lg">
+											{researchMetrics.answered} / {Math.max(1, researchMetrics.total)}
+										</span>
 									</div>
-								</motion.div>
-
-								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
-
-								{/* Interviews */}
-								<motion.div
-									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-green-200 bg-green-50 p-6 text-center transition-all hover:shadow-lg dark:border-green-800 dark:bg-green-950/20"
-									whileHover={{ scale: 1.02 }}
-									onClick={() => {
-										if (routes) {
-											window.location.href = routes.interviews.index()
-										}
-									}}
-								>
-									<Headphones className="mx-auto mb-3 h-8 w-8 text-green-600" />
-									<h3 className="mb-2 font-semibold text-green-800 text-xl dark:text-green-300">Interviews</h3>
-									<div className="text-green-600 dark:text-green-400">{statusData?.totalInterviews || 0} Conducted</div>
-								</motion.div>
-
-								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
-
-								{/* Evidence */}
-								<motion.div
-									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-purple-200 bg-purple-50 p-6 text-center transition-all hover:shadow-lg dark:border-purple-800 dark:bg-purple-950/20"
-									whileHover={{ scale: 1.02 }}
-									onClick={() => {
-										if (routes) {
-											window.location.href = routes.evidence.index()
-										}
-									}}
-								>
-									<BookOpen className="mx-auto mb-3 h-8 w-8 text-purple-600" />
-									<h3 className="mb-2 font-semibold text-purple-800 text-xl dark:text-purple-300">Evidence</h3>
-									<div className="text-purple-600 dark:text-purple-400">{statusData?.totalEvidence || 0} Pieces</div>
-								</motion.div>
-
-								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
-
-								{/* Personas */}
-								<motion.div
-									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-orange-200 bg-orange-50 p-6 text-center transition-all hover:shadow-lg dark:border-orange-800 dark:bg-orange-950/20"
-									whileHover={{ scale: 1.02 }}
-									onClick={() => {
-										if (routes) {
-											window.location.href = routes.personas.index()
-										}
-									}}
-								>
-									<Users className="mx-auto mb-3 h-8 w-8 text-orange-600" />
-									<h3 className="mb-2 font-semibold text-orange-800 text-xl dark:text-orange-300">Personas</h3>
-									<div className="text-orange-600 dark:text-orange-400">
-										{statusData?.totalPersonas || personas?.length || 0} Identified
+									<div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700">
+										<div
+											className="h-3 rounded-full bg-blue-600 transition-all"
+											style={{
+												width: `${researchMetrics.total > 0 ? (researchMetrics.answered / researchMetrics.total) * 100 : 0}%`,
+											}}
+										/>
 									</div>
-								</motion.div>
-
-								<div className="h-12 w-px bg-gradient-to-b from-gray-300 to-gray-100 dark:from-gray-600 dark:to-gray-700" />
-
-								{/* Insights */}
-								<motion.div
-									className="w-full max-w-sm cursor-pointer rounded-xl border-2 border-indigo-200 bg-indigo-50 p-6 text-center transition-all hover:shadow-lg dark:border-indigo-800 dark:bg-indigo-950/20"
-									whileHover={{ scale: 1.02 }}
-									onClick={() => {
-										if (routes) {
-											window.location.href = routes.insights.index()
-										}
-									}}
-								>
-									<Lightbulb className="mx-auto mb-3 h-8 w-8 text-indigo-600" />
-									<h3 className="mb-2 font-semibold text-indigo-800 text-xl dark:text-indigo-300">Insights</h3>
-									<div className="text-indigo-600 dark:text-indigo-400">
-										{statusData?.totalInsights || insights?.length || 0} Generated
-									</div>
-								</motion.div>
+								</div>
 							</div>
 
-							{/* Right Side: Data Details - Mobile Responsive */}
-							<div className="space-y-6 overflow-y-auto sm:space-y-8 lg:border-gray-200 lg:border-l lg:pl-8 lg:dark:border-gray-700">
-								{effectiveAccountId && effectiveProjectId && (
-									<ProjectStatusAgentChat
-										accountId={effectiveAccountId}
-										projectId={effectiveProjectId}
-										initialMessages={initialChatMessages}
-										systemContext={projectSystemContext}
-									/>
-								)}
-								<div className="space-y-6">
-									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
-										<Target className="h-6 w-6 text-blue-600" />
-										Research Progress
-									</h3>
-									<div className="space-y-4">
-										<div className="flex items-center justify-between">
-											<span className="text-muted-foreground">Questions Answered</span>
-											<span className="font-semibold text-lg">
-												{researchMetrics.answered} / {Math.max(1, researchMetrics.total)}
-											</span>
-										</div>
-										<div className="h-3 w-full rounded-full bg-gray-200 dark:bg-gray-700">
-											<div
-												className="h-3 rounded-full bg-blue-600 transition-all"
-												style={{
-													width: `${researchMetrics.total > 0 ? (researchMetrics.answered / researchMetrics.total) * 100 : 0}%`,
-												}}
-											/>
-										</div>
+							<div className="space-y-6">
+								<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
+									<Headphones className="h-6 w-6 text-green-600" />
+									Data Collection
+								</h3>
+								<div className="grid grid-cols-2 gap-4">
+									<div className="rounded-xl border border-border bg-card p-6 text-center">
+										<div className="mb-2 font-bold text-3xl text-foreground">{statusData?.totalInterviews || 0}</div>
+										<div className="text-muted-foreground text-sm">Interviews</div>
+									</div>
+									<div className="rounded-xl border border-border bg-card p-6 text-center">
+										<div className="mb-2 font-bold text-3xl text-foreground">{statusData?.totalEvidence || 0}</div>
+										<div className="text-muted-foreground text-sm">Evidence</div>
 									</div>
 								</div>
+							</div>
 
-								<div className="space-y-6">
-									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
-										<Headphones className="h-6 w-6 text-green-600" />
-										Data Collection
-									</h3>
-									<div className="grid grid-cols-2 gap-4">
-										<div className="rounded-xl border border-border bg-card p-6 text-center">
-											<div className="mb-2 font-bold text-3xl text-foreground">{statusData?.totalInterviews || 0}</div>
-											<div className="text-muted-foreground text-sm">Interviews</div>
+							<div className="space-y-6">
+								<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
+									<Users className="h-6 w-6 text-orange-600" />
+									Analysis Results
+								</h3>
+								<div className="grid grid-cols-2 gap-4">
+									<div className="rounded-xl border border-border bg-card p-6 text-center">
+										<div className="mb-2 font-bold text-3xl text-foreground">
+											{statusData?.totalPersonas || personas?.length || 0}
 										</div>
-										<div className="rounded-xl border border-border bg-card p-6 text-center">
-											<div className="mb-2 font-bold text-3xl text-foreground">{statusData?.totalEvidence || 0}</div>
-											<div className="text-muted-foreground text-sm">Evidence</div>
+										<div className="text-muted-foreground text-sm">Personas</div>
+									</div>
+									<div className="rounded-xl border border-border bg-card p-6 text-center">
+										<div className="mb-2 font-bold text-3xl text-foreground">
+											{statusData?.totalInsights || insights?.length || 0}
 										</div>
+										<div className="text-muted-foreground text-sm">Insights</div>
 									</div>
 								</div>
+							</div>
 
-								<div className="space-y-6">
-									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
-										<Users className="h-6 w-6 text-orange-600" />
-										Analysis Results
-									</h3>
-									<div className="grid grid-cols-2 gap-4">
-										<div className="rounded-xl border border-border bg-card p-6 text-center">
-											<div className="mb-2 font-bold text-3xl text-foreground">
-												{statusData?.totalPersonas || personas?.length || 0}
-											</div>
-											<div className="text-muted-foreground text-sm">Personas</div>
-										</div>
-										<div className="rounded-xl border border-border bg-card p-6 text-center">
-											<div className="mb-2 font-bold text-3xl text-foreground">
-												{statusData?.totalInsights || insights?.length || 0}
-											</div>
-											<div className="text-muted-foreground text-sm">Insights</div>
-										</div>
-									</div>
-								</div>
-
-								{/* Quick Actions */}
-								{/* <div className="space-y-6">
+							{/* Quick Actions */}
+							{/* <div className="space-y-6">
 									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Zap className="h-6 w-6 text-yellow-600" />
 										Quick Actions
@@ -680,7 +659,6 @@ export default function ProjectStatusScreen({
 										</Button>
 									</div>
 								</div> */}
-							</div>
 						</div>
 					</div>
 				</div>
@@ -690,173 +668,188 @@ export default function ProjectStatusScreen({
 					{/* Prominent Analysis Action */}
 
 					{/* Main Research Framework - Dashboard with Prominent Chat */}
-					<div className="mx-auto max-w-7xl px-4 py-4 sm:px-6 sm:py-6">
-						<div className={cn("grid grid-cols-1 gap-4 sm:gap-6", "lg:grid-cols-3")}>
-							{/* Left Column: Research Overview */}
-							<div className={cn("space-y-4 sm:space-y-6", "lg:col-span-2")}>
-								{/* 1. Goal and Key Decisions at Top */}
-								<div>
-									<div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-										<div className="relative flex items-center gap-2 group">
-											<Target className="h-5 w-5 text-blue-600" />
-											<span>Goal</span>
-											<button
-												onClick={() => {
-													if (routes) {
-														window.location.href = routes.projects.setup()
-													}
-												}}
-												className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-muted rounded"
-												aria-label="Edit goal"
-												title="Edit goal"
-											>
-												<Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
-											</button>
-											{/* Progress indicator moved here */}
-										</div>
-										<div className="flex flex-row gap-2">
-											{/* Research Workflow Link */}
-											<Button
-												variant="outline"
-												size="sm"
-												onClick={() => {
-													if (routes) {
-														window.location.href = routes.questions.researchWorkflow()
-													}
-												}}
-											>
-												<ListTree className="h-4 w-4" />
-												Plan
-											</Button>
-										</div>
+					<div className={cn("grid grid-cols-1 gap-4 sm:gap-6", "lg:grid-cols-3")}>
+						{/* Left Column: Research Overview */}
+						<div className={cn("space-y-4 sm:space-y-6", "lg:col-span-2")}>
+							{/* 1. Goal and Key Decisions at Top */}
+							<div>
+								<div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+									<div className="group relative flex items-center gap-2">
+										<Target className="h-5 w-5 text-blue-600" />
+										<span>Goal</span>
+										<button
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.projects.setup()
+												}
+											}}
+											className="rounded p-1 opacity-0 transition-opacity duration-200 hover:bg-muted group-hover:opacity-100"
+											aria-label="Edit goal"
+											title="Edit goal"
+										>
+											<Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+										</button>
+										{/* Progress indicator moved here */}
 									</div>
-									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardHeader>
-											{/* Research Goals */}
-											{getGoalSections().length > 0 && (
-												<div className="flex items-start justify-between gap-4">
-													<div className="flex items-start gap-3">
-														<ConfidenceBarChart level={goalConfidence} className="mt-1 flex-shrink-0" />
-														{getGoalSections().map((goalSection) => (
-															<div key={goalSection.id} className="flex-1 font-medium text-foreground text-md">
-																{goalSection.content_md}
-															</div>
-														))}
-													</div>
-												</div>
-											)}
-										</CardHeader>
-										<CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-4">
-											<div className="w-full space-y-2">
-												<div className="flex items-center justify-between text-sm">
-													<span className="font-medium text-muted-foreground">
-														Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}%
-													</span>
-													<span
-														className={cn(
-															"font-semibold",
-															(displayData.totalInterviews / targetConversations) * 100 >= 100
-																? "text-green-600"
-																: "text-foreground"
-														)}
-													>
-														{displayData.totalInterviews} / {targetConversations}
-													</span>
-												</div>
-												<div className="h-2 w-full rounded-full bg-muted">
-													<div
-														className={cn(
-															"h-2 rounded-full transition-all duration-300",
-															(displayData.totalInterviews / targetConversations) * 100 >= 100
-																? "bg-green-500"
-																: "bg-primary"
-														)}
-														style={{
-															width: `${Math.min((displayData.totalInterviews / targetConversations) * 100, 100)}%`,
-														}}
-													/>
+									<div className="flex flex-row gap-2">
+										{/* Research Workflow Link */}
+										<Button
+											variant="outline"
+											size="sm"
+											onClick={() => {
+												if (routes) {
+													window.location.href = routes.questions.researchWorkflow()
+												}
+											}}
+										>
+											<ListTree className="h-4 w-4" />
+											Plan
+										</Button>
+									</div>
+								</div>
+								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+									<CardHeader>
+										{/* Research Goals */}
+										{getGoalSections().length > 0 && (
+											<div className="flex items-start justify-between gap-4">
+												<div className="flex items-start gap-3">
+													<ConfidenceBarChart level={goalConfidence} className="mt-1 flex-shrink-0" />
+													{getGoalSections().map((goalSection) => (
+														<div key={goalSection.id} className="flex-1 font-medium text-foreground text-md">
+															{goalSection.content_md}
+														</div>
+													))}
 												</div>
 											</div>
-											{/* Interview Progress */}
+										)}
+									</CardHeader>
 
+									{/* Interview Progress */}
+									<CardContent className="space-y-4 p-3 sm:space-y-6 sm:p-4">
+										<div className="w-full space-y-2">
+											<div className="flex items-center justify-between text-sm">
+												<span className="font-medium text-muted-foreground">
+													Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}%
+												</span>
+												<span
+													className={cn(
+														"font-semibold",
+														(displayData.totalInterviews / targetConversations) * 100 >= 100
+															? "text-green-600"
+															: "text-foreground"
+													)}
+												>
+													{displayData.totalInterviews} / {targetConversations}
+												</span>
+											</div>
+											<div className="h-2 w-full rounded-full bg-muted">
+												<div
+													className={cn(
+														"h-2 rounded-full transition-all duration-300",
+														(displayData.totalInterviews / targetConversations) * 100 >= 100
+															? "bg-green-500"
+															: "bg-primary"
+													)}
+													style={{
+														width: `${Math.min((displayData.totalInterviews / targetConversations) * 100, 100)}%`,
+													}}
+												/>
+											</div>
+										</div>
+
+										{/* Goal Actions */}
+										<div className="flex flex-row items-end justify-end gap-2">
+											<div className="flex flex-wrap items-center gap-2 sm:gap-3">
+												{isSetupChatEnabled && (
+													<Button
+														variant="outline"
+														size="sm"
+														onClick={() => {
+															if (routes) {
+																window.location.href = (routes as any).projects.projectChat()
+															}
+														}}
+														className="border-blue-200 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
+													>
+														<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
+													</Button>
+												)}
+											</div>
 											<TooltipProvider>
 												<Tooltip>
 													<TooltipTrigger asChild>
-														<div className="flex flex-row items-end justify-end">
-															<Button
-																variant="outline"
-																onClick={() => setShowCustomAnalysis(true)}
-																disabled={isAnalyzing || displayData.totalInterviews === 0}
-																className="hover:bg-blue-700"
-																size="sm"
-															>
-																{isAnalyzing ? (
-																	<Loader2 className="mr-2 h-4 w-4 animate-spin" />
-																) : (
-																	<Zap className="mr-2 h-4 w-4" />
-																)}
-																Analyze...
-															</Button>
-														</div>
+														<Button
+															variant="outline"
+															onClick={() => setShowCustomAnalysis(true)}
+															disabled={isAnalyzing || displayData.totalInterviews === 0}
+															className="hover:bg-blue-700"
+															size="sm"
+														>
+															{isAnalyzing ? (
+																<Loader2 className="mr-2 h-4 w-4 animate-spin" />
+															) : (
+																<Zap className="mr-2 h-4 w-4" />
+															)}
+															Analyze...
+														</Button>
 													</TooltipTrigger>
 													<TooltipContent>
 														{displayData.totalInterviews === 0 ? (
 															<p>Add interviews to see emerging insights.</p>
 														) : (
-															<p>Analyze latest conversations and see how they align with your goals and questions.</p>
+															<p>
+																Analyze latest conversations and see how they align with your goals and questions.
+															</p>
 														)}
 													</TooltipContent>
 												</Tooltip>
 											</TooltipProvider>
-										</CardContent>
-									</Card>
-								</div>
-
-								{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
-								{/* <KeyDecisionsCard
-								{/* Research Findings */}
-								{projectId && (
-									<div className="mt-6">
-										<CleanResearchAnswers
-											projectId={projectId as string}
-											projectRoutes={routes}
-											onMetrics={handleResearchMetrics}
-											onData={handleResearchData}
-										/>
-									</div>
-								)}
-
-								{/* 4. Recommended Next Steps */}
-								<div className="mb-3 flex items-center gap-2">
-									<ArrowRight className="h-5 w-5 text-blue-600" />
-									Recommended Next Steps
-								</div>
-								{nextStepsToShow.length > 0 ? (
-									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardContent className="space-y-3 p-3 sm:p-4">
-											{nextStepsToShow.map((step: string, index: number) => (
-												<div key={`action-${index}`} className="flex items-start gap-3">
-													<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
-														{index + 1}
-													</div>
-													<p className="text-foreground text-sm">{step}</p>
-												</div>
-											))}
-										</CardContent>
-									</Card>
-								) : (
-									<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
-										<CardContent className="space-y-3 p-3 sm:p-4">
-											<p className="text-foreground text-sm">Pending</p>
-										</CardContent>
-									</Card>
-								)}
+										</div>
+									</CardContent>
+								</Card>
 							</div>
 
+							{/* Key Decisions (nested within Goal section) should be DQs > RQs */}
+							{/* <KeyDecisionsCard
+								{/* Research Findings */}
+							{projectId && (
+								<div className="mt-6">
+									<CleanResearchAnswers
+										projectId={projectId as string}
+										projectRoutes={routes}
+										onMetrics={handleResearchMetrics}
+										onData={handleResearchData}
+									/>
+								</div>
+							)}
 
+							{/* 4. Recommended Next Steps */}
+							<div className="mb-3 flex items-center gap-2">
+								<ArrowRight className="h-5 w-5 text-blue-600" />
+								Recommended Next Steps
+							</div>
+							{nextStepsToShow.length > 0 ? (
+								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+									<CardContent className="space-y-3 p-3 sm:p-4">
+										{nextStepsToShow.map((step: string, index: number) => (
+											<div key={`action-${index}`} className="flex items-start gap-3">
+												<div className="mt-0.5 flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-full bg-blue-600 font-bold text-white text-xs">
+													{index + 1}
+												</div>
+												<p className="text-foreground text-sm">{step}</p>
+											</div>
+										))}
+									</CardContent>
+								</Card>
+							) : (
+								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
+									<CardContent className="space-y-3 p-3 sm:p-4">
+										<p className="text-foreground text-sm">Pending</p>
+									</CardContent>
+								</Card>
+							)}
 						</div>
 					</div>
-
 					{/* Custom Analysis Modal - Mobile Responsive */}
 					{showCustomAnalysis && (
 						<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/50 p-4">
@@ -906,6 +899,6 @@ export default function ProjectStatusScreen({
 					)}
 				</div>
 			)}
-		</div>
+		</>
 	)
 }

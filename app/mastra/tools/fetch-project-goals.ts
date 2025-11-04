@@ -28,7 +28,7 @@ export const fetchProjectGoalsTool = createTool({
 		const runtimeProjectId = context.runtimeContext?.get?.("project_id")
 		const runtimeAccountId = context.runtimeContext?.get?.("account_id")
 
-		// eslint-disable-next-line @typescript-eslint/no-explicit-any
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
 		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
 
 		consola.info("fetch-project-goals: execute start", {

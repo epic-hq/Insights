@@ -1,13 +1,16 @@
 import { openai } from "@ai-sdk/openai"
 import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
+import consola from "consola"
 import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
+import { fetchPersonasTool } from "../tools/fetch-personas"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
+import { fetchThemesTool } from "../tools/fetch-themes"
 
 const ProjectStatusMemoryState = z.object({
 	lastProjectId: z.string().optional(),
@@ -18,9 +21,10 @@ const ProjectStatusMemoryState = z.object({
 export const projectStatusAgent = new Agent({
 	name: "projectStatusAgent",
 	instructions: async ({ runtimeContext }) => {
-		const projectId = runtimeContext.get("project_id")
-		const accountId = runtimeContext.get("account_id")
-		return `
+		try {
+			const projectId = runtimeContext.get("project_id")
+			const accountId = runtimeContext.get("account_id")
+			return `
 You are a focused project status copilot that helps product teams understand traction, customer discovery, and sales fit.
 
 Goals:
@@ -41,6 +45,18 @@ Tone:
 - Direct, analytical, and helpful. Prefer bullets or short paragraphs.
 - Ask clarifying questions when needed to avoid assumptions.
 `
+		} catch (error) {
+			consola.error("Error in project status agent instructions:", error)
+			return `
+I apologize, but I'm experiencing technical difficulties loading the project context. This might be due to missing project information or a temporary system issue.
+
+Please try:
+1. Ensuring you're working within a valid project context
+2. Refreshing the page and trying again
+3. Contacting support if the issue persists
+
+I recommend checking your project settings or trying a simpler query to help diagnose the issue.`
+		}
 	},
 	model: openai("gpt-4.1"),
 	processors: [], // Disable PII detection to allow people data with personal information
@@ -48,8 +64,10 @@ Tone:
 		fetchProjectStatusContext: fetchProjectStatusContextTool,
 		fetchInterviewContext: fetchInterviewContextTool,
 		fetchPeopleDetails: fetchPeopleDetailsTool,
+		fetchPersonas: fetchPersonasTool,
 		fetchEvidence: fetchEvidenceTool,
 		fetchProjectGoals: fetchProjectGoalsTool,
+		fetchThemes: fetchThemesTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

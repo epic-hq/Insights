@@ -1,0 +1,136 @@
+import { createTool } from "@mastra/core/tools"
+import type { SupabaseClient } from "@supabase/supabase-js"
+import consola from "consola"
+import { z } from "zod"
+import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { themeDetailSchema } from "~/schemas"
+import type { Database } from "~/types"
+import { getThemes } from "~/features/themes/db"
+
+export const fetchThemesTool = createTool({
+	id: "fetch-themes",
+	description:
+		"Fetch themes from a project with filtering and evidence counts. Themes represent recurring patterns or topics identified in research data.",
+	inputSchema: z.object({
+		projectId: z
+			.string()
+			.optional()
+			.describe("Project ID to fetch themes from. Defaults to the current project in context."),
+		themeSearch: z.string().optional().describe("Case-insensitive search string to match theme names or statements."),
+		limit: z.number().int().min(1).max(100).optional().describe("Maximum number of themes to return."),
+	}),
+	outputSchema: z.object({
+		success: z.boolean(),
+		message: z.string(),
+		projectId: z.string().nullable().optional(),
+		themes: z.array(themeDetailSchema),
+		totalCount: z.number(),
+		searchApplied: z.string().nullable(),
+	}),
+	execute: async (context, _options) => {
+		const supabase = supabaseAdmin as SupabaseClient<Database>
+		const runtimeProjectId = context.runtimeContext?.get?.("project_id")
+		const runtimeAccountId = context.runtimeContext?.get?.("account_id")
+
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const projectId = (context as any).projectId ?? runtimeProjectId ?? null
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const themeSearch = (context as any).themeSearch ?? ""
+		// biome-ignore lint/suspicious/noExplicitAny: TypeScript inference limitation with Mastra ToolExecutionContext
+		const limit = (context as any).limit ?? 50
+
+		const sanitizedThemeSearch = themeSearch.trim().toLowerCase()
+
+		consola.info("fetch-themes: execute start", {
+			projectId,
+			accountId: runtimeAccountId,
+			themeSearch: sanitizedThemeSearch,
+			limit,
+		})
+
+		if (!projectId) {
+			consola.warn("fetch-themes: missing projectId")
+			return {
+				success: false,
+				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
+				projectId: null,
+				themes: [],
+				totalCount: 0,
+				searchApplied: null,
+			}
+		}
+
+		try {
+			// Use the centralized database function
+			const projectIdStr = projectId as string
+			const { data: themesData, error } = await getThemes({
+				supabase,
+				projectId: projectIdStr,
+			})
+
+			if (error) {
+				consola.error("fetch-themes: failed to fetch themes", error)
+				throw error
+			}
+
+			let themes = (themesData || []).map((theme) => ({
+				id: theme.id,
+				name: theme.name,
+				statement: theme.statement,
+				inclusionCriteria: theme.inclusion_criteria,
+				exclusionCriteria: theme.exclusion_criteria,
+				synonyms: theme.synonyms,
+				antiExamples: theme.anti_examples,
+				evidenceCount: Array.isArray(theme.theme_evidence)
+					? theme.theme_evidence.length
+					: typeof theme.theme_evidence === "number"
+						? theme.theme_evidence
+						: 0,
+				createdAt: theme.created_at ? new Date(theme.created_at).toISOString() : null,
+				updatedAt: theme.updated_at ? new Date(theme.updated_at).toISOString() : null,
+			}))
+
+			// Apply search filtering if provided
+			if (sanitizedThemeSearch) {
+				themes = themes.filter((theme) => {
+					const searchableText = [theme.name, theme.statement, theme.inclusionCriteria, theme.exclusionCriteria]
+						.filter(Boolean)
+						.join(" ")
+						.toLowerCase()
+
+					return (
+						searchableText.includes(sanitizedThemeSearch) ||
+						theme.synonyms?.some((synonym) => synonym.toLowerCase().includes(sanitizedThemeSearch)) ||
+						theme.antiExamples?.some((example) => example.toLowerCase().includes(sanitizedThemeSearch))
+					)
+				})
+			}
+
+			// Apply limit
+			const limitedThemes = themes.slice(0, limit)
+
+			const message = sanitizedThemeSearch
+				? `Found ${limitedThemes.length} themes matching "${themeSearch}".`
+				: `Retrieved ${limitedThemes.length} themes.`
+
+			return {
+				success: true,
+				message,
+				projectId: projectIdStr,
+				themes: limitedThemes,
+				totalCount: themes.length,
+				searchApplied: sanitizedThemeSearch || null,
+			}
+		} catch (error) {
+			consola.error("fetch-themes: unexpected error", error)
+			return {
+				success: false,
+				message: "Unexpected error fetching themes.",
+				projectId,
+				themes: [],
+				totalCount: 0,
+				searchApplied: null,
+			}
+		}
+	},
+})
