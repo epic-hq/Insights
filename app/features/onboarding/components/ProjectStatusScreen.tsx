@@ -5,6 +5,8 @@ import { motion } from "framer-motion"
 import {
 	ArrowRight,
 	BookOpen,
+	ChevronDown,
+	ChevronUp,
 	Eye,
 	Headphones,
 	Lightbulb,
@@ -830,6 +832,14 @@ export default function ProjectStatusScreen({
 							{/* Right Column: Quick Actions - Mobile Responsive */}
 							<div className="space-y-4">
 								<h2 className="text-base sm:text-lg">Quick Actions</h2>
+								{/* Project Status Agent Chat - Always visible */}
+								{effectiveAccountId && effectiveProjectId && (
+									<ProjectStatusAgentChat
+										accountId={effectiveAccountId}
+										projectId={effectiveProjectId}
+										initialMessages={initialChatMessages}
+									/>
+								)}
 								{/* Quick Actions */}
 								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 									<CardContent className="flex w-full flex-col gap-2 p-3 sm:max-w-sm lg:max-w-md">
@@ -1006,6 +1016,7 @@ function ProjectStatusAgentChat({
         initialMessages: UpsightMessage[]
 }) {
         const [input, setInput] = useState("")
+        const [collapsed, setCollapsed] = useState(true)
         const messagesEndRef = useRef<HTMLDivElement | null>(null)
         const { messages, sendMessage, status } = useChat<UpsightMessage>({
                 transport: new DefaultChatTransport({
@@ -1037,15 +1048,35 @@ function ProjectStatusAgentChat({
         return (
                 <Card className="border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
                         <CardHeader className="p-3 pb-2 sm:p-4">
-                                <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
-                                        <MessageCircleQuestionIcon className="h-4 w-4 text-blue-600" />
-                                        Ask Project Copilot
-                                </CardTitle>
+                                <div className="flex items-center justify-between">
+                                        <CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+                                                <MessageCircleQuestionIcon className="h-4 w-4 text-blue-600" />
+                                                Ask Project Copilot
+                                                {visibleMessages.length > 0 && (
+                                                        <span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-xs text-white">
+                                                                {visibleMessages.length}
+                                                        </span>
+                                                )}
+                                        </CardTitle>
+                                        <Button
+                                                variant="ghost"
+                                                size="sm"
+                                                onClick={() => setCollapsed(!collapsed)}
+                                                className="h-6 w-6 p-0"
+                                        >
+                                                {collapsed ? (
+                                                        <ChevronDown className="h-4 w-4" />
+                                                ) : (
+                                                        <ChevronUp className="h-4 w-4" />
+                                                )}
+                                        </Button>
+                                </div>
                                 <CardDescription className="text-xs sm:text-sm">
                                         Ask short, direct questions about findings, assumptions, or next steps.
                                 </CardDescription>
                         </CardHeader>
-                        <CardContent className="space-y-3 p-3 sm:p-4">
+                        {!collapsed && (
+                                <CardContent className="space-y-3 p-3 sm:p-4">
                                 <div className="h-48 overflow-y-auto rounded-lg border border-border/60 bg-muted/30 p-3">
                                         {visibleMessages.length === 0 ? (
                                                 <p className="text-muted-foreground text-xs sm:text-sm">
@@ -1119,6 +1150,7 @@ function ProjectStatusAgentChat({
                                         </div>
                                 </form>
                         </CardContent>
+                        )}
                 </Card>
         )
 }
