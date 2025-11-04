@@ -3,24 +3,24 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import type { Database } from "~/types"
+import type { Database, Evidence, Insight, Interview, InterviewPeople } from "~/types"
 
 const DEFAULT_EVIDENCE_LIMIT = 12
 
-type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"]
-type EvidenceRow = Database["public"]["Tables"]["evidence"]["Row"]
-type InterviewParticipantRow = Database["public"]["Tables"]["interview_people"]["Row"] & {
+type InterviewRow = Interview
+type EvidenceRow = Evidence
+type InterviewParticipantRow = InterviewPeople & {
 	people?:
-	| (Database["public"]["Tables"]["people"]["Row"] & {
-		people_personas?: Array<{
-			persona_id: string | null
-			personas?: Database["public"]["Tables"]["personas"]["Row"] | null
-		}> | null
-	})
-	| null
+		| (Database["public"]["Tables"]["people"]["Row"] & {
+				people_personas?: Array<{
+					persona_id: string | null
+					personas?: Database["public"]["Tables"]["personas"]["Row"] | null
+				}> | null
+		  })
+		| null
 }
 
-type InsightRow = Database["public"]["Tables"]["insights"]["Row"] & {
+type InsightRow = Insight & {
 	insight_tags?: Array<{
 		tags?: { tag?: string | null } | null
 	}> | null
@@ -387,14 +387,14 @@ export const fetchInterviewContextTool = createTool({
 					.order("updated_at", { ascending: false }),
 				includeEvidence
 					? supabase
-						.from("evidence")
-						.select(
-							"id, gist, verbatim, context_summary, modality, created_at, says, does, thinks, feels, pains, gains, anchors"
-						)
-						.eq("interview_id", interviewId)
-						.eq("project_id", projectId)
-						.order("created_at", { ascending: false })
-						.limit(evidenceLimit)
+							.from("evidence")
+							.select(
+								"id, gist, verbatim, context_summary, modality, created_at, says, does, thinks, feels, pains, gains, anchors"
+							)
+							.eq("interview_id", interviewId)
+							.eq("project_id", projectId)
+							.order("created_at", { ascending: false })
+							.limit(evidenceLimit)
 					: Promise.resolve({ data: null, error: null }),
 			])
 
@@ -511,27 +511,27 @@ export const fetchInterviewContextTool = createTool({
 						display_name: participant.display_name,
 						person: participant.people
 							? {
-								id: participant.people.id,
-								name: participant.people.name,
-								segment: participant.people.segment,
-								description: participant.people.description,
-								contact_info: participant.people.contact_info,
-								personas:
-									participant.people.people_personas
-										?.map((entry): { id: string; name: string | null; color_hex: string | null } | null =>
-											entry?.personas
-												? {
-													id: entry.personas.id,
-													name: entry.personas.name,
-													color_hex: entry.personas.color_hex,
-												}
-												: null
-										)
-										.filter(
-											(persona): persona is { id: string; name: string | null; color_hex: string | null } =>
-												persona !== null
-										) || undefined,
-							}
+									id: participant.people.id,
+									name: participant.people.name,
+									segment: participant.people.segment,
+									description: participant.people.description,
+									contact_info: participant.people.contact_info,
+									personas:
+										participant.people.people_personas
+											?.map((entry): { id: string; name: string | null; color_hex: string | null } | null =>
+												entry?.personas
+													? {
+															id: entry.personas.id,
+															name: entry.personas.name,
+															color_hex: entry.personas.color_hex,
+														}
+													: null
+											)
+											.filter(
+												(persona): persona is { id: string; name: string | null; color_hex: string | null } =>
+													persona !== null
+											) || undefined,
+								}
 							: null,
 					})),
 					personalFacets,
