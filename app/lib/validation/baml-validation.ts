@@ -1,10 +1,24 @@
 import { z } from "zod"
 
+const nullableString = z
+	.union([z.string(), z.number(), z.null()])
+	.optional()
+	.transform((value) => {
+		if (value === null || value === undefined) return undefined
+		return String(value)
+	})
+
 const primitiveStringArray = z
-	.array(z.string().min(1))
+	.array(nullableString)
 	.nullable()
 	.optional()
-	.transform((value) => (Array.isArray(value) && value.length === 0 ? null : value ?? null))
+	.transform((value) => {
+		if (!Array.isArray(value)) return undefined
+		const cleaned = value
+			.map((item) => (typeof item === "string" ? item.trim() : typeof item === "number" ? String(item) : undefined))
+			.filter((item): item is string => Boolean(item && item.length > 0))
+		return cleaned.length ? cleaned : undefined
+	})
 
 const anchorSchema = z
 	.object({
@@ -42,21 +56,21 @@ const kindTagsSchema = z
 export const evidenceUnitSchema = z
 	.object({
 		person_key: z.string().min(1, "person_key is required"),
-		person_role: z.string().nullable().optional(),
-		topic: z.string().nullable().optional(),
-		gist: z.string().min(1, "gist is required"),
-		chunk: z.string().min(1, "chunk is required"),
-		verbatim: z.string().min(1, "verbatim is required"),
-		support: z.string().min(1, "support is required"),
+		person_role: nullableString,
+		topic: nullableString,
+		gist: nullableString,
+		chunk: nullableString,
+		verbatim: nullableString,
+		support: nullableString,
 		kind_tags: kindTagsSchema,
 		personas: primitiveStringArray,
 		segments: primitiveStringArray,
-		journey_stage: z.string().nullable().optional(),
+		journey_stage: nullableString,
 		anchors: anchorsSchema,
-		confidence: z.string().min(1, "confidence is required"),
-		context_summary: z.string().nullable().optional(),
-		independence_key: z.string().nullable().optional(),
-		why_it_matters: z.string().nullable().optional(),
+		confidence: nullableString,
+		context_summary: nullableString,
+		independence_key: nullableString,
+		why_it_matters: nullableString,
 		facet_mentions: z
 			.array(
 				z
@@ -64,7 +78,7 @@ export const evidenceUnitSchema = z
 						person_key: z.string(),
 						kind_slug: z.string(),
 						value: z.string(),
-						quote: z.string().nullable().optional(),
+						quote: nullableString,
 					})
 					.passthrough()
 			)
