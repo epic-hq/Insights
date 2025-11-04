@@ -1,4 +1,5 @@
 import consola from "consola"
+import { useId } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
@@ -117,6 +118,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 export default function EditProject() {
 	const { project } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const nameId = useId()
+	const descriptionId = useId()
 
 	return (
 		<PageContainer size="sm" padded={false} className="max-w-2xl">
@@ -127,9 +130,9 @@ export default function EditProject() {
 
 			<Form method="post" className="space-y-6">
 				<div>
-					<Label htmlFor="name">Name *</Label>
+					<Label htmlFor={nameId}>Name *</Label>
 					<Input
-						id="name"
+						id={nameId}
 						name="name"
 						type="text"
 						required
@@ -140,9 +143,9 @@ export default function EditProject() {
 				</div>
 
 				<div>
-					<Label htmlFor="description">Description</Label>
+					<Label htmlFor={descriptionId}>Description</Label>
 					<Textarea
-						id="description"
+						id={descriptionId}
 						name="description"
 						defaultValue={project.description || ""}
 						placeholder="Enter project description"

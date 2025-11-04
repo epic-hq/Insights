@@ -70,24 +70,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
 	}
 
-	// If setup hasn't been visited for this project, redirect to setup first
-	try {
-		const steps = (ctx.user_settings?.onboarding_steps || {}) as Record<string, any>
-		const setupByProject = (steps.project_setup || {}) as Record<string, any>
-		const visited = setupByProject?.[projectId]?.visited === true
-		if (!visited) {
-			throw redirect(`/a/${accountId}/${projectId}/setup`)
-		}
-	} catch (_) {
-		// Non-fatal
-	}
+	// Note: Allow visiting dashboard without requiring setup completion
 
 	// TODO: use db calls instead unless exception
 	// Fetch project
 	const { data: project } = await supabase
 		.from("projects")
 		.select("*")
-		.eq("account_id", accountId)
 		.eq("id", projectId)
 		.single()
 
@@ -96,7 +85,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	// Batch KPI counts for better performance
-	const [interviewCountResult, insightCountResult, opportunityCountResult] = await Promise.all([
+	await Promise.all([
 		supabase.from("interviews").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 		supabase
 			.from("insights")
@@ -106,15 +95,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		supabase.from("opportunities").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 	])
 
-	const { count: interviewCount } = interviewCountResult
-	const { count: insightCount } = insightCountResult
-	const { count: opportunityCount } = opportunityCountResult
-
 	// Create route helpers for server-side use
 	const routes = createProjectRoutes(accountId, projectId)
 
 	// Fetch personas with counts
-	const { data, error } = await getPersonas({ supabase, accountId, projectId })
+	const { data } = await getPersonas({ supabase, accountId, projectId })
 
 	// Transform personas into the expected format
 	const personas = (data || []).map((p, index) => {
@@ -184,7 +169,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Remove debug queries - they're causing performance issues
 
 	// Fetch tags with frequency counts from insight_tags junction table
-	const { data: tagFrequencyData, error: tagFrequencyError } = await supabase
+	const { data: tagFrequencyData } = await supabase
 		.from("insight_tags")
 		.select("tag_id, tags(tag)")
 		.eq("account_id", accountId)
@@ -244,7 +229,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const projectStatusData = await getProjectStatusData(projectId, supabase)
 
 	let assistantMessages: UpsightMessage[] = []
-	const userId = ctx.claims.sub
+	const userId = ctx.claims?.sub
 	if (userId) {
 		const resourceId = `projectStatusAgent-${userId}-${projectId}`
 		try {

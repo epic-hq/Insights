@@ -4,6 +4,7 @@ import { Memory } from "@mastra/memory"
 import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
+import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 
 const ProjectStatusMemoryState = z.object({
         lastProjectId: z.string().optional(),
@@ -25,10 +26,11 @@ Goals:
 - Always ground answers in the latest project data: insights, evidence, themes, people, personas, and research questions.
 
 Workflow:
-1. Call the \\"fetchProjectStatusContext\\" tool before answering to load the current project's data. Use project_id=${projectId || "<unknown>"} and account_id=${accountId || "<unknown>"} from the runtime context. Include evidence by default, but if the user wants only high-level insight summaries you can set includeEvidence=false when calling the tool.
-2. If no project is in context or the user asks about another project, ask which project they want and call the tool with that projectId to confirm access.
-3. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations.
-4. If data is missing, explain what is missing and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
+1. Call the \\"fetchProjectStatusContext\\" tool before answering to load the current project's data. Use project_id=${projectId || "<unknown>"} and account_id=${accountId || "<unknown>"} from the runtime context. Include evidence and request enough items (evidenceLimit/insightLimit/interviewLimit) to answer the question.
+2. When the user asks for specific interview breakdowns, transcripts, or fresh evidence summaries, call \\"fetchInterviewContext\\" for the relevant interview IDs returned by the status context (or follow-up questions) with includeEvidence=true unless the user specifies otherwise.
+3. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
+4. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations.
+5. If data is missing, explain what is missing and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
 
 Tone:
 - Direct, analytical, and helpful. Prefer bullets or short paragraphs.
@@ -36,9 +38,10 @@ Tone:
 `
         },
         model: openai("gpt-4.1"),
-        tools: {
-                fetchProjectStatusContext: fetchProjectStatusContextTool,
-        },
+		tools: {
+				fetchProjectStatusContext: fetchProjectStatusContextTool,
+				fetchInterviewContext: fetchInterviewContextTool,
+		},
         memory: new Memory({
                 storage: getSharedPostgresStore(),
                 options: {

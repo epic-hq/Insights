@@ -16,6 +16,7 @@ import {
 	MessageCircleQuestionIcon,
 	Mic2Icon,
 	PlusCircle,
+	Pencil,
 	Settings,
 	SquareCheckBig,
 	Target,
@@ -425,24 +426,22 @@ export default function ProjectStatusScreen({
 			{/* Compact Header - Mobile Responsive */}
 			<div className="border-border border-b bg-background px-4 py-4 sm:px-6">
 				<div className="mx-auto flex max-w-6xl flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-					<div>
+					<div className="relative group">
 						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
+						<button
+							onClick={() => {
+								if (routes && projectId) {
+									window.location.href = routes.projects.edit(projectId)
+								}
+							}}
+							className="absolute -right-6 top-1/2 -translate-y-1/2 opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-muted rounded"
+							aria-label="Edit project"
+							title="Edit project"
+						>
+							<Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+						</button>
 					</div>
 					<div className="flex flex-wrap items-center gap-2 sm:gap-3">
-						{/* Flow View Toggle Button */}
-						{/* <Button
-							variant={showFlowView ? "default" : "outline"}
-							size="sm"
-							onClick={() => setShowFlowView(!showFlowView)}
-							className={
-								showFlowView
-									? "bg-blue-600 text-white hover:bg-blue-700"
-									: "border-blue-200 bg-gradient-to-r from-blue-50 to-indigo-50 text-blue-700 hover:from-blue-100 hover:to-indigo-100 hover:text-blue-800 dark:from-blue-950/20 dark:to-indigo-950/20 dark:text-blue-300 dark:hover:from-blue-900/30 dark:hover:to-indigo-900/30"
-							}
-						>
-							<Workflow className="w-4 h-4 mr-2" />
-							{showFlowView ? "Dashboard View" : "Research Flow"}
-						</Button> */}
 						{isSetupChatEnabled && (
 							<Button
 								variant="outline"
@@ -457,7 +456,6 @@ export default function ProjectStatusScreen({
 								<MessageCircleQuestionIcon className="mr-2 h-4 w-4" /> Setup Chat
 							</Button>
 						)}
-						<ProjectEditButton projectId={projectId} />
 					</div>
 				</div>
 			</div>
@@ -699,24 +697,24 @@ export default function ProjectStatusScreen({
 								{/* 1. Goal and Key Decisions at Top */}
 								<div>
 									<div className="mb-3 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-										<div className="flex items-center gap-2">
+										<div className="relative flex items-center gap-2 group">
 											<Target className="h-5 w-5 text-blue-600" />
-											Goal
-											{/* Progress indicator moved here */}
-										</div>
-										<div className="flex flex-row gap-2">
-											<Button
-												variant="outline"
-												size="sm"
+											<span>Goal</span>
+											<button
 												onClick={() => {
 													if (routes) {
 														window.location.href = routes.projects.setup()
 													}
 												}}
+												className="opacity-0 group-hover:opacity-100 transition-opacity duration-200 p-1 hover:bg-muted rounded"
+												aria-label="Edit goal"
+												title="Edit goal"
 											>
-												<Settings className="h-4 w-4" />
-												Edit
-											</Button>{" "}
+												<Pencil className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</button>
+											{/* Progress indicator moved here */}
+										</div>
+										<div className="flex flex-row gap-2">
 											{/* Research Workflow Link */}
 											<Button
 												variant="outline"

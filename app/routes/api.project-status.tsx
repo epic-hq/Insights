@@ -21,7 +21,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		const { client: supabase } = getServerClient(request)
 
 		// Use the updated server util that reads from annotations
-		const statusData = await getProjectStatusData(projectId, supabase, user.user_metadata.accountId)
+		const statusData = await getProjectStatusData(projectId, supabase)
 
 		if (!statusData) {
 			return Response.json({ success: false, error: "Project not found" }, { status: 404 })

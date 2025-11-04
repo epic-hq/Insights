@@ -4,26 +4,25 @@
  * Center: Main content area (<Outlet />)
  * Right: ProjectStatusAgent chat sidebar
  */
+
+import { convertMessages } from "@mastra/core/agent"
+import consola from "consola"
 import { Outlet, redirect, useLoaderData } from "react-router"
 import { z } from "zod"
-import consola from "consola"
-import { SidebarProvider, SidebarInset } from "~/components/ui/sidebar"
-import { AppSidebar } from "~/components/navigation/AppSidebar"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
-import { convertMessages } from "@mastra/core/agent"
-import type { UpsightMessage } from "~/mastra/message-types"
-import { memory } from "~/mastra/memory"
-import { getProjectStatusData } from "~/utils/project-status.server"
 import { CurrentProjectProvider, useCurrentProject } from "~/contexts/current-project-context"
 import { getProjectById } from "~/features/projects/db"
+import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
-import type { Route } from "./+types/projects"
 import type { GetAccount, Project } from "~/types"
+import { getProjectStatusData } from "~/utils/project-status.server"
+import type { Route } from "./+types/projects"
 
 // Server-side Authentication Middleware
 export const unstable_middleware: Route.unstable_MiddlewareFunction[] = [
-	async ({ request, context, params }) => {
+	async ({ request: _request, context, params }) => {
 		try {
 			const ctx = context.get(userContext)
 			const _supabase = ctx.supabase
@@ -56,11 +55,11 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		// const currentProject = context.get(currentProjectContext)
 		const ctx = context.get(userContext)
 		const { supabase } = ctx
-		
+
 		if (!supabase) {
 			throw new Response("Database connection not available", { status: 500 })
 		}
-		
+
 		const _accountId = params?.accountId
 		const projectId = params?.projectId
 		const project = await getProjectById({ supabase, id: projectId })
@@ -129,7 +128,7 @@ function isUUID(str: string) {
 // Placeholder: Replace with actual project fetching logic
 async function _parse_project_id_from_params({
 	project_id_or_slug,
-	supabase,
+	supabase: _supabase,
 }: {
 	project_id_or_slug: string
 	supabase: any // SupabaseClient
@@ -144,7 +143,7 @@ async function _parse_project_id_from_params({
 	return project
 }
 
-// Layout component with 3-column structure
+// Layout component with main content and right sidebar
 function ProjectLayout({
 	statusData,
 	initialChatMessages,
@@ -167,34 +166,26 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 `.trim()
 
 	return (
-		<SidebarProvider>
-			{/* Left Sidebar - Navigation */}
-			<AppSidebar />
+		<div className="flex h-screen">
+			{/* Center Column - Main Content */}
+			<main className="flex-1 overflow-auto">
+				<Outlet />
+			</main>
 
-			{/* Main Content Area */}
-			<SidebarInset className="flex flex-col h-screen overflow-hidden">
-				<div className="flex flex-1 min-h-0">
-					{/* Center Column - Main Content */}
-					<main className="flex-1 overflow-auto">
-						<Outlet />
-					</main>
-
-					{/* Right Sidebar - Project Status Agent */}
-					<aside className="w-96 border-l bg-background flex flex-col">
-						<div className="flex-1 min-h-0 p-4">
-							{accountId && projectId && (
-								<ProjectStatusAgentChat
-									accountId={accountId}
-									projectId={projectId}
-									initialMessages={initialChatMessages}
-									systemContext={projectSystemContext}
-								/>
-							)}
-						</div>
-					</aside>
+			{/* Right Sidebar - Project Status Agent */}
+			<aside className="flex flex-col border-l bg-background">
+				<div className="min-h-0 flex-1">
+					{accountId && projectId && (
+						<ProjectStatusAgentChat
+							accountId={accountId}
+							projectId={projectId}
+							initialMessages={initialChatMessages}
+							systemContext={projectSystemContext}
+						/>
+					)}
 				</div>
-			</SidebarInset>
-		</SidebarProvider>
+			</aside>
+		</div>
 	)
 }
 
@@ -204,11 +195,7 @@ export default function Projects() {
 
 	return (
 		<CurrentProjectProvider>
-			<ProjectLayout
-				statusData={statusData}
-				initialChatMessages={initialChatMessages}
-				project={project}
-			/>
+			<ProjectLayout statusData={statusData} initialChatMessages={initialChatMessages} project={project} />
 		</CurrentProjectProvider>
 	)
 }

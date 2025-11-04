@@ -66,7 +66,7 @@ export const createProject = async ({
 	return await supabase.from("projects").insert(data).select().single()
 }
 
-const _updateProject = async ({
+export const updateProject = async ({
 	supabase,
 	id,
 	data,
@@ -78,7 +78,7 @@ const _updateProject = async ({
 	return await supabase.from("projects").update(data).eq("id", id).select().single()
 }
 
-const _deleteProject = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
+export const deleteProject = async ({ supabase, id }: { supabase: SupabaseClient<Database>; id: string }) => {
 	return await supabase.from("projects").delete().eq("id", id)
 }
 
