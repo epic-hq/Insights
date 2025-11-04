@@ -4,7 +4,7 @@ import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { evidenceDetailSchema } from "~/schemas"
-import type { Database, Evidence, Interview } from "~/types"
+import type { Database, Evidence, Insight, Interview } from "~/types"
 
 const DEFAULT_EVIDENCE_LIMIT = 50
 
@@ -54,23 +54,23 @@ export const fetchEvidenceTool = createTool({
 			confidence: z.string().nullable(),
 		}),
 	}),
-	execute: async ({ context, runtimeContext }) => {
+	execute: async (context, _options) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
-		const runtimeAccountId = runtimeContext?.get?.("account_id")
+		const runtimeProjectId = context.runtimeContext?.get?.("project_id")
+		const runtimeAccountId = context.runtimeContext?.get?.("account_id")
 
-		const projectId = context?.projectId ?? runtimeProjectId ?? ""
+		const projectId = context.projectId ?? runtimeProjectId ?? null
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
-		const interviewId = context?.interviewId?.trim()
-		const personId = context?.personId?.trim()
-		const evidenceSearch = (context?.evidenceSearch ?? "").trim()
+		const interviewId = context.interviewId?.trim()
+		const personId = context.personId?.trim()
+		const evidenceSearch = (context.evidenceSearch ?? "").trim()
 		const sanitizedEvidenceSearch = evidenceSearch.replace(/[%*"'()]/g, "").trim()
-		const evidenceLimit = context?.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
-		const includeInterview = context?.includeInterview ?? true
-		const includePerson = context?.includePerson ?? true
-		const includeInsights = context?.includeInsights ?? false
-		const modality = context?.modality
-		const confidence = context?.confidence
+		const evidenceLimit = context.evidenceLimit ?? DEFAULT_EVIDENCE_LIMIT
+		const includeInterview = context.includeInterview ?? true
+		const includePerson = context.includePerson ?? true
+		const includeInsights = context.includeInsights ?? false
+		const modality = context.modality
+		const confidence = context.confidence
 
 		const filtersApplied = {
 			interviewId: interviewId || null,
@@ -106,6 +106,9 @@ export const fetchEvidenceTool = createTool({
 			}
 		}
 
+		// At this point, projectId is guaranteed to be a string
+		const projectIdStr = projectId as string
+
 		try {
 			// Build the base query for evidence
 			let query = supabase
@@ -136,7 +139,7 @@ export const fetchEvidenceTool = createTool({
 					created_at,
 					updated_at
 				`)
-				.eq("project_id", projectId)
+				.eq("project_id", projectIdStr)
 
 			// Apply filters
 			if (interviewId) {
@@ -199,7 +202,7 @@ export const fetchEvidenceTool = createTool({
 			const { count: totalCount } = await supabase
 				.from("evidence")
 				.select("*", { count: "exact", head: true })
-				.eq("project_id", projectId)
+				.eq("project_id", projectIdStr)
 
 			// Fetch additional related data if requested
 			const [interviewData, personData, insightsData] = await Promise.all([
@@ -207,12 +210,7 @@ export const fetchEvidenceTool = createTool({
 					? supabase
 							.from("interviews")
 							.select("id, title, interview_date, status")
-							.in(
-								"id",
-								evidenceRows
-									.map((row) => row.interview_id)
-									.filter((id): id is string => Boolean(id)) || []
-							)
+							.in("id", evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || [])
 					: Promise.resolve({ data: null }),
 
 				includePerson && evidenceRows.length > 0
@@ -224,9 +222,7 @@ export const fetchEvidenceTool = createTool({
 						`)
 							.in(
 								"interview_id",
-								evidenceRows
-									.map((row) => row.interview_id)
-									.filter((id): id is string => Boolean(id)) || []
+								evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
 							)
 					: Promise.resolve({ data: null }),
 
@@ -234,12 +230,10 @@ export const fetchEvidenceTool = createTool({
 					? supabase
 							.from("insights")
 							.select("id, name, details, interview_id")
-							.eq("project_id", projectId)
+							.eq("project_id", projectIdStr)
 							.in(
 								"interview_id",
-								evidenceRows
-									.map((row) => row.interview_id)
-									.filter((id): id is string => Boolean(id)) || []
+								evidenceRows.map((row) => row.interview_id).filter((id): id is string => Boolean(id)) || []
 							)
 					: Promise.resolve({ data: null }),
 			])
@@ -300,7 +294,10 @@ export const fetchEvidenceTool = createTool({
 			}
 
 			if (insightsData?.data) {
-				for (const insight of insightsData.data as Insight[]) {
+				const insightsWithInterviewId = (insightsData.data as Insight[]).filter(
+					(insight): insight is Insight & { interview_id: string } => Boolean(insight.interview_id)
+				)
+				for (const insight of insightsWithInterviewId) {
 					const existing = insightsByInterviewId.get(insight.interview_id) ?? []
 					existing.push({
 						id: insight.id,
@@ -324,13 +321,17 @@ export const fetchEvidenceTool = createTool({
 				createdAt: normalizeDate(row.created_at),
 				updatedAt: normalizeDate(row.updated_at),
 				// Simplified related data
-				interviewTitle: interviewsById.get(row.interview_id)?.title ?? null,
-				interviewDate: interviewsById.get(row.interview_id)?.interviewDate ?? null,
-				interviewStatus: interviewsById.get(row.interview_id)?.status ?? null,
-				personName: peopleByInterviewId.get(row.interview_id)?.[0]?.name ?? null,
-				personRole: peopleByInterviewId.get(row.interview_id)?.[0]?.role ?? null,
-				insightCount: insightsByInterviewId.get(row.interview_id)?.length ?? 0,
+				interviewTitle: row.interview_id ? (interviewsById.get(row.interview_id)?.title ?? null) : null,
+				interviewDate: row.interview_id ? (interviewsById.get(row.interview_id)?.interviewDate ?? null) : null,
+				interviewStatus: row.interview_id ? (interviewsById.get(row.interview_id)?.status ?? null) : null,
+				personName: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.name ?? null) : null,
+				personRole: row.interview_id ? (peopleByInterviewId.get(row.interview_id)?.[0]?.role ?? null) : null,
+				insightCount: row.interview_id ? (insightsByInterviewId.get(row.interview_id)?.length ?? 0) : 0,
 			}))
+
+			const message = sanitizedEvidenceSearch
+				? `Found ${evidence.length} evidence records matching "${sanitizedEvidenceSearch}".`
+				: `Retrieved ${evidence.length} evidence records.`
 
 			return {
 				success: true,

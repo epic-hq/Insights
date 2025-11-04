@@ -102,10 +102,22 @@ export const evidenceDetailSchema = z.object({
 	insightCount: z.number().nullable(),
 })
 
-// Interview context schema (used by fetch-interview-context tool)
-// ... add more schemas here as needed
+// Project goals schema (used by fetch-project-goals tool)
+export const projectGoalsSchema = z.object({
+	projectId: z.string(),
+	targetOrgs: z.array(z.string()).nullable(),
+	targetRoles: z.array(z.string()).nullable(),
+	researchGoal: nullableString,
+	researchGoalDetails: nullableString,
+	decisionQuestions: z.array(z.string()).nullable(),
+	assumptions: z.array(z.string()).nullable(),
+	unknowns: z.array(z.string()).nullable(),
+	customInstructions: nullableString,
+	settings: z.record(z.string(), z.unknown()).nullable(),
+})
 
 // Type exports - use these instead of z.infer<typeof schema> everywhere
 export type PersonDetail = z.infer<typeof personDetailSchema>
 export type EvidenceDetail = z.infer<typeof evidenceDetailSchema>
 export type ContactInfo = z.infer<typeof contactInfoSchema>
+export type ProjectGoals = z.infer<typeof projectGoalsSchema>

@@ -3,23 +3,24 @@ import { Agent } from "@mastra/core/agent"
 import { Memory } from "@mastra/memory"
 import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
-import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
+import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
-import { fetchEvidenceTool } from "../tools/fetch-evidence"
+import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
+import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
 
 const ProjectStatusMemoryState = z.object({
-        lastProjectId: z.string().optional(),
-        lastSummary: z.string().optional(),
-        lastUpdatedAt: z.string().optional(),
+	lastProjectId: z.string().optional(),
+	lastSummary: z.string().optional(),
+	lastUpdatedAt: z.string().optional(),
 })
 
 export const projectStatusAgent = new Agent({
-        name: "projectStatusAgent",
-        instructions: async ({ runtimeContext }) => {
-                const projectId = runtimeContext.get("project_id")
-                const accountId = runtimeContext.get("account_id")
-                return `
+	name: "projectStatusAgent",
+	instructions: async ({ runtimeContext }) => {
+		const projectId = runtimeContext.get("project_id")
+		const accountId = runtimeContext.get("account_id")
+		return `
 You are a focused project status copilot that helps product teams understand traction, customer discovery, and sales fit.
 
 Goals:
@@ -40,20 +41,21 @@ Tone:
 - Direct, analytical, and helpful. Prefer bullets or short paragraphs.
 - Ask clarifying questions when needed to avoid assumptions.
 `
-        },
-        model: openai("gpt-4.1"),
-        processors: [], // Disable PII detection to allow people data with personal information
-        tools: {
-                fetchProjectStatusContext: fetchProjectStatusContextTool,
-                fetchInterviewContext: fetchInterviewContextTool,
-                fetchPeopleDetails: fetchPeopleDetailsTool,
-                fetchEvidence: fetchEvidenceTool,
-        },
-        memory: new Memory({
-                storage: getSharedPostgresStore(),
-                options: {
-                        workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
-                        threads: { generateTitle: false },
-                },
-        }),
+	},
+	model: openai("gpt-4.1"),
+	processors: [], // Disable PII detection to allow people data with personal information
+	tools: {
+		fetchProjectStatusContext: fetchProjectStatusContextTool,
+		fetchInterviewContext: fetchInterviewContextTool,
+		fetchPeopleDetails: fetchPeopleDetailsTool,
+		fetchEvidence: fetchEvidenceTool,
+		fetchProjectGoals: fetchProjectGoalsTool,
+	},
+	memory: new Memory({
+		storage: getSharedPostgresStore(),
+		options: {
+			workingMemory: { enabled: true, schema: ProjectStatusMemoryState },
+			threads: { generateTitle: false },
+		},
+	}),
 })
