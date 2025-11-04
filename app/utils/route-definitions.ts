@@ -143,6 +143,10 @@ export interface RouteDefinitions {
 		annotations: () => string
 		votes: () => string
 		entityFlags: () => string
+		chat: () => {
+			projectStatus: () => string
+			interview: (interviewId: string) => string
+		}
 	}
 }
 
@@ -291,6 +295,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			realtimeStart: () => `${base}/api/interviews/realtime-start`,
 			generatePersonas: () => `${base}/personas/api/generate-personas`,
 			insightsUpdateField: () => `${base}/insights/api/update-field`,
+			chat: {
+				projectStatus: () => `${base}/api/chat/project-status`,
+				interview: (interviewId: string) => `${base}/api/chat/interview/${interviewId}`,
+			},
+			// Annotations API routes (project-scoped)
 			annotations: () => `${base}/api/annotations`,
 			votes: () => `${base}/api/votes`,
 			entityFlags: () => `${base}/api/entity-flags`,

@@ -1,8 +1,13 @@
+import { useChat } from "@ai-sdk/react"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { motion } from "framer-motion"
 import {
 	ArrowRight,
 	BookOpen,
+	BotMessageSquare,
+	ChevronDown,
+	ChevronUp,
 	Eye,
 	Headphones,
 	Lightbulb,
@@ -18,13 +23,14 @@ import {
 	Users,
 	Zap,
 } from "lucide-react"
-import { useCallback, useEffect, useMemo, useState } from "react"
+import { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { useRevalidator } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { ConfidenceBarChart } from "~/components/ui/ConfidenceBarChart"
-import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
+import { Textarea } from "~/components/ui/textarea"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useValidationView } from "~/contexts/ValidationViewContext"
@@ -38,9 +44,10 @@ import {
 	getOpenQuestions,
 } from "~/features/research/utils/research-data-mappers"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
+import type { UpsightMessage } from "~/mastra/message-types"
 import type { Project_Section } from "~/types"
 
 const _ANSWERED_STATUSES = new Set(["answered", "ad_hoc"])
@@ -66,6 +73,7 @@ interface ProjectStatusScreenProps {
 	personas?: any[]
 	insights?: any[]
 	projectSections?: Project_Section[]
+	initialChatMessages?: UpsightMessage[]
 }
 
 export default function ProjectStatusScreen({
@@ -76,6 +84,7 @@ export default function ProjectStatusScreen({
 	personas = [],
 	insights = [],
 	projectSections: initialSections,
+	initialChatMessages = [],
 }: ProjectStatusScreenProps) {
 	const [isAnalyzing, setIsAnalyzing] = useState(false)
 	const [customInstructions, setCustomInstructions] = useState("")
@@ -96,8 +105,47 @@ export default function ProjectStatusScreen({
 	const { showValidationView } = useValidationView()
 	const projectPath =
 		currentProjectContext?.projectPath ?? (accountId && projectId ? `/a/${accountId}/${projectId}` : "")
-	const routes = useProjectRoutes(projectPath)
+	const routes = useProjectRoutesFromIds(accountId, projectId)
 	const supabase = createClient()
+	const effectiveAccountId = accountId || ""
+	const effectiveProjectId = projectId || ""
+
+	// Build comprehensive system context for the project status agent
+	const projectSystemContext = useMemo(() => {
+		const sections: string[] = []
+		sections.push(`Project: ${projectName}`)
+
+		if (statusData?.totalInterviews) {
+			sections.push(`Interviews conducted: ${statusData.totalInterviews}`)
+		}
+		if (statusData?.totalEvidence) {
+			sections.push(`Evidence collected: ${statusData.totalEvidence}`)
+		}
+		if (statusData?.totalInsights) {
+			sections.push(`Insights generated: ${statusData.totalInsights}`)
+		}
+		if (statusData?.totalPersonas) {
+			sections.push(`Personas identified: ${statusData.totalPersonas}`)
+		}
+
+		if (researchRollup?.decision_questions?.length) {
+			sections.push(`Decision questions: ${researchRollup.decision_questions.length}`)
+		}
+		if (researchRollup?.research_questions_without_decision?.length) {
+			sections.push(`Research questions: ${researchRollup.research_questions_without_decision.length}`)
+		}
+
+		if (statusData?.nextSteps?.length) {
+			sections.push(`Current next steps: ${statusData.nextSteps.slice(0, 3).join(", ")}`)
+		}
+
+		const combined = sections.filter(Boolean).join("\n\n")
+		if (combined.length > 2000) {
+			return `${combined.slice(0, 2000)}…`
+		}
+
+		return combined
+	}, [projectName, statusData, researchRollup])
 
 	const handleResearchMetrics = useCallback((metrics: { answered: number; open: number; total: number }) => {
 		setResearchMetrics(metrics)
@@ -519,6 +567,14 @@ export default function ProjectStatusScreen({
 
 							{/* Right Side: Data Details - Mobile Responsive */}
 							<div className="space-y-6 overflow-y-auto sm:space-y-8 lg:border-gray-200 lg:border-l lg:pl-8 lg:dark:border-gray-700">
+								{effectiveAccountId && effectiveProjectId && (
+									<ProjectStatusAgentChat
+										accountId={effectiveAccountId}
+										projectId={effectiveProjectId}
+										initialMessages={initialChatMessages}
+										systemContext={projectSystemContext}
+									/>
+								)}
 								<div className="space-y-6">
 									<h3 className="flex items-center gap-3 font-semibold text-2xl text-foreground">
 										<Target className="h-6 w-6 text-blue-600" />
@@ -801,6 +857,15 @@ export default function ProjectStatusScreen({
 							{/* Right Column: Quick Actions - Mobile Responsive */}
 							<div className="space-y-4">
 								<h2 className="text-base sm:text-lg">Quick Actions</h2>
+								{/* Project Status Agent Chat - Always visible */}
+								{effectiveAccountId && effectiveProjectId && (
+									<ProjectStatusAgentChat
+										accountId={effectiveAccountId}
+										projectId={effectiveProjectId}
+										initialMessages={initialChatMessages}
+										systemContext={projectSystemContext}
+									/>
+								)}
 								{/* Quick Actions */}
 								<Card className="border-0 shadow-none sm:rounded-xl sm:border sm:shadow-sm">
 									<CardContent className="flex w-full flex-col gap-2 p-3 sm:max-w-sm lg:max-w-md">
@@ -964,5 +1029,150 @@ export default function ProjectStatusScreen({
 				</div>
 			)}
 		</div>
+	)
+}
+
+function ProjectStatusAgentChat({
+	accountId,
+	projectId,
+	initialMessages,
+	systemContext,
+}: {
+	accountId: string
+	projectId: string
+	initialMessages: UpsightMessage[]
+	systemContext: string
+}) {
+	const [input, setInput] = useState("")
+	const [collapsed, setCollapsed] = useState(true)
+	const messagesEndRef = useRef<HTMLDivElement | null>(null)
+	const routes = useProjectRoutesFromIds(accountId, projectId)
+	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+		transport: new DefaultChatTransport({
+			api: routes.api.chat.projectStatus(),
+			body: { system: systemContext },
+		}),
+		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+	})
+
+	const visibleMessages = useMemo(() => (messages ?? []).slice(-12), [messages])
+
+	useEffect(() => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+		}
+	}, [visibleMessages])
+
+	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const trimmed = input.trim()
+		if (!trimmed) return
+		sendMessage({ text: trimmed })
+		setInput("")
+	}
+
+	const isBusy = status === "streaming" || status === "submitted"
+	const isError = status === "error"
+
+	return (
+		<Card className="border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
+			<CardHeader className="p-3 pb-2 sm:p-4">
+				<div className="flex items-center justify-between">
+					<CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+						<BotMessageSquare className="h-4 w-4 text-blue-600" />
+						Ask Project Assistant
+						{visibleMessages.length > 0 && (
+							<span className="ml-2 rounded-full bg-blue-600 px-2 py-0.5 text-white text-xs">
+								{visibleMessages.length}
+							</span>
+						)}
+					</CardTitle>
+					<Button variant="ghost" size="sm" onClick={() => setCollapsed(!collapsed)} className="h-6 w-6 p-0">
+						{collapsed ? <ChevronDown className="h-4 w-4" /> : <ChevronUp className="h-4 w-4" />}
+					</Button>
+				</div>
+
+			</CardHeader>
+			{!collapsed && (
+				<CardContent className="space-y-3 p-3 sm:p-4">
+					<div className="h-48 overflow-y-auto rounded-lg border border-border/60 bg-muted/30 p-3">
+						{visibleMessages.length === 0 ? (
+							<p className="text-muted-foreground text-xs sm:text-sm">
+								No questions yet. Try "What evidence do we have for our top assumption?"
+							</p>
+						) : (
+							<div className="space-y-3 text-xs sm:text-sm">
+								{visibleMessages.map((message, index) => {
+									const key = message.id || `${message.role}-${index}`
+									const isUser = message.role === "user"
+									const textParts =
+										message.parts?.map((part) => {
+											if (part.type === "text") return part.text
+											if (part.type === "tool-call") {
+												return `Requesting tool: ${part.toolName ?? "unknown"}`
+											}
+											if (part.type === "tool-result") {
+												return `Tool result: ${part.toolName ?? "unknown"}`
+											}
+											return ""
+										}) ?? []
+									const messageText = textParts.filter(Boolean).join("\n").trim()
+									return (
+										<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
+											<div className="max-w-[85%]">
+												<div className="mb-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+													{isUser ? "You" : "Project Assistant"}
+												</div>
+												<div
+													className={cn(
+														"whitespace-pre-wrap rounded-lg px-3 py-2 shadow-sm",
+														isUser ? "bg-blue-600 text-white" : "bg-background text-foreground ring-1 ring-border/60"
+													)}
+												>
+													{messageText ? (
+														isUser ? (
+															<span className="whitespace-pre-wrap">{messageText}</span>
+														) : (
+															<span className="whitespace-pre-wrap">{messageText}</span>
+														)
+													) : !isUser ? (
+														<span className="text-muted-foreground italic">Thinking...</span>
+													) : (
+														<span className="text-muted-foreground">(No text response)</span>
+													)}
+												</div>
+											</div>
+										</div>
+									)
+								})}
+								<div ref={messagesEndRef} />
+							</div>
+						)}
+					</div>
+					<form onSubmit={handleSubmit} className="space-y-2">
+						<Textarea
+							value={input}
+							onChange={(event) => setInput(event.currentTarget.value)}
+							placeholder="Ask.."
+							rows={2}
+							disabled={isBusy}
+							className="min-h-[72px] resize-none"
+						/>
+						<div className="flex items-center justify-between gap-2">
+							<span className="text-muted-foreground text-xs" aria-live="polite">
+								{isError
+									? "Something went wrong. Try again."
+									: isBusy
+										? "Thinking..."
+										: null}
+							</span>
+							<Button type="submit" size="sm" disabled={!input.trim() || isBusy}>
+								Send
+							</Button>
+						</div>
+					</form>
+				</CardContent>
+			)}
+		</Card>
 	)
 }

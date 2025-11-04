@@ -1,23 +1,33 @@
+import { useChat } from "@ai-sdk/react"
+import { convertMessages } from "@mastra/core/agent"
+import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { Edit2, Loader2, MoreVertical } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { BotMessageSquare, Edit2, Loader2, MessageCircleQuestionIcon, MoreVertical, SparkleIcon } from "lucide-react"
+import { useEffect, useMemo, useRef, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
+import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
+import { Button } from "~/components/ui/button"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTrigger } from "~/components/ui/sheet"
+import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
 import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
+import { cn } from "~/lib/utils"
+import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
@@ -343,27 +353,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-							id: string
-							name: string | null
-							segment: string | null
-							project_id: string | null
-							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-							[key: string]: unknown
-					  }
+						id: string
+						name: string | null
+						segment: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-							id: person.id,
-							name: person.name,
-							segment: person.segment,
-							project_id: person.project_id,
-							people_personas: Array.isArray(person.people_personas)
-								? person.people_personas.map((pp) => ({
-										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-									}))
-								: undefined,
-						}
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
+							: undefined,
+					}
 					: undefined
 				return {
 					id: row.id,
@@ -606,6 +616,31 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			}
 		}
 
+		let assistantMessages: UpsightMessage[] = []
+		const userId = ctx.claims.sub
+		if (userId) {
+			const resourceId = `interviewStatusAgent-${userId}-${interviewId}`
+			try {
+				const threads = await memory.getThreadsByResourceIdPaginated({
+					resourceId,
+					orderBy: "createdAt",
+					sortDirection: "DESC",
+					page: 0,
+					perPage: 1,
+				})
+				const threadId = threads?.threads?.[0]?.id
+				if (threadId) {
+					const { messagesV2 } = await memory.query({
+						threadId,
+						selectBy: { last: 50 },
+					})
+					assistantMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+				}
+			} catch (error) {
+				consola.warn("Failed to load assistant history", { resourceId, error })
+			}
+		}
+
 		const loaderResult = {
 			accountId,
 			projectId,
@@ -616,6 +651,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			peopleOptions: peopleOptions || [],
 			creatorName,
 			analysisJob,
+			assistantMessages,
 			conversationAnalysis,
 		}
 
@@ -625,6 +661,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			interviewId: interview.id,
 			insightsCount: insights?.length || 0,
 			evidenceCount: evidence?.length || 0,
+			assistantMessages: assistantMessages.length,
 		})
 
 		return loaderResult
@@ -652,6 +689,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		peopleOptions,
 		creatorName,
 		analysisJob,
+		assistantMessages,
 		conversationAnalysis,
 	} = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
@@ -833,6 +871,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	}
 
 	const participants = interview.participants || []
+	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
+	const interviewTitle = interview.title || "Untitled Interview"
 	const primaryParticipant = participants[0]?.people
 	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
 	const conversationUpdatedLabel =
@@ -858,6 +898,94 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
+
+	useEffect(() => {
+		if (assistantMessages.length > 0) {
+			setIsChatOpen(true)
+		}
+	}, [assistantMessages.length])
+
+	const keyTakeawaysDraft = useMemo(
+		() => normalizeMultilineText(interview.high_impact_themes).trim(),
+		[interview.high_impact_themes]
+	)
+	const notesDraft = useMemo(
+		() => normalizeMultilineText(interview.observations_and_notes).trim(),
+		[interview.observations_and_notes]
+	)
+	const personalFacetSummary = useMemo(() => {
+		if (!participants.length) return ""
+
+		const lines = participants
+			.map((participant) => {
+				const person =
+					(participant.people as {
+						name?: string | null
+						segment?: string | null
+						people_personas?: Array<{ personas?: { name?: string | null } | null }>
+					} | null) || null
+				const personaNames = Array.from(
+					new Set(
+						(person?.people_personas || [])
+							.map((entry) => entry?.personas?.name)
+							.filter((name): name is string => typeof name === "string" && name.trim())
+					)
+				)
+
+				const facets: string[] = []
+				if (participant.role) facets.push(`Role: ${participant.role}`)
+				if (person?.segment) facets.push(`Segment: ${person.segment}`)
+				if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`)
+
+				const displayName =
+					person?.name ||
+					participant.display_name ||
+					(participant.transcript_key ? `Speaker ${participant.transcript_key}` : null)
+
+				if (!displayName && facets.length === 0) {
+					return null
+				}
+
+				return `- ${(displayName || "Participant").trim()}${facets.length ? ` (${facets.join("; ")})` : ""}`
+			})
+			.filter((line): line is string => Boolean(line))
+
+		return lines.slice(0, 8).join("\n")
+	}, [participants])
+
+	const interviewSystemContext = useMemo(() => {
+		const sections: string[] = []
+		sections.push(`Interview title: ${interviewTitle}`)
+		if (interview.segment) sections.push(`Target segment: ${interview.segment}`)
+		if (keyTakeawaysDraft) sections.push(`Key takeaways draft:\n${keyTakeawaysDraft}`)
+		if (personalFacetSummary) sections.push(`Personal facets:\n${personalFacetSummary}`)
+		if (notesDraft) sections.push(`Notes:\n${notesDraft}`)
+
+		const combined = sections.filter(Boolean).join("\n\n")
+		if (combined.length > 2000) {
+			return `${combined.slice(0, 2000)}…`
+		}
+
+		return combined
+	}, [interviewTitle, interview.segment, keyTakeawaysDraft, personalFacetSummary, notesDraft])
+
+	const initialInterviewPrompt =
+		"Summarize the key takeaways from this interview and list 2 next steps that consider the participant's personal facets."
+	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
+	const formatStatusLabel = (status: string) =>
+		status
+			.split("_")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" ")
+	const analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null
+	const analysisStatusTone = analysisState?.status
+		? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status)
+			? "bg-primary/10 text-primary"
+			: analysisState.status === "error"
+				? "bg-destructive/10 text-destructive"
+				: "bg-muted text-muted-foreground"
+		: ""
+
 	const revalidator = useRevalidator()
 	const refreshTriggeredRef = useRef(false)
 
@@ -954,7 +1082,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			gains: filterByPerson(empathyMap.gains),
 		}
 	}, [activePersonId, empathyMap, participants])
-
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
 		runId: activeRunId ?? undefined,
@@ -994,7 +1121,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
 	const showProcessingBanner = isProcessing && !progressInfo.isComplete
 
-	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
 
 	function formatReadable(dateString: string) {
 		const d = new Date(dateString)
@@ -1011,7 +1137,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	}
 
 	return (
-		<div className="relative mx-auto mt-6 max-w-6xl pb-5">
+		<div className="relative mx-auto mt-6 max-w-6xl">
+			<InterviewCopilotDrawer
+				open={isChatOpen}
+				onOpenChange={setIsChatOpen}
+				accountId={accountId}
+				projectId={projectId}
+				interviewId={interview.id}
+				interviewTitle={interviewTitle}
+				systemContext={interviewSystemContext}
+				initialPrompt={initialInterviewPrompt}
+			/>
 			{/* Loading Overlay */}
 			{showBlockingOverlay && (
 				<div className="absolute inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
@@ -1094,7 +1230,8 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
 								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
-									{interview.title || "Untitled Interview"}
+									<BackButton to={routes.interviews.index()} label="" position="relative" />
+									{interviewTitle}
 								</div>
 								<div className="flex flex-wrap items-center gap-3">
 									{/* Show participant from junction table if available, fallback to legacy field */}
@@ -1118,6 +1255,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
+								<Button
+									type="button"
+									variant="secondary"
+									className="inline-flex items-center gap-2"
+									onClick={() => setIsChatOpen(true)}
+								>
+									<BotMessageSquare className="h-4 w-4" />
+									{/* <SparkleIcon className="h-4 w-4" /> */}
+									Ask Assistant
+								</Button>
 								{enableRecording && (
 									<Link
 										to={routes.interviews.realtime(interview.id)}
@@ -1287,11 +1434,10 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 												key={speaker.id}
 												type="button"
 												onClick={() => setSelectedPersonId(speaker.id)}
-												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${
-													isActive
-														? "bg-primary text-primary-foreground shadow-sm"
-														: "bg-muted text-muted-foreground hover:bg-muted/80"
-												}`}
+												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+													}`}
 											>
 												{speaker.name}
 												<span className="ml-1.5 opacity-70">({speaker.count})</span>
@@ -1751,5 +1897,155 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				</aside>
 			</div>
 		</div>
+	)
+}
+
+function InterviewCopilotDrawer({
+	open,
+	onOpenChange,
+	accountId,
+	projectId,
+	interviewId,
+	interviewTitle,
+	systemContext,
+	initialPrompt,
+}: {
+	open: boolean
+	onOpenChange: (open: boolean) => void
+	accountId: string
+	projectId: string
+	interviewId: string
+	interviewTitle: string
+	systemContext: string
+	initialPrompt: string
+}) {
+	const [input, setInput] = useState("")
+	const [initialMessageSent, setInitialMessageSent] = useState(false)
+	const messagesEndRef = useRef<HTMLDivElement | null>(null)
+	const routes = useProjectRoutesFromIds(accountId, projectId)
+	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+		transport: new DefaultChatTransport({
+			api: routes.api.chat.interview(interviewId),
+			body: { system: systemContext },
+		}),
+		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+	})
+
+	const visibleMessages = useMemo(() => (messages ?? []).slice(-20), [messages])
+
+	useEffect(() => {
+		if (open && !initialMessageSent && visibleMessages.length === 0) {
+			sendMessage({ text: initialPrompt })
+			setInitialMessageSent(true)
+		}
+	}, [open, initialMessageSent, visibleMessages.length, sendMessage, initialPrompt])
+
+	useEffect(() => {
+		if (messagesEndRef.current) {
+			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
+		}
+	}, [visibleMessages])
+
+	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		const trimmed = input.trim()
+		if (!trimmed) return
+		sendMessage({ text: trimmed })
+		setInput("")
+	}
+
+	const isBusy = status === "streaming" || status === "submitted"
+	const isError = status === "error"
+
+	return (
+		<Sheet open={open} onOpenChange={onOpenChange}>
+			<SheetContent side="right" className="flex w-full flex-col gap-0 p-0 sm:max-w-lg">
+				<SheetHeader className="border-border border-b bg-muted/40 p-4">
+					<SheetTitle className="flex items-center gap-2 text-lg">
+						<BotMessageSquare className="h-4 w-4 text-primary" />
+						UpSight Assistant
+					</SheetTitle>
+				</SheetHeader>
+				<div className="flex flex-1 flex-col gap-4 p-4">
+					<div className="flex-1 p-3">
+						{visibleMessages.length === 0 ? (
+							<p className="text-muted-foreground text-sm">Gathering the latest takeaways from this interview…</p>
+						) : (
+							<div className="space-y-3 text-sm">
+								{visibleMessages.map((message, index) => {
+									const key = message.id || `${message.role}-${index}`
+									const isUser = message.role === "user"
+									const textParts =
+										message.parts?.map((part) => {
+											if (part.type === "text") return part.text
+											if (part.type === "tool-call") {
+												return `Calling tool: ${part.toolName ?? "unknown"}`
+											}
+											if (part.type === "tool-result") {
+												return `Tool result: ${part.toolName ?? "unknown"}`
+											}
+											return ""
+										}) ?? []
+									const messageText = textParts.filter(Boolean).join("\n").trim()
+									return (
+										<div key={key} className={cn("flex", isUser ? "justify-end" : "justify-start")}>
+											<div className="max-w-[90%]">
+												<div className="mb-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+													{isUser ? "You" : "Assistant"}
+												</div>
+												<div
+													className={cn(
+														"whitespace-pre-wrap rounded-lg px-3 py-2 text-sm shadow-sm",
+														isUser
+															? "bg-primary text-primary-foreground"
+															: "bg-card text-foreground ring-1 ring-border/60"
+													)}
+												>
+													{messageText ? (
+														isUser ? (
+															<span className="whitespace-pre-wrap">{messageText}</span>
+														) : (
+															<Streamdown className="prose prose-sm max-w-none text-foreground [&>*:first-child]:mt-0 [&>*:last-child]:mb-0">
+																{messageText}
+															</Streamdown>
+														)
+													) : !isUser ? (
+														<span className="text-muted-foreground italic">Thinking...</span>
+													) : (
+														<span className="text-muted-foreground">(No text response)</span>
+													)}
+												</div>
+											</div>
+										</div>
+									)
+								})}
+								<div ref={messagesEndRef} />
+							</div>
+						)}
+					</div>
+					<form onSubmit={handleSubmit} className="space-y-2">
+						<Textarea
+							value={input}
+							onChange={(event) => setInput(event.currentTarget.value)}
+							placeholder="Ask about evidence, themes, or next steps"
+							rows={3}
+							disabled={isBusy}
+						/>
+						<div className="flex items-center justify-between gap-2">
+							<span className="text-muted-foreground text-xs" aria-live="polite">
+								{isError
+									? "Something went wrong. Try again."
+									: isBusy
+										? "Thinking…"
+										: "Keep questions short and specific."}
+							</span>
+							<Button type="submit" size="sm" disabled={!input.trim() || isBusy}>
+								Send
+							</Button>
+						</div>
+					</form>
+				</div>
+			</SheetContent>
+		</Sheet>
 	)
 }

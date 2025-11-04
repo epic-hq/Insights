@@ -1,5 +1,7 @@
 /** biome-ignore-all lint/correctness/noUnusedImports: needed for component imports */
 
+import { useChat } from "@ai-sdk/react"
+import { convertMessages } from "@mastra/core/agent"
 import consola from "consola"
 import {
 	ArrowLeft,
@@ -22,7 +24,6 @@ import {
 	redirect,
 	useLoaderData,
 	useNavigate,
-	useParams,
 	useRouteLoaderData,
 } from "react-router"
 import type { Database } from "~/../supabase/types"
@@ -45,6 +46,8 @@ import AddInterview from "~/features/upload/components/AddInterview"
 // Add Interview
 import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { memory } from "~/mastra/memory"
+import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 // --- DB types ---------------------------------------------------------------
 import type { Insight, InsightView, Interview, OpportunityView, Person, Persona, Project } from "~/types"
@@ -240,6 +243,33 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Fetch project status data
 	const projectStatusData = await getProjectStatusData(projectId, supabase)
 
+	let assistantMessages: UpsightMessage[] = []
+	const userId = ctx.claims.sub
+	if (userId) {
+		const resourceId = `projectStatusAgent-${userId}-${projectId}`
+		try {
+			const threads = await memory.getThreadsByResourceIdPaginated({
+				resourceId,
+				orderBy: "createdAt",
+				sortDirection: "DESC",
+				page: 0,
+				perPage: 1,
+			})
+			const threadId = threads?.threads?.[0]?.id
+			if (threadId) {
+				const { messagesV2 } = await memory.query({
+					threadId,
+					selectBy: { last: 50 },
+				})
+				assistantMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
+			}
+		} catch (error) {
+			consola.warn("Failed to load project assistant history", { resourceId, error })
+		}
+	} else {
+		consola.warn("No UserId found")
+	}
+
 	return {
 		personas,
 		interviews,
@@ -251,6 +281,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		people,
 		tags, // Add tags to the return object for TagDisplay
 		projectStatusData,
+		assistantMessages,
 		accountId,
 		projectId,
 	}
@@ -324,9 +355,9 @@ const mainSections = [
 ]
 
 export default function MetroIndex() {
-	const params = useParams()
-	const { accountId, projectId } = params
 	const {
+		accountId,
+		projectId,
 		personas = [],
 		insights = [],
 		interviews = [],
@@ -334,6 +365,7 @@ export default function MetroIndex() {
 		people = [],
 		projectStatusData,
 		project,
+		assistantMessages = [],
 	} = useLoaderData<typeof loader>()
 	const [showExpandedSection, _setShowExpandedSection] = useState<boolean>(false)
 
@@ -391,9 +423,11 @@ export default function MetroIndex() {
 					projectName={project?.name || ""}
 					icp={project?.icp || ""}
 					projectId={projectId}
+					accountId={accountId}
 					statusData={projectStatusData}
 					personas={personas}
 					insights={insights}
+					initialChatMessages={assistantMessages}
 				/>
 
 				{/* TODO: Fix how to use this with chat agent  <AgentStatusDisplay /> */}

@@ -186,7 +186,7 @@ export function PlayByPlayTimeline({ evidence, className = "" }: ChronologicalEv
 			<CardHeader className="bg-muted/30 pb-3">
 				<CardTitle className="flex items-center gap-2 text-lg">
 					<CalendarIcon className="h-5 w-5 text-muted-foreground" />
-					Play-by-Play Timeline
+					Conversation Timeline
 					<Badge variant="secondary" className="ml-2">
 						{topicGroups.length}
 					</Badge>

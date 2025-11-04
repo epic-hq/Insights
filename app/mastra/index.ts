@@ -7,6 +7,8 @@ import { LangfuseExporter } from "langfuse-vercel"
 import { insightsAgent } from "./agents/insights-agent"
 import { mainAgent } from "./agents/main-agent"
 import { projectSetupAgent } from "./agents/project-setup-agent"
+import { projectStatusAgent } from "./agents/project-status-agent"
+import { interviewStatusAgent } from "./agents/interview-status-agent"
 import { researchAssistantAgent } from "./agents/research-assistant-agent"
 import { signupAgent } from "./agents/signup-agent"
 import { weatherAgent } from "./agents/weather-agent"
@@ -87,9 +89,11 @@ const agents = {
 	mainAgent: attachStreamResultAliases(mainAgent),
 	weatherAgent: attachStreamResultAliases(weatherAgent),
 	insightsAgent: attachStreamResultAliases(insightsAgent),
-	signupAgent: attachStreamResultAliases(signupAgent),
-	projectSetupAgent: attachStreamResultAliases(projectSetupAgent),
-	researchAssistantAgent: attachStreamResultAliases(researchAssistantAgent),
+        signupAgent: attachStreamResultAliases(signupAgent),
+        projectSetupAgent: attachStreamResultAliases(projectSetupAgent),
+        projectStatusAgent: attachStreamResultAliases(projectStatusAgent),
+        interviewStatusAgent: attachStreamResultAliases(interviewStatusAgent),
+        researchAssistantAgent: attachStreamResultAliases(researchAssistantAgent),
 	webLeadAgent: attachStreamResultAliases(webLeadAgent),
 }
 
@@ -158,10 +162,14 @@ export const mastra = new Mastra({
 				path: "/chat/signup",
 				agent: "signupAgent",
 			}),
-			chatRoute({
-				path: "/chat/project-setup",
-				agent: "projectSetupAgent",
-			}),
+                        chatRoute({
+                                path: "/chat/project-setup",
+                                agent: "projectSetupAgent",
+                        }),
+                        chatRoute({
+                                path: "/chat/project-status",
+                                agent: "projectStatusAgent",
+                        }),
 			chatRoute({
 				path: "/chat/research-assistant",
 				agent: "researchAssistantAgent",
