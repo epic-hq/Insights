@@ -8,7 +8,7 @@ import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
 
-export const ProjectSetupState = z.object({
+const ProjectSetupState = z.object({
 	projectSetup: z
 		.object({
 			research_goal: z.string().optional(),
@@ -22,7 +22,7 @@ export const ProjectSetupState = z.object({
 		.optional(),
 })
 
-export const navigateToPageTool = createTool({
+const navigateToPageTool = createTool({
 	id: "navigate-to-page",
 	description: "Navigate to a specific page. \\n Projects: /projects \\n Home: /home \\n Setup: /setup",
 	inputSchema: z.object({

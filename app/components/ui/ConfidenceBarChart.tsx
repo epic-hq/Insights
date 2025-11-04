@@ -1,7 +1,7 @@
 import { AlertCircle, CheckCircle, XCircle } from "lucide-react"
 import { cn } from "~/lib/utils"
 
-export type ConfidenceLevel = "low" | "medium" | "high"
+type ConfidenceLevel = "low" | "medium" | "high"
 export type ConfidenceVariant = "bars" | "icons"
 
 interface ConfidenceBarChartProps {
@@ -15,7 +15,7 @@ interface ConfidenceBarChartProps {
  * Standardized confidence level normalization utility
  * Handles multiple input formats and converts them to consistent "low" | "medium" | "high" levels
  */
-export function normalizeConfidenceLevel(level: ConfidenceLevel | string | number): ConfidenceLevel {
+function normalizeConfidenceLevel(level: ConfidenceLevel | string | number): ConfidenceLevel {
 	if (typeof level === "string") {
 		const normalized = level.toLowerCase()
 		if (normalized === "high") return "high"

@@ -1,6 +1,6 @@
+import { Menu, X } from "lucide-react"
 import { useState } from "react"
 import { Link, NavLink, useLocation } from "react-router-dom"
-import { Menu, X } from "lucide-react"
 import { Button } from "~/components/ui/button"
 import { useAuth } from "~/contexts/AuthContext"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -99,11 +99,8 @@ export default function MainNav() {
 				{mobileMenuOpen && (isHomePage || isAboutPage || isBlogPage || isCaseStudiesPage) && !user && (
 					<div className="fixed inset-0 z-50 md:hidden">
 						{/* Backdrop */}
-						<div 
-							className="absolute inset-0 bg-black/50" 
-							onClick={() => setMobileMenuOpen(false)}
-						/>
-						
+						<div className="absolute inset-0 bg-black/50" onClick={() => setMobileMenuOpen(false)} />
+
 						{/* Menu Panel */}
 						<div className="absolute top-0 right-0 h-full w-80 bg-white shadow-xl">
 							<div className="flex h-16 items-center justify-between px-4">
@@ -117,7 +114,7 @@ export default function MainNav() {
 									<X className="h-5 w-5" />
 								</Button>
 							</div>
-							
+
 							<div className="flex flex-col space-y-4 p-4">
 								{marketingLinks.map(({ key, label, link }) => (
 									<NavLink
@@ -129,13 +126,17 @@ export default function MainNav() {
 										{label}
 									</NavLink>
 								))}
-								
+
 								<div className="border-t pt-4">
-									<Button asChild variant="ghost" className="justify-start text-lg w-full">
-										<Link to={routes.login()} onClick={() => setMobileMenuOpen(false)}>Sign In</Link>
+									<Button asChild className="w-full justify-start text-lg" variant="ghost">
+										<Link onClick={() => setMobileMenuOpen(false)} to={routes.login()}>
+											Sign In
+										</Link>
 									</Button>
-									<Button asChild className="mt-2 text-lg w-full">
-										<Link to={routes.register()} onClick={() => setMobileMenuOpen(false)}>Sign Up</Link>
+									<Button asChild className="mt-2 w-full text-lg">
+										<Link onClick={() => setMobileMenuOpen(false)} to={routes.register()}>
+											Sign Up
+										</Link>
 									</Button>
 								</div>
 							</div>

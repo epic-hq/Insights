@@ -5,14 +5,6 @@ export type EvidenceUnit = {
 	chunk?: string
 	gist?: string
 	topic?: string
-	kind_tags: {
-		problem?: string[]
-		goal?: string[]
-		behavior?: string[]
-		emotion?: any
-		context?: string[]
-		artifact?: string[]
-	}
 	personas?: string[]
 	segments?: string[]
 	journey_stage?: string
@@ -37,18 +29,6 @@ export async function persistEvidence(
 		topic: u.topic ?? null,
 		verbatim: u.verbatim,
 		support: u.support,
-		kind_tags: [
-			...(u.kind_tags.problem ?? []),
-			...(u.kind_tags.goal ?? []),
-			...(u.kind_tags.behavior ?? []),
-			...(Array.isArray(u.kind_tags.emotion)
-				? u.kind_tags.emotion
-				: u.kind_tags.emotion
-					? [String(u.kind_tags.emotion)]
-					: []),
-			...(u.kind_tags.context ?? []),
-			...(u.kind_tags.artifact ?? []),
-		],
 		personas: u.personas ?? [],
 		segments: u.segments ?? [],
 		journey_stage: u.journey_stage ?? null,

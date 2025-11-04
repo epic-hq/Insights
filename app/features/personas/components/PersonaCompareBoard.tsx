@@ -7,7 +7,7 @@ import React, { useCallback, useState } from "react"
  * You can map to labels like "Autonomy → Guidance" using axis metadata.
  */
 
-export type Persona = {
+type Persona = {
 	id: string
 	name: string
 	kind: "core" | "provisional" | "contrast"
@@ -26,23 +26,23 @@ export type Persona = {
 	spectra2d?: Record<string, { x: number; y: number }>
 }
 
-export type Spectrum1D = {
+type Spectrum1D = {
 	id: string
 	labelLeft: string
 	labelRight: string
 	title?: string // e.g., "Autonomy ↔ Guidance"
 }
 
-export type Spectrum2D = {
+type Spectrum2D = {
 	id: string
 	xLabel: string
 	yLabel: string
 	title?: string // e.g., "Speed vs Depth"
 }
 
-export type FieldKey = "goals" | "pains" | "differentiators" | "behaviors" | "roles"
+type FieldKey = "goals" | "pains" | "differentiators" | "behaviors" | "roles"
 
-export type PersonaCompareBoardProps = {
+type PersonaCompareBoardProps = {
 	personas: Persona[]
 	visibleFields?: FieldKey[] // initial
 	onFieldChange?: (fields: FieldKey[]) => void

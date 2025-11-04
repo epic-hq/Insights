@@ -6,13 +6,76 @@ This document describes the two main flows for processing interviews in the Insi
 
 Both flows follow the same analysis pipeline after transcription to ensure consistent processing and insight extraction:
 
-1. **Audio Upload**: File → Cloudflare R2 (multipart for large files) → Presigned URL
-2. **Transcription**: AssemblyAI downloads from R2 → Text transcript
+1. **Audio Upload**: File → Cloudflare R2 (multipart for large files) → R2 Key Storage
+2. **Transcription**: AssemblyAI downloads from R2 via presigned URL → Text transcript
 3. **Analysis Orchestration**: Trigger.dev task pipeline
 4. **Two-Pass AI Processing**: 
    - Pass 1: Extract evidence units and insights via BAML/OpenAI
    - Pass 2: Enrich insights with persona facets
 5. **Database Storage**: Store insights, link participants, create personas with facets
+
+## Media URL Architecture
+
+### Storage Strategy
+
+**✅ Implemented:** Store R2 keys in database, generate presigned URLs on-demand.
+
+### Data Format
+
+**Database Storage (R2 Key - never expires):**
+```
+interviews/785c124a-d1e2-4538-8908-df39b0973f5b/2241b1d3-6e0f-4c7b-8a75-aed9291cf60c-1761518365678.mp4
+```
+
+**Runtime Use (Presigned URL - temporary access):**
+```
+https://1bde90f07a6fb51a2c287bf052f90e76.r2.cloudflarestorage.com/upsight-usermedia/interviews/...?X-Amz-Algorithm=AWS4-HMAC-SHA256&X-Amz-Credential=...&X-Amz-Expires=86400...
+```
+
+### Usage Patterns
+
+1. **Upload Flow** (`storeAudioFile`):
+   - Returns `mediaUrl` (R2 key) for database storage
+   - Returns `presignedUrl` for immediate transcription use
+
+2. **Database Storage**:
+   - Store only the R2 key in `interview.media_url`
+   - Never store presigned URLs (they expire after 24 hours)
+
+3. **Immediate Use** (Transcription):
+   - Use presigned URL directly (valid 24 hours)
+   - AssemblyAI downloads file during this window
+
+4. **On-Demand Access** (Playback, Evidence Cards):
+   - Generate fresh presigned URL from R2 key
+   - Different expiration times for different use cases:
+     - Transcription: 24 hours (long-running)
+     - Playback: 1 hour (user session)
+     - Download: 5 minutes (immediate)
+
+### Code Paths Using media_url
+
+**Upload & Storage:**
+- `app/routes/api.onboarding-start.tsx` - Stores R2 key, passes presigned URL to transcription
+- `app/routes/api.upload-file.tsx` - Stores R2 key, uses presigned URL for transcription
+- `app/routes/api.upload-from-url.tsx` - Stores R2 key, uses presigned URL for transcription
+- `app/routes/api.interviews.realtime-finalize.tsx` - Updates media URL
+
+**Transcription & Processing:**
+- `src/trigger/interview/uploadMediaAndTranscribe.ts` - Generates/uses presigned URLs for transcription
+- `app/utils/processInterviewAnalysis.server.ts` - Passes media URL to Trigger.dev
+- `app/utils/regenerateEvidence.server.ts` - Generates fresh presigned URL for retry
+- `app/routes/api.analysis-retry.tsx` - Generates fresh presigned URL for retry
+
+**Display & Playback:**
+- `app/features/interviews/pages/detail.tsx` - Generates fresh presigned URL on-demand
+- `app/features/interviews/pages/edit.tsx` - Shows media player with fresh URL
+- `app/features/evidence/components/EvidenceCard.tsx` - Uses `fallbackMediaUrl` with fresh URL
+- `app/utils/media-url.client.ts` - Generates fresh URLs from R2 keys via API
+
+**Database Queries:**
+- `app/features/interviews/db.ts` - Selects media_url field (R2 key)
+- `app/utils/processInterview.server.ts` - Uses `getR2KeyFromPublicUrl()` for evidence anchors
 
 ## 1. Upload Recording Flow
 
@@ -74,11 +137,14 @@ ngrok http --url=cowbird-still-routinely.ngrok-free.app 4280
    │   ├── Files > 100MB: Multipart (10MB chunks, 2 parallel, 3 retries, 60s timeout)
    │   ├── Files < 100MB: Single upload
    │   └── Stored at: interviews/{projectId}/{interviewId}-{timestamp}.{ext}
-   ├── Generate presigned URL (valid 24 hours):
+   ├── Generate presigned URL (valid 24 hours) for immediate use:
    │   ├── Uses AWS Signature V4 with R2 credentials
    │   ├── Includes X-Amz-Algorithm, X-Amz-Credential, X-Amz-Signature in query params
    │   └── Allows AssemblyAI to download from private R2 bucket
-   └── Creates interview record with media_url (presigned URL)
+   ├── Store R2 key in database (NOT presigned URL):
+   │   ├── media_url = "interviews/{projectId}/{interviewId}-{timestamp}.{ext}"
+   │   └── R2 keys never expire, presigned URLs do
+   └── Pass presigned URL to transcription (immediate use)
 
 2. AssemblyAI transcription submission
    ├── Creates upload_jobs record with assemblyai_id

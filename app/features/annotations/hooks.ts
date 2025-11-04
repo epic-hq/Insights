@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react"
 import { useFetcher } from "react-router"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
-import type { Annotation, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db"
+import type { Annotation, AnnotationMetadata, AnnotationType, EntityType, FlagType, UserFlags, VoteCounts } from "./db"
 
 // -----------------------------------------------------------------------------
 // How these hooks work & where to optimize DB calls
@@ -36,7 +36,7 @@ import type { Annotation, AnnotationType, EntityType, FlagType, UserFlags, VoteC
 // =============================================================================
 // TODO: Write explanation of how this works and where we can make changes to reduce the number of db calls, potentially batching or changing the query.
 
-export function useAnnotations({
+function useAnnotations({
 	entityType,
 	entityId,
 	annotationType,
@@ -105,7 +105,7 @@ export function useAnnotations({
 		)
 	}
 
-	const addAISuggestion = (suggestion: string, context?: Record<string, any>) => {
+	const addAISuggestion = (suggestion: string, context?: AnnotationMetadata) => {
 		if (!suggestion.trim()) return
 
 		fetcher.submit(
@@ -167,7 +167,7 @@ export function useAnnotations({
 // VOTING HOOKS
 // =============================================================================
 
-export function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+function useVoting({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
 	const fetcher = useFetcher()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
@@ -246,6 +246,19 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 		}
 	}, [fetcher, entityType, entityId, routes])
 
+	const removeVote = () => {
+		if (fetcher.state === "submitting") return
+
+		fetcher.submit(
+			{
+				action: "remove-vote",
+				entityType,
+				entityId,
+			},
+			{ method: "POST", action: routes.api.votes() }
+		)
+	}
+
 	const upvote = () => vote(1)
 	const downvote = () => vote(-1)
 
@@ -254,6 +267,7 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 		isLoading,
 		error,
 		vote,
+		removeVote,
 		upvote,
 		downvote,
 		refetch: () => {
@@ -270,7 +284,7 @@ export function useVoting({ entityType, entityId }: { entityType: EntityType; en
 // ENTITY FLAGS HOOKS
 // =============================================================================
 
-export function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
+function useEntityFlags({ entityType, entityId }: { entityType: EntityType; entityId: string }) {
 	const fetcher = useFetcher()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
@@ -322,7 +336,7 @@ export function useEntityFlags({ entityType, entityId }: { entityType: EntityTyp
 		}
 	}, [fetcher.state, fetcher.data])
 
-	const setFlag = (flagType: FlagType, flagValue: boolean, metadata?: Record<string, any>) => {
+	const setFlag = (flagType: FlagType, flagValue: boolean, metadata?: AnnotationMetadata) => {
 		// Optimistic update
 		setFlags((prev) => ({
 			...prev,
@@ -343,7 +357,7 @@ export function useEntityFlags({ entityType, entityId }: { entityType: EntityTyp
 		)
 	}
 
-	const toggleFlag = (flagType: FlagType, metadata?: Record<string, any>) => {
+	const toggleFlag = (flagType: FlagType, metadata?: AnnotationMetadata) => {
 		const currentValue = flags[flagType]
 		setFlag(flagType, !currentValue, metadata)
 	}
@@ -425,20 +439,17 @@ export function useEntityAnnotations({
 			? {
 					upvotes: votingHook.voteCounts.upvotes,
 					downvotes: votingHook.voteCounts.downvotes,
-				}
+			  }
 			: { upvotes: 0, downvotes: 0 },
 		userVote: includeVoting ? { vote_value: votingHook.voteCounts.user_vote } : null,
 		submitVote: includeVoting
 			? ({ vote_value, _action }: { vote_value?: number; _action?: string }) => {
-					if (_action === "remove") {
-						// Remove current vote by voting the same value again
-						if (votingHook.voteCounts.user_vote !== 0) {
-							votingHook.vote(votingHook.voteCounts.user_vote as 1 | -1)
-						}
-					} else if (vote_value) {
-						votingHook.vote(vote_value as 1 | -1)
-					}
+				if (_action === "remove") {
+					votingHook.removeVote()
+				} else if (vote_value) {
+					votingHook.vote(vote_value as 1 | -1)
 				}
+			}
 			: () => {},
 
 		// Flags data

@@ -68,16 +68,6 @@ export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwit
 		setOpen(false)
 	}
 
-	const handleViewProjects = (acctId: string) => {
-		navigate(`/a/${acctId}/projects`)
-		setOpen(false)
-	}
-
-	const handleCreateProject = (acctId: string) => {
-		navigate(`/a/${acctId}/projects/new`)
-		setOpen(false)
-	}
-
 	if (accounts.length === 0) {
 		return null
 	}
@@ -96,8 +86,6 @@ export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwit
 						activeAccountId={lastProjectPath.accountId}
 						activeProjectId={lastProjectPath.projectId}
 						onSelectProject={handleSelectProject}
-						onViewProjects={handleViewProjects}
-						onCreateProject={handleCreateProject}
 					/>
 				</PopoverContent>
 			</Popover>
@@ -126,8 +114,6 @@ export function AccountProjectSwitcher({ collapsed = false }: AccountProjectSwit
 					activeAccountId={accountId}
 					activeProjectId={projectId}
 					onSelectProject={handleSelectProject}
-					onViewProjects={handleViewProjects}
-					onCreateProject={handleCreateProject}
 				/>
 			</PopoverContent>
 		</Popover>
@@ -139,8 +125,6 @@ interface AccountProjectCommandListProps {
 	activeAccountId?: string
 	activeProjectId?: string
 	onSelectProject: (accountId: string, projectId: string) => void
-	onViewProjects: (accountId: string) => void
-	onCreateProject: (accountId: string) => void
 }
 
 function AccountProjectCommandList({
@@ -148,8 +132,6 @@ function AccountProjectCommandList({
 	activeAccountId,
 	activeProjectId,
 	onSelectProject,
-	onViewProjects,
-	onCreateProject,
 }: AccountProjectCommandListProps) {
 	return (
 		<Command>

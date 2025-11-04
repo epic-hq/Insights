@@ -617,23 +617,26 @@ CREATE INDEX ON evidence USING GIN ((anchors) jsonb_path_ops);
 
 ---
 
-## Tags (how they work, BAML‑friendly)
+## Facets (structured taxonomy for evidence & personas)
 
-**Canonical kinds**: `problem`, `goal`, `behavior`, `emotion`, `context`, `artifact`.
+**Canonical kinds**: `goal`, `pain`, `workflow`, `value`, `constraint`, `context`, `demographic`, etc. (all maintained in `facet_kind_global`).
 
 **Pipeline**
 
-1. BAML `tag_evidence` proposes `{kind, value, confidence}`.
-2. Canonicalize `value` via `tags` table (synonyms & slugs). If no close match → `candidate_tags` for review.
-3. Apply if `confidence ≥ 0.7` and max **3 tags per kind** (keeps noise down).
-4. Themes are built from tag overlaps + semantic similarity; user can add/remove tags.
+1. `ExtractEvidenceFromTranscriptV2` emits `facet_mentions[]` per evidence unit.
+2. `processInterview.server.ts` matches each `{kind_slug, value}` against the merged facet catalog (project → account → global).
+3. Confident matches are written to `evidence_facet` with a reference (`facet_ref`) and normalized label. Unknown values become `facet_candidate` rows for analyst approval.
+4. Persona synthesis uses the same catalog via `persistFacetObservations`, populating `person_facet`/`person_scale`.
+5. Themes, research-question linking, and UI filters source their vocabulary directly from `evidence_facet` (no more ad-hoc tag strings).
 
 **Schema sketch**
 
-* `tags(id, kind, value, slug, synonyms[])`
-* `evidence_tag(evidence_id, tag_id, confidence)`
+* `evidence_facet(evidence_id, kind_slug, facet_ref?, label, quote?, confidence, source)`
+* `facet_candidate(account_id, project_id, kind_slug, label, status, resolved_facet_ref?)`
+* `facet_account` / `project_facet` for promoted vocabulary
+* `person_facet(person_id, facet_ref, source, confidence)`
 
-**LLM rubric tip**: one short quote per **problem/goal**; *don’t* assign both if mutually exclusive.
+**AI rubric tip**: facet values should stay atomic (≤12 words, include trigger/condition when useful) so that catalog matches remain unambiguous.
 
 ---
 
@@ -1086,7 +1089,7 @@ output: [ { text: string, intent: enum(discovery|validation|price|retention|adop
 
 # extract_evidence.baml (unchanged)
 input: { transcript: string, chapters: Chapter[], language: string }
-output: [ { verbatim: string, support: enum, kind_tags: {problem?: string[], goal?: string[], behavior?: string[], emotion?: string[], context?: string[], artifact?: string[]}, anchors: Anchor[] } ]
+output: [ { verbatim: string, support: enum, facet_mentions: FacetMention[], anchors: Anchor[] } ]
 
 # tag_evidence.baml (unchanged)
 # propose_themes.baml (unchanged)

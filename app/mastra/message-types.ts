@@ -1,8 +1,8 @@
 import type { UIMessage } from "ai"
 import type { InferMastraUITools } from "./ai-tool-type-helpers"
 import { displayUserQuestionsTool } from "./tools/display-user-questions"
-import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context"
 import { fetchInterviewContextTool } from "./tools/fetch-interview-context"
+import { fetchProjectStatusContextTool } from "./tools/fetch-project-status-context"
 import { navigateToPageTool } from "./tools/navigate-to-page"
 import { saveProjectSectionsDataTool } from "./tools/save-project-sections-data"
 import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
@@ -22,13 +22,13 @@ import { saveUserSettingsDataTool } from "./tools/save-usersettings-data"
 // type MyDataPart = z.infer<typeof dataPartSchema>;
 
 export const tools = {
-        displayUserQuestions: displayUserQuestionsTool,
-        fetchProjectStatusContext: fetchProjectStatusContextTool,
-        fetchInterviewContext: fetchInterviewContextTool,
-        navigateToPage: navigateToPageTool,
-        saveUserSettingsData: saveUserSettingsDataTool,
-        saveProjectSectionsData: saveProjectSectionsDataTool,
+	displayUserQuestions: displayUserQuestionsTool,
+	fetchProjectStatusContext: fetchProjectStatusContextTool,
+	fetchInterviewContext: fetchInterviewContextTool,
+	navigateToPage: navigateToPageTool,
+	saveUserSettingsData: saveUserSettingsDataTool,
+	saveProjectSectionsData: saveProjectSectionsDataTool,
 }
 
-export type UpsightTools = InferMastraUITools<typeof tools>
+type UpsightTools = InferMastraUITools<typeof tools>
 export type UpsightMessage = UIMessage<{}, {}, UpsightTools>

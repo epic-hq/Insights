@@ -1,10 +1,14 @@
-import { Building2, LinkIcon, Users } from "lucide-react"
+import { Building2, LayoutGrid, LinkIcon, Table as TableIcon, Users } from "lucide-react"
+import { useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from "~/components/ui/card"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { OrganizationsDataTable, type OrganizationTableRow } from "~/features/organizations/components/OrganizationsDataTable"
 import { getOrganizations } from "~/features/organizations/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -37,52 +41,110 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 	return { organizations: (data as Array<Organization & { people_organizations: PeopleOrganization[] }>) ?? [] }
 }
 
+type OrganizationWithContacts = Organization & {
+	people_organizations: Array<
+		PeopleOrganization & {
+			person?: {
+				id: string
+				name: string | null
+				segment?: string | null
+			} | null
+		}
+	>
+}
+
 export default function OrganizationsIndexPage() {
-	const { organizations } = useLoaderData<typeof loader>()
+	const { organizations } = useLoaderData<typeof loader>() as { organizations: OrganizationWithContacts[] }
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
+
+	const tableRows = useMemo<OrganizationTableRow[]>(() => {
+		return organizations.map((organization) => {
+			const contacts =
+				organization.people_organizations?.map((link) => ({
+					id: link.person?.id ?? `${organization.id}-${link.id}`,
+					name: link.person?.name ?? null,
+					segment: link.person?.segment ?? undefined,
+				})) ?? []
+
+			const signals = new Set<string>()
+			for (const link of organization.people_organizations ?? []) {
+				if (link.role) signals.add(link.role)
+				if (link.relationship_status) signals.add(link.relationship_status)
+			}
+
+			return {
+				id: organization.id,
+				name: organization.name ?? "Untitled organization",
+				domain: organization.domain || organization.website_url,
+				industry: organization.industry ?? undefined,
+				sizeRange: organization.size_range ?? undefined,
+				contacts,
+				relationshipSignals: Array.from(signals).slice(0, 4),
+				updatedAt: organization.updated_at ?? null,
+			}
+		})
+	}, [organizations])
+
 	return (
-		<div className="min-h-screen bg-gray-50 pb-16 dark:bg-gray-950">
+		<>
 			<PersonaPeopleSubnav />
-			<div className="border-b bg-white py-8 dark:border-gray-800 dark:bg-gray-950">
-				<div className="mx-auto flex max-w-6xl flex-col gap-4 px-6 sm:flex-row sm:items-center sm:justify-between">
+			<PageContainer className="space-y-6">
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 					<div>
-						<h1 className="flex items-center gap-2 font-semibold text-3xl text-gray-900 dark:text-white">
+						<h1 className="flex items-center gap-2 font-semibold text-3xl text-foreground">
 							<Building2 className="h-7 w-7" />
 							Organizations
 						</h1>
-						<p className="mt-2 max-w-2xl text-gray-600 dark:text-gray-400">
-							Keep company records up to date and understand how people relate to each account.
+						<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+							Understand which accounts are active, who you know inside each one, and how those relationships are evolving.
 						</p>
 					</div>
-					<div className="flex gap-3">
-						<Button asChild variant="outline" className="border-gray-300 dark:border-gray-700">
-							<Link to={routes.people.index()}>View People</Link>
-						</Button>
-						<Button asChild>
-							<Link to={routes.organizations.new()}>Add Organization</Link>
-						</Button>
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+							<ToggleGroup
+								type="single"
+								value={viewMode}
+								onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
+								className="w-full sm:w-auto"
+								variant="outline"
+								size="sm"
+							>
+								<ToggleGroupItem value="cards" aria-label="Card view">
+									<LayoutGrid className="h-4 w-4" />
+								</ToggleGroupItem>
+								<ToggleGroupItem value="table" aria-label="Table view">
+									<TableIcon className="h-4 w-4" />
+								</ToggleGroupItem>
+							</ToggleGroup>
+						<div className="flex w-full gap-2 sm:w-auto">
+							<Button asChild variant="ghost" className="flex-1 sm:flex-none">
+								<Link to={routes.people.index()}>View People</Link>
+							</Button>
+							<Button asChild variant="outline" className="flex-1 sm:flex-none">
+								<Link to={routes.organizations.new()}>Add Organization</Link>
+							</Button>
+						</div>
 					</div>
 				</div>
-			</div>
 
-			<div className="mx-auto max-w-6xl px-6 py-12">
 				{organizations.length === 0 ? (
-					<div className="rounded-xl border border-gray-300 border-dashed bg-white p-12 text-center shadow-sm dark:border-gray-700 dark:bg-gray-900">
-						<Building2 className="mx-auto h-12 w-12 text-gray-400 dark:text-gray-500" />
-						<h2 className="mt-4 font-semibold text-2xl text-gray-900 dark:text-white">No organizations yet</h2>
-						<p className="mt-2 text-gray-600 dark:text-gray-400">
-							Add an organization to start linking people, tracking roles, and capturing account insights.
-						</p>
-						<div className="mt-6 flex justify-center">
+					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
+						<div className="mx-auto max-w-md space-y-4">
+							<h3 className="font-semibold text-xl text-foreground">No organizations yet</h3>
+							<p className="text-sm text-muted-foreground">
+								Add an organization to start linking people, tracking roles, and capturing account insights.
+							</p>
 							<Button asChild>
 								<Link to={routes.organizations.new()}>Create organization</Link>
 							</Button>
 						</div>
 					</div>
+				) : viewMode === "table" ? (
+					<OrganizationsDataTable rows={tableRows} />
 				) : (
-					<div className="grid gap-6 sm:grid-cols-2 xl:grid-cols-3">
+					<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
 						{organizations.map((organization) => {
 							const linkedPeople = organization.people_organizations || []
 							const primaryDomain = organization.domain || organization.website_url
@@ -139,7 +201,7 @@ export default function OrganizationsIndexPage() {
 						})}
 					</div>
 				)}
-			</div>
-		</div>
+			</PageContainer>
+		</>
 	)
 }

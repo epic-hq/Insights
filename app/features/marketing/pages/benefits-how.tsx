@@ -33,13 +33,13 @@ const item = {
 }
 
 // --- Types
-export type Benefit = {
+type Benefit = {
 	title: string
 	description: string
 	icon?: React.ElementType
 }
 
-export type Step = {
+type Step = {
 	title: string
 	description: string
 	icon?: React.ElementType
@@ -268,7 +268,7 @@ export function HowItWorks({
 }
 
 // --- Default export renders both blocks stacked inside NavPageLayout
-export default function UpsightBenefitsAndHowItWorks() {
+function _UpsightBenefitsAndHowItWorks() {
 	return (
 		<NavPageLayout
 			title="Benefits & Workflow"

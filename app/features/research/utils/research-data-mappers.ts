@@ -11,7 +11,7 @@ const OPEN_STATUSES = new Set(["planned", "asked"])
  * Helper functions to map ResearchAnswersData to UI shapes expected by ProjectStatusScreen
  */
 
-export interface AnsweredQuestionSummary {
+interface AnsweredQuestionSummary {
 	id: string
 	text: string
 	answer_text: string | null
@@ -21,7 +21,7 @@ export interface AnsweredQuestionSummary {
 	answered_at: string | null
 }
 
-export interface OpenQuestionSummary {
+interface OpenQuestionSummary {
 	id: string
 	text: string
 	status: string
@@ -30,7 +30,7 @@ export interface OpenQuestionSummary {
 	evidence_count: number
 }
 
-export interface ResearchMetrics {
+interface ResearchMetrics {
 	answered: number
 	open: number
 	total: number
@@ -200,7 +200,7 @@ export function calculateResearchMetrics(data: ResearchAnswersData | null): Rese
 /**
  * Get top research questions by activity (answered + open answers)
  */
-export function getTopResearchQuestions(
+function _getTopResearchQuestions(
 	data: ResearchAnswersData | null,
 	limit = 5
 ): Array<{

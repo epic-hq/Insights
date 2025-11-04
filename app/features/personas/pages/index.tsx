@@ -1,15 +1,15 @@
 import consola from "consola"
-import { Sparkle, Users } from "lucide-react"
-import { useEffect, useState } from "react"
-import { type MetaFunction, useLoaderData, useSearchParams } from "react-router"
-// GeneratePersonasButton component
+import { LayoutGrid, Sparkle, Table as TableIcon, UserCircle, Users } from "lucide-react"
+import { useEffect, useMemo, useState } from "react"
+import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link, useFetcher } from "react-router-dom"
-import NavPageLayout from "~/components/layout/NavPageLayout"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonaCard from "~/features/personas/components/EnhancedPersonaCard"
-import PersonaCompareBoard from "~/features/personas/components/PersonaCompareBoard"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
+import { PersonasDataTable, type PersonaTableRow } from "~/features/personas/components/PersonasDataTable"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/client.server"
 
@@ -20,20 +20,22 @@ export const meta: MetaFunction = () => {
 	]
 }
 
-export async function loader({ request, params }: { request: Request; params: { projectId: string } }) {
+export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client: supabase } = getServerClient(request)
-	const { data: jwt } = await supabase.auth.getClaims()
-	const accountId = jwt?.claims.sub
 	const projectId = params.projectId
 
-	consola.log("Account ID:", accountId)
-	// Fetch personas with people count
+	if (!projectId) {
+		throw new Response("Project ID is required", { status: 400 })
+	}
+
 	const { data: personas, error: personasError } = await supabase
 		.from("personas")
-		.select(`
-			*,
-			people_personas(count)
-		`)
+		.select(
+			`
+				*,
+				people_personas(count)
+			`
+		)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
@@ -41,90 +43,133 @@ export async function loader({ request, params }: { request: Request; params: { 
 		throw new Response(`Error fetching personas: ${personasError.message}`, { status: 500 })
 	}
 
-	// Note: calculation method functionality removed for simplified persona display
-	consola.log("load personas: ", personas, projectId)
+	consola.log("Loaded personas for project", { projectId, count: personas?.length || 0 })
 	return { personas: personas || [] }
 }
 
+type PersonaRow = Awaited<ReturnType<typeof loader>> extends { personas: infer T }
+	? T extends Array<infer U>
+	? U
+	: never
+	: never
+
 export default function Personas() {
 	const { personas } = useLoaderData<typeof loader>()
-	const [, setSearchParams] = useSearchParams()
-	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	const _handleMethodChange = (method: "participant" | "segment") => {
-		setSearchParams((prev: URLSearchParams) => {
-			const newParams = new URLSearchParams(prev)
-			newParams.set("method", method)
-			return newParams
-		})
-	}
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 
-	// Transform personas data for PersonaCompareBoard
-	const transformedPersonas = personas.map((persona) => ({
-		id: persona.id,
-		name: persona.name,
-		kind: persona.kind || ("core" as const),
-		avatarUrl: persona.image_url,
-		color: persona.color,
-		tags: persona.tags || [],
-		goals: persona.goals || [],
-		pains: persona.pains || [],
-		differentiators: persona.differentiators || [],
-		behaviors: persona.behaviors || [],
-		roles: persona.roles || [],
-		spectra1d: persona.spectra1d || {},
-		spectra2d: persona.spectra2d || {},
-	}))
+	const sortedPersonas = useMemo(() => {
+		return [...personas].sort((a, b) => {
+			const aCount = a.people_personas?.[0]?.count ?? 0
+			const bCount = b.people_personas?.[0]?.count ?? 0
+			return bCount - aCount
+		})
+	}, [personas])
+
+	const tableRows = useMemo<PersonaTableRow[]>(() => {
+		return sortedPersonas.map((persona) => {
+			const goals = Array.isArray(persona.goals)
+				? persona.goals
+				: typeof persona.goals === "string"
+					? [persona.goals]
+					: []
+			const pains = Array.isArray(persona.pains)
+				? persona.pains
+				: typeof persona.pains === "string"
+					? [persona.pains]
+					: []
+			const tags = Array.isArray(persona.tags) ? persona.tags : typeof persona.tags === "string" ? [persona.tags] : []
+
+			return {
+				id: persona.id,
+				name: persona.name ?? "Untitled persona",
+				kind: persona.kind ?? null,
+				tags,
+				goals,
+				pains,
+				linkedPeople: persona.people_personas?.[0]?.count ?? 0,
+				updatedAt: persona.updated_at ?? null,
+				colorHex: persona.color_hex ?? undefined,
+			}
+		})
+	}, [sortedPersonas])
 
 	return (
-		<NavPageLayout
-			title="User Personas"
-			description="Research-based user archetypes and behavioral patterns"
-			viewMode={viewMode}
-			onViewModeChange={setViewMode}
-			showViewToggle={personas.length > 0}
-			showSubnav={true}
-			subnav={<PersonaPeopleSubnav />}
-			itemCount={personas.length}
-			actionButtons={[<GeneratePersonasButton key="generate" />]}
-			primaryAction={
-				<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-					<Link to={routes.personas.new()}>Add Persona</Link>
-				</Button>
-			}
-		>
-			{personas.length === 0 ? (
-				<div className="py-8 text-center">
-					<div className="mx-auto max-w-md">
-						<div className="mb-6 flex justify-center">
-							<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
-								<Users className="h-12 w-12 text-gray-400 dark:text-gray-500" />
-							</div>
+		<>
+			<PersonaPeopleSubnav />
+			<PageContainer className="space-y-6">
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+					<div className="flex items-center gap-3">
+						<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+							<UserCircle className="h-6 w-6" />
 						</div>
-						<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No personas yet</h3>
-						<p className="mb-8 text-gray-600 dark:text-gray-400">
-							Generate personas from your research data or create them manually to understand your users better.
-						</p>
-						<div className="flex justify-center gap-3">
+						<div>
+							<h1 className="font-semibold text-3xl text-foreground">Personas</h1>
+							<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
+								Research-based archetypes summarizing motivations, pains, and patterns across your interviews.
+							</p>
+						</div>
+					</div>
+					<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+						{personas.length > 0 ? (
+							<ToggleGroup
+								type="single"
+								value={viewMode}
+								onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
+								className="w-full sm:w-auto"
+								variant="outline"
+								size="sm"
+							>
+								<ToggleGroupItem value="cards" aria-label="Card view">
+									<LayoutGrid className="h-4 w-4" />
+								</ToggleGroupItem>
+								<ToggleGroupItem value="table" aria-label="Table view">
+									<TableIcon className="h-4 w-4" />
+								</ToggleGroupItem>
+							</ToggleGroup>
+						) : null}
+						<div className="flex w-full gap-2 sm:w-auto">
 							<GeneratePersonasButton />
-							<Button asChild variant="outline">
-								<Link to={routes.personas.new()}>Create Manually</Link>
+							<Button asChild variant="outline" size="sm" className="flex-1 sm:flex-none">
+								<Link to={routes.personas.new()}>Add Persona</Link>
 							</Button>
 						</div>
 					</div>
 				</div>
-			) : viewMode === "cards" ? (
-				<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
-					{personas.map((persona) => (
-						<EnhancedPersonaCard key={persona.id} persona={persona} />
-					))}
-				</div>
-			) : (
-				<PersonaCompareBoard personas={transformedPersonas} visibleFields={["goals", "pains", "differentiators"]} />
-			)}
-		</NavPageLayout>
+
+				{personas.length === 0 ? (
+					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
+						<div className="mx-auto max-w-md space-y-4">
+							<div className="flex justify-center">
+								<div className="rounded-full bg-background p-6 shadow-sm">
+									<Users className="h-10 w-10 text-muted-foreground" />
+								</div>
+							</div>
+							<h3 className="font-semibold text-foreground text-xl">No personas yet</h3>
+							<p className="text-muted-foreground text-sm">
+								Generate personas from your research data or create them manually to understand your users better.
+							</p>
+							<div className="flex justify-center gap-3">
+								<GeneratePersonasButton />
+								<Button asChild variant="outline">
+									<Link to={routes.personas.new()}>Create Manually</Link>
+								</Button>
+							</div>
+						</div>
+					</div>
+				) : viewMode === "cards" ? (
+					<div className="grid gap-8 md:grid-cols-2 xl:grid-cols-3">
+						{sortedPersonas.map((persona: PersonaRow) => (
+							<EnhancedPersonaCard key={persona.id} persona={persona} />
+						))}
+					</div>
+				) : (
+					<PersonasDataTable rows={tableRows} />
+				)}
+			</PageContainer>
+		</>
 	)
 }
 

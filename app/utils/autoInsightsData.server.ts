@@ -1,7 +1,7 @@
 import { getServerClient } from "~/lib/supabase/client.server"
 
 // Type definitions for aggregated data
-export interface AutoInsightsData {
+interface AutoInsightsData {
 	summary: DataSummary
 	insights: InsightSummary[]
 	personas: PersonaSummary[]

@@ -1,9 +1,15 @@
 import { generateRobotsTxt } from "@forge42/seo-tools/robots"
 
 import { createDomain } from "~/utils/http"
-import type { Route } from "./+types/robots[.]txt"
 
-export async function loader({ request, context }: Route.LoaderArgs) {
+type LoaderArgs = {
+	request: Request
+	context: {
+		isProductionDeployment: boolean
+	}
+}
+
+export async function loader({ request, context }: LoaderArgs) {
 	const { isProductionDeployment } = context
 	const domain = createDomain(request)
 	const robotsTxt = generateRobotsTxt([

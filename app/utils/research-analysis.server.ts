@@ -188,7 +188,7 @@ export async function generateFollowUpQuestions(
 /**
  * Generate comprehensive project analysis matching insights to research questions
  */
-export async function analyzeProjectInsights(
+async function _analyzeProjectInsights(
 	projectSections: Project_Section[],
 	insights: Insight[],
 	_people: Person[],
@@ -252,7 +252,7 @@ export async function analyzeProjectInsights(
 /**
  * Generate executive summary for project status screens
  */
-export async function generateExecutiveSummary(
+async function _generateExecutiveSummary(
 	projectSections: Project_Section[],
 	insights: Insight[],
 	people: Person[],
@@ -326,7 +326,7 @@ export async function generateExecutiveSummary(
 /**
  * Get project data for analysis from Supabase
  */
-export async function getProjectAnalysisData(supabase: SupabaseClient, projectId: string, _accountId: string) {
+async function _getProjectAnalysisData(supabase: SupabaseClient, projectId: string, _accountId: string) {
 	const [sectionsResult, insightsResult, peopleResult, personasResult] = await Promise.all([
 		supabase.from("project_sections").select("*").eq("project_id", projectId),
 
@@ -348,7 +348,7 @@ export async function getProjectAnalysisData(supabase: SupabaseClient, projectId
 /**
  * Generate smart research questions for onboarding
  */
-export async function generateResearchQuestions(
+async function _generateResearchQuestions(
 	target_orgs: string,
 	target_roles: string,
 	research_goal: string,

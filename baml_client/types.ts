@@ -362,6 +362,40 @@ export interface ContextualSuggestions {
   
 }
 
+export interface ConversationAnalysis {
+  overview: string
+  duration_estimate?: string | null
+  questions: ConversationQuestion[]
+  participant_goals: ParticipantGoal[]
+  key_takeaways: ConversationTakeaway[]
+  open_questions: string[]
+  recommended_next_steps: ConversationRecommendation[]
+  
+}
+
+export interface ConversationQuestion {
+  question: string
+  asked_by?: string | null
+  intent?: string | null
+  evidence_snippet?: string | null
+  confidence: number
+  
+}
+
+export interface ConversationRecommendation {
+  focus_area: string
+  action: string
+  rationale: string
+  
+}
+
+export interface ConversationTakeaway {
+  priority: "high" | "medium" | "low"
+  summary: string
+  evidence_snippets: string[]
+  
+}
+
 export interface DecisionQuestionAnswer {
   decision_question_id: string
   strategic_insight: string
@@ -466,15 +500,15 @@ export interface EvidenceSet {
 }
 
 export interface EvidenceTurn {
-  index: number
   person_key: string
+  speaker_label?: string | null
   gist: string
   chunk: string
   verbatim: string
   anchors: TurnAnchors
-  confidence: string
   why_it_matters?: string | null
   facet_mentions: FacetMention[]
+  isQuestion?: boolean | null
   says?: string[] | null
   does?: string[] | null
   thinks?: string[] | null
@@ -578,7 +612,7 @@ export interface FacetCatalog {
 }
 
 export interface FacetCatalogEntry {
-  facet_ref: string
+  facet_account_id: number
   kind_slug: string
   label: string
   alias?: string | null
@@ -593,13 +627,10 @@ export interface FacetCatalogKind {
 }
 
 export interface FacetMention {
-  index: number
-  parent_index: number
   person_key: string
   kind_slug: string
   value: string
   quote?: string | null
-  confidence?: number | null
   
 }
 
@@ -749,16 +780,25 @@ export interface OpportunityRecommendation {
   
 }
 
+export interface ParticipantGoal {
+  speaker?: string | null
+  goal: string
+  evidence_snippet?: string | null
+  confidence: number
+  
+}
+
 export interface Person {
   person_key: string
-  display_name?: string | null
+  speaker_label?: string | null
+  person_name?: string | null
   inferred_name?: string | null
   role?: string | null
   
 }
 
 export interface PersonFacetObservation {
-  facet_ref?: string | null
+  facet_account_id?: number | null
   candidate?: FacetCandidatePayload | null
   kind_slug: string
   value: string
@@ -1110,6 +1150,14 @@ export interface Source {
   
 }
 
+export interface SpeakerUtterance {
+  speaker: string
+  text: string
+  start?: number | null
+  end?: number | null
+  
+}
+
 export interface Spectrum {
   axis: string
   rationale: string
@@ -1140,7 +1188,6 @@ export interface ThemeCandidate {
 export interface TurnAnchors {
   start_ms?: number | null
   end_ms?: number | null
-  speaker_label?: string | null
   chapter_title?: string | null
   char_span?: number[] | null
   

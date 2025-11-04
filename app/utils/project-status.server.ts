@@ -60,7 +60,7 @@ function addSteps(target: Set<string>, values: string[] | undefined) {
 	}
 }
 
-export interface ProjectQaItem {
+interface ProjectQaItem {
 	question: string
 	answer_summary?: string
 	evidence?: string[]

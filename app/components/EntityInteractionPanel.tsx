@@ -116,7 +116,7 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 	return (
 		<div
 			className={cn(
-				"w-full w-max-lg rounded-md border bg-background p-4 shadow-sm",
+				"w-full max-w-4xl rounded-md border bg-background p-4 shadow-sm",
 				isArchived && "border-orange-200 opacity-60",
 				isHidden && "opacity-30",
 				className
@@ -191,10 +191,10 @@ export function EntityInteractionPanel({ entityType, entityId, className }: Enti
 				)}
 			</div>
 			{showComments && (
-				<div className="w-full max-w-[600px] space-y-3 border-t pt-4">
+				<div className="w-full space-y-3 border-t pt-4">
 					<h4 className="font-medium text-foreground text-sm">Notes</h4>
 					{comments.length > 0 ? (
-						<div className="max-h-40 space-y-2 overflow-y-auto">
+						<div className="max-h-64 space-y-2 overflow-y-auto pr-1">
 							{comments.map((comment) => (
 								<div key={comment.id} className="rounded-md bg-gray-50 p-3">
 									<div className="mb-1 flex items-start justify-between">

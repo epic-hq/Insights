@@ -24,11 +24,17 @@ export const getPeople = async ({
 				assigned_at
 			),
 			person_facet (
-				facet_ref,
+				facet_account_id,
 				source,
 				confidence,
 				noted_at,
-				candidate_id
+				facet:facet_account!inner(
+					id,
+					label,
+					kind_id,
+					synonyms,
+					is_active
+				)
 			),
                         person_scale (
                                 kind_slug,
@@ -79,6 +85,7 @@ export const getPersonById = async ({
 	projectId: string
 	id: string
 }) => {
+	consola.info("getPersonById start", { accountId, projectId, id })
 	const personByIdQuery = supabase
 		.from("people")
 		.select(`
@@ -86,7 +93,8 @@ export const getPersonById = async ({
 			people_personas (
 				personas (
 					id,
-					name
+					name,
+					color_hex
 				),
 				confidence_score,
 				source,
@@ -95,11 +103,17 @@ export const getPersonById = async ({
 				project_id
 			),
 			person_facet (
-				facet_ref,
+				facet_account_id,
 				source,
 				confidence,
 				noted_at,
-				candidate_id
+				facet:facet_account!inner(
+					id,
+					label,
+					kind_id,
+					synonyms,
+					is_active
+				)
 			),
                         person_scale (
                                 kind_slug,
@@ -126,16 +140,22 @@ export const getPersonById = async ({
                                 )
                         ),
                         interview_people (
+                                id,
                                 interviews (
                                         id,
                                         title,
+                                        created_at,
                                         insights (
 						id,
 						name,
 						category,
 						pain,
+						details,
+						desired_outcome,
+						evidence,
 						journey_stage,
-						emotional_response
+						emotional_response,
+						project_id
 					)
 				)
 			)
@@ -149,17 +169,25 @@ export const getPersonById = async ({
 	const { data, error } = await personByIdQuery
 
 	if (error) {
-		consola.error("getPersonById error:", error)
-		consola.error("Query params:", { accountId, projectId, id })
+		consola.error("getPersonById error", {
+			accountId,
+			projectId,
+			id,
+			message: error.message,
+			details: (error as any)?.details,
+			hint: (error as any)?.hint,
+			code: (error as any)?.code,
+		})
 		throw new Response("Failed to load person", { status: 500 })
 	}
 
 	if (!data) {
-		consola.error("getPersonById: No data returned for person", { accountId, projectId, id })
+		consola.warn("getPersonById: no data returned", { accountId, projectId, id })
 		throw new Response("Person not found", { status: 404 })
 	}
 
 	const personData: PersonById = data
+	consola.info("getPersonById success", { id: personData.id, project_id: projectId })
 	return personData
 }
 
@@ -217,14 +245,21 @@ export const deletePerson = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
+	const { data, error } = await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
+
+	if (error) {
+		console.error("Delete person error:", error)
+		throw new Error(`Failed to delete person: ${error.message} (code: ${error.code})`)
+	}
+
+	return { data, error }
 }
 
 /**
  * Get people with validation details for the validation status page
  * Returns people who have validation-related data (outcome, stage, etc.)
  */
-export const getPeopleWithValidation = async ({
+const _getPeopleWithValidation = async ({
 	supabase,
 	accountId,
 	projectId,
@@ -243,7 +278,7 @@ export const getPeopleWithValidation = async ({
 			company,
 			contact_info,
 			person_facet (
-				facet_ref,
+				facet_account_id,
 				source,
 				confidence
 			),

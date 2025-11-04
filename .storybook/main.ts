@@ -6,6 +6,10 @@ const config: StorybookConfig = {
 	addons: [
 		"storybook-addon-remix-react-router",
 	],
+	env: (config) => ({
+		...config,
+		NODE_ENV: 'development'
+	}),
 	framework: {
 		name: "@storybook/react-vite",
 		options: {

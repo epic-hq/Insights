@@ -1,3 +1,5 @@
+import { type ChangeEvent, useId } from "react"
+
 interface TagCountSelectorProps {
 	value: number
 	onChange: (value: number) => void
@@ -7,19 +9,21 @@ interface TagCountSelectorProps {
 }
 
 export default function TagCountSelector({ value, onChange, min = 5, max = 25, step = 1 }: TagCountSelectorProps) {
-	const handleSliderChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+	const sliderId = useId()
+
+	const handleSliderChange = (event: ChangeEvent<HTMLInputElement>) => {
 		onChange(Number(event.target.value))
 	}
 
 	return (
 		<div className="flex items-center gap-3">
-			<label htmlFor="tag-count-slider" className="font-medium text-gray-700 text-sm dark:text-gray-300">
+			<label htmlFor={sliderId} className="font-medium text-gray-700 text-sm dark:text-gray-300">
 				Show tags:
 			</label>
 			<div className="flex items-center gap-3">
 				<span className="w-6 text-right font-mono text-gray-500 text-sm dark:text-gray-400">{min}</span>
 				<input
-					id="tag-count-slider"
+					id={sliderId}
 					type="range"
 					min={min}
 					max={max}

@@ -2,15 +2,16 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { BotMessageSquare, Edit2, Loader2, MessageCircleQuestionIcon, SparkleIcon } from "lucide-react"
-import { useEffect, useMemo, useRef, useState } from "react"
+import { BotMessageSquare, Edit2, Loader2, MessageCircleQuestionIcon, MoreVertical, SparkleIcon } from "lucide-react"
+import { useEffect, useMemo, useRef, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData, useNavigation } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
 import type { Database } from "~/../supabase/types"
-import { BackButton } from "~/components/ui/BackButton"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "~/components/ui/dropdown-menu"
 import InlineEdit from "~/components/ui/inline-edit"
 import { MediaPlayer } from "~/components/ui/MediaPlayer"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
@@ -22,13 +23,14 @@ import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import { memory } from "~/mastra/memory"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
+import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 
 // Normalize potentially awkwardly stored text fields (array, JSON string, or plain string)
@@ -86,6 +88,23 @@ function toAnalysisJobSummary(row: Database["public"]["Tables"]["analysis_jobs"]
 	}
 }
 
+type ConversationAnalysisForDisplay = {
+	summary: string | null
+	keyTakeaways: Array<{
+		priority: "high" | "medium" | "low"
+		summary: string
+		evidenceSnippets: string[]
+	}>
+	openQuestions: string[]
+	recommendations: Array<{
+		focusArea: string
+		action: string
+		rationale: string
+	}>
+	status: "pending" | "processing" | "completed" | "failed"
+	updatedAt: string | null
+}
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `${data?.interview?.title || "Interview"} | Insights` },
@@ -125,6 +144,19 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 					return Response.json({ ok: true, removed: true })
 				}
 
+				// Guard: ensure selected person belongs to this project
+				const { data: personRow, error: personErr } = await supabase
+					.from("people")
+					.select("id, project_id")
+					.eq("id", personId)
+					.single()
+				if (personErr || !personRow) {
+					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
+				}
+				if (personRow.project_id !== projectId) {
+					return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
+				}
+
 				const { error } = await supabase
 					.from("interview_people")
 					.update({ person_id: personId, role, transcript_key: transcriptKey, display_name: displayName })
@@ -150,6 +182,20 @@ export async function action({ context, params, request }: ActionFunctionArgs) {
 				const role = formData.get("role")?.toString().trim() || null
 				const transcriptKey = formData.get("transcriptKey")?.toString().trim() || null
 				const displayName = formData.get("displayName")?.toString().trim() || null
+
+				// Guard: ensure selected person belongs to this project
+				const { data: personRow, error: personErr } = await supabase
+					.from("people")
+					.select("id, project_id")
+					.eq("id", personId)
+					.single()
+				if (personErr || !personRow) {
+					return Response.json({ ok: false, error: "Selected person not found" }, { status: 400 })
+				}
+				if (personRow.project_id !== projectId) {
+					return Response.json({ ok: false, error: "Selected person belongs to a different project" }, { status: 400 })
+				}
+
 				const { error } = await supabase.from("interview_people").insert({
 					interview_id: interviewId,
 					project_id: projectId,
@@ -179,12 +225,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 	const interviewId = params.interviewId
 
-	consola.info("🔍 Interview Detail Loader Started:", {
-		accountId,
-		projectId,
-		interviewId,
-		params,
-	})
+	// consola.info("🔍 Interview Detail Loader Started:", {
+	// 	accountId,
+	// 	projectId,
+	// 	interviewId,
+	// 	params,
+	// })
 
 	if (!accountId || !projectId || !interviewId) {
 		consola.error("❌ Missing required parameters:", { accountId, projectId, interviewId })
@@ -207,7 +253,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		if (!interviewData) {
-			consola.error("❌ Interview not found:", { interviewId, projectId, accountId })
+			consola.error("❌ Interview not found (RLS filtered):", { interviewId, projectId, accountId })
 			throw new Response("Interview not found", { status: 404 })
 		}
 
@@ -216,30 +262,132 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			title: interviewData.title,
 		})
 
+		const conversationAnalysis = (() => {
+			const raw = interviewData.conversation_analysis as Record<string, unknown> | null | undefined
+			if (!raw || typeof raw !== "object") return null
+
+			const parseStringArray = (value: unknown): string[] => {
+				if (!Array.isArray(value)) return []
+				return value
+					.map((item) => (typeof item === "string" ? item.trim() : null))
+					.filter((item): item is string => Boolean(item && item.length > 0))
+			}
+
+			const parseKeyTakeaways = (): ConversationAnalysisForDisplay["keyTakeaways"] => {
+				const value = raw.key_takeaways as unknown
+				if (!Array.isArray(value)) return []
+				return value
+					.map((item) => {
+						if (!item || typeof item !== "object") return null
+						const entry = item as { [key: string]: unknown }
+						const summary = typeof entry.summary === "string" ? entry.summary.trim() : ""
+						if (!summary) return null
+						const priority =
+							entry.priority === "high" || entry.priority === "medium" || entry.priority === "low"
+								? entry.priority
+								: "medium"
+						const evidenceSnippets = parseStringArray(entry.evidence_snippets)
+						return { priority, summary, evidenceSnippets }
+					})
+					.filter(
+						(item): item is { priority: "high" | "medium" | "low"; summary: string; evidenceSnippets: string[] } =>
+							item !== null
+					)
+			}
+
+			const parseRecommendations = (): ConversationAnalysisForDisplay["recommendations"] => {
+				const value = raw.recommended_next_steps as unknown
+				if (!Array.isArray(value)) return []
+				return value
+					.map((item) => {
+						if (!item || typeof item !== "object") return null
+						const entry = item as { [key: string]: unknown }
+						const focusArea = typeof entry.focus_area === "string" ? entry.focus_area.trim() : ""
+						const action = typeof entry.action === "string" ? entry.action.trim() : ""
+						const rationale = typeof entry.rationale === "string" ? entry.rationale.trim() : ""
+						if (!focusArea && !action && !rationale) return null
+						return { focusArea, action, rationale }
+					})
+					.filter((item): item is { focusArea: string; action: string; rationale: string } => item !== null)
+			}
+
+			return {
+				summary: typeof raw.overview === "string" ? raw.overview : null,
+				keyTakeaways: parseKeyTakeaways(),
+				openQuestions: parseStringArray(raw.open_questions),
+				recommendations: parseRecommendations(),
+				status: "completed" as const,
+				updatedAt: interviewData.updated_at,
+			}
+		})()
+
 		// Fetch participant data separately to avoid junction table query issues
 		let participants: Array<{
 			id: number
 			role: string | null
 			transcript_key: string | null
 			display_name: string | null
-			people?: { id?: string; name?: string | null; segment?: string | null }
+			cross_project?: boolean
+			people?: {
+				id?: string
+				name?: string | null
+				segment?: string | null
+				project_id?: string | null
+				people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+			}
 		}> = []
-		let primaryParticipant: { id?: string; name?: string | null; segment?: string | null } | null = null
+		let primaryParticipant: {
+			id?: string
+			name?: string | null
+			segment?: string | null
+			project_id?: string | null
+		} | null = null
 
 		try {
 			const { data: participantData } = await getInterviewParticipants({
 				supabase,
+				projectId,
 				interviewId: interviewId,
 			})
 
-			participants = (participantData || []).map((row) => ({
-				id: row.id,
-				role: row.role ?? null,
-				transcript_key: row.transcript_key ?? null,
-				display_name: row.display_name ?? null,
-				people: row.people,
-			}))
-			primaryParticipant = participants[0]?.people || null
+			participants = (participantData || []).map((row) => {
+				const person = row.people as
+					| {
+						id: string
+						name: string | null
+						segment: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
+					| undefined
+				const valid = !!person && person.project_id === projectId
+				const minimal = person
+					? {
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
+							: undefined,
+					}
+					: undefined
+				return {
+					id: row.id,
+					role: row.role ?? null,
+					transcript_key: row.transcript_key ?? null,
+					display_name: row.display_name ?? null,
+					people: valid ? minimal : undefined,
+					cross_project: !!person && !valid,
+				}
+			})
+			{
+				const found = participants.find((p) => p.people)?.people
+				primaryParticipant = found ?? null
+			}
 		} catch (error) {
 			const msg = error instanceof Error ? error.message : String(error)
 			throw new Response(`Error fetching participants: ${msg}`, { status: 500 })
@@ -270,8 +418,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		// Debug transcript availability
 		consola.info("Transcript availability check:", {
 			interviewId,
-			hasTranscript: !!transcriptMeta?.transcript,
-			hasFormattedTranscript: !!transcriptMeta?.transcript_formatted,
+			hasTranscript: transcriptMeta?.transcript,
+			hasFormattedTranscript: transcriptMeta?.transcript_formatted,
 			transcriptLength: transcriptMeta?.transcript?.length || 0,
 			transcriptFormattedType: typeof transcriptMeta?.transcript_formatted,
 		})
@@ -332,10 +480,21 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			throw new Response(`Error fetching insights: ${msg}`, { status: 500 })
 		}
 
-		// Fetch evidence related to this interview
+		// Fetch evidence related to this interview with person associations
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
-			.select("*")
+			.select(`
+				*,
+				evidence_people (
+					person_id,
+					role,
+					people (
+						id,
+						name,
+						segment
+					)
+				)
+			`)
 			.eq("interview_id", interviewId)
 			.order("created_at", { ascending: false })
 
@@ -344,7 +503,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		// Process empathy map data in the loader for better performance
-		type EmpathyMapItem = { text: string; evidenceId: string; anchors?: unknown }
+		type EmpathyMapItem = {
+			text: string
+			evidenceId: string
+			anchors?: unknown
+			personId?: string
+			personName?: string
+		}
 		const empathyMap = {
 			says: [] as EmpathyMapItem[],
 			does: [] as EmpathyMapItem[],
@@ -357,12 +522,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		if (evidence) {
 			evidence.forEach((e) => {
 				const evidenceId = e.id
+				// Extract person info from evidence_people junction
+				const personData =
+					Array.isArray(e.evidence_people) && e.evidence_people.length > 0 ? e.evidence_people[0] : null
+				const personId = personData?.people?.id
+				const personName = personData?.people?.name
 
 				// Process each empathy map category
 				if (Array.isArray(e.says)) {
 					e.says.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.says.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -370,7 +540,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.does)) {
 					e.does.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.does.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -378,7 +548,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.thinks)) {
 					e.thinks.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.thinks.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -386,7 +556,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.feels)) {
 					e.feels.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.feels.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -394,7 +564,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.pains)) {
 					e.pains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.pains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -402,7 +572,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				if (Array.isArray(e.gains)) {
 					e.gains.forEach((item: string) => {
 						if (typeof item === "string" && item.trim()) {
-							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors })
+							empathyMap.gains.push({ text: item.trim(), evidenceId, anchors: e.anchors, personId, personName })
 						}
 					})
 				}
@@ -482,6 +652,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			creatorName,
 			analysisJob,
 			assistantMessages,
+			conversationAnalysis,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -519,6 +690,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		creatorName,
 		analysisJob,
 		assistantMessages,
+		conversationAnalysis,
 	} = useLoaderData<typeof loader>()
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
@@ -529,6 +701,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
+	const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
 
 	useEffect(() => {
 		setAnalysisState(analysisJob)
@@ -701,18 +874,37 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
 	const interviewTitle = interview.title || "Untitled Interview"
 	const primaryParticipant = participants[0]?.people
+	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
+	const conversationUpdatedLabel =
+		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
+			? formatReadable(conversationAnalysis.updatedAt)
+			: null
+
+	const badgeStylesForPriority = (
+		priority: "high" | "medium" | "low"
+	): {
+		variant: "default" | "secondary" | "destructive" | "outline"
+		color?: "blue" | "green" | "red" | "purple" | "yellow" | "orange" | "indigo"
+	} => {
+		switch (priority) {
+			case "high":
+				return { variant: "destructive", color: "red" }
+			case "medium":
+				return { variant: "secondary", color: "orange" }
+			default:
+				return { variant: "outline", color: "green" }
+		}
+	}
+
 	const activeRunId = analysisState?.trigger_run_id ?? null
 	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
-	const isProcessing = useMemo(
-		() => (analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false),
-		[analysisState]
-	)
 
 	useEffect(() => {
 		if (assistantMessages.length > 0) {
 			setIsChatOpen(true)
 		}
 	}, [assistantMessages.length])
+
 	const keyTakeawaysDraft = useMemo(
 		() => normalizeMultilineText(interview.high_impact_themes).trim(),
 		[interview.high_impact_themes]
@@ -794,12 +986,141 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 				: "bg-muted text-muted-foreground"
 		: ""
 
+	const revalidator = useRevalidator()
+	const refreshTriggeredRef = useRef(false)
+
+	// Extract unique speakers from empathy map data
+	const uniqueSpeakers = useMemo(() => {
+		const speakerMap = new Map<string, { id: string; name: string; count: number }>()
+
+		// Collect all speakers from empathy map items
+		const allItems = [
+			...empathyMap.says,
+			...empathyMap.does,
+			...empathyMap.thinks,
+			...empathyMap.feels,
+			...empathyMap.pains,
+			...empathyMap.gains,
+		]
+
+		allItems.forEach((item) => {
+			if (item.personId && item.personName) {
+				const existing = speakerMap.get(item.personId)
+				if (existing) {
+					existing.count++
+				} else {
+					speakerMap.set(item.personId, {
+						id: item.personId,
+						name: item.personName,
+						count: 1,
+					})
+				}
+			}
+		})
+
+		// Sort by count (most evidence first), then by name
+		return Array.from(speakerMap.values()).sort((a, b) => {
+			if (b.count !== a.count) return b.count - a.count
+			return a.name.localeCompare(b.name)
+		})
+	}, [empathyMap])
+
+	useEffect(() => {
+		if (uniqueSpeakers.length === 0) {
+			setSelectedPersonId(null)
+			return
+		}
+
+		setSelectedPersonId((current) => {
+			if (current && uniqueSpeakers.some((speaker) => speaker.id === current)) {
+				return current
+			}
+
+			return uniqueSpeakers[0]?.id ?? null
+		})
+	}, [uniqueSpeakers])
+
+	const activePersonId = useMemo(() => {
+		return selectedPersonId ?? uniqueSpeakers[0]?.id ?? null
+	}, [selectedPersonId, uniqueSpeakers])
+
+	// Filter empathy map by selected person
+	const filteredEmpathyMap = useMemo(() => {
+		if (!activePersonId) {
+			// Default: show participants (non-interviewer roles)
+			// Filter out items from people with "interviewer" role
+			const filterNonInterviewer = (items: typeof empathyMap.says) => {
+				return items.filter((item) => {
+					if (!item.personId) return true // Include items without person attribution
+					// Check if this person is an interviewer
+					const participant = participants.find((p) => p.people?.id === item.personId)
+					return participant?.role?.toLowerCase() !== "interviewer"
+				})
+			}
+
+			return {
+				says: filterNonInterviewer(empathyMap.says),
+				does: filterNonInterviewer(empathyMap.does),
+				thinks: filterNonInterviewer(empathyMap.thinks),
+				feels: filterNonInterviewer(empathyMap.feels),
+				pains: filterNonInterviewer(empathyMap.pains),
+				gains: filterNonInterviewer(empathyMap.gains),
+			}
+		}
+
+		// Filter by selected person
+		const filterByPerson = (items: typeof empathyMap.says) => {
+			return items.filter((item) => item.personId === activePersonId)
+		}
+
+		return {
+			says: filterByPerson(empathyMap.says),
+			does: filterByPerson(empathyMap.does),
+			thinks: filterByPerson(empathyMap.thinks),
+			feels: filterByPerson(empathyMap.feels),
+			pains: filterByPerson(empathyMap.pains),
+			gains: filterByPerson(empathyMap.gains),
+		}
+	}, [activePersonId, empathyMap, participants])
 	const { progressInfo, isRealtime } = useInterviewProgress({
 		interviewId: interview.id,
 		runId: activeRunId ?? undefined,
 		accessToken: triggerAccessToken,
 	})
 	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
+
+	useEffect(() => {
+		if (!progressInfo.isComplete) {
+			refreshTriggeredRef.current = false
+			return
+		}
+
+		if (!refreshTriggeredRef.current) {
+			refreshTriggeredRef.current = true
+			revalidator.revalidate()
+		}
+	}, [progressInfo.isComplete, revalidator])
+
+	// Comprehensive processing check: interview not ready OR analysis job active OR progress indicates incomplete
+	const isProcessing = useMemo(() => {
+		if (progressInfo.isComplete) {
+			return false
+		}
+
+		// Check interview status - anything before "ready" means still processing
+		const interviewNotReady =
+			interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
+
+		// Check analysis job status if it exists
+		const analysisJobActive = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
+
+		// Check progress info from Trigger.dev hook
+		const progressIncomplete = !progressInfo.isComplete && !progressInfo.hasError
+
+		return interviewNotReady || analysisJobActive || progressIncomplete
+	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
+	const showProcessingBanner = isProcessing && !progressInfo.isComplete
+
 
 	function formatReadable(dateString: string) {
 		const d = new Date(dateString)
@@ -839,7 +1160,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 			<div className="mx-auto w-full max-w-7xl px-4 lg:flex lg:space-x-8">
 				<div className="w-full space-y-6 lg:w-[calc(100%-20rem)]">
-					{isProcessing && (
+					{showProcessingBanner && (
 						<div className="rounded-lg border border-primary/40 bg-primary/5 p-4 shadow-sm">
 							<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 								<div>
@@ -847,20 +1168,47 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									<p className="text-muted-foreground text-sm">{analysisState?.status_detail || progressInfo.label}</p>
 								</div>
 								<div className="flex flex-col items-end gap-2">
-									<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
-										<div
-											className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
-											style={{ width: `${progressPercent}%` }}
-										/>
+									<div className="flex items-center gap-3">
+										<div className="relative h-2 w-40 overflow-hidden rounded-full bg-muted">
+											<div
+												className="absolute inset-y-0 left-0 bg-primary transition-all duration-500 ease-out"
+												style={{ width: `${progressPercent}%` }}
+											/>
+										</div>
+										<span className="font-medium text-primary text-sm">{progressPercent}%</span>
 									</div>
-									<span className="font-medium text-primary text-sm">{progressPercent}%</span>
+									{analysisState?.trigger_run_id && (
+										<button
+											type="button"
+											onClick={() => {
+												if (confirm("Are you sure you want to cancel this analysis? This action cannot be undone.")) {
+													try {
+														fetcher.submit(
+															{ runId: analysisState.trigger_run_id, analysisJobId: analysisState.id },
+															{ method: "post", action: "/api.cancel-analysis-run" }
+														)
+													} catch (e) {
+														consola.error("Cancel analysis submit failed", e)
+													}
+												}
+											}}
+											disabled={fetcher.state !== "idle"}
+											className="inline-flex items-center gap-2 border border-red-500/20 bg-red-50 px-3 py-1.5 font-medium text-red-700 text-xs hover:bg-red-100 disabled:opacity-60"
+										>
+											{fetcher.state !== "idle" ? "Cancelling..." : "Cancel"}
+										</button>
+									)}
 								</div>
 							</div>
 							{isRealtime ? (
-								<p className="mt-2 text-muted-foreground text-xs">Live updates via Trigger.dev</p>
+								<p className="mt-2 text-muted-foreground text-xs">&nbsp;</p>
 							) : tokenErrorRunId === activeRunId ? (
 								<p className="mt-2 text-muted-foreground text-xs">
 									Live updates temporarily unavailable; showing interview status.
+								</p>
+							) : analysisState?.trigger_run_id ? (
+								<p className="mt-2 text-muted-foreground text-xs">
+									Real-time updates unavailable; monitoring via database polling.
 								</p>
 							) : null}
 						</div>
@@ -878,6 +1226,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Streamlined Header */}
 					<div className="mb-6 space-y-4">
+						<BackButton />
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
 								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
@@ -914,7 +1263,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								>
 									<BotMessageSquare className="h-4 w-4" />
 									{/* <SparkleIcon className="h-4 w-4" /> */}
-
 									Ask Assistant
 								</Button>
 								{enableRecording && (
@@ -927,23 +1275,50 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									</Link>
 								)}
 								{(interview.hasTranscript || interview.hasFormattedTranscript || interview.status === "error") && (
-									<button
-										onClick={() => {
-											try {
-												fetcher.submit(
-													{ interview_id: interview.id },
-													{ method: "post", action: "/api.analysis-retry" }
-												)
-											} catch (e) {
-												consola.error("Retry analysis submit failed", e)
-											}
-										}}
-										disabled={fetcher.state !== "idle" || isProcessing}
-										className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm disabled:opacity-60"
-										title="Re-run AI analysis on this interview"
-									>
-										{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Retry analysis"}
-									</button>
+									<DropdownMenu>
+										<DropdownMenuTrigger asChild>
+											<button
+												disabled={fetcher.state !== "idle" || isProcessing}
+												className="inline-flex items-center gap-2 rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-foreground/30 disabled:opacity-60"
+												title="Reprocess options"
+											>
+												<MoreVertical className="h-4 w-4" />
+												{fetcher.state !== "idle" || isProcessing ? "Processing…" : "Reprocess"}
+											</button>
+										</DropdownMenuTrigger>
+										<DropdownMenuContent align="end">
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.analysis-retry" }
+														)
+													} catch (e) {
+														consola.error("Retry analysis submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Transcription
+											</DropdownMenuItem>
+											<DropdownMenuItem
+												onClick={() => {
+													try {
+														fetcher.submit(
+															{ interview_id: interview.id },
+															{ method: "post", action: "/api.reprocess-evidence" }
+														)
+													} catch (e) {
+														consola.error("Reprocess evidence submit failed", e)
+													}
+												}}
+												disabled={fetcher.state !== "idle" || isProcessing}
+											>
+												Rerun Evidence Collection
+											</DropdownMenuItem>
+										</DropdownMenuContent>
+									</DropdownMenu>
 								)}
 								<Link
 									to={routes.interviews.edit(interview.id)}
@@ -959,12 +1334,42 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 					<div className="space-y-4">
 						<div>
 							<label className="mb-2 block font-semibold text-foreground text-lg">Key Takeaways</label>
+							{aiKeyTakeaways.length > 0 && (
+								<div className="mb-4 space-y-3 rounded-lg border border-muted/60 bg-muted/40 p-4">
+									<div className="flex items-center justify-between gap-4">
+										<p className="font-semibold text-muted-foreground text-sm uppercase tracking-wide">AI Summary</p>
+										{conversationUpdatedLabel && (
+											<span className="text-muted-foreground text-xs">Updated {conversationUpdatedLabel}</span>
+										)}
+									</div>
+									<ul className="space-y-3">
+										{aiKeyTakeaways.map((takeaway, index) => {
+											const badgeStyles = badgeStylesForPriority(takeaway.priority)
+											return (
+												<li key={`${takeaway.summary}-${index}`} className="flex gap-3">
+													<Badge variant={badgeStyles.variant} color={badgeStyles.color} className="mt-0.5 uppercase">
+														{takeaway.priority}
+													</Badge>
+													<div className="space-y-1">
+														<p className="font-medium text-foreground leading-snug">{takeaway.summary}</p>
+														{takeaway.evidenceSnippets.length > 0 && (
+															<p className="text-muted-foreground text-sm">
+																&ldquo;{takeaway.evidenceSnippets[0]}&rdquo;
+															</p>
+														)}
+													</div>
+												</li>
+											)
+										})}
+									</ul>
+								</div>
+							)}
 							<InlineEdit
 								textClassName="text-foreground"
 								value={normalizeMultilineText(interview.high_impact_themes)}
 								multiline
 								markdown
-								placeholder="What are the most important insights from this interview?"
+								// placeholder="What are the most important insights from this interview?"
 								onSubmit={(value) => {
 									try {
 										fetcher.submit(
@@ -992,7 +1397,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								value={normalizeMultilineText(interview.observations_and_notes)}
 								multiline
 								markdown
-								placeholder="Your observations and analysis notes"
+								// placeholder="Your observations and analysis notes"
 								onSubmit={(value) => {
 									try {
 										fetcher.submit(
@@ -1016,20 +1421,66 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 					{/* Empathy Map Section */}
 					<div className="space-y-4">
-						<h3 className="font-semibold text-foreground text-lg">Empathy Map</h3>
-						<EmpathyMapTabs
-							empathyMap={empathyMap}
-							activeTab={activeTab}
-							setActiveTab={setActiveTab}
-							createEvidenceLink={createEvidenceLink}
-						/>
+						<div className="flex flex-wrap items-center justify-between gap-2">
+							<span className="font-semibold text-foreground text-lg">People</span>
+
+							{/* Person Selector Pills */}
+							{uniqueSpeakers.length > 0 ? (
+								<div className="flex flex-wrap items-center gap-2">
+									{uniqueSpeakers.map((speaker) => {
+										const isActive = activePersonId === speaker.id
+										return (
+											<button
+												key={speaker.id}
+												type="button"
+												onClick={() => setSelectedPersonId(speaker.id)}
+												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
+													? "bg-primary text-primary-foreground shadow-sm"
+													: "bg-muted text-muted-foreground hover:bg-muted/80"
+													}`}
+											>
+												{speaker.name}
+												<span className="ml-1.5 opacity-70">({speaker.count})</span>
+											</button>
+										)
+									})}
+								</div>
+							) : (
+								<span className="text-muted-foreground text-sm">No participants with empathy map data yet</span>
+							)}
+						</div>
+
+						{isProcessing && evidence.length === 0 ? (
+							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+								<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
+								<p className="mt-1 text-muted-foreground text-xs">Empathy map will appear once evidence is extracted</p>
+							</div>
+						) : (
+							<EmpathyMapTabs
+								empathyMap={filteredEmpathyMap}
+								activeTab={activeTab}
+								setActiveTab={setActiveTab}
+								createEvidenceLink={createEvidenceLink}
+							/>
+						)}
 					</div>
 
 					{/* Evidence Timeline Section */}
-					{evidence.length > 0 ? <PlayByPlayTimeline evidence={evidence} className="mb-6" /> : <p>No evidence found</p>}
+					{isProcessing && evidence.length === 0 ? (
+						<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
+							<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
+							<p className="mt-1 text-muted-foreground text-xs">
+								Evidence timeline will appear once extraction is complete
+							</p>
+						</div>
+					) : evidence.length > 0 ? (
+						<PlayByPlayTimeline evidence={evidence} className="mb-6" />
+					) : (
+						<p className="text-muted-foreground">No evidence found</p>
+					)}
 
 					{/* Transcript Section - Collapsed by default */}
-					<h3 className="font-semibold text-foreground text-lg">Raw Recording Details</h3>
+					<h3 className="font-semibold text-foreground text-lg">Recording</h3>
 
 					{interview.media_url && (
 						<div className="mb-4">
@@ -1050,6 +1501,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							hasFormattedTranscript={interview.hasFormattedTranscript}
 						/>
 					</div>
+
+					{/* Questions Asked Section */}
+					<InterviewQuestionsAccordion interviewId={interview.id} projectId={projectId} accountId={accountId} />
 				</div>
 				<aside className="mt-8 w-full space-y-4 lg:mt-0 lg:w-80 lg:flex-shrink-0">
 					<div className="space-y-4">
@@ -1102,7 +1556,12 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						)} */}
 
 						{/* Simplified Insights Summary */}
-						{insights.length > 0 && (
+						{isProcessing && insights.length === 0 ? (
+							<div className="rounded-lg border border-dashed bg-muted/30 p-4">
+								<h3 className="mb-2 font-semibold text-foreground">Insights</h3>
+								<p className="text-center text-muted-foreground text-xs">{progressInfo.label}</p>
+							</div>
+						) : insights.length > 0 ? (
 							<div className="rounded-lg border bg-background p-4">
 								<div className="mb-3 flex items-center justify-between">
 									<h3 className="font-semibold text-foreground">Insights</h3>
@@ -1132,7 +1591,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 									)}
 								</div>
 							</div>
-						)}
+						) : null}
 
 						{/* Participants Summary - Clean Display */}
 						<div className="rounded-lg border bg-background p-4">
@@ -1321,8 +1780,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										const personId = participant.people?.id
 										const personName = participant.people?.name || participant.display_name || "Unassigned"
 										const primaryPersona = participant.people?.people_personas?.[0]?.personas
+										const isCrossProject = participant.cross_project === true
 
-										if (personId) {
+										if (personId && !isCrossProject) {
 											const evidenceQuery = new URLSearchParams({ person_id: personId })
 											if (personName) evidenceQuery.set("person_name", personName)
 
@@ -1357,6 +1817,27 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 															)}
 														</div>
 													</div>
+												</div>
+											)
+										}
+
+										if (personId && isCrossProject) {
+											return (
+												<div
+													key={participant.id}
+													className="flex items-center justify-between rounded-md border border-dashed bg-amber-50 p-3"
+												>
+													<div className="flex items-center gap-3">
+														<div>
+															<div className="font-medium text-foreground text-sm">{personName}</div>
+															<div className="text-muted-foreground text-xs">
+																Linked to another project — use Edit to relink
+															</div>
+														</div>
+													</div>
+													<Badge variant="outline" className="text-xs">
+														Different project
+													</Badge>
 												</div>
 											)
 										}
@@ -1441,9 +1922,10 @@ function InterviewCopilotDrawer({
 	const [input, setInput] = useState("")
 	const [initialMessageSent, setInitialMessageSent] = useState(false)
 	const messagesEndRef = useRef<HTMLDivElement | null>(null)
+	const routes = useProjectRoutesFromIds(accountId, projectId)
 	const { messages, sendMessage, status } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
-			api: `/a/${accountId}/${projectId}/api/chat/interview/${interviewId}`,
+			api: routes.api.chat.interview(interviewId),
 			body: { system: systemContext },
 		}),
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
@@ -1483,7 +1965,6 @@ function InterviewCopilotDrawer({
 						<BotMessageSquare className="h-4 w-4 text-primary" />
 						UpSight Assistant
 					</SheetTitle>
-
 				</SheetHeader>
 				<div className="flex flex-1 flex-col gap-4 p-4">
 					<div className="flex-1 p-3">
@@ -1528,6 +2009,8 @@ function InterviewCopilotDrawer({
 																{messageText}
 															</Streamdown>
 														)
+													) : !isUser ? (
+														<span className="text-muted-foreground italic">Thinking...</span>
 													) : (
 														<span className="text-muted-foreground">(No text response)</span>
 													)}

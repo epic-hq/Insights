@@ -3,6 +3,7 @@ import React from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { BackButton } from "~/components/ui/back-button"
 import { getInsightById } from "~/features/insights/db"
 import { userContext } from "~/server/user-context"
 import { InsightCardV3Page } from "../components/InsightCardV3Page"
@@ -87,14 +88,8 @@ export default function InsightDetail() {
 		return <div>Insight not found</div>
 	}
 	return (
-		<PageContainer size="lg" padded={false} className="max-w-4xl">
-			{/* <div className="mb-6 flex items-center gap-2">
-				<Link to="/insights" className="text-blue-600 hover:text-blue-800">
-					Insights
-				</Link>
-				<span className="text-gray-500">/</span>
-				<span className="text-gray-900">{insight.name}</span>
-			</div> */}
+		<PageContainer size="lg" padded={false} className="max-w-4xl space-y-6">
+			<BackButton />
 			<InsightContentBoundary>
 				<InsightCardV3Page insight={insight} extended={true} />
 			</InsightContentBoundary>

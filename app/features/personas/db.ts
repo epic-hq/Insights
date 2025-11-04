@@ -3,11 +3,9 @@ import type { Database } from "~/types"
 
 export const getPersonas = async ({
 	supabase,
-	accountId,
 	projectId,
 }: {
 	supabase: SupabaseClient<Database>
-	accountId: string
 	projectId: string
 }) => {
 	return await supabase

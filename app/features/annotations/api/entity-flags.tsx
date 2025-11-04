@@ -41,7 +41,6 @@ export const loader: LoaderFunction = async ({ context, request, params }) => {
 			supabase,
 			entityType,
 			entityId,
-			userId,
 			projectId,
 		})
 
@@ -120,7 +119,6 @@ export const action: ActionFunction = async ({ context, request }) => {
 					supabase,
 					entityType,
 					entityId,
-					userId,
 					projectId,
 				})
 

@@ -159,14 +159,21 @@ BEGIN
         );
         RETURN NEW;
     ELSIF TG_OP = 'DELETE' THEN
-        -- CRITICAL: Use project_id directly from OLD record since interview may already be cascade-deleted
-        -- Don't query interviews table - it may be gone already due to CASCADE DELETE
-        IF OLD.project_id IS NOT NULL THEN
-            PERFORM update_project_people_stats(
-                OLD.project_id,
-                OLD.person_id
-            );
-        END IF;
+        -- CRITICAL: Silently ignore FK violations during CASCADE DELETE
+        -- When a person is being deleted, interview_people CASCADE deletes trigger this,
+        -- but we can't update project_people because the person is gone
+        BEGIN
+            IF OLD.project_id IS NOT NULL THEN
+                PERFORM update_project_people_stats(
+                    OLD.project_id,
+                    OLD.person_id
+                );
+            END IF;
+        EXCEPTION
+            WHEN foreign_key_violation THEN
+                -- Silently ignore - person is being cascade deleted
+                NULL;
+        END;
         RETURN OLD;
     END IF;
     RETURN NULL;

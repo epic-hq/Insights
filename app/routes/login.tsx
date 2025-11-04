@@ -1,6 +1,6 @@
 import consola from "consola"
 import { useEffect } from "react"
-import { type ActionFunctionArgs, Link, redirect, useFetcher } from "react-router"
+import { type ActionFunctionArgs, Link, redirect, useFetcher, useSearchParams } from "react-router"
 import { LogoBrand } from "~/components/branding"
 import { LoginForm } from "~/components/login-form"
 import { Button } from "~/components/ui/button"
@@ -35,8 +35,9 @@ export const action = async ({ request }: ActionFunctionArgs) => {
 
 export default function Login() {
 	const fetcher = useFetcher<typeof action>()
+	const [searchParams] = useSearchParams()
 
-	const error = fetcher.data?.error
+	const error = fetcher.data?.error || searchParams.get("error")
 	const loading = fetcher.state === "submitting"
 
 	// Persist incoming UTM params so they survive Supabase redirects

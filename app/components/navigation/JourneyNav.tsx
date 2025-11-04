@@ -16,7 +16,7 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { cn } from "~/lib/utils"
 import { createRouteDefinitions } from "~/utils/route-definitions"
 
-export interface JourneyStep {
+interface JourneyStep {
 	key: string
 	title: string
 	description: string
@@ -29,7 +29,7 @@ export interface JourneyStep {
 	}[]
 }
 
-export const journeySteps: JourneyStep[] = [
+const journeySteps: JourneyStep[] = [
 	{
 		key: "research",
 		title: "Research",

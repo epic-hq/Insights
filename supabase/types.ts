@@ -265,18 +265,12 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      generate_token: {
-        Args: { length: number }
-        Returns: string
-      }
+      generate_token: { Args: { length: number }; Returns: string }
       get_accounts_with_role: {
         Args: { passed_in_role?: Database["accounts"]["Enums"]["account_role"] }
         Returns: string[]
       }
-      get_config: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_config: { Args: never; Returns: Json }
       has_role_on_account: {
         Args: {
           account_id: string
@@ -284,10 +278,7 @@ export type Database = {
         }
         Returns: boolean
       }
-      is_set: {
-        Args: { field_name: string }
-        Returns: boolean
-      }
+      is_set: { Args: { field_name: string }; Returns: boolean }
     }
     Enums: {
       account_role: "owner" | "member" | "viewer"
@@ -366,8 +357,8 @@ export type Database = {
           progress: number | null
           status: Database["public"]["Enums"]["job_status"]
           status_detail: string | null
-          trigger_run_id: string | null
           transcript_data: Json
+          trigger_run_id: string | null
           updated_at: string | null
         }
         Insert: {
@@ -380,8 +371,8 @@ export type Database = {
           progress?: number | null
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
-          trigger_run_id?: string | null
           transcript_data: Json
+          trigger_run_id?: string | null
           updated_at?: string | null
         }
         Update: {
@@ -394,11 +385,18 @@ export type Database = {
           progress?: number | null
           status?: Database["public"]["Enums"]["job_status"]
           status_detail?: string | null
-          trigger_run_id?: string | null
           transcript_data?: Json
+          trigger_run_id?: string | null
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "analysis_jobs_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "analysis_jobs_interview_id_fkey"
             columns: ["interview_id"]
@@ -739,8 +737,8 @@ export type Database = {
           id: string
           independence_key: string | null
           interview_id: string | null
+          is_question: boolean | null
           journey_stage: string | null
-          kind_tags: string[] | null
           method: string | null
           modality: string
           pains: string[] | null
@@ -775,8 +773,8 @@ export type Database = {
           id?: string
           independence_key?: string | null
           interview_id?: string | null
+          is_question?: boolean | null
           journey_stage?: string | null
-          kind_tags?: string[] | null
           method?: string | null
           modality?: string
           pains?: string[] | null
@@ -811,8 +809,8 @@ export type Database = {
           id?: string
           independence_key?: string | null
           interview_id?: string | null
+          is_question?: boolean | null
           journey_stage?: string | null
-          kind_tags?: string[] | null
           method?: string | null
           modality?: string
           pains?: string[] | null
@@ -836,6 +834,13 @@ export type Database = {
             foreignKeyName: "evidence_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -855,6 +860,79 @@ export type Database = {
           },
           {
             foreignKeyName: "evidence_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      evidence_facet: {
+        Row: {
+          account_id: string
+          confidence: number | null
+          created_at: string
+          created_by: string | null
+          evidence_id: string
+          facet_account_id: number
+          id: string
+          kind_slug: string
+          label: string
+          notes: string | null
+          project_id: string | null
+          quote: string | null
+          source: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          evidence_id: string
+          facet_account_id: number
+          id?: string
+          kind_slug: string
+          label: string
+          notes?: string | null
+          project_id?: string | null
+          quote?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          confidence?: number | null
+          created_at?: string
+          created_by?: string | null
+          evidence_id?: string
+          facet_account_id?: number
+          id?: string
+          kind_slug?: string
+          label?: string
+          notes?: string | null
+          project_id?: string | null
+          quote?: string | null
+          source?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evidence_facet_evidence_id_fkey"
+            columns: ["evidence_id"]
+            isOneToOne: false
+            referencedRelation: "evidence"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_facet_facet_account_id_fkey"
+            columns: ["facet_account_id"]
+            isOneToOne: false
+            referencedRelation: "facet_account"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evidence_facet_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -988,6 +1066,7 @@ export type Database = {
           description: string | null
           global_facet_id: number | null
           id: number
+          is_active: boolean
           kind_id: number
           label: string
           slug: string
@@ -1000,6 +1079,7 @@ export type Database = {
           description?: string | null
           global_facet_id?: number | null
           id?: number
+          is_active?: boolean
           kind_id: number
           label: string
           slug: string
@@ -1012,6 +1092,7 @@ export type Database = {
           description?: string | null
           global_facet_id?: number | null
           id?: number
+          is_active?: boolean
           kind_id?: number
           label?: string
           slug?: string
@@ -1031,78 +1112,6 @@ export type Database = {
             columns: ["kind_id"]
             isOneToOne: false
             referencedRelation: "facet_kind_global"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      facet_candidate: {
-        Row: {
-          account_id: string
-          created_at: string
-          evidence_id: string | null
-          id: string
-          kind_slug: string
-          label: string
-          notes: string | null
-          person_id: string | null
-          project_id: string
-          resolved_facet_ref: string | null
-          reviewed_at: string | null
-          reviewed_by: string | null
-          source: string
-          status: string
-          synonyms: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          account_id: string
-          created_at?: string
-          evidence_id?: string | null
-          id?: string
-          kind_slug: string
-          label: string
-          notes?: string | null
-          person_id?: string | null
-          project_id: string
-          resolved_facet_ref?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          source: string
-          status?: string
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string
-          created_at?: string
-          evidence_id?: string | null
-          id?: string
-          kind_slug?: string
-          label?: string
-          notes?: string | null
-          person_id?: string | null
-          project_id?: string
-          resolved_facet_ref?: string | null
-          reviewed_at?: string | null
-          reviewed_by?: string | null
-          source?: string
-          status?: string
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "facet_candidate_person_id_fkey"
-            columns: ["person_id"]
-            isOneToOne: false
-            referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "facet_candidate_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -1321,6 +1330,13 @@ export type Database = {
             foreignKeyName: "insights_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "insights_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -1374,6 +1390,13 @@ export type Database = {
           updated_by?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "interview_people_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "interview_people_interview_id_fkey"
             columns: ["interview_id"]
@@ -1630,6 +1653,13 @@ export type Database = {
             foreignKeyName: "interview_tags_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "interview_tags_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -1652,6 +1682,7 @@ export type Database = {
       interviews: {
         Row: {
           account_id: string
+          conversation_analysis: Json | null
           created_at: string
           created_by: string | null
           duration_sec: number | null
@@ -1676,6 +1707,7 @@ export type Database = {
         }
         Insert: {
           account_id: string
+          conversation_analysis?: Json | null
           created_at?: string
           created_by?: string | null
           duration_sec?: number | null
@@ -1700,6 +1732,7 @@ export type Database = {
         }
         Update: {
           account_id?: string
+          conversation_analysis?: Json | null
           created_at?: string
           created_by?: string | null
           duration_sec?: number | null
@@ -2143,38 +2176,94 @@ export type Database = {
       opportunities: {
         Row: {
           account_id: string
+          amount: number | null
+          close_date: string | null
+          confidence: number | null
           created_at: string
+          crm_external_id: string | null
+          currency: string | null
+          description: string | null
+          forecast_category: string | null
           id: string
           kanban_status: string | null
+          metadata: Json
+          next_step: string | null
+          next_step_due: string | null
+          organization_id: string | null
           owner_id: string | null
+          primary_contact_id: string | null
           project_id: string
           related_insight_ids: string[] | null
+          source: string | null
+          stage: string | null
           title: string
           updated_at: string
         }
         Insert: {
           account_id: string
+          amount?: number | null
+          close_date?: string | null
+          confidence?: number | null
           created_at?: string
+          crm_external_id?: string | null
+          currency?: string | null
+          description?: string | null
+          forecast_category?: string | null
           id?: string
           kanban_status?: string | null
+          metadata?: Json
+          next_step?: string | null
+          next_step_due?: string | null
+          organization_id?: string | null
           owner_id?: string | null
+          primary_contact_id?: string | null
           project_id: string
           related_insight_ids?: string[] | null
+          source?: string | null
+          stage?: string | null
           title: string
           updated_at?: string
         }
         Update: {
           account_id?: string
+          amount?: number | null
+          close_date?: string | null
+          confidence?: number | null
           created_at?: string
+          crm_external_id?: string | null
+          currency?: string | null
+          description?: string | null
+          forecast_category?: string | null
           id?: string
           kanban_status?: string | null
+          metadata?: Json
+          next_step?: string | null
+          next_step_due?: string | null
+          organization_id?: string | null
           owner_id?: string | null
+          primary_contact_id?: string | null
           project_id?: string
           related_insight_ids?: string[] | null
+          source?: string | null
+          stage?: string | null
           title?: string
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "opportunities_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "opportunities_primary_contact_id_fkey"
+            columns: ["primary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "opportunities_project_id_fkey"
             columns: ["project_id"]
@@ -2250,6 +2339,7 @@ export type Database = {
           billing_address: Json | null
           company_type: string | null
           created_at: string
+          crm_external_id: string | null
           description: string | null
           domain: string | null
           email: string | null
@@ -2258,14 +2348,19 @@ export type Database = {
           id: string
           industry: string | null
           legal_name: string | null
+          lifecycle_stage: string | null
           linkedin_url: string | null
           name: string
           notes: string | null
+          parent_organization_id: string | null
           phone: string | null
+          primary_contact_id: string | null
           project_id: string | null
           shipping_address: Json | null
           size_range: string | null
           sub_industry: string | null
+          tags: string[] | null
+          timezone: string | null
           twitter_url: string | null
           updated_at: string
           website_url: string | null
@@ -2276,6 +2371,7 @@ export type Database = {
           billing_address?: Json | null
           company_type?: string | null
           created_at?: string
+          crm_external_id?: string | null
           description?: string | null
           domain?: string | null
           email?: string | null
@@ -2284,14 +2380,19 @@ export type Database = {
           id?: string
           industry?: string | null
           legal_name?: string | null
+          lifecycle_stage?: string | null
           linkedin_url?: string | null
           name: string
           notes?: string | null
+          parent_organization_id?: string | null
           phone?: string | null
+          primary_contact_id?: string | null
           project_id?: string | null
           shipping_address?: Json | null
           size_range?: string | null
           sub_industry?: string | null
+          tags?: string[] | null
+          timezone?: string | null
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
@@ -2302,6 +2403,7 @@ export type Database = {
           billing_address?: Json | null
           company_type?: string | null
           created_at?: string
+          crm_external_id?: string | null
           description?: string | null
           domain?: string | null
           email?: string | null
@@ -2310,19 +2412,38 @@ export type Database = {
           id?: string
           industry?: string | null
           legal_name?: string | null
+          lifecycle_stage?: string | null
           linkedin_url?: string | null
           name?: string
           notes?: string | null
+          parent_organization_id?: string | null
           phone?: string | null
+          primary_contact_id?: string | null
           project_id?: string | null
           shipping_address?: Json | null
           size_range?: string | null
           sub_industry?: string | null
+          tags?: string[] | null
+          timezone?: string | null
           twitter_url?: string | null
           updated_at?: string
           website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "organizations_parent_organization_id_fkey"
+            columns: ["parent_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organizations_primary_contact_id_fkey"
+            columns: ["primary_contact_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organizations_project_id_fkey"
             columns: ["project_id"]
@@ -2339,6 +2460,7 @@ export type Database = {
           company: string | null
           contact_info: Json | null
           created_at: string
+          default_organization_id: string | null
           description: string | null
           education: string | null
           gender: string | null
@@ -2347,16 +2469,23 @@ export type Database = {
           income: number | null
           industry: string | null
           languages: string[] | null
+          lifecycle_stage: string | null
+          linkedin_url: string | null
           location: string | null
           name: string | null
           name_hash: string | null
           occupation: string | null
           preferences: string | null
+          primary_email: string | null
+          primary_phone: string | null
           project_id: string | null
+          pronouns: string | null
           role: string | null
           segment: string | null
+          timezone: string | null
           title: string | null
           updated_at: string
+          website_url: string | null
         }
         Insert: {
           account_id?: string | null
@@ -2364,6 +2493,7 @@ export type Database = {
           company?: string | null
           contact_info?: Json | null
           created_at?: string
+          default_organization_id?: string | null
           description?: string | null
           education?: string | null
           gender?: string | null
@@ -2372,16 +2502,23 @@ export type Database = {
           income?: number | null
           industry?: string | null
           languages?: string[] | null
+          lifecycle_stage?: string | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string | null
           name_hash?: string | null
           occupation?: string | null
           preferences?: string | null
+          primary_email?: string | null
+          primary_phone?: string | null
           project_id?: string | null
+          pronouns?: string | null
           role?: string | null
           segment?: string | null
+          timezone?: string | null
           title?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Update: {
           account_id?: string | null
@@ -2389,6 +2526,7 @@ export type Database = {
           company?: string | null
           contact_info?: Json | null
           created_at?: string
+          default_organization_id?: string | null
           description?: string | null
           education?: string | null
           gender?: string | null
@@ -2397,18 +2535,32 @@ export type Database = {
           income?: number | null
           industry?: string | null
           languages?: string[] | null
+          lifecycle_stage?: string | null
+          linkedin_url?: string | null
           location?: string | null
           name?: string | null
           name_hash?: string | null
           occupation?: string | null
           preferences?: string | null
+          primary_email?: string | null
+          primary_phone?: string | null
           project_id?: string | null
+          pronouns?: string | null
           role?: string | null
           segment?: string | null
+          timezone?: string | null
           title?: string | null
           updated_at?: string
+          website_url?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "people_default_organization_id_fkey"
+            columns: ["default_organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "people_project_id_fkey"
             columns: ["project_id"]
@@ -2521,6 +2673,13 @@ export type Database = {
             foreignKeyName: "people_personas_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "people_personas_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -2557,11 +2716,10 @@ export type Database = {
       person_facet: {
         Row: {
           account_id: string
-          candidate_id: string | null
           confidence: number | null
           created_at: string
           evidence_id: string | null
-          facet_ref: string
+          facet_account_id: number
           noted_at: string | null
           person_id: string
           project_id: string
@@ -2570,11 +2728,10 @@ export type Database = {
         }
         Insert: {
           account_id: string
-          candidate_id?: string | null
           confidence?: number | null
           created_at?: string
           evidence_id?: string | null
-          facet_ref: string
+          facet_account_id: number
           noted_at?: string | null
           person_id: string
           project_id: string
@@ -2583,11 +2740,10 @@ export type Database = {
         }
         Update: {
           account_id?: string
-          candidate_id?: string | null
           confidence?: number | null
           created_at?: string
           evidence_id?: string | null
-          facet_ref?: string
+          facet_account_id?: number
           noted_at?: string | null
           person_id?: string
           project_id?: string
@@ -2596,10 +2752,10 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "person_facet_candidate_id_fkey"
-            columns: ["candidate_id"]
+            foreignKeyName: "person_facet_facet_account_id_fkey"
+            columns: ["facet_account_id"]
             isOneToOne: false
-            referencedRelation: "facet_candidate"
+            referencedRelation: "facet_account"
             referencedColumns: ["id"]
           },
           {
@@ -2962,6 +3118,13 @@ export type Database = {
             foreignKeyName: "project_answer_evidence_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answer_evidence_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -3101,6 +3264,13 @@ export type Database = {
             foreignKeyName: "project_answers_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -3137,62 +3307,6 @@ export type Database = {
             columns: ["respondent_person_id"]
             isOneToOne: false
             referencedRelation: "people"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      project_facet: {
-        Row: {
-          account_id: string
-          alias: string | null
-          created_at: string
-          facet_ref: string
-          is_enabled: boolean | null
-          kind_slug: string | null
-          label: string | null
-          pinned: boolean | null
-          project_id: string
-          scope: string
-          sort_weight: number | null
-          synonyms: string[] | null
-          updated_at: string
-        }
-        Insert: {
-          account_id: string
-          alias?: string | null
-          created_at?: string
-          facet_ref: string
-          is_enabled?: boolean | null
-          kind_slug?: string | null
-          label?: string | null
-          pinned?: boolean | null
-          project_id: string
-          scope?: string
-          sort_weight?: number | null
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Update: {
-          account_id?: string
-          alias?: string | null
-          created_at?: string
-          facet_ref?: string
-          is_enabled?: boolean | null
-          kind_slug?: string | null
-          label?: string | null
-          pinned?: boolean | null
-          project_id?: string
-          scope?: string
-          sort_weight?: number | null
-          synonyms?: string[] | null
-          updated_at?: string
-        }
-        Relationships: [
-          {
-            foreignKeyName: "project_facet_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -3414,7 +3528,7 @@ export type Database = {
       project_sections: {
         Row: {
           content_md: string
-          content_tsv: unknown | null
+          content_tsv: unknown
           created_at: string
           created_by: string | null
           id: string
@@ -3427,7 +3541,7 @@ export type Database = {
         }
         Insert: {
           content_md: string
-          content_tsv?: unknown | null
+          content_tsv?: unknown
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3440,7 +3554,7 @@ export type Database = {
         }
         Update: {
           content_md?: string
-          content_tsv?: unknown | null
+          content_tsv?: unknown
           created_at?: string
           created_by?: string | null
           id?: string
@@ -3478,6 +3592,7 @@ export type Database = {
           slug: string | null
           status: string | null
           updated_at: string
+          workflow_type: Database["public"]["Enums"]["project_workflow_type"]
         }
         Insert: {
           account_id: string
@@ -3488,6 +3603,7 @@ export type Database = {
           slug?: string | null
           status?: string | null
           updated_at?: string
+          workflow_type?: Database["public"]["Enums"]["project_workflow_type"]
         }
         Update: {
           account_id?: string
@@ -3498,6 +3614,7 @@ export type Database = {
           slug?: string | null
           status?: string | null
           updated_at?: string
+          workflow_type?: Database["public"]["Enums"]["project_workflow_type"]
         }
         Relationships: []
       }
@@ -3684,6 +3801,316 @@ export type Database = {
           },
           {
             foreignKeyName: "research_questions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lens_hygiene_events: {
+        Row: {
+          code: string
+          created_at: string
+          created_by: string | null
+          id: string
+          message: string | null
+          resolved_at: string | null
+          resolved_by: string | null
+          severity: string | null
+          slot_id: string | null
+          summary_id: string
+        }
+        Insert: {
+          code: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          slot_id?: string | null
+          summary_id: string
+        }
+        Update: {
+          code?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          message?: string | null
+          resolved_at?: string | null
+          resolved_by?: string | null
+          severity?: string | null
+          slot_id?: string | null
+          summary_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_hygiene_events_slot_id_fkey"
+            columns: ["slot_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_slots"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_hygiene_events_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_summaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lens_slots: {
+        Row: {
+          confidence: number | null
+          created_at: string
+          date_value: string | null
+          description: string | null
+          evidence_refs: Json
+          hygiene: Json
+          id: string
+          label: string | null
+          numeric_value: number | null
+          owner_person_id: string | null
+          owner_person_key: string | null
+          position: number | null
+          related_organization_ids: string[]
+          related_person_ids: string[]
+          slot: string
+          status: string | null
+          summary_id: string
+          text_value: string | null
+          updated_at: string
+        }
+        Insert: {
+          confidence?: number | null
+          created_at?: string
+          date_value?: string | null
+          description?: string | null
+          evidence_refs?: Json
+          hygiene?: Json
+          id?: string
+          label?: string | null
+          numeric_value?: number | null
+          owner_person_id?: string | null
+          owner_person_key?: string | null
+          position?: number | null
+          related_organization_ids?: string[]
+          related_person_ids?: string[]
+          slot: string
+          status?: string | null
+          summary_id: string
+          text_value?: string | null
+          updated_at?: string
+        }
+        Update: {
+          confidence?: number | null
+          created_at?: string
+          date_value?: string | null
+          description?: string | null
+          evidence_refs?: Json
+          hygiene?: Json
+          id?: string
+          label?: string | null
+          numeric_value?: number | null
+          owner_person_id?: string | null
+          owner_person_key?: string | null
+          position?: number | null
+          related_organization_ids?: string[]
+          related_person_ids?: string[]
+          slot?: string
+          status?: string | null
+          summary_id?: string
+          text_value?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_slots_owner_person_id_fkey"
+            columns: ["owner_person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_slots_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_summaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lens_stakeholders: {
+        Row: {
+          account_id: string
+          candidate_person_key: string | null
+          confidence: number | null
+          created_at: string
+          display_name: string
+          email: string | null
+          evidence_refs: Json
+          id: string
+          influence: string | null
+          labels: string[]
+          organization_id: string | null
+          person_id: string | null
+          person_key: string | null
+          project_id: string
+          role: string | null
+          summary_id: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          candidate_person_key?: string | null
+          confidence?: number | null
+          created_at?: string
+          display_name: string
+          email?: string | null
+          evidence_refs?: Json
+          id?: string
+          influence?: string | null
+          labels?: string[]
+          organization_id?: string | null
+          person_id?: string | null
+          person_key?: string | null
+          project_id: string
+          role?: string | null
+          summary_id: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          candidate_person_key?: string | null
+          confidence?: number | null
+          created_at?: string
+          display_name?: string
+          email?: string | null
+          evidence_refs?: Json
+          id?: string
+          influence?: string | null
+          labels?: string[]
+          organization_id?: string | null
+          person_id?: string | null
+          person_key?: string | null
+          project_id?: string
+          role?: string | null
+          summary_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_stakeholders_organization_id_fkey"
+            columns: ["organization_id"]
+            isOneToOne: false
+            referencedRelation: "organizations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_person_id_fkey"
+            columns: ["person_id"]
+            isOneToOne: false
+            referencedRelation: "people"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_stakeholders_summary_id_fkey"
+            columns: ["summary_id"]
+            isOneToOne: false
+            referencedRelation: "sales_lens_summaries"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_lens_summaries: {
+        Row: {
+          account_id: string
+          attendee_person_ids: string[]
+          attendee_person_keys: string[]
+          attendee_unlinked: Json
+          computed_at: string
+          computed_by: string | null
+          created_at: string
+          framework: Database["public"]["Enums"]["sales_framework"]
+          hygiene_summary: Json
+          id: string
+          interview_id: string | null
+          metadata: Json
+          opportunity_id: string | null
+          project_id: string
+          source_kind: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          attendee_person_ids?: string[]
+          attendee_person_keys?: string[]
+          attendee_unlinked?: Json
+          computed_at?: string
+          computed_by?: string | null
+          created_at?: string
+          framework: Database["public"]["Enums"]["sales_framework"]
+          hygiene_summary?: Json
+          id?: string
+          interview_id?: string | null
+          metadata?: Json
+          opportunity_id?: string | null
+          project_id: string
+          source_kind?: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          attendee_person_ids?: string[]
+          attendee_person_keys?: string[]
+          attendee_unlinked?: Json
+          computed_at?: string
+          computed_by?: string | null
+          created_at?: string
+          framework?: Database["public"]["Enums"]["sales_framework"]
+          hygiene_summary?: Json
+          id?: string
+          interview_id?: string | null
+          metadata?: Json
+          opportunity_id?: string | null
+          project_id?: string
+          source_kind?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_lens_summaries_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_summaries_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "interviews"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_summaries_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_lens_summaries_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
@@ -3903,6 +4330,13 @@ export type Database = {
             foreignKeyName: "upload_jobs_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "upload_jobs_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -4044,6 +4478,92 @@ export type Database = {
       }
     }
     Views: {
+      conversations: {
+        Row: {
+          account_id: string | null
+          conversation_analysis: Json | null
+          created_at: string | null
+          created_by: string | null
+          duration_sec: number | null
+          high_impact_themes: string[] | null
+          id: string | null
+          interview_date: string | null
+          interviewer_id: string | null
+          media_type: string | null
+          media_url: string | null
+          observations_and_notes: string | null
+          open_questions_and_next_steps: string | null
+          participant_pseudonym: string | null
+          project_id: string | null
+          relevant_answers: string[] | null
+          segment: string | null
+          status: Database["public"]["Enums"]["interview_status"] | null
+          title: string | null
+          transcript: string | null
+          transcript_formatted: Json | null
+          updated_at: string | null
+          updated_by: string | null
+        }
+        Insert: {
+          account_id?: string | null
+          conversation_analysis?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          duration_sec?: number | null
+          high_impact_themes?: string[] | null
+          id?: string | null
+          interview_date?: string | null
+          interviewer_id?: string | null
+          media_type?: string | null
+          media_url?: string | null
+          observations_and_notes?: string | null
+          open_questions_and_next_steps?: string | null
+          participant_pseudonym?: string | null
+          project_id?: string | null
+          relevant_answers?: string[] | null
+          segment?: string | null
+          status?: Database["public"]["Enums"]["interview_status"] | null
+          title?: string | null
+          transcript?: string | null
+          transcript_formatted?: Json | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Update: {
+          account_id?: string | null
+          conversation_analysis?: Json | null
+          created_at?: string | null
+          created_by?: string | null
+          duration_sec?: number | null
+          high_impact_themes?: string[] | null
+          id?: string | null
+          interview_date?: string | null
+          interviewer_id?: string | null
+          media_type?: string | null
+          media_url?: string | null
+          observations_and_notes?: string | null
+          open_questions_and_next_steps?: string | null
+          participant_pseudonym?: string | null
+          project_id?: string | null
+          relevant_answers?: string[] | null
+          segment?: string | null
+          status?: Database["public"]["Enums"]["interview_status"] | null
+          title?: string | null
+          transcript?: string | null
+          transcript_formatted?: Json | null
+          updated_at?: string | null
+          updated_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "interviews_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       decision_question_summary: {
         Row: {
           answered_answer_count: number | null
@@ -4096,6 +4616,13 @@ export type Database = {
           updated_by: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "insights_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "insights_interview_id_fkey"
             columns: ["interview_id"]
@@ -4167,6 +4694,13 @@ export type Database = {
             foreignKeyName: "project_answers_interview_id_fkey"
             columns: ["interview_id"]
             isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "project_answers_interview_id_fkey"
+            columns: ["interview_id"]
+            isOneToOne: false
             referencedRelation: "interviews"
             referencedColumns: ["id"]
           },
@@ -4210,7 +4744,7 @@ export type Database = {
       project_sections_latest: {
         Row: {
           content_md: string | null
-          content_tsv: unknown | null
+          content_tsv: unknown
           created_at: string | null
           id: string | null
           kind: string | null
@@ -4282,14 +4816,7 @@ export type Database = {
         Args: { p_insight_id: string }
         Returns: undefined
       }
-      binary_quantize: {
-        Args: { "": string } | { "": unknown }
-        Returns: unknown
-      }
-      create_account: {
-        Args: { name?: string; slug?: string }
-        Returns: Json
-      }
+      create_account: { Args: { name?: string; slug?: string }; Returns: Json }
       create_account_id: {
         Args: { name?: string; primary_owner_user_id?: string; slug?: string }
         Returns: string
@@ -4307,26 +4834,14 @@ export type Database = {
         Args: { p_account_id: string }
         Returns: Json
       }
-      delete_invitation: {
-        Args: { invitation_id: string }
-        Returns: undefined
-      }
-      get_account: {
-        Args: { account_id: string }
-        Returns: Json
-      }
+      delete_invitation: { Args: { invitation_id: string }; Returns: undefined }
+      get_account: { Args: { account_id: string }; Returns: Json }
       get_account_billing_status: {
         Args: { account_id: string }
         Returns: Json
       }
-      get_account_by_slug: {
-        Args: { slug: string }
-        Returns: Json
-      }
-      get_account_id: {
-        Args: { slug: string }
-        Returns: string
-      }
+      get_account_by_slug: { Args: { slug: string }; Returns: Json }
+      get_account_id: { Args: { slug: string }; Returns: string }
       get_account_invitations: {
         Args: {
           account_id: string
@@ -4343,10 +4858,7 @@ export type Database = {
         }
         Returns: Json
       }
-      get_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_accounts: { Args: never; Returns: Json }
       get_annotation_counts: {
         Args: {
           p_entity_id: string
@@ -4358,14 +4870,8 @@ export type Database = {
           count: number
         }[]
       }
-      get_personal_account: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      get_user_accounts: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      get_personal_account: { Args: never; Returns: Json }
+      get_user_accounts: { Args: never; Returns: Json }
       get_user_flags: {
         Args: {
           p_entity_id: string
@@ -4398,82 +4904,17 @@ export type Database = {
           upvotes: number
         }[]
       }
-      halfvec_avg: {
-        Args: { "": number[] }
-        Returns: unknown
-      }
-      halfvec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      halfvec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      halfvec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
-      hnsw_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnsw_sparsevec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      hnswhandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
       invoke_edge_function: {
         Args: { func_name: string; payload: Json }
         Returns: undefined
       }
-      ivfflat_bit_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflat_halfvec_support: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      ivfflathandler: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      l2_norm: {
-        Args: { "": unknown } | { "": unknown }
-        Returns: number
-      }
-      l2_normalize: {
-        Args: { "": string } | { "": unknown } | { "": unknown }
-        Returns: unknown
-      }
-      list_invitations_for_current_user: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
-      list_invitations_for_current_user: {
-        Args: Record<PropertyKey, never>
-        Returns: Json
-      }
+      list_invitations_for_current_user: { Args: never; Returns: Json }
       lookup_invitation: {
         Args: { lookup_invitation_token: string }
         Returns: Json
       }
-      process_embedding_queue: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
-      process_transcribe_queue: {
-        Args: Record<PropertyKey, never>
-        Returns: string
-      }
+      process_embedding_queue: { Args: never; Returns: string }
+      process_transcribe_queue: { Args: never; Returns: string }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
         Returns: undefined
@@ -4499,18 +4940,12 @@ export type Database = {
           updated_at: string
           updated_by: string | null
         }
-      }
-      sparsevec_out: {
-        Args: { "": unknown }
-        Returns: unknown
-      }
-      sparsevec_send: {
-        Args: { "": unknown }
-        Returns: string
-      }
-      sparsevec_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
+        SetofOptions: {
+          from: "*"
+          to: "account_settings"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       sync_insight_tags: {
         Args: {
@@ -4551,30 +4986,6 @@ export type Database = {
         Args: { p_signup_data: Json; p_user_id: string }
         Returns: undefined
       }
-      vector_avg: {
-        Args: { "": number[] }
-        Returns: string
-      }
-      vector_dims: {
-        Args: { "": string } | { "": unknown }
-        Returns: number
-      }
-      vector_norm: {
-        Args: { "": string }
-        Returns: number
-      }
-      vector_out: {
-        Args: { "": string }
-        Returns: unknown
-      }
-      vector_send: {
-        Args: { "": string }
-        Returns: string
-      }
-      vector_typmod_in: {
-        Args: { "": unknown[] }
-        Returns: number
-      }
     }
     Enums: {
       interview_status:
@@ -4590,7 +5001,9 @@ export type Database = {
         | "archived"
         | "error"
       job_status: "pending" | "in_progress" | "done" | "error" | "retry"
+      project_workflow_type: "research" | "sales" | "conversation_analysis"
       research_analysis_question_kind: "decision" | "research"
+      sales_framework: "BANT_GPCT" | "SPICED" | "MEDDIC" | "MAP"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -4747,7 +5160,9 @@ export const Constants = {
         "error",
       ],
       job_status: ["pending", "in_progress", "done", "error", "retry"],
+      project_workflow_type: ["research", "sales", "conversation_analysis"],
       research_analysis_question_kind: ["decision", "research"],
+      sales_framework: ["BANT_GPCT", "SPICED", "MEDDIC", "MAP"],
     },
   },
 } as const

@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react"
+import { useId, useMemo, useState } from "react"
 import { Link, useParams } from "react-router-dom"
 import type { TreeNode } from "~/components/charts/TreeMap"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -17,6 +17,7 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 	const [groupBy, setGroupBy] = useState<"none" | "persona" | "user">("none")
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
+	const groupById = useId()
 
 	// Find the theme in the theme tree
 	const theme = useMemo<{ name: string; fill: string } | null>(() => {
@@ -131,11 +132,11 @@ export default function ThemeDetail({ insights, interviews, themeTree }: ThemeDe
 				</div>
 
 				<div className="flex items-center">
-					<label htmlFor="groupBy" className="mr-2 font-medium text-sm">
+					<label htmlFor={groupById} className="mr-2 font-medium text-sm">
 						Group by:
 					</label>
 					<select
-						id="groupBy"
+						id={groupById}
 						value={groupBy}
 						onChange={(e) => setGroupBy(e.target.value as "none" | "persona" | "user")}
 						className="rounded-md border border-gray-300 bg-white px-3 py-1 text-sm dark:border-gray-700 dark:bg-gray-800"

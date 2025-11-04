@@ -19,7 +19,10 @@ export const middleware: Route.MiddlewareFunction[] = [
 			const user = await getAuthenticatedUser(request)
 			consola.log("middleware user", user?.aud, ": ", user?.sub, ": ", user?.email)
 			if (!user) {
-				throw redirect("/login")
+				// Preserve the original URL for deep linking after login
+				const url = new URL(request.url)
+				const redirectParam = encodeURIComponent(url.pathname + url.search)
+				throw redirect(`/login?redirect=${redirectParam}`)
 			}
 
 			// Extract JWT from user claims (assumes JWT is available as user?.jwt or similar)
@@ -71,15 +74,15 @@ export const middleware: Route.MiddlewareFunction[] = [
 				accounts: accounts || [],
 				currentAccount,
 			})
-			consola.log(
-				"_ProtectedLayout Authentication middleware success, {",
-				{
-					// user_settings,
-					// accounts,
-					currentAccount,
-				},
-				"\n"
-			)
+			// consola.log(
+			// 	"_ProtectedLayout Authentication middleware success, {",
+			// 	{
+			// 		// user_settings,
+			// 		// accounts,
+			// 		currentAccount,
+			// 	},
+			// 	"\n"
+			// )
 
 			// Check if signup process is completed
 			const signupCompleted = user_settings?.signup_data?.completed === true
@@ -102,10 +105,9 @@ export const middleware: Route.MiddlewareFunction[] = [
 				const pathname = url.pathname
 
 				// Don't redirect if already in onboarding or project creation
-				if (!pathname.includes("/projects/new") && !pathname.includes("onboarding=true")) {
-					consola.log("No projects found. SKIPPING: Redirecting to project creation with onboarding. going /home")
-					// throw redirect("/projects/new?onboarding=true")
-					// throw redirect("/home")
+				if (!pathname.includes("/projects/new") && !pathname.includes("onboarding=true") && !pathname.includes("/home")) {
+					consola.log("No projects found. Redirecting to account home.")
+					throw redirect(`/a/${currentAccount.account_id}/home`)
 				}
 			}
 
@@ -157,7 +159,7 @@ export default function ProtectedLayout() {
 	const isLoading = navigation.state === "loading"
 
 	// Don't show JourneyNav on home route, project creation, and realtime routes
-	const isHomePage = location.pathname === "/home"
+	const isHomePage = location.pathname === "/home" || location.pathname.match(/^\/a\/[^/]+\/home$/)
 	const isProjectNew = location.pathname.includes("/projects/new")
 	const isRealtimePage = location.pathname.includes("/realtime")
 	const showJourneyNav = !isHomePage && !isProjectNew && !isRealtimePage

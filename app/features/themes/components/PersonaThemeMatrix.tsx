@@ -4,6 +4,7 @@ import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "~/components/ui/tooltip"
 
 interface PersonaThemeMatrixProps {
@@ -127,54 +128,50 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 	return (
 		<TooltipProvider>
 			<div className="mx-auto max-w-7xl p-0">
-				<div className="mb-4">
-					<h1 className="mb-2 text-3xl">Persona × Theme Matrix</h1>
-					<p className="text-foreground/60">
-						See how themes appear across different user groups. Find opportunities where one group cares much more about
-						a theme than others.
-					</p>
-				</div>
-
 				<div className="mb-6 flex items-center justify-between">
 					<div className="flex items-center gap-4">
-						<Select value={viewMode} onValueChange={(value: any) => setViewMode(value)}>
-							<SelectTrigger className="w-48">
-								<SelectValue />
-							</SelectTrigger>
-							<SelectContent>
-								<SelectItem value="coverage">Coverage View</SelectItem>
-								<SelectItem value="strength">Strength View (N_eff)</SelectItem>
-							</SelectContent>
-						</Select>
-
-						<div className="flex items-center gap-4 text-foreground/60 text-sm">
-							<Tooltip>
-								<TooltipTrigger className="flex cursor-help items-center gap-2">
-									<Info className="h-4 w-4" />
-									<span>Coverage vs Strength</span>
-									<HelpCircle className="h-3 w-3" />
-								</TooltipTrigger>
-								<TooltipContent className="max-w-sm">
-									<div className="space-y-2">
-										<p>
-											<strong>Coverage:</strong> What percentage of interviews about this theme include this persona?
-											High coverage means this theme affects most people in this group.
-										</p>
-										<p>
-											<strong>Strength:</strong> How many pieces of evidence support this theme for this persona? Higher
-											numbers mean stronger, more reliable patterns.
-										</p>
-										<p>
-											<strong>Wedge:</strong> Purple cells show where one persona cares much more about a theme than
-											others - these are your best opportunities!
-										</p>
-									</div>
-								</TooltipContent>
-							</Tooltip>
-						</div>
+						{/* Left side empty for now */}
 					</div>
 
-					<div className="flex items-center gap-2">
+					<div className="flex items-center gap-4">
+						<ToggleGroup
+							type="single"
+							value={viewMode}
+							onValueChange={(v) => v && setViewMode(v)}
+							size="sm"
+							className="shrink-0"
+						>
+							<ToggleGroupItem value="coverage" aria-label="Coverage view">
+								Coverage
+							</ToggleGroupItem>
+							<ToggleGroupItem value="strength" aria-label="Strength view">
+								Strength
+							</ToggleGroupItem>
+						</ToggleGroup>
+						<Tooltip>
+							<TooltipTrigger asChild>
+								<Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+									<Info className="h-4 w-4" />
+									<span className="sr-only">Coverage vs Strength explanation</span>
+								</Button>
+							</TooltipTrigger>
+							<TooltipContent className="max-w-sm">
+								<div className="space-y-2">
+									<p>
+										<strong>Coverage:</strong> What percentage of interviews about this theme include this persona?
+										High coverage means this theme affects most people in this group.
+									</p>
+									<p>
+										<strong>Strength:</strong> How many pieces of evidence support this theme for this persona? Higher
+										numbers mean stronger, more reliable patterns.
+									</p>
+									<p>
+										<strong>Wedge:</strong> Purple cells highlight personas that over-index on a theme compared with
+										everyone else.
+									</p>
+								</div>
+							</TooltipContent>
+						</Tooltip>
 						<Button
 							variant="outline"
 							size="sm"
@@ -184,14 +181,6 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 							<ArrowUpDown className="h-4 w-4" />
 							Swap Axes
 						</Button>
-						{/* <Button variant="outline" size="sm">
-							<Eye className="mr-2 h-4 w-4" />
-							View Details
-						</Button>
-						<Button variant="outline" size="sm">
-							<Filter className="mr-2 h-4 w-4" />
-							Filter
-						</Button> */}
 					</div>
 				</div>
 
@@ -199,10 +188,10 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 				<Card className="mb-8">
 					<CardHeader>
 						<CardTitle className="flex items-center gap-2">
-							<Grid3X3 className="h-5 w-5" />
-							{viewMode === "coverage" ? "Coverage Matrix" : "Strength Matrix (N_eff)"}
-							{isTransposed && <span className="font-normal text-gray-500 text-sm">(Themes × Personas)</span>}
-							{!isTransposed && <span className="font-normal text-gray-500 text-sm">(Personas × Themes)</span>}
+							{/* <Grid3X3 className="h-5 w-5" /> */}
+							{/* {viewMode === "coverage" ? "Coverage Matrix" : "Strength Matrix (N_eff)"} */}
+							{/* {isTransposed && <span className="font-normal text-foreground text-sm">(Topics × Personas)</span>}
+							{!isTransposed && <span className="font-normal text-foreground text-sm">(Personas × Topics)</span>} */}
 						</CardTitle>
 					</CardHeader>
 					<CardContent>
@@ -231,33 +220,89 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 								<tbody>
 									{isTransposed
 										? // Transposed view: themes as rows, personas as columns
-											transposedData.map((themeRow) => (
+										transposedData.map((themeRow) => (
+											<tr
+												key={themeRow.theme}
+												className={`hover:bg-gray-50 ${selectedTheme === themeRow.theme ? "bg-blue-50" : ""}`}
+											>
+												<td
+													className="cursor-pointer border-b p-3 font-medium"
+													onClick={() => setSelectedTheme(selectedTheme === themeRow.theme ? null : themeRow.theme)}
+												>
+													{themeRow.theme}
+												</td>
+												{themeRow.personas.map((personaCell) => {
+													if (!personaCell.nEff && !personaCell.coverage)
+														return (
+															<td key={personaCell.personaName} className="border-b p-3">
+																-
+															</td>
+														)
+
+													const value = getCellValue(personaCell, viewMode)
+													const colorClass = getCellColor(value, personaCell.wedge, viewMode)
+
+													return (
+														<td key={personaCell.personaName} className="border-b p-3">
+															<div className={`inline-flex items-center rounded-lg border px-3 py-2 ${colorClass}`}>
+																<span className="font-medium">{formatCellValue(value, viewMode)}</span>
+																{personaCell.wedge && (
+																	<Badge
+																		variant="outline"
+																		className="ml-2 border-purple-600 bg-purple-600 text-white text-xs"
+																	>
+																		Wedge
+																	</Badge>
+																)}
+															</div>
+														</td>
+													)
+												})}
+											</tr>
+										))
+										: // Default view: personas as rows, themes as columns
+										data.map(
+											(personaData: {
+												persona: string
+												themes: Array<{
+													themeId: string
+													themeName: string
+													nEff: number
+													coverage: number
+													wedge: boolean
+												}>
+											}) => (
 												<tr
-													key={themeRow.theme}
-													className={`hover:bg-gray-50 ${selectedTheme === themeRow.theme ? "bg-blue-50" : ""}`}
+													key={personaData.persona}
+													className={`hover:bg-gray-50 ${selectedPersona === personaData.persona ? "bg-blue-50" : ""}`}
 												>
 													<td
 														className="cursor-pointer border-b p-3 font-medium"
-														onClick={() => setSelectedTheme(selectedTheme === themeRow.theme ? null : themeRow.theme)}
+														onClick={() =>
+															setSelectedPersona(selectedPersona === personaData.persona ? null : personaData.persona)
+														}
 													>
-														{themeRow.theme}
+														{personaData.persona}
 													</td>
-													{themeRow.personas.map((personaCell) => {
-														if (!personaCell.nEff && !personaCell.coverage)
+													{themes.map((themeName) => {
+														const themeData = personaData.themes.find(
+															(t: { themeName: string }) => t.themeName === themeName
+														)
+														if (!themeData)
 															return (
-																<td key={personaCell.personaName} className="border-b p-3">
+																<td key={themeName} className="border-b p-3">
 																	-
 																</td>
 															)
 
-														const value = getCellValue(personaCell, viewMode)
-														const colorClass = getCellColor(value, personaCell.wedge, viewMode)
+														const value = getCellValue(themeData, viewMode)
+														const colorClass = getCellColor(value, themeData.wedge, viewMode)
 
 														return (
-															<td key={personaCell.personaName} className="border-b p-3">
+															<td key={themeName} className="border-b p-3">
 																<div className={`inline-flex items-center rounded-lg border px-3 py-2 ${colorClass}`}>
 																	<span className="font-medium">{formatCellValue(value, viewMode)}</span>
-																	{personaCell.wedge && (
+																	{themeData.wedge && (
 																		<Badge
 																			variant="outline"
 																			className="ml-2 border-purple-600 bg-purple-600 text-white text-xs"
@@ -270,64 +315,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 														)
 													})}
 												</tr>
-											))
-										: // Default view: personas as rows, themes as columns
-											data.map(
-												(personaData: {
-													persona: string
-													themes: Array<{
-														themeId: string
-														themeName: string
-														nEff: number
-														coverage: number
-														wedge: boolean
-													}>
-												}) => (
-													<tr
-														key={personaData.persona}
-														className={`hover:bg-gray-50 ${selectedPersona === personaData.persona ? "bg-blue-50" : ""}`}
-													>
-														<td
-															className="cursor-pointer border-b p-3 font-medium"
-															onClick={() =>
-																setSelectedPersona(selectedPersona === personaData.persona ? null : personaData.persona)
-															}
-														>
-															{personaData.persona}
-														</td>
-														{themes.map((themeName) => {
-															const themeData = personaData.themes.find(
-																(t: { themeName: string }) => t.themeName === themeName
-															)
-															if (!themeData)
-																return (
-																	<td key={themeName} className="border-b p-3">
-																		-
-																	</td>
-																)
-
-															const value = getCellValue(themeData, viewMode)
-															const colorClass = getCellColor(value, themeData.wedge, viewMode)
-
-															return (
-																<td key={themeName} className="border-b p-3">
-																	<div className={`inline-flex items-center rounded-lg border px-3 py-2 ${colorClass}`}>
-																		<span className="font-medium">{formatCellValue(value, viewMode)}</span>
-																		{themeData.wedge && (
-																			<Badge
-																				variant="outline"
-																				className="ml-2 border-purple-600 bg-purple-600 text-white text-xs"
-																			>
-																				Wedge
-																			</Badge>
-																		)}
-																	</div>
-																</td>
-															)
-														})}
-													</tr>
-												)
-											)}
+											)
+										)}
 								</tbody>
 							</table>
 						</div>
@@ -345,8 +334,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 								<div className="flex items-center gap-3">
 									<div className="h-4 w-4 rounded border border-purple-300 bg-purple-100" />
 									<span className="text-sm">
-										<strong>Purple = Wedge Opportunity:</strong> This persona cares way more about this theme than
-										others. Build for them first!
+										<strong>Purple = Wedge:</strong> This persona over-indexes on the theme compared with everyone else.
 									</span>
 								</div>
 
@@ -399,8 +387,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 
 							<div className="border-foreground border-t pt-3">
 								<p className="text-foreground text-xs">
-									<strong>What to look for:</strong> Purple wedges are your best opportunities. High coverage + high
-									strength = validated themes worth building for.
+									<strong>What to look for:</strong> Purple wedges paired with healthy coverage or strength point to
+									personas worth prioritizing.
 								</p>
 							</div>
 						</CardContent>
@@ -485,7 +473,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 															<div className="mb-2 flex items-center gap-2">
 																<h4 className="font-medium">{theme.themeName}</h4>
 																{theme.wedge && (
-																	<Badge className="bg-purple-600 text-white text-xs">Wedge Opportunity</Badge>
+																	<Badge className="bg-purple-600 text-white text-xs">Wedge</Badge>
 																)}
 															</div>
 															<div className="grid grid-cols-2 gap-4 text-sm">
@@ -518,8 +506,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 															</div>
 															{theme.wedge && (
 																<div className="mt-2 rounded bg-purple-100 p-2 text-purple-800 text-xs">
-																	<strong>💡 Opportunity:</strong> This persona cares significantly more about this
-																	theme than others. Consider building features specifically for them around this need.
+																	<strong>💡 Wedge tip:</strong> This persona over-indexes on the theme—consider
+																	tailoring messaging or solutions for them.
 																</div>
 															)}
 														</div>
@@ -534,8 +522,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 								<div className="space-y-4">
 									<div className="mb-4 rounded-lg border border-green-200 bg-green-50 p-3">
 										<p className="text-green-800 text-sm">
-											<strong>What this tells you:</strong> See how "{selectedTheme}" affects different personas. Look
-											for big differences - if one group cares way more, that's a wedge opportunity.
+											<strong>What this tells you:</strong> See how "{selectedTheme}" lands with each persona. Purple
+											cells flag groups that lean into it the most.
 										</p>
 									</div>
 									{getThemeData(selectedTheme)
@@ -557,7 +545,7 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 														<div className="mb-2 flex items-center gap-2">
 															<h4 className="font-medium">{data.persona}</h4>
 															{data.wedge && (
-																<Badge className="bg-purple-600 text-white text-xs">Wedge Opportunity</Badge>
+																<Badge className="bg-purple-600 text-white text-xs">Wedge</Badge>
 															)}
 														</div>
 														<div className="grid grid-cols-2 gap-4 text-sm">
@@ -590,8 +578,8 @@ export function PersonaThemeMatrix({ matrixData: rawMatrixData }: PersonaThemeMa
 														</div>
 														{data.wedge && (
 															<div className="mt-2 rounded bg-purple-100 p-2 text-purple-800 text-xs">
-																<strong>💡 Wedge Alert:</strong> {data.persona} cares much more about this theme than
-																other personas. This is a prime opportunity to build something specifically for them.
+																<strong>💡 Wedge tip:</strong> {data.persona} leans into this theme more than other
+																personas—highlight it when working with them.
 															</div>
 														)}
 													</div>

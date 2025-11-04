@@ -25,14 +25,14 @@ import { Input } from "~/components/ui/input"
 import { Separator } from "~/components/ui/separator"
 import type { CommentView, Insight, InsightView } from "~/types"
 
-export interface Comment {
+interface Comment {
 	id: string
 	author: string
 	text: string
 	timestamp: string
 }
 
-export interface InsightCardV2Props {
+interface InsightCardV2Props {
 	insight: Insight
 	onTagClick?: (tag: string) => void
 	onUpvote?: () => void
@@ -419,7 +419,7 @@ export default function InsightCardV2({
 					{/* Evidence */}
 					<div className="rounded-r-md border-blue-400 bg-blue-50 p-3">
 						<div className="flex items-start gap-2">
-							<QuoteIcon className="mt-0.5 h-4 w-4 flex-shrink-0 " />
+							<QuoteIcon className="mt-0.5 h-4 w-4 flex-shrink-0" />
 							<div className="flex-1">
 								<h4 className="mb-1 font-medium text-blue-700 text-xs dark:text-blue-300">Evidence</h4>
 								<InlineEdit

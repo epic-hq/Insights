@@ -2,6 +2,7 @@ import { ChevronLeft } from "lucide-react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { BackButton } from "~/components/ui/back-button"
 import { Button } from "~/components/ui/button"
 import { userContext } from "~/server/user-context"
 import EvidenceCard from "../components/EvidenceCard"
@@ -76,6 +77,19 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		`)
 		.eq("evidence_id", evidenceId)
 
+	const { data: facetData, error: facetError } = await supabase
+		.from("evidence_facet")
+		.select("kind_slug, label, facet_account_id")
+		.eq("evidence_id", evidenceId)
+
+	if (facetError) throw new Error(`Failed to load evidence facets: ${facetError.message}`)
+
+	const primaryFacets = (facetData ?? []).map((row) => ({
+		kind_slug: row.kind_slug,
+		label: row.label,
+		facet_account_id: row.facet_account_id ?? 0,
+	}))
+
 	const data = {
 		...evidenceData,
 		people: peopleData || [],
@@ -95,6 +109,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			role: row.role,
 			personas: [], // No personas data needed for now
 		})),
+		facets: primaryFacets,
 	}
 
 	// Related evidence in the same scene/topic
@@ -105,7 +120,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		const { data: related, error: relatedError } = await supabase
 			.from("evidence")
 			.select(
-				"id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, kind_tags, method, anchors, interview_id"
+				"id, verbatim, gist, chunk, topic, support, confidence, created_at, journey_stage, method, anchors, interview_id"
 			)
 			.eq("interview_id", interviewId)
 			.eq("topic", topic)
@@ -113,6 +128,35 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 			.order("created_at", { ascending: true })
 			.limit(20)
 		if (!relatedError && Array.isArray(related)) relatedEvidence = related
+
+		if (Array.isArray(relatedEvidence) && relatedEvidence.length > 0) {
+			const relatedIds = relatedEvidence.map((ev: any) => ev.id).filter(Boolean)
+			if (relatedIds.length > 0) {
+				const { data: relatedFacets, error: relatedFacetError } = await supabase
+					.from("evidence_facet")
+					.select("evidence_id, kind_slug, label, facet_account_id")
+					.in("evidence_id", relatedIds)
+				if (relatedFacetError) throw new Error(`Failed to load related evidence facets: ${relatedFacetError.message}`)
+
+				const facetMap = new Map<string, Array<{ kind_slug: string; label: string; facet_account_id: number }>>()
+				for (const row of relatedFacets ?? []) {
+					if (!row || typeof row !== "object") continue
+					const evidence_id = (row as any).evidence_id as string | undefined
+					const kind_slug = (row as any).kind_slug as string | undefined
+					const label = (row as any).label as string | undefined
+					const facetAccountId = (row as any).facet_account_id as number | null | undefined
+					if (!evidence_id || !kind_slug || !label || !facetAccountId) continue
+					const list = facetMap.get(evidence_id) ?? []
+					list.push({ kind_slug, label, facet_account_id: facetAccountId })
+					facetMap.set(evidence_id, list)
+				}
+
+				relatedEvidence = relatedEvidence.map((ev: any) => ({
+					...ev,
+					facets: facetMap.get(ev.id) ?? [],
+				}))
+			}
+		}
 	}
 
 	return {
@@ -129,17 +173,16 @@ export default function EvidenceDetail() {
 	return (
 		<div className="space-y-4 p-4 sm:p-6">
 			{/* Mobile-friendly header */}
-			<div className="flex items-center gap-3">
-				<Button variant="ghost" size="sm" onClick={() => window.history.back()} className="h-8 w-8 p-0">
-					<ChevronLeft className="h-4 w-4" />
-				</Button>
-				<div className="flex-1">
-					{interview && <p className="text-muted-foreground text-sm">From interview: {interview.title}</p>}
-				</div>
-			</div>
+			<div className="flex items-center gap-3" />
 
 			{/* Full Evidence Card - Centered with max width */}
 			<PageContainer size="sm" padded={false} className="max-w-2xl">
+				<div className="mt-4 mb-4">
+					<BackButton />
+				</div>
+				<div className="flex-1">
+					{interview && <p className="py-4 text-foreground text-xl">Evidence from interview: {interview.title}</p>}
+				</div>
 				<EvidenceCard
 					evidence={evidence}
 					people={evidence.people || []}

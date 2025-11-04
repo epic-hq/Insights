@@ -48,8 +48,18 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 	const realtimeRunId = shouldSubscribeToRun ? runId : undefined
 
-	const { run } = useRealtimeRun<typeof uploadMediaAndTranscribeTask>(realtimeRunId, realtimeOptions)
-	const isRealtime = Boolean(runId && accessToken && run)
+	const { run, error: realtimeError } = useRealtimeRun<typeof uploadMediaAndTranscribeTask>(
+		realtimeRunId,
+		realtimeOptions
+	)
+	const isRealtime = Boolean(runId && accessToken && run && !realtimeError)
+
+	// Log realtime errors for debugging
+	useEffect(() => {
+		if (realtimeError) {
+			console.warn("Trigger.dev realtime connection failed:", realtimeError)
+		}
+	}, [realtimeError])
 
 	// Get expected duration for each status phase
 	const getProgressDuration = useCallback((status: string): number => {
@@ -143,7 +153,7 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 
 	// Update progress based on trigger.dev run metadata when available
 	useEffect(() => {
-		if (!run) return
+		if (!run || realtimeError) return
 
 		cleanupTimers()
 
@@ -187,11 +197,11 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			isComplete,
 			hasError,
 		})
-	}, [run, cleanupTimers])
+	}, [run, cleanupTimers, realtimeError])
 
 	// Update progress info when interview status changes (fallback when run metadata unavailable)
 	useEffect(() => {
-		if (run) return
+		if (run && !realtimeError) return
 		if (!interview) return
 
 		const status = interview.status
@@ -264,12 +274,12 @@ export function useInterviewProgress({ interviewId, runId, accessToken }: UseInt
 			isComplete,
 			hasError,
 		})
-	}, [interview, syntheticProgress, startSyntheticProgress, cleanupTimers, run])
+	}, [interview, syntheticProgress, startSyntheticProgress, cleanupTimers, run, realtimeError])
 
 	return {
 		interview,
 		progressInfo,
-		isLoading: !interview && !run && !progressInfo.hasError,
+		isLoading: !interview && !run && !progressInfo.hasError && !realtimeError,
 		isRealtime,
 	}
 }

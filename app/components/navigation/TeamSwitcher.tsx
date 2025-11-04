@@ -43,7 +43,7 @@ interface TeamSwitcherProps {
 	collapsed?: boolean
 }
 
-export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
+export function TeamSwitcher({ accounts: propAccounts, collapsed = false }: TeamSwitcherProps) {
 	const [open, setOpen] = useState(false)
 	const [showCreateDialog, setShowCreateDialog] = useState(false)
 	const navigate = useNavigate()
@@ -51,7 +51,15 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as ProtectedLayoutData | null
 
 	const accounts = useMemo<AccountRecord[]>(() => {
-		if (!protectedData?.accounts) return []
+		// Use passed-in accounts if available, otherwise fall back to loader data
+		if (propAccounts && propAccounts.length > 0) {
+			return propAccounts
+		}
+
+		if (!protectedData?.accounts) {
+			console.log("[TeamSwitcher] No accounts data")
+			return []
+		}
 		let accountsList: AccountRecord[] = []
 
 		if (typeof protectedData.accounts === "string") {
@@ -66,9 +74,18 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 			accountsList = protectedData.accounts
 		}
 
+		console.log("[TeamSwitcher] Accounts data:", accountsList.map(acc => ({
+			id: acc.account_id,
+			name: acc.name,
+			projectsCount: acc.projects?.length || 0,
+			projectNames: acc.projects?.map(p => p.name) || []
+		})))
+
 		// Filter out personal accounts from the team switcher dropdown
-		return accountsList.filter((acct) => !acct.personal_account)
-	}, [protectedData?.accounts])
+		const filtered = accountsList.filter((acct) => !acct.personal_account)
+		console.log("[TeamSwitcher] Filtered accounts:", filtered.length)
+		return filtered
+	}, [propAccounts, protectedData?.accounts])
 
 	const currentAccount = accounts.find((acct) => acct.account_id === accountId) || accounts[0]
 
@@ -150,7 +167,7 @@ export function TeamSwitcher({ collapsed = false }: TeamSwitcherProps) {
 							aria-expanded={open}
 							className={cn(
 								"w-full justify-start gap-2 overflow-hidden hover:bg-sidebar-accent",
-								collapsed ? "-ml-1 h-10 w-10 justify-center p-0" : "-ml-2 px-1 "
+								collapsed ? "-ml-1 h-10 w-10 justify-center p-0" : "-ml-2 px-1"
 							)}
 						>
 							<div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-accent text-sidebar-accent-foreground">

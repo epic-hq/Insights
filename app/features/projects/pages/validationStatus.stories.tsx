@@ -1,6 +1,6 @@
 import type { Meta, StoryObj } from "@storybook/react"
 import { reactRouterParameters, withRouter } from "storybook-addon-remix-react-router"
-import { AnalyzeStageValidation } from "./ValidationStatus"
+import { AnalyzeStageValidation } from "./validationStatus"
 
 const meta = {
 	title: "Features/Projects/Pages/validationStatus",

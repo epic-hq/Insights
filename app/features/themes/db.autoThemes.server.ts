@@ -1,6 +1,6 @@
 import consola from "consola"
-import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/app/types"
 import { runBamlWithTracing } from "~/lib/baml/runBamlWithTracing.server"
+import type { SupabaseClient, Theme, Theme_EvidenceInsert, ThemeInsert } from "~/types"
 
 // Input shape for evidence rows we pass to BAML. Mirrors columns in `public.evidence`.
 interface EvidenceForTheme {
@@ -13,7 +13,7 @@ interface EvidenceForTheme {
 	support: string | null
 }
 
-export type AutoGroupThemesOptions = {
+type AutoGroupThemesOptions = {
 	supabase: SupabaseClient
 	account_id: string
 	project_id?: string | null
@@ -22,7 +22,7 @@ export type AutoGroupThemesOptions = {
 	limit?: number // max evidence rows to consider
 }
 
-export type AutoGroupThemesResult = {
+type AutoGroupThemesResult = {
 	created_theme_ids: string[]
 	link_count: number
 	themes: Theme[]
@@ -41,7 +41,7 @@ async function loadEvidence(
 	}
 	let query = supabase
 		.from("evidence")
-		.select("id, verbatim, kind_tags, personas, segments, journey_stage, support")
+		.select("id, verbatim, personas, segments, journey_stage, support")
 		.eq("project_id", project_id)
 
 	// if (project_id) query = query.eq("project_id", project_id)
@@ -50,7 +50,36 @@ async function loadEvidence(
 
 	const { data, error } = await query
 	if (error) throw error
-	return (data || []) as unknown as EvidenceForTheme[]
+	const evidenceRows = (data || []) as unknown as EvidenceForTheme[]
+
+	if (!evidenceRows.length) {
+		return evidenceRows
+	}
+
+	const evidenceIds = evidenceRows.map((row) => row.id)
+	const { data: facetRows, error: facetError } = await supabase
+		.from("evidence_facet")
+		.select("evidence_id, kind_slug, label")
+		.in("evidence_id", evidenceIds)
+	if (facetError) throw facetError
+
+	const kindTagsByEvidence = new Map<string, string[]>()
+	for (const facet of facetRows ?? []) {
+		if (!facet || typeof facet !== "object") continue
+		const evidence_id = (facet as any).evidence_id as string | undefined
+		const kind_slug = (facet as any).kind_slug as string | undefined
+		const label = (facet as any).label as string | undefined
+		if (!evidence_id) continue
+		const list = kindTagsByEvidence.get(evidence_id) ?? []
+		const derivedTag = kind_slug && label ? `${kind_slug}:${label}` : kind_slug || label
+		if (derivedTag) list.push(derivedTag)
+		kindTagsByEvidence.set(evidence_id, list)
+	}
+
+	return evidenceRows.map((row) => ({
+		...row,
+		kind_tags: kindTagsByEvidence.get(row.id) ?? [],
+	}))
 }
 
 // Upsert or fetch a theme by name within account/project scope

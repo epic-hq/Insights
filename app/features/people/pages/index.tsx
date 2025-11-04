@@ -1,16 +1,18 @@
-import { useMemo } from "react"
+import { LayoutGrid, Table as TableIcon, UserCircle } from "lucide-react"
+import { useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import EnhancedPersonCard from "~/features/people/components/EnhancedPersonCard"
+import { PeopleDataTable, type PersonTableRow } from "~/features/people/components/PeopleDataTable"
 import { getPeople } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { getServerClient } from "~/lib/supabase/client.server"
-import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction = () => {
 	return [{ title: "People" }, { name: "description", content: "Manage research participants and contacts" }]
@@ -18,19 +20,11 @@ export const meta: MetaFunction = () => {
 
 export async function loader({ request, params }: LoaderFunctionArgs) {
 	const { client: supabase } = getServerClient(request)
-	//
-	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
 
 	if (!accountId || !projectId) {
 		throw new Response("Account ID and Project ID are required", { status: 400 })
-	}
-	const _routes = createProjectRoutes(accountId, projectId)
-
-	//
-	if (!accountId) {
-		throw new Response("Unauthorized", { status: 401 })
 	}
 
 	const [{ data: people, error }, catalog] = await Promise.all([
@@ -54,10 +48,10 @@ export default function PeopleIndexPage() {
 	}
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 
-	const facetsByRef = useMemo(() => {
-		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
+	const facetsById = useMemo(() => {
+		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>()
 		for (const facet of catalog.facets) {
-			map.set(facet.facet_ref, {
+			map.set(facet.facet_account_id, {
 				label: facet.label,
 				alias: facet.alias,
 				kind_slug: facet.kind_slug,
@@ -69,67 +63,96 @@ export default function PeopleIndexPage() {
 	const peopleWithFacets = useMemo(() => {
 		return people.map((person) => {
 			const personFacets = (person.person_facet ?? []).map((row) => {
-				const facetMeta = facetsByRef.get(row.facet_ref)
+				const facetMeta = facetsById.get(row.facet_account_id)
 				return {
-					facet_ref: row.facet_ref,
-					label: facetMeta?.alias || facetMeta?.label || row.facet_ref,
+					facet_account_id: row.facet_account_id,
+					label: facetMeta?.alias || facetMeta?.label || `ID:${row.facet_account_id}`,
 					kind_slug: facetMeta?.kind_slug || "",
-					source: row.source || null,
+					source: row.source ?? null,
 					confidence: row.confidence ?? null,
 				}
 			})
 			return { person, facets: personFacets }
 		})
-	}, [people, facetsByRef])
+	}, [people, facetsById])
+
+	const tableRows = useMemo<PersonTableRow[]>(() => {
+		return peopleWithFacets.map(({ person, facets }) => {
+			const persona = person.people_personas?.[0]?.personas
+			const primaryOrgLink =
+				person.people_organizations?.find((link) => link.is_primary) ?? person.people_organizations?.[0]
+			const primaryOrganization = primaryOrgLink?.organization ?? null
+			const jobTitle = (person as { title?: string | null }).title ?? null
+			return {
+				id: person.id,
+				name: person.name || "Unnamed person",
+				title: jobTitle,
+				segment: person.segment ?? null,
+				persona: persona
+					? {
+							id: persona.id,
+							name: persona.name,
+						}
+					: null,
+				personaColor: persona?.color_hex || null,
+				organization: primaryOrganization
+					? {
+							id: primaryOrganization.id,
+							name: primaryOrganization.name || primaryOrganization.website_url || null,
+						}
+					: null,
+				interviewCount: person.interview_people?.length ?? 0,
+				keySignals: facets.map((facet) => facet.label),
+				updatedAt: person.updated_at ?? null,
+			}
+		})
+	}, [peopleWithFacets])
+
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 
 	return (
-		<div className="relative min-h-screen bg-gray-50 dark:bg-gray-950">
-			{/* Compact Subnav */}
+		<>
 			<PersonaPeopleSubnav />
-
-			{/* Clean Header - Metro Style */}
-			<div className="border-gray-200 border-b bg-white px-6 py-8 dark:border-gray-800 dark:bg-gray-950">
-				<PageContainer size="lg" padded={false} className="max-w-6xl">
-					<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-						<div>
-							<p className="mt-2 text-gray-600 text-lg dark:text-gray-400"> </p>
-						</div>
-						<div className="flex flex-wrap gap-3">
-							<Button asChild variant="secondary" className="border-gray-300 dark:border-gray-600">
-								<Link to={routes.facets()}>Manage Facets</Link>
-							</Button>
-							<Button asChild variant="outline" className="border-gray-300 dark:border-gray-600">
-								<Link to={routes.people.new()}>Add Person</Link>
-							</Button>
-						</div>
+			<PageContainer className="space-y-6">
+			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<div className="flex items-start gap-3">
+					<div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary/10 text-primary">
+						<UserCircle className="h-6 w-6" />
 					</div>
-				</PageContainer>
+					<div>
+						<h1 className="font-semibold text-3xl text-foreground">People</h1>
+						<p className="mt-2 max-w-2xl text-sm text-muted-foreground">
+							Track the people behind your interviews. Explore linked personas, signals, and engagement recency from one view.
+						</p>
+					</div>
+				</div>
+				<div className="flex flex-col gap-3 sm:flex-row sm:items-center">
+					<ToggleGroup
+						type="single"
+						value={viewMode}
+						onValueChange={(value) => value && setViewMode(value as "cards" | "table")}
+						className="w-full sm:w-auto"
+						variant="outline"
+						size="sm"
+					>
+						<ToggleGroupItem value="cards" aria-label="Card view">
+							<LayoutGrid className="h-4 w-4" />
+						</ToggleGroupItem>
+						<ToggleGroupItem value="table" aria-label="Table view">
+							<TableIcon className="h-4 w-4" />
+						</ToggleGroupItem>
+					</ToggleGroup>
+					<Button asChild variant="outline" className="w-full sm:w-auto">
+						<Link to={routes.people.new()}>Add Person</Link>
+					</Button>
+				</div>
 			</div>
 
-			{/* Main Content */}
-			<PageContainer size="lg" padded={false} className="max-w-6xl px-6 py-12">
 				{people.length === 0 ? (
-					<div className="py-16 text-center">
-						<div className="mx-auto max-w-md">
-							<div className="mb-6 flex justify-center">
-								<div className="rounded-full bg-gray-100 p-6 dark:bg-gray-800">
-									<svg
-										className="h-12 w-12 text-gray-400 dark:text-gray-500"
-										fill="none"
-										viewBox="0 0 24 24"
-										stroke="currentColor"
-									>
-										<path
-											strokeLinecap="round"
-											strokeLinejoin="round"
-											strokeWidth={2}
-											d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197m13.5-9a2.25 2.25 0 11-4.5 0 2.25 2.25 0 014.5 0z"
-										/>
-									</svg>
-								</div>
-							</div>
-							<h3 className="mb-3 font-semibold text-gray-900 text-xl dark:text-white">No people yet</h3>
-							<p className="mb-8 text-gray-600 dark:text-gray-400">
+					<div className="rounded-lg border border-dashed bg-muted/40 py-16 text-center">
+						<div className="mx-auto max-w-md space-y-4">
+							<h3 className="font-semibold text-xl text-foreground">No people yet</h3>
+							<p className="text-sm text-muted-foreground">
 								Add your first person to start tracking research participants and contacts.
 							</p>
 							<Button asChild>
@@ -137,8 +160,10 @@ export default function PeopleIndexPage() {
 							</Button>
 						</div>
 					</div>
+				) : viewMode === "table" ? (
+					<PeopleDataTable rows={tableRows} />
 				) : (
-					<div className="grid gap-8 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-3">
+					<div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
 						{peopleWithFacets.map(({ person, facets }) => (
 							<EnhancedPersonCard
 								key={person.id}
@@ -159,6 +184,6 @@ export default function PeopleIndexPage() {
 					</div>
 				)}
 			</PageContainer>
-		</div>
+		</>
 	)
 }

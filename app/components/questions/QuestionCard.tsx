@@ -1,4 +1,4 @@
-import { type DraggableProvidedDraggableProps, type DraggableProvidedDragHandleProps } from "@hello-pangea/dnd"
+import type { DraggableProvidedDraggableProps, DraggableProvidedDragHandleProps } from "@hello-pangea/dnd"
 import { motion } from "framer-motion"
 import { Check, Edit, GripVertical, MoreHorizontal, Trash2, TriangleAlert, X, Zap } from "lucide-react"
 import React, { type RefCallback } from "react"

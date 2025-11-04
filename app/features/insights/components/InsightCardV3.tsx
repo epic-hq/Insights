@@ -43,7 +43,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 
 			{selected && (
 				<Dialog open={!!selected} onOpenChange={() => setSelected(null)}>
-					<DialogContent className="mx-4 my-8 max-h-[90vh] w-[calc(100vw-1rem)] max-w-4xl overflow-hidden sm:mx-auto sm:w-full">
+					<DialogContent className="mx-4 my-8 max-h-[90vh] w-full max-w-5xl overflow-hidden sm:mx-auto lg:max-w-6xl">
 						<DialogHeader className="space-y-3 pb-4">
 							<DialogTitle className="space-y-2">
 								<div className="font-light text-muted-foreground text-xs">{selected.name}</div>
@@ -59,7 +59,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 							)}
 
 							{(selected.details || selected.evidence) && (
-								<div className="grid grid-cols-1 gap-6 ">
+								<div className="grid grid-cols-1 gap-6">
 									{selected.details && (
 										<div className="space-y-2">
 											<h4 className="font-medium text-foreground text-sm">Details</h4>
@@ -70,7 +70,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 										<div className="space-y-2">
 											<h4 className="font-medium text-foreground text-sm">Evidence</h4>
 											<div className="flex items-center gap-2 rounded-lg bg-blue-400/20 p-3">
-												<Quote className="h-4 w-4 " />
+												<Quote className="h-4 w-4" />
 												<p className="text-muted-foreground text-sm leading-relaxed">{selected.evidence}</p>
 											</div>
 										</div>
@@ -124,7 +124,7 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 							)}
 						</div>
 
-						<DialogFooter className="mt-6 flex-row items-start justify-start border-t pt-4">
+						<DialogFooter className="mt-6 w-full flex-row flex-wrap items-start justify-start gap-4 border-t pt-4">
 							<EntityInteractionPanel entityType="insight" entityId={selected.id} />
 						</DialogFooter>
 					</DialogContent>

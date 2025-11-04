@@ -11,7 +11,7 @@ type SignupData = {
 	other_feedback?: string
 }
 
-export async function getSignupData({
+async function getSignupData({
 	supabase,
 	userId,
 }: {

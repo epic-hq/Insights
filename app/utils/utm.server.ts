@@ -8,7 +8,7 @@ export function extractUtmParamsFromRequest(request: Request): UtmParams {
 	return extractUtmParamsFromSearch(url)
 }
 
-export function readUtmCookie(request: Request): UtmParams {
+function readUtmCookie(request: Request): UtmParams {
 	const allCookies = parseCookieHeader(request.headers.get("Cookie") ?? "")
 	const utmCookie = allCookies.find((cookie) => cookie.name === UTM_COOKIE_NAME)
 
@@ -23,7 +23,7 @@ export function readUtmCookie(request: Request): UtmParams {
 	}
 }
 
-export function serializeUtmCookie(params: UtmParams): string | null {
+function _serializeUtmCookie(params: UtmParams): string | null {
 	if (!hasUtmParams(params)) {
 		return null
 	}

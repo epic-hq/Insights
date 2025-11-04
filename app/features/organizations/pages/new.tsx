@@ -95,13 +95,13 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		})
 
 		if (error || !data) {
-			return { error: "Failed to create organization" }
+			return { error: `Failed to create organization: ${JSON.stringify(error)}` }
 		}
 
 		return redirect(routes.organizations.detail(data.id))
 	} catch (error) {
 		console.error("createOrganization error", error)
-		return { error: "Failed to create organization" }
+		return { error: `Failed to create organization: ${JSON.stringify(error)}` }
 	}
 }
 

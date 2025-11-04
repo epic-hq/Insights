@@ -41,31 +41,70 @@ export async function action({ request }: ActionFunctionArgs) {
 			return Response.json({ error: "Interview not found" }, { status: 404 })
 		}
 
-		if (!interview.transcript_formatted) {
-			return Response.json(
-				{ error: "No transcript available to analyze. Please re-upload or re-transcribe." },
-				{ status: 400 }
-			)
-		}
+		// Check what type of retry we need
+		const hasTranscript = interview.transcript_formatted
+		const hasMedia = interview.media_url
 
-		const formattedTranscriptData = safeSanitizeTranscriptPayload(interview.transcript_formatted)
+		console.log("Retry analysis - hasTranscript:", !!hasTranscript, "hasMedia:", !!hasMedia)
+
+		const formattedTranscriptData = hasTranscript ? safeSanitizeTranscriptPayload(interview.transcript_formatted) : null
+
+		// Generate fresh presigned URL from R2 key if needed
+		let mediaUrlForTask = interview.media_url || ""
+		if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
+			// It's an R2 key, generate presigned URL
+			const { createR2PresignedUrl } = await import("~/utils/r2.server")
+			const presigned = createR2PresignedUrl({
+				key: mediaUrlForTask,
+				expiresInSeconds: 24 * 60 * 60, // 24 hours
+			})
+			if (presigned) {
+				mediaUrlForTask = presigned.url
+				consola.log(`Generated presigned URL for retry of interview ${interviewId}`)
+			} else {
+				consola.error(`Failed to generate presigned URL for R2 key: ${mediaUrlForTask}`)
+			}
+		}
 
 		const admin = createSupabaseAdminClient()
 
 		try {
-			await createAndProcessAnalysisJob({
-				interviewId,
-				transcriptData: formattedTranscriptData as unknown as Record<string, unknown>,
-				customInstructions,
-				adminClient: admin,
-				mediaUrl: interview.media_url || "",
-				initiatingUserId: userId,
-			})
+			if (!hasTranscript && hasMedia) {
+				// No transcript but has media - need to re-transcribe
+				console.log("Re-transcribing audio file...")
+				await createAndProcessAnalysisJob({
+					interviewId,
+					transcriptData: {}, // Empty transcript data - will be populated during transcription
+					customInstructions,
+					adminClient: admin,
+					mediaUrl: mediaUrlForTask,
+					initiatingUserId: userId,
+				})
+				console.log("Re-transcription triggered successfully")
+			} else if (hasTranscript) {
+				// Has transcript - just re-analyze
+				console.log("Re-analyzing existing transcript...")
+				await createAndProcessAnalysisJob({
+					interviewId,
+					transcriptData: formattedTranscriptData as unknown as Record<string, unknown>,
+					customInstructions,
+					adminClient: admin,
+					mediaUrl: mediaUrlForTask,
+					initiatingUserId: userId,
+				})
+				console.log("Re-analysis triggered successfully")
+			} else {
+				return Response.json(
+					{ error: "No transcript or media available. Please re-upload the audio file." },
+					{ status: 400 }
+				)
+			}
 
 			return Response.json({ success: true })
 		} catch (e) {
 			const msg = e instanceof Error ? e.message : String(e)
-			consola.error("User-triggered analysis retry failed:", msg)
+			console.error("User-triggered retry failed:", msg)
+			console.error("Full error:", e)
 			await admin.from("interviews").update({ status: "error" }).eq("id", interviewId)
 			return Response.json({ error: msg }, { status: 500 })
 		}

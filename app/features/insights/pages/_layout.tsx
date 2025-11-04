@@ -1,6 +1,7 @@
-import { LayoutGrid, Rows, Sparkles } from "lucide-react"
+import { LayoutGrid, Rows } from "lucide-react"
 import { Outlet, useLocation, useNavigate } from "react-router-dom"
-import { Tabs, TabsList, TabsTrigger } from "~/components/ui/tabs"
+import { PageContainer } from "~/components/layout/PageContainer"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 
@@ -10,34 +11,21 @@ export default function InsightsLayout() {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	// Determine the active tab based on the current URL path
-	const getActiveTab = () => {
+	// Determine the active view based on the current URL path
+	const getActiveView = () => {
 		const path = location.pathname
-		if (path.endsWith("/insights/quick")) return "quick"
 		if (path.endsWith("/insights/table")) return "table"
-		if (path.endsWith("/insights/cards")) return "cards"
-		if (path.endsWith("/insights/map")) return "map"
-		if (path.endsWith("/insights/auto-insights")) return "auto-takeaways"
-		return "quick" // Default to quick view
+		return "cards" // Default to cards view (quick)
 	}
 
-	// Handle tab change by navigating to the appropriate route
-	const handleTabChange = (value: string) => {
+	// Handle view change by navigating to the appropriate route
+	const handleViewChange = (value: string) => {
 		switch (value) {
-			case "quick":
+			case "cards":
 				navigate(routes.insights.quick())
 				break
 			case "table":
 				navigate(routes.insights.table())
-				break
-			case "cards":
-				navigate(routes.insights.cards())
-				break
-			case "map":
-				navigate(routes.insights.map())
-				break
-			case "auto-takeaways":
-				navigate(routes.insights.autoInsights())
 				break
 			default:
 				navigate(routes.insights.quick())
@@ -45,41 +33,34 @@ export default function InsightsLayout() {
 	}
 
 	return (
-		<div className="w-full">
-			{/* Header with consistent spacing */}
-			<div className="px-[5%]">
-				<div className="mb-6">
-					<h1 className="mb-4 font-bold text-2xl">Insights</h1>
+		<PageContainer className="space-y-8">
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div className="space-y-1.5">
+					<h1 className="font-semibold text-3xl text-foreground">Insights</h1>
+					{/* <p className="max-w-2xl text-sm text-foreground/70">
+						Browse and analyze all insights from your conversations.
+					</p> */}
 				</div>
+				<ToggleGroup
+					type="single"
+					value={getActiveView()}
+					onValueChange={(next) => next && handleViewChange(next)}
+					size="sm"
+					className="shrink-0"
+				>
+					<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-2">
+						<LayoutGrid className="h-4 w-4" />
+						Cards
+					</ToggleGroupItem>
+					<ToggleGroupItem value="table" aria-label="Table view" className="gap-2">
+						<Rows className="h-4 w-4" />
+						Table
+					</ToggleGroupItem>
+				</ToggleGroup>
 			</div>
 
-			{/* Tab navigation spanning full width */}
-			<div className="mx-auto px-[5%]">
-				<Tabs className="w-full" defaultValue="quick" onValueChange={handleTabChange} value={getActiveTab()}>
-					<TabsList className="mx-auto grid w-full max-w-xl grid-cols-3">
-						<TabsTrigger className="flex items-center gap-2" value="quick">
-							<LayoutGrid className="h-4 w-4" /> Cards
-						</TabsTrigger>
-						<TabsTrigger className="flex items-center gap-2" value="table">
-							<Rows className="h-4 w-4" /> Table
-						</TabsTrigger>
-						{/* <TabsTrigger className="flex items-center gap-2" value="cards">
-							<LayoutGrid className="h-4 w-4" /> Cards
-						</TabsTrigger>
-						<TabsTrigger className="flex items-center gap-2" value="map">
-							<MapPin className="h-4 w-4" /> Map
-						</TabsTrigger> */}
-						<TabsTrigger disabled={true} className="flex items-center gap-2" value="auto-takeaways">
-							<Sparkles className="h-4 w-4" /> Auto-Takeaways
-						</TabsTrigger>
-					</TabsList>
-				</Tabs>
-			</div>
-
-			{/* Outlet content with consistent spacing */}
-			<div className="mt-4 px-[5%]">
-				<Outlet />
-			</div>
-		</div>
+			{/* Outlet content */}
+			<Outlet />
+		</PageContainer>
 	)
 }

@@ -19,6 +19,6 @@ export function getSharedPostgresStore(): PostgresStore {
 }
 
 // For cleanup if needed
-export function resetPostgresStore(): void {
+function _resetPostgresStore(): void {
 	postgresStoreInstance = null
 }

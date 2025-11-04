@@ -8,13 +8,10 @@ This guide explains the multi-tenant facet catalog, how interview ingestion auto
    - Shared vocabulary shipped with the product.
    - Read-only to tenants; seeds live in migrations + `_NORUN_seed.sql`.
 2. **Account vocabulary** (`facet_account`)
-   - Team-specific terms promoted from the candidate queue.
+   - Team-specific terms (active or disabled) available to ingestion and the UI.
    - Each record references the global kind and optionally links back to a global facet.
-3. **Project view** (`project_facet`)
-   - Enables/disables catalog entries per project.
-   - Supports project-only facets (`scope = 'project'`, `facet_ref` starts with `p:`) and per-project aliases.
 
-Resolution order shown in the UI + BAML: `project overrides → account facets → global seeds`.
+Resolution order shown in the UI + BAML: `account facets → global seeds`.
 
 ## Interview Ingestion Pipeline
 
@@ -80,6 +77,35 @@ The management page supports:
 | `facet_candidate` | Queue of AI-suggested facets awaiting review. |
 | `person_facet` | Person ↔ facet assignments with evidence + confidence. |
 | `person_scale` | Person ↔ scale score (0–1) for behavioural spectra. |
+| `evidence_facet` | Evidence ↔ facet linkage used for filtering, theming, and research questions. |
+
+> **What is `facet_ref`?** When a mention matches an existing catalog entry, we store the stable reference (like `g:12` or `a:45`) in both `evidence_facet` and `person_facet`. If the mention is brand new, the reference is `null` and the auto-approval flow will promote it into the catalog. Keeping the reference lets the UI collapse synonyms and aliases down to the same single facet.
+
+## Evidence → Facet Flow
+
+```mermaid
+flowchart TD
+  A[Transcript + Interview Metadata] -->|ExtractEvidenceFromTranscriptV2| B((evidence))
+  B -->|persistFacetObservations| C((evidence_facet))
+  C --> D[Evidence UI\nFacet chips + filters]
+  C --> E[Auto Themes\nFacet-aware clustering]
+  C --> F[Research Questions\nAnswer attribution]
+  C -->|auto-approve| G((facet_account))
+  G --> H((project_facet))
+  H --> D
+  C --> I((person_facet))
+  I --> J[People UI\nFacet summaries]
+```
+
+### Analyst Journey
+
+1. **Upload or stream interviews.** Extraction now emits facet mentions per evidence unit instead of raw kind tags.
+2. **Evidence review.** The evidence inbox shows per-facet chips sourced from `evidence_facet`. Analysts can filter/group without dealing with ad-hoc tags.
+3. **Facet management.** High-confidence matches attach directly to catalogue entries. Unknown labels surface in the Facet Management queue (`facet_candidate`) for a quick approve/alias flow.
+4. **Person & theme insights.** Approved facets flow through to people cards and auto-theming, ensuring consistent language from first ingestion to strategy decks.
+5. **Research questions.** When evidence aligns with question categories (goal, pain, workflow, etc.), we link it automatically using the facet kind, producing cleaner project answers.
+
+The result is a single vocabulary that analysts can reason about once and reuse across evidence, personas, and reporting.
 
 ## Developer Notes
 

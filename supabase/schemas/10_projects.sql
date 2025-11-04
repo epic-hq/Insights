@@ -1,16 +1,24 @@
 
 
--- Research Projects ----------------------------------------------------------
+-- Research & Revenue Projects ------------------------------------------------
+do $$
+begin
+    create type public.project_workflow_type as enum ('research','sales','conversation_analysis');
+exception when duplicate_object then
+    null;
+end $$;
+
 create table if not exists projects (
   id uuid primary key default gen_random_uuid(),
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   name text not null,
-	slug text,
+        slug text,
   description text,
-	status text default 'new',
-	constraint projects_account_id_slug_unique unique (account_id, slug),
+        workflow_type public.project_workflow_type not null default 'research',
+        status text default 'new',
+        constraint projects_account_id_slug_unique unique (account_id, slug),
   created_at timestamptz not null default now(),
-	updated_at timestamptz not null default now()
+        updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries

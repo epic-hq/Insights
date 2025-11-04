@@ -13,7 +13,7 @@ import {
 	Text,
 } from "@react-email/components"
 
-export type InvitationEmailProps = {
+type InvitationEmailProps = {
 	appName?: string
 	inviterName?: string
 	teamName?: string

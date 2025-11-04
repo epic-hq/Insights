@@ -4,7 +4,7 @@ import InlineEdit from "~/components/ui/inline-edit"
 
 type JSONValue = string | number | boolean | null | JSONValue[] | { [key: string]: JSONValue }
 
-export type UserSettings = {
+type UserSettings = {
 	// core
 	id: string
 	user_id?: string | null
@@ -173,7 +173,7 @@ function _Time({ iso }: { iso?: string }) {
 	return <span className="font-mono">{ok ? d.toLocaleString() : iso}</span>
 }
 
-export function UserSettings({
+function UserSettings({
 	settings,
 	oauthAvatar,
 	className,

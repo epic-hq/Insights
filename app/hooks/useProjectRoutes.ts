@@ -26,13 +26,14 @@ export function useProjectRoutesFromIds(accountId: string, projectId: string) {
 /**
  * Type definitions for better IDE support
  */
-export type RouteBuilder = ReturnType<typeof useProjectRoutes>
-export type InterviewRoutes = RouteBuilder["interviews"]
-export type InsightRoutes = RouteBuilder["insights"]
-export type PeopleRoutes = RouteBuilder["people"]
-export type PersonaRoutes = RouteBuilder["personas"]
-export type OpportunityRoutes = RouteBuilder["opportunities"]
-export type OrganizationRoutes = RouteBuilder["organizations"]
-export type ProjectRoutes = RouteBuilder["projects"]
-export type AuthRoutes = RouteBuilder["auth"]
-export type ApiRoutes = RouteBuilder["api"]
+type RouteBuilder = ReturnType<typeof useProjectRoutes>
+type InterviewRoutes = RouteBuilder["interviews"]
+type InsightRoutes = RouteBuilder["insights"]
+type PeopleRoutes = RouteBuilder["people"]
+type PersonaRoutes = RouteBuilder["personas"]
+type OpportunityRoutes = RouteBuilder["opportunities"]
+type OrganizationRoutes = RouteBuilder["organizations"]
+type ProjectRoutes = RouteBuilder["projects"]
+type AuthRoutes = RouteBuilder["auth"]
+type ApiRoutes = RouteBuilder["api"]
+type SalesBaseRoute = RouteBuilder["salesBase"]

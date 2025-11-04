@@ -1,6 +1,7 @@
 import { createClient } from "@supabase/supabase-js"
 import { afterEach, beforeEach, describe, expect, it } from "vitest"
 import type { Database } from "~/types"
+import type { AnnotationInsert, EntityType } from "../db"
 import {
 	createAnnotation,
 	deleteAnnotation,
@@ -422,7 +423,7 @@ describe("Annotations System", () => {
 			const result = await getAnnotations({
 				supabase,
 				accountId: testAccountId,
-				entityType: "invalid_type" as any,
+				entityType: "invalid_type" as unknown as EntityType,
 				entityId: testEntityId,
 			})
 
@@ -439,7 +440,7 @@ describe("Annotations System", () => {
 					entity_id: testEntityId,
 					annotation_type: "comment",
 					// Missing content
-				} as any,
+				} as Partial<AnnotationInsert> as AnnotationInsert,
 			})
 
 			expect(result.error).toBeDefined()

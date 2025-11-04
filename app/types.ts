@@ -25,37 +25,21 @@ export type SupabaseClient = UntypedSupabaseClient<Database>
 
 export type Tables<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Row"]
 
-export type TablesInsert<TName extends keyof Database["public"]["Tables"]> =
-	Database["public"]["Tables"][TName]["Insert"]
+type TablesInsert<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Insert"]
 
-export type TablesUpdate<TName extends keyof Database["public"]["Tables"]> =
-	Database["public"]["Tables"][TName]["Update"]
+type TablesUpdate<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Update"]
 
-export type Enums<EName extends keyof Database["public"]["Enums"]> = Database["public"]["Enums"][EName]
+type Enums<EName extends keyof Database["public"]["Enums"]> = Database["public"]["Enums"][EName]
 
 // RPC function argument helper
 export type RpcArgs<RpcName extends keyof Database["public"]["Functions"]> =
 	Database["public"]["Functions"][RpcName]["Args"]
 
 // RPC function return type helper
-export type RpcReturns<RpcName extends keyof Database["public"]["Functions"]> =
+type RpcReturns<RpcName extends keyof Database["public"]["Functions"]> =
 	Database["public"]["Functions"][RpcName]["Returns"]
 
 // Re-export account types
-export type {
-	AcceptInvitationResponse,
-	CreateAccountResponse,
-	CreateInvitationResponse,
-	CurrentUserAccountRoleResponse,
-	GetAccountBillingStatusResponse,
-	GetAccountInvitesResponse,
-	GetAccountMembersResponse,
-	GetAccountResponse,
-	GetAccountsResponse,
-	GetBillingPlansResponse,
-	LookupInvitationResponse,
-	UpdateAccountResponse,
-} from "./types-accounts"
 
 // 2. Domain aliases (Row representations)
 // --------------------------------------
@@ -69,64 +53,64 @@ export type Interview = Tables<"interviews">
 export type Persona = Tables<"personas"> // ensure table exists in DB
 export type Opportunity = Tables<"opportunities"> // ensure table exists in DB
 export type Organization = Tables<"organizations">
-export type Tag = Tables<"tags">
+type Tag = Tables<"tags">
 export type Person = Tables<"people">
 export type Project = Tables<"projects">
 export type Project_Section = Tables<"project_sections">
-export type InterviewTag = Tables<"interview_tags">
-export type InsightTag = Tables<"insight_tags">
-export type PeoplePersona = Tables<"people_personas">
-export type Comment = Tables<"comments">
+type InterviewTag = Tables<"interview_tags">
+type InsightTag = Tables<"insight_tags">
+type PeoplePersona = Tables<"people_personas">
+type Comment = Tables<"comments">
 export type AccountSettings = Tables<"account_settings">
 export type UserSettings = Tables<"user_settings">
 export type Evidence = Tables<"evidence">
 export type Theme = Tables<"themes">
-export type Theme_Evidence = Tables<"theme_evidence">
+type Theme_Evidence = Tables<"theme_evidence">
 // Newly exposed domain types to replace `any` usage in components
 export type Annotation = Tables<"annotations">
-export type EntityFlag = Tables<"entity_flags">
+type EntityFlag = Tables<"entity_flags">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
 export type InsightInsert = TablesInsert<"insights">
-export type InsightUpdate = TablesUpdate<"insights">
+type InsightUpdate = TablesUpdate<"insights">
 export type InterviewInsert = TablesInsert<"interviews">
-export type InterviewUpdate = TablesUpdate<"interviews">
-export type OpportunityInsert = TablesInsert<"opportunities">
-export type OpportunityUpdate = TablesUpdate<"opportunities">
-export type OrganizationInsert = TablesInsert<"organizations">
-export type OrganizationUpdate = TablesUpdate<"organizations">
-export type PersonInsert = TablesInsert<"people">
-export type PersonUpdate = TablesUpdate<"people">
+type InterviewUpdate = TablesUpdate<"interviews">
+type OpportunityInsert = TablesInsert<"opportunities">
+type OpportunityUpdate = TablesUpdate<"opportunities">
+type OrganizationInsert = TablesInsert<"organizations">
+type OrganizationUpdate = TablesUpdate<"organizations">
+type PersonInsert = TablesInsert<"people">
+type PersonUpdate = TablesUpdate<"people">
 export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
 export type Project_SectionInsert = TablesInsert<"project_sections">
 export type Project_SectionUpdate = TablesUpdate<"project_sections">
-export type InterviewTagInsert = TablesInsert<"interview_tags">
-export type InterviewTagUpdate = TablesUpdate<"interview_tags">
-export type InsightTagInsert = TablesInsert<"insight_tags">
-export type InsightTagUpdate = TablesUpdate<"insight_tags">
-export type PeoplePersonaInsert = TablesInsert<"people_personas">
-export type PeoplePersonaUpdate = TablesUpdate<"people_personas">
+type InterviewTagInsert = TablesInsert<"interview_tags">
+type InterviewTagUpdate = TablesUpdate<"interview_tags">
+type InsightTagInsert = TablesInsert<"insight_tags">
+type InsightTagUpdate = TablesUpdate<"insight_tags">
+type PeoplePersonaInsert = TablesInsert<"people_personas">
+type PeoplePersonaUpdate = TablesUpdate<"people_personas">
 export type PeopleOrganization = Tables<"people_organizations">
-export type PeopleOrganizationInsert = TablesInsert<"people_organizations">
-export type PeopleOrganizationUpdate = TablesUpdate<"people_organizations">
-export type CommentInsert = TablesInsert<"comments">
-export type CommentUpdate = TablesUpdate<"comments">
-export type AccountSettingsInsert = TablesInsert<"account_settings">
-export type AccountSettingsUpdate = TablesUpdate<"account_settings">
-export type UserSettingsInsert = TablesInsert<"user_settings">
-export type UserSettingsUpdate = TablesUpdate<"user_settings">
-export type EvidenceInsert = TablesInsert<"evidence">
-export type EvidenceUpdate = TablesUpdate<"evidence">
-export type ThemeInsert = TablesInsert<"themes">
-export type ThemeUpdate = TablesUpdate<"themes">
-export type Theme_EvidenceInsert = TablesInsert<"theme_evidence">
-export type Theme_EvidenceUpdate = TablesUpdate<"theme_evidence">
-export type AnnotationInsert = TablesInsert<"annotations">
-export type AnnotationUpdate = TablesUpdate<"annotations">
-export type EntityFlagInsert = TablesInsert<"entity_flags">
-export type EntityFlagUpdate = TablesUpdate<"entity_flags">
+type PeopleOrganizationInsert = TablesInsert<"people_organizations">
+type PeopleOrganizationUpdate = TablesUpdate<"people_organizations">
+type CommentInsert = TablesInsert<"comments">
+type CommentUpdate = TablesUpdate<"comments">
+type AccountSettingsInsert = TablesInsert<"account_settings">
+type AccountSettingsUpdate = TablesUpdate<"account_settings">
+type UserSettingsInsert = TablesInsert<"user_settings">
+type UserSettingsUpdate = TablesUpdate<"user_settings">
+type EvidenceInsert = TablesInsert<"evidence">
+type EvidenceUpdate = TablesUpdate<"evidence">
+type ThemeInsert = TablesInsert<"themes">
+type ThemeUpdate = TablesUpdate<"themes">
+type Theme_EvidenceInsert = TablesInsert<"theme_evidence">
+type Theme_EvidenceUpdate = TablesUpdate<"theme_evidence">
+type AnnotationInsert = TablesInsert<"annotations">
+type AnnotationUpdate = TablesUpdate<"annotations">
+type EntityFlagInsert = TablesInsert<"entity_flags">
+type EntityFlagUpdate = TablesUpdate<"entity_flags">
 
 // 4. Extended types for complex queries
 // -------------------------------------
@@ -178,19 +162,19 @@ export type QuestionInput = {
 // reuse consistently.
 
 // Kanban UI interfaces
-export interface OpportunityItem {
+interface OpportunityItem {
 	id: string
 	title: string
 	owner: string
 	priority?: "high" | "medium" | "low"
 }
 
-export interface ColumnData {
+interface ColumnData {
 	title: string
 	items: OpportunityItem[]
 }
 
-export interface InsightWithEvidence extends Insight {
+interface InsightWithEvidence extends Insight {
 	evidence_interviews: Interview[]
 }
 
@@ -242,7 +226,7 @@ export interface CommentView extends Comment {
 	text?: string
 }
 
-export type PersonaView = Persona & {
+type PersonaView = Persona & {
 	percentage?: number | null
 	count?: number
 	color?: string
@@ -250,19 +234,19 @@ export type PersonaView = Persona & {
 	href?: string
 }
 
-export interface PersonaWithCounts extends Persona {
+interface PersonaWithCounts extends Persona {
 	interview_count: number
 	insight_count: number
 }
 
 // Composite view-models ------------------------------------------
-export interface InterviewBundle {
+interface InterviewBundle {
 	interview: Interview
 	insights: Insight[]
 	comments: Comment[]
 }
 
-export interface PersonaBundle {
+interface PersonaBundle {
 	persona: Persona
 	people: Person[]
 }
@@ -272,7 +256,7 @@ export interface PersonaBundle {
 // const data: Insight[] = await db.from("insights").select()
 // -------------------------------------------------------
 
-export const InterviewStatus = z.enum([
+const InterviewStatus = z.enum([
 	"draft",
 	"scheduled",
 	"uploaded",
@@ -282,7 +266,7 @@ export const InterviewStatus = z.enum([
 	"tagged",
 	"archived",
 ])
-export type InterviewStatus = z.infer<typeof InterviewStatus>
+type InterviewStatus = z.infer<typeof InterviewStatus>
 
 // TODO: Double check the types here
 export type GetAccount = {

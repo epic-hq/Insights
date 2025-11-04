@@ -39,7 +39,7 @@ export function CurrentProjectProvider({ children }: CurrentProjectProviderProps
 		projectId: "",
 	})
 	const protectedData = useRouteLoaderData("routes/_ProtectedLayout") as
-		| { auth: { accountId: string }; user_settings?: any }
+		| { auth: { accountId: string }; user_settings?: unknown }
 		| undefined
 
 	// Get accountId from organizations prop (top account) or fallback to URL params

@@ -7,7 +7,7 @@ import {
 } from "~/components/ui/ConfidenceBarChart"
 import { Card, CardContent } from "~/components/ui/card"
 
-export interface ResearchAnswerEvidence {
+interface ResearchAnswerEvidence {
 	id: string
 	verbatim: string
 	support: string
@@ -17,7 +17,7 @@ export interface ResearchAnswerEvidence {
 	created_at: string | null
 }
 
-export interface ResearchAnswerNode {
+interface ResearchAnswerNode {
 	id: string
 	question_text: string
 	question_category: string | null
@@ -43,7 +43,7 @@ export interface ResearchAnswerNode {
 	evidence: ResearchAnswerEvidence[]
 }
 
-export interface ResearchQuestionNode {
+interface ResearchQuestionNode {
 	id: string
 	text: string
 	metrics: {
@@ -56,7 +56,7 @@ export interface ResearchQuestionNode {
 	answers: ResearchAnswerNode[]
 }
 
-export interface DecisionQuestionNode {
+interface DecisionQuestionNode {
 	id: string
 	text: string
 	metrics: {
@@ -264,5 +264,3 @@ export function CleanResearchAnswers({
 		</div>
 	)
 }
-
-export default CleanResearchAnswers

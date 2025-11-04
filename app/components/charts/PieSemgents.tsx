@@ -1,8 +1,8 @@
 import { Cell, Label, Pie, PieChart, ResponsiveContainer, Tooltip } from "recharts"
 
-export type SegmentDatum = { name: string; value: number }
+type SegmentDatum = { name: string; value: number }
 
-export type PrettySegmentPieProps = {
+type PrettySegmentPieProps = {
 	data: SegmentDatum[]
 	height?: number
 	colors?: string[]

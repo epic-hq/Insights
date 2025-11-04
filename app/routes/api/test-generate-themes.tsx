@@ -49,7 +49,7 @@ export async function action({ context, request }: ActionFunctionArgs) {
 		// Test 2: Load actual evidence
 		const { data: evidence, error: evidenceError } = await supabase
 			.from("evidence")
-			.select("id, verbatim, kind_tags, personas, segments, journey_stage, support")
+			.select("id, verbatim, personas, segments, journey_stage, support")
 			.eq("project_id", projectId)
 			.order("created_at", { ascending: false })
 			.limit(10)
@@ -66,7 +66,36 @@ export async function action({ context, request }: ActionFunctionArgs) {
 			)
 		}
 
-		consola.log("[Test Generate Themes] Evidence loaded:", evidence?.length || 0, "items")
+		const evidenceRows = (evidence ?? []) as Array<{ id: string } & Record<string, unknown>>
+		if (evidenceRows.length) {
+			const { data: facetRows, error: facetError } = await supabase
+				.from("evidence_facet")
+				.select("evidence_id, kind_slug, label")
+				.in(
+					"evidence_id",
+					evidenceRows.map((row) => row.id)
+				)
+			if (facetError) throw facetError
+
+			const map = new Map<string, string[]>()
+			for (const facet of facetRows ?? []) {
+				if (!facet || typeof facet !== "object") continue
+				const evidence_id = (facet as any).evidence_id as string | undefined
+				const kind_slug = (facet as any).kind_slug as string | undefined
+				const label = (facet as any).label as string | undefined
+				if (!evidence_id) continue
+				const list = map.get(evidence_id) ?? []
+				const derivedTag = kind_slug && label ? `${kind_slug}:${label}` : kind_slug || label
+				if (derivedTag) list.push(derivedTag)
+				map.set(evidence_id, list)
+			}
+
+			for (const row of evidenceRows) {
+				;(row as any).kind_tags = map.get(row.id) ?? []
+			}
+		}
+
+		consola.log("[Test Generate Themes] Evidence loaded:", evidenceRows.length, "items")
 
 		// Test 3: Try BAML import
 		try {

@@ -10,7 +10,7 @@ import { getProjectById } from "~/features/projects/db"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 import type { GetAccount, Project } from "~/types"
-import type { Route } from "../+types/root"
+import type { Route } from "./+types/projects"
 
 function isUUID(str: string) {
 	const uuidSchema = z.string().uuid()

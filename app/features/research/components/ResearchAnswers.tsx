@@ -5,7 +5,7 @@ import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import type { RouteDefinitions } from "~/utils/route-definitions"
 
-export interface ResearchAnswerEvidence {
+interface ResearchAnswerEvidence {
 	id: string
 	verbatim: string
 	support: string
@@ -300,7 +300,7 @@ function DecisionQuestionSection({
 	)
 }
 
-export function ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onData }: ResearchAnswersProps) {
+function _ResearchAnswers({ projectId, className, projectRoutes, onMetrics, onData }: ResearchAnswersProps) {
 	const [data, setData] = useState<ResearchAnswersData | null>(null)
 	const [error, setError] = useState<string | null>(null)
 	const [loading, setLoading] = useState(true)

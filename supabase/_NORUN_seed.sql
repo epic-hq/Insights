@@ -15,7 +15,10 @@ VALUES
   ('scale', 'Scale', 'Spectrum-based assessments such as price sensitivity'),
   ('demographic', 'Demographic', 'Audience attributes such as role, title, region, tenure'),
   ('preference', 'Preference', 'Stable preferences or operating styles'),
-  ('workflow', 'Workflow', 'Steps or rituals followed to accomplish tasks')
+  ('workflow', 'Workflow', 'Steps or rituals followed to accomplish tasks'),
+  ('context', 'Context', 'Situational or environmental factors'),
+  ('requirements', 'Requirements', 'Needs, constraints, or must-haves'),
+  ('artifact', 'Artifact', 'Physical or digital objects created or used')
 ON CONFLICT (slug)
 DO UPDATE SET label = EXCLUDED.label, description = EXCLUDED.description, updated_at = now();
 

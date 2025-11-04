@@ -19,6 +19,7 @@ export interface RouteDefinitions {
 	dashboard: () => string
 	help: () => string
 	docs: () => string
+	accountHome: () => string
 
 	// Interviews
 	interviews: {
@@ -117,10 +118,8 @@ export interface RouteDefinitions {
 		dashboard: () => string
 	}
 
-	// Teams
-	team: {
-		members: () => string
-	}
+	// Sales
+	salesBase: () => string
 
 	// Authentication
 	auth: {
@@ -144,6 +143,10 @@ export interface RouteDefinitions {
 		annotations: () => string
 		votes: () => string
 		entityFlags: () => string
+		chat: () => {
+			projectStatus: () => string
+			interview: (interviewId: string) => string
+		}
 	}
 }
 
@@ -164,6 +167,7 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		dashboard: () => `${base}/dashboard`,
 		help: () => PATHS.HELP,
 		docs: () => PATHS.DOCS,
+		accountHome: () => `${base.replace(/\/[^/]+$/, "")}/home`,
 
 		// Interviews
 		interviews: {
@@ -252,6 +256,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			researchWorkflow: () => `${base}/research-workflow`,
 		},
 
+		// Teams
+		team: {
+			members: () => `/a/${extractAccountId(projectPath)}/team/manage`,
+		},
+
 		// Projects (note: these are at account level, not project level)
 		projects: {
 			index: () => `/a/${extractAccountId(projectPath)}/projects`,
@@ -265,10 +274,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			dashboard: () => `${base}/dashboard`,
 		},
 
-		// Teams
-		team: {
-			members: () => `/a/${extractAccountId(projectPath)}/team/manage`,
-		},
+		// Sales
+		salesBase: () => base,
 
 		// Authentication
 		auth: {
@@ -288,6 +295,11 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			realtimeStart: () => `${base}/api/interviews/realtime-start`,
 			generatePersonas: () => `${base}/personas/api/generate-personas`,
 			insightsUpdateField: () => `${base}/insights/api/update-field`,
+			chat: {
+				projectStatus: () => `${base}/api/chat/project-status`,
+				interview: (interviewId: string) => `${base}/api/chat/interview/${interviewId}`,
+			},
+			// Annotations API routes (project-scoped)
 			annotations: () => `${base}/api/annotations`,
 			votes: () => `${base}/api/votes`,
 			entityFlags: () => `${base}/api/entity-flags`,

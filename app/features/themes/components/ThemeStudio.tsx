@@ -2,7 +2,7 @@ import { useMemo, useState } from "react"
 import { Input } from "~/components/ui/input"
 import { ThemeCard } from "~/features/themes/components/ThemeCard"
 
-export type ThemeLite = {
+type ThemeLite = {
 	id: string
 	name: string
 	statement: string | null
@@ -29,7 +29,7 @@ export function ThemeStudio({ themes }: ThemeStudioProps) {
 			<div className="flex items-center justify-between gap-3">
 				<div>
 					<h1 className="font-semibold text-2xl">Themes</h1>
-					<p className="text-muted-foreground text-sm">Project-curated themes sourced from insights.</p>
+					<p className="text-muted-foreground text-sm">Themes curated from project conversations.</p>
 				</div>
 				<div className="flex items-center gap-2">
 					<Input

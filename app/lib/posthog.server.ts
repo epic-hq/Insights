@@ -23,7 +23,7 @@ export function getPostHogServerClient(): PostHog | null {
 	return client
 }
 
-export async function shutdownPostHog() {
+async function _shutdownPostHog() {
 	if (client) {
 		await client.shutdown()
 		client = null

@@ -1,18 +1,26 @@
+import consola from "consola"
+import { UserCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
+import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
 import { getPersonById } from "~/features/people/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
-import { useProjectRoutes } from "~/hooks/useProjectRoutes"
+import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
+import type { Insight } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -31,7 +39,10 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	const projectId = params.projectId
 	const personId = params.personId
 
+	consola.info("PersonDetail loader start", { accountId, projectId, personId, params })
+
 	if (!accountId || !projectId || !personId) {
+		consola.error("PersonDetail loader missing params", { accountId, projectId, personId })
 		throw new Response("Account ID, Project ID, and Person ID are required", { status: 400 })
 	}
 
@@ -48,13 +59,18 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 		])
 
 		if (!person) {
+			consola.warn("PersonDetail loader: person not found", { accountId, projectId, personId })
 			throw new Response("Person not found", { status: 404 })
 		}
 		if (organizations.error) {
+			consola.error("PersonDetail loader: organizations fetch error", { error: organizations.error })
 			throw new Response("Failed to load organizations", { status: 500 })
 		}
+		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0 })
 		return { person, catalog, organizations: organizations.data ?? [] }
-	} catch {
+	} catch (error) {
+		const message = error instanceof Error ? error.message : String(error)
+		consola.error("PersonDetail loader error", { accountId, projectId, personId, message, error })
 		throw new Response("Failed to load person", { status: 500 })
 	}
 }
@@ -131,19 +147,46 @@ export default function PersonDetail() {
 	const { person, catalog, organizations } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
 	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath || "")
+	const { accountId, projectId } = useParams()
+	const navigate = useNavigate()
+	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
+	const routesByPath = useProjectRoutes(projectPath || "")
+	const routes = accountId && projectId ? routesByIds : routesByPath
 
-	const interviews = person.interview_people || []
-	const people_personas = person.people_personas || []
-	const primaryPersona = people_personas.length > 0 ? people_personas[0] : null
+	const interviewLinks = (person.interview_people || []).filter((ip) => ip.interviews?.id)
+	const peoplePersonas = person.people_personas || []
+	const primaryPersona = peoplePersonas.length > 0 ? peoplePersonas[0] : null
 	const persona = primaryPersona?.personas
 	const themeColor = persona?.color_hex || "#6366f1"
 	const name = person.name || "Unnamed Person"
+	const descriptionText =
+		person.description ||
+		[person.title, person.segment, persona?.name].filter(Boolean).join(" • ") ||
+		"Interview participant profile"
+	const initials =
+		(name || "?")
+			.split(" ")
+			.map((w) => w[0])
+			.join("")
+			.toUpperCase()
+			.slice(0, 2) || "?"
+	const relatedInsights = useMemo(() => {
+		const collected = new Map<string, Insight>()
+		for (const link of interviewLinks) {
+			const interviewInsights = (link.interviews as any)?.insights || []
+			for (const insight of interviewInsights) {
+				if (insight?.id && !collected.has(insight.id)) {
+					collected.set(insight.id, insight as Insight)
+				}
+			}
+		}
+		return Array.from(collected.values())
+	}, [interviewLinks])
 
-	const facetsByRef = useMemo(() => {
-		const map = new Map<string, { label: string; alias?: string; kind_slug: string }>()
+	const facetsById = useMemo(() => {
+		const map = new Map<number, { label: string; alias?: string; kind_slug: string }>()
 		for (const facet of catalog.facets) {
-			map.set(facet.facet_ref, {
+			map.set(facet.facet_account_id, {
 				label: facet.label,
 				alias: facet.alias,
 				kind_slug: facet.kind_slug,
@@ -154,16 +197,16 @@ export default function PersonDetail() {
 
 	const personFacets = useMemo(() => {
 		return (person.person_facet ?? []).map((row) => {
-			const meta = facetsByRef.get(row.facet_ref)
+			const meta = facetsById.get(row.facet_account_id)
 			return {
-				facet_ref: row.facet_ref,
-				label: meta?.alias || meta?.label || row.facet_ref,
+				facet_account_id: row.facet_account_id,
+				label: meta?.alias || meta?.label || `ID:${row.facet_account_id}`,
 				kind_slug: meta?.kind_slug || "",
 				source: row.source || null,
 				confidence: row.confidence ?? null,
 			}
 		})
-	}, [person.person_facet, facetsByRef])
+	}, [person.person_facet, facetsById])
 
 	const facetsGrouped = useMemo(() => {
 		const kindLabelMap = new Map(catalog.kinds.map((kind) => [kind.slug, kind.label]))
@@ -215,227 +258,180 @@ export default function PersonDetail() {
 		}
 	}, [actionData?.error])
 
+	const handleAttachRecording = () => {
+		if (!person.id) return
+		const destination = `${routes.interviews.upload()}?personId=${person.id}`
+		navigate(destination)
+	}
+
+	const metadataItems = [person.title, person.segment, person.age ? `${person.age} yrs old` : null].filter(
+		Boolean
+	) as string[]
+	const metadataNode =
+		metadataItems.length > 0
+			? metadataItems.map((item) => (
+				<span key={item} className="font-medium text-muted-foreground text-sm">
+					{item}
+				</span>
+			))
+			: undefined
+	const avatarNode = (
+		<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
+			{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
+			<AvatarFallback style={{ backgroundColor: `${themeColor}33`, color: themeColor }}>{initials}</AvatarFallback>
+		</Avatar>
+	)
+	const personaBadgeNode = persona?.name ? (
+		<div className="flex justify-start mb-3">
+			<Link to={routes.personas.detail(persona.id)}>
+				<Badge
+					variant="secondary"
+					className="font-medium text-xs"
+					style={{ backgroundColor: `${themeColor}1a`, color: themeColor, borderColor: themeColor }}
+				>
+					Persona: {persona.name}
+				</Badge>
+			</Link>
+		</div>
+	) : null
+	const quickFacts: Array<{ label: string; value: string }> = [
+		person.segment ? { label: "Segment", value: person.segment } : null,
+		person.title ? { label: "Role", value: person.title } : null,
+		person.email ? { label: "Email", value: person.email } : null,
+		person.phone ? { label: "Phone", value: person.phone } : null,
+		person.created_at ? { label: "Added", value: new Date(person.created_at).toLocaleDateString() } : null,
+		person.updated_at ? { label: "Updated", value: new Date(person.updated_at).toLocaleDateString() } : null,
+		peoplePersonas.length ? { label: "Persona Links", value: String(peoplePersonas.length) } : null,
+		{ label: "Interviews", value: String(interviewLinks.length) },
+	].filter((fact): fact is { label: string; value: string } => Boolean(fact?.value))
+
 	return (
-		<PageContainer size="lg" padded={false} className="max-w-6xl py-8">
+		<div className="relative min-h-screen bg-muted/20">
 			<PersonaPeopleSubnav />
-			
-			{/* Colored Header Section */}
-			<div className="overflow-hidden rounded-lg bg-white shadow dark:bg-gray-900">
-				{/* Header with persona color */}
-				<div className="h-20 w-full" style={{ backgroundColor: themeColor }}>
-					<div className="flex flex-col p-4 md:flex-row md:items-center md:justify-between">
-						<div>
-							<h1 className="font-bold text-2xl text-white">{name}</h1>
-							<div className="flex items-center gap-2 text-white/90">
-								{persona?.name && (
-									<Link to={routes.personas.detail(persona.id)} className="hover:text-white">
-										<Badge variant="secondary" className="bg-white/20 text-white hover:bg-white/30">
-											{persona.name}
-										</Badge>
-									</Link>
-								)}
-								{person.segment && <Badge variant="outline" className="border-white/30 text-white">{person.segment}</Badge>}
-							</div>
-						</div>
-						<div className="mt-2 flex gap-2 md:mt-0">
-							<Button asChild variant="outline" size="sm" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
-								<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
-							</Button>
-							<Button asChild variant="outline" size="sm" className="border-white/30 bg-white/10 text-white hover:bg-white/20">
-								<Link to={routes.people.edit(person.id)}>Edit</Link>
-							</Button>
-						</div>
+			<PageContainer className="space-y-8 pb-16">
+				<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+					<BackButton />
+					<div className="flex flex-wrap gap-2">
+						<Button variant="outline" size="sm" onClick={handleAttachRecording}>
+							Attach Recording
+						</Button>
+						<Button asChild variant="outline" size="sm">
+							<Link to={`${routes.evidence.index()}?person_id=${person.id}`}>View Evidence</Link>
+						</Button>
+						<Button asChild variant="outline" size="sm">
+							<Link to={routes.people.edit(person.id)}>Edit Person</Link>
+						</Button>
 					</div>
 				</div>
 
-				{/* Main Content Grid - 2 columns like PersonaDetail */}
-				<div className="grid grid-cols-1 gap-6 p-6 md:grid-cols-2">
-					{/* Left Column - Description and Key Attributes */}
-					<div className="space-y-6">
-						{/* Description */}
-						{person.description && (
-							<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-								<h2 className="mb-3 font-semibold text-lg">About</h2>
-								<p className="text-gray-700 dark:text-gray-300">{person.description}</p>
-							</div>
-						)}
+				<DetailPageHeader
+					icon={UserCircle}
+					typeLabel="Person"
+					title={name}
+					description={descriptionText}
+					metadata={metadataNode}
+					avatar={avatarNode}
+					aboveDescription={personaBadgeNode}
+					organizations={{
+						sortedLinkedOrganizations,
+						availableOrganizations,
+						showLinkForm,
+						setShowLinkForm,
+						actionData,
+						routes,
+					}}
+				/>
 
-						{/* Attributes/Facets */}
+				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
+					<div className="space-y-6">
 						{facetsGrouped.length > 0 && (
-							<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-								<h2 className="mb-3 font-semibold text-lg">Key Attributes</h2>
-								<div className="space-y-3">
+							<Card>
+								<CardHeader>
+									<CardTitle>Key Attributes</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-4">
 									{facetsGrouped.map((group) => (
-										<div key={group.kind_slug}>
-											<h3 className="mb-2 font-medium text-sm">{group.label}</h3>
+										<div key={group.kind_slug} className="space-y-2">
+											<h4 className="font-medium text-sm">{group.label}</h4>
 											<div className="flex flex-wrap gap-2">
 												{group.facets.map((facet) => (
-													<span key={facet.facet_ref} className="rounded bg-white px-2 py-1 text-xs shadow-sm dark:bg-gray-900">
+													<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
 														{facet.label}
-													</span>
+													</Badge>
 												))}
 											</div>
 										</div>
 									))}
+								</CardContent>
+							</Card>
+						)}
+
+						{relatedInsights.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="font-semibold text-foreground text-lg">Related Insights</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{relatedInsights.map((insight) => (
+										<InsightCardV3 key={insight.id} insight={insight} />
+									))}
 								</div>
-							</div>
+							</section>
 						)}
 					</div>
 
-					{/* Right Column - Organizations and Interview History */}
 					<div className="space-y-6">
-						{/* Organizations Section */}
-						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-							<div className="mb-3 flex items-center justify-between">
-								<h2 className="font-semibold text-lg">Organizations</h2>
-								<Button asChild variant="outline" size="sm">
-									<Link to={routes.organizations.new()}>Add</Link>
-								</Button>
-							</div>
-
-							{sortedLinkedOrganizations.length > 0 ? (
-								<div className="space-y-3">
-									{sortedLinkedOrganizations.map((link) => {
-										const organization = link.organization
-										if (!organization) return null
-										return (
-											<div key={link.id} className="flex items-center justify-between rounded-md border p-3">
-												<div className="flex items-center gap-3">
-													<div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10">
-														<span className="font-medium text-primary text-xs">
-															{organization.name?.charAt(0)?.toUpperCase() || "?"}
-														</span>
-													</div>
-													<div>
-														<Link
-															to={routes.organizations.detail(organization.id)}
-															className="font-medium text-sm hover:text-primary"
-														>
-															{organization.name}
-														</Link>
-														{link.role && <div className="text-muted-foreground text-xs">{link.role}</div>}
-													</div>
-												</div>
-												<Form method="post">
-													<input type="hidden" name="_action" value="unlink-organization" />
-													<input type="hidden" name="organization_id" value={organization.id} />
-													<Button type="submit" variant="ghost" size="sm" className="h-8 w-8 p-0 text-muted-foreground">
-														×
-													</Button>
-												</Form>
-											</div>
-										)
-									})}
-								</div>
-							) : (
-								<div className="rounded-md border border-dashed p-6 text-center">
-									<p className="text-muted-foreground text-sm">No organizations linked</p>
-								</div>
-							)}
-
-							{/* Link Form */}
-							{actionData?.error && (
-								<div className="mt-4 rounded-md bg-destructive/15 p-3 text-destructive text-sm">
-									{actionData.error}
-								</div>
-							)}
-							
-							{showLinkForm ? (
-								<Form method="post" className="mt-4 space-y-3">
-									<input type="hidden" name="_action" value="link-organization" />
-									<Select name="organization_id" defaultValue={availableOrganizations[0]?.id ?? ""}>
-										<SelectTrigger>
-											<SelectValue placeholder="Select organization" />
-										</SelectTrigger>
-										<SelectContent>
-											{availableOrganizations.map((org) => (
-												<SelectItem key={org.id} value={org.id}>
-													{org.name}
-												</SelectItem>
-											))}
-										</SelectContent>
-									</Select>
-									<div className="flex gap-2">
-										<Input name="role" placeholder="Role" className="flex-1" />
-										<Button type="submit">Link</Button>
-										<Button type="button" variant="outline" onClick={() => setShowLinkForm(false)}>
-											Cancel
-										</Button>
-									</div>
-								</Form>
-							) : (
-								availableOrganizations.length > 0 && (
-									<Button
-										type="button"
-										variant="outline"
-										size="sm"
-										onClick={() => setShowLinkForm(true)}
-										className="mt-4"
-									>
-										Link Organization
-									</Button>
-								)
-							)}
-						</div>
-
-						{/* Interview History */}
-						<div className="rounded-lg bg-gray-50 p-4 dark:bg-gray-800">
-							<h2 className="mb-3 font-semibold text-lg">Interview History</h2>
-							{interviews.length > 0 ? (
-								<div className="space-y-2">
-									{interviews.slice(0, 5).map((interviewPerson) => (
-										<div
-											key={interviewPerson.id}
-											className="rounded bg-white p-3 shadow-sm transition-shadow hover:shadow-md dark:bg-gray-900"
-										>
-											<Link
-												to={routes.interviews.detail(interviewPerson.interview_id)}
-												className="font-medium text-blue-600 hover:text-blue-800"
-											>
-												{interviewPerson.interviews?.title || `Interview ${interviewPerson.interview_id.slice(0, 8)}`}
-											</Link>
-											<p className="text-gray-400 text-xs">
-												{interviewPerson.interviews?.created_at &&
-													new Date(interviewPerson.interviews.created_at).toLocaleDateString()}
-											</p>
+						<div className="grid gap-4 md:grid-cols-2">
+							<Card className="max-w-sm">
+								<CardHeader>
+									<CardTitle>Quick Facts</CardTitle>
+								</CardHeader>
+								<CardContent className="space-y-3">
+									{quickFacts.map((fact) => (
+										<div key={fact.label}>
+											<div className="text-muted-foreground text-xs uppercase tracking-wide">{fact.label}</div>
+											<div className="font-medium text-foreground text-sm">{fact.value}</div>
 										</div>
 									))}
-									{interviews.length > 5 && (
-										<p className="pt-2 text-center text-gray-500">
-											+{interviews.length - 5} more interviews
-										</p>
-									)}
-								</div>
-							) : (
-								<p className="text-gray-500">No interviews yet</p>
-							)}
-						</div>
-					</div>
+								</CardContent>
+							</Card>
 
-					{/* Statistics - Full width like PersonaDetail */}
-					<div className="rounded-lg bg-gray-50 p-4 md:col-span-2 dark:bg-gray-800">
-						<h2 className="mb-3 font-semibold text-lg">Person Details</h2>
-						<div className="grid grid-cols-2 gap-4 text-sm md:grid-cols-4">
-							<div>
-								<span className="text-gray-500">Added</span>
-								<div className="font-medium">{new Date(person.created_at).toLocaleDateString()}</div>
-							</div>
-							<div>
-								<span className="text-gray-500">Updated</span>
-								<div className="font-medium">{new Date(person.updated_at).toLocaleDateString()}</div>
-							</div>
-							<div>
-								<span className="text-gray-500">Interviews</span>
-								<div className="font-medium">{interviews.length}</div>
-							</div>
-							<div>
-								<span className="text-gray-500">Organizations</span>
-								<div className="font-medium">{sortedLinkedOrganizations.length}</div>
-							</div>
+							<Card className="max-w-sm">
+								<CardHeader>
+									<CardTitle>Interview History</CardTitle>
+								</CardHeader>
+								<CardContent>
+									{interviewLinks.length > 0 ? (
+										<div className="space-y-3">
+											{interviewLinks.slice(0, 4).map((link) => (
+												<div
+													key={link.id}
+													className="rounded-lg border border-border/60 bg-background p-3 hover:border-primary/40"
+												>
+													<Link
+														to={routes.interviews.detail(link.interviews?.id || "")}
+														className="font-medium text-foreground hover:text-primary"
+													>
+														{link.interviews?.title || `Interview ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
+													</Link>
+													<p className="text-muted-foreground text-xs">
+														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</div>
+											))}
+											{interviewLinks.length > 4 && (
+												<p className="text-center text-muted-foreground text-xs">
+													+{interviewLinks.length - 4} more interviews
+												</p>
+											)}
+										</div>
+									) : (
+										<p className="text-muted-foreground text-sm">No interviews yet</p>
+									)}
+								</CardContent>
+							</Card>
 						</div>
 					</div>
 				</div>
-			</div>
-		</PageContainer>
+			</PageContainer>
+		</div>
 	)
 }

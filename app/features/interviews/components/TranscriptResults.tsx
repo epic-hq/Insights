@@ -87,17 +87,20 @@ export function TranscriptResults({ data, rawTranscript, participants = [] }: Tr
 		switch (speaker.toUpperCase()) {
 			case "A":
 				return {
-					badge: "bg-blue-100 text-blue-900 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800",
+					badge:
+						"bg-blue-100 text-blue-900 border-blue-200 dark:bg-blue-900/20 dark:text-blue-300 dark:border-blue-800",
 					border: "border-blue-500 dark:border-blue-400",
 				}
 			case "B":
 				return {
-					badge: "bg-green-100 text-green-900 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800",
+					badge:
+						"bg-green-100 text-green-900 border-green-200 dark:bg-green-900/20 dark:text-green-300 dark:border-green-800",
 					border: "border-green-500 dark:border-green-400",
 				}
 			case "C":
 				return {
-					badge: "bg-yellow-100 text-yellow-900 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800",
+					badge:
+						"bg-yellow-100 text-yellow-900 border-yellow-200 dark:bg-yellow-900/20 dark:text-yellow-300 dark:border-yellow-800",
 					border: "border-yellow-500 dark:border-yellow-400",
 				}
 			case "D":

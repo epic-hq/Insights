@@ -44,10 +44,10 @@ import type { QuestionInput, Tables } from "~/types"
 import { fromManagerResearchMode, type ResearchMode, toManagerResearchMode } from "~/types/research"
 
 type ManagerResearchMode = ResearchMode
-export type Familiarity = "cold" | "warm"
+type Familiarity = "cold" | "warm"
 type InterviewPromptRow = Tables<"interview_prompts">
 
-export interface InterviewQuestionsManagerProps {
+interface InterviewQuestionsManagerProps {
 	projectId?: string
 	projectPath?: string
 	target_orgs?: string[]
@@ -214,7 +214,7 @@ function QualityFlag({ qualityFlag }: { qualityFlag: Question["qualityFlag"] }) 
 	)
 }
 
-export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
+function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const {
 		projectId,
 		projectPath,
@@ -307,6 +307,8 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const [loadedResearchGoal, setLoadedResearchGoal] = useState("")
 	const [showContextualInput, setShowContextualInput] = useState(false)
 	const contextualInputRef = useRef<HTMLTextAreaElement>(null)
+	const contextualSuggestionsApiPath =
+		projectPath && projectPath.length > 0 ? `${projectPath}/api/contextual-suggestions` : "/api/contextual-suggestions"
 
 	// Load research goal from API
 	useEffect(() => {
@@ -344,139 +346,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	// PostHog feature flag to gate Quality Check
 	const { isEnabled: isEvalEnabled } = usePostHogFeatureFlag("ffEvalQuestion")
 
-	const generateQuestions = async () => {
-		if (generating) return
-		setGenerating(true)
-		try {
-			// Create FormData for remix-style API
-			const formData = new FormData()
-			formData.append("project_id", projectId || "")
-			formData.append("custom_instructions", customInstructions || "")
-			// Determine question count:
-			// - Initial generation: time-based target (4/6/8/10)
-			// - Subsequent generations: user-selected count (default 3)
-			// First-time generation target by time; default 30m should produce 8
-			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
-			const initialTarget = countByTime[timeMinutes] ?? 8
-			const count = autoGenerateInitial ? initialTarget : moreCount
-			formData.append("questionCount", String(count))
-			formData.append("interview_time_limit", timeMinutes.toString())
-			formData.append("research_mode", fromManagerResearchMode(researchMode))
-
-			// Add optional fields from props (for onboarding flow)
-			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
-			if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
-			if (research_goal) formData.append("research_goal", research_goal)
-			if (research_goal_details) formData.append("research_goal_details", research_goal_details)
-			if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
-			if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
-
-			const response = await fetch("/api/generate-questions", {
-				method: "POST",
-				body: formData,
-			})
-
-			if (response.ok) {
-				const data = await response.json()
-				if (data.success && data.questionSet?.questions) {
-					const newQuestions = data.questionSet.questions as QuestionInput[]
-
-					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => {
-						const baseQuestion: Question = {
-							id: q.id || crypto.randomUUID(),
-							text: q.text || "",
-							categoryId: q.categoryId || "context",
-							scores: {
-								importance: (q.scores?.importance ?? 0.5) as number,
-								goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
-								novelty: (q.scores?.novelty ?? 0.5) as number,
-							},
-							rationale: q.rationale || "",
-							status: "proposed" as const,
-							timesAnswered: 0,
-							source: "ai" as const,
-							isMustHave: (q as QuestionInput & { isMustHave?: boolean }).isMustHave || false,
-						}
-						return {
-							...baseQuestion,
-							estimatedMinutes:
-								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
-								estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
-							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
-							isSelected: true, // Auto-select all generated questions
-							status: "selected" as const, // Set status to selected
-						}
-					})
-
-					// Deduplicate questions by ID against existing and within this batch (and pending list)
-					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, [
-						...questions,
-						...pendingGeneratedQuestions,
-					])
-
-					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
-					setPendingInsertionChoices((prev) => ({
-						...prev,
-						...deduplicatedQuestions.reduce<Record<string, string>>((acc, question) => {
-							acc[question.id] = "end"
-							return acc
-						}, {}),
-					}))
-					setShowPendingModal(true)
-
-					// Reload questions from database to get the freshly saved data
-					await loadQuestions()
-
-					if (autoGenerateInitial) {
-						setAutoGenerateInitial(false)
-						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
-							description: "Questions have been saved and loaded from database.",
-							duration: 5000,
-						})
-					} else {
-						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
-							description: "Questions have been saved and loaded from database.",
-							duration: 4000,
-						})
-					}
-				} else {
-					toast.error("Failed to generate questions", {
-						description: "The response was successful but contained no questions",
-					})
-				}
-			} else {
-				// Handle API error response
-				try {
-					const errorData = await response.json()
-					toast.error("Failed to generate questions", {
-						description: errorData.error || `Server error: ${response.status}`,
-					})
-				} catch {
-					toast.error("Failed to generate questions", {
-						description: `Server error: ${response.status}`,
-					})
-				}
-			}
-		} catch (e) {
-			consola.error("Error generating questions:", e)
-			toast.error("Failed to generate questions", {
-				description: "An unexpected error occurred. Please try again.",
-			})
-		} finally {
-			setGenerating(false)
-			// Ensure spinner resets even if initial auto-generate failed
-			setAutoGenerateInitial(false)
-		}
-	}
-
 	// Auto-generate questions on first load (optional)
+	// biome-ignore lint/correctness/useExhaustiveDependencies: generateQuestions is stable enough for this effect
 	useEffect(() => {
 		if (!autoGenerateOnEmpty) return
 		if (!loading && !hasInitialized && questions.length === 0 && projectId) {
 			setAutoGenerateInitial(true)
 			generateQuestions()
 		}
-	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId, generateQuestions])
+	}, [autoGenerateOnEmpty, loading, hasInitialized, questions.length, projectId])
 
 	useEffect(() => {
 		return () => {
@@ -494,17 +372,27 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const stored = previousSelectionRef.current
 			if (stored && stored.length > 0) return [...stored]
 		}
+		console.log("🧾 getBaseSelectedIds()", {
+			mustHavesOnly,
+			selectedQuestionIds,
+		})
 		return [...selectedQuestionIds]
 	}, [mustHavesOnly, selectedQuestionIds])
 
 	const commitSelection = useCallback(
 		(nextBaseIds: string[]) => {
+			console.log("🧮 commitSelection()", {
+				mustHavesOnly,
+				nextBaseIds,
+				mustHaveCandidates: questions.filter((q) => q.isMustHave).map((q) => q.id),
+			})
 			previousSelectionRef.current = [...nextBaseIds]
 			if (mustHavesOnly) {
 				const filtered = nextBaseIds.filter((id) => {
 					const q = questions.find((question) => question.id === id)
 					return q?.isMustHave
 				})
+				console.log("🧮 commitSelection -> filtered (mustHavesOnly)", filtered)
 				setSelectedQuestionIds(filtered)
 			} else {
 				setSelectedQuestionIds(nextBaseIds)
@@ -683,6 +571,24 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				return q
 			})
 
+			console.log(
+				"📥 LOAD QUESTIONS RESULT",
+				JSON.stringify(
+					{
+						projectId,
+						total: deduped.length,
+						selectedIds,
+						followupCount: deduped.filter((q) => q.rationale?.startsWith("Follow-up to:")).length,
+						exampleFollowups: deduped
+							.filter((q) => q.rationale?.startsWith("Follow-up to:"))
+							.slice(0, 3)
+							.map((q) => ({ id: q.id, text: q.text })),
+					},
+					null,
+					2
+				)
+			)
+
 			setQuestions(deduped)
 			if (selectedIds.length > 0) {
 				setSelectedQuestionIds(selectedIds)
@@ -743,6 +649,150 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		return Math.max(1.0, Math.min(4.0, baseTime + categoryAdj + familiarityAdjustment))
 	}, [])
 
+	const generateQuestions = useCallback(async () => {
+		if (generating) return
+		setGenerating(true)
+		try {
+			// Create FormData for remix-style API
+			const formData = new FormData()
+			formData.append("project_id", projectId || "")
+			formData.append("custom_instructions", customInstructions || "")
+			// Determine question count:
+			// - Initial generation: time-based target (4/6/8/10)
+			// - Subsequent generations: user-selected count (default 3)
+			// First-time generation target by time; default 30m should produce 8
+			const countByTime: Record<number, number> = { 15: 4, 30: 8, 45: 8, 60: 10 }
+			const initialTarget = countByTime[timeMinutes] ?? 8
+			const count = autoGenerateInitial ? initialTarget : moreCount
+			formData.append("questionCount", String(count))
+			formData.append("interview_time_limit", timeMinutes.toString())
+			formData.append("research_mode", fromManagerResearchMode(researchMode))
+
+			// Add optional fields from props (for onboarding flow)
+			if (target_orgs?.length) formData.append("target_orgs", target_orgs.join(", "))
+			if (target_roles?.length) formData.append("target_roles", target_roles.join(", "))
+			if (research_goal) formData.append("research_goal", research_goal)
+			if (research_goal_details) formData.append("research_goal_details", research_goal_details)
+			if (assumptions?.length) formData.append("assumptions", assumptions.join(", "))
+			if (unknowns?.length) formData.append("unknowns", unknowns.join(", "))
+
+			const response = await fetch("/api/generate-questions", {
+				method: "POST",
+				body: formData,
+			})
+
+			if (response.ok) {
+				const data = await response.json()
+				if (data.success && data.questionSet?.questions) {
+					const newQuestions = data.questionSet.questions as QuestionInput[]
+
+					const formattedNewQuestions: Question[] = newQuestions.map((q: QuestionInput) => {
+						const baseQuestion: Question = {
+							id: q.id || crypto.randomUUID(),
+							text: q.text || "",
+							categoryId: q.categoryId || "context",
+							scores: {
+								importance: (q.scores?.importance ?? 0.5) as number,
+								goalMatch: (q.scores?.goalMatch ?? 0.5) as number,
+								novelty: (q.scores?.novelty ?? 0.5) as number,
+							},
+							rationale: q.rationale || "",
+							status: "proposed" as const,
+							timesAnswered: 0,
+							source: "ai" as const,
+							isMustHave: (q as QuestionInput & { isMustHave?: boolean }).isMustHave || false,
+						}
+						return {
+							...baseQuestion,
+							estimatedMinutes:
+								(q as QuestionInput & { estimatedMinutes?: number }).estimatedMinutes ??
+								estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
+							selectedOrder: typeof q.selectedOrder === "number" ? q.selectedOrder : null,
+							isSelected: true, // Auto-select all generated questions
+							status: "selected" as const, // Set status to selected
+						}
+					})
+
+					// Deduplicate questions by ID against existing and within this batch (and pending list)
+					const deduplicatedQuestions = ensureUniqueQuestionIds(formattedNewQuestions, [
+						...questions,
+						...pendingGeneratedQuestions,
+					])
+
+					setPendingGeneratedQuestions((prev) => [...prev, ...deduplicatedQuestions])
+					setPendingInsertionChoices((prev) => ({
+						...prev,
+						...deduplicatedQuestions.reduce<Record<string, string>>((acc, question) => {
+							acc[question.id] = "end"
+							return acc
+						}, {}),
+					}))
+					setShowPendingModal(true)
+
+					// Reload questions from database to get the freshly saved data
+					await loadQuestions()
+
+					if (autoGenerateInitial) {
+						setAutoGenerateInitial(false)
+						toast.success(`Generated ${deduplicatedQuestions.length} initial questions`, {
+							description: "Questions have been saved and loaded from database.",
+							duration: 5000,
+						})
+					} else {
+						toast.success(`Generated ${deduplicatedQuestions.length} new questions`, {
+							description: "Questions have been saved and loaded from database.",
+							duration: 4000,
+						})
+					}
+				} else {
+					toast.error("Failed to generate questions", {
+						description: "The response was successful but contained no questions",
+					})
+				}
+			} else {
+				// Handle API error response
+				try {
+					const errorData = await response.json()
+					toast.error("Failed to generate questions", {
+						description: errorData.error || `Server error: ${response.status}`,
+					})
+				} catch {
+					toast.error("Failed to generate questions", {
+						description: `Server error: ${response.status}`,
+					})
+				}
+			}
+		} catch (e) {
+			consola.error("Error generating questions:", e)
+			toast.error("Failed to generate questions", {
+				description: "An unexpected error occurred. Please try again.",
+			})
+		} finally {
+			setGenerating(false)
+			// Ensure spinner resets even if initial auto-generate failed
+			setAutoGenerateInitial(false)
+		}
+	}, [
+		assumptions,
+		autoGenerateInitial,
+		customInstructions,
+		estimateMinutesPerQuestion,
+		familiarity,
+		generating,
+		loadQuestions,
+		moreCount,
+		pendingGeneratedQuestions,
+		projectId,
+		questions,
+		researchMode,
+		research_goal,
+		research_goal_details,
+		target_orgs,
+		target_roles,
+		timeMinutes,
+		unknowns,
+	])
+
 	const calculateCompositeScore = useCallback((q: Question): number => {
 		const categoryWeight = questionCategories.find((c) => c.id === q.categoryId)?.weight || 1
 		const s = q.scores
@@ -762,7 +812,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		const targetCount = Math.max(4, tc.base + validationBoost + (familiarity === "cold" ? tc.cold : 0))
 
 		const allQuestionsWithScores = questions
-			.filter((q) => q.status === "proposed") // Only include proposed questions, exclude rejected
+			.filter((q) => q.status === "proposed" || q.status === "selected") // Include proposed and selected questions, exclude rejected/deleted
 			.map((q) => ({
 				...q,
 				compositeScore: calculateCompositeScore(q),
@@ -845,6 +895,15 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 		const selectedSet = new Set(idsToUse)
 		const remainingQuestions = allQuestionsWithScores.filter((q) => !selectedSet.has(q.id))
 
+		console.log("📦 questionPack()", {
+			selectedQuestionIds,
+			autoSelectedIds,
+			idsToUse,
+			orderedCount: orderedSelectedQuestions.length,
+			totalQuestions: allQuestionsWithScores.length,
+			exampleIds: orderedSelectedQuestions.slice(0, 5).map((q) => q.id),
+		})
+
 		return {
 			questions: orderedSelectedQuestions,
 			totalEstimatedTime,
@@ -905,13 +964,44 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	}, [getBaseSelectedIds, onSelectedQuestionsChange, questions])
 
 	const saveQuestionsToDatabase = useCallback(
-		async (questionsToSave: Question[], selectedIds: string[]) => {
+		async (questionsToSave: Question[], selectedIds: string[], options?: { refresh?: boolean }) => {
 			if (!projectId) return
 			try {
+				const followupCount = questionsToSave.filter((q) => q.rationale?.startsWith("Follow-up to:")).length
+				console.log(
+					"🛟 SAVE INVOKED",
+					JSON.stringify({
+						triggeredAt: new Date().toISOString(),
+						projectId,
+						totalQuestions: questionsToSave.length,
+						selectedCount: selectedIds.length,
+						followupCount,
+					})
+				)
+				console.log(
+					"🧾 SAVE QUESTIONS SNAPSHOT",
+					questionsToSave.map((q, index) => ({
+						index,
+						id: q.id,
+						textPreview: q.text.slice(0, 40),
+						status: q.status,
+						isSelected: q.isSelected,
+						rationalePreview: q.rationale ? q.rationale.slice(0, 60) : null,
+					}))
+				)
 				setSaving(true)
 
 				// ALLOWED VALUES TABLE FOR DEBUGGING
-				const ALLOWED_STATUS_VALUES = ["proposed", "asked", "answered", "skipped", "rejected"] as const
+				const ALLOWED_STATUS_VALUES = [
+					"proposed",
+					"asked",
+					"answered",
+					"skipped",
+					"rejected",
+					"selected",
+					"backup",
+					"deleted",
+				] as const
 				const ALLOWED_SOURCE_VALUES = ["ai", "user"] as const
 
 				console.group("🔍 SAVE QUESTIONS TO DATABASE DEBUG")
@@ -923,6 +1013,17 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					"Questions Count": questionsToSave.length,
 					"Selected IDs Count": selectedIds.length,
 				})
+
+				const previousIds = new Set(existingPromptIdsRef.current)
+				const questionLookup = new Map(questionsToSave.map((q) => [q.id, q]))
+				const missingSelected = selectedIds.filter((id) => !questionLookup.has(id))
+				if (missingSelected.length > 0) {
+					console.warn("⚠️ SAVE WARNING: Missing selected questions in payload", {
+						selectedIds,
+						missingSelected,
+						knownIds: questionsToSave.map((q) => q.id),
+					})
+				}
 
 				const withOrder = questionsToSave.map((q, _index) => {
 					const selectedIndex = selectedIds.indexOf(q.id)
@@ -975,6 +1076,30 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					must_have_count: promptPayloads.filter((p) => p.is_must_have).length,
 				})
 
+				try {
+					void fetch("/api/questions/save-debug", {
+						method: "post",
+						headers: {
+							"Content-Type": "application/json",
+						},
+						body: JSON.stringify({
+							projectId,
+							selectedIds,
+							previousIds: Array.from(previousIds),
+							payloads: promptPayloads.map((p, index) => ({
+								index,
+								id: p.id,
+								order_index: p.order_index,
+								rationale: p.rationale,
+								status: p.status,
+								is_selected: p.is_selected,
+							})),
+						}),
+					})
+				} catch (error) {
+					console.warn("Failed to send save-debug payload", error)
+				}
+
 				const { data, error: promptError } = await supabase
 					.from("interview_prompts")
 					.upsert(promptPayloads, { onConflict: "id" })
@@ -985,10 +1110,26 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					throw promptError
 				}
 
+				const insertedIds = new Set(data?.map((row) => row.id))
+				const newlyCreatedIds = promptPayloads
+					.filter((payload) => !previousIds.has(payload.id))
+					.map((payload) => payload.id)
+				if (newlyCreatedIds.length > 0) {
+					const missing = newlyCreatedIds.filter((id) => !insertedIds.has(id))
+					if (missing.length > 0) {
+						console.error("❌ Missing inserted prompt IDs from response", { missing, newlyCreatedIds })
+						throw new Error(`Failed to confirm persistence for prompts: ${missing.join(", ")}`)
+					}
+				}
+
 				console.log("✅ DATABASE RESPONSE:", {
 					returned_count: data?.length || 0,
 					upserted_ids: data?.map((d) => d.id.slice(0, 8)).join(", ") || "none",
 				})
+				console.log(
+					"📦 Persisted follow-ups in this payload:",
+					promptPayloads.filter((p) => p.rationale?.startsWith("Follow-up to:"))
+				)
 				console.groupEnd()
 
 				const keepIds = new Set(promptPayloads.map((p) => p.id))
@@ -1005,6 +1146,14 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					}
 				}
 				existingPromptIdsRef.current = Array.from(keepIds)
+				console.log("🧷 existingPromptIdsRef updated", {
+					count: existingPromptIdsRef.current.length,
+					hasNewFollowup: existingPromptIdsRef.current.includes(selectedIds[selectedIds.length - 1] ?? "__none__"),
+				})
+
+				if (options?.refresh) {
+					await loadQuestions()
+				}
 
 				const { error: sectionError } = await supabase.from("project_sections").upsert(
 					{
@@ -1044,6 +1193,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			customInstructions,
 			categoryTimeAllocations,
 			estimateMinutesPerQuestion,
+			loadQuestions,
 		]
 	)
 
@@ -1192,6 +1342,9 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 			const reorderedVisible = [...visibleIds]
 			const [removed] = reorderedVisible.splice(fromIndex, 1)
 			reorderedVisible.splice(toIndex, 0, removed)
+
+			// Rebuild questions array to reflect new visible ordering while keeping non-visible items in place
+			const questionById = new Map(questions.map((q) => [q.id, q]))
 			const baseIds = getBaseSelectedIds()
 			const visibleSet = new Set(visibleIds)
 			let visiblePointer = 0
@@ -1200,11 +1353,26 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				const replacement = reorderedVisible[visiblePointer++]
 				return replacement
 			})
+			const targetVisibleOrder = [...reorderedVisible]
+			const reorderedQuestions = questions.map((question) => {
+				if (!visibleSet.has(question.id)) {
+					return question
+				}
+				const replacementId = targetVisibleOrder.shift()
+				if (!replacementId) {
+					return question
+				}
+				const replacement = questionById.get(replacementId)
+				return replacement ?? question
+			})
 			commitSelection(newBaseIds)
-			markQuestionAsRecentlyAdded(removed)
+			setQuestions(reorderedQuestions)
+			if (removed) {
+				markQuestionAsRecentlyAdded(removed)
+			}
 			setHasInitialized(true)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(questions, newBaseIds)
+			await saveQuestionsToDatabase(reorderedQuestions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
 		[
@@ -1579,6 +1747,10 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 	const handleAddContextualQuestion = useCallback(async () => {
 		const text = contextualInput.trim()
 		if (!text) return
+		if (!projectId) {
+			toast.error("Select a project before adding questions")
+			return
+		}
 
 		try {
 			setAddingCustomQuestion(true)
@@ -1589,7 +1761,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				category: contextualCategory,
 				is_selected: true,
 				selected_order: questions.filter((q) => q.isSelected).length,
-				project_id: projectId!,
+				project_id: projectId,
 			}
 
 			// Save to database first
@@ -1597,33 +1769,29 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				.from("interview_prompts")
 				.insert(questionToSave)
 				.select()
-				.single()
+				.single<InterviewPromptRow>()
 
-			if (error) throw error
+			if (error || !savedQuestion) throw error
+			const category = savedQuestion.category ?? "context"
+			const baseQuestion: Question = {
+				id: savedQuestion.id,
+				text: savedQuestion.text,
+				categoryId: category,
+				scores: { importance: 3, goalMatch: 3, novelty: 3 },
+				rationale: savedQuestion.rationale ?? "",
+				status: "selected",
+				timesAnswered: 0,
+				source: "user",
+				isMustHave: false,
+				isSelected: true,
+				selectedOrder: savedQuestion.selected_order ?? null,
+			}
 
 			// Create local question object
 			const newQuestion: Question = {
-				id: savedQuestion.id,
-				text: savedQuestion.text,
-				categoryId: (savedQuestion as any).category || "context",
-				estimatedMinutes: estimateMinutesPerQuestion(
-					{
-						id: savedQuestion.id,
-						text: savedQuestion.text,
-						categoryId: (savedQuestion as any).category || "context",
-						scores: { importance: 3, goalMatch: 3, novelty: 3 },
-						status: "selected",
-						timesAnswered: 0,
-					} as Question,
-					researchMode,
-					familiarity
-				),
-				isMustHave: false,
-				status: "selected",
-				source: "user",
-				scores: { importance: 3, goalMatch: 3, novelty: 3 },
-				isSelected: true,
-				timesAnswered: 0,
+				...baseQuestion,
+				estimatedMinutes:
+					savedQuestion.estimated_time_minutes ?? estimateMinutesPerQuestion(baseQuestion, researchMode, familiarity),
 			}
 
 			// Update local state without flashing
@@ -1730,7 +1898,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 					return next
 				})
 
-				await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
+				await saveQuestionsToDatabase(updatedQuestions, newBaseIds, { refresh: true })
 
 				// Reload from database to ensure UI reflects actual DB state
 				await loadQuestions()
@@ -1792,7 +1960,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 				<div className="flex items-center justify-between">
 					<div className="flex min-w-0 items-center gap-3">
 						<MessageCircleQuestion className="h-6 w-6 shrink-0" />
-						<h1 className="whitespace-nowrap font-bold text-2xl text-foreground">Interview Questions</h1>
+						<h1 className="whitespace-nowrap font-bold text-2xl text-foreground">Conversation Prompts</h1>
 					</div>
 					<div className="flex shrink-0 items-center gap-2">
 						{generating ? (
@@ -2001,7 +2169,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 							</div>
 							<div className="flex w-full items-center gap-2">
 								<Textarea
-									ref={contextualInputRef as any}
+									ref={contextualInputRef}
 									placeholder="e.g., What challenges do you face with your current solution?"
 									value={contextualInput}
 									onChange={(e) => setContextualInput(e.target.value)}
@@ -2049,7 +2217,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 						questionCategory={contextualCategory}
 						existingItems={questions.map((q) => q.text)}
 						onSuggestionClick={handleContextualSuggestionClick}
-						apiPath="api/contextual-suggestions"
+						apiPath={contextualSuggestionsApiPath}
 						isActive={true}
 					/>
 				)}
@@ -2187,26 +2355,54 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							variant="ghost"
 																							size="icon"
 																							onClick={async () => {
-																								setEvaluatingId(question.id)
-																								const quality = isEvalEnabled
-																									? await evaluateQuestionQuality(editingText)
-																									: null
-																								const updated = questions.map((q) =>
-																									q.id === question.id
-																										? {
-																											...q,
+																								try {
+																									setEvaluatingId(question.id)
+																									const quality = isEvalEnabled
+																										? await evaluateQuestionQuality(editingText)
+																										: null
+
+																									// Use PATCH API to update the question text
+																									const response = await fetch(`/api/questions/${question.id}`, {
+																										method: "PATCH",
+																										headers: { "Content-Type": "application/json" },
+																										body: JSON.stringify({
 																											text: editingText,
-																											qualityFlag: quality ?? undefined,
-																										}
-																										: q
-																								)
-																								setQuestions(updated)
-																								setSkipDebounce(true)
-																								await saveQuestionsToDatabase(updated, getBaseSelectedIds())
-																								setTimeout(() => setSkipDebounce(false), 1500)
-																								setEditingId(null)
-																								setEditingText("")
-																								setEvaluatingId(null)
+																											table: "interview_prompts",
+																										}),
+																									})
+
+																									if (!response.ok) {
+																										const error = await response.json()
+																										throw new Error(error.error || "Failed to update question")
+																									}
+
+																									const result = await response.json()
+																									if (result.success) {
+																										// Update local state with the saved text
+																										const updated = questions.map((q) =>
+																											q.id === question.id
+																												? {
+																													...q,
+																													text: editingText,
+																													qualityFlag: quality ?? undefined,
+																												}
+																												: q
+																										)
+																										setQuestions(updated)
+																										toast.success("Question updated successfully")
+																									}
+
+																									setEditingId(null)
+																									setEditingText("")
+																									setEvaluatingId(null)
+																								} catch (error) {
+																									console.error("Failed to update question:", error)
+																									toast.error("Failed to update question", {
+																										description:
+																											error instanceof Error ? error.message : "Please try again",
+																									})
+																									setEvaluatingId(null)
+																								}
 																							}}
 																							className="text-green-600"
 																						>
@@ -2472,17 +2668,25 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																		<div className="flex items-center gap-2">
 																			<Button
 																				onClick={async () => {
-																					console.log("🔍 DEBUG: Button clicked, input:", followupInput.trim())
-																					if (!followupInput.trim()) return
+																					const trimmedInput = followupInput.trim()
+																					console.log("🔍 DEBUG: Button clicked, input:", trimmedInput)
+																					if (!trimmedInput) return
 
+																					let nextFollowup: Question | null = null
 																					try {
+																						console.groupCollapsed(
+																							`🧩 FOLLOWUP ADDITION [${question.id.slice(0, 8)} -> ${question.text.slice(0, 40)}]`
+																						)
+																						console.log("• mustHavesOnly:", mustHavesOnly)
+																						console.log("• existing selectedQuestionIds:", selectedQuestionIds)
+																						console.log("• base ids before add:", getBaseSelectedIds())
 																						setAddingCustomQuestion(true)
 																						console.log("🔍 DEBUG: Starting followup addition")
 
 																						// Create the follow-up question
 																						const followupQuestion: Question = {
 																							id: crypto.randomUUID(),
-																							text: followupInput.trim(),
+																							text: trimmedInput,
 																							categoryId: followupCategory,
 																							scores: { importance: 0.7, goalMatch: 0.8, novelty: 0.6 },
 																							rationale: `Follow-up to: ${question.text}`,
@@ -2498,6 +2702,7 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							selectedOrder: null,
 																							isSelected: true,
 																						}
+																						nextFollowup = followupQuestion
 																						console.log("🔍 DEBUG: Created followup question:", followupQuestion)
 
 																						// Insert after the current question
@@ -2510,42 +2715,102 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																							baseIds
 																						)
 
-																						const newBaseIds = [
-																							...baseIds.slice(0, currentIndex + 1),
-																							followupQuestion.id,
-																							...baseIds.slice(currentIndex + 1),
-																						]
+																						let newBaseIds =
+																							currentIndex >= 0
+																								? [
+																									...baseIds.slice(0, currentIndex + 1),
+																									followupQuestion.id,
+																									...baseIds.slice(currentIndex + 1),
+																								]
+																								: [...baseIds, followupQuestion.id]
+																						if (!newBaseIds.includes(followupQuestion.id)) {
+																							newBaseIds = [...newBaseIds, followupQuestion.id]
+																							console.warn(
+																								"⚠️ Follow-up ID missing from computed baseIds. Appending manually.",
+																								{
+																									originalBaseIds: baseIds,
+																									appendedId: followupQuestion.id,
+																									result: newBaseIds,
+																								}
+																							)
+																						}
 																						console.log("🔍 DEBUG: New baseIds:", newBaseIds)
 
-																						const updatedQuestions = [...questions, followupQuestion]
-																						console.log("🔍 DEBUG: Updated questions count:", updatedQuestions.length)
+																						let updatedQuestions: Question[] = []
+																						let insertionIndexRef = -1
+																						setQuestions((prevQuestions) => {
+																							const insertionIndex = prevQuestions.findIndex(
+																								(q) => q.id === question.id
+																							)
+																							insertionIndexRef = insertionIndex
+																							const nextQuestions =
+																								insertionIndex >= 0
+																									? [
+																										...prevQuestions.slice(0, insertionIndex + 1),
+																										followupQuestion,
+																										...prevQuestions.slice(insertionIndex + 1),
+																									]
+																									: [...prevQuestions, followupQuestion]
+																							updatedQuestions = nextQuestions
+																							return nextQuestions
+																						})
+																						if (!updatedQuestions.length) {
+																							updatedQuestions = [...questions, followupQuestion]
+																							console.warn(
+																								"⚠️ FOLLOWUP fallback path triggered; using previous questions snapshot.",
+																								{
+																									fallbackCount: updatedQuestions.length,
+																								}
+																							)
+																						}
+																						console.log(
+																							"🔍 DEBUG: Updated questions count:",
+																							updatedQuestions.length,
+																							"insertionIndex:",
+																							insertionIndexRef
+																						)
+																						console.log(
+																							"🧾 FOLLOWUP UPDATED QUESTIONS SNAPSHOT",
+																							updatedQuestions.map((q, idx) => ({
+																								idx,
+																								id: q.id,
+																								textPreview: q.text.slice(0, 40),
+																								rationalePreview: q.rationale?.slice(0, 60) ?? null,
+																								status: q.status,
+																							}))
+																						)
 
-																						setQuestions(updatedQuestions)
+																						setHasInitialized(true)
 																						commitSelection(newBaseIds)
 																						markQuestionAsRecentlyAdded(followupQuestion.id)
+																						console.log("• selection after commit:", newBaseIds)
+																						console.log("• followup payload:", followupQuestion)
 
 																						// Prevent debounced save from racing this change
 																						suppressDeletionRef.current = true
 																						setSkipDebounce(true)
 																						console.log("🔍 DEBUG: About to save to database")
 																						await saveQuestionsToDatabase(updatedQuestions, newBaseIds)
-
-																						// Reload from database to ensure UI reflects actual DB state
-																						await loadQuestions()
-																						setTimeout(() => {
-																							setSkipDebounce(false)
-																							suppressDeletionRef.current = false
-																						}, 3000) // longer timeout to prevent debounced save override
+																						console.log("✅ Follow-up persisted successfully")
 
 																						setFollowupInput("")
 																						setFollowupCategory(question.categoryId)
 																						setShowingFollowupFor(null)
 																						toast.success("Follow-up question added")
 																						console.log("DEBUG: Followup addition completed")
+
+																						window.setTimeout(() => {
+																							setSkipDebounce(false)
+																							suppressDeletionRef.current = false
+																						}, 3000) // longer timeout to prevent debounced save override
 																					} catch (error) {
 																						console.error("Error adding follow-up:", error)
+																						console.log("• followupDraft:", nextFollowup)
 																						toast.error("Failed to add follow-up question")
+																						setSkipDebounce(false)
+																						suppressDeletionRef.current = false
 																					} finally {
+																						console.groupEnd()
 																						setAddingCustomQuestion(false)
 																					}
 																				}}
@@ -2562,11 +2827,11 @@ export function InterviewQuestionsManager(props: InterviewQuestionsManagerProps)
 																			researchGoal={effectiveResearchGoal}
 																			currentInput={followupInput}
 																			suggestionType="interview_questions"
-																			questionCategory={question.categoryId}
+																			questionCategory={followupCategory}
 																			customInstructions={`Generate deeper follow-up questions specifically for: "${question.text}"`}
 																			existingItems={questions.map((q) => q.text)}
 																			onSuggestionClick={(suggestion) => setFollowupInput(suggestion)}
-																			apiPath="api/contextual-suggestions"
+																			apiPath={contextualSuggestionsApiPath}
 																			isActive={true}
 																			responseCount={3}
 																		/>

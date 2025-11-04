@@ -6,6 +6,40 @@
 
 create extension if not exists vector;
 
+-- Organizations -------------------------------------------------------------------
+create table if not exists organizations (
+  id uuid primary key default gen_random_uuid(),
+  account_id uuid references accounts.accounts (id) on delete cascade,
+  project_id uuid references projects(id) on delete cascade,
+  name text not null,
+  legal_name text,
+  description text,
+  industry text,
+  sub_industry text,
+  company_type text,
+  size_range text,
+  employee_count int,
+  annual_revenue numeric,
+  phone text,
+  email text,
+  website_url text,
+  linkedin_url text,
+  twitter_url text,
+  domain text,
+  headquarters_location text,
+  billing_address jsonb,
+  shipping_address jsonb,
+  parent_organization_id uuid references public.organizations(id) on delete set null,
+  primary_contact_id uuid, -- Will reference people(id) after people table is created
+  lifecycle_stage text,
+  timezone text,
+  crm_external_id text,
+  tags text[],
+  notes text,
+  created_at timestamptz not null default now(),
+  updated_at timestamptz not null default now()
+);
+
 -- People
 create table if not exists people (
   id uuid primary key default gen_random_uuid(),
@@ -13,28 +47,39 @@ create table if not exists people (
   name text,
   name_hash text generated always as (lower(name)) stored,
   description text,
-	role text,
-	title text,
-	industry text,
-	company text,
+  role text,
+  title text,
+  industry text,
+  company text,
   segment text,
-	image_url text,
+  image_url text,
   age int,
   gender text,
   income int,
   education text,
   occupation text,
-	languages text[],
+  languages text[],
   location text,
-  contact_info jsonb,
+  primary_email text,
+  primary_phone text,
+  linkedin_url text,
+  website_url text,
+  contact_info jsonb default '{}'::jsonb,
   preferences text,
-	project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
+  lifecycle_stage text,
+  timezone text,
+  pronouns text,
+  default_organization_id uuid references public.organizations(id) on delete set null,
+  project_id uuid references projects(id) on delete cascade,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
 
 -- Indexes for performance based on common queries
 CREATE INDEX idx_people_account_id ON public.people(account_id);
+CREATE INDEX IF NOT EXISTS idx_people_default_organization
+    ON public.people (default_organization_id)
+    WHERE default_organization_id IS NOT NULL;
 
 -- Project scoping support
 CREATE INDEX IF NOT EXISTS idx_people_account_project_created
@@ -98,48 +143,14 @@ create policy "Account members can update" on public.people
 
 
 ----------------
--- Only account OWNERS should be able to delete records that are owned by an account they belong to
+-- Account members can delete people records
 ----------------
-create policy "Account owners can delete" on public.people
+create policy "Account members can delete" on public.people
     for delete
     to authenticated
     using (
-    account_id IN ( SELECT accounts.get_accounts_with_role('owner'))
+    account_id IN ( SELECT accounts.get_accounts_with_role())
     );
-
-
--- Organizations -------------------------------------------------------------------
-create table if not exists organizations (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid references accounts.accounts (id) on delete cascade,
-  project_id uuid references projects(id) on delete cascade,
-  name text not null,
-  legal_name text,
-  description text,
-  industry text,
-  sub_industry text,
-  company_type text,
-  size_range text,
-  employee_count int,
-  annual_revenue numeric,
-  phone text,
-  email text,
-  website_url text,
-  linkedin_url text,
-  twitter_url text,
-  domain text,
-  headquarters_location text,
-  billing_address jsonb,
-  shipping_address jsonb,
-  notes text,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now()
-);
-
-create index if not exists idx_organizations_account_id on public.organizations(account_id);
-create index if not exists idx_organizations_project_id on public.organizations(project_id);
-create unique index if not exists uniq_organizations_account_lower_name
-  on public.organizations (account_id, lower(name));
 
 create trigger set_organizations_timestamp
     before insert or update on public.organizations
@@ -180,6 +191,20 @@ create policy "Account owners can delete" on public.organizations
     using (
         account_id in (select accounts.get_accounts_with_role('owner'))
     );
+
+-- Add foreign key constraint for organizations.primary_contact_id now that people table exists
+alter table public.organizations
+    add constraint organizations_primary_contact_id_fkey
+        foreign key (primary_contact_id) references public.people(id) on delete set null;
+
+create index if not exists idx_organizations_account_id on public.organizations(account_id);
+create index if not exists idx_organizations_project_id on public.organizations(project_id);
+create index if not exists idx_organizations_primary_contact on public.organizations(primary_contact_id)
+    where primary_contact_id is not null;
+create index if not exists idx_organizations_parent on public.organizations(parent_organization_id)
+    where parent_organization_id is not null;
+create unique index if not exists uniq_organizations_account_lower_name
+  on public.organizations (account_id, lower(name));
 
 
 -- People <> Organizations Junction -------------------------------------------------
@@ -313,6 +338,7 @@ create table if not exists facet_account (
   slug text not null,
   label text not null,
   synonyms text[] default '{}',
+  is_active boolean not null default true,
   description text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
@@ -359,166 +385,23 @@ CREATE POLICY "Account owners can delete"
   USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
 
 
-create table if not exists project_facet (
-  project_id uuid not null references projects(id) on delete cascade,
-  account_id uuid not null references accounts.accounts (id) on delete cascade,
-  facet_ref text not null,
-  scope text not null default 'catalog' check (scope in ('catalog', 'project')),
-  kind_slug text,
-  label text,
-  synonyms text[] default '{}',
-  is_enabled boolean default true,
-  alias text,
-  pinned boolean default false,
-  sort_weight int default 0,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint project_facet_ref_pattern check (
-    (scope = 'catalog' and facet_ref ~ '^(g|a):[0-9]+$' and kind_slug is null and label is null)
-    or (scope = 'project' and facet_ref ~ '^p:[0-9a-f-]{8}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{4}-[0-9a-f-]{12}$' and kind_slug is not null and label is not null)
-  ),
-  primary key (project_id, facet_ref)
-);
-
-CREATE INDEX IF NOT EXISTS idx_project_facet_account ON public.project_facet(account_id);
-
-CREATE TRIGGER set_project_facet_timestamp
-    BEFORE INSERT OR UPDATE ON public.project_facet
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_timestamps();
-
-CREATE TRIGGER set_project_facet_user_tracking
-    BEFORE INSERT OR UPDATE ON public.project_facet
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
-
-ALTER TABLE public.project_facet ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Account members can select"
-  ON public.project_facet
-  FOR SELECT
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
-
-CREATE POLICY "Account members can insert"
-  ON public.project_facet
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account members can update"
-  ON public.project_facet
-  FOR UPDATE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()))
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account owners can delete"
-  ON public.project_facet
-  FOR DELETE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
-
-
-create table if not exists facet_candidate (
-  id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references accounts.accounts (id) on delete cascade,
-  project_id uuid not null references projects(id) on delete cascade,
-  person_id uuid references people(id) on delete set null,
-  kind_slug text not null,
-  label text not null,
-  synonyms text[] default '{}',
-  source text not null check (source in ('interview','survey','telemetry','inferred','manual','document')),
-  evidence_id uuid,
-  notes text,
-  status text not null default 'pending' check (status in ('pending','approved','rejected','merged')),
-  resolved_facet_ref text,
-  reviewed_by uuid,
-  reviewed_at timestamptz,
-  created_at timestamptz not null default now(),
-  updated_at timestamptz not null default now(),
-  constraint facet_candidate_unique unique (account_id, project_id, kind_slug, label)
-);
-
-CREATE INDEX IF NOT EXISTS idx_facet_candidate_account ON public.facet_candidate(account_id);
-CREATE INDEX IF NOT EXISTS idx_facet_candidate_project ON public.facet_candidate(project_id);
-
-CREATE TRIGGER set_facet_candidate_timestamp
-    BEFORE INSERT OR UPDATE ON public.facet_candidate
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_timestamps();
-
-CREATE TRIGGER set_facet_candidate_user_tracking
-    BEFORE INSERT OR UPDATE ON public.facet_candidate
-    FOR EACH ROW
-EXECUTE PROCEDURE accounts.trigger_set_user_tracking();
-
-ALTER TABLE public.facet_candidate ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Account members can select"
-  ON public.facet_candidate
-  FOR SELECT
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()));
-
-CREATE POLICY "Account members can insert"
-  ON public.facet_candidate
-  FOR INSERT
-  TO authenticated
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account members can update"
-  ON public.facet_candidate
-  FOR UPDATE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role()))
-  WITH CHECK (
-    account_id IN (SELECT accounts.get_accounts_with_role())
-    AND project_id IN (
-      SELECT p.id FROM projects p WHERE p.account_id = account_id
-    )
-  );
-
-CREATE POLICY "Account owners can delete"
-  ON public.facet_candidate
-  FOR DELETE
-  TO authenticated
-  USING (account_id IN (SELECT accounts.get_accounts_with_role('owner')));
-
-
 create table if not exists person_facet (
   person_id uuid not null references people(id) on delete cascade,
   account_id uuid not null references accounts.accounts (id) on delete cascade,
   project_id uuid not null references projects(id) on delete cascade,
-  facet_ref text not null,
+  facet_account_id int not null references facet_account(id) on delete cascade,
   source text not null check (source in ('interview','survey','telemetry','inferred','manual','document')),
   evidence_id uuid,
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   noted_at timestamptz default now(),
-  candidate_id uuid references facet_candidate(id) on delete set null,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  constraint person_facet_ref_pattern check (facet_ref ~ '^(g|a|p):[0-9a-zA-Z-]+$'),
-  primary key (person_id, facet_ref)
+  primary key (person_id, facet_account_id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_person_facet_account ON public.person_facet(account_id);
 CREATE INDEX IF NOT EXISTS idx_person_facet_project ON public.person_facet(project_id);
+CREATE INDEX IF NOT EXISTS idx_person_facet_facet_account ON public.person_facet(facet_account_id);
 
 CREATE TRIGGER set_person_facet_timestamp
     BEFORE INSERT OR UPDATE ON public.person_facet

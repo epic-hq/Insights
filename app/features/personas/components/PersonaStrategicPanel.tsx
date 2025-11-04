@@ -4,14 +4,14 @@ import type * as React from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Button } from "~/components/ui/button"
 
-export type Strength = {
+type Strength = {
 	name: string // e.g., "Strategic", "Learner"
 	description?: string
 	triggers?: string[] // what energizes movement
 	antiTriggers?: string[] // what stalls progress
 }
 
-export type Evidence = { quote: string; source?: string; context?: string }
+type Evidence = { quote: string; source?: string; context?: string }
 
 export type PersonaStrategicProps = {
 	// Identity

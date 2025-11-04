@@ -35,12 +35,24 @@ export async function action({ request }: ActionFunctionArgs) {
 	const intent: MediaIntent = body.intent === "download" ? "download" : "playback"
 	let key = typeof body.key === "string" && body.key.trim().length ? body.key.trim() : null
 
+	// Handle mediaUrl parameter - can be either a full URL or an R2 key
 	if (!key && typeof body.mediaUrl === "string" && body.mediaUrl.trim().length) {
-		key = getR2KeyFromPublicUrl(body.mediaUrl.trim())
+		const mediaUrl = body.mediaUrl.trim()
+		// If it's already an R2 key (no protocol), use it directly
+		if (!mediaUrl.startsWith("http://") && !mediaUrl.startsWith("https://")) {
+			key = mediaUrl
+		} else {
+			// Otherwise extract the key from the full URL
+			key = getR2KeyFromPublicUrl(mediaUrl)
+		}
 	}
 
 	if (!key) {
-		return Response.json({ error: "Unable to resolve media key" }, { status: 400 })
+		consola.warn("Unable to resolve media key from request", { bodyKey: body.key, bodyMediaUrl: body.mediaUrl })
+		return Response.json(
+			{ error: "Unable to resolve media key. Provide either 'key' (R2 path) or 'mediaUrl' (full URL or R2 path)" },
+			{ status: 400 }
+		)
 	}
 
 	const expiresInSeconds =

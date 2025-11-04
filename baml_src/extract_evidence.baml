@@ -28,7 +28,7 @@ class FacetCatalogKind {
 }
 
 class FacetCatalogEntry {
-  facet_ref string @description("Stable reference like g:12 or a:45")
+  facet_account_id int @description("Facet account ID (primary key from facet_account table)")
   kind_slug string @description("Kind slug this facet belongs to")
   label string @description("Preferred display label")
   alias string? @description("Project-level alias to show instead of label when present")
@@ -49,8 +49,8 @@ class FacetCandidatePayload {
 }
 
 class PersonFacetObservation {
-  facet_ref string? @description("Existing facet reference when confidently matched")
-  candidate FacetCandidatePayload? @description("Populate when no facet_ref confidently matches")
+  facet_account_id int? @description("Existing facet ID when confidently matched")
+  candidate FacetCandidatePayload? @description("Populate when no facet_account_id confidently matches")
   kind_slug string @description("Kind slug describing the dimension (goal, pain, etc.)")
   value string @description("Short phrase capturing the participant's wording")
   source string @description("interview | survey | telemetry | inferred | manual") // ! Is this necessary?

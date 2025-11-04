@@ -3,13 +3,7 @@ import { useEffect, useState } from "react"
 import { Card, CardContent } from "~/components/ui/card"
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "~/components/ui/dialog"
 
-export function InterviewQuestionHelp({
-	open,
-	onOpenChange,
-}: {
-	open: boolean
-	onOpenChange: (open: boolean) => void
-}) {
+function InterviewQuestionHelp({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
 	const [index, setIndex] = useState(0)
 
 	useEffect(() => {

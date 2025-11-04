@@ -11,7 +11,7 @@ describe("facets.server", () => {
 			vi.restoreAllMocks()
 		})
 
-		it("merges global, account, and project facets with overrides", async () => {
+		it("returns global and account facets with IDs", async () => {
 			const kindRows = [
 				{ id: 1, slug: "goal", label: "Goal", updated_at: "2025-01-01T00:00:00.000Z" },
 				{ id: 2, slug: "pain", label: "Pain", updated_at: "2025-01-02T00:00:00.000Z" },
@@ -24,6 +24,7 @@ describe("facets.server", () => {
 					label: "Speed Up",
 					synonyms: ["faster"],
 					updated_at: "2025-01-03T00:00:00.000Z",
+					is_active: true,
 				},
 			]
 			const accountRows = [
@@ -35,48 +36,21 @@ describe("facets.server", () => {
 					label: "Manual Work",
 					synonyms: ["tedious"],
 					updated_at: "2025-01-04T00:00:00.000Z",
-				},
-			]
-			const projectRows = [
-				{
-					facet_ref: "g:11",
-					scope: "catalog",
-					kind_slug: null,
-					label: null,
-					synonyms: ["fast lane"],
-					is_enabled: true,
-					alias: "Move Fast",
-					pinned: false,
-					sort_weight: 0,
-					updated_at: "2025-01-05T00:00:00.000Z",
+					is_active: true,
 				},
 				{
-					facet_ref: "a:21",
-					scope: "catalog",
-					kind_slug: null,
-					label: null,
-					synonyms: null,
-					is_enabled: false,
-					alias: null,
-					pinned: false,
-					sort_weight: 0,
-					updated_at: "2025-01-06T00:00:00.000Z",
-				},
-				{
-					facet_ref: "p:123e4567-e89b-12d3-a456-426614174000",
-					scope: "project",
-					kind_slug: "goal",
+					id: 22,
+					kind_id: 1,
+					global_facet_id: null,
+					slug: "goal_win",
 					label: "Win More Deals",
 					synonyms: ["close deals"],
-					is_enabled: true,
-					alias: "Win Deals",
-					pinned: true,
-					sort_weight: 10,
-					updated_at: "2025-01-07T00:00:00.000Z",
+					updated_at: "2025-01-05T00:00:00.000Z",
+					is_active: false, // Inactive, should be filtered out
 				},
 			]
 
-			const eqCalls: { facetAccount?: string; projectFacet?: string } = {}
+			const eqCalls: { facetAccount?: string } = {}
 
 			const mockDb = {
 				from: vi.fn((table: string) => {
@@ -101,46 +75,34 @@ describe("facets.server", () => {
 									}),
 								})),
 							}
-						case "project_facet":
-							return {
-								select: vi.fn(() => ({
-									eq: vi.fn().mockImplementation((column: string, value: string) => {
-										expect(column).toBe("project_id")
-										eqCalls.projectFacet = value
-										return Promise.resolve({ data: projectRows, error: null })
-									}),
-								})),
-							}
 						default:
 							throw new Error(`Unexpected table: ${table}`)
 					}
 				}),
 			} as unknown as MockDb
 
-			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1", projectId: "project-1" })
+			const catalog = await getFacetCatalog({ db: mockDb, accountId: "account-1", projectId: null })
 
-			expect(eqCalls).toEqual({ facetAccount: "account-1", projectFacet: "project-1" })
+			expect(eqCalls).toEqual({ facetAccount: "account-1" })
 			expect(catalog.kinds).toEqual([
 				{ slug: "goal", label: "Goal" },
 				{ slug: "pain", label: "Pain" },
 			])
 			expect(catalog.facets).toEqual([
 				{
-					facet_ref: "g:11",
+					facet_account_id: 11,
 					kind_slug: "goal",
 					label: "Speed Up",
-					synonyms: ["fast lane"],
-					alias: "Move Fast",
+					synonyms: ["faster"],
 				},
 				{
-					facet_ref: "p:123e4567-e89b-12d3-a456-426614174000",
-					kind_slug: "goal",
-					label: "Win More Deals",
-					synonyms: ["close deals"],
-					alias: "Win Deals",
+					facet_account_id: 21,
+					kind_slug: "pain",
+					label: "Manual Work",
+					synonyms: ["tedious"],
 				},
 			])
-			expect(catalog.version).toMatch(/^acct:account-1:proj:project-1:v\d+$/)
+			expect(catalog.version).toMatch(/^acct:account-1:v\d+$/)
 		})
 	})
 
@@ -149,26 +111,16 @@ describe("facets.server", () => {
 			vi.restoreAllMocks()
 		})
 
-		it("stores facet matches, scales, and candidates with normalized values", async () => {
+		it("stores facet observations with IDs and scales with normalized values", async () => {
 			vi.useFakeTimers()
 			vi.setSystemTime(new Date("2025-02-01T12:34:56.000Z"))
 
-			const candidateUpserts: any[] = []
 			const facetUpserts: any[] = []
 			const scaleUpserts: any[] = []
 
 			const mockDb = {
 				from: vi.fn((table: string) => {
 					switch (table) {
-						case "facet_candidate":
-							return {
-								upsert: vi.fn((payload: any) => {
-									candidateUpserts.push(payload)
-									return {
-										select: vi.fn().mockResolvedValue({ data: [], error: null }),
-									}
-								}),
-							}
 						case "person_facet":
 							return {
 								upsert: vi.fn((payload: any[]) => {
@@ -198,8 +150,7 @@ describe("facets.server", () => {
 						personId: "person-1",
 						facets: [
 							{
-								facet_ref: "g:11",
-								candidate: undefined,
+								facet_account_id: 11,
 								kind_slug: "goal",
 								value: "Finish faster",
 								source: "interview",
@@ -208,7 +159,6 @@ describe("facets.server", () => {
 								notes: ["clear signal"],
 							},
 							{
-								facet_ref: "",
 								candidate: {
 									kind_slug: "goal",
 									label: "Win More Deals",
@@ -239,28 +189,13 @@ describe("facets.server", () => {
 				evidenceIds: ["ev-1", "ev-2"],
 			})
 
-			expect(candidateUpserts).toHaveLength(1)
-			expect(candidateUpserts[0]).toEqual([
-				{
-					account_id: "acct-1",
-					project_id: "proj-1",
-					person_id: "person-1",
-					kind_slug: "goal",
-					label: "Win More Deals",
-					synonyms: ["close deals"],
-					source: "interview",
-					evidence_id: "ev-2",
-					notes: "explicit ask",
-				},
-			])
-
 			expect(facetUpserts).toHaveLength(1)
 			expect(facetUpserts[0]).toEqual([
 				{
 					account_id: "acct-1",
 					project_id: "proj-1",
 					person_id: "person-1",
-					facet_ref: "g:11",
+					facet_account_id: 11,
 					source: "interview",
 					evidence_id: "ev-1",
 					confidence: 0.92,

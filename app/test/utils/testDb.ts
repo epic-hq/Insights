@@ -39,7 +39,7 @@ export const TEST_PROJECT_ID = `${crypto.randomUUID()}`
  * Reset database to clean state
  * Only clears test data, preserves schema
  */
-export async function resetTestDb() {
+async function resetTestDb() {
 	// Clear data in dependency order (children first)
 	const tables = [
 		"person_facet",

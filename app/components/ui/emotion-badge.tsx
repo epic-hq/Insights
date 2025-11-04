@@ -111,7 +111,7 @@ export const EmotionsMap = {
 type TopKey = keyof typeof EmotionsMap
 
 // top-level (Angry, Disgusted, Sad, Happy, Surprised, Bad, Fearful)
-export type TopEmotion = keyof typeof EmotionsMap
+type TopEmotion = keyof typeof EmotionsMap
 
 // subcategory keys under each top (e.g., Frustrated, Vulnerable, Proud…)
 type SubKeys<T> = Exclude<keyof T, "emoji" | "color">
@@ -127,7 +127,7 @@ type LeafEmotion = {
 }[TopEmotion]
 
 // final union = top | subcategory | leaf
-export type Emotion = TopEmotion | SubEmotion | LeafEmotion
+type Emotion = TopEmotion | SubEmotion | LeafEmotion
 
 // Flat, typed list for selects/autocomplete
 export const EMOTIONS_ALL = Object.freeze(

@@ -65,16 +65,16 @@ export default function Login({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="mx-auto w-[500px] min-w-3/4 p-8">
 			<h1 className="text-2xl">React Router v7 Supabase Auth: Login</h1>
-			<Form method="post" className="mt-6 " onSubmit={doLogin}>
+			<Form method="post" className="mt-6" onSubmit={doLogin}>
 				<div className="flex flex-col gap-2">
 					<div className="flex flex-row">
-						<label htmlFor="email" className="min-w-24 ">
+						<label htmlFor="email" className="min-w-24">
 							Email:
 						</label>
 						<input id="email" className="flex-1" type="email" name="email" placeholder="Enter your email" />
 					</div>
 					<div className="flex flex-row">
-						<label htmlFor="password" className="min-w-24 ">
+						<label htmlFor="password" className="min-w-24">
 							Password:
 						</label>
 						<input id="password" className="flex-1" type="password" name="password" placeholder="Enter your password" />
@@ -91,7 +91,7 @@ export default function Login({ loaderData }: Route.ComponentProps) {
 					</div>
 					{error ? (
 						<div className="flex flex-row">
-							<p className="mt-4 text-red-600 ">{error}</p>
+							<p className="mt-4 text-red-600">{error}</p>
 						</div>
 					) : null}
 				</div>

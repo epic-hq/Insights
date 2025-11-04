@@ -41,7 +41,7 @@ export const createInvitation = async ({
 	return await supabase.rpc("create_invitation", validated)
 }
 
-export type LookupInvitationRequest = RpcArgs<"lookup_invitation">
+type LookupInvitationRequest = RpcArgs<"lookup_invitation">
 export const lookupInvitation = async ({
 	supabase,
 	lookup_invitation_token,
@@ -49,7 +49,7 @@ export const lookupInvitation = async ({
 	return await supabase.rpc("lookup_invitation", { lookup_invitation_token })
 }
 
-export type AcceptInvitationRequest = RpcArgs<"accept_invitation">
+type AcceptInvitationRequest = RpcArgs<"accept_invitation">
 /**
  * @description
  * Allow user to accept an invitation
@@ -61,7 +61,7 @@ export const acceptInvitation = async ({
 	return await supabase.rpc("accept_invitation", { lookup_invitation_token })
 }
 
-export type DeleteInvitationRequest = RpcArgs<"delete_invitation">
+type DeleteInvitationRequest = RpcArgs<"delete_invitation">
 /**
  * @description
  * Allow admin to delete an invitation

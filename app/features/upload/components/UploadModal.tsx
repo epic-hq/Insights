@@ -34,7 +34,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 			file.name.endsWith(".md") ||
 			file.name.endsWith(".markdown")
 
-		setProcessingMessage(isTextFile ? "Processing text with AI..." : "Uploading and transcribing...")
+		setProcessingMessage(isTextFile ? "📝 Reading and analyzing your transcript..." : "🎙️ Transcribing your audio/video...")
 
 		try {
 			if (!accountId || !projectId) {
@@ -48,9 +48,9 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 			// Update progress message based on file type
 			if (isTextFile) {
-				setProcessingMessage("Extracting insights from text...")
+				setProcessingMessage("🔍 Extracting insights, pain points, and user motivations...")
 			} else {
-				setProcessingMessage("Transcribing audio/video...")
+				setProcessingMessage("🧠 Analyzing conversation patterns and themes...")
 			}
 
 			const response = await fetch("/api/upload-file", {
@@ -65,11 +65,11 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 
 			const result = await response.json()
 
-			setProcessingMessage(isTextFile ? "Text processing complete!" : "Transcription and analysis complete!")
+			setProcessingMessage(isTextFile ? "✅ Insights extracted! Ready for analysis." : "✅ Analysis complete! Insights discovered.")
 
-			// Show success notification with file type context
+			// Show success notification with onboarding context
 			showNotification(
-				`${isTextFile ? "Text" : "Audio/Video"} processed successfully! Generated ${result.insights?.length || 0} insights.`,
+				`${isTextFile ? "Text" : "Audio/Video"} processed successfully! Generated ${result.insights?.length || 0} insights. Your research foundation is growing!`,
 				"success",
 				4000
 			)
@@ -140,7 +140,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 					>
 						<div className="relative w-full max-w-lg transform overflow-hidden rounded-lg bg-white p-6 text-left shadow-xl transition-all dark:bg-gray-800">
 							<Dialog.Title className="mb-6 font-medium text-gray-900 text-lg dark:text-gray-200">
-								Upload Interview Transcript
+								Start Your Research Journey
 							</Dialog.Title>
 
 							{/* Error Message */}
@@ -187,7 +187,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 											{isDragActive ? "Drop file here" : "Drop transcript file here or click to browse"}
 										</p>
 										<p className="text-gray-500 text-xs dark:text-gray-400">
-											Text files (.txt, .md) process instantly • Audio/video files are transcribed first
+											Text files (.txt, .md) process instantly • Audio/video files are transcribed first • All content becomes searchable insights
 										</p>
 									</div>
 								)}
@@ -203,7 +203,7 @@ export default function UploadModal({ open, onClose, onSuccess }: UploadModalPro
 												{processingMessage || "Processing transcript..."}
 											</p>
 											<p className="text-blue-700 text-xs dark:text-blue-300">
-												Extracting insights and metadata from your interview
+												{processingMessage || "Transforming your conversation into actionable insights"}
 											</p>
 										</div>
 									</div>

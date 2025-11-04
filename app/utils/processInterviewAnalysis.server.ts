@@ -170,6 +170,7 @@ export async function createAndProcessAnalysisJob({
 		const triggerEnv = process.env.TRIGGER_SECRET_KEY?.startsWith("tr_dev_") ? "dev" : "prod"
 		consola.info(`Triggering interview pipeline in ${triggerEnv} environment`, { runId: analysisJob.id })
 
+		consola.log("About to trigger uploadMediaAndTranscribeTask...")
 		const handle = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
 			analysisJobId: analysisJob.id,
 			metadata,
@@ -178,11 +179,9 @@ export async function createAndProcessAnalysisJob({
 			existingInterviewId: interviewId,
 			userCustomInstructions: customInstructions,
 		})
+		consola.log("Trigger.dev task triggered successfully with handle:", handle.id)
 
-		await adminClient
-			.from("analysis_jobs")
-			.update({ trigger_run_id: handle.id })
-			.eq("id", analysisJob.id)
+		await adminClient.from("analysis_jobs").update({ trigger_run_id: handle.id }).eq("id", analysisJob.id)
 
 		const publicToken = await createRunAccessToken(handle.id)
 

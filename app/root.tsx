@@ -18,6 +18,7 @@ import { useChangeLanguage } from "remix-i18next/react"
 import { Toaster } from "sonner"
 import { ClientOnly } from "~/components/ClientOnly"
 import ErrorBoundaryComponent from "~/components/ErrorBoundary"
+import { ValidationViewProvider } from "~/contexts/ValidationViewContext"
 import { NotificationProvider } from "~/contexts/NotificationContext"
 import { ThemeProvider } from "~/contexts/ThemeContext"
 import { getClientEnv } from "~/env.server"
@@ -123,8 +124,10 @@ export default function App({ loaderData }: Route.ComponentProps) {
 					}}
 				>
 					<NotificationProvider>
-						<Outlet />
-						<Toaster />
+						<ValidationViewProvider>
+							<Outlet />
+							<Toaster />
+						</ValidationViewProvider>
 					</NotificationProvider>
 				</PostHogProvider>
 			</ThemeProvider>

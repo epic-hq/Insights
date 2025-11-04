@@ -6,30 +6,14 @@ import type { Database } from "~/types"
 type DB = Database["public"]
 export type Annotation = DB["Tables"]["annotations"]["Row"]
 export type AnnotationInsert = DB["Tables"]["annotations"]["Insert"]
-export type AnnotationUpdate = DB["Tables"]["annotations"]["Update"]
-
-export type Vote = DB["Tables"]["votes"]["Row"]
-export type VoteInsert = DB["Tables"]["votes"]["Insert"]
-export type VoteUpdate = DB["Tables"]["votes"]["Update"]
-
-export type EntityFlag = DB["Tables"]["entity_flags"]["Row"]
-export type EntityFlagInsert = DB["Tables"]["entity_flags"]["Insert"]
-export type EntityFlagUpdate = DB["Tables"]["entity_flags"]["Update"]
+type AnnotationUpdate = DB["Tables"]["annotations"]["Update"]
 
 // Entity types that can have annotations
 export type EntityType = "insight" | "persona" | "opportunity" | "interview" | "person"
 export type AnnotationType = "comment" | "ai_suggestion" | "flag" | "note" | "todo" | "reaction"
 export type FlagType = "hidden" | "archived" | "starred" | "priority"
 
-// Helper types for aggregated data
-export interface AnnotationCounts {
-	comment: number
-	ai_suggestion: number
-	flag: number
-	note: number
-	todo: number
-	reaction: number
-}
+export type AnnotationMetadata = Record<string, unknown>
 
 // Batched variant: fetch vote counts for multiple entities in one round-trip
 export async function getVoteCountsForEntities({
@@ -46,7 +30,7 @@ export async function getVoteCountsForEntities({
 	userId?: string
 }) {
 	try {
-		if (!entityIds.length) return { data: {}, error: null as any }
+		if (!entityIds.length) return { data: {}, error: null }
 
 		// Fetch all votes for these entities in one query
 		const { data: rows, error } = await supabase
@@ -166,7 +150,7 @@ export async function createAnnotation({
 	entityId,
 	annotationType,
 	content,
-	metadata = {},
+	metadata,
 	parentAnnotationId,
 	threadRootId,
 	createdByAi = false,
@@ -180,7 +164,7 @@ export async function createAnnotation({
 	entityId: string
 	annotationType: AnnotationType
 	content?: string
-	metadata?: Record<string, any>
+	metadata?: AnnotationMetadata
 	parentAnnotationId?: string
 	threadRootId?: string
 	createdByAi?: boolean
@@ -195,7 +179,7 @@ export async function createAnnotation({
 			entity_id: entityId,
 			annotation_type: annotationType,
 			content,
-			metadata: metadata as any,
+			metadata: metadata ?? null,
 			parent_annotation_id: parentAnnotationId,
 			thread_root_id: threadRootId,
 			created_by_ai: createdByAi,
@@ -415,13 +399,11 @@ export async function getUserFlagsForEntity({
 	supabase,
 	entityType,
 	entityId,
-	userId,
 	projectId,
 }: {
 	supabase: SupabaseClient<Database>
 	entityType: EntityType
 	entityId: string
-	userId: string
 	projectId: string
 }) {
 	try {
@@ -444,12 +426,13 @@ export async function getUserFlagsForEntity({
 			priority: false,
 		}
 
-		if (data) {
-			data.forEach((flag: any) => {
-				if (flag.flag_type in flags) {
-					flags[flag.flag_type as keyof UserFlags] = flag.flag_value
-				}
-			})
+		if (Array.isArray(data)) {
+			const casted = data as Array<{ flag_type?: string; flag_value?: unknown }>
+			for (const flag of casted) {
+				if (!flag.flag_type || !(flag.flag_type in flags)) continue
+				const key = flag.flag_type as keyof UserFlags
+				flags[key] = Boolean(flag.flag_value)
+			}
 		}
 
 		return { data: flags, error: null }
@@ -468,7 +451,7 @@ export async function setEntityFlag({
 	userId,
 	flagType,
 	flagValue,
-	metadata = {},
+	metadata,
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
@@ -478,7 +461,7 @@ export async function setEntityFlag({
 	userId: string
 	flagType: FlagType
 	flagValue: boolean
-	metadata?: Record<string, any>
+	metadata?: AnnotationMetadata
 }) {
 	try {
 		const { data, error } = await supabase
@@ -491,7 +474,7 @@ export async function setEntityFlag({
 				user_id: userId,
 				flag_type: flagType,
 				flag_value: flagValue,
-				metadata: metadata as any,
+				metadata: metadata ?? null,
 				updated_at: new Date().toISOString(),
 			})
 			.select()

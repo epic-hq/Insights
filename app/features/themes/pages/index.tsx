@@ -1,17 +1,22 @@
-import { Grid3X3, List } from "lucide-react"
-import { useState } from "react"
+import { Grid3X3, List, Search } from "lucide-react"
+import { useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { useLoaderData } from "react-router-dom"
-import { Button } from "~/components/ui/button"
+import { PageContainer } from "~/components/layout/PageContainer"
+import { Input } from "~/components/ui/input"
+import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
+import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
+import { getInsights } from "~/features/insights/db"
 import { PersonaThemeMatrix } from "~/features/themes/components/PersonaThemeMatrix"
 import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
 import { userContext } from "~/server/user-context"
-import type { Evidence, Theme } from "~/types"
+import type { Insight } from "~/types"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const { supabase } = context.get(userContext)
 	const projectId = params.projectId
 	if (!projectId) throw new Response("Missing projectId", { status: 400 })
+	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
 
 	// 1) Load themes for project
 	const { data: themes, error: tErr } = await supabase
@@ -28,11 +33,12 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("project_id", projectId)
 	if (lErr) throw new Error(`Failed to load theme links: ${lErr.message}`)
 
-	// 3) Load insights for the project (id, interview_id) once to compute counts per theme via evidence->interview
-	const { data: insights, error: iErr } = await supabase
-		.from("insights")
-		.select("id, interview_id, project_id")
-		.eq("project_id", projectId)
+	// 3) Load insights for the project (full data for display)
+	const { data: insights, error: iErr } = await getInsights({
+		supabase,
+		accountId: params.accountId,
+		projectId,
+	})
 	if (iErr) throw new Error(`Failed to load insights: ${iErr.message}`)
 
 	// 4) Load all evidence with personas (legacy) and interview for fallback only
@@ -211,62 +217,121 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		})
 	}
 
-	return { themes: enriched, matrixData }
+	return { themes: enriched, matrixData, insights }
 }
 
 export default function ThemesIndex() {
-	const { themes, matrixData } = useLoaderData<typeof loader>()
-	const [showMatrix, setShowMatrix] = useState(true)
+	const { themes, matrixData, insights } = useLoaderData<typeof loader>()
+	const [viewMode, setViewMode] = useState<"insights" | "matrix" | "cards">("insights")
+	const [searchQuery, setSearchQuery] = useState("")
+
+	const filteredInsights = useMemo(() => {
+		const normalized = searchQuery.trim().toLowerCase()
+		if (!normalized) return insights
+
+		return insights.filter((insight: Insight & { [key: string]: any }) => {
+			const haystack = [
+				insight.name,
+				insight.pain,
+				insight.details,
+				insight.category,
+				insight.emotional_response,
+				insight.desired_outcome,
+				insight.jtbd,
+				insight.evidence,
+				insight.motivation,
+				insight?.persona_insights?.map((pi: any) => pi.personas?.name).join(" "),
+				insight?.linked_themes?.map((theme: any) => theme.name).join(" "),
+			]
+
+			return haystack.some((text) => typeof text === "string" && text.toLowerCase().includes(normalized))
+		})
+	}, [insights, searchQuery])
 
 	// Show generate button when no themes exist
 	if (themes.length === 0) {
 		return (
-			<div className="flex min-h-[60vh] flex-col items-center justify-center space-y-6">
-				<div className="space-y-2 text-center">
-					<h2 className="font-semibold text-2xl text-gray-900">No themes found yet</h2>
-					<p className="max-w-md text-gray-600">
-						{/* Generate themes automatically from your evidence to identify patterns and insights. */}
-					</p>
-				</div>
-				{/* <GenerateThemesButton /> */}
-			</div>
+			<PageContainer className="flex min-h-[60vh] flex-col items-center justify-center space-y-4 text-center">
+				<h2 className="font-semibold text-2xl text-foreground">No themes yet</h2>
+				<p className="max-w-md text-foreground/70 text-sm">
+					Add themes or connect evidence to personas to unlock persona coverage insights.
+				</p>
+			</PageContainer>
 		)
 	}
 
 	return (
-		<div className="mx-auto h-full max-w-7xl p-8">
-			<div className="mb-6 ">
-				<div className="flex items-center gap-2">
-					<Button
-						variant={showMatrix ? "default" : "outline"}
-						size="sm"
-						onClick={() => setShowMatrix(true)}
-						className="flex items-center gap-2"
-					>
-						<Grid3X3 className="h-4 w-4" />
-						Matrix View
-					</Button>
-					<Button
-						variant={showMatrix ? "outline" : "default"}
-						size="sm"
-						onClick={() => setShowMatrix(false)}
-						className="flex items-center gap-2"
-					>
-						<List className="h-4 w-4" />
-						Studio View
-					</Button>
+		<PageContainer className="space-y-8">
+			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+				<div>
+					<h1 className="font-semibold text-3xl text-foreground">Topics by Persona</h1>
+					{/* <p className="max-w-2xl text-sm text-foreground/70">
+						Compare how personas engage with your themes. Purple highlights call out wedge opportunities where a persona
+						over-indexes.
+					</p> */}
+				</div>
+				<div className="relative w-full max-w-md">
+					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
+					<Input
+						className="pl-9"
+						placeholder="Search by insight, pain, tags, personas…"
+						value={searchQuery}
+						onChange={(e) => setSearchQuery(e.target.value)}
+					/>
 				</div>
 			</div>
+			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+				<div className="space-y-1.5">
+					<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
+					<p className="max-w-2xl text-foreground/70 text-sm">
+						Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for
+						your team.
+					</p>
+				</div>
+				<ToggleGroup
+					type="single"
+					value={viewMode}
+					onValueChange={(next) => next && setViewMode(next as "insights" | "matrix" | "cards")}
+					size="sm"
+					className="shrink-0"
+				>
+					<ToggleGroupItem value="insights" aria-label="Insights view" className="gap-2">
+						<Grid3X3 className="h-4 w-4" />
+						Insights
+					</ToggleGroupItem>
+					<ToggleGroupItem value="matrix" aria-label="Matrix view" className="gap-2">
+						<List className="h-4 w-4" />
+						Matrix
+					</ToggleGroupItem>
+					<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-2">
+						<List className="h-4 w-4" />
+						Cards
+					</ToggleGroupItem>
+				</ToggleGroup>
+			</div>
 
-			{showMatrix && matrixData.length > 0 ? (
+			{viewMode === "insights" ? (
+				filteredInsights.length === 0 ? (
+					<div className="rounded-lg border border-dashed bg-muted/30 py-16 text-center text-muted-foreground">
+						<p className="font-medium">No insights match your filters</p>
+						{searchQuery ? <p className="mt-2 text-sm">Try a different keyword or clear the search field.</p> : null}
+					</div>
+				) : (
+					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+						{filteredInsights.map((insight) => (
+							<InsightCardV3 key={insight.id} insight={insight} />
+						))}
+					</div>
+				)
+			) : viewMode === "matrix" && matrixData.length > 0 ? (
 				<PersonaThemeMatrix matrixData={matrixData} />
-			) : showMatrix ? (
-				<div className="py-12 text-center text-gray-600">
+			) : viewMode === "matrix" ? (
+				<div className="py-12 text-center text-foreground/60">
 					<p>No persona data available. Add evidence with personas to see the matrix.</p>
 				</div>
 			) : (
 				<ThemeStudio themes={themes} />
 			)}
-		</div>
+		</PageContainer>
 	)
 }

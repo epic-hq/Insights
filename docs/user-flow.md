@@ -318,7 +318,7 @@ Global: Workspace switcher ▸ Projects ▸ Settings/Team
 | 2 | [`new.tsx`](app/features/interviews/pages/new.tsx) | Create a new interview, assign participants, set meta | `interviews` | Interview linked to project, account, and optionally people (participants) |
 | 3 | [`api.upload-file.tsx`](app/routes/api.upload-file.tsx:13) | Upload interview recording (audio/video) | File storage (media), `interviews.media_url` | Uploaded file URL saved to interview record |
 | 4 | [`api.interview-transcript.tsx`](app/routes/api.interview-transcript.tsx:5) | Transcribe uploaded media, attach transcript to interview | `interviews.transcript`, `interviews.transcript_formatted` | Transcript linked to interview, used for downstream analysis |
-| 5 | [`api.process-interview-internal.tsx`](app/routes/api.process-interview-internal.tsx:13) + [`processInterview.server.ts`](app/utils/processInterview.server.ts:108) | **Extract evidence units from transcript (BAML), insert into `evidence`, link to tags, people, answers, and personas** | `evidence`, `evidence_tag`, `evidence_people`, `project_answers`, `people`, `personas`, `people_personas` | Evidence linked to interview, project, person, persona, and mapped to answers by category/tag. Answers link to prompts, RQ, DQ, research_goal via `question_id`/`question_category` |
+| 5 | [`api.process-interview-internal.tsx`](app/routes/api.process-interview-internal.tsx:13) + [`processInterview.server.ts`](app/utils/processInterview.server.ts:108) | **Extract evidence units from transcript (BAML), insert into `evidence`, resolve facets, link to people, answers, and personas** | `evidence`, `evidence_facet`, `evidence_people`, `project_answers`, `people`, `personas`, `people_personas` | Evidence linked to interview, project, person, persona, and mapped to answers by facet kind. Answers link to prompts, RQ, DQ, research_goal via `question_id`/`question_category` |
 | 6 | [`project-answers.server.ts`](app/lib/database/project-answers.server.ts) | Maintain answer records for each interview/question | `project_answers` | Answers linked to interview, question, person, and evidence |
 | 7 | [`interview_people`](supabase/schemas/21_interview_people.sql), [`people_personas`](supabase/schemas/60_persona_distribution_view.sql) | Maintain person and persona relationships | `interview_people`, `people_personas` | Person linked to interview and persona, persona assigned via BAML |
 | 8 | [`detail.tsx`](app/features/interviews/pages/detail.tsx) | View interview details, evidence, empathy map, insights | Reads from all above | UI aggregates all related data for a single interview |
@@ -335,7 +335,7 @@ flowchart TD
     P --> Pe[People]
     P --> PeP[Personas]
     P --> EP[EvidencePeople]
-    P --> ET[EvidenceTag]
+    P --> EF[EvidenceFacet]
     P --> PP[PeoplePersonas]
     E --> D[InterviewDetailPage<br/>(View Insights, Empathy Map)]
     PA --> D
@@ -351,7 +351,7 @@ flowchart TD
       J[interview_prompts]
       K[project_answers]
       L[evidence]
-      M[evidence_tag]
+      M[evidence_facet]
       N[evidence_people]
       O[personas]
       P[people]

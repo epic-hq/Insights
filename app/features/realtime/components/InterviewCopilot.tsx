@@ -731,17 +731,38 @@ export function InterviewCopilot({ projectId, interviewId }: InterviewCopilotPro
 							audioDuration = Math.max(1, Math.round(elapsedMsRef.current / 1000))
 						}
 
-						await fetch(`${projectPath}/api/interviews/realtime-finalize`, {
-							method: "POST",
-							headers: { "Content-Type": "application/json" },
-							body: JSON.stringify({
-								interviewId: id,
-								transcript,
-								transcriptFormatted: undefined,
-								mediaUrl,
-								audioDuration,
-							}),
-						})
+						try {
+							// Convert turns to speaker_transcripts format for BAML processing
+							// Reverse turns array since it's stored newest-first, but we need chronological order
+							const chronologicalTurns = [...turns].reverse()
+							const utterances = chronologicalTurns.map((turn, idx) => ({
+								speaker: idx % 2 === 0 ? "A" : "B", // Simple alternating speaker labels (A, B, not "Speaker A")
+								text: turn.transcript,
+								start: turn.start,
+								end: turn.end,
+								confidence: 0.8,
+							}))
+
+							await fetch(`${projectPath}/api/interviews/realtime-finalize`, {
+								method: "POST",
+								headers: { "Content-Type": "application/json" },
+								body: JSON.stringify({
+									interviewId: id,
+									transcript,
+									transcriptFormatted: {
+										full_transcript: transcript,
+										utterances,
+										speaker_transcripts: utterances,
+										audio_duration: audioDuration,
+										file_type: "realtime",
+									},
+									mediaUrl,
+									audioDuration,
+								}),
+							})
+						} catch (e) {
+							consola.warn("Realtime finalize error", e)
+						}
 
 						// Show completion dialog instead of immediately navigating
 						setCompletedInterviewId(id)

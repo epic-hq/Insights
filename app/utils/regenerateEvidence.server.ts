@@ -1,7 +1,9 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
+import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
+import type { uploadMediaAndTranscribeTask } from "~/../../src/trigger/interview/uploadMediaAndTranscribe"
 import type { Database } from "~/../supabase/types"
-import { type InterviewMetadata, processInterviewTranscriptWithClient } from "~/utils/processInterview.server"
+import type { InterviewMetadata } from "~/utils/processInterview.server"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 interface RegenerateEvidenceOptions {
@@ -11,7 +13,7 @@ interface RegenerateEvidenceOptions {
 	userId?: string
 }
 
-export interface RegenerateEvidenceResult {
+interface RegenerateEvidenceResult {
 	processed: number
 	skipped: number
 	errors: Array<{ interviewId: string; message: string }>
@@ -63,34 +65,54 @@ export async function regenerateEvidenceForProject({
 					"en",
 			}
 
+			// Delete existing evidence to regenerate
 			await supabase.from("evidence").delete().eq("interview_id", interview.id)
 
 			const metadata: InterviewMetadata = {
-				accountId,
-				projectId,
-				userId,
+				accountId: interview.account_id,
+				userId: interview.created_by || undefined,
+				projectId: interview.project_id || undefined,
 				interviewTitle: interview.title || undefined,
-				interviewDate: interview.interview_date
-					? new Date(interview.interview_date).toISOString().split("T")[0]
-					: undefined,
+				interviewDate: interview.interview_date || undefined,
 				participantName: interview.participant_pseudonym || undefined,
+				duration_sec: interview.duration_sec || undefined,
 				segment: interview.segment || undefined,
 			}
 
-			await processInterviewTranscriptWithClient({
+			// Generate fresh presigned URL from R2 key if needed
+			let mediaUrlForTask = interview.media_url || ""
+			if (mediaUrlForTask && !mediaUrlForTask.startsWith("http://") && !mediaUrlForTask.startsWith("https://")) {
+				// It's an R2 key, generate presigned URL
+				const { createR2PresignedUrl } = await import("~/utils/r2.server")
+				const presigned = createR2PresignedUrl({
+					key: mediaUrlForTask,
+					expiresInSeconds: 24 * 60 * 60, // 24 hours
+				})
+				if (presigned) {
+					mediaUrlForTask = presigned.url
+					consola.log(`Generated presigned URL for regeneration of interview ${interview.id}`)
+				}
+			}
+
+			// Use Trigger.dev task instead of duplicating core logic
+			// This ensures consistent behavior and single source of truth
+			const result = await tasks.trigger<typeof uploadMediaAndTranscribeTask>("interview.upload-media-and-transcribe", {
 				metadata,
-				mediaUrl: interview.media_url || "",
+				mediaUrl: mediaUrlForTask,
 				transcriptData,
 				userCustomInstructions: undefined,
-				client: supabase,
 				existingInterviewId: interview.id,
+				// No analysisJobId for regeneration - this is a background operation
 			})
 
+			consola.info(`Triggered regeneration for interview ${interview.id}, run ID: ${result.id}`)
+
 			processed += 1
+			consola.success(`Successfully triggered regeneration for interview ${interview.id}`)
 		} catch (error) {
 			const message = error instanceof Error ? error.message : String(error)
 			errors.push({ interviewId: interview.id, message })
-			consola.warn(`Failed to regenerate evidence for interview ${interview.id}: ${message}`)
+			consola.error(`Failed to trigger regeneration for interview ${interview.id}: ${message}`)
 		}
 	}
 

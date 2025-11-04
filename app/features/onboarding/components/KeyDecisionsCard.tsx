@@ -22,11 +22,7 @@ interface KeyDecisionsCardProps {
 	analysisResults?: QuestionAnalysis[]
 }
 
-export function KeyDecisionsCard({
-	decisionSummaries,
-	topResearchQuestions,
-	analysisResults = [],
-}: KeyDecisionsCardProps) {
+function _KeyDecisionsCard({ decisionSummaries, topResearchQuestions, analysisResults = [] }: KeyDecisionsCardProps) {
 	const getDirectionIcon = (confidence: number) => {
 		if (confidence >= 0.8) return <CheckCircle className="h-4 w-4 text-success" />
 		if (confidence >= 0.5) return <AlertCircle className="h-4 w-4 text-warning" />

@@ -23,7 +23,7 @@ export interface Person {
 	account_id: string
 }
 
-export interface BackfillStats {
+interface BackfillStats {
 	totalInterviews: number
 	totalPeople: number
 	interviewsWithPeople: number
@@ -31,7 +31,7 @@ export interface BackfillStats {
 	duplicatePeople: number
 }
 
-export interface BackfillResult {
+interface BackfillResult {
 	totalInterviews: number
 	interviewsWithoutPeople: number
 	peopleCreated: number

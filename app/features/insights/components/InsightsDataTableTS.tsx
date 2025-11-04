@@ -200,7 +200,11 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 													<button
 														key={String(val)}
 														type="button"
-														className={`rounded border px-2 py-1 text-xs ${filterValue === val ? "border-blue-500 bg-blue-500 text-white" : "border-gray-300 bg-white"}`}
+														className={`rounded border px-2 py-1 text-xs transition-colors ${
+															filterValue === val
+																? "border-blue-500 bg-blue-500 text-white dark:border-blue-400 dark:bg-blue-500"
+																: "border-border bg-background text-foreground hover:bg-muted"
+														}`}
 														onClick={() => col?.setFilterValue(filterValue === val ? undefined : val)}
 													>
 														{String(val)}
@@ -209,7 +213,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 												{filterValue && (
 													<button
 														type="button"
-														className="ml-2 rounded border border-gray-300 bg-gray-100 px-2 py-1 text-xs"
+														className="ml-2 rounded border border-border bg-muted px-2 py-1 text-xs text-muted-foreground hover:bg-muted/80 transition-colors"
 														onClick={() => col?.setFilterValue(undefined)}
 													>
 														Clear

@@ -8,7 +8,17 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	const error = requestUrl.searchParams.get("error")
 	const next = requestUrl.searchParams.get("next") || "/home"
 
-	consola.log("[AUTH CALLBACK] Received callback with next:", next, "code:", !!code, "error:", error)
+	consola.log("[AUTH CALLBACK] ===== OAUTH CALLBACK RECEIVED =====")
+	consola.log("[AUTH CALLBACK] Full URL:", requestUrl.toString())
+	consola.log("[AUTH CALLBACK] Host:", requestUrl.host)
+	consola.log("[AUTH CALLBACK] Pathname:", requestUrl.pathname)
+	consola.log("[AUTH CALLBACK] Search params:", Object.fromEntries(requestUrl.searchParams))
+	consola.log("[AUTH CALLBACK] Code present:", !!code)
+	consola.log("[AUTH CALLBACK] Error present:", !!error)
+	consola.log("[AUTH CALLBACK] Next redirect:", next)
+	consola.log("[AUTH CALLBACK] User-Agent:", request.headers.get("user-agent"))
+	consola.log("[AUTH CALLBACK] Referer:", request.headers.get("referer"))
+	consola.log("[AUTH CALLBACK] =====================================")
 
 	// Handle OAuth error from provider (e.g., user cancelled Google login)
 	if (error) {

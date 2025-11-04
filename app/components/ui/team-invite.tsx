@@ -25,7 +25,7 @@ export interface TeamMember {
 	isOwner?: boolean
 }
 
-export interface TeamInviteProps {
+interface TeamInviteProps {
 	className?: string
 	teamName: string
 	teamLogo?: string

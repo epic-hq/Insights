@@ -1,13 +1,23 @@
 import consola from "consola"
-import { ArrowRight, Hash, House, Mic, Target } from "lucide-react"
-import { useState } from "react"
-import { Link, type LoaderFunctionArgs, redirect, useLoaderData, useNavigate, useRouteLoaderData } from "react-router"
+import { ArrowRight, BarChart3, FolderOpen, Handshake, Hash, House, Plus, Settings, Target, Users } from "lucide-react"
+import { usePostHog } from "posthog-js/react"
+import { useEffect, useState } from "react"
+import {
+	Link,
+	type LoaderFunctionArgs,
+	redirect,
+	useLoaderData,
+	useNavigate,
+	useParams,
+	useRouteLoaderData,
+} from "react-router"
+import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback } from "~/components/ui/avatar"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { getProjects } from "~/features/projects/db"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Project, Project_Section } from "~/types"
 
@@ -20,6 +30,10 @@ export async function loader({ context }: LoaderFunctionArgs) {
 	}
 	const { supabase, account_id } = ctx // account_id is now team account from middleware
 	const user_settings = ctx.user_settings
+	if (!supabase || !account_id) {
+		consola.error("home loader database or account_id not found")
+		return redirect("/login")
+	}
 
 	// Use account_id from middleware (already resolved to team account)
 	consola.log("home loader account_id:", account_id)
@@ -63,9 +77,69 @@ export async function loader({ context }: LoaderFunctionArgs) {
 		.order("created_at", { ascending: false })
 		.limit(10)
 
+	let salesWorkspace: {
+		project: Project
+		kpis: { organizations: number; people: number; opportunities: number }
+	} | null = null
+
+	const salesProjects = (projects || []).filter((project) => project.workflow_type === "sales")
+
+	if (salesProjects.length > 0) {
+		const primarySalesProject = salesProjects[0]
+		try {
+			consola.log("[HOME] Sales workspace KPI queries starting", {
+				account_id,
+				primarySalesProjectId: primarySalesProject.id,
+			})
+
+			const [organizationsResult, peopleResult, opportunitiesResult] = await Promise.all([
+				supabase.from("organizations").select("id", { count: "exact", head: true }).eq("account_id", account_id),
+				supabase.from("people").select("id", { count: "exact", head: true }).eq("account_id", account_id),
+				supabase.from("opportunities").select("id", { count: "exact", head: true }).eq("account_id", account_id),
+			])
+
+			consola.log("[HOME] Sales workspace KPI query results", {
+				organizationsResult: { count: organizationsResult.count, error: organizationsResult.error },
+				peopleResult: { count: peopleResult.count, error: peopleResult.error },
+				opportunitiesResult: { count: opportunitiesResult.count, error: opportunitiesResult.error },
+			})
+
+			if (organizationsResult.error || peopleResult.error || opportunitiesResult.error) {
+				consola.warn("[HOME] Sales KPI query errors", {
+					organizationsError: organizationsResult.error?.message,
+					peopleError: peopleResult.error?.message,
+					opportunitiesError: opportunitiesResult.error?.message,
+				})
+			}
+
+			const organizations = organizationsResult.count ?? 0
+			const people = peopleResult.count ?? 0
+			const opportunities = opportunitiesResult.count ?? 0
+
+			consola.log("[HOME] Sales workspace KPI counts", {
+				account_id,
+				organizations,
+				people,
+				opportunities,
+			})
+
+			salesWorkspace = {
+				project: primarySalesProject,
+				kpis: { organizations, people, opportunities },
+			}
+		} catch (error) {
+			consola.warn("[HOME] Failed to load sales workspace KPIs", error)
+			salesWorkspace = {
+				project: primarySalesProject,
+				kpis: { organizations: 0, people: 0, opportunities: 0 },
+			}
+		}
+	}
+
 	return {
 		projects: projects || [],
 		latest_sections: latest_sections || [],
+		salesWorkspace,
 	}
 }
 
@@ -120,11 +194,13 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 										</div>
 									)}
 								</div>
-								{project.status && (
-									<Badge variant="secondary" className="h-5 px-1.5 text-xs">
-										{project.status}
-									</Badge>
-								)}
+								<div className="flex flex-col items-end gap-1">
+									{project.status && (
+										<Badge variant="secondary" className="h-5 px-1.5 text-xs">
+											{project.status}
+										</Badge>
+									)}
+								</div>
 							</div>
 
 							{researchGoal && (
@@ -146,137 +222,326 @@ function CompactProjectCard({ project, projectPath, sections }: CompactProjectCa
 }
 
 export default function Index() {
-	const { projects, latest_sections } = useLoaderData<typeof loader>()
-	const { auth, user_settings } = useRouteLoaderData("routes/_ProtectedLayout") as {
-		auth: { accountId: string }
-		user_settings: { last_used_project_id?: string | null }
+	const { projects, latest_sections, salesWorkspace } = useLoaderData<typeof loader>()
+	const params = useParams()
+	const accountId = params.accountId as string
+
+	const { accounts } = useRouteLoaderData("routes/_ProtectedLayout") as {
+		accounts?: Array<{ account_id: string; name?: string; slug?: string }>
 	}
 
-	// Choose a project: last used if available, else first project
-	const lastUsed = user_settings?.last_used_project_id || undefined
-	const selectedProjectId = (projects || []).find((p) => p.id === lastUsed)?.id || projects?.[0]?.id || undefined
+	const currentAccount = accounts?.find((acc) => acc.account_id === accountId)
+	const accountBase = `/a/${accountId}`
 
-	const accountBase = `/a/${auth.accountId}`
-	const _projectBase = selectedProjectId ? `${accountBase}/${selectedProjectId}` : null
-	const _routes = selectedProjectId ? useProjectRoutesFromIds(auth.accountId, selectedProjectId) : null
+	const researchProjects = (projects || []).filter((project) => project.workflow_type !== "sales")
+	const primaryResearchProject = researchProjects[0] ?? null
+	const primaryProjectPath = primaryResearchProject ? `${accountBase}/${primaryResearchProject.id}` : ""
+	const primaryProjectRoutes = useProjectRoutes(primaryProjectPath)
+	const manageFacetsPath = primaryResearchProject ? primaryProjectRoutes.facets() : null
+
+	const totalProjects = projects?.length ?? 0
+	const totalResearchProjects = researchProjects.length
+	const latestInterviewSections = latest_sections.filter((section) => section.kind === "interview").length
+	const salesWorkspaceActive = Boolean(salesWorkspace?.project)
 
 	const navigate = useNavigate()
-	const [creating, setCreating] = useState(false)
+	const [creatingSales, setCreatingSales] = useState(false)
+	const [salesError, setSalesError] = useState<string | null>(null)
+	const posthog = usePostHog()
 
-	async function handleRecordNow() {
+	// Check PostHog feature flag for Sales CRM
+	const [salesCrmEnabled, setSalesCrmEnabled] = useState(false)
+	const [salesCrmLoading, setSalesCrmLoading] = useState(true)
+
+	// Computed values that depend on state
+	const isSalesCtaDisabled = salesCrmLoading || (!salesWorkspaceActive && !salesCrmEnabled)
+	const salesCtaLabel = salesCrmLoading
+		? "Checking access…"
+		: salesWorkspaceActive
+			? "Open sales workspace"
+			: salesCrmEnabled
+				? creatingSales
+					? "Creating…"
+					: "Launch sales workspace"
+				: "Sales workspace coming soon"
+
+	useEffect(() => {
+		if (!posthog) {
+			setSalesCrmLoading(false)
+			return
+		}
+
+		// Wait for flags to be loaded
+		posthog.onFeatureFlags(() => {
+			const flagValue = posthog.isFeatureEnabled("ffSalesCRM")
+			setSalesCrmEnabled(flagValue || false)
+			setSalesCrmLoading(false)
+		})
+	}, [posthog])
+
+	const salesProject = salesWorkspace?.project ?? null
+	const salesProjectColor = salesProject != null ? stringToColor(salesProject.slug || salesProject.name || "S") : null
+	const salesProjectInitials =
+		salesProject != null
+			? (salesProject.slug || salesProject.name || "S")
+				.split(" ")
+				.map((n) => n[0])
+				.join("")
+				.toUpperCase()
+				.slice(0, 2)
+			: ""
+
+	// Use the route helper for consistent path construction
+	const salesRoutes = useProjectRoutes(salesProject ? `${accountBase}/${salesProject.id}` : "")
+	const salesBase = salesProject ? salesRoutes.salesBase() : null
+
+	// Creates a sales-focused project and routes directly to the sales lens view.
+	async function handleCreateSalesWorkspace() {
 		try {
-			setCreating(true)
-			const res = await fetch(`${accountBase}/api/interviews/record-now`, { method: "POST" })
-			const data = await res.json()
-			if (!res.ok) {
-				consola.error("Record Now failed:", data?.error)
-				return navigate(`${accountBase}/projects/new?from=record`)
+			setSalesError(null)
+			setCreatingSales(true)
+			const response = await fetch(`${accountBase}/api/sales/create-workspace`, { method: "POST" })
+			const payload = await response.json().catch(() => ({ error: "Failed to create workspace" }))
+
+			if (!response.ok || !payload?.projectId) {
+				const message = payload?.error ?? "Unable to create workspace"
+				setSalesError(message)
+				return
 			}
-			const { projectId, interviewId } = data
-			if (projectId && interviewId) {
-				return navigate(`/a/${auth.accountId}/${projectId}/interviews/${interviewId}/realtime`)
-			}
-			navigate(`${accountBase}/projects/new?from=record`)
-		} catch (e) {
-			consola.error("Record Now error:", e)
-			navigate(`${accountBase}/projects/new?from=record`)
+
+			navigate(`/a/${accountId}/${payload.projectId}/sales-lenses`)
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to create workspace"
+			setSalesError(message)
 		} finally {
-			setCreating(false)
+			setCreatingSales(false)
 		}
 	}
 
 	return (
-		<div className="mx-auto w-full max-w-7xl px-6 py-8">
-			<div className="mb-4 flex items-center gap-2">
-				<House className="h-6 w-6" />
-				<h1 className="font-semibold text-2xl">Home</h1>
-				{/* <p className="text-lg text-muted-foreground">Choose how you'd like to get started with user research</p> */}
-			</div>
-
-			{/* Main Action Cards */}
-			<div className="mb-12 grid gap-8 md:grid-cols-2">
-				{/* Plan New Research Project */}
-				<Card className="group relative overflow-hidden border-2 transition-all hover:border-blue-500 hover:shadow-lg">
-					<CardHeader className="pb-6">
-						<CardTitle className="flex flex-row text-2xl">
-							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-900/20">
-								<Target className="h-8 w-8 text-blue-600 dark:text-blue-400" />
+		<div className="min-h-screen bg-slate-50">
+			<PageContainer className="space-y-10 py-12">
+				<section className="relative overflow-hidden rounded-3xl border border-slate-200 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900 text-slate-100 shadow-xl">
+					<div className="absolute inset-0 opacity-60" style={{ backgroundImage: "radial-gradient(circle at top left, rgba(255,255,255,0.2), transparent 45%)" }} />
+					<div className="relative flex flex-col gap-6 p-8 lg:flex-row lg:items-center lg:justify-between">
+						<div className="space-y-4">
+							<div className="flex items-center gap-3 text-slate-300">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-slate-700/70">
+									<House className="h-5 w-5" />
+								</div>
+								<div className="space-y-1">
+									<p className="text-slate-300/80 text-xs uppercase tracking-wider">Workspace</p>
+									<h1 className="font-semibold text-2xl text-white lg:text-3xl">
+										{currentAccount?.name || "Your Research Hub"}
+									</h1>
+									{currentAccount?.slug && (
+										<Badge variant="secondary" className="bg-white/10 text-white text-xs">
+											<Hash className="mr-1 h-3 w-3" />
+											{currentAccount.slug}
+										</Badge>
+									)}
+								</div>
 							</div>
-							<div className="px-2 pt-3">New Research Project</div>
-						</CardTitle>
-						<CardDescription className="text-base">
-							Clarify Goals &gt; Develop Interview Guide &gt; Collect Interviews.
-						</CardDescription>
-					</CardHeader>
-					<CardContent className="pt-0">
-						<Button asChild size="lg" className="w-full group-hover:bg-blue-600">
-							<Link to={`${accountBase}/projects/new`}>
-								Start Planning
-								<ArrowRight className="ml-2 h-5 w-5" />
-							</Link>
-						</Button>
-					</CardContent>
-				</Card>
-
-				{/* Record Now */}
-				<Card className="group relative overflow-hidden border-2 transition-all hover:border-red-500 hover:shadow-lg">
-					<CardHeader className="pb-6">
-						<CardTitle className="flex flex-row text-2xl">
-							<div className="mb-4 flex h-16 w-16 items-center justify-center rounded-lg bg-red-100 dark:bg-red-900/20">
-								<Mic className="h-8 w-8 text-red-600 dark:text-red-400" />
+							<p className="max-w-2xl text-slate-200/80 text-sm">
+								Plan interviews, surface insights, and keep teams aligned on where to focus next. Start a new project or revisit the research that matters most right now.
+							</p>
+							<div className="flex flex-wrap gap-3">
+								<Button size="sm" variant="secondary" asChild className="bg-white text-slate-900 hover:bg-slate-100">
+									<Link to={`${accountBase}/projects/new`}>
+										<Plus className="mr-2 h-4 w-4" />New Project
+									</Link>
+								</Button>
+								{manageFacetsPath ? (
+									<Button size="sm" variant="outline" asChild className="border-white/30 text-white hover:bg-white/10">
+										<Link to={manageFacetsPath}>
+											<Settings className="mr-2 h-4 w-4" />Manage facets
+										</Link>
+									</Button>
+								) : null}
+								<Button
+									variant="ghost"
+									size="sm"
+									onClick={handleCreateSalesWorkspace}
+									disabled={isSalesCtaDisabled}
+									className="text-white hover:bg-white/10"
+								>
+									<Handshake className="mr-2 h-4 w-4" />
+									{salesCtaLabel}
+								</Button>
 							</div>
-							<div className="px-2 pt-3">Record Now</div>
-						</CardTitle>
-						<CardDescription className="text-base">Record Live Now and get Instant Insights.</CardDescription>
-					</CardHeader>
-					<CardContent className="pt-0">
-						<Button
-							size="lg"
-							className="w-full bg-red-600 hover:bg-red-700 group-hover:bg-red-700"
-							onClick={handleRecordNow}
-							disabled={creating}
-						>
-							{creating ? "Starting…" : "Record Now"}
-							<Mic className="ml-2 h-5 w-5" />
-						</Button>
-					</CardContent>
-				</Card>
-			</div>
-
-			{/* Existing Projects Section */}
-
-			<div className="space-y-3">
-				<div className="mb-6 flex items-center justify-between">
-					<div>
-						<h2 className="font-semibold text-2xl">Existing Projects</h2>
-						<p className="hidden text-muted-foreground text-sm md:block">Continue working on your research projects</p>
+						</div>
+						<div className="relative grid gap-4 rounded-2xl bg-white/5 p-5 text-slate-100 text-sm md:grid-cols-2">
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<FolderOpen className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Active projects</p>
+									<p className="font-semibold text-xl">{totalResearchProjects}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<Users className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Interview sections</p>
+									<p className="font-semibold text-xl">{latestInterviewSections}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<Target className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Total initiatives</p>
+									<p className="font-semibold text-xl">{totalProjects}</p>
+								</div>
+							</div>
+							<div className="flex items-center gap-3">
+								<div className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10">
+									<BarChart3 className="h-5 w-5" />
+								</div>
+								<div>
+									<p className="text-white/70 text-xs uppercase tracking-wide">Sales workspace</p>
+									<p className="font-semibold text-xl">{salesWorkspaceActive ? "Active" : salesCrmEnabled ? "Available" : "Beta"}</p>
+								</div>
+							</div>
+						</div>
 					</div>
-				</div>
-				<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
-					{projects.slice(0, 4).map((project) => {
-						const projectSections = latest_sections.filter((section) => section.project_id === project.id)
-						return (
-							<CompactProjectCard
-								key={project.id}
-								project={project}
-								projectPath={`${accountBase}/${project.id}`}
-								sections={projectSections}
-							/>
-						)
-					})}
-				</div>
+				</section>
 
-				<div className="flex flex-wrap">
-					{projects?.length > 4 && (
-						<Button variant="outline" asChild>
-							<Link to={`${accountBase}/projects`}>
-								View All ({projects.length})
-								<ArrowRight className="ml-2 h-4 w-4" />
-							</Link>
-						</Button>
+				<section className="space-y-4">
+					<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+						<div>
+							<h2 className="font-semibold text-2xl text-foreground">Discovery projects</h2>
+							<p className="text-muted-foreground text-sm">
+								Plan, execute, and analyze conversations to drive better insights and outcomes.
+							</p>
+						</div>
+						<div className="flex flex-wrap items-center gap-2">
+							<Button variant="default" asChild>
+								<Link to={`${accountBase}/projects/new`}>
+									<Plus className="mr-2 h-4 w-4" />New Project
+								</Link>
+							</Button>
+						</div>
+					</div>
+					{researchProjects.length ? (
+						<div className="grid grid-cols-1 gap-4 lg:grid-cols-2">
+							{researchProjects.slice(0, 4).map((project) => {
+								const projectSections = latest_sections.filter((section) => section.project_id === project.id)
+								return (
+									<CompactProjectCard
+										key={project.id}
+										project={project}
+										projectPath={`${accountBase}/${project.id}`}
+										sections={projectSections}
+									/>
+								)
+							})}
+						</div>
+					) : (
+						<Card className="border-dashed">
+							<CardContent className="flex flex-col items-start gap-4 p-6 md:flex-row md:items-center md:justify-between">
+								<div>
+									<h3 className="font-semibold text-foreground text-lg">No discovery projects yet</h3>
+									<p className="text-muted-foreground text-sm">
+										Kick off your first project to start capturing interviews.
+									</p>
+								</div>
+								<Button variant="secondary" asChild>
+									<Link to={`${accountBase}/projects/new`}>
+										<Plus className="mr-2 h-4 w-4" />Create project
+									</Link>
+								</Button>
+							</CardContent>
+						</Card>
 					)}
-				</div>
-			</div>
+				</section>
+
+				{salesCrmEnabled && (
+					<section className="space-y-4">
+						<div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
+							<div>
+								<h2 className="font-semibold text-2xl text-foreground">Sales workspace</h2>
+								<p className="text-muted-foreground text-sm">
+									Monitor CRM hygiene and MAP progress at a glance.
+								</p>
+							</div>
+							{salesWorkspace?.project ? (
+								<Button asChild>
+									<Link to={`${accountBase}/${salesWorkspace.project.id}/sales-lenses`}>
+										Open workspace
+										<ArrowRight className="ml-2 h-4 w-4" />
+									</Link>
+								</Button>
+							) : (
+								<Button onClick={handleCreateSalesWorkspace} disabled={isSalesCtaDisabled}>
+									{salesCtaLabel}
+								</Button>
+							)}
+						</div>
+						{salesWorkspace?.project ? (
+							<Card>
+								<CardContent className="flex flex-col gap-6 p-6 md:flex-row md:items-center md:justify-between">
+									<Link to={`${salesBase!}/sales-lenses`} className="flex flex-1 items-center gap-3">
+										<Avatar
+											className="h-12 w-12 border"
+											style={salesProjectColor ? { borderColor: salesProjectColor } : undefined}
+										>
+											<AvatarFallback
+												className="font-semibold text-base text-white"
+												style={salesProjectColor ? { backgroundColor: salesProjectColor } : undefined}
+											>
+												{salesProjectInitials}
+											</AvatarFallback>
+										</Avatar>
+										<div className="min-w-0">
+											<h3 className="truncate font-semibold text-lg">{salesProject?.name}</h3>
+											{salesProject?.slug && (
+												<div className="flex items-center gap-1 text-muted-foreground text-xs">
+													<Hash className="h-3 w-3" />
+													{salesProject.slug}
+												</div>
+											)}
+											{salesProject?.status && (
+												<Badge variant="secondary" className="mt-2 h-5 w-fit px-2 text-xs">
+													{salesProject.status}
+												</Badge>
+											)}
+										</div>
+									</Link>
+									<div className="flex flex-wrap gap-3">
+										<Link to={`${salesBase!}/organizations`} className="inline-flex">
+											<Badge variant="outline" className="px-3 py-1.5 text-sm">
+												{salesWorkspace.kpis.organizations} Organizations
+											</Badge>
+										</Link>
+										<Link to={`${salesBase!}/people`} className="inline-flex">
+											<Badge variant="outline" className="px-3 py-1.5 text-sm">
+												{salesWorkspace.kpis.people} People
+											</Badge>
+										</Link>
+										<Link to={`${salesBase!}/opportunities`} className="inline-flex">
+											<Badge variant="outline" className="px-3 py-1.5 text-sm">
+												{salesWorkspace.kpis.opportunities} Opportunities
+											</Badge>
+										</Link>
+									</div>
+								</CardContent>
+							</Card>
+						) : (
+							<Card className="border-dashed">
+								<CardContent className="space-y-3 p-6 text-muted-foreground text-sm">
+									<p>Launch a sales workspace to see MEDDIC coverage and draft MAPs automatically.</p>
+									{salesError && <p className="text-destructive">{salesError}</p>}
+								</CardContent>
+							</Card>
+						)}
+					</section>
+				)}
+			</PageContainer>
 		</div>
 	)
 }

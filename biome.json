@@ -32,10 +32,15 @@
 		"enabled": true,
 		"rules": {
 			"recommended": true,
+			"correctness": {
+				"recommended": true,
+				"noUnusedImports": "warn",
+				"noUnusedLabels": "error",
+				"useExhaustiveDependencies": "warn"
+			},
 			"suspicious": {
 				"recommended": true,
 				"noConsole": "off",
-				"noExplicitAny": "warn",
 				"noArrayIndexKey": "warn"
 			},
 			"style": {
@@ -60,14 +65,6 @@
 			},
 			"performance": {
 				"recommended": true
-			},
-			"correctness": {
-				"recommended": true,
-				"noUnusedImports": "warn",
-				"noUnusedVariables": "warn",
-				"noUnusedLabels": "error",
-				"noUnusedFunctionParameters": "warn",
-				"useExhaustiveDependencies": "warn"
 			},
 			"a11y": {
 				"recommended": false

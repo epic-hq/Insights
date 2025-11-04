@@ -72,20 +72,6 @@ describe("processInterviewTranscript Integration", () => {
 
 		if (!goalFacetRow?.id) throw new Error("Failed to seed facet_global for integration test")
 
-		await testDb.from("project_facet").upsert(
-			{
-				project_id: "test-project-id",
-				account_id: TEST_ACCOUNT_ID,
-				facet_ref: `g:${goalFacetRow.id}`,
-				scope: "catalog",
-				is_enabled: true,
-				alias: "Speed Runner",
-				pinned: true,
-				sort_weight: 5,
-			},
-			{ onConflict: "project_id,facet_ref" }
-		)
-
 		// Mock BAML responses with realistic data
 		const mockEvidenceResponse = {
 			facet_catalog_version: "acct:test-account-123:proj:test-project-id:v123",
@@ -99,7 +85,11 @@ describe("processInterviewTranscript Integration", () => {
 					headers: null,
 					support: "supports",
 					confidence: "high",
-					kind_tags: { goal: ["speed"], behavior: ["reports"] },
+					supporting_details: null,
+					facet_mentions: [
+						{ kind_slug: "goal", value: "speed" },
+						{ kind_slug: "workflow", value: "reports" },
+					],
 				},
 			],
 			people: [
@@ -109,7 +99,7 @@ describe("processInterviewTranscript Integration", () => {
 					role: "participant",
 					facets: [
 						{
-							facet_ref: `g:${goalFacetRow.id}`,
+							facet_account_id: goalFacetRow.id,
 							kind_slug: "goal",
 							value: "Finish reports faster",
 							source: "interview",
@@ -117,7 +107,6 @@ describe("processInterviewTranscript Integration", () => {
 							confidence: 0.95,
 						},
 						{
-							facet_ref: "",
 							candidate: {
 								kind_slug: "pain",
 								label: "Manual Reporting",
@@ -125,10 +114,10 @@ describe("processInterviewTranscript Integration", () => {
 								notes: ["Spends hours on manual reporting"],
 							},
 							kind_slug: "pain",
-							value: "Manual reporting is painful",
+							value: "Manual Reporting",
 							source: "interview",
 							evidence_unit_index: 0,
-							confidence: 0.6,
+							confidence: 0.85,
 						},
 					],
 					scales: [
@@ -300,17 +289,38 @@ describe("processInterviewTranscript Integration", () => {
 		// Verify facet persistence
 		const { data: personFacets } = await testDb
 			.from("person_facet")
-			.select("person_id, facet_ref, confidence")
+			.select("person_id, facet_account_id, confidence")
 			.eq("account_id", TEST_ACCOUNT_ID)
 			.eq("project_id", "test-project-id")
 
 		expect(personFacets).toEqual([
 			{
 				person_id: expect.any(String),
-				facet_ref: `g:${goalFacetRow.id}`,
+				facet_account_id: goalFacetRow.id,
 				confidence: 0.95,
 			},
 		])
+
+		const { data: evidenceFacets } = await testDb
+			.from("evidence_facet")
+			.select("evidence_id, kind_slug, label, facet_account_id")
+			.eq("account_id", TEST_ACCOUNT_ID)
+			.eq("project_id", "test-project-id")
+
+		expect(evidenceFacets).toEqual(
+			expect.arrayContaining([
+				expect.objectContaining({
+					kind_slug: "goal",
+					facet_account_id: goalFacetRow.id,
+					label: expect.any(String),
+				}),
+				expect.objectContaining({
+					kind_slug: "workflow",
+					facet_account_id: expect.any(Number),
+					label: expect.any(String),
+				}),
+			])
+		)
 
 		const { data: scaleRows } = await testDb
 			.from("person_scale")
