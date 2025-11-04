@@ -45,7 +45,7 @@ const routes = [
 			...teamRoutes,
 			route("api/sales/create-workspace", "./routes/api.sales.create-workspace.tsx"),
 
-			// Nested project detail children
+			// Nested project detail children - Layout route with sidebar
 			route(":projectId", "./routes/_protected/projects.tsx", [
 				// Default index: show Project Status screen
 				index("./features/projects/pages/project-index.tsx"),

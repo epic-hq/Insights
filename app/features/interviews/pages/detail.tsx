@@ -23,7 +23,7 @@ import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
-import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
+import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import { memory } from "~/mastra/memory"
@@ -1230,7 +1230,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
 								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
-									<BackButton to={routes.interviews.index()} label="" position="relative" />
 									{interviewTitle}
 								</div>
 								<div className="flex flex-wrap items-center gap-3">
