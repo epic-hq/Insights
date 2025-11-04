@@ -68,7 +68,7 @@ jobs:
       # --------------------------
       - name: Deploy Trigger.dev Cloud
         run: |
-          pnpm exec dotenvx run -f .env.production -- pnpm dlx trigger.dev@latest deploy
+          pnpm exec dotenvx run -f .env.production -- pnpm dlx trigger.dev@4.0.6 deploy
         env:
           DOTENVX_KEY: ${{ secrets.DOTENVX_KEY }}
           DOTENV_PRIVATE_KEY_PRODUCTION: ${{ secrets.DOTENV_PRIVATE_KEY_PRODUCTION }}
