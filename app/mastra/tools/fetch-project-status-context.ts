@@ -43,13 +43,13 @@ type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & 
 }
 type ProjectPeopleRow = Database["public"]["Tables"]["project_people"]["Row"] & {
 	person?:
-	| (Database["public"]["Tables"]["people"]["Row"] & {
-		people_personas?: Array<{
-			persona_id: string | null
-			personas?: Database["public"]["Tables"]["personas"]["Row"] | null
-		}> | null
-	})
-	| null
+		| (Database["public"]["Tables"]["people"]["Row"] & {
+				people_personas?: Array<{
+					persona_id: string | null
+					personas?: Database["public"]["Tables"]["personas"]["Row"] | null
+				}> | null
+		  })
+		| null
 }
 type PersonaRow = Database["public"]["Tables"]["personas"]["Row"]
 type PeoplePersonaRow = Database["public"]["Tables"]["people_personas"]["Row"] & {
@@ -61,7 +61,10 @@ type InterviewRow = Database["public"]["Tables"]["interviews"]["Row"] & {
 	evidence?: Array<{ id: string | null }> | null
 }
 type InterviewPeopleRow = Database["public"]["Tables"]["interview_people"]["Row"] & {
-	interview?: Pick<Database["public"]["Tables"]["interviews"]["Row"], "id" | "title" | "interview_date" | "status"> | null
+	interview?: Pick<
+		Database["public"]["Tables"]["interviews"]["Row"],
+		"id" | "title" | "interview_date" | "status"
+	> | null
 }
 
 function normalizeDate(value: unknown) {
@@ -230,7 +233,7 @@ const personSchema = z.object({
 				id: z.string(),
 				name: z.string().nullable(),
 				color_hex: z.string().nullable(),
-				})
+			})
 		)
 		.optional(),
 	contactInfo: z.unknown().nullable().optional(),
@@ -389,8 +392,7 @@ export const fetchProjectStatusContextTool = createTool({
 		const interviewLimit = context?.interviewLimit ?? DEFAULT_INTERVIEW_LIMIT
 		const personSearch = (context?.peopleSearch ?? "").trim()
 		const sanitizedPersonSearch = personSearch.replace(/[%*"'()]/g, "").trim()
-		const includePersonEvidence =
-			context?.includePersonEvidence ?? (sanitizedPersonSearch.length > 0 ? true : false)
+		const includePersonEvidence = context?.includePersonEvidence ?? (sanitizedPersonSearch.length > 0 ? true : false)
 		const personEvidenceLimit = context?.personEvidenceLimit ?? DEFAULT_PERSON_EVIDENCE_LIMIT
 
 		consola.info("fetch-project-status-context: execute start", {
@@ -705,10 +707,7 @@ export const fetchProjectStatusContextTool = createTool({
 
 					if (sanitizedPersonSearch) {
 						const pattern = `*${sanitizedPersonSearch}*`
-						const orConditions = [
-							`person.name.ilike.${pattern}`,
-							`role.ilike.${pattern}`,
-						]
+						const orConditions = [`person.name.ilike.${pattern}`, `role.ilike.${pattern}`]
 						peopleQuery = peopleQuery.or(orConditions.join(","))
 					}
 
@@ -729,9 +728,7 @@ export const fetchProjectStatusContextTool = createTool({
 					if (personIds.length > 0) {
 						const { data: interviewPeople, error: interviewPeopleError } = await supabase
 							.from("interview_people")
-							.select(
-								"person_id, interview_id, interview:interview_id(id, title, interview_date, status)"
-							)
+							.select("person_id, interview_id, interview:interview_id(id, title, interview_date, status)")
 							.eq("project_id", projectId)
 							.in("person_id", personIds)
 							.order("created_at", { ascending: false })
@@ -806,8 +803,15 @@ export const fetchProjectStatusContextTool = createTool({
 								}
 							})
 							.filter(
-								(entry): entry is { id: string; title: string | null; interview_date: string | null; status: string | null; evidenceCount: number } =>
-									Boolean(entry)
+								(
+									entry
+								): entry is {
+									id: string
+									title: string | null
+									interview_date: string | null
+									status: string | null
+									evidenceCount: number
+								} => Boolean(entry)
 							)
 
 						let evidenceSnippets: PersonEvidencePayload[] | undefined

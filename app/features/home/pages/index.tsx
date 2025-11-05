@@ -315,9 +315,7 @@ export default function Index() {
 		<div className="min-h-screen bg-background">
 			<PageContainer className="space-y-10 py-12">
 				<section className="text-center">
-					<h1 className="font-semibold text-3xl text-foreground">
-						{currentAccount?.name || "Your Research Hub"}
-					</h1>
+					<h1 className="font-semibold text-3xl text-foreground">{currentAccount?.name || "Your Research Hub"}</h1>
 				</section>
 
 				<section className="space-y-4">

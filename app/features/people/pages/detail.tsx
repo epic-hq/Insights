@@ -270,10 +270,10 @@ export default function PersonDetail() {
 	const metadataNode =
 		metadataItems.length > 0
 			? metadataItems.map((item) => (
-				<span key={item} className="font-medium text-muted-foreground text-sm">
-					{item}
-				</span>
-			))
+					<span key={item} className="font-medium text-muted-foreground text-sm">
+						{item}
+					</span>
+				))
 			: undefined
 	const avatarNode = (
 		<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
@@ -345,9 +345,9 @@ export default function PersonDetail() {
 				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
 					<div className="space-y-6">
 						{facetsGrouped.length > 0 && (
-							<div>Key Attributes
+							<div>
+								Key Attributes
 								<Card>
-
 									<CardContent className="space-y-4">
 										{facetsGrouped.map((group) => (
 											<div key={group.kind_slug} className="space-y-2">
@@ -376,6 +376,28 @@ export default function PersonDetail() {
 								</div>
 							</section>
 						)}
+
+						{interviewLinks.length > 0 && (
+							<section className="space-y-3">
+								<h2 className="font-semibold text-foreground text-lg">Interviews</h2>
+								<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+									{interviewLinks.map((link) => (
+										<Card key={link.id} className="transition-shadow hover:shadow-md">
+											<CardContent className="p-4">
+												<Link to={routes.interviews.detail(link.interviews?.id || "")} className="block space-y-2">
+													<h3 className="font-medium text-foreground transition-colors hover:text-primary">
+														{link.interviews?.title || `Interview ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
+													</h3>
+													<p className="text-muted-foreground text-sm">
+														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
+													</p>
+												</Link>
+											</CardContent>
+										</Card>
+									))}
+								</div>
+							</section>
+						)}
 					</div>
 
 					<div className="space-y-6">
@@ -391,41 +413,6 @@ export default function PersonDetail() {
 											<div className="font-medium text-foreground text-sm">{fact.value}</div>
 										</div>
 									))}
-								</CardContent>
-							</Card>
-
-							<Card className="max-w-sm">
-								<CardHeader>
-									<CardTitle>Interview History</CardTitle>
-								</CardHeader>
-								<CardContent>
-									{interviewLinks.length > 0 ? (
-										<div className="space-y-3">
-											{interviewLinks.slice(0, 4).map((link) => (
-												<div
-													key={link.id}
-													className="rounded-lg border border-border/60 bg-background p-3 hover:border-primary/40"
-												>
-													<Link
-														to={routes.interviews.detail(link.interviews?.id || "")}
-														className="font-medium text-foreground hover:text-primary"
-													>
-														{link.interviews?.title || `Interview ${link.interviews?.id?.slice(0, 8) || "Unknown"}`}
-													</Link>
-													<p className="text-muted-foreground text-xs">
-														{link.interviews?.created_at && new Date(link.interviews.created_at).toLocaleDateString()}
-													</p>
-												</div>
-											))}
-											{interviewLinks.length > 4 && (
-												<p className="text-center text-muted-foreground text-xs">
-													+{interviewLinks.length - 4} more interviews
-												</p>
-											)}
-										</div>
-									) : (
-										<p className="text-muted-foreground text-sm">No interviews yet</p>
-									)}
 								</CardContent>
 							</Card>
 						</div>

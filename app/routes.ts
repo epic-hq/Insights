@@ -89,12 +89,12 @@ const routes = [
 				route("api/interviews/realtime-upload", "./routes/api.interviews.realtime-upload.tsx"),
 				route("api/interviews/realtime-finalize", "./routes/api.interviews.realtime-finalize.tsx"),
 
-                                // Project-setup agent chat API (project-scoped)
-                                route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
-                                // Project status agent chat API (project-scoped)
-                                route("api/chat/project-status", "./routes/api.chat.project-status.tsx"),
-                                // Interview insight agent chat API (project-scoped)
-                                route("api/chat/interview/:interviewId", "./routes/api.chat.interview.$interviewId.tsx"),
+				// Project-setup agent chat API (project-scoped)
+				route("api/chat/project-setup", "./routes/api.chat.project-setup.tsx"),
+				// Project status agent chat API (project-scoped)
+				route("api/chat/project-status", "./routes/api.chat.project-status.tsx"),
+				// Interview insight agent chat API (project-scoped)
+				route("api/chat/interview/:interviewId", "./routes/api.chat.interview.$interviewId.tsx"),
 
 				// Interview transcript API (project-scoped)
 				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
@@ -155,9 +155,9 @@ const routes = [
 	route("api/process", "./routes/api.process.tsx"),
 	route("api.research-answers", "./routes/api.research-answers.tsx"),
 	route("api/teams/create", "./routes/api.teams.create.tsx"),
- route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
- route("api.reanalyze-themes", "./routes/api.reanalyze-themes.tsx"),
- route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
+	route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
+	route("api.reanalyze-themes", "./routes/api.reanalyze-themes.tsx"),
+	route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
 	...voiceRoutes,
 
 	// Resource routes

@@ -143,17 +143,14 @@ const toSecondsString = (value: unknown): { secondsString?: string; milliseconds
 	return {}
 }
 
-type NormalizedAnchor = (BamlAnchor & {
+type NormalizedAnchor = BamlAnchor & {
 	start_ms?: number | null
 	end_ms?: number | null
 	char_span?: number[] | null
 	media_key?: string | null
-})
+}
 
-const normalizeAnchor = (
-	anchor: AnchorInput,
-	options: NormalizeEvidenceOptions
-): NormalizedAnchor => {
+const normalizeAnchor = (anchor: AnchorInput, options: NormalizeEvidenceOptions): NormalizedAnchor => {
 	const defaultTarget = options.defaultAnchorTarget ?? ""
 	const defaultType = options.defaultAnchorType ?? DEFAULT_ANCHOR_TYPE
 
@@ -217,7 +214,7 @@ const normalizeKindTags = (kindTags: KindTags | undefined): KindTags => {
 const normalizeEvidenceUnit = (
 	unit: EvidenceUnitInput,
 	options: NormalizeEvidenceOptions
-): (BamlEvidenceUnit & Record<string, unknown>) => {
+): BamlEvidenceUnit & Record<string, unknown> => {
 	const support = chooseString(unit.support) ?? options.defaultSupport ?? DEFAULT_SUPPORT
 	const confidence = chooseString(unit.confidence) ?? options.defaultConfidence ?? DEFAULT_CONFIDENCE
 
@@ -277,10 +274,7 @@ const normalizeEvidenceUnit = (
 	return normalized
 }
 
-export const normalizeEvidenceUnits = (
-	units: unknown,
-	options: NormalizeEvidenceOptions = {}
-) => {
+export const normalizeEvidenceUnits = (units: unknown, options: NormalizeEvidenceOptions = {}) => {
 	const parsed = evidenceUnitsSchema.parse(Array.isArray(units) ? units : [])
 	return parsed.map((unit) => normalizeEvidenceUnit(unit, options))
 }

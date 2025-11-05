@@ -35,7 +35,7 @@ function toStringArray(value: unknown): string[] {
 export const fetchPeopleDetailsTool = createTool({
 	id: "fetch-people-details",
 	description:
-		"Fetch detailed information about people in a project, including demographics, professional info, personas, and interview history.",
+		"Fetch detailed information about people in a project, including demographics, professional info, preferences, attributes, motivations, personas, and interview history.",
 	inputSchema: z.object({
 		projectId: z
 			.string()
@@ -63,7 +63,7 @@ export const fetchPeopleDetailsTool = createTool({
 		const runtimeProjectId = runtimeContext?.get?.("project_id")
 		const runtimeAccountId = runtimeContext?.get?.("account_id")
 
-		const projectId = context?.projectId ?? runtimeProjectId ?? ""
+		const projectId = String(context?.projectId ?? runtimeProjectId ?? "")
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
 		const peopleSearch = (context?.peopleSearch ?? "").trim()
 		const sanitizedPersonSearch = peopleSearch.replace(/[%*"'()]/g, "").trim()
@@ -96,7 +96,7 @@ export const fetchPeopleDetailsTool = createTool({
 
 		try {
 			// Build the base query for project_people with person details
-			const query = supabase
+			let query = supabase
 				.from("project_people")
 				.select(`
 					id,
@@ -139,10 +139,29 @@ export const fetchPeopleDetailsTool = createTool({
 				`)
 				.eq("project_id", projectId)
 
-			// Execute the main query (without search filter)
+			// Apply database-side search filtering if search term provided
+			if (sanitizedPersonSearch) {
+				// Split search term into individual words for more lenient matching
+				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
+				const searchConditions = searchWords.flatMap((word) => {
+					const searchPattern = `%${word}%`
+					return [
+						`name.ilike.${searchPattern}`,
+						`title.ilike.${searchPattern}`,
+						`company.ilike.${searchPattern}`,
+						`role.ilike.${searchPattern}`,
+					]
+				})
+
+				// Use OR conditions for each word, making it very lenient
+				// This allows matching any of the search words in any of the fields
+				query = query.or(searchConditions.join(","), { foreignTable: "person" })
+			}
+
+			// Execute the query with search filter applied
 			const { data: projectPeople, error: peopleError } = await query
 				.order("interview_count", { ascending: false, nullsFirst: false })
-				.limit(peopleLimit * 2) // Fetch more to allow for filtering
+				.limit(peopleLimit)
 
 			if (peopleError) {
 				consola.error("fetch-people-details: failed to fetch project people", peopleError)
@@ -151,37 +170,54 @@ export const fetchPeopleDetailsTool = createTool({
 
 			let peopleRows = (projectPeople as ProjectPeopleRow[] | null) ?? []
 
-			// Apply specific person IDs filter if provided
+			// Remove the JavaScript-based search filtering since we now do it in the database
+			// if (sanitizedPersonSearch) {
+			// 	const searchLower = sanitizedPersonSearch.toLowerCase()
+			// 	peopleRows = peopleRows.filter((row) => {
+			// 		const person = row.person
+			// 		if (!person) return false
+
+			// 		// Check person fields
+			// 		const nameMatch = person.name?.toLowerCase().includes(searchLower)
+			// 		const titleMatch = person.title?.toLowerCase().includes(searchLower)
+			// 		const companyMatch = person.company?.toLowerCase().includes(searchLower)
+			// 		const roleMatch = row.role?.toLowerCase().includes(searchLower)
+
+			// 		return nameMatch || titleMatch || companyMatch || roleMatch
+			// 	})
+			// }
+
+			// Apply specific person IDs filter if provided (client-side since it's an array filter)
 			if (specificPersonIds.length > 0) {
 				peopleRows = peopleRows.filter((row) => specificPersonIds.includes(row.person_id))
 			}
 
-			// Apply JavaScript-based search filtering if search term provided
-			if (sanitizedPersonSearch) {
-				const searchLower = sanitizedPersonSearch.toLowerCase()
-				peopleRows = peopleRows.filter((row) => {
-					const person = row.person
-					if (!person) return false
-
-					// Check person fields
-					const nameMatch = person.name?.toLowerCase().includes(searchLower)
-					const titleMatch = person.title?.toLowerCase().includes(searchLower)
-					const companyMatch = person.company?.toLowerCase().includes(searchLower)
-					const roleMatch = row.role?.toLowerCase().includes(searchLower)
-
-					return nameMatch || titleMatch || companyMatch || roleMatch
-				})
-			}
-
-			// Apply limit after filtering
-			peopleRows = peopleRows.slice(0, peopleLimit)
+			// No need to slice since we already limited in the database query
+			// peopleRows = peopleRows.slice(0, peopleLimit)
 			const personIds = peopleRows.map((row) => row.person_id)
 
-			// Get total count for pagination info
-			const { count: totalCount } = await supabase
+			// Get total count for pagination info (apply same search filter)
+			let countQuery = supabase
 				.from("project_people")
 				.select("*", { count: "exact", head: true })
 				.eq("project_id", projectId)
+
+			if (sanitizedPersonSearch) {
+				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
+				const searchConditions = searchWords.flatMap((word) => {
+					const searchPattern = `%${word}%`
+					return [
+						`name.ilike.${searchPattern}`,
+						`title.ilike.${searchPattern}`,
+						`company.ilike.${searchPattern}`,
+						`role.ilike.${searchPattern}`,
+					]
+				})
+
+				countQuery = countQuery.or(searchConditions.join(","), { foreignTable: "person" })
+			}
+
+			const { count: totalCount } = await countQuery
 
 			// Fetch additional data if requested
 			const [personaData, interviewData, evidenceCounts] = await Promise.all([

@@ -2,14 +2,15 @@ import { createTool } from "@mastra/core/tools"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
+import { getPersonas } from "~/features/personas/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { personasDetailSchema } from "~/schemas"
 import type { Database } from "~/types"
-import { getPersonas } from "~/features/personas/db"
 
 export const fetchPersonasTool = createTool({
 	id: "fetch-personas",
-	description: "Fetch personas from a project with filtering and people counts. Personas represent user archetypes and target customer segments.",
+	description:
+		"Fetch personas from a project with filtering and people counts. Personas represent user archetypes and target customer segments.",
 	inputSchema: z.object({
 		projectId: z
 			.string()
@@ -86,8 +87,8 @@ export const fetchPersonasTool = createTool({
 				peopleCount: Array.isArray(persona.people_personas)
 					? persona.people_personas.length
 					: typeof persona.people_personas === "number"
-					? persona.people_personas
-					: 0,
+						? persona.people_personas
+						: 0,
 				createdAt: persona.created_at ? new Date(persona.created_at).toISOString() : null,
 				updatedAt: persona.updated_at ? new Date(persona.updated_at).toISOString() : null,
 			}))
@@ -95,23 +96,15 @@ export const fetchPersonasTool = createTool({
 			// Apply search filtering if provided
 			if (sanitizedPersonasSearch) {
 				personas = personas.filter((persona) => {
-					const searchableText = [
-						persona.name,
-						persona.description,
-						persona.primaryGoal,
-					]
+					const searchableText = [persona.name, persona.description, persona.primaryGoal]
 						.filter(Boolean)
 						.join(" ")
 						.toLowerCase()
 
 					return (
 						searchableText.includes(sanitizedPersonasSearch) ||
-						persona.motivations?.some((motivation) =>
-							motivation.toLowerCase().includes(sanitizedPersonasSearch)
-						) ||
-						persona.frustrations?.some((frustration) =>
-							frustration.toLowerCase().includes(sanitizedPersonasSearch)
-						)
+						persona.motivations?.some((motivation) => motivation.toLowerCase().includes(sanitizedPersonasSearch)) ||
+						persona.frustrations?.some((frustration) => frustration.toLowerCase().includes(sanitizedPersonasSearch))
 					)
 				})
 			}

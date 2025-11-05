@@ -60,11 +60,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		runtimeContext,
 		context: system
 			? [
-				{
-					role: "system",
-					content: `## Context from the client's UI:\n${system}`,
-				},
-			]
+					{
+						role: "system",
+						content: `## Context from the client's UI:\n${system}`,
+					},
+				]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("project-status onFinish", data)

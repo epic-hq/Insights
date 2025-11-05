@@ -2,10 +2,10 @@ import { createTool } from "@mastra/core/tools"
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
+import { getThemes } from "~/features/themes/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { themeDetailSchema } from "~/schemas"
 import type { Database } from "~/types"
-import { getThemes } from "~/features/themes/db"
 
 export const fetchThemesTool = createTool({
 	id: "fetch-themes",

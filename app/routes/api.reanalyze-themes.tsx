@@ -1,10 +1,10 @@
 import { tasks } from "@trigger.dev/sdk"
 import consola from "consola"
-import { z } from "zod"
 import type { ActionFunctionArgs } from "react-router"
+import { z } from "zod"
 import type { analyzeThemesAndPersonaTask } from "~/../../src/trigger/interview/analyzeThemesAndPersona"
-import { evidenceUnitsSchema, turnAnchorsSchema } from "~/lib/validation/baml-validation"
 import { createSupabaseAdminClient, getServerClient } from "~/lib/supabase/client.server"
+import { evidenceUnitsSchema, type turnAnchorsSchema } from "~/lib/validation/baml-validation"
 import { safeSanitizeTranscriptPayload } from "~/utils/transcript/sanitizeTranscriptData.server"
 
 const requestSchema = z.object({
@@ -15,17 +15,26 @@ type EvidenceUnitInput = z.infer<typeof evidenceUnitsSchema>[number]
 
 function ensureArray(input: unknown): string[] | null {
 	if (Array.isArray(input)) {
-		const cleaned = input.map((value) => (typeof value === "string" ? value : String(value ?? ""))).filter((value) => value.trim().length > 0)
+		const cleaned = input
+			.map((value) => (typeof value === "string" ? value : String(value ?? "")))
+			.filter((value) => value.trim().length > 0)
 		return cleaned.length ? cleaned : []
 	}
 	return null
 }
 
-function fallbackPersonName(options: { fileName?: string | null; interviewTitle?: string | null; participantName?: string | null }): string {
+function fallbackPersonName(options: {
+	fileName?: string | null
+	interviewTitle?: string | null
+	participantName?: string | null
+}): string {
 	const { fileName, interviewTitle, participantName } = options
 	if (participantName?.trim()) return participantName.trim()
 	if (fileName) {
-		const normalized = fileName.replace(/\.[^/.]+$/, "").replace(/[_-]+/g, " ").trim()
+		const normalized = fileName
+			.replace(/\.[^/.]+$/, "")
+			.replace(/[_-]+/g, " ")
+			.trim()
 		if (normalized) return normalized.replace(/\b\w/g, (char) => char.toUpperCase())
 	}
 	if (interviewTitle?.trim() && !interviewTitle.includes("Interview -")) return interviewTitle.trim()
@@ -141,22 +150,21 @@ export async function action({ request }: ActionFunctionArgs) {
 			null
 
 		const personIds = Array.from(
-			new Set([
-				...(evidencePeopleRows?.map((row) => row.person_id).filter(Boolean) ?? []),
-				...(interviewPeopleRows?.map((row) => row.person_id).filter(Boolean) ?? []),
-				participantPersonId ?? undefined,
-			].filter(Boolean) as string[])
+			new Set(
+				[
+					...(evidencePeopleRows?.map((row) => row.person_id).filter(Boolean) ?? []),
+					...(interviewPeopleRows?.map((row) => row.person_id).filter(Boolean) ?? []),
+					participantPersonId ?? undefined,
+				].filter(Boolean) as string[]
+			)
 		)
 
 		const { data: peopleRows } = personIds.length
-			? await userDb
-				.from("people")
-				.select("id, name, description, role, company, segment")
-				.in("id", personIds)
+			? await userDb.from("people").select("id, name, description, role, company, segment").in("id", personIds)
 			: { data: [] }
 
 		let primaryPersonId = participantPersonId ?? peopleRows?.[0]?.id ?? null
-		let primaryPerson = primaryPersonId ? peopleRows?.find((person) => person.id === primaryPersonId) ?? null : null
+		let primaryPerson = primaryPersonId ? (peopleRows?.find((person) => person.id === primaryPersonId) ?? null) : null
 
 		if (!primaryPersonId) {
 			const fallbackName = fallbackPersonName({
@@ -182,17 +190,15 @@ export async function action({ request }: ActionFunctionArgs) {
 			primaryPersonId = ensuredPerson.id
 			primaryPerson = ensuredPerson
 
-		const { error: linkErr } = await admin
-			.from("interview_people")
-			.upsert(
+			const { error: linkErr } = await admin.from("interview_people").upsert(
 				{
 					interview_id: interviewId,
-						person_id: ensuredPerson.id,
-						project_id: interview.project_id,
-						role: "participant",
-					},
-					{ onConflict: "interview_id,person_id" }
-				)
+					person_id: ensuredPerson.id,
+					project_id: interview.project_id,
+					role: "participant",
+				},
+				{ onConflict: "interview_id,person_id" }
+			)
 			if (linkErr && !linkErr.message?.includes("duplicate")) {
 				return Response.json({ error: "Failed to link participant to interview" }, { status: 500 })
 			}
@@ -203,9 +209,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		const participantRole =
-			primaryPerson?.role ??
-			interviewPeopleRows?.find((row) => row.person_id === primaryPersonId)?.role ??
-			null
+			primaryPerson?.role ?? interviewPeopleRows?.find((row) => row.person_id === primaryPersonId)?.role ?? null
 
 		const evidenceUnits: EvidenceUnitInput[] = evidenceRows.map((row) => {
 			const evidenceId = row.id
@@ -217,10 +221,18 @@ export async function action({ request }: ActionFunctionArgs) {
 
 			// Create anchor object that matches BAML TurnAnchors format
 			const anchors: z.infer<typeof turnAnchorsSchema> = {
-				start_ms: typeof firstAnchor?.start_ms === "number" ? firstAnchor.start_ms :
-				         (typeof firstAnchor?.start === "string" ? Number.parseFloat(firstAnchor.start) * 1000 : undefined),
-				end_ms: typeof firstAnchor?.end_ms === "number" ? firstAnchor.end_ms :
-				       (typeof firstAnchor?.end === "string" ? Number.parseFloat(firstAnchor.end) * 1000 : undefined),
+				start_ms:
+					typeof firstAnchor?.start_ms === "number"
+						? firstAnchor.start_ms
+						: typeof firstAnchor?.start === "string"
+							? Number.parseFloat(firstAnchor.start) * 1000
+							: undefined,
+				end_ms:
+					typeof firstAnchor?.end_ms === "number"
+						? firstAnchor.end_ms
+						: typeof firstAnchor?.end === "string"
+							? Number.parseFloat(firstAnchor.end) * 1000
+							: undefined,
 				chapter_title: typeof firstAnchor?.chapter_title === "string" ? firstAnchor.chapter_title : undefined,
 				char_span: Array.isArray(firstAnchor?.char_span) ? firstAnchor.char_span : undefined,
 			}
@@ -228,12 +240,15 @@ export async function action({ request }: ActionFunctionArgs) {
 			const facetSlugs = facetByEvidence.get(evidenceId) ?? []
 
 			// Convert facet mentions to BAML FacetMention format
-			const facet_mentions = facetSlugs.length > 0 ? facetSlugs.map(slug => ({
-				person_key: personId ?? primaryPersonId,
-				kind_slug: slug,
-				value: "extracted from evidence", // This is a fallback since we don't have the original value
-				quote: null,
-			})) : undefined
+			const facet_mentions =
+				facetSlugs.length > 0
+					? facetSlugs.map((slug) => ({
+							person_key: personId ?? primaryPersonId,
+							kind_slug: slug,
+							value: "extracted from evidence", // This is a fallback since we don't have the original value
+							quote: null,
+						}))
+					: undefined
 
 			return {
 				person_key: personId ?? primaryPersonId,
@@ -310,7 +325,10 @@ export async function action({ request }: ActionFunctionArgs) {
 			analysisJobId: analysisJob.id,
 		}
 
-		const handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>("interview.analyze-themes-and-persona", payload)
+		const handle = await tasks.trigger<typeof analyzeThemesAndPersonaTask>(
+			"interview.analyze-themes-and-persona",
+			payload
+		)
 
 		await admin
 			.from("analysis_jobs")

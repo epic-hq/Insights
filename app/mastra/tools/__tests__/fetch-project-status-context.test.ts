@@ -1,7 +1,7 @@
 // @vitest-environment node
 
 import { RuntimeContext } from "@mastra/core/di"
-import { describe, expect, it, vi, beforeEach } from "vitest"
+import { beforeEach, describe, expect, it, vi } from "vitest"
 import { fetchProjectStatusContextTool } from "../fetch-project-status-context"
 
 const mockSupabase = {

@@ -1,7 +1,6 @@
 import type { JwtPayload, SupabaseClient } from "@supabase/supabase-js"
 import { createContext } from "react-router"
-import type { Database } from "~/types" // Use merged/override types
-import type { AccountSettings, UserSettings } from "~/types"
+import type { AccountSettings, Database, UserSettings } from "~/types" // Use merged/override types
 
 export type UserMetadata = { avatar_url?: string | null; email?: string | null; name?: string | null }
 
