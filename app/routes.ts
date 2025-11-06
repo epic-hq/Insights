@@ -7,6 +7,7 @@ import facetsRoutes from "./features/facets/routes"
 import homeRoutes from "./features/home/routes"
 import insightsRoutes from "./features/insights/routes"
 import interviewsRoutes from "./features/interviews/routes"
+import lensesRoutes from "./features/lenses/routes"
 import marketingRoutes from "./features/marketing/routes"
 import mobileRoutes from "./features/mobile/insights/routes"
 import opportunitiesRoutes from "./features/opportunities/routes"
@@ -64,6 +65,7 @@ const routes = [
 				...questionsRoutes,
 				...projectChatRoutes,
 				...facetsRoutes,
+				...lensesRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),
@@ -158,6 +160,11 @@ const routes = [
 	route("api.reprocess-evidence", "./routes/api.reprocess-evidence.tsx"),
 	route("api.reanalyze-themes", "./routes/api.reanalyze-themes.tsx"),
 	route("api.cancel-analysis-run", "./routes/api.cancel-analysis-run.tsx"),
+
+	// Lens architecture test routes
+	route("api/test-user-groups", "./routes/api.test-user-groups.tsx"),
+	route("api/test-pain-matrix", "./routes/api.test-pain-matrix.tsx"),
+
 	...voiceRoutes,
 
 	// Resource routes

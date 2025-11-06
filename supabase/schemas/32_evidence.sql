@@ -138,6 +138,9 @@ create table if not exists evidence_facet (
   quote text,
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   notes text,
+  embedding vector(1536), -- Semantic embedding for clustering similar facets
+  embedding_model text default 'text-embedding-3-small',
+  embedding_generated_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   created_by uuid references auth.users(id)
@@ -149,6 +152,18 @@ create index if not exists idx_evidence_facet_project_id  on evidence_facet(proj
 create index if not exists idx_evidence_facet_kind_slug   on evidence_facet(kind_slug);
 create index if not exists idx_evidence_facet_facet_account_id on evidence_facet(facet_account_id);
 
+-- HNSW index for semantic similarity search on facet embeddings
+do $$
+begin
+  if not exists (
+    select 1 from pg_indexes
+    where tablename = 'evidence_facet' and indexname = 'evidence_facet_embedding_idx'
+  ) then
+    create index evidence_facet_embedding_idx on public.evidence_facet
+    using hnsw (embedding vector_cosine_ops);
+  end if;
+end $$;
+
 create trigger set_evidence_facet_timestamp
     before insert or update on public.evidence_facet
     for each row
@@ -158,6 +173,10 @@ create trigger set_evidence_facet_user_tracking
     before insert or update on public.evidence_facet
     for each row
 execute procedure accounts.trigger_set_user_tracking();
+
+-- NOTE: Facet embedding trigger is defined in 50_queues.sql
+-- Uses PGMQ (PostgreSQL Message Queue) pattern for reliable async processing
+-- See: public.enqueue_facet_embedding() and public.process_facet_embedding_queue()
 
 alter table evidence_facet enable row level security;
 

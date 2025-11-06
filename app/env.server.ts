@@ -8,6 +8,7 @@ const envSchema = z.object({
 	SUPABASE_URL: z.string(),
 	SUPABASE_ANON_KEY: z.string(),
 	SUPABASE_SERVICE_ROLE_KEY: z.string().optional(), // TODO: remove
+	SUPABASE_DB_URL: z.string().optional(), // For Mastra PostgresStore
 	SUPABASE_FUNCTIONS_URL: z.string().optional(),
 	OPENAI_API_KEY: z.string().optional(),
 	ASSEMBLYAI_API_KEY: z.string().optional(),

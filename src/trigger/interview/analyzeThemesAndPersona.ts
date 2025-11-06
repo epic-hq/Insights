@@ -92,7 +92,7 @@ export const analyzeThemesAndPersonaTask = task({
 			})
 
 			if (!nextResult.ok) {
-				throw new Error(nextResult.error?.message ?? "Failed to attribute answers for interview.")
+				throw new Error(nextResult.error ? String(nextResult.error) : "Failed to attribute answers for interview.")
 			}
 
 			return nextResult.output

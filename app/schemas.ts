@@ -76,6 +76,42 @@ export const personDetailSchema = z.object({
 			})
 		)
 		.optional(),
+	evidence: z
+		.array(
+			z.object({
+				id: z.string(),
+				gist: nullableString,
+				verbatim: nullableString,
+				context_summary: nullableString,
+				modality: nullableString,
+				interview_title: nullableString,
+				interview_date: nullableString,
+				created_at: nullableString,
+			})
+		)
+		.optional(),
+	facets: z
+		.array(
+			z.object({
+				facet_account_id: z.number(),
+				label: z.string(),
+				kind_slug: z.string(),
+				source: nullableString,
+				confidence: z.number().nullable(),
+			})
+		)
+		.optional(),
+	scales: z
+		.array(
+			z.object({
+				kind_slug: z.string(),
+				score: z.number(),
+				band: nullableString,
+				source: nullableString,
+				confidence: z.number().nullable(),
+			})
+		)
+		.optional(),
 	evidenceCount: z.number().optional(),
 	created_at: nullableString,
 	updated_at: nullableString,

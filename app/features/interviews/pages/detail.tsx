@@ -3,7 +3,7 @@ import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
 import { BotMessageSquare, Edit2, Loader2, MessageCircleQuestionIcon, MoreVertical, SparkleIcon } from "lucide-react"
-import { useEffect, useMemo, useRef, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
 import { Streamdown } from "streamdown"
@@ -19,11 +19,14 @@ import { Sheet, SheetContent, SheetDescription, SheetHeader, SheetTitle, SheetTr
 import { Textarea } from "~/components/ui/textarea"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { PlayByPlayTimeline } from "~/features/evidence/components/ChronologicalEvidenceList"
-import { EmpathyMapTabs } from "~/features/interviews/components/EmpathyMapTabs"
 import { getInterviewById, getInterviewInsights, getInterviewParticipants } from "~/features/interviews/db"
+import { SalesLensesSection } from "~/features/lenses/components/ConversationLenses"
+import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
+import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
+import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import { memory } from "~/mastra/memory"
@@ -103,6 +106,7 @@ type ConversationAnalysisForDisplay = {
 	}>
 	status: "pending" | "processing" | "completed" | "failed"
 	updatedAt: string | null
+	customLenses: Record<string, { summary?: string; notes?: string }>
 }
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -311,6 +315,25 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					.filter((item): item is { focusArea: string; action: string; rationale: string } => item !== null)
 			}
 
+			const parseCustomLenses = (): ConversationAnalysisForDisplay["customLenses"] => {
+				const value = raw.custom_lenses as unknown
+				if (!value || typeof value !== "object") return {}
+				const entries = Object.entries(value as Record<string, unknown>).reduce(
+					(acc, [key, data]) => {
+						if (!data || typeof data !== "object") return acc
+						const entry = data as { [field: string]: unknown }
+						const summary = typeof entry.summary === "string" ? entry.summary : undefined
+						const notes = typeof entry.notes === "string" ? entry.notes : undefined
+						acc[key] = {}
+						if (summary) acc[key].summary = summary
+						if (notes) acc[key].notes = notes
+						return acc
+					},
+					{} as Record<string, { summary?: string; notes?: string }>
+				)
+				return entries
+			}
+
 			return {
 				summary: typeof raw.overview === "string" ? raw.overview : null,
 				keyTakeaways: parseKeyTakeaways(),
@@ -318,6 +341,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				recommendations: parseRecommendations(),
 				status: "completed" as const,
 				updatedAt: interviewData.updated_at,
+				customLenses: parseCustomLenses(),
 			}
 		})()
 
@@ -401,6 +425,36 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		if (peopleError) {
 			consola.warn("Could not load people options for participant assignment:", peopleError.message)
+		}
+
+		const peopleLookup = new Map<string, { name: string | null }>()
+		for (const option of peopleOptions ?? []) {
+			if (option?.id) {
+				peopleLookup.set(option.id, { name: option.name ?? null })
+			}
+		}
+		for (const participant of participants) {
+			const person = participant.people
+			if (person?.id) {
+				peopleLookup.set(person.id, { name: person.name ?? null })
+			}
+		}
+		if (primaryParticipant?.id) {
+			peopleLookup.set(primaryParticipant.id, { name: primaryParticipant.name ?? null })
+		}
+
+		let salesLens: InterviewLensView | null = null
+		try {
+			if (supabase) {
+				salesLens = await loadInterviewSalesLens({
+					db: supabase,
+					projectId,
+					interviewId,
+					peopleLookup,
+				})
+			}
+		} catch (error) {
+			consola.warn("Failed to load sales lens for interview", { interviewId, error })
 		}
 
 		// Check transcript availability without loading the actual content
@@ -653,6 +707,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			analysisJob,
 			assistantMessages,
 			conversationAnalysis,
+			salesLens,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -691,17 +746,277 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		analysisJob,
 		assistantMessages,
 		conversationAnalysis,
+		salesLens,
 	} = useLoaderData<typeof loader>()
+
+	// Early validation - must happen before any hooks
+	if (!interview || !accountId || !projectId) {
+		return <div>Error: Missing interview data</div>
+	}
+
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
+	const lensFetcher = useFetcher()
 	const navigation = useNavigation()
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
-	const [activeTab, setActiveTab] = useState<"pains-gains" | "user-actions">("pains-gains")
+	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
 	const [analysisState, setAnalysisState] = useState<AnalysisJobSummary | null>(analysisJob)
 	const [triggerAuth, setTriggerAuth] = useState<{ runId: string; token: string } | null>(null)
 	const [tokenErrorRunId, setTokenErrorRunId] = useState<string | null>(null)
-	const [selectedPersonId, setSelectedPersonId] = useState<string | null>(null)
+	const [customLensOverrides, setCustomLensOverrides] = useState<Record<string, { summary?: string; notes?: string }>>(
+		conversationAnalysis?.customLenses ?? {}
+	)
+	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
+
+	const activeRunId = analysisState?.trigger_run_id ?? null
+	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
+
+	const { progressInfo, isRealtime } = useInterviewProgress({
+		interviewId: interview.id,
+		runId: activeRunId ?? undefined,
+		accessToken: triggerAccessToken,
+	})
+	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
+
+	const revalidator = useRevalidator()
+	const refreshTriggeredRef = useRef(false)
+
+	// Helper function for date formatting
+	function formatReadable(dateString: string) {
+		const d = new Date(dateString)
+		const parts = d.toLocaleString("en-US", {
+			month: "short",
+			day: "2-digit",
+			hour: "2-digit",
+			minute: "2-digit",
+			hour12: true,
+		})
+		// Make AM/PM lower-case and use dash after month
+		const lower = parts.replace(/AM|PM/, (m) => m.toLowerCase())
+		return lower.replace(/^(\w{3}) (\d{2}), /, "$1-$2 ")
+	}
+
+	// Extract data needed for memoized computations
+	const participants = interview.participants || []
+	const interviewTitle = interview.title || "Untitled Interview"
+	const primaryParticipant = participants[0]?.people
+	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
+	const conversationUpdatedLabel =
+		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
+			? formatReadable(conversationAnalysis.updatedAt)
+			: null
+
+	// Derived state for processing status
+	const isProcessing = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
+	const showProcessingBanner = isProcessing
+
+	// Move all useMemo and useEffect hooks to the top
+	const keyTakeawaysDraft = useMemo(
+		() => normalizeMultilineText(interview.high_impact_themes).trim(),
+		[interview.high_impact_themes]
+	)
+	const notesDraft = useMemo(
+		() => normalizeMultilineText(interview.observations_and_notes).trim(),
+		[interview.observations_and_notes]
+	)
+	const personalFacetSummary = useMemo(() => {
+		if (!participants.length) return ""
+
+		const lines = participants
+			.map((participant) => {
+				const person =
+					(participant.people as {
+						name?: string | null
+						segment?: string | null
+						people_personas?: Array<{ personas?: { name?: string | null } | null }>
+					} | null) || null
+				const personaNames = Array.from(
+					new Set(
+						(person?.people_personas || [])
+							.map((entry) => entry?.personas?.name)
+							.filter((name): name is string => typeof name === "string" && name.trim())
+					)
+				)
+
+				const facets: string[] = []
+				if (participant.role) facets.push(`Role: ${participant.role}`)
+				if (person?.segment) facets.push(`Segment: ${person.segment}`)
+				if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`)
+
+				const displayName =
+					person?.name ||
+					participant.display_name ||
+					(participant.transcript_key ? `Speaker ${participant.transcript_key}` : null)
+
+				if (!displayName && facets.length === 0) {
+					return null
+				}
+
+				return `- ${(displayName || "Participant").trim()}${facets.length ? ` (${facets.join("; ")})` : ""}`
+			})
+			.filter((line): line is string => Boolean(line))
+
+		return lines.slice(0, 8).join("\n")
+	}, [participants])
+
+	const interviewSystemContext = useMemo(() => {
+		const sections: string[] = []
+		sections.push(`Interview title: ${interviewTitle}`)
+		if (interview.segment) sections.push(`Target segment: ${interview.segment}`)
+		if (keyTakeawaysDraft) sections.push(`Key takeaways draft:\n${keyTakeawaysDraft}`)
+		if (personalFacetSummary) sections.push(`Personal facets:\n${personalFacetSummary}`)
+		if (notesDraft) sections.push(`Notes:\n${notesDraft}`)
+
+		const combined = sections.filter(Boolean).join("\n\n")
+		if (combined.length > 2000) {
+			return `${combined.slice(0, 2000)}…`
+		}
+
+		return combined
+	}, [interviewTitle, interview.segment, keyTakeawaysDraft, personalFacetSummary, notesDraft])
+
+	const initialInterviewPrompt =
+		"Summarize the key takeaways from this interview and list 2 next steps that consider the participant's personal facets."
+	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
+	const formatStatusLabel = (status: string) =>
+		status
+			.split("_")
+			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
+			.join(" ")
+	const analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null
+	const analysisStatusTone = analysisState?.status
+		? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status)
+			? "bg-primary/10 text-primary"
+			: analysisState.status === "error"
+				? "bg-destructive/10 text-destructive"
+				: "bg-muted text-muted-foreground"
+		: ""
+
+	const uniqueSpeakers = useMemo(() => {
+		const speakerMap = new Map<string, { id: string; name: string; count: number }>()
+
+		// Collect all speakers from empathy map items
+		const allItems = [
+			...empathyMap.says,
+			...empathyMap.does,
+			...empathyMap.thinks,
+			...empathyMap.feels,
+			...empathyMap.pains,
+			...empathyMap.gains,
+		]
+
+		allItems.forEach((item) => {
+			if (item.personId && item.personName) {
+				const existing = speakerMap.get(item.personId)
+				if (existing) {
+					existing.count++
+				} else {
+					speakerMap.set(item.personId, {
+						id: item.personId,
+						name: item.personName,
+						count: 1,
+					})
+				}
+			}
+		})
+
+		// Sort by count (most evidence first), then by name
+		return Array.from(speakerMap.values()).sort((a, b) => {
+			if (b.count !== a.count) return b.count - a.count
+			return a.name.localeCompare(b.name)
+		})
+	}, [empathyMap])
+
+	const personLenses = useMemo(() => {
+		return uniqueSpeakers.map((speaker) => {
+			const filterByPerson = (items: typeof empathyMap.says) => {
+				return items.filter((item) => item.personId === speaker.id).map((item) => item.text)
+			}
+
+			return {
+				id: speaker.id,
+				name: speaker.name,
+				painsAndGoals: {
+					pains: filterByPerson(empathyMap.pains),
+					gains: filterByPerson(empathyMap.gains),
+				},
+				empathyMap: {
+					says: filterByPerson(empathyMap.says),
+					does: filterByPerson(empathyMap.does),
+					thinks: filterByPerson(empathyMap.thinks),
+					feels: filterByPerson(empathyMap.feels),
+				},
+			}
+		})
+	}, [uniqueSpeakers, empathyMap])
+
+
+	const customLensDefaults = useMemo<Record<string, { summary?: string; notes?: string; highlights?: string[] }>>(() => {
+		const firstNonEmpty = (...values: Array<string | null | undefined>) => {
+			for (const value of values) {
+				if (typeof value === "string" && value.trim().length > 0) return value.trim()
+			}
+			return undefined
+		}
+
+		const highImpactThemes = Array.isArray(interview.high_impact_themes)
+			? (interview.high_impact_themes as string[]).filter((item) => typeof item === "string" && item.trim().length > 0)
+			: []
+
+		const engineeringRecommendation = (conversationAnalysis?.recommendations ?? []).find((rec) =>
+			/(tech|engineering|product|integration)/i.test(`${rec.focusArea} ${rec.action} ${rec.rationale}`)
+		)
+
+		const empathyPains = empathyMap.pains.map((item) => item.text).filter((text): text is string => Boolean(text?.trim()))
+		const empathyFeels = empathyMap.feels.map((item) => item.text).filter((text): text is string => Boolean(text?.trim()))
+		const empathyGains = empathyMap.gains.map((item) => item.text).filter((text): text is string => Boolean(text?.trim()))
+
+		const openQuestions = (conversationAnalysis?.openQuestions ?? []).filter((item) => item && item.trim().length > 0)
+		const nervousTakeaway = conversationAnalysis?.keyTakeaways.find((takeaway) => takeaway.priority === "low")
+
+		return {
+			productImpact: {
+				summary: firstNonEmpty(
+					highImpactThemes[0],
+					engineeringRecommendation?.action,
+					conversationAnalysis?.keyTakeaways.find((takeaway) => takeaway.priority === "high")?.summary
+				),
+				notes: firstNonEmpty(
+					engineeringRecommendation
+						? `${engineeringRecommendation.focusArea}: ${engineeringRecommendation.action}`
+						: undefined,
+					interview.observations_and_notes ?? undefined
+				),
+				highlights: highImpactThemes.slice(0, 4),
+			},
+			customerService: {
+				summary: firstNonEmpty(empathyPains[0], empathyGains[0], conversationAnalysis?.summary ?? undefined),
+				notes: firstNonEmpty(empathyFeels[0], empathyGains[1]),
+				highlights: empathyPains.slice(0, 4),
+			},
+			pessimistic: {
+				summary: firstNonEmpty(openQuestions[0], interview.open_questions_and_next_steps ?? undefined),
+				notes: firstNonEmpty(openQuestions[1], nervousTakeaway?.summary),
+				highlights: openQuestions.slice(0, 4),
+			},
+		}
+	}, [
+		conversationAnalysis?.keyTakeaways,
+		conversationAnalysis?.openQuestions,
+		conversationAnalysis?.recommendations,
+		conversationAnalysis?.summary,
+		empathyMap.feels,
+		empathyMap.gains,
+		empathyMap.pains,
+		interview.high_impact_themes,
+		interview.observations_and_notes,
+		interview.open_questions_and_next_steps,
+	])
+
+	useEffect(() => {
+		setCustomLensOverrides(conversationAnalysis?.customLenses ?? {})
+	}, [conversationAnalysis?.customLenses])
 
 	useEffect(() => {
 		setAnalysisState(analysisJob)
@@ -712,38 +1027,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [analysisJob])
 
-	// Helper to create evidence link with time parameter (like YouTube ?t=10)
-	const createEvidenceLink = (item: { evidenceId: string; anchors?: unknown }) => {
-		if (!item.anchors || !Array.isArray(item.anchors) || item.anchors.length === 0) {
-			return routes.evidence.detail(item.evidenceId)
-		}
-
-		const anchor = item.anchors[0] as any
-		const startTime = anchor?.start
-
-		if (!startTime) {
-			return routes.evidence.detail(item.evidenceId)
-		}
-
-		// Parse time to seconds for simple ?t=3.5 parameter
-		let seconds = 0
-		if (typeof startTime === "number") {
-			seconds = startTime
-		} else if (typeof startTime === "string") {
-			if (startTime.endsWith("ms")) {
-				seconds = Number.parseFloat(startTime.replace("ms", "")) / 1000
-			} else if (startTime.includes(":")) {
-				const parts = startTime.split(":")
-				if (parts.length === 2) {
-					seconds = Number.parseInt(parts[0], 10) * 60 + Number.parseInt(parts[1], 10)
-				}
-			} else {
-				seconds = Number.parseFloat(startTime)
-			}
-		}
-
-		return `${routes.evidence.detail(item.evidenceId)}?t=${seconds}`
-	}
 
 	// Check if any action is in progress
 	const isActionPending = navigation.state === "loading" || navigation.state === "submitting"
@@ -776,7 +1059,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						}
 
 						const prevCreated = prev.created_at ? new Date(prev.created_at).getTime() : 0
-						const nextCreated = nextSummary.created_at ? new Date(nextSummary.created_at).getTime() : prevCreated
+						const nextCreated = nextSummary.created_at ? new Date(nextSummary.created_at).getTime() : 0
 
 						if (raw.id === prev.id || nextCreated >= prevCreated) {
 							return nextSummary
@@ -865,21 +1148,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [analysisState?.trigger_run_id, analysisState?.status, triggerAuth?.runId, tokenErrorRunId])
 
-	// Early validation without logging in render
-	if (!interview || !accountId || !projectId) {
-		return <div>Error: Missing interview data</div>
-	}
-
-	const participants = interview.participants || []
-	const [isChatOpen, setIsChatOpen] = useState(() => assistantMessages.length > 0)
-	const interviewTitle = interview.title || "Untitled Interview"
-	const primaryParticipant = participants[0]?.people
-	const aiKeyTakeaways = conversationAnalysis?.keyTakeaways ?? []
-	const conversationUpdatedLabel =
-		conversationAnalysis?.updatedAt && !Number.isNaN(new Date(conversationAnalysis.updatedAt).getTime())
-			? formatReadable(conversationAnalysis.updatedAt)
-			: null
-
 	const badgeStylesForPriority = (
 		priority: "high" | "medium" | "low"
 	): {
@@ -896,199 +1164,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}
 
-	const activeRunId = analysisState?.trigger_run_id ?? null
-	const triggerAccessToken = triggerAuth?.runId === activeRunId ? triggerAuth.token : undefined
-
-	useEffect(() => {
-		if (assistantMessages.length > 0) {
-			setIsChatOpen(true)
-		}
-	}, [assistantMessages.length])
-
-	const keyTakeawaysDraft = useMemo(
-		() => normalizeMultilineText(interview.high_impact_themes).trim(),
-		[interview.high_impact_themes]
-	)
-	const notesDraft = useMemo(
-		() => normalizeMultilineText(interview.observations_and_notes).trim(),
-		[interview.observations_and_notes]
-	)
-	const personalFacetSummary = useMemo(() => {
-		if (!participants.length) return ""
-
-		const lines = participants
-			.map((participant) => {
-				const person =
-					(participant.people as {
-						name?: string | null
-						segment?: string | null
-						people_personas?: Array<{ personas?: { name?: string | null } | null }>
-					} | null) || null
-				const personaNames = Array.from(
-					new Set(
-						(person?.people_personas || [])
-							.map((entry) => entry?.personas?.name)
-							.filter((name): name is string => typeof name === "string" && name.trim())
-					)
-				)
-
-				const facets: string[] = []
-				if (participant.role) facets.push(`Role: ${participant.role}`)
-				if (person?.segment) facets.push(`Segment: ${person.segment}`)
-				if (personaNames.length > 0) facets.push(`Personas: ${personaNames.join(", ")}`)
-
-				const displayName =
-					person?.name ||
-					participant.display_name ||
-					(participant.transcript_key ? `Speaker ${participant.transcript_key}` : null)
-
-				if (!displayName && facets.length === 0) {
-					return null
-				}
-
-				return `- ${(displayName || "Participant").trim()}${facets.length ? ` (${facets.join("; ")})` : ""}`
-			})
-			.filter((line): line is string => Boolean(line))
-
-		return lines.slice(0, 8).join("\n")
-	}, [participants])
-
-	const interviewSystemContext = useMemo(() => {
-		const sections: string[] = []
-		sections.push(`Interview title: ${interviewTitle}`)
-		if (interview.segment) sections.push(`Target segment: ${interview.segment}`)
-		if (keyTakeawaysDraft) sections.push(`Key takeaways draft:\n${keyTakeawaysDraft}`)
-		if (personalFacetSummary) sections.push(`Personal facets:\n${personalFacetSummary}`)
-		if (notesDraft) sections.push(`Notes:\n${notesDraft}`)
-
-		const combined = sections.filter(Boolean).join("\n\n")
-		if (combined.length > 2000) {
-			return `${combined.slice(0, 2000)}…`
-		}
-
-		return combined
-	}, [interviewTitle, interview.segment, keyTakeawaysDraft, personalFacetSummary, notesDraft])
-
-	const initialInterviewPrompt =
-		"Summarize the key takeaways from this interview and list 2 next steps that consider the participant's personal facets."
-	const hasAnalysisError = analysisState ? analysisState.status === "error" : false
-	const formatStatusLabel = (status: string) =>
-		status
-			.split("_")
-			.map((word) => word.charAt(0).toUpperCase() + word.slice(1))
-			.join(" ")
-	const analysisStatusLabel = analysisState?.status ? formatStatusLabel(analysisState.status) : null
-	const analysisStatusTone = analysisState?.status
-		? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status)
-			? "bg-primary/10 text-primary"
-			: analysisState.status === "error"
-				? "bg-destructive/10 text-destructive"
-				: "bg-muted text-muted-foreground"
-		: ""
-
-	const revalidator = useRevalidator()
-	const refreshTriggeredRef = useRef(false)
-
-	// Extract unique speakers from empathy map data
-	const uniqueSpeakers = useMemo(() => {
-		const speakerMap = new Map<string, { id: string; name: string; count: number }>()
-
-		// Collect all speakers from empathy map items
-		const allItems = [
-			...empathyMap.says,
-			...empathyMap.does,
-			...empathyMap.thinks,
-			...empathyMap.feels,
-			...empathyMap.pains,
-			...empathyMap.gains,
-		]
-
-		allItems.forEach((item) => {
-			if (item.personId && item.personName) {
-				const existing = speakerMap.get(item.personId)
-				if (existing) {
-					existing.count++
-				} else {
-					speakerMap.set(item.personId, {
-						id: item.personId,
-						name: item.personName,
-						count: 1,
-					})
-				}
-			}
-		})
-
-		// Sort by count (most evidence first), then by name
-		return Array.from(speakerMap.values()).sort((a, b) => {
-			if (b.count !== a.count) return b.count - a.count
-			return a.name.localeCompare(b.name)
-		})
-	}, [empathyMap])
-
-	useEffect(() => {
-		if (uniqueSpeakers.length === 0) {
-			setSelectedPersonId(null)
-			return
-		}
-
-		setSelectedPersonId((current) => {
-			if (current && uniqueSpeakers.some((speaker) => speaker.id === current)) {
-				return current
-			}
-
-			return uniqueSpeakers[0]?.id ?? null
-		})
-	}, [uniqueSpeakers])
-
-	const activePersonId = useMemo(() => {
-		return selectedPersonId ?? uniqueSpeakers[0]?.id ?? null
-	}, [selectedPersonId, uniqueSpeakers])
-
-	// Filter empathy map by selected person
-	const filteredEmpathyMap = useMemo(() => {
-		if (!activePersonId) {
-			// Default: show participants (non-interviewer roles)
-			// Filter out items from people with "interviewer" role
-			const filterNonInterviewer = (items: typeof empathyMap.says) => {
-				return items.filter((item) => {
-					if (!item.personId) return true // Include items without person attribution
-					// Check if this person is an interviewer
-					const participant = participants.find((p) => p.people?.id === item.personId)
-					return participant?.role?.toLowerCase() !== "interviewer"
-				})
-			}
-
-			return {
-				says: filterNonInterviewer(empathyMap.says),
-				does: filterNonInterviewer(empathyMap.does),
-				thinks: filterNonInterviewer(empathyMap.thinks),
-				feels: filterNonInterviewer(empathyMap.feels),
-				pains: filterNonInterviewer(empathyMap.pains),
-				gains: filterNonInterviewer(empathyMap.gains),
-			}
-		}
-
-		// Filter by selected person
-		const filterByPerson = (items: typeof empathyMap.says) => {
-			return items.filter((item) => item.personId === activePersonId)
-		}
-
-		return {
-			says: filterByPerson(empathyMap.says),
-			does: filterByPerson(empathyMap.does),
-			thinks: filterByPerson(empathyMap.thinks),
-			feels: filterByPerson(empathyMap.feels),
-			pains: filterByPerson(empathyMap.pains),
-			gains: filterByPerson(empathyMap.gains),
-		}
-	}, [activePersonId, empathyMap, participants])
-	const { progressInfo, isRealtime } = useInterviewProgress({
-		interviewId: interview.id,
-		runId: activeRunId ?? undefined,
-		accessToken: triggerAccessToken,
-	})
-	const progressPercent = Math.min(100, Math.max(0, progressInfo.progress))
-
 	useEffect(() => {
 		if (!progressInfo.isComplete) {
 			refreshTriggeredRef.current = false
@@ -1101,40 +1176,38 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}, [progressInfo.isComplete, revalidator])
 
-	// Comprehensive processing check: interview not ready OR analysis job active OR progress indicates incomplete
-	const isProcessing = useMemo(() => {
-		if (progressInfo.isComplete) {
-			return false
+	const handleCustomLensUpdate = (lensId: string, field: "summary" | "notes", value: string) => {
+		setCustomLensOverrides((prev) => ({
+			...prev,
+			[lensId]: {
+				...(prev[lensId] ?? {}),
+				[field]: value,
+			},
+		}))
+
+		if (!interview?.id) return
+
+		try {
+			lensFetcher.submit(
+				{
+					interviewId: interview.id,
+					projectId,
+					accountId,
+					lensId,
+					field,
+					value,
+				},
+				{ method: "post", action: "/api/update-lens" }
+			)
+		} catch (error) {
+			consola.error("Failed to update custom lens", error)
 		}
-
-		// Check interview status - anything before "ready" means still processing
-		const interviewNotReady =
-			interview.status !== "ready" && interview.status !== "error" && interview.status !== "archived"
-
-		// Check analysis job status if it exists
-		const analysisJobActive = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
-
-		// Check progress info from Trigger.dev hook
-		const progressIncomplete = !progressInfo.isComplete && !progressInfo.hasError
-
-		return interviewNotReady || analysisJobActive || progressIncomplete
-	}, [interview.status, analysisState, progressInfo.isComplete, progressInfo.hasError])
-	const showProcessingBanner = isProcessing && !progressInfo.isComplete
-
-
-	function formatReadable(dateString: string) {
-		const d = new Date(dateString)
-		const parts = d.toLocaleString("en-US", {
-			month: "short",
-			day: "2-digit",
-			hour: "2-digit",
-			minute: "2-digit",
-			hour12: true,
-		})
-		// Make AM/PM lower-case and use dash after month
-		const lower = parts.replace(/AM|PM/, (m) => m.toLowerCase())
-		return lower.replace(/^(\w{3}) (\d{2}), /, "$1-$2 ")
 	}
+
+	const activeLensUpdateId =
+		lensFetcher.state !== "idle" && lensFetcher.formData
+			? lensFetcher.formData.get("lensId")?.toString() ?? null
+			: null
 
 	return (
 		<div className="relative mx-auto mt-6 max-w-6xl">
@@ -1424,51 +1497,17 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-					{/* Empathy Map Section */}
-					<div className="space-y-4">
-						<div className="flex flex-wrap items-center justify-between gap-2">
-							<span className="font-semibold text-foreground text-lg">People</span>
-
-							{/* Person Selector Pills */}
-							{uniqueSpeakers.length > 0 ? (
-								<div className="flex flex-wrap items-center gap-2">
-									{uniqueSpeakers.map((speaker) => {
-										const isActive = activePersonId === speaker.id
-										return (
-											<button
-												key={speaker.id}
-												type="button"
-												onClick={() => setSelectedPersonId(speaker.id)}
-												className={`rounded-full px-3 py-1 font-medium text-sm transition-colors ${isActive
-													? "bg-primary text-primary-foreground shadow-sm"
-													: "bg-muted text-muted-foreground hover:bg-muted/80"
-													}`}
-											>
-												{speaker.name}
-												<span className="ml-1.5 opacity-70">({speaker.count})</span>
-											</button>
-										)
-									})}
-								</div>
-							) : (
-								<span className="text-muted-foreground text-sm">No participants with empathy map data yet</span>
-							)}
-						</div>
-
-						{isProcessing && evidence.length === 0 ? (
-							<div className="rounded-lg border border-dashed bg-muted/30 p-8 text-center">
-								<p className="text-muted-foreground text-sm">{progressInfo.label}</p>
-								<p className="mt-1 text-muted-foreground text-xs">Empathy map will appear once evidence is extracted</p>
-							</div>
-						) : (
-							<EmpathyMapTabs
-								empathyMap={filteredEmpathyMap}
-								activeTab={activeTab}
-								setActiveTab={setActiveTab}
-								createEvidenceLink={createEvidenceLink}
+						{salesCrmEnabled ? (
+							<SalesLensesSection
+								lens={salesLens}
+								customLenses={customLensOverrides}
+								customLensDefaults={customLensDefaults}
+								onUpdateLens={handleCustomLensUpdate}
+								updatingLensId={activeLensUpdateId}
+				personLenses={personLenses}
 							/>
-						)}
-					</div>
+						) : null}
+
 
 					{/* Evidence Timeline Section */}
 					{isProcessing && evidence.length === 0 ? (
@@ -1930,7 +1969,7 @@ function InterviewCopilotDrawer({
 	const routes = useProjectRoutesFromIds(accountId, projectId)
 	const { messages, sendMessage, status } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
-			api: routes.api.chat.interview(interviewId),
+			api: routes.api.chat().interview(interviewId),
 			body: { system: systemContext },
 		}),
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,

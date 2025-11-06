@@ -6,7 +6,17 @@ drop policy "account members can manage sales lens stakeholders" on "public"."sa
 
 drop policy "account members can manage sales lens summaries" on "public"."sales_lens_summaries";
 
-alter table "public"."sales_lens_slots" drop constraint "sales_lens_slots_related_person_ids_project_check";
+-- Drop constraint only if it exists
+do $$
+begin
+  if exists (
+    select 1 from pg_constraint
+    where conname = 'sales_lens_slots_related_person_ids_project_check'
+      and conrelid = 'public.sales_lens_slots'::regclass
+  ) then
+    alter table "public"."sales_lens_slots" drop constraint "sales_lens_slots_related_person_ids_project_check";
+  end if;
+end $$;
 
 drop view if exists "public"."persona_distribution";
 

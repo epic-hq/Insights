@@ -35,19 +35,19 @@ function toStringArray(value: unknown): string[] {
 export const fetchPeopleDetailsTool = createTool({
 	id: "fetch-people-details",
 	description:
-		"Fetch detailed information about people in a project, including demographics, professional info, preferences, attributes, motivations, personas, and interview history.",
+		"Fetch detailed information about people in a project, including demographics, professional info, preferences, attributes, motivations, personas, interview history, evidence snippets, and facet/scale attributes.",
 	inputSchema: z.object({
 		projectId: z
 			.string()
-			.optional()
-			.describe("Project ID to fetch people from. Defaults to the current project in context."),
+			.describe("Project ID to fetch people from. Required - no default project context available."),
 		peopleSearch: z
 			.string()
 			.optional()
 			.describe("Case-insensitive search string to match people by name or display name."),
 		peopleLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of people to return."),
-		includeEvidence: z.boolean().optional().describe("Whether to include evidence counts and interview details."),
+		includeEvidence: z.boolean().optional().describe("Whether to include actual evidence snippets from interviews."),
 		includePersonas: z.boolean().optional().describe("Whether to include persona assignments for each person."),
+		includeFacets: z.boolean().optional().describe("Whether to include facet attributes and scale measurements for each person."),
 		specificPersonIds: z.array(z.string()).optional().describe("Specific person IDs to fetch details for."),
 	}),
 	outputSchema: z.object({
@@ -60,16 +60,16 @@ export const fetchPeopleDetailsTool = createTool({
 	}),
 	execute: async ({ context, runtimeContext }) => {
 		const supabase = supabaseAdmin as SupabaseClient<Database>
-		const runtimeProjectId = runtimeContext?.get?.("project_id")
 		const runtimeAccountId = runtimeContext?.get?.("account_id")
 
-		const projectId = String(context?.projectId ?? runtimeProjectId ?? "")
+		const projectId = context.projectId
 		const accountId = runtimeAccountId ? String(runtimeAccountId).trim() : undefined
 		const peopleSearch = (context?.peopleSearch ?? "").trim()
 		const sanitizedPersonSearch = peopleSearch.replace(/[%*"'()]/g, "").trim()
 		const peopleLimit = context?.peopleLimit ?? 20
 		const includeEvidence = context?.includeEvidence ?? true
 		const includePersonas = context?.includePersonas ?? true
+		const includeFacets = context?.includeFacets ?? false
 		const specificPersonIds = context?.specificPersonIds ?? []
 
 		consola.info("fetch-people-details: execute start", {
@@ -79,14 +79,15 @@ export const fetchPeopleDetailsTool = createTool({
 			peopleLimit,
 			includeEvidence,
 			includePersonas,
+			includeFacets,
 			specificPersonIds: specificPersonIds.length,
 		})
 
-		if (!projectId) {
-			consola.warn("fetch-people-details: missing projectId")
+		if (!projectId || projectId.trim() === "") {
+			consola.warn("fetch-people-details: missing or empty projectId")
 			return {
 				success: false,
-				message: "Missing projectId. Pass one explicitly or ensure the runtime context sets project_id.",
+				message: "Missing or empty projectId. A valid project ID is required.",
 				projectId: null,
 				people: [],
 				totalCount: 0,
@@ -141,20 +142,18 @@ export const fetchPeopleDetailsTool = createTool({
 
 			// Apply database-side search filtering if search term provided
 			if (sanitizedPersonSearch) {
-				// Split search term into individual words for more lenient matching
+				// Split search term into individual words for more restrictive matching
 				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
 				const searchConditions = searchWords.flatMap((word) => {
-					const searchPattern = `%${word}%`
 					return [
-						`name.ilike.${searchPattern}`,
-						`title.ilike.${searchPattern}`,
-						`company.ilike.${searchPattern}`,
-						`role.ilike.${searchPattern}`,
+						`name.ilike.%${word}%`,
+						`title.ilike.%${word}%`,
+						`company.ilike.%${word}%`,
+						`role.ilike.%${word}%`,
 					]
 				})
 
-				// Use OR conditions for each word, making it very lenient
-				// This allows matching any of the search words in any of the fields
+				// Apply search conditions to the foreign table (person)
 				query = query.or(searchConditions.join(","), { foreignTable: "person" })
 			}
 
@@ -169,6 +168,45 @@ export const fetchPeopleDetailsTool = createTool({
 			}
 
 			let peopleRows = (projectPeople as ProjectPeopleRow[] | null) ?? []
+
+			consola.info("fetch-people-details: query results", {
+				projectId,
+				searchTerm: sanitizedPersonSearch,
+				rawResultsCount: peopleRows.length,
+				sampleResult: peopleRows.length > 0 ? {
+					person_id: peopleRows[0].person_id,
+					name: peopleRows[0].person?.name,
+					title: peopleRows[0].person?.title,
+					company: peopleRows[0].person?.company
+				} : null
+			})
+
+			// Apply word-boundary filtering for search terms to avoid substring matches
+			if (sanitizedPersonSearch) {
+				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
+				const wordBoundaryRegex = new RegExp(`\\b${searchWords.join('|')}\\b`, 'i')
+
+				peopleRows = peopleRows.filter((row) => {
+					const person = row.person
+					if (!person) return false
+
+					const searchableText = [
+						person.name,
+						person.title,
+						person.company,
+						person.role,
+						row.role
+					].filter(Boolean).join(' ')
+
+					return wordBoundaryRegex.test(searchableText)
+				})
+
+				consola.info("fetch-people-details: after word boundary filtering", {
+					projectId,
+					searchTerm: sanitizedPersonSearch,
+					filteredResultsCount: peopleRows.length,
+				})
+			}
 
 			// Remove the JavaScript-based search filtering since we now do it in the database
 			// if (sanitizedPersonSearch) {
@@ -205,22 +243,28 @@ export const fetchPeopleDetailsTool = createTool({
 			if (sanitizedPersonSearch) {
 				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
 				const searchConditions = searchWords.flatMap((word) => {
-					const searchPattern = `%${word}%`
 					return [
-						`name.ilike.${searchPattern}`,
-						`title.ilike.${searchPattern}`,
-						`company.ilike.${searchPattern}`,
-						`role.ilike.${searchPattern}`,
+						`name.ilike.%${word}%`,
+						`title.ilike.%${word}%`,
+						`company.ilike.%${word}%`,
+						`role.ilike.%${word}%`,
 					]
 				})
 
 				countQuery = countQuery.or(searchConditions.join(","), { foreignTable: "person" })
 			}
 
-			const { count: totalCount } = await countQuery
+			let { count: totalCount } = await countQuery
+
+			// If we have search filtering, we need to adjust the count based on our word boundary filtering
+			if (sanitizedPersonSearch) {
+				// We can't easily count with word boundaries in SQL, so we'll estimate based on our filtering ratio
+				// For now, just use the filtered count as the total (since we're limiting results anyway)
+				totalCount = peopleRows.length
+			}
 
 			// Fetch additional data if requested
-			const [personaData, interviewData, evidenceCounts] = await Promise.all([
+			const [personaData, interviewData, evidenceData, facetData, scaleData] = await Promise.all([
 				includePersonas && personIds.length > 0
 					? supabase
 							.from("people_personas")
@@ -259,7 +303,19 @@ export const fetchPeopleDetailsTool = createTool({
 				includeEvidence && personIds.length > 0
 					? supabase
 							.from("evidence")
-							.select("interview_id")
+							.select(`
+						id,
+						gist,
+						verbatim,
+						context_summary,
+						modality,
+						created_at,
+						interview_id,
+						interview:interview_id(
+							title,
+							interview_date
+						)
+					`)
 							.eq("project_id", projectId)
 							.in(
 								"interview_id",
@@ -273,26 +329,58 @@ export const fetchPeopleDetailsTool = createTool({
 									?.map((ip) => ip.interview_id)
 									.filter(Boolean) ?? []
 							)
-							.then((result) => {
-								const interviewEvidenceCount = new Map<string, number>()
-								if (result.data) {
-									for (const evidence of result.data) {
-										if (evidence.interview_id) {
-											interviewEvidenceCount.set(
-												evidence.interview_id,
-												(interviewEvidenceCount.get(evidence.interview_id) ?? 0) + 1
-											)
-										}
-									}
-								}
-								return interviewEvidenceCount
-							})
-					: Promise.resolve(new Map<string, number>()),
+							.order("created_at", { ascending: false })
+							.limit(50) // Limit evidence per person to avoid too much data
+					: Promise.resolve({ data: null }),
+
+				includeFacets && personIds.length > 0
+					? supabase
+							.from("person_facet")
+							.select(`
+						person_id,
+						facet_account_id,
+						source,
+						confidence,
+						noted_at,
+						facet:facet_account!inner(
+							id,
+							label,
+							kind_id,
+							synonyms,
+							is_active,
+							kind:kinds!inner(
+								slug,
+								label
+							)
+						)
+					`)
+							.eq("project_id", projectId)
+							.in("person_id", personIds)
+					: Promise.resolve({ data: null }),
+
+				includeFacets && personIds.length > 0
+					? supabase
+							.from("person_scale")
+							.select(`
+						person_id,
+						kind_slug,
+						score,
+						band,
+						source,
+						confidence,
+						noted_at
+					`)
+							.eq("project_id", projectId)
+							.in("person_id", personIds)
+					: Promise.resolve({ data: null }),
 			])
 
 			// Organize the additional data by person_id
 			const personasByPerson = new Map<string, PeoplePersonaRow[]>()
 			const interviewsByPerson = new Map<string, InterviewPeopleRow[]>()
+			const evidenceByPerson = new Map<string, any[]>()
+			const facetsByPerson = new Map<string, any[]>()
+			const scalesByPerson = new Map<string, any[]>()
 
 			if (personaData.data) {
 				for (const row of personaData.data as PeoplePersonaRow[]) {
@@ -310,6 +398,36 @@ export const fetchPeopleDetailsTool = createTool({
 				}
 			}
 
+			if (evidenceData.data) {
+				for (const evidence of evidenceData.data as any[]) {
+					// Find which person this evidence belongs to by looking up interview_people
+					const interviewPeople = (interviewData.data as InterviewPeopleRow[])?.find(
+						(ip) => ip.interview?.id === evidence.interview_id
+					)
+					if (interviewPeople) {
+						const existing = evidenceByPerson.get(interviewPeople.person_id) ?? []
+						existing.push(evidence)
+						evidenceByPerson.set(interviewPeople.person_id, existing)
+					}
+				}
+			}
+
+			if (facetData.data) {
+				for (const facet of facetData.data as any[]) {
+					const existing = facetsByPerson.get(facet.person_id) ?? []
+					existing.push(facet)
+					facetsByPerson.set(facet.person_id, existing)
+				}
+			}
+
+			if (scaleData.data) {
+				for (const scale of scaleData.data as any[]) {
+					const existing = scalesByPerson.get(scale.person_id) ?? []
+					existing.push(scale)
+					scalesByPerson.set(scale.person_id, existing)
+				}
+			}
+
 			// Build the final result
 			const people = peopleRows
 				.map((row) => {
@@ -318,23 +436,29 @@ export const fetchPeopleDetailsTool = createTool({
 
 					const personPersonas = personasByPerson.get(person.id) ?? []
 					const personInterviews = interviewsByPerson.get(person.id) ?? []
+					const personEvidence = evidenceByPerson.get(person.id) ?? []
+					const personFacets = facetsByPerson.get(person.id) ?? []
+					const personScales = scalesByPerson.get(person.id) ?? []
 
-					// Calculate evidence count for this person
-					let evidenceCount = 0
+					// Calculate evidence count for backward compatibility
+					const evidenceCount = personEvidence.length
+
 					const interviews = personInterviews
 						.map((ip) => {
 							const interview = ip.interview
 							if (!interview) return null
 
-							const count = evidenceCounts.get(interview.id) ?? 0
-							evidenceCount += count
+							// Count evidence for this specific interview
+							const interviewEvidenceCount = personEvidence.filter(
+								(ev) => ev.interview_id === interview.id
+							).length
 
 							return {
 								id: interview.id,
 								title: interview.title,
 								interview_date: normalizeDate(interview.interview_date),
 								status: interview.status,
-								evidenceCount: count,
+								evidenceCount: interviewEvidenceCount,
 							}
 						})
 						.filter(Boolean)
@@ -380,6 +504,36 @@ export const fetchPeopleDetailsTool = createTool({
 								}))
 							: undefined,
 						interviews: includeEvidence ? interviews : undefined,
+						evidence: includeEvidence
+							? personEvidence.slice(0, 20).map((ev) => ({ // Limit to 20 snippets per person
+									id: ev.id,
+									gist: ev.gist ?? null,
+									verbatim: ev.verbatim ?? null,
+									context_summary: ev.context_summary ?? null,
+									modality: ev.modality ?? null,
+									interview_title: ev.interview?.title ?? null,
+									interview_date: normalizeDate(ev.interview?.interview_date),
+									created_at: normalizeDate(ev.created_at),
+								}))
+							: undefined,
+						facets: includeFacets
+							? personFacets.map((facet) => ({
+									facet_account_id: facet.facet_account_id,
+									label: facet.facet?.label ?? `ID:${facet.facet_account_id}`,
+									kind_slug: facet.facet?.kind?.slug ?? "",
+									source: facet.source ?? null,
+									confidence: facet.confidence ?? null,
+								}))
+							: undefined,
+						scales: includeFacets
+							? personScales.map((scale) => ({
+									kind_slug: scale.kind_slug,
+									score: scale.score,
+									band: scale.band ?? null,
+									source: scale.source ?? null,
+									confidence: scale.confidence ?? null,
+								}))
+							: undefined,
 						evidenceCount: includeEvidence ? evidenceCount : undefined,
 						created_at: normalizeDate(person.created_at),
 						updated_at: normalizeDate(person.updated_at),
@@ -390,6 +544,19 @@ export const fetchPeopleDetailsTool = createTool({
 			const message = sanitizedPersonSearch
 				? `Found ${people.length} people matching "${sanitizedPersonSearch}" in project.`
 				: `Retrieved ${people.length} people from project.`
+
+			consola.info("fetch-people-details: final result", {
+				projectId,
+				searchTerm: sanitizedPersonSearch,
+				peopleCount: people.length,
+				totalCount: totalCount ?? 0,
+				samplePerson: people.length > 0 ? {
+					id: people[0].personId,
+					name: people[0].name,
+					title: people[0].title,
+					company: people[0].company
+				} : null
+			})
 
 			return {
 				success: true,

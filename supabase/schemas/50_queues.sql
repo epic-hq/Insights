@@ -40,6 +40,29 @@ for delete
 to authenticated
 USING (true);
 
+-- Evidence facets embedding queue setup (for pains, gains, jobs, etc.)
+select pgmq.create('facet_embedding_queue');
+grant insert, select, delete on table pgmq.q_facet_embedding_queue to authenticated;
+
+alter table pgmq.q_facet_embedding_queue enable row level security;
+
+create policy "authenticated can enqueue facets"
+on pgmq.q_facet_embedding_queue
+for insert
+to authenticated
+with check (true);
+
+create policy "authenticated can read facets"
+on pgmq.q_facet_embedding_queue
+for select
+to authenticated
+USING (true);
+
+create policy "authenticated can delete facets"
+on pgmq.q_facet_embedding_queue
+for delete
+to authenticated
+USING (true);
 
 -- b) trigger fn to enqueue changed rows
 -- Update functions to use extensions schema for pgmq and cron
@@ -65,6 +88,29 @@ $$;
 create or replace trigger trg_enqueue_insight
   after insert or update on public.insights
   for each row execute function public.enqueue_insight_embedding();
+
+-- Evidence facet enqueue function
+create or replace function public.enqueue_facet_embedding()
+returns trigger language plpgsql as $$
+begin
+  if (TG_OP = 'INSERT'
+      or (TG_OP = 'UPDATE' and old.label is distinct from new.label)) then
+    perform pgmq.send(
+      'facet_embedding_queue',
+      json_build_object(
+        'facet_id', new.id::text,
+        'label', new.label,
+        'kind_slug', new.kind_slug
+      )::jsonb
+    );
+  end if;
+  return new;
+end;
+$$;
+
+create or replace trigger trg_enqueue_facet
+  after insert or update on public.evidence_facet
+  for each row execute function public.enqueue_facet_embedding();
 
 -- c) helper to invoke your Edge Function
 create or replace function public.invoke_edge_function(func_name text, payload jsonb)
@@ -126,6 +172,34 @@ begin
 end;
 $$;
 
+-- Processor for facet embedding queue
+create or replace function public.process_facet_embedding_queue()
+returns text
+language plpgsql
+as $$
+declare
+  job record;
+  count int := 0;
+begin
+  for job in
+    select * from pgmq.read(
+      'facet_embedding_queue',
+      5,
+      30
+    )
+  loop
+    perform public.invoke_edge_function('embed-facet', job.message::jsonb);
+    perform pgmq.delete(
+      'facet_embedding_queue',
+      job.msg_id
+    );
+    count := count + 1;
+  end loop;
+
+  return format('Processed %s facet message(s) from embedding queue.', count);
+end;
+$$;
+
 
 
 
@@ -133,6 +207,13 @@ $$;
 select cron.schedule(
   '*/1 * * * *',
   'select public.process_embedding_queue()'
+);
+
+-- f) cron-job for facet embeddings (every minute)
+select cron.schedule(
+  'process-facet-embeddings',
+  '*/1 * * * *',
+  'select public.process_facet_embedding_queue()'
 );
 
 

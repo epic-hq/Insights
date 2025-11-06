@@ -75,7 +75,7 @@ export default class TypeBuilder {
     
     EvidenceTurn: ClassViewer<'EvidenceTurn', "person_key" | "speaker_label" | "gist" | "chunk" | "verbatim" | "anchors" | "why_it_matters" | "facet_mentions" | "isQuestion" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
     
-    EvidenceUnit: ClassViewer<'EvidenceUnit', "person_key" | "person_role" | "topic" | "gist" | "chunk" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains">;
+    EvidenceUnit: ClassViewer<'EvidenceUnit', "person_key" | "person_role" | "topic" | "gist" | "chunk" | "verbatim" | "support" | "kind_tags" | "personas" | "segments" | "journey_stage" | "anchors" | "confidence" | "context_summary" | "independence_key" | "says" | "does" | "thinks" | "feels" | "pains" | "gains" | "willingness_to_pay" | "priority">;
     
     ExecutiveInsight: ClassViewer<'ExecutiveInsight', "title" | "insight" | "evidence" | "business_impact" | "impact_level" | "confidence_level" | "personas_affected" | "recommended_actions" | "category">;
     
@@ -321,7 +321,7 @@ export default class TypeBuilder {
         ]);
         
         this.EvidenceUnit = this.tb.classViewer("EvidenceUnit", [
-          "person_key","person_role","topic","gist","chunk","verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key","says","does","thinks","feels","pains","gains",
+          "person_key","person_role","topic","gist","chunk","verbatim","support","kind_tags","personas","segments","journey_stage","anchors","confidence","context_summary","independence_key","says","does","thinks","feels","pains","gains","willingness_to_pay","priority",
         ]);
         
         this.ExecutiveInsight = this.tb.classViewer("ExecutiveInsight", [

@@ -107,6 +107,10 @@ class EvidenceUnit {
   feels string[]? @description("Emotions with context; e.g., 'Frustrated with long load times'.")
   pains string[]? @description("Biggest frustrations/fears/obstacles; short phrases in specific context.")
   gains string[]? @description("Goals, desires, positive outcomes/benefits/success factors; short phrases in specific context.")
+
+  // Product lens signals for prioritization
+  willingness_to_pay string? @description("high | medium | low | none - Signal of willingness to pay to solve this pain/gain this outcome. Extract from explicit mentions like '$X/month', 'would pay', 'not worth it', 'must-have', 'critical'.")
+  priority string? @description("critical | high | medium | low - Urgency/importance signal. Extract from language like 'biggest pain', 'blocker', 'nice to have', 'dealbreaker', 'must solve'.")
 }
 
 class EvidenceExtraction {
@@ -161,6 +165,10 @@ High-severity pains, frequent behaviors, explicit goals, success criteria.
 Workarounds, hacks, switching triggers, evaluation criteria, blockers, willingness-to-pay signals.
 Moments that reveal motivations, anxieties, decision criteria, or definitions of success.
 Skip generic opinions or filler unless tied to a concrete outcome.
+
+## Product Lens Signals (CRITICAL for prioritization)
+- **Willingness to Pay:** Extract signals from phrases like "I'd pay $X", "worth it", "not worth the cost", "must-have", "dealbreaker", "can't justify the price". Map to: high (explicit price mention >$20 or "must-have"), medium (positive intent, no price), low (hesitant), none (not mentioned or negative).
+- **Priority:** Extract urgency from language like "biggest pain", "blocker", "can't work without", "critical", "urgent", "nice to have", "eventually", "low priority". Map to: critical (blocks work), high (major pain), medium (important but not blocking), low (minor inconvenience).
 
 ## Evidence Unit Schema
 - person_key: matches one participant from `people` (exact string match required).

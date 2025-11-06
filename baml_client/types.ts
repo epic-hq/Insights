@@ -540,6 +540,8 @@ export interface EvidenceUnit {
   feels?: string[] | null
   pains?: string[] | null
   gains?: string[] | null
+  willingness_to_pay?: string | null
+  priority?: string | null
   
 }
 

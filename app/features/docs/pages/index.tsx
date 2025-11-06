@@ -1,4 +1,4 @@
-import { Book, Compass, Lightbulb, Users } from "lucide-react"
+import { Book, Compass, Layers3, Lightbulb, Users } from "lucide-react"
 import { Link } from "react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 
@@ -108,6 +108,19 @@ export default function DocsIndex() {
 								</CardTitle>
 								<CardDescription>
 									Discover patterns, validate hypotheses, and extract actionable findings
+								</CardDescription>
+							</CardHeader>
+						</Card>
+					</Link>
+					<Link to="/docs/conversation-lenses" className="group">
+						<Card className="h-full transition-shadow hover:shadow-lg">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
+									<Layers3 className="h-5 w-5" />
+									Conversation Lenses
+								</CardTitle>
+								<CardDescription>
+									Understand how SPICED, BANT, MEDDIC, MAP, and team perspectives are stored, edited, and refreshed
 								</CardDescription>
 							</CardHeader>
 						</Card>

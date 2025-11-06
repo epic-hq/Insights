@@ -232,6 +232,8 @@ export namespace partial_types {
       feels?: string[] | null
       pains?: string[] | null
       gains?: string[] | null
+      willingness_to_pay?: string | null
+      priority?: string | null
     }
     export interface ExecutiveInsight {
       title?: string | null
