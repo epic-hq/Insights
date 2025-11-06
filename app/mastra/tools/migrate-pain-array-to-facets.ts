@@ -9,29 +9,6 @@
 
 import consola from "consola"
 import { createClient } from "@supabase/supabase-js"
-import { readFileSync } from "node:fs"
-import { fileURLToPath } from "node:url"
-import { dirname, join } from "node:path"
-
-// Load .env file manually
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
-const envPath = join(__dirname, "../../../.env")
-
-try {
-	const envFile = readFileSync(envPath, "utf-8")
-	for (const line of envFile.split("\n")) {
-		const trimmed = line.trim()
-		if (!trimmed || trimmed.startsWith("#")) continue
-		const [key, ...valueParts] = trimmed.split("=")
-		if (key && valueParts.length > 0) {
-			const value = valueParts.join("=").replace(/^["']|["']$/g, "")
-			process.env[key.trim()] = value.trim()
-		}
-	}
-} catch (err) {
-	consola.warn("Could not load .env file, using environment variables")
-}
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!

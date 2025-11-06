@@ -25,8 +25,8 @@ import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.serv
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
-import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
+import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getSupabaseClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import { memory } from "~/mastra/memory"
@@ -951,8 +951,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		})
 	}, [uniqueSpeakers, empathyMap])
 
-
-	const customLensDefaults = useMemo<Record<string, { summary?: string; notes?: string; highlights?: string[] }>>(() => {
+	const customLensDefaults = useMemo<
+		Record<string, { summary?: string; notes?: string; highlights?: string[] }>
+	>(() => {
 		const firstNonEmpty = (...values: Array<string | null | undefined>) => {
 			for (const value of values) {
 				if (typeof value === "string" && value.trim().length > 0) return value.trim()
@@ -968,9 +969,15 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			/(tech|engineering|product|integration)/i.test(`${rec.focusArea} ${rec.action} ${rec.rationale}`)
 		)
 
-		const empathyPains = empathyMap.pains.map((item) => item.text).filter((text): text is string => Boolean(text?.trim()))
-		const empathyFeels = empathyMap.feels.map((item) => item.text).filter((text): text is string => Boolean(text?.trim()))
-		const empathyGains = empathyMap.gains.map((item) => item.text).filter((text): text is string => Boolean(text?.trim()))
+		const empathyPains = empathyMap.pains
+			.map((item) => item.text)
+			.filter((text): text is string => Boolean(text?.trim()))
+		const empathyFeels = empathyMap.feels
+			.map((item) => item.text)
+			.filter((text): text is string => Boolean(text?.trim()))
+		const empathyGains = empathyMap.gains
+			.map((item) => item.text)
+			.filter((text): text is string => Boolean(text?.trim()))
 
 		const openQuestions = (conversationAnalysis?.openQuestions ?? []).filter((item) => item && item.trim().length > 0)
 		const nervousTakeaway = conversationAnalysis?.keyTakeaways.find((takeaway) => takeaway.priority === "low")
@@ -1026,7 +1033,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 			setTokenErrorRunId(null)
 		}
 	}, [analysisJob])
-
 
 	// Check if any action is in progress
 	const isActionPending = navigation.state === "loading" || navigation.state === "submitting"
@@ -1206,7 +1212,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	const activeLensUpdateId =
 		lensFetcher.state !== "idle" && lensFetcher.formData
-			? lensFetcher.formData.get("lensId")?.toString() ?? null
+			? (lensFetcher.formData.get("lensId")?.toString() ?? null)
 			: null
 
 	return (
@@ -1302,9 +1308,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						<BackButton />
 						<div className="flex flex-col gap-4 sm:flex-row sm:items-start sm:justify-between">
 							<div className="flex-1">
-								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">
-									{interviewTitle}
-								</div>
+								<div className="mb-2 flex items-center gap-2 font-semibold text-2xl">{interviewTitle}</div>
 								<div className="flex flex-wrap items-center gap-3">
 									{/* Show participant from junction table if available, fallback to legacy field */}
 									{primaryParticipant?.name ? (
@@ -1327,7 +1331,6 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 								</div>
 							</div>
 							<div className="flex items-center gap-2">
-
 								{enableRecording && (
 									<Link
 										to={routes.interviews.realtime(interview.id)}
@@ -1497,17 +1500,16 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 						</div>
 					</div>
 
-						{salesCrmEnabled ? (
-							<SalesLensesSection
-								lens={salesLens}
-								customLenses={customLensOverrides}
-								customLensDefaults={customLensDefaults}
-								onUpdateLens={handleCustomLensUpdate}
-								updatingLensId={activeLensUpdateId}
-				personLenses={personLenses}
-							/>
-						) : null}
-
+					{salesCrmEnabled ? (
+						<SalesLensesSection
+							lens={salesLens}
+							customLenses={customLensOverrides}
+							customLensDefaults={customLensDefaults}
+							onUpdateLens={handleCustomLensUpdate}
+							updatingLensId={activeLensUpdateId}
+							personLenses={personLenses}
+						/>
+					) : null}
 
 					{/* Evidence Timeline Section */}
 					{isProcessing && evidence.length === 0 ? (

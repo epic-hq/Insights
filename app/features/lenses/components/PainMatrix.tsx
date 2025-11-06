@@ -1,5 +1,5 @@
 import { useState } from "react"
-import type { PainMatrix, PainMatrixCell, PainTheme } from "../services/generatePainMatrix.server"
+import type { PainMatrix, PainMatrixCell } from "../services/generatePainMatrix.server"
 
 export interface PainMatrixProps {
 	matrix: PainMatrix
@@ -47,8 +47,8 @@ export function PainMatrixComponent({ matrix, onCellClick }: PainMatrixProps) {
 
 	const painThemes = sortedPainThemes.map((p) => p.pain)
 
-	// Generate insights from the data
-	const insights = generateInsights(matrix, painThemes)
+	// Use pre-generated insights from the server (LLM-generated)
+	const insights = matrix.insights || "Generating insights from pain matrix data..."
 
 	return (
 		<div className="space-y-6">
@@ -64,7 +64,7 @@ export function PainMatrixComponent({ matrix, onCellClick }: PainMatrixProps) {
 					<h3 className="mb-2 flex items-center gap-2 font-semibold text-sm">
 						<span>💡</span> Key Insights
 					</h3>
-					<p className="text-sm leading-relaxed">{insights}</p>
+					<p className="whitespace-pre-line text-sm leading-relaxed">{insights}</p>
 				</div>
 
 				{/* KPIs + Controls */}
@@ -111,13 +111,16 @@ export function PainMatrixComponent({ matrix, onCellClick }: PainMatrixProps) {
 								<input
 									type="range"
 									min="0"
-									max="10"
-									step="0.5"
+									max="3"
+									step="0.1"
 									value={minImpact}
 									onChange={(e) => setMinImpact(Number.parseFloat(e.target.value))}
 									className="flex-1"
 								/>
 								<span className="w-8 text-right font-medium text-xs">{minImpact.toFixed(1)}</span>
+							</div>
+							<div className="text-[10px] text-muted-foreground">
+								Showing {filteredPainThemes.length} of {matrix.pain_themes.length} pains
 							</div>
 						</div>
 					</div>
@@ -172,8 +175,8 @@ export function PainMatrixComponent({ matrix, onCellClick }: PainMatrixProps) {
 				<summary className="cursor-pointer font-semibold text-sm">📖 How to Interpret This Matrix</summary>
 				<div className="mt-3 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
 					<div>
-						<strong>Impact Score:</strong> Combines # of people affected × intensity (how critical it is) × willingness
-						to pay. Higher scores = bigger business opportunities.
+						<strong>Impact Score:</strong> Combines (% affected × group size) × intensity × willingness to pay.
+						Adjusted for small samples. Higher scores = bigger opportunities.
 					</div>
 					<div>
 						<strong>$ Icon:</strong> Indicates high willingness to pay for a solution
@@ -184,11 +187,11 @@ export function PainMatrixComponent({ matrix, onCellClick }: PainMatrixProps) {
 					<div>
 						<strong>Heat Map Colors:</strong>
 						<div className="mt-2 flex flex-wrap gap-2">
-							<ColorLegendItem color="rgba(239, 68, 68, 0.3)" label="Critical (6+)" />
-							<ColorLegendItem color="rgba(249, 115, 22, 0.3)" label="High (4-6)" />
-							<ColorLegendItem color="rgba(234, 179, 8, 0.3)" label="Medium (2-4)" />
-							<ColorLegendItem color="rgba(34, 197, 94, 0.3)" label="Low (1-2)" />
-							<ColorLegendItem color="rgba(148, 163, 184, 0.1)" label="Minimal (<1)" />
+							<ColorLegendItem color="rgba(239, 68, 68, 0.3)" label="Critical (2.0+)" />
+							<ColorLegendItem color="rgba(249, 115, 22, 0.3)" label="High (1.5-2.0)" />
+							<ColorLegendItem color="rgba(234, 179, 8, 0.3)" label="Medium (1.0-1.5)" />
+							<ColorLegendItem color="rgba(34, 197, 94, 0.3)" label="Low (0.5-1.0)" />
+							<ColorLegendItem color="rgba(148, 163, 184, 0.1)" label="Minimal (<0.5)" />
 						</div>
 					</div>
 				</div>
@@ -267,46 +270,13 @@ function ColorLegendItem({ color, label }: { color: string; label: string }) {
 }
 
 /**
- * Generate insights from the matrix data
- */
-function generateInsights(matrix: PainMatrix, visiblePainThemes: PainTheme[]): string {
-	const totalPains = matrix.summary.total_pains
-	const visiblePains = visiblePainThemes.length
-	const totalGroups = matrix.summary.total_groups
-	const highImpactCount = matrix.summary.high_impact_cells
-
-	// Get all cells for visible pains
-	const visibleCells = matrix.cells.filter((cell) => visiblePainThemes.some((pain) => pain.id === cell.pain_theme_id))
-
-	// Sort by impact
-	const sortedCells = [...visibleCells].sort((a, b) => b.metrics.impact_score - a.metrics.impact_score)
-
-	// Get top cell
-	const topCell = sortedCells[0]
-
-	// Count total people affected
-	const totalPeopleAffected = new Set(visibleCells.flatMap((c) => c.evidence.person_ids)).size
-
-	// Build insight
-	if (!topCell || highImpactCount === 0) {
-		return `Your ${totalGroups} user segments experience ${visiblePains} pain points (${totalPains} total). While no single pain achieves high impact (≥2.0), ${totalPeopleAffected} people are affected. Consider semantic clustering to identify common themes across similar pains for targeted solutions.`
-	}
-
-	const topPainName = topCell.pain_theme_name
-	const topSegmentName = topCell.user_group.name
-	const impactScore = topCell.metrics.impact_score.toFixed(1)
-	const frequency = Math.round(topCell.metrics.frequency * 100)
-
-	return `Your ${totalGroups} user segments experience ${visiblePains} pain points (${totalPains} total), affecting ${totalPeopleAffected} people. "${topPainName}" has highest impact on ${topSegmentName} (score: ${impactScore}), with ${frequency}% of this segment experiencing it. ${highImpactCount} high-impact opportunities (≥2.0) identified for feature prioritization.`
-}
-
-/**
- * Get background color based on impact score (person_count × intensity × wtp)
+ * Get background color based on impact score (frequency × group_size × intensity × wtp)
+ * Adjusted for small sample sizes where scores typically range 0-3
  */
 function getImpactColor(score: number): string {
-	if (score >= 6) return "rgba(239, 68, 68, 0.3)" // red-500 at 30% - Critical (6+)
-	if (score >= 4) return "rgba(249, 115, 22, 0.3)" // orange-500 at 30% - High (4-6)
-	if (score >= 2) return "rgba(234, 179, 8, 0.3)" // yellow-500 at 30% - Medium (2-4)
-	if (score >= 1) return "rgba(34, 197, 94, 0.3)" // green-500 at 30% - Low (1-2)
-	return "rgba(148, 163, 184, 0.1)" // slate-400 at 10% - Minimal (<1)
+	if (score >= 2.0) return "rgba(239, 68, 68, 0.3)" // red-500 at 30% - Critical (2.0+)
+	if (score >= 1.5) return "rgba(249, 115, 22, 0.3)" // orange-500 at 30% - High (1.5-2.0)
+	if (score >= 1.0) return "rgba(234, 179, 8, 0.3)" // yellow-500 at 30% - Medium (1.0-1.5)
+	if (score >= 0.5) return "rgba(34, 197, 94, 0.3)" // green-500 at 30% - Low (0.5-1.0)
+	return "rgba(148, 163, 184, 0.1)" // slate-400 at 10% - Minimal (<0.5)
 }

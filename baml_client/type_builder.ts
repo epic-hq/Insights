@@ -125,6 +125,10 @@ export default class TypeBuilder {
     
     OpportunityRecommendation: ClassViewer<'OpportunityRecommendation', "title" | "description" | "revenue_potential" | "effort_estimate" | "target_personas" | "supporting_insights" | "competitive_advantage" | "recommended_actions">;
     
+    PainMatrixInsights: ClassViewer<'PainMatrixInsights', "summary" | "top_3_actions">;
+    
+    PainMatrixInsightsInput: ClassViewer<'PainMatrixInsightsInput', "total_pains" | "total_groups" | "total_evidence" | "high_impact_cells" | "top_pains">;
+    
     Participant: ClassViewer<'Participant', "name" | "persona" | "participantDescription" | "facetSummary" | "segment" | "contactInfo">;
     
     ParticipantGoal: ClassViewer<'ParticipantGoal', "speaker" | "goal" | "evidence_snippet" | "confidence">;
@@ -205,6 +209,8 @@ export default class TypeBuilder {
     
     ThemeCandidate: ClassViewer<'ThemeCandidate', "name" | "statement" | "inclusion_criteria" | "exclusion_criteria" | "synonyms" | "anti_examples" | "links">;
     
+    TopPainCell: ClassViewer<'TopPainCell', "pain_name" | "user_group" | "impact_score" | "frequency" | "intensity" | "willingness_to_pay" | "person_count" | "evidence_count" | "sample_quote">;
+    
     TurnAnchors: ClassViewer<'TurnAnchors', "start_ms" | "end_ms" | "chapter_title" | "char_span">;
     
     
@@ -216,7 +222,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","Participant","ParticipantGoal","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TurnAnchors",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TopPainCell","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -420,6 +426,14 @@ export default class TypeBuilder {
           "title","description","revenue_potential","effort_estimate","target_personas","supporting_insights","competitive_advantage","recommended_actions",
         ]);
         
+        this.PainMatrixInsights = this.tb.classViewer("PainMatrixInsights", [
+          "summary","top_3_actions",
+        ]);
+        
+        this.PainMatrixInsightsInput = this.tb.classViewer("PainMatrixInsightsInput", [
+          "total_pains","total_groups","total_evidence","high_impact_cells","top_pains",
+        ]);
+        
         this.Participant = this.tb.classViewer("Participant", [
           "name","persona","participantDescription","facetSummary","segment","contactInfo",
         ]);
@@ -578,6 +592,10 @@ export default class TypeBuilder {
         
         this.ThemeCandidate = this.tb.classViewer("ThemeCandidate", [
           "name","statement","inclusion_criteria","exclusion_criteria","synonyms","anti_examples","links",
+        ]);
+        
+        this.TopPainCell = this.tb.classViewer("TopPainCell", [
+          "pain_name","user_group","impact_score","frequency","intensity","willingness_to_pay","person_count","evidence_count","sample_quote",
         ]);
         
         this.TurnAnchors = this.tb.classViewer("TurnAnchors", [

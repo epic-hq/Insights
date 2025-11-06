@@ -1,3 +1,4 @@
+import { b } from "baml"
 import consola from "consola"
 import type { DerivedGroup } from "~/features/people/services/deriveUserGroups.server"
 import { deriveUserGroups } from "~/features/people/services/deriveUserGroups.server"
@@ -32,6 +33,7 @@ export type PainMatrixCell = {
 	evidence: {
 		count: number
 		sample_verbatims: string[]
+		evidence_ids: string[] // Evidence IDs for linking to detail pages
 		person_ids: string[]
 		person_count: number
 	}
@@ -50,6 +52,12 @@ export type PainMatrix = {
 		total_evidence: number
 		high_impact_cells: number // Count of cells with impact_score > 0.7
 	}
+	insights: string // LLM-generated strategic insights about the matrix
+	cache_metadata?: {
+		cached_at: string
+		is_stale: boolean
+		evidence_count_delta: number // Difference from when cached
+	}
 }
 
 /**
@@ -58,12 +66,54 @@ export type PainMatrix = {
 export async function generatePainMatrix(opts: {
 	supabase: SupabaseClient
 	projectId: string
+	accountId?: string
 	minEvidencePerPain?: number
 	minGroupSize?: number
+	forceRefresh?: boolean
 }): Promise<PainMatrix> {
-	const { supabase, projectId, minEvidencePerPain = 3, minGroupSize = 2 } = opts
+	const { supabase, projectId, accountId, minEvidencePerPain = 3, minGroupSize = 2, forceRefresh = false } = opts
 
-	consola.info(`[generatePainMatrix] Starting for project ${projectId}`)
+	consola.info(`[generatePainMatrix] Starting for project ${projectId}${forceRefresh ? " (forced refresh)" : ""}`)
+
+	// Check cache first (unless force refresh)
+	if (!forceRefresh) {
+		const { data: cached } = await supabase.from("pain_matrix_cache").select("*").eq("project_id", projectId).single()
+
+		if (cached) {
+			// Get current evidence count to determine if cache is stale
+			const { count: currentEvidenceCount } = await supabase
+				.from("evidence")
+				.select("*", { count: "exact", head: true })
+				.eq("project_id", projectId)
+				.or("pains.not.is.null,evidence_facet.kind_slug.eq.pain")
+
+			const evidenceDelta = (currentEvidenceCount || 0) - cached.evidence_count
+			const deltaPercent = cached.evidence_count > 0 ? Math.abs(evidenceDelta) / cached.evidence_count : 0
+
+			// Consider cache fresh if evidence count changed < 10%
+			const isFresh = deltaPercent < 0.1
+
+			if (isFresh) {
+				consola.success(
+					`[generatePainMatrix] Using cached matrix (${cached.evidence_count} evidence, ${evidenceDelta >= 0 ? "+" : ""}${evidenceDelta} since cache)`
+				)
+
+				const matrix: PainMatrix = {
+					...cached.matrix_data,
+					cache_metadata: {
+						cached_at: cached.updated_at,
+						is_stale: false,
+						evidence_count_delta: evidenceDelta,
+					},
+				}
+				return matrix
+			}
+
+			consola.info(
+				`[generatePainMatrix] Cache is stale (${evidenceDelta >= 0 ? "+" : ""}${evidenceDelta} evidence, ${(deltaPercent * 100).toFixed(1)}% change), recomputing...`
+			)
+		}
+	}
 
 	// 1. Get user groups
 	const userGroups = await deriveUserGroups({
@@ -176,14 +226,18 @@ export async function generatePainMatrix(opts: {
 		projectId,
 		evidenceWithPains: evidenceWithPeopleIds,
 		minEvidencePerPain,
-		similarityThreshold: 0.70, // 70% similarity - good balance of precision/recall
+		similarityThreshold: 0.7, // 70% similarity - good balance of precision/recall
 	})
 	consola.info(`[generatePainMatrix] Clustered into ${painThemes.length} pain themes using semantic embeddings`)
 
 	// 5. Build matrix cells
 	const cells: PainMatrixCell[] = []
+	let totalOrphanedEvidence = 0
 
 	for (const pain of painThemes) {
+		const painEvidenceCount = pain.evidence_ids.length
+		let painEvidenceCoverage = 0
+
 		for (const group of userGroups) {
 			const cell = await buildMatrixCell({
 				supabase,
@@ -196,8 +250,22 @@ export async function generatePainMatrix(opts: {
 			// Only include cells with actual evidence
 			if (cell.evidence.count > 0) {
 				cells.push(cell)
+				painEvidenceCoverage += cell.evidence.count
 			}
 		}
+
+		// Check for orphaned evidence (evidence in pain theme but not in any cell)
+		const orphanedForThisPain = painEvidenceCount - painEvidenceCoverage
+		if (orphanedForThisPain > 0) {
+			consola.warn(
+				`[generatePainMatrix] Pain "${pain.name}" has ${orphanedForThisPain} orphaned evidence (${painEvidenceCount} total, ${painEvidenceCoverage} in cells)`
+			)
+			totalOrphanedEvidence += orphanedForThisPain
+		}
+	}
+
+	if (totalOrphanedEvidence > 0) {
+		consola.warn(`[generatePainMatrix] Total orphaned evidence: ${totalOrphanedEvidence} items (evidence not linked to any user group)`)
 	}
 
 	// 6. Filter out pain themes that don't appear in any cells (orphaned evidence)
@@ -207,8 +275,10 @@ export async function generatePainMatrix(opts: {
 	// 7. Sort cells by impact score (descending)
 	cells.sort((a, b) => b.metrics.impact_score - a.metrics.impact_score)
 
-	// High impact threshold: >= 2.0 (at least 2+ people with meaningful intensity/WTP)
-	const highImpactCells = cells.filter((c) => c.metrics.impact_score >= 2.0).length
+	// High impact threshold: >= 1.0 (accounts for small sample sizes)
+	// This represents: 100% of a small group with high intensity and medium WTP, or
+	// 50% of a larger group with high intensity and high WTP
+	const highImpactCells = cells.filter((c) => c.metrics.impact_score >= 1.0).length
 
 	const orphanedPains = painThemes.length - filteredPainThemes.length
 	if (orphanedPains > 0) {
@@ -219,7 +289,38 @@ export async function generatePainMatrix(opts: {
 		`[generatePainMatrix] Generated matrix: ${filteredPainThemes.length} pains × ${userGroups.length} groups = ${cells.length} cells (${highImpactCells} high-impact)`
 	)
 
-	return {
+	// 8. Generate LLM insights from the matrix data
+	consola.info("[generatePainMatrix] Generating strategic insights...")
+	const topCells = cells.slice(0, 10).map((cell) => ({
+		pain_name: cell.pain_theme_name,
+		user_group: cell.user_group.name,
+		impact_score: Math.round(cell.metrics.impact_score * 10) / 10, // 1 decimal place
+		frequency: cell.metrics.frequency,
+		intensity: cell.metrics.intensity || "medium",
+		willingness_to_pay: cell.metrics.willingness_to_pay || "medium",
+		person_count: cell.evidence.person_count,
+		evidence_count: cell.evidence.count,
+		sample_quote: cell.evidence.sample_verbatims[0] || null,
+	}))
+
+	const matrixInput = {
+		total_pains: filteredPainThemes.length,
+		total_groups: userGroups.length,
+		total_evidence: evidenceWithPeopleIds.length,
+		high_impact_cells: highImpactCells,
+		top_pains: topCells,
+	}
+
+	consola.info("[generatePainMatrix] Calling LLM with input:", matrixInput)
+
+	const insightsResult = await b.GeneratePainMatrixInsights(matrixInput)
+
+	// Format insights as a concise summary + action list
+	const insightsText = `${insightsResult.summary}\n\nTop 3 Actions:\n${insightsResult.top_3_actions.map((action, i) => `${i + 1}. ${action}`).join("\n")}`
+
+	consola.success("[generatePainMatrix] Generated insights successfully")
+
+	const matrix: PainMatrix = {
 		pain_themes: filteredPainThemes,
 		user_groups: userGroups,
 		cells,
@@ -229,7 +330,46 @@ export async function generatePainMatrix(opts: {
 			total_evidence: evidenceWithPeopleIds.length,
 			high_impact_cells: highImpactCells,
 		},
+		insights: insightsText,
 	}
+
+	// Save to cache for future loads
+	// Note: Using supabaseAdmin with service_role which should bypass RLS
+	if (accountId) {
+		try {
+			consola.info(`[generatePainMatrix] Saving cache for account ${accountId}, project ${projectId}`)
+
+			const { data, error } = await supabase
+				.from("pain_matrix_cache")
+				.upsert(
+					{
+						account_id: accountId,
+						project_id: projectId,
+						matrix_data: matrix as any,
+						insights: insightsText,
+						evidence_count: evidenceWithPeopleIds.length,
+						pain_count: filteredPainThemes.length,
+						user_group_count: userGroups.length,
+					},
+					{ onConflict: "project_id" }
+				)
+				.select()
+
+			if (error) {
+				consola.error("[generatePainMatrix] Cache save error:", error)
+			} else if (data) {
+				consola.success(`[generatePainMatrix] Saved matrix to cache (id: ${data[0]?.id})`)
+			} else {
+				consola.warn("[generatePainMatrix] Cache save returned no data or error")
+			}
+		} catch (err) {
+			consola.error("[generatePainMatrix] Failed to save cache:", err)
+		}
+	} else {
+		consola.warn("[generatePainMatrix] No accountId provided, skipping cache save")
+	}
+
+	return matrix
 }
 
 /**
@@ -276,14 +416,14 @@ async function clusterPainsBySemantic(opts: {
 		.not("embedding", "is", null)
 
 	if (error) {
-		consola.error(`[clusterPainsBySemantic] Error fetching pain facets:`, error)
+		consola.error("[clusterPainsBySemantic] Error fetching pain facets:", error)
 		// Fallback to label-based clustering
 		return clusterPainsByLabel(evidenceWithPains, minEvidencePerPain)
 	}
 
 	// If no embeddings available yet, fall back to label clustering
 	if (!painFacets || painFacets.length === 0) {
-		consola.warn(`[clusterPainsBySemantic] No embeddings available, falling back to label clustering`)
+		consola.warn("[clusterPainsBySemantic] No embeddings available, falling back to label clustering")
 		return clusterPainsByLabel(evidenceWithPains, minEvidencePerPain)
 	}
 
@@ -295,7 +435,7 @@ async function clusterPainsBySemantic(opts: {
 	})
 
 	if (clusterError) {
-		consola.error(`[clusterPainsBySemantic] Error finding clusters:`, clusterError)
+		consola.error("[clusterPainsBySemantic] Error finding clusters:", clusterError)
 		return clusterPainsByLabel(evidenceWithPains, minEvidencePerPain)
 	}
 
@@ -369,10 +509,7 @@ async function clusterPainsBySemantic(opts: {
 /**
  * Cluster evidence into pain themes by label (Phase 1: fallback for when embeddings unavailable)
  */
-function clusterPainsByLabel(
-	evidenceWithPains: any[],
-	minEvidencePerPain: number
-): PainTheme[] {
+function clusterPainsByLabel(evidenceWithPains: any[], minEvidencePerPain: number): PainTheme[] {
 	const painGroups = new Map<string, any[]>()
 
 	for (const ev of evidenceWithPains) {
@@ -430,7 +567,10 @@ async function buildMatrixCell(opts: {
 		return inPainTheme && hasUserInGroup
 	})
 
-	const evidenceCount = relevantEvidence.length
+	// Get unique evidence IDs (old format can create duplicate rows)
+	const uniqueEvidenceIds = [...new Set(relevantEvidence.map((e) => e.id))]
+	const evidenceCount = uniqueEvidenceIds.length
+
 	// Flatten all person_ids and get unique ones
 	const allPersonIds = relevantEvidence.flatMap((e) => e.person_ids || [])
 	const uniquePersonIds = [...new Set(allPersonIds)].filter((id) => userGroup.member_ids.includes(id))
@@ -449,8 +589,12 @@ async function buildMatrixCell(opts: {
 	const wtpScore = calculateAverageWTP(wtpSignals)
 	const willingness_to_pay = scoreToWTP(wtpScore)
 
-	// Combined impact score: person_count × intensity × wtp (absolute business impact)
-	const impact_score = personCount * intensityScore * wtpScore
+	// Combined impact score:
+	// For small groups (<10 people), use frequency-based scoring to avoid penalizing small samples
+	// For large groups, use absolute person count
+	// Formula: (frequency × group_size_factor) × intensity × wtp
+	const groupSizeFactor = Math.max(1, Math.min(userGroup.member_count, 10)) // Cap at 10 for normalization
+	const impact_score = frequency * groupSizeFactor * intensityScore * wtpScore
 
 	// Sample verbatims (up to 3)
 	const sample_verbatims = relevantEvidence
@@ -473,6 +617,7 @@ async function buildMatrixCell(opts: {
 		evidence: {
 			count: evidenceCount,
 			sample_verbatims,
+			evidence_ids: uniqueEvidenceIds,
 			person_ids: uniquePersonIds,
 			person_count: personCount,
 		},

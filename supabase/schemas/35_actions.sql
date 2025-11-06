@@ -3,7 +3,7 @@
 
 create table if not exists public.actions (
   id uuid primary key default gen_random_uuid(),
-  account_id uuid not null references public.accounts(id) on delete cascade,
+  account_id uuid not null references accounts.accounts(id) on delete cascade,
   project_id uuid not null references public.projects(id) on delete cascade,
 
   -- Action metadata
@@ -34,10 +34,7 @@ create table if not exists public.actions (
   -- Timestamps
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  completed_at timestamptz,
-
-  -- Constraints
-  constraint actions_account_project_fk foreign key (account_id, project_id) references public.projects(account_id, id) on delete cascade
+  completed_at timestamptz
 );
 
 -- Indexes
@@ -73,7 +70,7 @@ create policy "Users can view actions for their projects"
   on public.actions for select
   using (
     exists (
-      select 1 from public.account_user
+      select 1 from accounts.account_user
       where account_user.account_id = actions.account_id
         and account_user.user_id = auth.uid()
     )
@@ -84,7 +81,7 @@ create policy "Users can create actions for their projects"
   on public.actions for insert
   with check (
     exists (
-      select 1 from public.account_user
+      select 1 from accounts.account_user
       where account_user.account_id = actions.account_id
         and account_user.user_id = auth.uid()
     )
@@ -95,7 +92,7 @@ create policy "Users can update actions for their projects"
   on public.actions for update
   using (
     exists (
-      select 1 from public.account_user
+      select 1 from accounts.account_user
       where account_user.account_id = actions.account_id
         and account_user.user_id = auth.uid()
     )
@@ -106,7 +103,7 @@ create policy "Users can delete actions for their projects"
   on public.actions for delete
   using (
     exists (
-      select 1 from public.account_user
+      select 1 from accounts.account_user
       where account_user.account_id = actions.account_id
         and account_user.user_id = auth.uid()
     )

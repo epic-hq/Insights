@@ -1,5 +1,6 @@
+import consola from "consola"
 import { ChevronLeft, Grid3X3, List } from "lucide-react"
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
 import { Link, useFetcher, useLoaderData, useSearchParams } from "react-router-dom"
 import { BackButton } from "~/components/ui/back-button"
@@ -103,9 +104,23 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const filterPersonId = url.searchParams.get("person_id") || undefined
 	const filterPersonNameParam = url.searchParams.get("person_name") || undefined
 
-	// If filtering by person, get evidence IDs from evidence_people first
+	// Check for explicit evidence ID filter (e.g., from pain matrix)
+	// Support both comma-separated (?ids=a,b,c) and array format (?ids[]=a&ids[]=b)
+	const idsParam = url.searchParams.get("ids")
+	const idsArray = url.searchParams.getAll("ids[]")
 	let evidenceIdFilter: string[] | undefined
-	if (filterPersonId) {
+
+	if (idsParam) {
+		// Split by comma and deduplicate
+		evidenceIdFilter = [...new Set(idsParam.split(",").map(id => id.trim()).filter(Boolean))]
+		consola.info(`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs:`, evidenceIdFilter)
+	} else if (idsArray.length > 0) {
+		evidenceIdFilter = [...new Set(idsArray.filter(Boolean))]
+		consola.info(`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs from array format:`, evidenceIdFilter)
+	}
+
+	// If filtering by person, get evidence IDs from evidence_people first
+	if (filterPersonId && !evidenceIdFilter) {
 		const { data: personEvidence, error: peErr } = await supabase
 			.from("evidence_people")
 			.select("evidence_id")
@@ -187,6 +202,10 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const { data, error } = await query.order(sortField, { ascending: sortDir === "asc" })
 	if (error) throw new Error(`Failed to load evidence: ${error.message}`)
 	const rows = (data ?? []) as EvidenceRow[]
+
+	if (evidenceIdFilter) {
+		consola.info(`[evidence/index] Query returned ${rows.length} evidence items (filtered from ${evidenceIdFilter.length} IDs)`)
+	}
 
 	// Join evidence_people -> people to get person names and roles for each evidence
 	const peopleByEvidence = new Map<string, EvidenceListPerson[]>()
@@ -306,11 +325,12 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 		evidence: enriched,
 		filteredByRQ: rqId,
 		filteredByPerson: filterPersonId ? { id: filterPersonId, name: filteredPersonName } : null,
+		filteredByIds: idsParam ? evidenceIdFilter?.length || 0 : null,
 	}
 }
 
 export default function EvidenceIndex() {
-	const { evidence, filteredByRQ, filteredByPerson } = useLoaderData<typeof loader>()
+	const { evidence, filteredByRQ, filteredByPerson, filteredByIds } = useLoaderData<typeof loader>()
 	const fetcher = useFetcher<typeof action>()
 	const isRegenerating = fetcher.state !== "idle"
 	const [viewMode, setViewMode] = useState<"mini" | "expanded">("mini")
@@ -318,6 +338,13 @@ export default function EvidenceIndex() {
 	const currentProject = useCurrentProject()
 	const _routes = useProjectRoutes(currentProject?.projectPath || "")
 	const listClassName = viewMode === "expanded" ? "space-y-4" : "grid grid-cols-1 gap-3 md:grid-cols-2 xl:grid-cols-3"
+
+	// Log when loading with ID filter (client-side debugging)
+	useEffect(() => {
+		if (filteredByIds) {
+			console.log(`[Evidence] Client: Showing ${filteredByIds} filtered items, total evidence loaded: ${evidence.length}`)
+		}
+	}, [filteredByIds, evidence.length])
 
 	// Controlled select helpers
 	const sortBy = searchParams.get("sort_by") || "created_at"
@@ -345,8 +372,13 @@ export default function EvidenceIndex() {
 							Filtered by Research Question
 						</Badge>
 					)}
-					{filteredByPerson && (
+					{filteredByPerson && typeof filteredByPerson === "object" && (
 						<span>{filteredByPerson.name ? ` for: ${filteredByPerson.name}` : "Filtered by participant"}</span>
+					)}
+					{filteredByIds && (
+						<Badge variant="outline" className="ml-2 mt-1 w-fit">
+							Showing {filteredByIds} selected {filteredByIds === 1 ? "item" : "items"}
+						</Badge>
 					)}
 				</div>
 			</div>

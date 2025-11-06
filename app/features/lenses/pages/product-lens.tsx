@@ -1,10 +1,10 @@
 import { useEffect, useState } from "react"
-import { useParams } from "react-router"
+import { Link, useParams } from "react-router"
 import { PainMatrixComponent } from "../components/PainMatrix"
 import type { PainMatrix, PainMatrixCell } from "../services/generatePainMatrix.server"
 
 export default function ProductLensPage() {
-	const { projectId } = useParams()
+	const { accountId, projectId } = useParams()
 	const [matrix, setMatrix] = useState<PainMatrix | null>(null)
 	const [loading, setLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
@@ -60,11 +60,14 @@ export default function ProductLensPage() {
 						evidence: {
 							count: cell.evidence_count,
 							sample_verbatims: cell.sample_quote ? [cell.sample_quote] : [],
+							evidence_ids: cell.evidence_ids || [],
 							person_ids: [],
 							person_count: cell.person_count,
 						},
 					})),
 					summary: data.summary,
+					insights: data.insights,
+					cache_metadata: data.cache_metadata,
 				}
 
 				setMatrix(painMatrix)
@@ -119,7 +122,7 @@ export default function ProductLensPage() {
 			<PainMatrixComponent matrix={matrix} onCellClick={setSelectedCell} />
 
 			{/* Selected Cell Detail Modal */}
-			{selectedCell && (
+			{selectedCell && accountId && projectId && (
 				<div
 					className="fixed inset-0 z-50 flex items-center justify-center bg-black/50"
 					onClick={() => setSelectedCell(null)}
@@ -145,8 +148,8 @@ export default function ProductLensPage() {
 							<div className="grid grid-cols-2 gap-4">
 								<MetricDisplay label="Impact Score" value={selectedCell.metrics.impact_score.toFixed(2)} />
 								<MetricDisplay label="Frequency" value={`${Math.round(selectedCell.metrics.frequency * 100)}%`} />
-								<MetricDisplay label="Intensity" value={selectedCell.metrics.intensity} />
-								<MetricDisplay label="WTP" value={selectedCell.metrics.willingness_to_pay} />
+								<MetricDisplay label="Intensity" value={selectedCell.metrics.intensity || "N/A"} />
+								<MetricDisplay label="WTP" value={selectedCell.metrics.willingness_to_pay || "N/A"} />
 							</div>
 
 							{/* Evidence */}
@@ -155,9 +158,10 @@ export default function ProductLensPage() {
 								<p className="text-muted-foreground text-sm">
 									{selectedCell.evidence.count} items from {selectedCell.evidence.person_count} people
 								</p>
+
 								<div className="mt-4 space-y-3">
 									{selectedCell.evidence.sample_verbatims.map((quote, idx) => (
-										<blockquote key={idx} className="border-primary border-l-2 pl-4 italic">
+										<blockquote key={`quote-${idx}`} className="border-primary border-l-2 pl-4 italic">
 											"{quote}"
 										</blockquote>
 									))}
@@ -169,9 +173,16 @@ export default function ProductLensPage() {
 								<button className="rounded-lg bg-primary px-4 py-2 font-semibold text-primary-foreground text-sm hover:bg-primary/90">
 									Create Feature Request
 								</button>
-								<button className="rounded-lg border px-4 py-2 font-semibold text-sm hover:bg-muted">
-									View All Evidence
-								</button>
+								<Link
+									to={`/a/${accountId}/${projectId}/evidence?ids=${encodeURIComponent(selectedCell.evidence.evidence_ids.join(","))}`}
+									className="rounded-lg border px-4 py-2 font-semibold text-sm hover:bg-muted"
+									onClick={() => {
+										console.log("[PainMatrix] Evidence IDs being passed:", selectedCell.evidence.evidence_ids)
+										console.log("[PainMatrix] Total evidence count:", selectedCell.evidence.count)
+									}}
+								>
+									View All Evidence ({selectedCell.evidence.count})
+								</Link>
 							</div>
 						</div>
 					</div>

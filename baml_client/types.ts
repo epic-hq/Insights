@@ -773,6 +773,21 @@ export interface OpportunityRecommendation {
   
 }
 
+export interface PainMatrixInsights {
+  summary: string
+  top_3_actions: string[]
+  
+}
+
+export interface PainMatrixInsightsInput {
+  total_pains: number
+  total_groups: number
+  total_evidence: number
+  high_impact_cells: number
+  top_pains: TopPainCell[]
+  
+}
+
 export interface Participant {
   name?: string | null
   persona?: string | null
@@ -1185,6 +1200,19 @@ export interface ThemeCandidate {
   synonyms?: string[] | null
   anti_examples?: string[] | null
   links: EvidenceLinkProposal[]
+  
+}
+
+export interface TopPainCell {
+  pain_name: string
+  user_group: string
+  impact_score: number
+  frequency: number
+  intensity: string
+  willingness_to_pay: string
+  person_count: number
+  evidence_count: number
+  sample_quote?: string | null
   
 }
 

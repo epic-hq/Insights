@@ -17,19 +17,29 @@ export async function action({ request }: ActionFunctionArgs) {
 		const projectId = formData.get("projectId")?.toString()
 		const minEvidence = Number.parseInt(formData.get("minEvidence")?.toString() || "2", 10)
 		const minGroupSize = Number.parseInt(formData.get("minGroupSize")?.toString() || "1", 10)
+		const forceRefresh = formData.get("forceRefresh")?.toString() === "true"
 
 		if (!projectId) {
 			return Response.json({ error: "projectId is required" }, { status: 400 })
 		}
 
+		// Get account_id from project
+		const { data: project } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
+
+		if (!project) {
+			return Response.json({ error: "Project not found" }, { status: 404 })
+		}
+
 		consola.log(`[test-pain-matrix] Generating pain matrix for project: ${projectId}`)
-		consola.log(`[test-pain-matrix] minEvidence: ${minEvidence}, minGroupSize: ${minGroupSize}`)
+		consola.log(`[test-pain-matrix] minEvidence: ${minEvidence}, minGroupSize: ${minGroupSize}, forceRefresh: ${forceRefresh}`)
 
 		const matrix = await generatePainMatrix({
 			supabase,
 			projectId,
+			accountId: project.account_id,
 			minEvidencePerPain: minEvidence,
 			minGroupSize,
+			forceRefresh,
 		})
 
 		consola.log(`[test-pain-matrix] Generated matrix:`, {
@@ -52,6 +62,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			wtp_score: cell.metrics.wtp_score,
 			evidence_count: cell.evidence.count,
 			person_count: cell.evidence.person_count,
+			evidence_ids: cell.evidence.evidence_ids,
 			sample_quote: cell.evidence.sample_verbatims[0] || null,
 		}))
 
@@ -68,6 +79,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			wtp_score: cell.metrics.wtp_score,
 			evidence_count: cell.evidence.count,
 			person_count: cell.evidence.person_count,
+			evidence_ids: cell.evidence.evidence_ids,
 			sample_quote: cell.evidence.sample_verbatims[0] || null,
 		}))
 
@@ -76,6 +88,8 @@ export async function action({ request }: ActionFunctionArgs) {
 				success: true,
 				projectId,
 				summary: matrix.summary,
+				insights: matrix.insights,
+				cache_metadata: matrix.cache_metadata,
 				pain_themes: matrix.pain_themes.map((p) => ({
 					id: p.id,
 					name: p.name,
