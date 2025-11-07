@@ -70,7 +70,7 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="container mx-auto max-w-6xl px-4 py-8">
 			{/* Back Button */}
-			<Link to="..">
+			<Link to="/segments" relative="path">
 				<Button variant="ghost" size="sm" className="mb-6">
 					<ArrowLeft className="mr-2 h-4 w-4" />
 					Back to Segments

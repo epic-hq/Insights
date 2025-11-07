@@ -51,14 +51,14 @@ type PersonWithAttributes = {
 export async function deriveUserGroups(opts: {
 	supabase: SupabaseClient
 	projectId: string
+	segmentId?: string // Filter by specific segment (facet_account_id)
 	minGroupSize?: number
 }): Promise<DerivedGroup[]> {
-	const { supabase, projectId, minGroupSize = 2 } = opts
+	const { supabase, projectId, segmentId, minGroupSize = 2 } = opts
 
 	// Load all people with attributes + joined organization data
-	const { data: people, error } = await supabase
-		.from("people")
-		.select(`
+	// If segmentId is provided, only include people tagged with that segment
+	let query = supabase.from("people").select(`
 			id,
 			name,
 			role,
@@ -72,9 +72,16 @@ export async function deriveUserGroups(opts: {
 				employee_count,
 				industry,
 				company_type
-			)
+			)${segmentId ? ",person_facet!inner(facet_account_id)" : ""}
 		`)
 		.eq("project_id", projectId)
+
+	// Filter by segment if specified
+	if (segmentId) {
+		query = query.eq("person_facet.facet_account_id", Number.parseInt(segmentId, 10))
+	}
+
+	const { data: people, error } = await query
 
 	if (error) throw error
 	if (!people || people.length === 0) return []

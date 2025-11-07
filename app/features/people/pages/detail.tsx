@@ -2,7 +2,7 @@ import consola from "consola"
 import { UserCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Form, Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
+import { Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -10,8 +10,6 @@ import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
@@ -173,10 +171,10 @@ export default function PersonDetail() {
 	const relatedInsights = useMemo(() => {
 		const collected = new Map<string, Insight>()
 		for (const link of interviewLinks) {
-			const interviewInsights = (link.interviews as any)?.insights || []
+			const interviewInsights = Array.isArray(link.interviews?.insights) ? (link.interviews?.insights as Insight[]) : []
 			for (const insight of interviewInsights) {
 				if (insight?.id && !collected.has(insight.id)) {
-					collected.set(insight.id, insight as Insight)
+					collected.set(insight.id, insight)
 				}
 			}
 		}
@@ -198,10 +196,17 @@ export default function PersonDetail() {
 	const personFacets = useMemo(() => {
 		return (person.person_facet ?? []).map((row) => {
 			const meta = facetsById.get(row.facet_account_id)
+			const joinedFacet = row.facet as {
+				label?: string | null
+				facet_kind_global?: { slug?: string | null } | null
+			} | null
+			const fallbackLabel = joinedFacet?.label ?? null
+			const fallbackKindSlug = joinedFacet?.facet_kind_global?.slug ?? ""
+
 			return {
 				facet_account_id: row.facet_account_id,
-				label: meta?.alias || meta?.label || `ID:${row.facet_account_id}`,
-				kind_slug: meta?.kind_slug || "",
+				label: meta?.alias || meta?.label || fallbackLabel || `ID:${row.facet_account_id}`,
+				kind_slug: meta?.kind_slug || fallbackKindSlug || "",
 				source: row.source || null,
 				confidence: row.confidence ?? null,
 			}

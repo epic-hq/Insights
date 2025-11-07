@@ -1,4 +1,4 @@
-import type { QueryData, SupabaseClient } from "@supabase/supabase-js"
+import type { PostgrestError, QueryData, SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { Database } from "~/types"
 
@@ -11,6 +11,7 @@ export const getPeople = async ({
 	accountId: string
 	projectId: string
 }) => {
+	void accountId
 	const { data, error } = await supabase
 		.from("people")
 		.select(`
@@ -33,7 +34,11 @@ export const getPeople = async ({
 					label,
 					kind_id,
 					synonyms,
-					is_active
+					is_active,
+					facet_kind_global:facet_kind_global!inner(
+						slug,
+						label
+					)
 				)
 			),
                         person_scale (
@@ -112,7 +117,11 @@ export const getPersonById = async ({
 					label,
 					kind_id,
 					synonyms,
-					is_active
+					is_active,
+					facet_kind_global:facet_kind_global!inner(
+						slug,
+						label
+					)
 				)
 			),
                         person_scale (
@@ -169,14 +178,15 @@ export const getPersonById = async ({
 	const { data, error } = await personByIdQuery
 
 	if (error) {
+		const supabaseError = error as PostgrestError
 		consola.error("getPersonById error", {
 			accountId,
 			projectId,
 			id,
 			message: error.message,
-			details: (error as any)?.details,
-			hint: (error as any)?.hint,
-			code: (error as any)?.code,
+			details: supabaseError?.details,
+			hint: supabaseError?.hint,
+			code: supabaseError?.code,
 		})
 		throw new Response("Failed to load person", { status: 500 })
 	}
@@ -214,6 +224,7 @@ export const updatePerson = async ({
 	projectId: string
 	data: Database["public"]["Tables"]["people"]["Update"]
 }) => {
+	void accountId
 	const updatePersonQuery = supabase
 		.from("people")
 		.update(data)
@@ -245,6 +256,7 @@ export const deletePerson = async ({
 	accountId: string
 	projectId: string
 }) => {
+	void accountId
 	const { data, error } = await supabase.from("people").delete().eq("id", id).eq("project_id", projectId)
 
 	if (error) {
@@ -268,6 +280,7 @@ const _getPeopleWithValidation = async ({
 	accountId: string
 	projectId: string
 }) => {
+	void accountId
 	// Query people with their interview data and insights
 	// We'll use the contact_info JSONB field to store validation details
 	const { data, error } = await supabase

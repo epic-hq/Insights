@@ -63,6 +63,15 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 	const [kindFilter, setKindFilter] = useState<string>("all")
 	const [minScore, setMinScore] = useState(0)
 
+	// Calculate counts per kind for badges
+	const kindCounts = segments.reduce(
+		(acc, segment) => {
+			acc[segment.kind] = (acc[segment.kind] || 0) + 1
+			return acc
+		},
+		{} as Record<string, number>
+	)
+
 	// Filter segments
 	const filteredSegments = segments.filter((s) => {
 		if (kindFilter !== "all" && s.kind !== kindFilter) return false
@@ -104,23 +113,75 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 				<CardContent className="space-y-6">
 					{/* Segment Type Filter */}
 					<div>
-						<label className="mb-2 block font-medium text-sm">Segment Type</label>
-						<div className="flex flex-wrap gap-2">
-							<ToggleGroup type="single" value={kindFilter} onValueChange={setKindFilter}>
-								<ToggleGroupItem value="all">All</ToggleGroupItem>
-								<ToggleGroupItem value="persona">Personas</ToggleGroupItem>
-								<ToggleGroupItem value="job_function">Job Function</ToggleGroupItem>
-								<ToggleGroupItem value="seniority_level">Seniority</ToggleGroupItem>
-								<ToggleGroupItem value="title">Titles</ToggleGroupItem>
-								<ToggleGroupItem value="industry">Industry</ToggleGroupItem>
-								<ToggleGroupItem value="life_stage">Life Stage</ToggleGroupItem>
-								<ToggleGroupItem value="age_range">Age Range</ToggleGroupItem>
-							</ToggleGroup>
-						</div>
+						<label className="mb-3 block font-medium text-sm">Segment Type</label>
+						<ToggleGroup type="single" value={kindFilter} onValueChange={setKindFilter} className="flex-wrap justify-start gap-2">
+							<ToggleGroupItem value="all" className="gap-2">
+								All
+								<Badge variant="secondary" className="ml-1">
+									{segments.length}
+								</Badge>
+							</ToggleGroupItem>
+							<ToggleGroupItem value="persona" className="gap-2" disabled={!kindCounts.persona}>
+								Personas
+								{kindCounts.persona > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.persona}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+							<ToggleGroupItem value="job_function" className="gap-2" disabled={!kindCounts.job_function}>
+								Job Function
+								{kindCounts.job_function > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.job_function}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+							<ToggleGroupItem value="seniority_level" className="gap-2" disabled={!kindCounts.seniority_level}>
+								Seniority
+								{kindCounts.seniority_level > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.seniority_level}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+							<ToggleGroupItem value="title" className="gap-2" disabled={!kindCounts.title}>
+								Titles
+								{kindCounts.title > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.title}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+							<ToggleGroupItem value="industry" className="gap-2" disabled={!kindCounts.industry}>
+								Industry
+								{kindCounts.industry > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.industry}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+							<ToggleGroupItem value="life_stage" className="gap-2" disabled={!kindCounts.life_stage}>
+								Life Stage
+								{kindCounts.life_stage > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.life_stage}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+							<ToggleGroupItem value="age_range" className="gap-2" disabled={!kindCounts.age_range}>
+								Age Range
+								{kindCounts.age_range > 0 && (
+									<Badge variant="secondary" className="ml-1">
+										{kindCounts.age_range}
+									</Badge>
+								)}
+							</ToggleGroupItem>
+						</ToggleGroup>
 					</div>
 
 					{/* Bullseye Score Filter */}
-					<div>
+					<div className="max-w-md">
 						<div className="mb-2 flex items-center justify-between">
 							<label className="font-medium text-sm">Minimum Bullseye Score: {minScore}</label>
 							<Button variant="ghost" size="sm" onClick={() => setMinScore(0)} disabled={minScore === 0}>
@@ -137,10 +198,10 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 							className="w-full"
 						/>
 						<div className="mt-2 flex justify-between text-muted-foreground text-xs">
-							<span>0 (All)</span>
-							<span>25 (Promising)</span>
-							<span>50 (High Potential)</span>
-							<span>75 (Bullseye)</span>
+							<span>0</span>
+							<span>25</span>
+							<span>50</span>
+							<span>75</span>
 						</div>
 					</div>
 
