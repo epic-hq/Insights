@@ -73,7 +73,8 @@ export interface RouteDefinitions {
 	// Facets
 	facets: () => string
 
-	// Personas
+	// Product Lens
+	productLens: () => string
 	personas: {
 		index: () => string
 		new: () => string
@@ -96,6 +97,12 @@ export interface RouteDefinitions {
 		new: () => string
 		detail: (id: string) => string
 		edit: (id: string) => string
+	}
+
+	// Segments
+	segments: {
+		index: () => string
+		detail: (id: string) => string
 	}
 
 	// Questions
@@ -223,7 +230,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 		// Facets
 		facets: () => `${base}/facets`,
 
-		// Personas
+		// Product Lens
+		productLens: () => `${base}/product-lens`,
 		personas: {
 			index: () => `${base}/personas`,
 			new: () => `${base}/personas/new`,
@@ -245,6 +253,12 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			new: () => `${base}/organizations/new`,
 			detail: (id: string) => `${base}/organizations/${id}`,
 			edit: (id: string) => `${base}/organizations/${id}/edit`,
+		},
+
+		// Segments
+		segments: {
+			index: () => `${base}/segments`,
+			detail: (id: string) => `${base}/segments/${id}`,
 		},
 
 		// Questions

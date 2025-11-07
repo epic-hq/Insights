@@ -659,3 +659,9 @@ BEGIN
 END$$;
 With those guards, the migration will succeed locally even though the queues won’t function.
 ```
+
+## Backup
+
+```# Schema + data to a single .sql file:
+supabase db dump --db-url "$SUPABASE_DB_URL" --file backups/$(date +%Y%m%d-%H%M%S)-dump.sql
+```

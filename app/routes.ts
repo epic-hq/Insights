@@ -17,6 +17,7 @@ import personasRoutes from "./features/personas/routes"
 import projectChatRoutes from "./features/project-chat/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
+import segmentsRoutes from "./features/segments/routes"
 import signupChatRoutes from "./features/signup-chat/routes"
 import teamsRoutes, { teamsAccountRoutes as teamRoutes } from "./features/teams/routes"
 import themesRoutes from "./features/themes/routes"
@@ -60,6 +61,7 @@ const routes = [
 				...organizationsRoutes,
 				...peopleRoutes,
 				...personasRoutes,
+				...segmentsRoutes,
 				...themesRoutes,
 				...mobileRoutes,
 				...questionsRoutes,

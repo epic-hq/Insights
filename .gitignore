@@ -96,3 +96,5 @@ blob-report
 .trigger
 *storybook.log
 storybook-static
+
+backups

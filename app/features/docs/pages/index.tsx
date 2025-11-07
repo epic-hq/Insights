@@ -1,4 +1,4 @@
-import { Book, Compass, Layers3, Lightbulb, Users } from "lucide-react"
+import { Book, Compass, Layers3, Lightbulb, Package, Users } from "lucide-react"
 import { Link } from "react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 
@@ -121,6 +121,20 @@ export default function DocsIndex() {
 								</CardTitle>
 								<CardDescription>
 									Understand how SPICED, BANT, MEDDIC, MAP, and team perspectives are stored, edited, and refreshed
+								</CardDescription>
+							</CardHeader>
+						</Card>
+					</Link>
+
+					<Link to="/docs/product-lens" className="group">
+						<Card className="h-full transition-shadow hover:shadow-lg">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
+									<Package className="h-5 w-5" />
+									Product Lens
+								</CardTitle>
+								<CardDescription>
+									Prioritize what to build next using a pain × user type matrix from customer conversations
 								</CardDescription>
 							</CardHeader>
 						</Card>

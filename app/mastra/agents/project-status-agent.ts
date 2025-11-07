@@ -6,6 +6,7 @@ import { z } from "zod"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { fetchEvidenceTool } from "../tools/fetch-evidence"
 import { fetchInterviewContextTool } from "../tools/fetch-interview-context"
+import { fetchPainMatrixCacheTool } from "../tools/fetch-pain-matrix-cache"
 import { fetchPeopleDetailsTool } from "../tools/fetch-people-details"
 import { fetchPersonasTool } from "../tools/fetch-personas"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
@@ -68,6 +69,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchEvidence: fetchEvidenceTool,
 		fetchProjectGoals: fetchProjectGoalsTool,
 		fetchThemes: fetchThemesTool,
+		fetchPainMatrixCache: fetchPainMatrixCacheTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

@@ -4,6 +4,7 @@ import {
 	Building2,
 	Compass,
 	File,
+	Grid3x3,
 	Lightbulb,
 	ListChecks,
 	Sparkles,
@@ -88,6 +89,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.themes.index(),
 			},
 			{
+				key: "product-lens",
+				title: "Product Lens",
+				description: "Pain × user matrix",
+				icon: Grid3x3,
+				to: (routes) => routes.productLens(),
+			},
+			{
 				key: "insights",
 				title: "Findings",
 				description: "Published insights & next steps",
@@ -116,6 +124,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => {
 					return routes.organizations.index()
 				},
+			},
+			{
+				key: "segments",
+				title: "Segments",
+				description: "Customer groups",
+				icon: Target,
+				to: (routes) => routes.segments.index(),
 			},
 		],
 	},

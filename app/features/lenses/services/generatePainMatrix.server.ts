@@ -81,11 +81,12 @@ export async function generatePainMatrix(opts: {
 
 		if (cached) {
 			// Get current evidence count to determine if cache is stale
+			// Count evidence with old-style pains array only (simpler than complex join)
 			const { count: currentEvidenceCount } = await supabase
 				.from("evidence")
 				.select("*", { count: "exact", head: true })
 				.eq("project_id", projectId)
-				.or("pains.not.is.null,evidence_facet.kind_slug.eq.pain")
+				.not("pains", "is", null)
 
 			const evidenceDelta = (currentEvidenceCount || 0) - cached.evidence_count
 			const deltaPercent = cached.evidence_count > 0 ? Math.abs(evidenceDelta) / cached.evidence_count : 0

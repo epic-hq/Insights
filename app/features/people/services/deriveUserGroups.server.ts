@@ -4,13 +4,17 @@ import type { SupabaseClient } from "~/types"
  * Derived user group - emergent from people attributes, not pre-defined
  */
 export type DerivedGroup = {
-	type: "role" | "segment" | "cohort"
+	type: "role" | "title" | "segment" | "industry" | "org_size" | "org_industry" | "company_type" | "cohort"
 	name: string
 	description?: string
 	criteria: {
 		role_in?: string[]
+		title_in?: string[]
 		segment_in?: string[]
-		company_size_in?: string[]
+		industry_in?: string[]
+		org_size_in?: string[]
+		org_industry_in?: string[]
+		company_type_in?: string[]
 		behaviors_all?: string[]
 		behaviors_any?: string[]
 	}
@@ -19,16 +23,23 @@ export type DerivedGroup = {
 }
 
 /**
- * Person with attributes for grouping
+ * Person with attributes for grouping (person attributes + linked organization attributes)
  */
 type PersonWithAttributes = {
 	id: string
 	name: string | null
+	// Person attributes
 	role: string | null
+	title: string | null
 	segment: string | null
+	industry: string | null
+	occupation: string | null
+	// Organization attributes (joined from default_organization_id)
 	company: string | null
-	company_size: string | null
-	// Future: behaviors from evidence analysis
+	org_size_range: string | null
+	org_employee_count: number | null
+	org_industry: string | null
+	org_company_type: string | null
 }
 
 /**
@@ -44,19 +55,50 @@ export async function deriveUserGroups(opts: {
 }): Promise<DerivedGroup[]> {
 	const { supabase, projectId, minGroupSize = 2 } = opts
 
-	// Load all people with attributes (company_size column may not exist yet)
+	// Load all people with attributes + joined organization data
 	const { data: people, error } = await supabase
 		.from("people")
-		.select("id, name, role, segment, company")
+		.select(`
+			id,
+			name,
+			role,
+			title,
+			segment,
+			industry,
+			occupation,
+			company,
+			organizations:default_organization_id (
+				size_range,
+				employee_count,
+				industry,
+				company_type
+			)
+		`)
 		.eq("project_id", projectId)
 
 	if (error) throw error
 	if (!people || people.length === 0) return []
 
+	// Flatten organization data into person object
+	const peopleWithOrgs: PersonWithAttributes[] = people.map((p: any) => ({
+		id: p.id,
+		name: p.name,
+		role: p.role,
+		title: p.title,
+		segment: p.segment,
+		industry: p.industry,
+		occupation: p.occupation,
+		company: p.company,
+		org_size_range: p.organizations?.size_range ?? null,
+		org_employee_count: p.organizations?.employee_count ?? null,
+		org_industry: p.organizations?.industry ?? null,
+		org_company_type: p.organizations?.company_type ?? null,
+	}))
+
 	const groups: DerivedGroup[] = []
 
-	// Group by role
-	const byRole = groupByAttribute(people as PersonWithAttributes[], "role", minGroupSize)
+	// Group by person attributes
+	const byRole = groupByAttribute(peopleWithOrgs, "role", minGroupSize)
 	groups.push(
 		...byRole.map((g) => ({
 			type: "role" as const,
@@ -68,8 +110,19 @@ export async function deriveUserGroups(opts: {
 		}))
 	)
 
-	// Group by segment
-	const bySegment = groupByAttribute(people as PersonWithAttributes[], "segment", minGroupSize)
+	const byTitle = groupByAttribute(peopleWithOrgs, "title", minGroupSize)
+	groups.push(
+		...byTitle.map((g) => ({
+			type: "title" as const,
+			name: g.name,
+			description: `People with ${g.name} title`,
+			criteria: { title_in: [g.name] },
+			member_count: g.members.length,
+			member_ids: g.members.map((m) => m.id),
+		}))
+	)
+
+	const bySegment = groupByAttribute(peopleWithOrgs, "segment", minGroupSize)
 	groups.push(
 		...bySegment.map((g) => ({
 			type: "segment" as const,
@@ -81,18 +134,54 @@ export async function deriveUserGroups(opts: {
 		}))
 	)
 
-	// TODO: Group by company size when column is added to schema
-	// const byCompanySize = groupByAttribute(people as PersonWithAttributes[], "company_size", minGroupSize)
-	// groups.push(
-	// 	...byCompanySize.map((g) => ({
-	// 		type: "segment" as const,
-	// 		name: `${g.name} companies`,
-	// 		description: `People from ${g.name} companies`,
-	// 		criteria: { company_size_in: [g.name] },
-	// 		member_count: g.members.length,
-	// 		member_ids: g.members.map((m) => m.id),
-	// 	}))
-	// )
+	const byIndustry = groupByAttribute(peopleWithOrgs, "industry", minGroupSize)
+	groups.push(
+		...byIndustry.map((g) => ({
+			type: "industry" as const,
+			name: g.name,
+			description: `People in ${g.name} industry`,
+			criteria: { industry_in: [g.name] },
+			member_count: g.members.length,
+			member_ids: g.members.map((m) => m.id),
+		}))
+	)
+
+	// Group by organization attributes
+	const byOrgSize = groupByAttribute(peopleWithOrgs, "org_size_range", minGroupSize)
+	groups.push(
+		...byOrgSize.map((g) => ({
+			type: "org_size" as const,
+			name: `${g.name} employees`,
+			description: `People from companies with ${g.name} employees`,
+			criteria: { org_size_in: [g.name] },
+			member_count: g.members.length,
+			member_ids: g.members.map((m) => m.id),
+		}))
+	)
+
+	const byOrgIndustry = groupByAttribute(peopleWithOrgs, "org_industry", minGroupSize)
+	groups.push(
+		...byOrgIndustry.map((g) => ({
+			type: "org_industry" as const,
+			name: `${g.name} (org)`,
+			description: `People from ${g.name} organizations`,
+			criteria: { org_industry_in: [g.name] },
+			member_count: g.members.length,
+			member_ids: g.members.map((m) => m.id),
+		}))
+	)
+
+	const byCompanyType = groupByAttribute(peopleWithOrgs, "org_company_type", minGroupSize)
+	groups.push(
+		...byCompanyType.map((g) => ({
+			type: "company_type" as const,
+			name: g.name,
+			description: `People from ${g.name} companies`,
+			criteria: { company_type_in: [g.name] },
+			member_count: g.members.length,
+			member_ids: g.members.map((m) => m.id),
+		}))
+	)
 
 	// Filter out groups below minimum size
 	return groups.filter((g) => g.member_count >= minGroupSize)

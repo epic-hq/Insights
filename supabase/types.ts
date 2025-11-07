@@ -873,6 +873,9 @@ export type Database = {
           confidence: number | null
           created_at: string
           created_by: string | null
+          embedding: string | null
+          embedding_generated_at: string | null
+          embedding_model: string | null
           evidence_id: string
           facet_account_id: number
           id: string
@@ -889,6 +892,9 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           created_by?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           evidence_id: string
           facet_account_id: number
           id?: string
@@ -905,6 +911,9 @@ export type Database = {
           confidence?: number | null
           created_at?: string
           created_by?: string | null
+          embedding?: string | null
+          embedding_generated_at?: string | null
+          embedding_model?: string | null
           evidence_id?: string
           facet_account_id?: number
           id?: string
@@ -2453,10 +2462,61 @@ export type Database = {
           },
         ]
       }
+      pain_matrix_cache: {
+        Row: {
+          account_id: string
+          computation_time_ms: number | null
+          created_at: string
+          evidence_count: number
+          id: string
+          insights: string | null
+          matrix_data: Json
+          pain_count: number
+          project_id: string
+          updated_at: string
+          user_group_count: number
+        }
+        Insert: {
+          account_id: string
+          computation_time_ms?: number | null
+          created_at?: string
+          evidence_count: number
+          id?: string
+          insights?: string | null
+          matrix_data: Json
+          pain_count: number
+          project_id: string
+          updated_at?: string
+          user_group_count: number
+        }
+        Update: {
+          account_id?: string
+          computation_time_ms?: number | null
+          created_at?: string
+          evidence_count?: number
+          id?: string
+          insights?: string | null
+          matrix_data?: Json
+          pain_count?: number
+          project_id?: string
+          updated_at?: string
+          user_group_count?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pain_matrix_cache_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       people: {
         Row: {
           account_id: string | null
           age: number | null
+          age_range: string | null
           company: string | null
           contact_info: Json | null
           created_at: string
@@ -2468,7 +2528,9 @@ export type Database = {
           image_url: string | null
           income: number | null
           industry: string | null
+          job_function: string | null
           languages: string[] | null
+          life_stage: string | null
           lifecycle_stage: string | null
           linkedin_url: string | null
           location: string | null
@@ -2482,6 +2544,7 @@ export type Database = {
           pronouns: string | null
           role: string | null
           segment: string | null
+          seniority_level: string | null
           timezone: string | null
           title: string | null
           updated_at: string
@@ -2490,6 +2553,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           age?: number | null
+          age_range?: string | null
           company?: string | null
           contact_info?: Json | null
           created_at?: string
@@ -2501,7 +2565,9 @@ export type Database = {
           image_url?: string | null
           income?: number | null
           industry?: string | null
+          job_function?: string | null
           languages?: string[] | null
+          life_stage?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           location?: string | null
@@ -2515,6 +2581,7 @@ export type Database = {
           pronouns?: string | null
           role?: string | null
           segment?: string | null
+          seniority_level?: string | null
           timezone?: string | null
           title?: string | null
           updated_at?: string
@@ -2523,6 +2590,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           age?: number | null
+          age_range?: string | null
           company?: string | null
           contact_info?: Json | null
           created_at?: string
@@ -2534,7 +2602,9 @@ export type Database = {
           image_url?: string | null
           income?: number | null
           industry?: string | null
+          job_function?: string | null
           languages?: string[] | null
+          life_stage?: string | null
           lifecycle_stage?: string | null
           linkedin_url?: string | null
           location?: string | null
@@ -2548,6 +2618,7 @@ export type Database = {
           pronouns?: string | null
           role?: string | null
           segment?: string | null
+          seniority_level?: string | null
           timezone?: string | null
           title?: string | null
           updated_at?: string
@@ -3591,6 +3662,7 @@ export type Database = {
           name: string
           slug: string | null
           status: string | null
+          target_segments: Json | null
           updated_at: string
           workflow_type: Database["public"]["Enums"]["project_workflow_type"]
         }
@@ -3602,6 +3674,7 @@ export type Database = {
           name: string
           slug?: string | null
           status?: string | null
+          target_segments?: Json | null
           updated_at?: string
           workflow_type?: Database["public"]["Enums"]["project_workflow_type"]
         }
@@ -3613,6 +3686,7 @@ export type Database = {
           name?: string
           slug?: string | null
           status?: string | null
+          target_segments?: Json | null
           updated_at?: string
           workflow_type?: Database["public"]["Enums"]["project_workflow_type"]
         }
@@ -4835,6 +4909,37 @@ export type Database = {
         Returns: Json
       }
       delete_invitation: { Args: { invitation_id: string }; Returns: undefined }
+      find_facet_clusters: {
+        Args: {
+          kind_slug_param: string
+          project_id_param: string
+          similarity_threshold?: number
+        }
+        Returns: {
+          combined_evidence_count: number
+          facet_id_1: string
+          facet_id_2: string
+          label_1: string
+          label_2: string
+          similarity: number
+        }[]
+      }
+      find_similar_facets: {
+        Args: {
+          kind_slug_param: string
+          match_count?: number
+          match_threshold?: number
+          project_id_param: string
+          query_embedding: string
+        }
+        Returns: {
+          evidence_count: number
+          id: string
+          kind_slug: string
+          label: string
+          similarity: number
+        }[]
+      }
       get_account: { Args: { account_id: string }; Returns: Json }
       get_account_billing_status: {
         Args: { account_id: string }
@@ -4914,6 +5019,7 @@ export type Database = {
         Returns: Json
       }
       process_embedding_queue: { Args: never; Returns: string }
+      process_facet_embedding_queue: { Args: never; Returns: string }
       process_transcribe_queue: { Args: never; Returns: string }
       remove_account_member: {
         Args: { account_id: string; user_id: string }
