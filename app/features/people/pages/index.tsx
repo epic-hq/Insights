@@ -64,10 +64,15 @@ export default function PeopleIndexPage() {
 		return people.map((person) => {
 			const personFacets = (person.person_facet ?? []).map((row) => {
 				const facetMeta = facetsById.get(row.facet_account_id)
+				const joinedFacet = row.facet as {
+					label?: string | null
+					facet_kind_global?: { slug?: string | null } | null
+				} | null
+				const fallbackLabel = joinedFacet?.label ?? null
 				return {
 					facet_account_id: row.facet_account_id,
-					label: facetMeta?.alias || facetMeta?.label || `ID:${row.facet_account_id}`,
-					kind_slug: facetMeta?.kind_slug || "",
+					label: facetMeta?.alias || facetMeta?.label || fallbackLabel || `ID:${row.facet_account_id}`,
+					kind_slug: facetMeta?.kind_slug || joinedFacet?.facet_kind_global?.slug || "",
 					source: row.source ?? null,
 					confidence: row.confidence ?? null,
 				}

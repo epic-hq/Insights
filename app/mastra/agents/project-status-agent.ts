@@ -12,6 +12,7 @@ import { fetchPersonasTool } from "../tools/fetch-personas"
 import { fetchProjectGoalsTool } from "../tools/fetch-project-goals"
 import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-context"
 import { fetchThemesTool } from "../tools/fetch-themes"
+import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
 
 const ProjectStatusMemoryState = z.object({
@@ -41,8 +42,9 @@ Workflow:
    • If they ask about a particular theme, persona, or other entity, re-call the status tool (or another relevant tool) with the matching scope and search parameters so you can cite real records.
 3. For detailed interview breakdowns or transcripts, follow up by calling "fetchInterviewContext" for the interview IDs you discovered (use includeEvidence=true unless the user prefers otherwise).
 4. When the user shares new qualitative information about a person (e.g., a voice note describing their role, affiliations, or demographics), call "upsertPersonFacets" with that transcript plus the specific person_id to capture the traits in the database. Default to merge mode unless they explicitly want to replace newer facts.
-5. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
-6. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
+5. When they describe employer or partner organizations for a person, call "manage-person-organizations" with the transcript so you can create/link the organization and record the relationship (role, status, primary flag).
+6. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
+7. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
 
 Tone:
 - Direct, analytical, and helpful. Prefer bullets or short paragraphs.
@@ -73,6 +75,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchThemes: fetchThemesTool,
 		fetchPainMatrixCache: fetchPainMatrixCacheTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
+		managePersonOrganizations: managePersonOrganizationsTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),
