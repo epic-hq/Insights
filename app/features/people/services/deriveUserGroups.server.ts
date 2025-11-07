@@ -51,10 +51,11 @@ type PersonWithAttributes = {
 export async function deriveUserGroups(opts: {
 	supabase: SupabaseClient
 	projectId: string
-	segmentId?: string // Filter by specific segment (facet_account_id)
+	segmentId?: string // DEPRECATED: Filter by specific segment (facet_account_id)
+	segmentKindSlug?: string // Filter by segment kind (e.g., "job_function", "life_stage")
 	minGroupSize?: number
 }): Promise<DerivedGroup[]> {
-	const { supabase, projectId, segmentId, minGroupSize = 2 } = opts
+	const { supabase, projectId, segmentId, segmentKindSlug, minGroupSize = 2 } = opts
 
 	// Load all people with attributes + joined organization data
 	// If segmentId is provided, only include people tagged with that segment
@@ -104,7 +105,60 @@ export async function deriveUserGroups(opts: {
 
 	const groups: DerivedGroup[] = []
 
-	// Group by person attributes
+	// If segment kind is specified, group by facets of that kind instead of old person attributes
+	if (segmentKindSlug) {
+		// Get facet kind ID
+		const { data: kind } = await supabase
+			.from("facet_kind_global")
+			.select("id")
+			.eq("slug", segmentKindSlug)
+			.single()
+
+		if (!kind) return []
+
+		// Get all facets of this kind
+		const { data: facets } = await supabase
+			.from("facet_account")
+			.select("id, label")
+			.eq("kind_id", kind.id)
+
+		if (!facets || facets.length === 0) return []
+
+		// For each facet, get people linked to it
+		const facetIds = facets.map((f) => f.id)
+		const { data: personFacets } = await supabase
+			.from("person_facet")
+			.select("person_id, facet_account_id")
+			.in("facet_account_id", facetIds)
+			.eq("project_id", projectId)
+
+		// Group people by facet
+		const facetGroups = new Map<number, string[]>()
+		for (const pf of personFacets || []) {
+			const existing = facetGroups.get(pf.facet_account_id) || []
+			existing.push(pf.person_id)
+			facetGroups.set(pf.facet_account_id, existing)
+		}
+
+		// Build groups from facets
+		for (const facet of facets) {
+			const memberIds = facetGroups.get(facet.id) || []
+			if (memberIds.length >= minGroupSize) {
+				groups.push({
+					type: "segment",
+					name: facet.label,
+					description: `${facet.label}`,
+					criteria: { segment_in: [facet.label] },
+					member_count: memberIds.length,
+					member_ids: memberIds,
+				})
+			}
+		}
+
+		return groups.sort((a, b) => b.member_count - a.member_count)
+	}
+
+	// Otherwise, use old person attribute grouping
 	const byRole = groupByAttribute(peopleWithOrgs, "role", minGroupSize)
 	groups.push(
 		...byRole.map((g) => ({

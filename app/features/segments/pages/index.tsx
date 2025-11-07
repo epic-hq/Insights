@@ -4,10 +4,10 @@ import { useState } from "react"
 import { Link, useLoaderData } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { cn } from "~/lib/utils"
 import { userContext } from "~/server/user-context"
-import { getSegmentsSummary, type SegmentSummary } from "../services/segmentData.server"
+import { getSegmentKindSummaries, getSegmentsSummary, type SegmentSummary } from "../services/segmentData.server"
 import type { Route } from "./+types/index"
 
 export async function loader({ context, params }: Route.LoaderArgs) {
@@ -21,12 +21,26 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		throw new Response("No project found", { status: 404 })
 	}
 
-	const segments = await getSegmentsSummary(supabase, projectId)
+	const [segments, segmentKinds] = await Promise.all([
+		getSegmentsSummary(supabase, projectId),
+		getSegmentKindSummaries(supabase, projectId),
+	])
 
 	return {
 		segments,
+		segmentKinds,
 		projectId,
 	}
+}
+
+const KIND_LABELS: Record<string, string> = {
+	persona: "Personas",
+	job_function: "Job Functions",
+	seniority_level: "Seniority Levels",
+	title: "Job Titles",
+	industry: "Industries",
+	life_stage: "Life Stages",
+	age_range: "Age Ranges",
 }
 
 function getBullseyeColor(score: number): string {
@@ -59,18 +73,38 @@ function getBullseyeLabel(score: number): { label: string; icon: React.Component
 }
 
 export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
-	const { segments } = loaderData
+	const { segments, segmentKinds } = loaderData
 	const [kindFilter, setKindFilter] = useState<string>("all")
 	const [minScore, setMinScore] = useState(0)
 
-	// Calculate counts per kind for badges
-	const kindCounts = segments.reduce(
+	const segmentCounts = segments.reduce(
 		(acc, segment) => {
 			acc[segment.kind] = (acc[segment.kind] || 0) + 1
 			return acc
 		},
 		{} as Record<string, number>
 	)
+
+	const totalPeopleAcrossKinds = segmentKinds.reduce((sum, kind) => sum + kind.person_count, 0)
+	const bullseyeCount = segments.filter((s) => s.bullseye_score >= 75).length
+	const highPotentialCount = segments.filter((s) => s.bullseye_score >= 50).length
+
+	const filterViews = [
+		{
+			value: "all",
+			label: "All Segments",
+			people: totalPeopleAcrossKinds,
+			segments: segments.length,
+			disabled: segments.length === 0,
+		},
+		...segmentKinds.map((kind) => ({
+			value: kind.kind,
+			label: kind.label,
+			people: kind.person_count,
+			segments: segmentCounts[kind.kind] || 0,
+			disabled: (segmentCounts[kind.kind] || 0) === 0 && kind.person_count === 0,
+		})),
+	]
 
 	// Filter segments
 	const filteredSegments = segments.filter((s) => {
@@ -113,80 +147,49 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 				<CardContent className="space-y-6">
 					{/* Segment Type Filter */}
 					<div>
-						<label className="mb-3 block font-medium text-sm">Segment Type</label>
-						<ToggleGroup type="single" value={kindFilter} onValueChange={setKindFilter} className="flex-wrap justify-start gap-2">
-							<ToggleGroupItem value="all" className="gap-2">
-								All
-								<Badge variant="secondary" className="ml-1">
-									{segments.length}
-								</Badge>
-							</ToggleGroupItem>
-							<ToggleGroupItem value="persona" className="gap-2" disabled={!kindCounts.persona}>
-								Personas
-								{kindCounts.persona > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.persona}
-									</Badge>
+				<label className="mb-2 block font-medium text-sm">Segment Views</label>
+				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+					{filterViews.map((view) => {
+						const isActive = kindFilter === view.value
+						return (
+							<button
+								key={view.value}
+								type="button"
+								onClick={() => {
+									if (view.disabled) return
+									setKindFilter(view.value)
+								}}
+								className={cn(
+									"rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
+									view.disabled ? "cursor-not-allowed opacity-60" : "hover:border-primary/60 hover:shadow-sm",
+									isActive ? "border-primary bg-primary/5" : "border-border bg-background"
 								)}
-							</ToggleGroupItem>
-							<ToggleGroupItem value="job_function" className="gap-2" disabled={!kindCounts.job_function}>
-								Job Function
-								{kindCounts.job_function > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.job_function}
-									</Badge>
-								)}
-							</ToggleGroupItem>
-							<ToggleGroupItem value="seniority_level" className="gap-2" disabled={!kindCounts.seniority_level}>
-								Seniority
-								{kindCounts.seniority_level > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.seniority_level}
-									</Badge>
-								)}
-							</ToggleGroupItem>
-							<ToggleGroupItem value="title" className="gap-2" disabled={!kindCounts.title}>
-								Titles
-								{kindCounts.title > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.title}
-									</Badge>
-								)}
-							</ToggleGroupItem>
-							<ToggleGroupItem value="industry" className="gap-2" disabled={!kindCounts.industry}>
-								Industry
-								{kindCounts.industry > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.industry}
-									</Badge>
-								)}
-							</ToggleGroupItem>
-							<ToggleGroupItem value="life_stage" className="gap-2" disabled={!kindCounts.life_stage}>
-								Life Stage
-								{kindCounts.life_stage > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.life_stage}
-									</Badge>
-								)}
-							</ToggleGroupItem>
-							<ToggleGroupItem value="age_range" className="gap-2" disabled={!kindCounts.age_range}>
-								Age Range
-								{kindCounts.age_range > 0 && (
-									<Badge variant="secondary" className="ml-1">
-										{kindCounts.age_range}
-									</Badge>
-								)}
-							</ToggleGroupItem>
-						</ToggleGroup>
-					</div>
+								aria-pressed={isActive}
+								disabled={view.disabled}
+							>
+								<div className="flex items-center justify-between gap-2">
+									<span className="font-semibold">{view.label}</span>
+									{isActive && <Badge variant="secondary">Active</Badge>}
+								</div>
+								<div className="mt-4 flex items-center justify-between text-sm font-medium">
+									<span>
+										{view.segments} {view.segments === 1 ? "segment" : "segments"}
+									</span>
+									<span>{view.people} people</span>
+								</div>
+							</button>
+						)
+					})}
+				</div>
+			</div>
 
-					{/* Bullseye Score Filter */}
-					<div className="max-w-md">
-						<div className="mb-2 flex items-center justify-between">
-							<label className="font-medium text-sm">Minimum Bullseye Score: {minScore}</label>
-							<Button variant="ghost" size="sm" onClick={() => setMinScore(0)} disabled={minScore === 0}>
-								Reset
-							</Button>
+				{/* Bullseye Score Filter */}
+				<div className="max-w-md space-y-4">
+					<div className="mb-2 flex items-center justify-between">
+						<label className="font-medium text-sm">Minimum Bullseye Score: {minScore}</label>
+						<Button variant="ghost" size="sm" onClick={() => setMinScore(0)} disabled={minScore === 0}>
+							Reset
+						</Button>
 						</div>
 						<input
 							type="range"
@@ -197,13 +200,23 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 							onChange={(e) => setMinScore(Number.parseInt(e.target.value, 10))}
 							className="w-full"
 						/>
-						<div className="mt-2 flex justify-between text-muted-foreground text-xs">
-							<span>0</span>
-							<span>25</span>
-							<span>50</span>
-							<span>75</span>
+					<div className="mt-2 flex justify-between text-muted-foreground text-xs">
+						<span>0</span>
+						<span>25</span>
+						<span>50</span>
+						<span>75</span>
+					</div>
+					<div className="grid gap-3 sm:grid-cols-2">
+						<div className="rounded-lg border bg-muted/30 p-3">
+							<p className="text-muted-foreground text-xs">Bullseye segments (75+)</p>
+							<p className="font-bold text-2xl">{bullseyeCount}</p>
+						</div>
+						<div className="rounded-lg border bg-muted/30 p-3">
+							<p className="text-muted-foreground text-xs">High potential (50+)</p>
+							<p className="font-bold text-2xl">{highPotentialCount}</p>
 						</div>
 					</div>
+				</div>
 
 					{/* Results Count */}
 					<div className="text-center text-muted-foreground text-sm">
@@ -212,35 +225,7 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 				</CardContent>
 			</Card>
 
-			{/* Stats Overview */}
-			<div className="mb-8 grid gap-4 md:grid-cols-3">
-				<Card>
-					<CardHeader className="pb-3">
-						<CardTitle className="text-sm">Total Segments</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="font-bold text-2xl">{segments.length}</div>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardHeader className="pb-3">
-						<CardTitle className="text-sm">Bullseye Segments (75+)</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="font-bold text-2xl">{segments.filter((s) => s.bullseye_score >= 75).length}</div>
-					</CardContent>
-				</Card>
-				<Card>
-					<CardHeader className="pb-3">
-						<CardTitle className="text-sm">High Potential (50+)</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<div className="font-bold text-2xl">{segments.filter((s) => s.bullseye_score >= 50).length}</div>
-					</CardContent>
-				</Card>
-			</div>
-
-			{/* Segments List */}
+		{/* Segments List */}
 			{filteredSegments.length === 0 ? (
 				<Card>
 					<CardContent className="py-12 text-center">
@@ -254,18 +239,9 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 			) : kindFilter === "all" ? (
 				<div className="space-y-8">
 					{Object.entries(segmentsByKind).map(([kind, kindSegments]) => {
-						const kindLabels: Record<string, string> = {
-							persona: "Personas",
-							job_function: "Job Functions",
-							seniority_level: "Seniority Levels",
-							title: "Job Titles",
-							industry: "Industries",
-							life_stage: "Life Stages",
-							age_range: "Age Ranges",
-						}
 						return (
 							<div key={kind}>
-								<h2 className="mb-4 font-semibold text-xl">{kindLabels[kind] || kind}</h2>
+								<h2 className="mb-4 font-semibold text-xl">{KIND_LABELS[kind] || kind}</h2>
 								<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 									{kindSegments.map((segment) => (
 										<Link key={segment.id} to={segment.id}>
@@ -275,43 +251,29 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 												}`}
 											>
 												<CardHeader>
-													<div className="mb-2 flex items-start justify-between">
-														<CardTitle className="flex items-center gap-2 text-lg">
-															{segment.bullseye_score >= 75 && <Target className="h-5 w-5 text-red-600" />}
-															{segment.label}
-														</CardTitle>
-														<Badge variant="outline" className={`${getBullseyeColor(segment.bullseye_score)}`}>
+													<div className="flex items-start justify-between gap-3">
+														<div>
+															<CardTitle className="flex items-center gap-2 text-lg">
+																{segment.bullseye_score >= 75 && <Target className="h-5 w-5 text-red-600" />}
+																{segment.label}
+															</CardTitle>
+															<p className="text-muted-foreground text-xs">{KIND_LABELS[segment.kind] || segment.kind}</p>
+														</div>
+														<Badge variant="outline" className={getBullseyeColor(segment.bullseye_score)}>
 															{segment.bullseye_score}
 														</Badge>
 													</div>
-													<CardDescription className="flex items-center gap-1.5">
-													{(() => {
-														const { icon: Icon, label } = getBullseyeLabel(segment.bullseye_score)
-														return (
-															<>
-																<Icon className="h-4 w-4" />
-																{label}
-															</>
-														)
-													})()}
-												</CardDescription>
 												</CardHeader>
 												<CardContent>
-													<div className="space-y-2 text-sm">
-														<div className="flex items-center justify-between">
-															<span className="flex items-center gap-1 text-muted-foreground">
-																<Users className="h-4 w-4" />
-																People
-															</span>
-															<span className="font-medium">{segment.person_count}</span>
-														</div>
-														<div className="flex items-center justify-between">
-															<span className="flex items-center gap-1 text-muted-foreground">
-																<TrendingUp className="h-4 w-4" />
-																Evidence
-															</span>
-															<span className="font-medium">{segment.evidence_count}</span>
-														</div>
+													<div className="flex items-center justify-between text-sm text-muted-foreground">
+														<span className="flex items-center gap-1">
+															<Users className="h-4 w-4" />
+															{segment.person_count} people
+														</span>
+														<span className="flex items-center gap-1">
+															<TrendingUp className="h-4 w-4" />
+															{segment.evidence_count} notes
+														</span>
 													</div>
 												</CardContent>
 											</Card>
@@ -332,43 +294,29 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 								}`}
 							>
 								<CardHeader>
-									<div className="mb-2 flex items-start justify-between">
-										<CardTitle className="flex items-center gap-2 text-lg">
-											{segment.bullseye_score >= 75 && <Target className="h-5 w-5 text-red-600" />}
-											{segment.label}
-										</CardTitle>
-										<Badge variant="outline" className={`${getBullseyeColor(segment.bullseye_score)}`}>
+									<div className="flex items-start justify-between gap-3">
+										<div>
+											<CardTitle className="flex items-center gap-2 text-lg">
+												{segment.bullseye_score >= 75 && <Target className="h-5 w-5 text-red-600" />}
+												{segment.label}
+											</CardTitle>
+											<p className="text-muted-foreground text-xs">{KIND_LABELS[segment.kind] || segment.kind}</p>
+										</div>
+										<Badge variant="outline" className={getBullseyeColor(segment.bullseye_score)}>
 											{segment.bullseye_score}
 										</Badge>
 									</div>
-									<CardDescription className="flex items-center gap-1.5">
-										{(() => {
-											const { icon: Icon, label } = getBullseyeLabel(segment.bullseye_score)
-											return (
-												<>
-													<Icon className="h-4 w-4" />
-													{label}
-												</>
-											)
-										})()}
-									</CardDescription>
 								</CardHeader>
 								<CardContent>
-									<div className="space-y-2 text-sm">
-										<div className="flex items-center justify-between">
-											<span className="flex items-center gap-1 text-muted-foreground">
-												<Users className="h-4 w-4" />
-												People
-											</span>
-											<span className="font-medium">{segment.person_count}</span>
-										</div>
-										<div className="flex items-center justify-between">
-											<span className="flex items-center gap-1 text-muted-foreground">
-												<TrendingUp className="h-4 w-4" />
-												Evidence
-											</span>
-											<span className="font-medium">{segment.evidence_count}</span>
-										</div>
+									<div className="flex items-center justify-between text-sm text-muted-foreground">
+										<span className="flex items-center gap-1">
+											<Users className="h-4 w-4" />
+											{segment.person_count} people
+										</span>
+										<span className="flex items-center gap-1">
+											<TrendingUp className="h-4 w-4" />
+											{segment.evidence_count} notes
+										</span>
 									</div>
 								</CardContent>
 							</Card>

@@ -5,14 +5,48 @@ import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { contactInfoSchema } from "~/schemas"
 import { personDetailSchema } from "~/schemas"
-import type { Database, Interview, InterviewPeople, PeoplePersona, Person, ProjectPeople } from "~/types"
+import type {
+	Database,
+	Interview,
+	InterviewPeople,
+	Organizations,
+	PeopleOrganization,
+	PeoplePersona,
+	Person,
+	ProjectPeople,
+} from "~/types"
 
-type ProjectPeopleRow = ProjectPeople & {
-	person?: Person
+type PeopleOrganizationRow = PeopleOrganization & {
+	organization?: Pick<
+		Organizations,
+		"id" | "name" | "website_url" | "domain" | "industry" | "size_range" | "headquarters_location"
+	> | null
 }
+
 type PeoplePersonaRow = PeoplePersona & {
 	personas?: Database["public"]["Tables"]["personas"]["Row"] | null
 }
+
+type PersonFacetRow = Database["public"]["Tables"]["person_facet"]["Row"] & {
+	facet?: {
+		id?: number | null
+		label?: string | null
+		kind?: { slug?: string | null; label?: string | null } | null
+	} | null
+}
+
+type PersonScaleRow = Database["public"]["Tables"]["person_scale"]["Row"]
+
+type EvidenceRow = Database["public"]["Tables"]["evidence"]["Row"] & {
+	interview?: Pick<Interview, "id" | "title" | "interview_date"> | null
+}
+
+type ProjectPeopleRow = ProjectPeople & {
+	person?: Person
+	people_personas?: PeoplePersonaRow[] | null
+	people_organizations?: PeopleOrganizationRow[] | null
+}
+
 type InterviewPeopleRow = InterviewPeople & {
 	interview?: Interview | null
 }
@@ -32,14 +66,84 @@ function toStringArray(value: unknown): string[] {
 	return Array.from(new Set(cleaned))
 }
 
+function buildSearchableText(row: ProjectPeopleRow): string {
+	const person = row.person
+	const parts: string[] = []
+	const append = (value?: string | null) => {
+		if (value && typeof value === "string") {
+			const trimmed = value.trim()
+			if (trimmed.length) parts.push(trimmed)
+		}
+	}
+
+	append(person?.name)
+	append(person?.title)
+	append(person?.role)
+	append(person?.company)
+	append(person?.segment)
+	append(row.role)
+
+	for (const personaLink of row.people_personas ?? []) {
+		append(personaLink.personas?.name ?? null)
+	}
+
+	for (const orgLink of row.people_organizations ?? []) {
+		append(orgLink.organization?.name ?? null)
+		append(orgLink.organization?.domain ?? null)
+	}
+
+	return parts.join(" ").toLowerCase()
+}
+
+function computeSearchScore({
+	row,
+	normalizedSearch,
+	tokens,
+}: {
+	row: ProjectPeopleRow
+	normalizedSearch: string
+	tokens: string[]
+}): number {
+	if (!normalizedSearch) return 0
+	const text = buildSearchableText(row)
+	if (!text) return 0
+
+	let score = 0
+	let matchedTokens = 0
+
+	for (const token of tokens) {
+		if (token && text.includes(token)) {
+			matchedTokens += 1
+			score += 2
+		}
+	}
+
+	if (matchedTokens === tokens.length && tokens.length > 0) {
+		score += 3
+	}
+
+	if (normalizedSearch && text.includes(normalizedSearch)) {
+		score += 2
+	}
+
+	const name = row.person?.name?.toLowerCase().trim()
+	if (name) {
+		if (name === normalizedSearch) {
+			score += 6
+		} else if (name.startsWith(normalizedSearch)) {
+			score += 3
+		}
+	}
+
+	return score
+}
+
 export const fetchPeopleDetailsTool = createTool({
 	id: "fetch-people-details",
 	description:
 		"Fetch detailed information about people in a project, including demographics, professional info, preferences, attributes, motivations, personas, interview history, evidence snippets, and facet/scale attributes.",
 	inputSchema: z.object({
-		projectId: z
-			.string()
-			.describe("Project ID to fetch people from. Required - no default project context available."),
+		projectId: z.string().describe("Project ID to fetch people from. Required - no default project context available."),
 		peopleSearch: z
 			.string()
 			.optional()
@@ -47,7 +151,10 @@ export const fetchPeopleDetailsTool = createTool({
 		peopleLimit: z.number().int().min(1).max(50).optional().describe("Maximum number of people to return."),
 		includeEvidence: z.boolean().optional().describe("Whether to include actual evidence snippets from interviews."),
 		includePersonas: z.boolean().optional().describe("Whether to include persona assignments for each person."),
-		includeFacets: z.boolean().optional().describe("Whether to include facet attributes and scale measurements for each person."),
+		includeFacets: z
+			.boolean()
+			.optional()
+			.describe("Whether to include facet attributes and scale measurements for each person."),
 		specificPersonIds: z.array(z.string()).optional().describe("Specific person IDs to fetch details for."),
 	}),
 	outputSchema: z.object({
@@ -145,12 +252,7 @@ export const fetchPeopleDetailsTool = createTool({
 				// Split search term into individual words for more restrictive matching
 				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
 				const searchConditions = searchWords.flatMap((word) => {
-					return [
-						`name.ilike.%${word}%`,
-						`title.ilike.%${word}%`,
-						`company.ilike.%${word}%`,
-						`role.ilike.%${word}%`,
-					]
+					return [`name.ilike.%${word}%`, `title.ilike.%${word}%`, `company.ilike.%${word}%`, `role.ilike.%${word}%`]
 				})
 
 				// Apply search conditions to the foreign table (person)
@@ -173,38 +275,37 @@ export const fetchPeopleDetailsTool = createTool({
 				projectId,
 				searchTerm: sanitizedPersonSearch,
 				rawResultsCount: peopleRows.length,
-				sampleResult: peopleRows.length > 0 ? {
-					person_id: peopleRows[0].person_id,
-					name: peopleRows[0].person?.name,
-					title: peopleRows[0].person?.title,
-					company: peopleRows[0].person?.company
-				} : null
+				sampleResult:
+					peopleRows.length > 0
+						? {
+								person_id: peopleRows[0].person_id,
+								name: peopleRows[0].person?.name,
+								title: peopleRows[0].person?.title,
+								company: peopleRows[0].person?.company,
+							}
+						: null,
 			})
 
-			// Apply word-boundary filtering for search terms to avoid substring matches
 			if (sanitizedPersonSearch) {
-				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
-				const wordBoundaryRegex = new RegExp(`\\b${searchWords.join('|')}\\b`, 'i')
+				const normalizedSearch = sanitizedPersonSearch.toLowerCase()
+				const tokens = normalizedSearch.split(/\s+/).filter((token) => token.length > 0)
 
-				peopleRows = peopleRows.filter((row) => {
-					const person = row.person
-					if (!person) return false
+				const scoredRows = peopleRows.map((row) => ({
+					row,
+					score: computeSearchScore({ row, normalizedSearch, tokens }),
+				}))
 
-					const searchableText = [
-						person.name,
-						person.title,
-						person.company,
-						person.role,
-						row.role
-					].filter(Boolean).join(' ')
+				const withPositiveScore = scoredRows.filter((entry) => entry.score > 0)
 
-					return wordBoundaryRegex.test(searchableText)
-				})
+				const sourceRows = withPositiveScore.length ? withPositiveScore : scoredRows
+				sourceRows.sort((a, b) => b.score - a.score)
+				peopleRows = sourceRows.map((entry) => entry.row)
 
-				consola.info("fetch-people-details: after word boundary filtering", {
+				consola.info("fetch-people-details: after scoring filter", {
 					projectId,
 					searchTerm: sanitizedPersonSearch,
-					filteredResultsCount: peopleRows.length,
+					filteredResultsCount: withPositiveScore.length,
+					fallbackUsed: withPositiveScore.length === 0,
 				})
 			}
 
@@ -230,8 +331,9 @@ export const fetchPeopleDetailsTool = createTool({
 				peopleRows = peopleRows.filter((row) => specificPersonIds.includes(row.person_id))
 			}
 
-			// No need to slice since we already limited in the database query
-			// peopleRows = peopleRows.slice(0, peopleLimit)
+			if (peopleRows.length > peopleLimit) {
+				peopleRows = peopleRows.slice(0, peopleLimit)
+			}
 			const personIds = peopleRows.map((row) => row.person_id)
 
 			// Get total count for pagination info (apply same search filter)
@@ -243,12 +345,7 @@ export const fetchPeopleDetailsTool = createTool({
 			if (sanitizedPersonSearch) {
 				const searchWords = sanitizedPersonSearch.split(/\s+/).filter((word) => word.length > 0)
 				const searchConditions = searchWords.flatMap((word) => {
-					return [
-						`name.ilike.%${word}%`,
-						`title.ilike.%${word}%`,
-						`company.ilike.%${word}%`,
-						`role.ilike.%${word}%`,
-					]
+					return [`name.ilike.%${word}%`, `title.ilike.%${word}%`, `company.ilike.%${word}%`, `role.ilike.%${word}%`]
 				})
 
 				countQuery = countQuery.or(searchConditions.join(","), { foreignTable: "person" })
@@ -258,8 +355,6 @@ export const fetchPeopleDetailsTool = createTool({
 
 			// If we have search filtering, we need to adjust the count based on our word boundary filtering
 			if (sanitizedPersonSearch) {
-				// We can't easily count with word boundaries in SQL, so we'll estimate based on our filtering ratio
-				// For now, just use the filtered count as the total (since we're limiting results anyway)
 				totalCount = peopleRows.length
 			}
 
@@ -378,9 +473,9 @@ export const fetchPeopleDetailsTool = createTool({
 			// Organize the additional data by person_id
 			const personasByPerson = new Map<string, PeoplePersonaRow[]>()
 			const interviewsByPerson = new Map<string, InterviewPeopleRow[]>()
-			const evidenceByPerson = new Map<string, any[]>()
-			const facetsByPerson = new Map<string, any[]>()
-			const scalesByPerson = new Map<string, any[]>()
+			const evidenceByPerson = new Map<string, EvidenceRow[]>()
+			const facetsByPerson = new Map<string, PersonFacetRow[]>()
+			const scalesByPerson = new Map<string, PersonScaleRow[]>()
 
 			if (personaData.data) {
 				for (const row of personaData.data as PeoplePersonaRow[]) {
@@ -399,7 +494,7 @@ export const fetchPeopleDetailsTool = createTool({
 			}
 
 			if (evidenceData.data) {
-				for (const evidence of evidenceData.data as any[]) {
+				for (const evidence of evidenceData.data as EvidenceRow[]) {
 					// Find which person this evidence belongs to by looking up interview_people
 					const interviewPeople = (interviewData.data as InterviewPeopleRow[])?.find(
 						(ip) => ip.interview?.id === evidence.interview_id
@@ -413,7 +508,7 @@ export const fetchPeopleDetailsTool = createTool({
 			}
 
 			if (facetData.data) {
-				for (const facet of facetData.data as any[]) {
+				for (const facet of facetData.data as PersonFacetRow[]) {
 					const existing = facetsByPerson.get(facet.person_id) ?? []
 					existing.push(facet)
 					facetsByPerson.set(facet.person_id, existing)
@@ -421,7 +516,7 @@ export const fetchPeopleDetailsTool = createTool({
 			}
 
 			if (scaleData.data) {
-				for (const scale of scaleData.data as any[]) {
+				for (const scale of scaleData.data as PersonScaleRow[]) {
 					const existing = scalesByPerson.get(scale.person_id) ?? []
 					existing.push(scale)
 					scalesByPerson.set(scale.person_id, existing)
@@ -449,9 +544,7 @@ export const fetchPeopleDetailsTool = createTool({
 							if (!interview) return null
 
 							// Count evidence for this specific interview
-							const interviewEvidenceCount = personEvidence.filter(
-								(ev) => ev.interview_id === interview.id
-							).length
+							const interviewEvidenceCount = personEvidence.filter((ev) => ev.interview_id === interview.id).length
 
 							return {
 								id: interview.id,
@@ -505,7 +598,8 @@ export const fetchPeopleDetailsTool = createTool({
 							: undefined,
 						interviews: includeEvidence ? interviews : undefined,
 						evidence: includeEvidence
-							? personEvidence.slice(0, 20).map((ev) => ({ // Limit to 20 snippets per person
+							? personEvidence.slice(0, 20).map((ev) => ({
+									// Limit to 20 snippets per person
 									id: ev.id,
 									gist: ev.gist ?? null,
 									verbatim: ev.verbatim ?? null,
@@ -550,12 +644,15 @@ export const fetchPeopleDetailsTool = createTool({
 				searchTerm: sanitizedPersonSearch,
 				peopleCount: people.length,
 				totalCount: totalCount ?? 0,
-				samplePerson: people.length > 0 ? {
-					id: people[0].personId,
-					name: people[0].name,
-					title: people[0].title,
-					company: people[0].company
-				} : null
+				samplePerson:
+					people.length > 0
+						? {
+								id: people[0].personId,
+								name: people[0].name,
+								title: people[0].title,
+								company: people[0].company,
+							}
+						: null,
 			})
 
 			return {

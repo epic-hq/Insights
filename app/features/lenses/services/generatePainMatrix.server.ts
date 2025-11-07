@@ -67,12 +67,22 @@ export async function generatePainMatrix(opts: {
 	supabase: SupabaseClient
 	projectId: string
 	accountId?: string
-	segmentId?: string // Filter by specific segment (facet_account_id)
+	segmentId?: string // DEPRECATED: Filter by specific segment (facet_account_id)
+	segmentKindSlug?: string // Filter by segment kind (e.g., "job_function", "life_stage")
 	minEvidencePerPain?: number
 	minGroupSize?: number
 	forceRefresh?: boolean
 }): Promise<PainMatrix> {
-	const { supabase, projectId, accountId, segmentId, minEvidencePerPain = 3, minGroupSize = 2, forceRefresh = false } = opts
+	const {
+		supabase,
+		projectId,
+		accountId,
+		segmentId,
+		segmentKindSlug,
+		minEvidencePerPain = 3,
+		minGroupSize = 2,
+		forceRefresh = false,
+	} = opts
 
 	consola.info(`[generatePainMatrix] Starting for project ${projectId}${forceRefresh ? " (forced refresh)" : ""}`)
 
@@ -122,6 +132,7 @@ export async function generatePainMatrix(opts: {
 		supabase,
 		projectId,
 		segmentId,
+		segmentKindSlug,
 		minGroupSize,
 	})
 	consola.info(`[generatePainMatrix] Found ${userGroups.length} user groups`)

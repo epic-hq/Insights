@@ -4,6 +4,26 @@ import type { Database } from "~/database.types"
 
 type DbClient = SupabaseClient<Database>
 
+export const SEGMENT_KIND_SLUGS = [
+	"persona",
+	"job_function",
+	"seniority_level",
+	"title",
+	"industry",
+	"life_stage",
+	"age_range",
+]
+
+export const SEGMENT_KIND_LABELS: Record<string, string> = {
+	persona: "Personas",
+	job_function: "Job Functions",
+	seniority_level: "Seniority Levels",
+	title: "Job Titles",
+	industry: "Industries",
+	life_stage: "Life Stages",
+	age_range: "Age Ranges",
+}
+
 // Define types for complex nested query results
 interface Evidence {
 	id: string
@@ -26,6 +46,105 @@ interface PersonWithEvidence {
 interface PersonFacetLink {
 	person_id: string
 	people: PersonWithEvidence
+}
+
+async function getProjectAccountId(supabase: DbClient, projectId: string) {
+	const { data: project, error } = await supabase.from("projects").select("account_id").eq("id", projectId).single()
+
+	if (error || !project) {
+		consola.error(`[segmentData] Unable to find project ${projectId}`, error)
+		throw new Error("Project not found")
+	}
+
+	return project.account_id
+}
+
+export interface SegmentKindSummary {
+	kind: string
+	label: string
+	person_count: number
+}
+
+export async function getSegmentKindSummaries(supabase: DbClient, projectId: string): Promise<SegmentKindSummary[]> {
+	const accountId = await getProjectAccountId(supabase, projectId)
+
+	const { data: segmentKinds, error: segmentKindsError } = await supabase
+		.from("facet_kind_global")
+		.select("id, slug")
+		.in("slug", SEGMENT_KIND_SLUGS)
+
+	if (segmentKindsError) {
+		consola.error("[getSegmentKindSummaries] Error fetching kinds", segmentKindsError)
+		throw segmentKindsError
+	}
+
+	const segmentKindIds = segmentKinds?.map((k) => k.id) ?? []
+
+	if (segmentKindIds.length === 0) {
+		return SEGMENT_KIND_SLUGS.map((slug) => ({
+			kind: slug,
+			label: SEGMENT_KIND_LABELS[slug] || slug,
+			person_count: 0,
+		}))
+	}
+
+	const { data: segmentFacets, error: segmentFacetsError } = await supabase
+		.from("facet_account")
+		.select(
+			`
+			id,
+			kind_id,
+			facet_kind_global!inner(slug)
+		`
+		)
+		.eq("account_id", accountId)
+		.in("kind_id", segmentKindIds)
+
+	if (segmentFacetsError) {
+		consola.error("[getSegmentKindSummaries] Error fetching facets", segmentFacetsError)
+		throw segmentFacetsError
+	}
+
+	const facetIds = (segmentFacets || []).map((facet) => facet.id)
+	const facetKindLookup = new Map<number, string>()
+
+	for (const facet of segmentFacets || []) {
+		const facetKind = facet.facet_kind_global
+		const slug = facetKind && typeof facetKind === "object" && "slug" in facetKind ? String(facetKind.slug) : undefined
+		if (slug) {
+			facetKindLookup.set(facet.id, slug)
+		}
+	}
+
+	const kindPeopleCounts = new Map<string, Set<string>>()
+
+	if (facetIds.length > 0) {
+		const { data: personFacets, error: personFacetsError } = await supabase
+			.from("person_facet")
+			.select("person_id, facet_account_id")
+			.in("facet_account_id", facetIds)
+			.eq("project_id", projectId)
+
+		if (personFacetsError) {
+			consola.error("[getSegmentKindSummaries] Error fetching person facets", personFacetsError)
+			throw personFacetsError
+		}
+
+		for (const pf of personFacets || []) {
+			const kindSlug = facetKindLookup.get(pf.facet_account_id)
+			if (!kindSlug) continue
+			if (!kindPeopleCounts.has(kindSlug)) {
+				kindPeopleCounts.set(kindSlug, new Set())
+			}
+			kindPeopleCounts.get(kindSlug)?.add(pf.person_id)
+		}
+	}
+
+	return SEGMENT_KIND_SLUGS.map((slug) => ({
+		kind: slug,
+		label: SEGMENT_KIND_LABELS[slug] || slug,
+		person_count: kindPeopleCounts.get(slug)?.size ?? 0,
+	}))
 }
 
 /**
@@ -100,54 +219,38 @@ export async function getSegmentsSummary(
 ): Promise<SegmentSummary[]> {
 	consola.info("[getSegmentsSummary] Fetching segments for project", projectId)
 
-	// If filtering by kind, get the kind_id from facet_kind_global by slug
-	let kindIdFilter: number | undefined
-	if (options.kind) {
-		const { data: kindData } = await supabase
-			.from("facet_kind_global")
-			.select("id")
-			.eq("slug", options.kind)
-			.single()
+	const accountId = await getProjectAccountId(supabase, projectId)
 
-		if (kindData) {
-			kindIdFilter = kindData.id
-		}
-	}
-
-	// Get all facet_account entries with their kind slugs
-	let query = supabase
+	const { data: facets, error } = await supabase
 		.from("facet_account")
 		.select(
 			`
-      id,
-      kind_id,
-      slug,
-      label,
-      facet_kind_global!inner(slug),
-      person_facet!inner(
-        person:people!inner(
-          id,
-          evidence_people(
-            evidence:evidence!inner(
-              id,
-              does,
-              feels,
-              gains,
-              pains,
-              project_id
-            )
-          )
-        )
-      )
-    `
+	      id,
+	      kind_id,
+	      slug,
+	      label,
+	      facet_kind_global!inner(slug),
+	      person_facet:person_facet!inner(
+	        person_id,
+	        project_id,
+	        people:people!inner(
+	          id,
+	          evidence_people(
+	            evidence:evidence(
+	              id,
+	              does,
+	              feels,
+	              gains,
+	              pains,
+	              project_id
+	            )
+	          )
+	        )
+	      )
+	    `
 		)
-		.eq("person_facet.person.evidence_people.evidence.project_id", projectId)
-
-	if (kindIdFilter) {
-		query = query.eq("kind_id", kindIdFilter)
-	}
-
-	const { data: facets, error } = await query
+		.eq("account_id", accountId)
+		.eq("person_facet.project_id", projectId)
 
 	if (error) {
 		consola.error("[getSegmentsSummary] Error fetching facets:", error)
@@ -160,6 +263,12 @@ export async function getSegmentsSummary(
 	const segments: SegmentSummary[] = []
 
 	for (const facet of facets) {
+		const kindSlug = (facet as any).facet_kind_global?.slug || "unknown"
+
+		if (options.kind && kindSlug !== options.kind) {
+			continue
+		}
+
 		// Get unique people in this segment
 		const peopleIds = new Set<string>()
 		let evidenceCount = 0
@@ -169,19 +278,19 @@ export async function getSegmentsSummary(
 
 		// This is a complex nested structure, need to traverse it carefully
 		const personFacetLinks: Array<{
-			person: { id: string; evidence_people: Array<{ evidence: Evidence }> }
-		}> = facet.person_facet as unknown as Array<{
-			person: { id: string; evidence_people: Array<{ evidence: Evidence }> }
-		}>
+			person_id: string
+			people: { id: string; evidence_people: Array<{ evidence: Evidence }> }
+		}> = (facet as any).person_facet || []
 
 		for (const link of personFacetLinks) {
-			if (!link.person) continue
-			peopleIds.add(link.person.id)
+			if (!link.people) continue
+			peopleIds.add(link.people.id)
 
 			// Get evidence for this person
-			const personEvidenceLinks = link.person.evidence_people || []
+			const personEvidenceLinks = link.people.evidence_people || []
 			for (const personLink of personEvidenceLinks) {
 				if (!personLink.evidence) continue
+				if (personLink.evidence.project_id !== projectId) continue
 				evidenceCount++
 
 				const evidence = personLink.evidence
@@ -209,9 +318,6 @@ export async function getSegmentsSummary(
 		})
 
 		if (options.minBullseyeScore === undefined || bullseye_score >= options.minBullseyeScore) {
-			// Get kind slug from joined facet_kind_global
-			const kindSlug = (facet as any).facet_kind_global?.slug || "unknown"
-
 			segments.push({
 				id: facet.id.toString(),
 				kind: kindSlug,

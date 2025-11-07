@@ -1,4 +1,4 @@
-import { anthropic } from "@ai-sdk/anthropic"
+import { openai } from "@ai-sdk/openai"
 import { createClient } from "@supabase/supabase-js"
 import { generateObject } from "ai"
 import consola from "consola"
@@ -46,6 +46,7 @@ type PersonData = {
 	company: string | null
 	age: number | null
 	project_id: string
+	account_id: string
 }
 
 type Classification = z.infer<typeof PersonSegmentClassification>
@@ -75,7 +76,7 @@ If you can't determine a value confidently, return null for that field.
 Provide a confidence score (0-1) based on how much data is available.`
 
 	const result = await generateObject({
-		model: anthropic("claude-3-5-sonnet-20241022"),
+		model: openai("gpt-4o-mini"),
 		schema: PersonSegmentClassification,
 		prompt,
 	})
@@ -92,7 +93,7 @@ async function getFacetKindId(slug: string): Promise<number | null> {
 async function getOrCreateFacet(
 	kindId: number,
 	label: string,
-	projectId: string
+	accountId: string
 ): Promise<string | null> {
 	if (!label) return null
 
@@ -102,7 +103,7 @@ async function getOrCreateFacet(
 		.select("id")
 		.eq("kind_id", kindId)
 		.eq("label", label)
-		.eq("project_id", projectId)
+		.eq("account_id", accountId)
 		.single()
 
 	if (existing) return existing.id
@@ -113,7 +114,7 @@ async function getOrCreateFacet(
 		.insert({
 			kind_id: kindId,
 			label,
-			project_id: projectId,
+			account_id: accountId,
 			slug: label.toLowerCase().replace(/\s+/g, "-"),
 		})
 		.select("id")
@@ -127,11 +128,17 @@ async function getOrCreateFacet(
 	return newFacet.id
 }
 
-async function linkPersonToFacet(personId: string, facetAccountId: string) {
+async function linkPersonToFacet(
+	personId: string,
+	facetAccountId: string,
+	accountId: string,
+	projectId: string,
+	confidence: number
+) {
 	// Check if link already exists
 	const { data: existing } = await supabase
 		.from("person_facet")
-		.select("id")
+		.select("person_id")
 		.eq("person_id", personId)
 		.eq("facet_account_id", facetAccountId)
 		.single()
@@ -142,6 +149,10 @@ async function linkPersonToFacet(personId: string, facetAccountId: string) {
 	const { error } = await supabase.from("person_facet").insert({
 		person_id: personId,
 		facet_account_id: facetAccountId,
+		account_id: accountId,
+		project_id: projectId,
+		source: "inferred",
+		confidence,
 	})
 
 	if (error) {
@@ -172,7 +183,7 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 	// Load people
 	const baseQuery = supabase
 		.from("people")
-		.select("id, name, role, title, occupation, segment, industry, company, age, project_id")
+		.select("id, name, role, title, occupation, segment, industry, company, age, project_id, account_id")
 		.order("created_at", { ascending: true })
 
 	let query = baseQuery
@@ -232,9 +243,15 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 
 			for (const { kindId, label } of facetMappings) {
 				if (kindId && label) {
-					const facetAccountId = await getOrCreateFacet(kindId, label, person.project_id)
+					const facetAccountId = await getOrCreateFacet(kindId, label, person.account_id)
 					if (facetAccountId) {
-						await linkPersonToFacet(person.id, facetAccountId)
+						await linkPersonToFacet(
+							person.id,
+							facetAccountId,
+							person.account_id,
+							person.project_id,
+							classification.confidence
+						)
 					}
 				}
 			}
