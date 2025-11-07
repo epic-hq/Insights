@@ -288,6 +288,48 @@ export async function buildInitialSalesLensExtraction(
 	frameworks[0].slots = spicedSlots
 
 	const bantSlots: SalesFrameworkSlot[] = []
+
+	// Budget: Extract from observations/notes
+	const budgetMatch = interview.observations_and_notes?.match(/\$[\d,]+[kKmM]?|\d+[kKmM]?\s*budget/i)
+	const budgetText = budgetMatch ? budgetMatch[0] : null
+	if (budgetText) {
+		bantSlots.push({
+			slot: "budget",
+			summary: budgetText,
+			textValue: budgetText,
+			numericValue: null,
+			dateValue: null,
+			status: null,
+			confidence: 0.5,
+			ownerPersonId: primaryStakeholder?.personId ?? null,
+			ownerPersonKey: primaryStakeholder?.personKey ?? primaryStakeholder?.candidatePersonKey ?? null,
+			relatedPersonIds: attendeePersonIds,
+			relatedOrganizationIds: [],
+			evidence: pickEvidence(3),
+			hygiene: [],
+		})
+	}
+
+	// Authority: Use highest influence stakeholder
+	if (primaryStakeholder) {
+		bantSlots.push({
+			slot: "authority",
+			summary: `${primaryStakeholder.displayName} (${primaryStakeholder.influence})`,
+			textValue: primaryStakeholder.role ?? primaryStakeholder.displayName,
+			numericValue: null,
+			dateValue: null,
+			status: null,
+			confidence: primaryStakeholder.personId ? 0.7 : 0.4,
+			ownerPersonId: primaryStakeholder.personId ?? null,
+			ownerPersonKey: primaryStakeholder.personKey ?? primaryStakeholder.candidatePersonKey ?? null,
+			relatedPersonIds: [primaryStakeholder.personId].filter((id): id is string => Boolean(id)),
+			relatedOrganizationIds: primaryStakeholder.organizationId ? [primaryStakeholder.organizationId] : [],
+			evidence: pickEvidence(1),
+			hygiene: [],
+		})
+	}
+
+	// Need
 	if (primaryPain) {
 		bantSlots.push({
 			slot: "need",
@@ -305,6 +347,8 @@ export async function buildInitialSalesLensExtraction(
 			hygiene: [],
 		})
 	}
+
+	// Timeline
 	bantSlots.push({
 		slot: "timeline",
 		summary: interview.interview_date,

@@ -2,7 +2,7 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { BotMessageSquare, Edit2, Loader2, MessageCircleQuestionIcon, MoreVertical, SparkleIcon } from "lucide-react"
+import { BotMessageSquare, Briefcase, Edit2, Loader2, MessageCircleQuestionIcon, MoreVertical, SparkleIcon } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useNavigation, useRevalidator } from "react-router-dom"
@@ -1401,6 +1401,15 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										</DropdownMenuContent>
 									</DropdownMenu>
 								)}
+								<Link
+									to={routes.opportunities.new()}
+									state={{ interviewId: interview.id, interviewTitle: interview.title }}
+									className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-50 px-3 py-2 font-semibold text-blue-700 text-sm shadow-sm hover:bg-blue-100"
+									title="Create opportunity from this interview"
+								>
+									<Briefcase className="h-4 w-4" />
+									Create Opportunity
+								</Link>
 								<Link
 									to={routes.interviews.edit(interview.id)}
 									className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"

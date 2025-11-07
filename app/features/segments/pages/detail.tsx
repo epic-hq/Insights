@@ -1,5 +1,6 @@
 import { AlertCircle, ArrowLeft, DollarSign, Target, TrendingUp, Users } from "lucide-react"
 import { Link, useLoaderData } from "react-router"
+import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
@@ -70,12 +71,7 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 	return (
 		<div className="container mx-auto max-w-6xl px-4 py-8">
 			{/* Back Button */}
-			<Link to="/segments" relative="path">
-				<Button variant="ghost" size="sm" className="mb-6">
-					<ArrowLeft className="mr-2 h-4 w-4" />
-					Back to Segments
-				</Button>
-			</Link>
+			<BackButton to="../" />
 
 			{/* Header */}
 			<div className="mb-8">
@@ -84,7 +80,7 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 						<Badge variant="outline" className="mb-2 capitalize">
 							{segment.kind}
 						</Badge>
-						<h1 className="mb-2 flex items-center gap-3 font-bold text-4xl tracking-tight">
+						<h1 className="mb-2 flex items-center gap-3 text-balance font-bold text-4xl tracking-tight">
 							{bullseyeScore >= 75 && <Target className="h-10 w-10 text-red-600" />}
 							{segment.label}
 						</h1>
@@ -244,33 +240,31 @@ export default function SegmentDetail({ loaderData }: Route.ComponentProps) {
 						<div className="space-y-3">
 							{segment.top_pains.map((pain, idx) => {
 								// Link to first evidence ID, or to pain matrix if no evidence IDs
-								const linkTo = pain.evidence_ids?.[0]
-									? `../../evidence/${pain.evidence_ids[0]}`
-									: `../../pain-matrix`
+								const linkTo = pain.evidence_ids?.[0] ? `../../evidence/${pain.evidence_ids[0]}` : "../../pain-matrix"
 								return (
 									<Link key={pain.pain_theme} to={linkTo}>
-									<div
-										className="group flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-all hover:border-primary hover:shadow-md"
-										style={{
-											backgroundColor: getImpactColor(pain.impact_score),
-										}}
-									>
-										<div className="flex-1">
-											<div className="flex items-center gap-3">
-												<span className="font-semibold text-muted-foreground text-sm">#{idx + 1}</span>
-												<span className="font-medium group-hover:text-primary">{pain.pain_theme}</span>
+										<div
+											className="group flex cursor-pointer items-center justify-between rounded-lg border p-4 transition-all hover:border-primary hover:shadow-md"
+											style={{
+												backgroundColor: getImpactColor(pain.impact_score),
+											}}
+										>
+											<div className="flex-1">
+												<div className="flex items-center gap-3">
+													<span className="font-semibold text-muted-foreground text-sm">#{idx + 1}</span>
+													<span className="font-medium group-hover:text-primary">{pain.pain_theme}</span>
+												</div>
+												<div className="mt-1 flex gap-4 text-muted-foreground text-xs">
+													<span>{pain.evidence_count} evidence</span>
+													<span>{(pain.frequency * 100).toFixed(0)}% of segment</span>
+												</div>
 											</div>
-											<div className="mt-1 flex gap-4 text-muted-foreground text-xs">
-												<span>{pain.evidence_count} evidence</span>
-												<span>{(pain.frequency * 100).toFixed(0)}% of segment</span>
+											<div className="text-right">
+												<div className="font-bold">{pain.impact_score.toFixed(1)}</div>
+												<div className="text-muted-foreground text-xs">impact</div>
 											</div>
 										</div>
-										<div className="text-right">
-											<div className="font-bold">{pain.impact_score.toFixed(1)}</div>
-											<div className="text-muted-foreground text-xs">impact</div>
-										</div>
-									</div>
-								</Link>
+									</Link>
 								)
 							})}
 						</div>

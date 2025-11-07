@@ -1,8 +1,10 @@
+import { Briefcase, Calendar, DollarSign, TrendingUp } from "lucide-react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOpportunityById } from "~/features/opportunities/db"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
@@ -46,107 +48,156 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	}
 }
 
+const getKanbanStatusColor = (kanbanStatus: string | null) => {
+	switch (kanbanStatus) {
+		case "Explore":
+			return "bg-blue-50 text-blue-700 border-blue-200"
+		case "Validate":
+			return "bg-yellow-50 text-yellow-700 border-yellow-200"
+		case "Build":
+			return "bg-green-50 text-green-700 border-green-200"
+		default:
+			return "bg-muted text-muted-foreground border-border"
+	}
+}
+
 export default function OpportunityDetail() {
 	const { opportunity } = useLoaderData<typeof loader>()
-	const { projectPath } = useCurrentProject()
-	const routes = useProjectRoutes(projectPath)
-
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case "completed":
-				return "bg-green-100 text-green-800"
-			case "in_progress":
-				return "bg-blue-100 text-blue-800"
-			case "planning":
-				return "bg-yellow-100 text-yellow-800"
-			case "on_hold":
-				return "bg-gray-100 text-gray-800"
-			default:
-				return "bg-gray-100 text-gray-800"
-		}
-	}
+	const currentProjectContext = useCurrentProject()
+	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 
 	return (
-		<PageContainer size="lg" padded={false} className="max-w-4xl">
-			<div className="mb-8 flex items-center justify-between">
-				<div>
-					<div className="mb-2 flex items-center gap-2">
-						<Link to="/opportunities" className="text-blue-600 hover:text-blue-800">
-							Opportunities
-						</Link>
-						<span className="text-gray-500">/</span>
-						<span className="text-gray-900">{opportunity.title}</span>
+		<div className="container mx-auto max-w-5xl px-4 py-8">
+			{/* Back Button */}
+			<BackButton />
+
+			{/* Header */}
+			<div className="mb-8 flex items-start justify-between">
+				<div className="flex-1">
+					<div className="mb-3 flex items-center gap-3">
+						<Briefcase className="h-8 w-8 text-primary" />
+						<h1 className="text-balance font-bold text-4xl tracking-tight">{opportunity.title}</h1>
 					</div>
-					<h1 className="font-bold text-3xl text-gray-900">{opportunity.title}</h1>
+					{opportunity.description && (
+						<p className="text-lg text-muted-foreground">{opportunity.description}</p>
+					)}
+					<div className="mt-3 flex items-center gap-2">
+						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status)}>
+							{opportunity.kanban_status || "Unknown"}
+						</Badge>
+						{opportunity.stage && (
+							<Badge variant="outline" className="bg-muted text-muted-foreground">
+								{opportunity.stage}
+							</Badge>
+						)}
+					</div>
 				</div>
 				<div className="flex gap-2">
-					<Button asChild variant="outline">
-						<Link to={`/opportunities/${opportunity.id}/edit`}>Edit</Link>
-					</Button>
-					<Button asChild variant="outline">
-						<Link to="/opportunities">Back to Opportunities</Link>
+					<Button asChild variant="outline" size="sm">
+						<Link to={routes.opportunities.edit(opportunity.id)}>Edit</Link>
 					</Button>
 				</div>
 			</div>
 
-			<div className="grid gap-8 lg:grid-cols-3">
-				<div className="lg:col-span-2">
-					{opportunity.opportunity_insights && opportunity.opportunity_insights.length > 0 && (
-						<div className="rounded-lg border bg-white p-6">
-							<h2 className="mb-4 font-semibold text-xl">Related Insights</h2>
-							<div className="space-y-3">
-								{opportunity.opportunity_insights.map((opportunityInsight) => (
-									<div key={opportunityInsight.insights.id} className="border-blue-500 border-l-4 pl-4">
-										<Link
-											to={routes.insights.detail(opportunityInsight.insights.id)}
-											className="font-medium text-blue-600 hover:text-blue-800"
-										>
-											{opportunityInsight.insights.name}
-										</Link>
-										{opportunityInsight.insights.category && (
-											<Badge variant="secondary" className="ml-2">
-												{opportunityInsight.insights.category}
-											</Badge>
-										)}
-									</div>
-								))}
+			{/* Key Metrics */}
+			<div className="mb-8 grid gap-4 md:grid-cols-3">
+				{opportunity.amount && (
+					<Card>
+						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+							<CardTitle className="font-medium text-sm">Deal Value</CardTitle>
+							<DollarSign className="h-4 w-4 text-muted-foreground" />
+						</CardHeader>
+						<CardContent>
+							<div className="font-bold text-2xl">${Number(opportunity.amount).toLocaleString()}</div>
+						</CardContent>
+					</Card>
+				)}
+				{opportunity.close_date && (
+					<Card>
+						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+							<CardTitle className="font-medium text-sm">Expected Close</CardTitle>
+							<Calendar className="h-4 w-4 text-muted-foreground" />
+						</CardHeader>
+						<CardContent>
+							<div className="font-bold text-2xl">
+								{new Date(opportunity.close_date).toLocaleDateString("en-US", {
+									month: "short",
+									day: "numeric",
+									year: "numeric",
+								})}
+							</div>
+						</CardContent>
+					</Card>
+				)}
+				{opportunity.stage && (
+					<Card>
+						<CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+							<CardTitle className="font-medium text-sm">Sales Stage</CardTitle>
+							<TrendingUp className="h-4 w-4 text-muted-foreground" />
+						</CardHeader>
+						<CardContent>
+							<div className="font-bold text-2xl">{opportunity.stage}</div>
+						</CardContent>
+					</Card>
+				)}
+			</div>
+
+			{/* Description Section */}
+			{opportunity.description && (
+				<Card className="mb-8">
+					<CardHeader>
+						<CardTitle>Description</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<p className="text-muted-foreground">{opportunity.description}</p>
+					</CardContent>
+				</Card>
+			)}
+
+			{/* Metadata */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Details</CardTitle>
+				</CardHeader>
+				<CardContent className="grid gap-4 md:grid-cols-2">
+					<div>
+						<label className="font-medium text-muted-foreground text-sm">Created</label>
+						<div className="mt-1 text-sm">
+							{new Date(opportunity.created_at).toLocaleDateString("en-US", {
+								month: "long",
+								day: "numeric",
+								year: "numeric",
+								hour: "2-digit",
+								minute: "2-digit",
+							})}
+						</div>
+					</div>
+					{opportunity.updated_at && (
+						<div>
+							<label className="font-medium text-muted-foreground text-sm">Last Updated</label>
+							<div className="mt-1 text-sm">
+								{new Date(opportunity.updated_at).toLocaleDateString("en-US", {
+									month: "long",
+									day: "numeric",
+									year: "numeric",
+									hour: "2-digit",
+									minute: "2-digit",
+								})}
 							</div>
 						</div>
 					)}
-				</div>
-
-				<div className="space-y-6">
-					<div className="rounded-lg border bg-white p-6">
-						<h3 className="mb-4 font-semibold">Details</h3>
-						<div className="space-y-3">
-							<div>
-								<label className="font-medium text-gray-500 text-sm">Status</label>
-								<div className="mt-1">
-									<Badge className={getStatusColor(opportunity.kanban_status || "")}>
-										{opportunity.kanban_status || "Unknown"}
-									</Badge>
-								</div>
+					{opportunity.metadata && Object.keys(opportunity.metadata).length > 0 && (
+						<div className="md:col-span-2">
+							<label className="font-medium text-muted-foreground text-sm">Additional Information</label>
+							<div className="mt-1 text-sm">
+								<pre className="rounded bg-muted p-2 text-xs">
+									{JSON.stringify(opportunity.metadata, null, 2)}
+								</pre>
 							</div>
-
-							<div>
-								<label className="font-medium text-gray-500 text-sm">Created</label>
-								<div className="mt-1 text-gray-900 text-sm">
-									{new Date(opportunity.created_at).toLocaleDateString()}
-								</div>
-							</div>
-
-							{opportunity.updated_at && (
-								<div>
-									<label className="font-medium text-gray-500 text-sm">Last Updated</label>
-									<div className="mt-1 text-gray-900 text-sm">
-										{new Date(opportunity.updated_at).toLocaleDateString()}
-									</div>
-								</div>
-							)}
 						</div>
-					</div>
-				</div>
-			</div>
-		</PageContainer>
+					)}
+				</CardContent>
+			</Card>
+		</div>
 	)
 }

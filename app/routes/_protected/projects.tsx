@@ -70,7 +70,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		let initialChatMessages: UpsightMessage[] = []
 
 		try {
-			const userId = ctx.claims.sub
+			const userId = ctx.claims?.sub
 			if (userId) {
 				const resourceId = `projectStatusAgent-${userId}-${projectId}`
 				const threads = await memory.getThreadsByResourceIdPaginated({

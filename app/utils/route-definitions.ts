@@ -75,6 +75,8 @@ export interface RouteDefinitions {
 
 	// Product Lens
 	productLens: () => string
+	// BANT Lens
+	bantLens: () => string
 	personas: {
 		index: () => string
 		new: () => string
@@ -232,6 +234,8 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 
 		// Product Lens
 		productLens: () => `${base}/product-lens`,
+		// BANT Lens
+		bantLens: () => `${base}/bant-lens`,
 		personas: {
 			index: () => `${base}/personas`,
 			new: () => `${base}/personas/new`,

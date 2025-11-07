@@ -12,18 +12,7 @@ export const getOpportunities = async ({
 }) => {
 	return await supabase
 		.from("opportunities")
-		.select(`
-			*,
-			opportunity_insights (
-				insights (
-					id,
-					title,
-					content,
-					category,
-					impact_score
-				)
-			)
-		`)
+		.select("*")
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
@@ -42,24 +31,7 @@ export const getOpportunityById = async ({
 }) => {
 	return await supabase
 		.from("opportunities")
-		.select(`
-			*,
-			opportunity_insights (
-				insights (
-					id,
-					title,
-					content,
-					category,
-					impact_score,
-					interviews (
-						id,
-						title,
-						date,
-						participant_name
-					)
-				)
-			)
-		`)
+		.select("*")
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.eq("id", id)

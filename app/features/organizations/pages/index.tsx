@@ -16,8 +16,7 @@ import { getOrganizations } from "~/features/organizations/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { getServerClient } from "~/lib/supabase/client.server"
-import { cn } from "~/lib/utils"
-import type { Organization, PeopleOrganization } from "~/types"
+import type { Organization } from "~/types"
 
 export const meta: MetaFunction = () => {
 	return [
@@ -41,19 +40,22 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
 		throw new Response("Error loading organizations", { status: 500 })
 	}
 
-	return { organizations: (data as Array<Organization & { people_organizations: PeopleOrganization[] }>) ?? [] }
+	return { organizations: data ?? [] }
 }
 
 type OrganizationWithContacts = Organization & {
-	people_organizations: Array<
-		PeopleOrganization & {
-			person?: {
-				id: string
-				name: string | null
-				segment?: string | null
-			} | null
-		}
-	>
+	people_organizations: Array<{
+		id: string
+		role: string | null
+		relationship_status: string | null
+		is_primary: boolean | null
+		person: {
+			id: string
+			name: string | null
+			image_url: string | null
+			segment: string | null
+		} | null
+	}>
 }
 
 export default function OrganizationsIndexPage() {
@@ -155,7 +157,7 @@ export default function OrganizationsIndexPage() {
 							return (
 								<Card
 									key={organization.id}
-									className="relative overflow-hidden border-border/80 transition-shadow hover:shadow-lg"
+									className="relative overflow-hidden border-2 border-muted/30 bg-card/50 backdrop-blur-sm transition-all duration-200 hover:border-muted/50 hover:bg-card/80 hover:shadow-lg dark:border-muted-foreground/20 dark:hover:border-muted-foreground/30"
 								>
 									<CardHeader>
 										<CardTitle className="flex items-start justify-between gap-2 text-xl">
@@ -175,27 +177,24 @@ export default function OrganizationsIndexPage() {
 											)}
 										</CardTitle>
 									</CardHeader>
-									<CardContent className="space-y-3 text-muted-foreground text-sm">
-										<div className="flex flex-col gap-1">
+									<CardContent className="space-y-4 text-muted-foreground text-sm">
+										<div className="flex flex-col gap-2">
 											{organization.industry && (
-												<span className="font-medium text-foreground">{organization.industry}</span>
+												<span className="font-medium text-base text-foreground">{organization.industry}</span>
 											)}
-											{organization.size_range && <span>Size: {organization.size_range}</span>}
-											{organization.headquarters_location && <span>HQ: {organization.headquarters_location}</span>}
+											{organization.size_range && <span className="text-muted-foreground/80">Size: {organization.size_range}</span>}
+											{organization.headquarters_location && <span className="text-muted-foreground/80">HQ: {organization.headquarters_location}</span>}
 										</div>
-										{organization.notes && <p className="line-clamp-2 text-muted-foreground">{organization.notes}</p>}
+										{organization.notes && <p className="border-muted/20 border-t-2 leading-relaxed line-clamp-2 mt-3 pt-3 text-muted-foreground/90">{organization.notes}</p>}
 									</CardContent>
-									<CardFooter className="flex items-center justify-between text-muted-foreground text-xs">
-										<span className="flex items-center gap-1">
-											<Users className="h-3.5 w-3.5" />
-											{linkedPeople.length} linked
+									<CardFooter className="bg-muted/20 border-muted/20 border-t-2 flex items-center justify-between px-4 py-3">
+										<span className="flex items-center gap-2 text-muted-foreground text-sm">
+											<Users className="h-4 w-4" />
+											<span className="font-medium">{linkedPeople.length} linked</span>
 										</span>
 										<Link
 											to={routes.organizations.detail(organization.id)}
-											className={cn(
-												"rounded-full border border-transparent px-3 py-1 font-medium text-primary text-xs transition-colors",
-												"hover:border-primary hover:bg-primary/5"
-											)}
+											className="rounded-md border border-border/40 bg-background/50 px-3 py-1.5 font-medium text-foreground text-sm transition-all hover:border-border hover:bg-background hover:shadow-sm"
 										>
 											View details
 										</Link>

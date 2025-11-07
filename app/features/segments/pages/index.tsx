@@ -1,11 +1,12 @@
-import { Filter, Target, TrendingUp, Users } from "lucide-react"
-import type React from "react"
+import { ChevronDown, Target, TrendingUp, Users } from "lucide-react"
+import React from "react"
 import { useState } from "react"
 import { Link, useLoaderData } from "react-router"
+import { BackButton } from "~/components/ui/BackButton"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { cn } from "~/lib/utils"
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "~/components/ui/collapsible"
 import { userContext } from "~/server/user-context"
 import { getSegmentKindSummaries, getSegmentsSummary, type SegmentSummary } from "../services/segmentData.server"
 import type { Route } from "./+types/index"
@@ -29,7 +30,6 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 	return {
 		segments,
 		segmentKinds,
-		projectId,
 	}
 }
 
@@ -64,7 +64,7 @@ function getBullseyeLabel(score: number): { label: string; icon: React.Component
 	if (score >= 25)
 		return {
 			label: "Promising",
-			icon: Filter,
+			icon: Users,
 		}
 	return {
 		label: "Explore",
@@ -76,6 +76,7 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 	const { segments, segmentKinds } = loaderData
 	const [kindFilter, setKindFilter] = useState<string>("all")
 	const [minScore, setMinScore] = useState(0)
+	const [isExplainerOpen, setIsExplainerOpen] = useState(false)
 
 	const segmentCounts = segments.reduce(
 		(acc, segment) => {
@@ -125,107 +126,113 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 
 	return (
 		<div className="container mx-auto max-w-6xl px-4 py-8">
+			{/* Back Button */}
+			<BackButton />
+
 			{/* Header */}
 			<div className="mb-8">
 				<div className="mb-3 flex items-center gap-3">
 					<Target className="h-8 w-8 text-primary" />
-					<h1 className="font-bold text-4xl tracking-tight">Customer Segments</h1>
+					<h1 className="text-balance font-bold text-4xl tracking-tight">Customer Segments</h1>
 				</div>
 				<p className="text-lg text-muted-foreground">
 					Find your bullseye customer – the segment most likely to buy based on pain intensity and willingness to pay
 				</p>
 			</div>
 
-			{/* Filters */}
-			<Card className="mb-8">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2 text-lg">
-						<Filter className="h-5 w-5" />
-						Filters
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-6">
-					{/* Segment Type Filter */}
-					<div>
-				<label className="mb-2 block font-medium text-sm">Segment Views</label>
-				<div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-					{filterViews.map((view) => {
-						const isActive = kindFilter === view.value
-						return (
-							<button
-								key={view.value}
-								type="button"
-								onClick={() => {
-									if (view.disabled) return
-									setKindFilter(view.value)
-								}}
-								className={cn(
-									"rounded-xl border p-4 text-left transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/40",
-									view.disabled ? "cursor-not-allowed opacity-60" : "hover:border-primary/60 hover:shadow-sm",
-									isActive ? "border-primary bg-primary/5" : "border-border bg-background"
-								)}
-								aria-pressed={isActive}
-								disabled={view.disabled}
-							>
-								<div className="flex items-center justify-between gap-2">
-									<span className="font-semibold">{view.label}</span>
-									{isActive && <Badge variant="secondary">Active</Badge>}
-								</div>
-								<div className="mt-4 flex items-center justify-between text-sm font-medium">
-									<span>
-										{view.segments} {view.segments === 1 ? "segment" : "segments"}
-									</span>
-									<span>{view.people} people</span>
-								</div>
-							</button>
-						)
-					})}
+			<div className="mb-6 flex flex-col gap-3 rounded-xl border bg-card p-4 shadow-sm sm:flex-row sm:items-center sm:justify-between">
+				{/* Segment type filter */}
+				<div className="flex flex-1 flex-col gap-2 sm:flex-row sm:items-center sm:gap-3">
+					<label className="shrink-0 font-medium text-muted-foreground text-sm">View:</label>
+					<div className="relative flex-1 sm:max-w-xs">
+						<select
+							value={kindFilter}
+							onChange={(e) => setKindFilter(e.target.value)}
+							className="w-full appearance-none rounded-lg border border-input bg-background px-3 py-2 pr-10 font-medium text-sm transition-colors hover:border-primary/60 focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+						>
+							{filterViews.map((view) => (
+								<option key={view.value} value={view.value} disabled={view.disabled}>
+									{view.label} ({view.segments} seg • {view.people} people)
+								</option>
+							))}
+						</select>
+						<ChevronDown className="-translate-y-1/2 pointer-events-none absolute top-1/2 right-3 h-4 w-4 text-muted-foreground" />
+					</div>
+				</div>
+
+				{/* Inline stats - compact badges */}
+				<div className="flex flex-wrap items-center gap-2 sm:gap-3">
+					<Badge variant="outline" className="bg-background px-2.5 py-1">
+						Showing <span className="ml-1 font-semibold">{filteredSegments.length}</span>
+					</Badge>
+					<Badge variant="outline" className="border-red-200 bg-red-50 px-2.5 py-1 text-red-900">
+						Bullseye (75+) <span className="ml-1 font-semibold">{bullseyeCount}</span>
+					</Badge>
+					<Badge variant="outline" className="border-orange-200 bg-orange-50 px-2.5 py-1 text-orange-900">
+						High Potential (50+) <span className="ml-1 font-semibold">{highPotentialCount}</span>
+					</Badge>
+				</div>
+
+				{/* Score filter */}
+				<div className="flex items-center gap-2 border-muted-foreground/20 sm:border-l sm:pl-4">
+					<label className="shrink-0 font-medium text-muted-foreground text-sm">Min:</label>
+					<input
+						type="range"
+						min="0"
+						max="100"
+						step="25"
+						value={minScore}
+						onChange={(e) => setMinScore(Number.parseInt(e.target.value, 10))}
+						className="w-24"
+					/>
+					<Badge variant={minScore > 0 ? "default" : "secondary"} className="min-w-[2.5rem] justify-center">
+						{minScore}+
+					</Badge>
+					{minScore > 0 && (
+						<Button variant="ghost" size="sm" onClick={() => setMinScore(0)} className="h-7 px-2 text-xs">
+							Clear
+						</Button>
+					)}
 				</div>
 			</div>
-
-				{/* Bullseye Score Filter */}
-				<div className="max-w-md space-y-4">
-					<div className="mb-2 flex items-center justify-between">
-						<label className="font-medium text-sm">Minimum Bullseye Score: {minScore}</label>
-						<Button variant="ghost" size="sm" onClick={() => setMinScore(0)} disabled={minScore === 0}>
-							Reset
-						</Button>
+			{/*
+			<div className="mb-6 grid gap-3 sm:grid-cols-3">
+				<Card className="border-primary/20 bg-primary/5">
+					<CardContent className="flex items-center justify-between p-4">
+						<div>
+							<p className="mb-1 font-medium text-muted-foreground text-sm">Showing Segments</p>
+							<p className="font-bold text-3xl">{filteredSegments.length}</p>
 						</div>
-						<input
-							type="range"
-							min="0"
-							max="100"
-							step="5"
-							value={minScore}
-							onChange={(e) => setMinScore(Number.parseInt(e.target.value, 10))}
-							className="w-full"
-						/>
-					<div className="mt-2 flex justify-between text-muted-foreground text-xs">
-						<span>0</span>
-						<span>25</span>
-						<span>50</span>
-						<span>75</span>
-					</div>
-					<div className="grid gap-3 sm:grid-cols-2">
-						<div className="rounded-lg border bg-muted/30 p-3">
-							<p className="text-muted-foreground text-xs">Bullseye segments (75+)</p>
-							<p className="font-bold text-2xl">{bullseyeCount}</p>
+						<div className="rounded-full bg-primary/10 p-3">
+							<Target className="h-6 w-6 text-primary" />
 						</div>
-						<div className="rounded-lg border bg-muted/30 p-3">
-							<p className="text-muted-foreground text-xs">High potential (50+)</p>
-							<p className="font-bold text-2xl">{highPotentialCount}</p>
+					</CardContent>
+				</Card>
+				<Card className="border-red-200 bg-red-50">
+					<CardContent className="flex items-center justify-between p-4">
+						<div>
+							<p className="mb-1 font-medium text-red-800/70 text-sm">Bullseye (75+)</p>
+							<p className="font-bold text-3xl text-red-900">{bullseyeCount}</p>
 						</div>
-					</div>
-				</div>
+						<div className="rounded-full bg-red-100 p-3">
+							<Target className="h-6 w-6 text-red-600" />
+						</div>
+					</CardContent>
+				</Card>
+				<Card className="border-orange-200 bg-orange-50">
+					<CardContent className="flex items-center justify-between p-4">
+						<div>
+							<p className="mb-1 font-medium text-orange-800/70 text-sm">High Potential (50+)</p>
+							<p className="font-bold text-3xl text-orange-900">{highPotentialCount}</p>
+						</div>
+						<div className="rounded-full bg-orange-100 p-3">
+							<TrendingUp className="h-6 w-6 text-orange-600" />
+						</div>
+					</CardContent>
+				</Card>
+			</div> */}
 
-					{/* Results Count */}
-					<div className="text-center text-muted-foreground text-sm">
-						Showing {filteredSegments.length} of {segments.length} segments
-					</div>
-				</CardContent>
-			</Card>
-
-		{/* Segments List */}
+			{/* Segments List */}
 			{filteredSegments.length === 0 ? (
 				<Card>
 					<CardContent className="py-12 text-center">
@@ -246,8 +253,10 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 									{kindSegments.map((segment) => (
 										<Link key={segment.id} to={segment.id}>
 											<Card
-												className={`transition-shadow hover:shadow-lg ${
-													segment.bullseye_score >= 75 ? "border-red-200 ring-2 ring-red-100" : ""
+												className={`border-2 transition-shadow hover:shadow-lg ${
+													segment.bullseye_score >= 75
+														? "border-red-300 ring-2 ring-red-100"
+														: "border-border hover:border-primary/50"
 												}`}
 											>
 												<CardHeader>
@@ -257,7 +266,9 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 																{segment.bullseye_score >= 75 && <Target className="h-5 w-5 text-red-600" />}
 																{segment.label}
 															</CardTitle>
-															<p className="text-muted-foreground text-xs">{KIND_LABELS[segment.kind] || segment.kind}</p>
+															<p className="text-muted-foreground text-xs">
+																{KIND_LABELS[segment.kind] || segment.kind}
+															</p>
 														</div>
 														<Badge variant="outline" className={getBullseyeColor(segment.bullseye_score)}>
 															{segment.bullseye_score}
@@ -265,7 +276,7 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 													</div>
 												</CardHeader>
 												<CardContent>
-													<div className="flex items-center justify-between text-sm text-muted-foreground">
+													<div className="flex items-center justify-between text-muted-foreground text-sm">
 														<span className="flex items-center gap-1">
 															<Users className="h-4 w-4" />
 															{segment.person_count} people
@@ -289,8 +300,10 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 					{filteredSegments.map((segment) => (
 						<Link key={segment.id} to={segment.id}>
 							<Card
-								className={`transition-shadow hover:shadow-lg ${
-									segment.bullseye_score >= 75 ? "border-red-200 ring-2 ring-red-100" : ""
+								className={`border-2 transition-shadow hover:shadow-lg ${
+									segment.bullseye_score >= 75
+										? "border-red-300 ring-2 ring-red-100"
+										: "border-border hover:border-primary/50"
 								}`}
 							>
 								<CardHeader>
@@ -308,7 +321,7 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 									</div>
 								</CardHeader>
 								<CardContent>
-									<div className="flex items-center justify-between text-sm text-muted-foreground">
+									<div className="flex items-center justify-between text-muted-foreground text-sm">
 										<span className="flex items-center gap-1">
 											<Users className="h-4 w-4" />
 											{segment.person_count} people
@@ -326,35 +339,44 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 			)}
 
 			{/* Bullseye Score Explainer */}
-			<Card className="mt-8">
-				<CardHeader>
-					<CardTitle className="flex items-center gap-2">
-						<Target className="h-5 w-5" />
-						About Bullseye Scores
-					</CardTitle>
-				</CardHeader>
-				<CardContent className="space-y-4 text-muted-foreground text-sm">
-					<p>
-						The <strong>Bullseye Score</strong> (0-100) indicates how likely a segment is to buy your product based on
-						three factors:
-					</p>
-					<ul className="space-y-2 pl-6">
-						<li className="list-disc">
-							<strong>Sample Size</strong> (25 points) – Confidence increases with more people and evidence
-						</li>
-						<li className="list-disc">
-							<strong>Willingness to Pay</strong> (40 points) – Signals they'll pay for a solution
-						</li>
-						<li className="list-disc">
-							<strong>Pain Intensity</strong> (35 points) – Higher pain = more urgency to solve
-						</li>
-					</ul>
-					<p>
-						Focus on <strong>75+ scores</strong> for your initial target market. Expand to 50+ once you've validated
-						product-market fit with the bullseye segment.
-					</p>
-				</CardContent>
-			</Card>
+			<Collapsible open={isExplainerOpen} onOpenChange={setIsExplainerOpen}>
+				<Card className="mt-8">
+					<CollapsibleTrigger asChild>
+						<CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+							<CardTitle className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Target className="h-5 w-5" />
+									About Bullseye Scores
+								</div>
+								<ChevronDown className={`h-4 w-4 transition-transform ${isExplainerOpen ? "rotate-180" : ""}`} />
+							</CardTitle>
+						</CardHeader>
+					</CollapsibleTrigger>
+					<CollapsibleContent>
+						<CardContent className="space-y-4 text-muted-foreground text-sm">
+							<p>
+								The <strong>Bullseye Score</strong> (0-100) indicates how likely a segment is to buy your product based
+								on three factors:
+							</p>
+							<ul className="space-y-2 pl-6">
+								<li className="list-disc">
+									<strong>Sample Size</strong> (25 points) – Confidence increases with more people and evidence
+								</li>
+								<li className="list-disc">
+									<strong>Willingness to Pay</strong> (40 points) – Signals they'll pay for a solution
+								</li>
+								<li className="list-disc">
+									<strong>Pain Intensity</strong> (35 points) – Higher pain = more urgency to solve
+								</li>
+							</ul>
+							<p>
+								Focus on <strong>75+ scores</strong> for your initial target market. Expand to 50+ once you've validated
+								product-market fit with the bullseye segment.
+							</p>
+						</CardContent>
+					</CollapsibleContent>
+				</Card>
+			</Collapsible>
 		</div>
 	)
 }

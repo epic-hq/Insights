@@ -18,7 +18,13 @@ export interface PainMatrixProps {
  * Pain × User Type Matrix Visualization for Product Lens
  * Shows impact scores, frequency, and intensity in a heat map
  */
-export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSegmentSlug, onSegmentChange }: PainMatrixProps) {
+export function PainMatrixComponent({
+	matrix,
+	onCellClick,
+	segments,
+	selectedSegmentSlug,
+	onSegmentChange,
+}: PainMatrixProps) {
 	const [sortBy, setSortBy] = useState<"impact" | "frequency">("impact")
 	const [minImpact, setMinImpact] = useState(0)
 
@@ -66,29 +72,37 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 			</div>
 
 			{/* Key Insights + KPIs/Controls on Right */}
-			<div className="gap-4 grid grid-cols-1 lg:grid-cols-[1fr_auto]">
+			<div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
 				{/* AI-Generated Insights */}
-				<div className="bg-primary/5 border border-primary/20 p-4 rounded-lg">
-					<h3 className="mb-2 flex items-center gap-2 font-semibold text-sm">
-						<span>💡</span> Key Insights
+				<div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+					<h3 className="mb-4 flex items-center gap-2 font-semibold text-sm">
+						<span>💡</span> Key Insights & Actions
 					</h3>
-					<p className="whitespace-pre-line text-sm leading-relaxed mb-4">{insights}</p>
+					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
+						{/* Key Insights */}
+						<div>
+							<h4 className="mb-2 font-medium text-sm">Key Insights</h4>
+							<p className="text-sm leading-relaxed">{insights.split("\n\nTop 3 Actions:")[0] || insights}</p>
+						</div>
 
-					{/* Evidence Summary Stats moved here */}
-					<div className="border-t pt-4 mt-4">
-						<h4 className="mb-2 font-semibold text-sm">Data Summary</h4>
-						<div className="grid grid-cols-2 gap-2 text-xs">
-							<div>
-								<span className="text-muted-foreground">Evidence:</span> <span className="font-semibold">{matrix.summary.total_evidence}</span>
-							</div>
-							<div>
-								<span className="text-muted-foreground">Pain Themes:</span> <span className="font-semibold">{matrix.summary.total_pains}</span>
-							</div>
-							<div>
-								<span className="text-muted-foreground">User Groups:</span> <span className="font-semibold">{matrix.summary.total_groups}</span>
-							</div>
-							<div>
-								<span className="text-muted-foreground">High Impact:</span> <span className="font-semibold">{matrix.summary.high_impact_cells}</span>
+						{/* Top 3 Actions */}
+						<div>
+							<h4 className="mb-2 font-medium text-sm">Top 3 Actions</h4>
+							<div className="space-y-2">
+								{(() => {
+									const actionsText = insights.split("\n\nTop 3 Actions:")[1] || ""
+									if (!actionsText) return <p className="text-muted-foreground text-sm">No actions available</p>
+
+									const actions = actionsText.split("\n").filter((line) => line.trim())
+									return actions.map((action) => (
+										<div key={action} className="flex items-start gap-2">
+											<span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center bg-primary font-semibold text-primary-foreground text-xs">
+												{actions.indexOf(action) + 1}
+											</span>
+											<p className="text-sm leading-relaxed">{action.replace(/^\d+\.\s*/, "")}</p>
+										</div>
+									))
+								})()}
 							</div>
 						</div>
 					</div>
@@ -97,7 +111,7 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 				{/* KPIs + Controls */}
 				<div className="flex flex-col gap-4">
 					{/* Segment Filter */}
-					<div className="bg-card border flex flex-col gap-2 p-3 rounded-lg">
+					<div className="flex flex-col gap-2 rounded-lg border bg-card p-3">
 						<label className="font-medium text-sm">Filter by Segment</label>
 						{segments && onSegmentChange && (
 							<Select value={selectedSegmentSlug || "all"} onValueChange={onSegmentChange}>
@@ -110,9 +124,9 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 										.filter((s) => s.person_count > 0)
 										.map((segment) => (
 											<SelectItem key={segment.kind} value={segment.kind} className="py-2.5">
-												<span className="flex gap-3 items-center justify-between w-full">
+												<span className="flex w-full items-center justify-between gap-3">
 													<span>{segment.label}</span>
-													<span className="text-xs text-muted-foreground">({segment.person_count})</span>
+													<span className="text-muted-foreground text-xs">({segment.person_count})</span>
 												</span>
 											</SelectItem>
 										))}
@@ -122,14 +136,14 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 					</div>
 
 					{/* Controls */}
-					<div className="bg-muted/30 border flex flex-col gap-3 p-3 rounded-lg">
+					<div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3">
 						{/* Sort Control */}
 						<div className="flex flex-col gap-2">
 							<label className="font-medium text-xs">Sort by:</label>
 							<select
 								value={sortBy}
 								onChange={(e) => setSortBy(e.target.value as "impact" | "frequency")}
-								className="bg-background border px-2 py-1 rounded text-sm"
+								className="rounded border bg-background px-2 py-1 text-sm"
 							>
 								<option value="impact">Impact Score</option>
 								<option value="frequency">Frequency</option>
@@ -164,9 +178,9 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 				<table className="w-full">
 					<thead className="bg-muted">
 						<tr>
-							<th className="font-semibold left-0 px-4 py-3 sticky text-left text-sm z-10">Pain Theme</th>
+							<th className="sticky left-0 z-10 px-4 py-3 text-left font-semibold text-sm">Pain Theme</th>
 							{userGroups.map((group) => (
-								<th key={group.name} className="font-semibold px-4 py-3 text-center text-sm">
+								<th key={group.name} className="px-4 py-3 text-center font-semibold text-sm">
 									<div>{group.name}</div>
 									<div className="font-normal text-muted-foreground text-xs">
 										({group.member_count} {group.member_count === 1 ? "person" : "people"})
@@ -178,7 +192,7 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 					<tbody>
 						{painThemes.map((pain) => (
 							<tr key={pain.id} className="border-t hover:bg-muted/50">
-								<td className="bg-background font-medium left-0 px-4 py-3 sticky text-sm z-10">
+								<td className="sticky left-0 z-10 bg-background px-4 py-3 font-medium text-sm">
 									<div className="max-w-xs truncate" title={pain.name}>
 										{pain.name}
 									</div>
@@ -203,12 +217,12 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 			</div>
 
 			{/* How to Interpret - At Bottom */}
-			<details className="bg-muted/50 border p-4 rounded-lg">
+			<details className="rounded-lg border bg-muted/50 p-4">
 				<summary className="cursor-pointer font-semibold text-sm">📖 How to Interpret This Matrix</summary>
-				<div className="gap-4 grid grid-cols-1 md:grid-cols-2 mt-3 text-sm">
+				<div className="mt-3 grid grid-cols-1 gap-4 text-sm md:grid-cols-2">
 					<div>
-						<strong>Impact Score:</strong> Combines (% affected × group size) × intensity × willingness to pay.
-						Adjusted for small samples. Higher scores = bigger opportunities.
+						<strong>Impact Score:</strong> Combines (% affected × group size) × intensity × willingness to pay. Adjusted
+						for small samples. Higher scores = bigger opportunities.
 					</div>
 					<div>
 						<strong>$ Icon:</strong> Indicates high willingness to pay for a solution
@@ -218,7 +232,7 @@ export function PainMatrixComponent({ matrix, onCellClick, segments, selectedSeg
 					</div>
 					<div>
 						<strong>Heat Map Colors:</strong>
-						<div className="flex flex-wrap gap-2 mt-2">
+						<div className="mt-2 flex flex-wrap gap-2">
 							<ColorLegendItem color="rgba(239, 68, 68, 0.3)" label="Critical (2.0+)" />
 							<ColorLegendItem color="rgba(249, 115, 22, 0.3)" label="High (1.5-2.0)" />
 							<ColorLegendItem color="rgba(234, 179, 8, 0.3)" label="Medium (1.0-1.5)" />
@@ -246,7 +260,7 @@ function MatrixCell({ cell, onClick }: { cell: PainMatrixCell; onClick?: () => v
 	return (
 		<button
 			onClick={onClick}
-			className="group hover:ring-2 hover:ring-primary p-2 relative rounded transition-all w-full"
+			className="group relative w-full rounded p-2 transition-all hover:ring-2 hover:ring-primary"
 			style={{ backgroundColor: bgColor }}
 			title={`${cell.pain_theme_name} × ${cell.user_group.name}\nImpact: ${impactScore.toFixed(2)}\nFrequency: ${Math.round(frequency * 100)}%`}
 		>
@@ -259,7 +273,7 @@ function MatrixCell({ cell, onClick }: { cell: PainMatrixCell; onClick?: () => v
 			</div>
 
 			{/* Tooltip on hover */}
-			<div className="-translate-x-1/2 absolute bg-popover border group-hover:block hidden left-1/2 mt-2 p-3 pointer-events-none rounded-lg shadow-lg text-left top-full w-64 z-20">
+			<div className="-translate-x-1/2 pointer-events-none absolute top-full left-1/2 z-20 mt-2 hidden w-64 rounded-lg border bg-popover p-3 text-left shadow-lg group-hover:block">
 				<div className="mb-2 font-semibold">{cell.pain_theme_name}</div>
 				<div className="mb-2 text-muted-foreground text-xs">{cell.user_group.name}</div>
 				<div className="space-y-1 text-xs">

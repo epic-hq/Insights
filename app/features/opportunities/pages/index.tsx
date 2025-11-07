@@ -1,9 +1,13 @@
+import { Briefcase } from "lucide-react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link } from "react-router-dom"
+import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
+import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { useCurrentProject } from "~/contexts/current-project-context"
 import { getOpportunities } from "~/features/opportunities/db"
+import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction = () => {
@@ -33,91 +37,111 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function OpportunitiesIndexPage() {
 	const { opportunities } = useLoaderData<typeof loader>()
+	const currentProjectContext = useCurrentProject()
+	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 
-	const getStatusColor = (status: string) => {
-		switch (status) {
-			case "identified":
-				return "bg-blue-100 text-blue-800"
-			case "in_progress":
-				return "bg-yellow-100 text-yellow-800"
-			case "completed":
-				return "bg-green-100 text-green-800"
-			case "cancelled":
-				return "bg-red-100 text-red-800"
+	const getKanbanStatusColor = (kanbanStatus: string | null) => {
+		switch (kanbanStatus) {
+			case "Explore":
+				return "bg-blue-50 text-blue-700 border-blue-200"
+			case "Validate":
+				return "bg-yellow-50 text-yellow-700 border-yellow-200"
+			case "Build":
+				return "bg-green-50 text-green-700 border-green-200"
 			default:
-				return "bg-gray-100 text-gray-800"
-		}
-	}
-
-	const getPriorityColor = (priority: string) => {
-		switch (priority) {
-			case "high":
-				return "bg-red-100 text-red-800"
-			case "medium":
-				return "bg-yellow-100 text-yellow-800"
-			case "low":
-				return "bg-green-100 text-green-800"
-			default:
-				return "bg-gray-100 text-gray-800"
+				return "bg-muted text-muted-foreground border-border"
 		}
 	}
 
 	return (
-		<div className="space-y-6">
-			<div className="flex items-center justify-between">
-				<div>
-					<h1 className="font-bold text-3xl tracking-tight">Opportunities</h1>
-					<p className="text-muted-foreground">Manage and track business opportunities from your research insights.</p>
+		<div className="container mx-auto max-w-6xl px-4 py-8">
+			{/* Back Button */}
+			<BackButton />
+
+			{/* Header */}
+			<div className="mb-8">
+				<div className="mb-3 flex items-center gap-3">
+					<Briefcase className="h-8 w-8 text-primary" />
+					<h1 className="text-balance font-bold text-4xl tracking-tight">Opportunities</h1>
+				</div>
+				<p className="text-lg text-muted-foreground">
+					Track business opportunities and link them to customer interviews for BANT qualification
+				</p>
+			</div>
+
+			{/* Action Bar */}
+			<div className="mb-6 flex items-center justify-between">
+				<div className="text-muted-foreground text-sm">
+					{opportunities.length} {opportunities.length === 1 ? "opportunity" : "opportunities"}
 				</div>
 				<Button asChild>
-					<Link to="/opportunities/new">Create Opportunity</Link>
+					<Link to={routes.opportunities.new()}>Create Opportunity</Link>
 				</Button>
 			</div>
 
+			{/* Empty State */}
 			{opportunities.length === 0 ? (
-				<Card>
+				<Card className="border-dashed">
 					<CardContent className="flex flex-col items-center justify-center py-12">
+						<Briefcase className="mb-4 h-12 w-12 text-muted-foreground" />
 						<h3 className="mb-2 font-semibold text-lg">No opportunities yet</h3>
-						<p className="mb-4 text-muted-foreground">
-							Create your first opportunity to start tracking business potential.
+						<p className="mb-4 text-center text-muted-foreground">
+							Create your first opportunity to start tracking your sales pipeline
 						</p>
 						<Button asChild>
-							<Link to="/opportunities/new">Create Opportunity</Link>
+							<Link to={routes.opportunities.new()}>Create Opportunity</Link>
 						</Button>
 					</CardContent>
 				</Card>
 			) : (
+				/* Opportunities Grid */
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{opportunities.map((opportunity) => (
-						<Card key={opportunity.id} className="transition-shadow hover:shadow-md">
-							<CardHeader>
-								<div className="flex items-start justify-between">
-									<CardTitle className="text-lg">
-										<Link to={`/opportunities/${opportunity.id}`} className="hover:underline">
-											{opportunity.title}
-										</Link>
-									</CardTitle>
-									<div className="flex gap-2">
-										<Badge className={getStatusColor(opportunity.status || "")}>{opportunity.status}</Badge>
-										<Badge className={getPriorityColor(opportunity.priority || "")}>{opportunity.priority}</Badge>
+						<Link key={opportunity.id} to={routes.opportunities.detail(opportunity.id)}>
+							<Card className="transition-all hover:shadow-md hover:border-primary/50">
+								<CardHeader>
+									<div className="mb-2 flex items-start justify-between gap-2">
+										<CardTitle className="text-base leading-snug">{opportunity.title}</CardTitle>
+										{opportunity.kanban_status && (
+											<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status)}>
+												{opportunity.kanban_status}
+											</Badge>
+										)}
 									</div>
-								</div>
-								<CardDescription className="line-clamp-2">{opportunity.description}</CardDescription>
-							</CardHeader>
-							<CardContent>
-								<div className="space-y-2">
-									{opportunity.estimated_value && (
-										<div className="text-sm">
-											<span className="font-medium">Estimated Value:</span> $
-											{opportunity.estimated_value.toLocaleString()}
-										</div>
+									{opportunity.description && (
+										<p className="line-clamp-2 text-muted-foreground text-sm">{opportunity.description}</p>
 									)}
-									<div className="text-muted-foreground text-sm">
-										Created {new Date(opportunity.created_at).toLocaleDateString()}
+								</CardHeader>
+								<CardContent>
+									<div className="space-y-2 text-sm">
+										{opportunity.amount && (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Amount</span>
+												<span className="font-medium">${Number(opportunity.amount).toLocaleString()}</span>
+											</div>
+										)}
+										{opportunity.stage && (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Stage</span>
+												<span className="font-medium">{opportunity.stage}</span>
+											</div>
+										)}
+										{opportunity.close_date && (
+											<div className="flex justify-between">
+												<span className="text-muted-foreground">Close Date</span>
+												<span className="font-medium">{new Date(opportunity.close_date).toLocaleDateString()}</span>
+											</div>
+										)}
+										<div className="flex justify-between border-t pt-2">
+											<span className="text-muted-foreground text-xs">Created</span>
+											<span className="text-muted-foreground text-xs">
+												{new Date(opportunity.created_at).toLocaleDateString()}
+											</span>
+										</div>
 									</div>
-								</div>
-							</CardContent>
-						</Card>
+								</CardContent>
+							</Card>
+						</Link>
 					))}
 				</div>
 			)}

@@ -1,8 +1,10 @@
 import type { LucideIcon } from "lucide-react"
 import {
 	BookOpen,
+	Briefcase,
 	Building2,
 	Compass,
+	DollarSign,
 	File,
 	Grid3x3,
 	Lightbulb,
@@ -96,6 +98,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.productLens(),
 			},
 			{
+				key: "bant-lens",
+				title: "BANT Lens",
+				description: "Budget × authority matrix",
+				icon: DollarSign,
+				to: (routes) => routes.bantLens(),
+			},
+			{
 				key: "insights",
 				title: "Findings",
 				description: "Published insights & next steps",
@@ -124,6 +133,13 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => {
 					return routes.organizations.index()
 				},
+			},
+			{
+				key: "opportunities",
+				title: "Opportunities",
+				description: "Sales pipeline & deals",
+				icon: Briefcase,
+				to: (routes) => routes.opportunities.index(),
 			},
 			{
 				key: "segments",

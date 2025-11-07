@@ -1,10 +1,12 @@
+import { useId } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, redirect, useActionData, useLoaderData } from "react-router-dom"
-import { PageContainer } from "~/components/layout/PageContainer"
+import { BackButton } from "~/components/ui/back-button"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { Label } from "~/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Textarea } from "~/components/ui/textarea"
 
 import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db"
 import { userContext } from "~/server/user-context"
@@ -76,7 +78,8 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				return { error: "Failed to delete opportunity" }
 			}
 
-			return redirect("/opportunities")
+			// Redirect to opportunities list with full path context
+			return redirect(`/a/${accountId}/${projectId}/opportunities`)
 		} catch (_error) {
 			return { error: "Failed to delete opportunity" }
 		}
@@ -84,29 +87,41 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 	// Handle update
 	const title = formData.get("title") as string
+	const description = formData.get("description") as string
 	const kanbanStatus = formData.get("kanban_status") as string
+	const stage = formData.get("stage") as string
+	const amount = formData.get("amount") as string
+	const closeDate = formData.get("close_date") as string
 
 	if (!title?.trim()) {
 		return { error: "Title is required" }
 	}
 
 	try {
+		const updateData: any = {
+			title: title.trim(),
+			kanban_status: kanbanStatus || "Explore",
+		}
+
+		if (description?.trim()) updateData.description = description.trim()
+		if (stage?.trim()) updateData.stage = stage.trim()
+		if (amount) updateData.amount = Number(amount)
+		if (closeDate) updateData.close_date = closeDate
+
 		const { data, error } = await updateOpportunity({
 			supabase,
 			id: opportunityId,
 			accountId,
 			projectId,
-			data: {
-				title: title.trim(),
-				kanban_status: kanbanStatus || "Explore",
-			},
+			data: updateData,
 		})
 
 		if (error) {
 			return { error: "Failed to update opportunity" }
 		}
 
-		return redirect(`/opportunities/${data.id}`)
+		// Redirect to opportunity detail with full path context
+		return redirect(`/a/${accountId}/${projectId}/opportunities/${data.id}`)
 	} catch (_error) {
 		return { error: "Failed to update opportunity" }
 	}
@@ -117,17 +132,19 @@ export default function EditOpportunity() {
 	const actionData = useActionData<typeof action>()
 
 	return (
-		<PageContainer size="sm" padded={false} className="max-w-2xl">
+		<div className="container mx-auto max-w-3xl px-4 py-8">
+			<BackButton />
+
 			<div className="mb-8">
-				<h1 className="font-bold text-3xl text-gray-900">Edit Opportunity</h1>
-				<p className="mt-2 text-gray-600">Update opportunity details</p>
+				<h1 className="font-bold text-3xl tracking-tight">Edit Opportunity</h1>
+				<p className="mt-2 text-muted-foreground">Update opportunity details</p>
 			</div>
 
 			<Form method="post" className="space-y-6">
 				<div>
 					<Label htmlFor="title">Title *</Label>
 					<Input
-						id="title"
+						id={useId()}
 						name="title"
 						type="text"
 						required
@@ -138,22 +155,76 @@ export default function EditOpportunity() {
 				</div>
 
 				<div>
-					<Label htmlFor="kanban_status">Status</Label>
-					<Select name="kanban_status" defaultValue={opportunity.kanban_status || "Explore"}>
-						<SelectTrigger className="mt-1">
-							<SelectValue placeholder="Select status" />
-						</SelectTrigger>
-						<SelectContent>
-							<SelectItem value="Explore">Explore</SelectItem>
-							<SelectItem value="Validate">Validate</SelectItem>
-							<SelectItem value="Build">Build</SelectItem>
-						</SelectContent>
-					</Select>
+					<Label htmlFor="description">Description</Label>
+					<Textarea
+						id={useId()}
+						name="description"
+						defaultValue={opportunity.description || ""}
+						placeholder="Enter opportunity description"
+						className="mt-1 min-h-[100px]"
+					/>
+				</div>
+
+				<div className="grid gap-6 md:grid-cols-2">
+					<div>
+						<Label htmlFor="kanban_status">Status</Label>
+						<Select name="kanban_status" defaultValue={opportunity.kanban_status || "Explore"}>
+							<SelectTrigger className="mt-1">
+								<SelectValue placeholder="Select status" />
+							</SelectTrigger>
+							<SelectContent>
+								<SelectItem value="Explore">Explore</SelectItem>
+								<SelectItem value="Validate">Validate</SelectItem>
+								<SelectItem value="Build">Build</SelectItem>
+							</SelectContent>
+						</Select>
+					</div>
+
+					<div>
+						<Label htmlFor="stage">Sales Stage</Label>
+						<Input
+							id={useId()}
+							name="stage"
+							type="text"
+							defaultValue={opportunity.stage || ""}
+							placeholder="e.g., Discovery, Proposal, Negotiation"
+							className="mt-1"
+						/>
+					</div>
+				</div>
+
+				<div className="grid gap-6 md:grid-cols-2">
+					<div>
+						<Label htmlFor="amount">Deal Value ($)</Label>
+						<Input
+							id={useId()}
+							name="amount"
+							type="number"
+							step="0.01"
+							min="0"
+							defaultValue={opportunity.amount ? Number(opportunity.amount) : ""}
+							placeholder="0.00"
+							className="mt-1"
+						/>
+					</div>
+
+					<div>
+						<Label htmlFor="close_date">Expected Close Date</Label>
+						<Input
+							id={useId()}
+							name="close_date"
+							type="date"
+							defaultValue={
+								opportunity.close_date ? new Date(opportunity.close_date).toISOString().split("T")[0] : ""
+							}
+							className="mt-1"
+						/>
+					</div>
 				</div>
 
 				{actionData?.error && (
-					<div className="rounded-md bg-red-50 p-4">
-						<p className="text-red-700 text-sm">{actionData.error}</p>
+					<div className="rounded-md border border-destructive/50 bg-destructive/10 p-4">
+						<p className="text-destructive text-sm">{actionData.error}</p>
 					</div>
 				)}
 
@@ -166,8 +237,10 @@ export default function EditOpportunity() {
 			</Form>
 
 			<div className="mt-12 border-t pt-8">
-				<h2 className="font-semibold text-lg text-red-600">Danger Zone</h2>
-				<p className="mt-2 text-gray-600 text-sm">Permanently delete this opportunity. This action cannot be undone.</p>
+				<h2 className="font-semibold text-lg text-destructive">Danger Zone</h2>
+				<p className="mt-2 text-muted-foreground text-sm">
+					Permanently delete this opportunity. This action cannot be undone.
+				</p>
 				<Form method="post" className="mt-4">
 					<input type="hidden" name="intent" value="delete" />
 					<Button
@@ -183,6 +256,6 @@ export default function EditOpportunity() {
 					</Button>
 				</Form>
 			</div>
-		</PageContainer>
+		</div>
 	)
 }

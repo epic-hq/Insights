@@ -343,7 +343,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-					(researchRollup?.research_questions_without_decision?.length || 0) > 0
+				(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -408,7 +408,7 @@ export default function ProjectStatusScreen({
 	}
 
 	return (
-		<>
+		<div >
 			{isAnalyzing && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80">
 					<Loader2 className="h-8 w-8 animate-spin text-foreground" />
@@ -416,10 +416,12 @@ export default function ProjectStatusScreen({
 			)}
 
 			{/* Compact Header - Mobile Responsive */}
-			<div className="border-border border-b bg-background px-4 py-4 sm:px-3">
+			<div className="mx-auto flex w-full max-w-[1440px] border-border border-b bg-background px-4 py-4 sm:px-3">
 				<div className="flex max-w-none flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div className="group relative">
-						<p className="font-semibold text-foreground text-lg sm:text-xl">Project: {displayData.projectName}</p>
+						<p className="font-semibold text-foreground text-lg sm:text-xl">
+							Project: {displayData.projectName}
+						</p>
 						<button
 							onClick={() => {
 								if (routes && projectId) {
@@ -892,6 +894,6 @@ export default function ProjectStatusScreen({
 					)}
 				</div>
 			)}
-		</>
+		</div>
 	)
 }

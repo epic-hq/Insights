@@ -54,10 +54,11 @@ function useAnnotations({
 	const [annotations, setAnnotations] = useState<Annotation[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const annotationsEndpoint = useMemo(() => (projectPath ? routes.api.annotations() : null), [projectPath, routes])
 
 	// Fetch annotations on mount and when parameters change
 	useEffect(() => {
-		if (!entityId || !projectPath) return
+		if (!entityId || !annotationsEndpoint) return
 
 		setIsLoading(true)
 		setError(null)
@@ -69,9 +70,9 @@ function useAnnotations({
 			includeThreads: includeThreads.toString(),
 		})
 
-		fetcher.load(`${routes.api.annotations()}?${searchParams}`)
+		fetcher.load(`${annotationsEndpoint}?${searchParams}`)
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, annotationType, includeThreads, projectPath, fetcher.load, routes.api.annotations])
+	}, [entityType, entityId, annotationType, includeThreads, annotationsEndpoint])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -152,13 +153,14 @@ function useAnnotations({
 		updateAnnotation,
 		deleteAnnotation,
 		refetch: () => {
+			if (!annotationsEndpoint) return
 			const searchParams = new URLSearchParams({
 				entityType,
 				entityId,
 				...(annotationType && { annotationType }),
 				includeThreads: includeThreads.toString(),
 			})
-			fetcher.load(`${routes.api.annotations()}?${searchParams}`)
+			fetcher.load(`${annotationsEndpoint}?${searchParams}`)
 		},
 	}
 }
@@ -180,10 +182,11 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 	})
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath, routes])
 
 	// Fetch vote counts on mount and when parameters change
 	useEffect(() => {
-		if (!entityId || !projectPath) return
+		if (!entityId || !votesEndpoint) return
 
 		setIsLoading(true)
 		setError(null)
@@ -192,10 +195,9 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 			entityType,
 			entityId,
 		})
-		const votesUrl = routes.api.votes()
-		fetcher.load(`${votesUrl}?${searchParams}`)
+		fetcher.load(`${votesEndpoint}?${searchParams}`)
 		// Depend only on stable inputs to avoid loops
-	}, [entityType, entityId, projectPath, fetcher.load, routes.api.votes])
+	}, [entityType, entityId, votesEndpoint])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -271,11 +273,12 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 		upvote,
 		downvote,
 		refetch: () => {
+			if (!votesEndpoint) return
 			const searchParams = new URLSearchParams({
 				entityType,
 				entityId,
 			})
-			fetcher.load(`${routes.api.votes()}?${searchParams}`)
+			fetcher.load(`${votesEndpoint}?${searchParams}`)
 		},
 	}
 }
@@ -297,10 +300,11 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 	})
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
+	const entityFlagsEndpoint = useMemo(() => (projectPath ? routes.api.entityFlags() : null), [projectPath, routes])
 
 	// Fetch flags on mount and when parameters change
 	useEffect(() => {
-		if (!entityId || !projectPath) return
+		if (!entityId || !entityFlagsEndpoint) return
 
 		setIsLoading(true)
 		setError(null)
@@ -310,9 +314,9 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 			entityId,
 		})
 
-		fetcher.load(`${routes.api.entityFlags()}?${searchParams}`)
+		fetcher.load(`${entityFlagsEndpoint}?${searchParams}`)
 		// Only depend on stable inputs; avoid fetcher/routes object identity churn
-	}, [entityType, entityId, projectPath, fetcher.load, routes.api.entityFlags])
+	}, [entityType, entityId, entityFlagsEndpoint])
 
 	// Handle fetcher state changes
 	useEffect(() => {
@@ -386,11 +390,12 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 		setPriority,
 		unsetPriority,
 		refetch: () => {
+			if (!entityFlagsEndpoint) return
 			const searchParams = new URLSearchParams({
 				entityType,
 				entityId,
 			})
-			fetcher.load(`${routes.api.entityFlags()}?${searchParams}`)
+			fetcher.load(`${entityFlagsEndpoint}?${searchParams}`)
 		},
 	}
 }
