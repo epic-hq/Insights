@@ -4,8 +4,10 @@ import consola from "consola"
 import { z } from "zod"
 import { getPersonas } from "~/features/personas/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { PRODUCTION_HOST } from "~/paths"
 import { personasDetailSchema } from "~/schemas"
 import type { Database } from "~/types"
+import { createRouteDefinitions } from "~/utils/route-definitions"
 
 export const fetchPersonasTool = createTool({
 	id: "fetch-personas",
@@ -66,6 +68,7 @@ export const fetchPersonasTool = createTool({
 		try {
 			// Use the centralized database function
 			const projectIdStr = projectId as string
+			const accountIdStr = runtimeAccountId as string
 			const { data: personasData, error } = await getPersonas({
 				supabase,
 				projectId: projectIdStr,
@@ -75,6 +78,10 @@ export const fetchPersonasTool = createTool({
 				consola.error("fetch-personas: failed to fetch personas", error)
 				throw error
 			}
+
+			// Generate route definitions for URL generation
+			const projectPath = accountIdStr && projectIdStr ? `/a/${accountIdStr}/${projectIdStr}` : ""
+			const routes = createRouteDefinitions(projectPath)
 
 			let personas = (personasData || []).map((persona) => ({
 				id: persona.id,
@@ -91,6 +98,7 @@ export const fetchPersonasTool = createTool({
 						: 0,
 				createdAt: persona.created_at ? new Date(persona.created_at).toISOString() : null,
 				updatedAt: persona.updated_at ? new Date(persona.updated_at).toISOString() : null,
+				url: projectPath ? `${PRODUCTION_HOST}${routes.personas.detail(persona.id)}` : null,
 			}))
 
 			// Apply search filtering if provided

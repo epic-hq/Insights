@@ -1,12 +1,10 @@
 import { useChat } from "@ai-sdk/react"
+import type { ToolCallPart, ToolResultPart } from "ai"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import consola from "consola"
-import { motion } from "framer-motion"
 import { BotMessageSquare, ChevronLeft, ChevronRight } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useMemo, useRef, useState } from "react"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
@@ -142,10 +140,12 @@ export function ProjectStatusAgentChat({
 											message.parts?.map((part) => {
 												if (part.type === "text") return part.text
 												if (part.type === "tool-call") {
-													return `Requesting tool: ${part.toolName ?? "unknown"}`
+													const toolPart = part as ToolCallPart
+													return `Requesting tool: ${toolPart.toolName ?? "unknown"}`
 												}
 												if (part.type === "tool-result") {
-													return `Tool result: ${part.toolName ?? "unknown"}`
+													const toolPart = part as ToolResultPart
+													return `Tool result: ${toolPart.toolName ?? "unknown"}`
 												}
 												return ""
 											}) ?? []

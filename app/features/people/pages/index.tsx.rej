@@ -1,0 +1,13 @@
+@@ -145,9 +145,9 @@
+ 						value={scope}
+ 						onValueChange={(value) => {
+ 							if (value) {
+-								const url = new URL(window.location.href)
+-								url.searchParams.set("scope", value)
+-								window.location.href = url.toString()
++								const newParams = new URLSearchParams(searchParams)
++								newParams.set("scope", value)
++								navigate(`?${newParams.toString()}`, { replace: true })
+ 							}
+ 						}}
+ 						className="w-full sm:w-auto"

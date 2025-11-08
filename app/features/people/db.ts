@@ -6,13 +6,14 @@ export const getPeople = async ({
 	supabase,
 	accountId,
 	projectId,
+	scope = "project",
 }: {
 	supabase: SupabaseClient<Database>
 	accountId: string
 	projectId: string
+	scope?: "project" | "account"
 }) => {
-	void accountId
-	const { data, error } = await supabase
+	let query = supabase
 		.from("people")
 		.select(`
 			*,
@@ -71,9 +72,14 @@ export const getPeople = async ({
                                 )
 			)
 		`)
-		// .eq("account_id", accountId)
-		.eq("project_id", projectId)
-		.order("created_at", { ascending: false })
+		.eq("account_id", accountId)
+
+	// Filter by project or account based on scope
+	if (scope === "project") {
+		query = query.eq("project_id", projectId)
+	}
+
+	const { data, error} = await query.order("created_at", { ascending: false })
 
 	// consola.log("getPeople data: ", data)
 	return { data, error }

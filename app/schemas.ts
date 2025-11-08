@@ -62,6 +62,7 @@ export const personDetailSchema = z.object({
 				description: nullableString,
 				assigned_at: nullableString,
 				confidence_score: z.number().nullable(),
+				url: nullableString,
 			})
 		)
 		.optional(),
@@ -73,6 +74,7 @@ export const personDetailSchema = z.object({
 				interview_date: nullableString,
 				status: nullableString,
 				evidenceCount: z.number().optional(),
+				url: nullableString,
 			})
 		)
 		.optional(),
@@ -87,6 +89,7 @@ export const personDetailSchema = z.object({
 				interview_title: nullableString,
 				interview_date: nullableString,
 				created_at: nullableString,
+				url: nullableString,
 			})
 		)
 		.optional(),
@@ -115,6 +118,7 @@ export const personDetailSchema = z.object({
 	evidenceCount: z.number().optional(),
 	created_at: nullableString,
 	updated_at: nullableString,
+	url: nullableString,
 })
 
 // Evidence detail schema (used by fetch-evidence tool) - further simplified
@@ -136,6 +140,7 @@ export const evidenceDetailSchema = z.object({
 	personName: z.string().nullable(),
 	personRole: z.string().nullable(),
 	insightCount: z.number().nullable(),
+	url: nullableString,
 })
 
 // Project goals schema (used by fetch-project-goals tool)
@@ -164,6 +169,7 @@ export const personasDetailSchema = z.object({
 	peopleCount: z.number(),
 	createdAt: nullableString,
 	updatedAt: nullableString,
+	url: nullableString,
 })
 
 // Theme detail schema (used by fetch-themes tool)
@@ -178,6 +184,7 @@ export const themeDetailSchema = z.object({
 	evidenceCount: z.number(),
 	createdAt: nullableString,
 	updatedAt: nullableString,
+	url: nullableString,
 })
 
 // Type exports - use these instead of z.infer<typeof schema> everywhere

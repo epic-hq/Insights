@@ -3,7 +3,6 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
 import type { contactInfoSchema } from "~/schemas"
 import { personDetailSchema } from "~/schemas"
 import type {
@@ -493,7 +492,7 @@ export const fetchPeopleDetailsTool = createTool({
 								interview_date: normalizeDate(interview.interview_date),
 								status: interview.status,
 								evidenceCount: interviewEvidenceCount,
-								url: projectPath ? `${PRODUCTION_HOST}${routes.interviews.detail(interview.id)}` : null,
+								url: projectPath ? routes.interviews.detail(interview.id) : null,
 							}
 						})
 						.filter(Boolean)
@@ -536,7 +535,7 @@ export const fetchPeopleDetailsTool = createTool({
 								description: pp.personas?.description ?? null,
 								assigned_at: normalizeDate(pp.assigned_at),
 								confidence_score: pp.confidence_score,
-								url: projectPath && pp.personas?.id ? `${PRODUCTION_HOST}${routes.personas.detail(pp.personas.id)}` : null,
+								url: projectPath && pp.personas?.id ? routes.personas.detail(pp.personas.id) : null,
 							}))
 							: undefined,
 						interviews: includeEvidence ? interviews : undefined,
@@ -551,7 +550,7 @@ export const fetchPeopleDetailsTool = createTool({
 								interview_title: ev.interview?.title ?? null,
 								interview_date: normalizeDate(ev.interview?.interview_date),
 								created_at: normalizeDate(ev.created_at),
-								url: projectPath ? `${PRODUCTION_HOST}${routes.evidence.detail(ev.id)}` : null,
+								url: projectPath ? routes.evidence.detail(ev.id) : null,
 							}))
 							: undefined,
 						facets: includeFacets
@@ -575,7 +574,6 @@ export const fetchPeopleDetailsTool = createTool({
 						evidenceCount: includeEvidence ? evidenceCount : undefined,
 						created_at: normalizeDate(person.created_at),
 						updated_at: normalizeDate(person.updated_at),
-					url: projectPath ? `${PRODUCTION_HOST}${routes.people.detail(person.id)}` : null,
 					}
 				})
 				.filter(Boolean) as z.infer<typeof personDetailSchema>[]

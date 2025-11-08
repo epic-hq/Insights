@@ -4,8 +4,10 @@ import consola from "consola"
 import { z } from "zod"
 import { getThemes } from "~/features/themes/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
+import { PRODUCTION_HOST } from "~/paths"
 import { themeDetailSchema } from "~/schemas"
 import type { Database } from "~/types"
+import { createRouteDefinitions } from "~/utils/route-definitions"
 
 export const fetchThemesTool = createTool({
 	id: "fetch-themes",
@@ -63,6 +65,7 @@ export const fetchThemesTool = createTool({
 		try {
 			// Use the centralized database function
 			const projectIdStr = projectId as string
+			const accountIdStr = runtimeAccountId as string
 			const { data: themesData, error } = await getThemes({
 				supabase,
 				projectId: projectIdStr,
@@ -72,6 +75,10 @@ export const fetchThemesTool = createTool({
 				consola.error("fetch-themes: failed to fetch themes", error)
 				throw error
 			}
+
+			// Generate route definitions for URL generation
+			const projectPath = accountIdStr && projectIdStr ? `/a/${accountIdStr}/${projectIdStr}` : ""
+			const routes = createRouteDefinitions(projectPath)
 
 			let themes = (themesData || []).map((theme) => ({
 				id: theme.id,
@@ -88,6 +95,7 @@ export const fetchThemesTool = createTool({
 						: 0,
 				createdAt: theme.created_at ? new Date(theme.created_at).toISOString() : null,
 				updatedAt: theme.updated_at ? new Date(theme.updated_at).toISOString() : null,
+				url: projectPath ? `${PRODUCTION_HOST}${routes.themes.detail(theme.id)}` : null,
 			}))
 
 			// Apply search filtering if provided
