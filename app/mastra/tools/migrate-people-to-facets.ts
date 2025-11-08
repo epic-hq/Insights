@@ -15,7 +15,10 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 
 // Schema for LLM classification output
 const PersonSegmentClassification = z.object({
-	job_function: z.string().nullable().describe("Job function like 'Product Manager', 'Developer', 'Designer', 'Founder'"),
+	job_function: z
+		.string()
+		.nullable()
+		.describe("Job function like 'Product Manager', 'Developer', 'Designer', 'Founder'"),
 	seniority_level: z
 		.string()
 		.nullable()
@@ -27,11 +30,7 @@ const PersonSegmentClassification = z.object({
 		.nullable()
 		.describe("Life stage like 'Student', 'Early Career', 'Mid-Career', 'Established Professional', 'Parent'"),
 	age_range: z.string().nullable().describe("Age range like '18-24', '25-34', '35-44', '45-54', '55+'"),
-	confidence: z
-		.number()
-		.min(0)
-		.max(1)
-		.describe("Overall confidence in classification from 0 to 1"),
+	confidence: z.number().min(0).max(1).describe("Overall confidence in classification from 0 to 1"),
 	reasoning: z.string().describe("Brief explanation of classification decisions"),
 })
 
@@ -90,11 +89,7 @@ async function getFacetKindId(slug: string): Promise<number | null> {
 	return data?.id ?? null
 }
 
-async function getOrCreateFacet(
-	kindId: number,
-	label: string,
-	accountId: string
-): Promise<string | null> {
+async function getOrCreateFacet(kindId: number, label: string, accountId: string): Promise<string | null> {
 	if (!label) return null
 
 	// Check if facet exists
@@ -206,7 +201,7 @@ async function migratePeopleToFacets(options: { projectId?: string; dryRun?: boo
 	consola.info(`Loaded ${people.length} people to process`)
 
 	let processed = 0
-	let skipped = 0
+	const skipped = 0
 	let errors = 0
 
 	for (const person of people) {

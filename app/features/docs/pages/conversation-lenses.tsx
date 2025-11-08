@@ -16,8 +16,8 @@ export default function ConversationLensesGuide() {
 
 			<h1 className="mb-3 font-bold text-4xl tracking-tight">Conversation Lenses</h1>
 			<p className="mb-10 text-lg text-muted-foreground">
-				How Insights assembles SPICED, BANT, MEDDIC, MAP, and team-specific perspectives so product, engineering, and GTM stay
-				aligned on every interview.
+				How Insights assembles SPICED, BANT, MEDDIC, MAP, and team-specific perspectives so product, engineering, and
+				GTM stay aligned on every interview.
 			</p>
 
 			<div className="space-y-10">
@@ -30,16 +30,14 @@ export default function ConversationLensesGuide() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<p className="text-muted-foreground">
-							Each lens is a structured snapshot of the interview. Think of it as a page in the deal playbook — a concise
-							key takeaway, the supporting notes, and the evidence you can drill into when someone asks “where did that
-							come from?”
+							Each lens is a structured snapshot of the interview. Think of it as a page in the deal playbook — a
+							concise key takeaway, the supporting notes, and the evidence you can drill into when someone asks “where
+							did that come from?”
 						</p>
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="rounded-lg border border-border/60 bg-muted/10 p-4">
-								<h3 className="mb-2 font-semibold text-sm uppercase tracking-wide text-foreground">
-									Sales frameworks
-								</h3>
-								<ul className="space-y-2 text-sm text-muted-foreground">
+								<h3 className="mb-2 font-semibold text-foreground text-sm uppercase tracking-wide">Sales frameworks</h3>
+								<ul className="space-y-2 text-muted-foreground text-sm">
 									<li>
 										<Badge variant="outline" className="mr-2 text-[0.65rem] uppercase">
 											SPICED
@@ -67,27 +65,27 @@ export default function ConversationLensesGuide() {
 								</ul>
 							</div>
 							<div className="rounded-lg border border-border/60 bg-muted/10 p-4">
-								<h3 className="mb-2 font-semibold text-sm uppercase tracking-wide text-foreground">
-									Team lenses
-								</h3>
-								<ul className="space-y-2 text-sm text-muted-foreground">
+								<h3 className="mb-2 font-semibold text-foreground text-sm uppercase tracking-wide">Team lenses</h3>
+								<ul className="space-y-2 text-muted-foreground text-sm">
 									<li className="flex items-center gap-2">
 										<Cpu className="h-4 w-4 text-indigo-500" />
 										<b className="text-foreground">Engineering Impact</b>
-										<span className="text-xs text-muted-foreground">integration work, API gaps, tech debt</span>
+										<span className="text-muted-foreground text-xs">integration work, API gaps, tech debt</span>
 									</li>
 									<li className="flex items-center gap-2">
 										<Headset className="h-4 w-4 text-blue-500" />
 										<b className="text-foreground">Customer Service</b>
-										<span className="text-xs text-muted-foreground">support expectations and service risks</span>
+										<span className="text-muted-foreground text-xs">support expectations and service risks</span>
 									</li>
 									<li className="flex items-center gap-2">
 										<AlertTriangle className="h-4 w-4 text-rose-500" />
 										<b className="text-foreground">Pessimistic</b>
-										<span className="text-xs text-muted-foreground">open objections, blockers, worst-case scenarios</span>
+										<span className="text-muted-foreground text-xs">
+											open objections, blockers, worst-case scenarios
+										</span>
 									</li>
 								</ul>
-								<p className="mt-3 text-sm text-muted-foreground">
+								<p className="mt-3 text-muted-foreground text-sm">
 									These lenses pull from empathy maps, open questions, and interview notes so non-sellers can see what
 									matters without digging through the transcript.
 								</p>
@@ -106,7 +104,7 @@ export default function ConversationLensesGuide() {
 					<CardContent className="space-y-4 text-muted-foreground">
 						<p>
 							When an interview finishes processing, Trigger.dev runs{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
 								buildInitialSalesLensExtraction
 							</code>{" "}
 							(<code>app/utils/salesLens.server.ts</code>). That task reads evidence, attendees, and observations, then
@@ -125,14 +123,14 @@ export default function ConversationLensesGuide() {
 								<b>sales_lens_stakeholders</b> – the people and influence labels resolved from the call.
 							</li>
 							<li>
-								<b>sales_lens_hygiene_events</b> – gaps and alerts (missing owner, stale evidence) that show up as hygiene
-								badges in the UI.
+								<b>sales_lens_hygiene_events</b> – gaps and alerts (missing owner, stale evidence) that show up as
+								hygiene badges in the UI.
 							</li>
 						</ul>
 						<p>
 							The new team-focused lenses load their defaults from interview context (high impact themes, empathy map
 							signals, open questions) and store edits inside{" "}
-							<code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">
+							<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">
 								interviews.conversation_analysis → custom_lenses
 							</code>{" "}
 							(same JSON blob that powers AI takeaways).
@@ -152,23 +150,22 @@ export default function ConversationLensesGuide() {
 							<li>
 								Hover a lens header and click the inline text to edit the key takeaway. The editor updates the
 								<code>custom_lenses.[lensId].summary</code> field and saves through{" "}
-								<code className="rounded bg-muted px-1.5 py-0.5 text-xs text-foreground">POST /api/update-lens</code>.
+								<code className="rounded bg-muted px-1.5 py-0.5 text-foreground text-xs">POST /api/update-lens</code>.
 							</li>
 							<li>
-								The notes panel underneath each lens writes to{" "}
-								<code>custom_lenses.[lensId].notes</code>. These notes always win over auto-generated defaults.
+								The notes panel underneath each lens writes to <code>custom_lenses.[lensId].notes</code>. These notes
+								always win over auto-generated defaults.
 							</li>
 							<li>
 								The rest of the table (slots, stakeholders, hygiene) still comes from Supabase. When the AI reruns, new
 								slot values appear but your manual lens notes remain intact.
 							</li>
 						</ol>
-						<div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-4 text-sm">
+						<div className="rounded-lg border border-border/60 border-dashed bg-muted/10 p-4 text-sm">
 							<p className="font-medium text-foreground">Tip</p>
 							<p className="mt-1">
-								If you want to version-control overrides, export the{" "}
-								<code>conversation_analysis.custom_lenses</code> JSON — it is a lightweight, human-readable map of your
-								manual tweaks.
+								If you want to version-control overrides, export the <code>conversation_analysis.custom_lenses</code>{" "}
+								JSON — it is a lightweight, human-readable map of your manual tweaks.
 							</p>
 						</div>
 					</CardContent>

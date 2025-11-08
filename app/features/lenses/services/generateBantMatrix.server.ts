@@ -73,15 +73,13 @@ function mapBudgetToBucket(budget: number | null): string {
 /**
  * Generate Budget × Authority matrix from opportunities and sales lens data
  */
-export async function generateBantMatrix(opts: {
-	supabase: SupabaseClient
-	projectId: string
-}): Promise<BantMatrix> {
+export async function generateBantMatrix(opts: { supabase: SupabaseClient; projectId: string }): Promise<BantMatrix> {
 	const { supabase, projectId } = opts
 
 	consola.info(`[generateBantMatrix] Starting for project ${projectId}`)
 
 	// Get all opportunities for project with their sales lens summaries
+	// Using left join (no !inner) so opportunities without BANT data still appear
 	const { data: opportunities, error: oppError } = await supabase
 		.from("opportunities")
 		.select(
@@ -91,7 +89,7 @@ export async function generateBantMatrix(opts: {
 			amount,
 			stage,
 			close_date,
-			sales_lens_summaries!inner(
+			sales_lens_summaries(
 				id,
 				framework,
 				sales_lens_slots(slot, numeric_value, text_value, confidence),
@@ -100,7 +98,6 @@ export async function generateBantMatrix(opts: {
 		`
 		)
 		.eq("project_id", projectId)
-		.eq("sales_lens_summaries.framework", "BANT_GPCT")
 
 	if (oppError) {
 		consola.error("Error fetching opportunities:", oppError)
@@ -133,24 +130,35 @@ export async function generateBantMatrix(opts: {
 	let totalOpps = 0
 
 	for (const opp of opportunities || []) {
-		const summary = opp.sales_lens_summaries?.[0]
-		if (!summary) continue
+		// Find BANT_GPCT summary if it exists
+		const bantSummary = opp.sales_lens_summaries?.find((s: any) => s.framework === "BANT_GPCT")
 
-		// Extract budget from slots
-		const budgetSlot = summary.sales_lens_slots?.find((s: any) => s.slot === "budget")
-		const budgetValue = opp.amount ?? budgetSlot?.numeric_value ?? null
-		const budgetBucket = mapBudgetToBucket(budgetValue)
+		let budgetValue: number | null = null
+		let budgetBucket = "Unknown"
+		let authorityLevel = "Unknown"
+		let avgConfidence = 0
 
-		// Extract authority from stakeholders
-		const stakeholders = summary.sales_lens_stakeholders || []
-		const economicBuyer = stakeholders.find((s: any) => s.labels?.includes("economic_buyer"))
-		const authorityInfluence = economicBuyer?.influence ?? stakeholders[0]?.influence ?? null
-		const authorityLevel = mapInfluenceToAuthority(authorityInfluence)
+		if (bantSummary) {
+			// Extract budget from slots or opportunity amount
+			const budgetSlot = bantSummary.sales_lens_slots?.find((s: any) => s.slot === "budget")
+			budgetValue = opp.amount ?? budgetSlot?.numeric_value ?? null
+			budgetBucket = mapBudgetToBucket(budgetValue)
 
-		// Get overall BANT confidence (average of all slots)
-		const slots = summary.sales_lens_slots || []
-		const avgConfidence =
-			slots.length > 0 ? slots.reduce((sum: number, s: any) => sum + (s.confidence || 0), 0) / slots.length : 0
+			// Extract authority from stakeholders
+			const stakeholders = bantSummary.sales_lens_stakeholders || []
+			const economicBuyer = stakeholders.find((s: any) => s.labels?.includes("economic_buyer"))
+			const authorityInfluence = economicBuyer?.influence ?? stakeholders[0]?.influence ?? null
+			authorityLevel = mapInfluenceToAuthority(authorityInfluence)
+
+			// Get overall BANT confidence (average of all slots)
+			const slots = bantSummary.sales_lens_slots || []
+			avgConfidence =
+				slots.length > 0 ? slots.reduce((sum: number, s: any) => sum + (s.confidence || 0), 0) / slots.length : 0
+		} else {
+			// No BANT data - use opportunity amount if available
+			budgetValue = opp.amount
+			budgetBucket = mapBudgetToBucket(budgetValue)
+		}
 
 		// Update cell
 		const key = `${budgetBucket}|${authorityLevel}`

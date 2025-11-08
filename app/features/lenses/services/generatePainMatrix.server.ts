@@ -279,7 +279,9 @@ export async function generatePainMatrix(opts: {
 	}
 
 	if (totalOrphanedEvidence > 0) {
-		consola.warn(`[generatePainMatrix] Total orphaned evidence: ${totalOrphanedEvidence} items (evidence not linked to any user group)`)
+		consola.warn(
+			`[generatePainMatrix] Total orphaned evidence: ${totalOrphanedEvidence} items (evidence not linked to any user group)`
+		)
 	}
 
 	// 6. Filter out pain themes that don't appear in any cells (orphaned evidence)

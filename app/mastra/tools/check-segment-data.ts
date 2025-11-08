@@ -16,11 +16,7 @@ async function checkSegmentData() {
 
 	// Check old people.segment field
 	consola.info("\n1. Checking old people.segment field:")
-	const { data: segmentData } = await supabase
-		.from("people")
-		.select("segment")
-		.not("segment", "is", null)
-		.limit(20)
+	const { data: segmentData } = await supabase.from("people").select("segment").not("segment", "is", null).limit(20)
 
 	const segments = new Set(segmentData?.map((p) => p.segment).filter(Boolean))
 	consola.info(`Found ${segments.size} unique segments:`, Array.from(segments))
@@ -55,13 +51,12 @@ async function checkSegmentData() {
 		consola.info(`  ${kind.slug}: ${count} facets`)
 
 		if (count && count > 0) {
-			const { data: samples } = await supabase
-				.from("facet_account")
-				.select("label")
-				.eq("kind_id", kind.id)
-				.limit(5)
+			const { data: samples } = await supabase.from("facet_account").select("label").eq("kind_id", kind.id).limit(5)
 
-			consola.info(`    Examples:`, samples?.map((s) => s.label))
+			consola.info(
+				"    Examples:",
+				samples?.map((s) => s.label)
+			)
 		}
 	}
 }

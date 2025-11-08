@@ -221,80 +221,151 @@ export async function getSegmentsSummary(
 
 	const accountId = await getProjectAccountId(supabase, projectId)
 
-	const { data: facets, error } = await supabase
-		.from("facet_account")
-		.select(
-			`
-	      id,
-	      kind_id,
-	      slug,
-	      label,
-	      facet_kind_global!inner(slug),
-	      person_facet:person_facet!inner(
-	        person_id,
-	        project_id,
-	        people:people!inner(
-	          id,
-	          evidence_people(
-	            evidence:evidence(
-	              id,
-	              does,
-	              feels,
-	              gains,
-	              pains,
-	              project_id
-	            )
-	          )
-	        )
-	      )
-	    `
-		)
-		.eq("account_id", accountId)
-		.eq("person_facet.project_id", projectId)
+	// Get segment kind IDs
+	const { data: segmentKinds, error: segmentKindsError } = await supabase
+		.from("facet_kind_global")
+		.select("id, slug")
+		.in("slug", SEGMENT_KIND_SLUGS)
 
-	if (error) {
-		consola.error("[getSegmentsSummary] Error fetching facets:", error)
-		throw error
+	if (segmentKindsError) {
+		consola.error("[getSegmentsSummary] Error fetching kinds", segmentKindsError)
+		throw segmentKindsError
 	}
 
-	if (!facets) return []
+	const segmentKindIds = segmentKinds?.map((k) => k.id) ?? []
 
-	// Calculate metrics for each segment
+	if (segmentKindIds.length === 0) {
+		return []
+	}
+
+	// Step 1: Fetch all facet_account records for this account
+	const { data: facets, error: facetsError } = await supabase
+		.from("facet_account")
+		.select("id, kind_id, slug, label, facet_kind_global!inner(slug)")
+		.eq("account_id", accountId)
+		.in("kind_id", segmentKindIds)
+
+	if (facetsError) {
+		consola.error("[getSegmentsSummary] Error fetching facets:", facetsError)
+		throw facetsError
+	}
+
+	if (!facets || facets.length === 0) {
+		consola.info("[getSegmentsSummary] No facets found for account")
+		return []
+	}
+
+	// Build lookup map for facet kind slugs
+	const facetKindLookup = new Map<number, string>()
+	for (const facet of facets) {
+		const facetKind = facet.facet_kind_global
+		const slug = facetKind && typeof facetKind === "object" && "slug" in facetKind ? String(facetKind.slug) : undefined
+		if (slug) {
+			facetKindLookup.set(facet.id, slug)
+		}
+	}
+
+	const facetIds = facets.map((f) => f.id)
+
+	// Step 2: Fetch person_facet records for this project
+	const { data: personFacets, error: personFacetsError } = await supabase
+		.from("person_facet")
+		.select("person_id, facet_account_id")
+		.in("facet_account_id", facetIds)
+		.eq("project_id", projectId)
+
+	if (personFacetsError) {
+		consola.error("[getSegmentsSummary] Error fetching person facets:", personFacetsError)
+		throw personFacetsError
+	}
+
+	// Build map of facet -> people
+	const facetPeopleMap = new Map<number, Set<string>>()
+	for (const pf of personFacets || []) {
+		if (!facetPeopleMap.has(pf.facet_account_id)) {
+			facetPeopleMap.set(pf.facet_account_id, new Set())
+		}
+		facetPeopleMap.get(pf.facet_account_id)?.add(pf.person_id)
+	}
+
+	// Step 3: Get unique people IDs across all facets
+	const allPeopleIds = new Set<string>()
+	for (const peopleSet of facetPeopleMap.values()) {
+		for (const personId of peopleSet) {
+			allPeopleIds.add(personId)
+		}
+	}
+
+	if (allPeopleIds.size === 0) {
+		consola.info("[getSegmentsSummary] No people found for facets in this project")
+		return []
+	}
+
+	// Step 4: Fetch evidence for all people in batches
+	const peopleIdsArray = Array.from(allPeopleIds)
+	const { data: evidenceLinks, error: evidenceError } = await supabase
+		.from("evidence_people")
+		.select(
+			`
+      person_id,
+      evidence:evidence!inner(
+        id,
+        does,
+        feels,
+        gains,
+        pains,
+        project_id
+      )
+    `
+		)
+		.in("person_id", peopleIdsArray)
+		.eq("evidence.project_id", projectId)
+
+	if (evidenceError) {
+		consola.error("[getSegmentsSummary] Error fetching evidence:", evidenceError)
+		throw evidenceError
+	}
+
+	// Build map of person -> evidence
+	const personEvidenceMap = new Map<string, Evidence[]>()
+	for (const link of evidenceLinks || []) {
+		const evidence = (link as any).evidence as Evidence
+		if (!evidence) continue
+
+		if (!personEvidenceMap.has(link.person_id)) {
+			personEvidenceMap.set(link.person_id, [])
+		}
+		personEvidenceMap.get(link.person_id)?.push(evidence)
+	}
+
+	// Step 5: Calculate metrics for each segment
 	const segments: SegmentSummary[] = []
 
 	for (const facet of facets) {
-		const kindSlug = (facet as any).facet_kind_global?.slug || "unknown"
+		const kindSlug = facetKindLookup.get(facet.id) || "unknown"
 
 		if (options.kind && kindSlug !== options.kind) {
 			continue
 		}
 
-		// Get unique people in this segment
-		const peopleIds = new Set<string>()
+		const peopleInSegment = facetPeopleMap.get(facet.id)
+		if (!peopleInSegment || peopleInSegment.size === 0) {
+			continue
+		}
+
 		let evidenceCount = 0
 		let highWtpCount = 0
 		let totalIntensity = 0
 		let intensityCount = 0
 
-		// This is a complex nested structure, need to traverse it carefully
-		const personFacetLinks: Array<{
-			person_id: string
-			people: { id: string; evidence_people: Array<{ evidence: Evidence }> }
-		}> = (facet as any).person_facet || []
+		// Process evidence for each person in this segment
+		for (const personId of peopleInSegment) {
+			const evidenceList = personEvidenceMap.get(personId) || []
 
-		for (const link of personFacetLinks) {
-			if (!link.people) continue
-			peopleIds.add(link.people.id)
-
-			// Get evidence for this person
-			const personEvidenceLinks = link.people.evidence_people || []
-			for (const personLink of personEvidenceLinks) {
-				if (!personLink.evidence) continue
-				if (personLink.evidence.project_id !== projectId) continue
+			for (const evidence of evidenceList) {
 				evidenceCount++
 
-				const evidence = personLink.evidence
-				// Estimate WTP from evidence fields (simplistic approach)
+				// Estimate WTP from evidence fields
 				const hasHighWtp = evidence.gains?.some((g: string) => g.toLowerCase().includes("pay")) ?? false
 				if (hasHighWtp) highWtpCount++
 
@@ -307,7 +378,7 @@ export async function getSegmentsSummary(
 			}
 		}
 
-		const person_count = peopleIds.size
+		const person_count = peopleInSegment.size
 		const avg_pain_intensity = intensityCount > 0 ? totalIntensity / intensityCount : 0
 
 		const bullseye_score = calculateBullseyeScore({

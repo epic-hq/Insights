@@ -214,9 +214,7 @@ export default function EditOpportunity() {
 							id={useId()}
 							name="close_date"
 							type="date"
-							defaultValue={
-								opportunity.close_date ? new Date(opportunity.close_date).toISOString().split("T")[0] : ""
-							}
+							defaultValue={opportunity.close_date ? new Date(opportunity.close_date).toISOString().split("T")[0] : ""}
 							className="mt-1"
 						/>
 					</div>
@@ -237,7 +235,7 @@ export default function EditOpportunity() {
 			</Form>
 
 			<div className="mt-12 border-t pt-8">
-				<h2 className="font-semibold text-lg text-destructive">Danger Zone</h2>
+				<h2 className="font-semibold text-destructive text-lg">Danger Zone</h2>
 				<p className="mt-2 text-muted-foreground text-sm">
 					Permanently delete this opportunity. This action cannot be undone.
 				</p>

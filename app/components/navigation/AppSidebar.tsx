@@ -204,6 +204,10 @@ export function AppSidebar() {
 					if (item.key === "insights" && salesCrmEnabled) {
 						return false
 					}
+					// Only show BANT Lens when the ffSalesCRM flag is on
+					if (item.key === "bant-lens") {
+						return salesCrmEnabled
+					}
 					return true
 				}),
 			}))

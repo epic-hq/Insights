@@ -57,7 +57,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			},
 			{
 				key: "guide",
-				title: "Guide",
+				title: "Prompts",
 				description: "Interview & prompt sets",
 				icon: ListChecks,
 				to: (routes) => routes.questions.index(),
@@ -65,7 +65,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 			{
 				// keep key "conversations" for count mapping; label is Encounters
 				key: "conversations",
-				title: "Recordings",
+				title: "Calls & Notes",
 				description: "Calls, meetings, uploads",
 				icon: File,
 				to: (routes) => routes.interviews.index(),
@@ -84,8 +84,15 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.personas.index(),
 			},
 			{
+				key: "segments",
+				title: "Segments",
+				description: "Customer groups",
+				icon: Target,
+				to: (routes) => routes.segments.index(),
+			},
+			{
 				key: "topics",
-				title: "Topics",
+				title: "Themes",
 				description: "Signals & themes",
 				icon: Sparkles,
 				to: (routes) => routes.themes.index(),
@@ -115,7 +122,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	},
 	{
 		key: "directory",
-		title: "Directory",
+		title: "People & Accounts",
 		items: [
 			{
 				key: "people",
@@ -140,13 +147,6 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				description: "Sales pipeline & deals",
 				icon: Briefcase,
 				to: (routes) => routes.opportunities.index(),
-			},
-			{
-				key: "segments",
-				title: "Segments",
-				description: "Customer groups",
-				icon: Target,
-				to: (routes) => routes.segments.index(),
 			},
 		],
 	},

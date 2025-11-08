@@ -3,13 +3,13 @@
  * Aggregates pain points and creates a 2x2 matrix of Pain Intensity vs Willingness to Pay
  */
 
-import { useState } from "react"
-import { LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router"
 import consola from "consola"
-import { PainMatrixComponent } from "../components/PainMatrix"
-import { generatePainMatrix, type PainMatrixCell } from "../services/generatePainMatrix.server"
+import { useState } from "react"
+import { type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router"
 import { getSegmentKindSummaries } from "~/features/segments/services/segmentData.server"
 import { userContext } from "~/server/user-context"
+import { PainMatrixComponent } from "../components/PainMatrix"
+import { generatePainMatrix, type PainMatrixCell } from "../services/generatePainMatrix.server"
 
 export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -79,9 +79,9 @@ export default function ProductLens() {
 			</div>
 
 			{/* Pain Matrix */}
-			<PainMatrixComponent 
-				matrix={matrix} 
-				onCellClick={setSelectedCell} 
+			<PainMatrixComponent
+				matrix={matrix}
+				onCellClick={setSelectedCell}
 				segments={segments}
 				selectedSegmentSlug={selectedSegmentSlug}
 				onSegmentChange={handleSegmentChange}

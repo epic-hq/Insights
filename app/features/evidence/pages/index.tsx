@@ -112,11 +112,21 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	if (idsParam) {
 		// Split by comma and deduplicate
-		evidenceIdFilter = [...new Set(idsParam.split(",").map(id => id.trim()).filter(Boolean))]
+		evidenceIdFilter = [
+			...new Set(
+				idsParam
+					.split(",")
+					.map((id) => id.trim())
+					.filter(Boolean)
+			),
+		]
 		consola.info(`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs:`, evidenceIdFilter)
 	} else if (idsArray.length > 0) {
 		evidenceIdFilter = [...new Set(idsArray.filter(Boolean))]
-		consola.info(`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs from array format:`, evidenceIdFilter)
+		consola.info(
+			`[evidence/index] Filtering by ${evidenceIdFilter.length} unique IDs from array format:`,
+			evidenceIdFilter
+		)
 	}
 
 	// If filtering by person, get evidence IDs from evidence_people first
@@ -204,7 +214,9 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 	const rows = (data ?? []) as EvidenceRow[]
 
 	if (evidenceIdFilter) {
-		consola.info(`[evidence/index] Query returned ${rows.length} evidence items (filtered from ${evidenceIdFilter.length} IDs)`)
+		consola.info(
+			`[evidence/index] Query returned ${rows.length} evidence items (filtered from ${evidenceIdFilter.length} IDs)`
+		)
 	}
 
 	// Join evidence_people -> people to get person names and roles for each evidence
@@ -342,7 +354,9 @@ export default function EvidenceIndex() {
 	// Log when loading with ID filter (client-side debugging)
 	useEffect(() => {
 		if (filteredByIds) {
-			console.log(`[Evidence] Client: Showing ${filteredByIds} filtered items, total evidence loaded: ${evidence.length}`)
+			console.log(
+				`[Evidence] Client: Showing ${filteredByIds} filtered items, total evidence loaded: ${evidence.length}`
+			)
 		}
 	}, [filteredByIds, evidence.length])
 
@@ -376,7 +390,7 @@ export default function EvidenceIndex() {
 						<span>{filteredByPerson.name ? ` for: ${filteredByPerson.name}` : "Filtered by participant"}</span>
 					)}
 					{filteredByIds && (
-						<Badge variant="outline" className="ml-2 mt-1 w-fit">
+						<Badge variant="outline" className="mt-1 ml-2 w-fit">
 							Showing {filteredByIds} selected {filteredByIds === 1 ? "item" : "items"}
 						</Badge>
 					)}

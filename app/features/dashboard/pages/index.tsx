@@ -39,6 +39,13 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		throw new Response("Project not found", { status: 404 })
 	}
 
+	// Fetch project sections for overview
+	const { data: projectSections } = await supabase
+		.from("project_sections")
+		.select("*")
+		.eq("project_id", projectId)
+		.in("kind", ["goal", "research_goal", "target_market", "assumptions", "recommendations", "research_goal_details"])
+
 	// Fetch KPIs - count of interviews, insights, and opportunities
 	const { count: interviewCount } = await supabase
 		.from("interviews")
@@ -255,6 +262,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		insights,
 		project,
 		tags, // Add tags to the return object for TagDisplay
+		projectSections: projectSections || [],
 	}
 }
 
@@ -285,15 +293,158 @@ function lightenColor(hex: string, percent: number): string {
 export default function Index() {
 	const data = useLoaderData<typeof loader>()
 
+	// Helper to get section content by kind
+	const getSection = (kind: string) => {
+		return data.projectSections.find((s) => s.kind === kind)?.content_md || ""
+	}
+
+	const goal = getSection("research_goal") || getSection("goal")
+	const goalDetails = getSection("research_goal_details")
+	const targetMarket = getSection("target_market")
+	const assumptions = getSection("assumptions")
+	const recommendations = getSection("recommendations")
+
 	return (
-		<div className="p-6">
-			<div className="relative">
-				<div className="mx-auto flex justify-center">
-					<Button className="items-center justify-center bg-gradient-to-br from-blue-500 to-green-600 p-6 text-xl opacity-80">
-						Try the <Link to="../metro">new Metro dashboard</Link>
-					</Button>
+		<div className="space-y-6 p-6">
+			{/* Header */}
+			<div className="flex items-center justify-between">
+				<div>
+					<h1 className="font-bold text-3xl">{data.project.name}</h1>
+					<p className="text-muted-foreground">Project Overview</p>
 				</div>
-				<Dashboard {...data} />
+				<Link to="../setup">
+					<Button variant="outline">Edit Project Setup</Button>
+				</Link>
+			</div>
+
+			{/* KPIs */}
+			<KPIBar kpis={data.kpis} />
+
+			{/* Key Information Grid */}
+			<div className="grid gap-6 md:grid-cols-2">
+				{/* Research Goal */}
+				<div className="rounded-lg border bg-card p-6">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-semibold text-xl">Research Goal</h2>
+						<Link to="../setup" className="text-primary text-sm hover:underline">
+							Edit
+						</Link>
+					</div>
+					{goal ? (
+						<div className="prose prose-sm max-w-none">
+							<p className="text-sm">{goal}</p>
+							{goalDetails && <p className="mt-2 text-muted-foreground text-sm">{goalDetails}</p>}
+						</div>
+					) : (
+						<p className="text-muted-foreground text-sm italic">No goal defined yet. Click Edit to add.</p>
+					)}
+				</div>
+
+				{/* Target Market / ICP */}
+				<div className="rounded-lg border bg-card p-6">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-semibold text-xl">Target Market / ICP</h2>
+						<Link to="../segments" className="text-primary text-sm hover:underline">
+							View Segments
+						</Link>
+					</div>
+					{targetMarket ? (
+						<div className="prose prose-sm max-w-none">
+							<p className="text-sm">{targetMarket}</p>
+						</div>
+					) : (
+						<p className="text-muted-foreground text-sm italic">
+							No target market defined. Visit{" "}
+							<Link to="../segments" className="text-primary hover:underline">
+								Segments
+							</Link>{" "}
+							to explore customer groups.
+						</p>
+					)}
+				</div>
+
+				{/* Assumptions */}
+				<div className="rounded-lg border bg-card p-6">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-semibold text-xl">Key Assumptions</h2>
+						<Link to="../setup" className="text-primary text-sm hover:underline">
+							Edit
+						</Link>
+					</div>
+					{assumptions ? (
+						<div className="prose prose-sm max-w-none">
+							<p className="whitespace-pre-wrap text-sm">{assumptions}</p>
+						</div>
+					) : (
+						<p className="text-muted-foreground text-sm italic">No assumptions documented yet.</p>
+					)}
+				</div>
+
+				{/* Recommendations */}
+				<div className="rounded-lg border bg-card p-6">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-semibold text-xl">Recommendations</h2>
+						<Link to="../insights" className="text-primary text-sm hover:underline">
+							View All Findings
+						</Link>
+					</div>
+					{recommendations ? (
+						<div className="prose prose-sm max-w-none">
+							<p className="whitespace-pre-wrap text-sm">{recommendations}</p>
+						</div>
+					) : (
+						<p className="text-muted-foreground text-sm italic">
+							No recommendations yet. Check{" "}
+							<Link to="../insights" className="text-primary hover:underline">
+								Findings
+							</Link>{" "}
+							for insights.
+						</p>
+					)}
+				</div>
+			</div>
+
+			{/* Recent Activity */}
+			<div className="grid gap-6 md:grid-cols-2">
+				<div className="rounded-lg border bg-card p-6">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-semibold text-xl">Recent Calls & Notes</h2>
+						<Link to="../interviews" className="text-primary text-sm hover:underline">
+							View All
+						</Link>
+					</div>
+					{data.interviews.length > 0 ? (
+						<RecentInterviewsTable interviews={data.interviews} />
+					) : (
+						<div className="py-6 text-center">
+							<p className="mb-3 text-muted-foreground text-sm">No interviews yet</p>
+							<AddInterviewButton />
+						</div>
+					)}
+				</div>
+
+				<div className="rounded-lg border bg-card p-6">
+					<div className="mb-3 flex items-center justify-between">
+						<h2 className="font-semibold text-xl">Top Themes</h2>
+						<Link to="../themes" className="text-primary text-sm hover:underline">
+							View All
+						</Link>
+					</div>
+					{data.tags.length > 0 ? (
+						<TagDisplay tags={data.tags} maxTags={8} />
+					) : (
+						<p className="text-muted-foreground text-sm italic">No themes identified yet.</p>
+					)}
+				</div>
+			</div>
+
+			{/* Link to Full Dashboard */}
+			<div className="flex justify-center pt-4">
+				<Link to="./metro">
+					<Button variant="outline" size="lg">
+						View Detailed Analytics Dashboard
+					</Button>
+				</Link>
 			</div>
 		</div>
 	)

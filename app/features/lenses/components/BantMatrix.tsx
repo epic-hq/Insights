@@ -56,9 +56,9 @@ export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 					<table className="w-full border-collapse">
 						<thead>
 							<tr>
-								<th className="border-b p-3 text-left text-sm font-semibold">Budget Range</th>
+								<th className="border-b p-3 text-left font-semibold text-sm">Budget Range</th>
 								{matrix.authority_levels.map((level) => (
-									<th key={level} className="border-b border-l p-3 text-center text-sm font-semibold">
+									<th key={level} className="border-b border-l p-3 text-center font-semibold text-sm">
 										{level}
 									</th>
 								))}
@@ -67,11 +67,9 @@ export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 						<tbody>
 							{matrix.budget_buckets.map((budget) => (
 								<tr key={budget}>
-									<td className="border-b p-3 text-sm font-medium">{budget}</td>
+									<td className="border-b p-3 font-medium text-sm">{budget}</td>
 									{matrix.authority_levels.map((authority) => {
-										const cell = matrix.cells.find(
-											(c) => c.budget_bucket === budget && c.authority_level === authority
-										)
+										const cell = matrix.cells.find((c) => c.budget_bucket === budget && c.authority_level === authority)
 										if (!cell) return <td key={authority} className="border-b border-l p-3" />
 
 										const hasData = cell.metrics.opportunity_count > 0
@@ -85,9 +83,7 @@ export function BantMatrixComponent({ matrix, onCellClick }: BantMatrixProps) {
 												{hasData ? (
 													<div className="text-center">
 														<div className="font-bold text-lg">{cell.metrics.opportunity_count}</div>
-														<div className="text-xs">
-															{formatCurrency(cell.metrics.avg_deal_size)} avg
-														</div>
+														<div className="text-xs">{formatCurrency(cell.metrics.avg_deal_size)} avg</div>
 														<div className="text-xs opacity-70">
 															{(cell.metrics.confidence_avg * 100).toFixed(0)}% conf
 														</div>

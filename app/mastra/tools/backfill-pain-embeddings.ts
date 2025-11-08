@@ -3,8 +3,8 @@
  * Calls the edge function for each pain facet that doesn't have an embedding yet
  */
 
-import consola from "consola"
 import { createClient } from "@supabase/supabase-js"
+import consola from "consola"
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -63,7 +63,9 @@ async function backfillPainEmbeddings(projectId?: string) {
 
 	for (let i = 0; i < painFacets.length; i += BATCH_SIZE) {
 		const batch = painFacets.slice(i, i + BATCH_SIZE)
-		consola.info(`[backfill-pain-embeddings] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(painFacets.length / BATCH_SIZE)}`)
+		consola.info(
+			`[backfill-pain-embeddings] Processing batch ${Math.floor(i / BATCH_SIZE) + 1}/${Math.ceil(painFacets.length / BATCH_SIZE)}`
+		)
 
 		// Process batch in parallel
 		const results = await Promise.allSettled(
@@ -128,9 +130,7 @@ async function backfillPainEmbeddings(projectId?: string) {
 		}
 	}
 
-	consola.success(
-		`[backfill-pain-embeddings] Backfill complete! Success: ${successCount}, Failed: ${errorCount}`
-	)
+	consola.success(`[backfill-pain-embeddings] Backfill complete! Success: ${successCount}, Failed: ${errorCount}`)
 
 	// Verify embeddings were created
 	const { data: verifyData } = await supabaseAdmin

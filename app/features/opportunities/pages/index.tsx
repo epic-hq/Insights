@@ -98,7 +98,7 @@ export default function OpportunitiesIndexPage() {
 				<div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
 					{opportunities.map((opportunity) => (
 						<Link key={opportunity.id} to={routes.opportunities.detail(opportunity.id)}>
-							<Card className="transition-all hover:shadow-md hover:border-primary/50">
+							<Card className="transition-all hover:border-primary/50 hover:shadow-md">
 								<CardHeader>
 									<div className="mb-2 flex items-start justify-between gap-2">
 										<CardTitle className="text-base leading-snug">{opportunity.title}</CardTitle>

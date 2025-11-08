@@ -1,7 +1,6 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 
 import type { Database } from "supabase/types"
-import type { Tables } from "~/types"
 import type {
 	InterviewLensFramework,
 	InterviewLensView,
@@ -12,38 +11,33 @@ import type {
 	LensObjection,
 	LensStakeholder,
 } from "~/features/lenses/types"
+import type { Tables } from "~/types"
 
 type DbClient = SupabaseClient<Database>
 
 type SalesLensSlotRow = Tables<"sales_lens_slots"> & {
-	evidence_refs:
-		| Array<{
-				evidence_id: string
-				start_ms: number | null
-				end_ms: number | null
-				transcript_snippet: string | null
-			}>
-		| null
-	hygiene:
-		| Array<{
-				code: string
-				severity: "info" | "warning" | "critical"
-				message?: string | null
-				slot?: string | null
-			}>
-		| null
+	evidence_refs: Array<{
+		evidence_id: string
+		start_ms: number | null
+		end_ms: number | null
+		transcript_snippet: string | null
+	}> | null
+	hygiene: Array<{
+		code: string
+		severity: "info" | "warning" | "critical"
+		message?: string | null
+		slot?: string | null
+	}> | null
 	position: number | null
 }
 
 type SalesLensStakeholderRow = Tables<"sales_lens_stakeholders"> & {
-	evidence_refs:
-		| Array<{
-				evidence_id: string
-				start_ms: number | null
-				end_ms: number | null
-				transcript_snippet: string | null
-			}>
-		| null
+	evidence_refs: Array<{
+		evidence_id: string
+		start_ms: number | null
+		end_ms: number | null
+		transcript_snippet: string | null
+	}> | null
 }
 
 type SalesLensSummaryRow = Tables<"sales_lens_summaries"> & {
@@ -191,8 +185,8 @@ export async function loadInterviewSalesLens({
 			const evidence = mapEvidence(slot.evidence_refs)
 			const hygiene = mapSlotHygiene(slot.hygiene, slot.label ?? slot.slot)
 			const ownerName = slot.owner_person_id
-				? baseLookup.get(slot.owner_person_id)?.name ?? null
-				: slot.owner_person_key ?? null
+				? (baseLookup.get(slot.owner_person_id)?.name ?? null)
+				: (slot.owner_person_key ?? null)
 			const relatedNames = Array.isArray(slot.related_person_ids)
 				? (slot.related_person_ids as string[])
 						.map((id) => baseLookup.get(id)?.name ?? null)
@@ -234,15 +228,15 @@ export async function loadInterviewSalesLens({
 				hygiene,
 			}
 
-		extractExecutionDetails({
-			summary,
-			slot,
-			slotView,
-			nextSteps,
-			mapMilestones,
-			objections,
-			baseLookup,
-		})
+			extractExecutionDetails({
+				summary,
+				slot,
+				slotView,
+				nextSteps,
+				mapMilestones,
+				objections,
+				baseLookup,
+			})
 
 			return slotView
 		})
@@ -252,7 +246,7 @@ export async function loadInterviewSalesLens({
 			code: event.code,
 			severity: event.severity as LensHygieneItem["severity"],
 			message: event.message ?? null,
-			slotLabel: event.slot_id ? slotLabelById.get(event.slot_id) ?? null : null,
+			slotLabel: event.slot_id ? (slotLabelById.get(event.slot_id) ?? null) : null,
 		}))
 
 		const frameworkView: InterviewLensFramework = {
@@ -276,10 +270,10 @@ export async function loadInterviewSalesLens({
 				: null,
 		labels: Array.isArray(stakeholder.labels) ? stakeholder.labels : [],
 		confidence: toNullableNumber(stakeholder.confidence),
-		personName: stakeholder.person_id ? baseLookup.get(stakeholder.person_id)?.name ?? null : null,
+		personName: stakeholder.person_id ? (baseLookup.get(stakeholder.person_id)?.name ?? null) : null,
 		personKey: stakeholder.person_key ?? stakeholder.candidate_person_key ?? null,
 		email: stakeholder.email ?? null,
-		organizationName: stakeholder.organization_id ? organizationsById.get(stakeholder.organization_id) ?? null : null,
+		organizationName: stakeholder.organization_id ? (organizationsById.get(stakeholder.organization_id) ?? null) : null,
 		evidence: mapEvidence(stakeholder.evidence_refs),
 	}))
 
@@ -306,28 +300,23 @@ function mapEvidence(items: SalesLensSlotRow["evidence_refs"]): LensEvidencePoin
 				startMs: typeof item.start_ms === "number" ? item.start_ms : null,
 				endMs: typeof item.end_ms === "number" ? item.end_ms : null,
 				transcriptSnippet:
-					typeof item.transcript_snippet === "string" ? item.transcript_snippet : item.transcript_snippet ?? null,
+					typeof item.transcript_snippet === "string" ? item.transcript_snippet : (item.transcript_snippet ?? null),
 			}
 		})
 		.filter((value): value is LensEvidencePointer => value !== null)
 }
 
-function mapSlotHygiene(
-	items: SalesLensSlotRow["hygiene"],
-	slotLabel: string
-): LensHygieneItem[] {
+function mapSlotHygiene(items: SalesLensSlotRow["hygiene"], slotLabel: string): LensHygieneItem[] {
 	if (!Array.isArray(items)) return []
 	return items
 		.map((item) => {
 			if (!item || typeof item !== "object" || typeof item.code !== "string") return null
 			const severity =
-				item.severity === "info" || item.severity === "warning" || item.severity === "critical"
-					? item.severity
-					: "info"
+				item.severity === "info" || item.severity === "warning" || item.severity === "critical" ? item.severity : "info"
 			return {
 				code: item.code,
 				severity,
-				message: typeof item.message === "string" ? item.message : item.message ?? null,
+				message: typeof item.message === "string" ? item.message : (item.message ?? null),
 				slotLabel,
 			}
 		})
@@ -347,7 +336,7 @@ function mapSummaryHygiene(value: unknown): LensHygieneItem[] {
 			return {
 				code: entry.code,
 				severity,
-				message: typeof entry.message === "string" ? entry.message : entry.message ?? null,
+				message: typeof entry.message === "string" ? entry.message : (entry.message ?? null),
 				slotLabel: typeof entry.slot === "string" ? entry.slot : null,
 			}
 		})
@@ -376,11 +365,16 @@ function extractExecutionDetails({
 	const frameworkName = summary.framework
 	const slotKey = slot.slot.toLowerCase()
 
-	if (frameworkName === "MAP" && (slotKey.includes("milestone") || slotKey.includes("next") || slotKey.includes("step"))) {
+	if (
+		frameworkName === "MAP" &&
+		(slotKey.includes("milestone") || slotKey.includes("next") || slotKey.includes("step"))
+	) {
 		const milestone: LensMilestone = {
 			id: slot.id,
 			label: slot.label ?? slotView.textValue ?? slotView.summary ?? "Milestone",
-			ownerName: slot.owner_person_id ? baseLookup.get(slot.owner_person_id)?.name ?? null : slot.owner_person_key ?? null,
+			ownerName: slot.owner_person_id
+				? (baseLookup.get(slot.owner_person_id)?.name ?? null)
+				: (slot.owner_person_key ?? null),
 			dueDate: slot.date_value ?? null,
 			status: normalizeStatus(slot.status),
 			evidence: slotView.evidence,
@@ -413,7 +407,9 @@ function extractExecutionDetails({
 		nextSteps.push({
 			id: `${slot.id}-bant`,
 			description: slotView.textValue ?? slotView.summary ?? slot.label ?? "Next step",
-			ownerName: slot.owner_person_id ? baseLookup.get(slot.owner_person_id)?.name ?? null : slot.owner_person_key ?? null,
+			ownerName: slot.owner_person_id
+				? (baseLookup.get(slot.owner_person_id)?.name ?? null)
+				: (slot.owner_person_key ?? null),
 			dueDate: slot.date_value ?? null,
 			confidence: slotView.confidence,
 			evidence: slotView.evidence,

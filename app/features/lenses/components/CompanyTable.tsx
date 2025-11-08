@@ -2,8 +2,8 @@ import { formatDistanceToNow } from "date-fns"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
-import { cn } from "~/lib/utils"
 import type { InterviewLensFramework, LensSlotValue } from "~/features/lenses/types"
+import { cn } from "~/lib/utils"
 
 const hygieneBadgeClasses: Record<string, string> = {
 	info: "border-sky-200 bg-sky-50 text-sky-700",
@@ -33,10 +33,8 @@ export function LensSlotTable({ framework, className, showHeader = true }: LensS
 				<CardHeader className="flex flex-col gap-2 border-b bg-muted/30 py-3">
 					<div className="flex flex-wrap items-center justify-between gap-3">
 						<div>
-							<CardTitle className="text-base font-semibold">{friendlyFrameworkName(framework.name)}</CardTitle>
-							{lastUpdatedLabel ? (
-								<p className="text-muted-foreground text-xs">Updated {lastUpdatedLabel}</p>
-							) : null}
+							<CardTitle className="font-semibold text-base">{friendlyFrameworkName(framework.name)}</CardTitle>
+							{lastUpdatedLabel ? <p className="text-muted-foreground text-xs">Updated {lastUpdatedLabel}</p> : null}
 						</div>
 						{framework.hygiene.length > 0 ? (
 							<div className="flex flex-wrap items-center gap-2">
@@ -45,12 +43,14 @@ export function LensSlotTable({ framework, className, showHeader = true }: LensS
 										key={`${item.code}-${item.slotLabel ?? "framework"}`}
 										variant="outline"
 										className={cn(
-											"text-xs font-medium uppercase tracking-wide",
+											"font-medium text-xs uppercase tracking-wide",
 											hygieneBadgeClasses[item.severity] ?? "border-border text-muted-foreground"
 										)}
 									>
 										{item.code}
-										{item.slotLabel ? <span className="ml-1 text-[0.65rem] normal-case">({item.slotLabel})</span> : null}
+										{item.slotLabel ? (
+											<span className="ml-1 text-[0.65rem] normal-case">({item.slotLabel})</span>
+										) : null}
 										{item.message ? <span className="ml-1 text-[0.65rem] normal-case">{item.message}</span> : null}
 									</Badge>
 								))}
@@ -61,13 +61,13 @@ export function LensSlotTable({ framework, className, showHeader = true }: LensS
 			) : null}
 			<CardContent className="space-y-4 p-0">
 				{!showHeader && framework.hygiene.length > 0 ? (
-					<div className="flex flex-wrap items-center gap-2 border-b border-border/60 bg-muted/20 px-4 py-3">
+					<div className="flex flex-wrap items-center gap-2 border-border/60 border-b bg-muted/20 px-4 py-3">
 						{framework.hygiene.map((item) => (
 							<Badge
 								key={`${item.code}-${item.slotLabel ?? "framework"}`}
 								variant="outline"
 								className={cn(
-									"text-xs font-medium uppercase tracking-wide",
+									"font-medium text-xs uppercase tracking-wide",
 									hygieneBadgeClasses[item.severity] ?? "border-border text-muted-foreground"
 								)}
 							>
@@ -93,7 +93,7 @@ export function LensSlotTable({ framework, className, showHeader = true }: LensS
 								<TableRow key={slot.id} className="align-top">
 									<TableCell className="py-4">
 										<div className="space-y-1">
-											<p className="font-medium text-sm text-foreground">{slot.label ?? titleCase(slot.fieldKey)}</p>
+											<p className="font-medium text-foreground text-sm">{slot.label ?? titleCase(slot.fieldKey)}</p>
 											{slot.summary ? (
 												<p className="text-muted-foreground text-xs leading-snug">{slot.summary}</p>
 											) : null}
@@ -137,7 +137,7 @@ export function LensSlotTable({ framework, className, showHeader = true }: LensS
 					</Table>
 				</div>
 				{!showHeader && lastUpdatedLabel ? (
-					<div className="border-t border-border/60 px-4 py-3 text-muted-foreground text-xs">
+					<div className="border-border/60 border-t px-4 py-3 text-muted-foreground text-xs">
 						Updated {lastUpdatedLabel}
 					</div>
 				) : null}
@@ -155,7 +155,7 @@ function LensValue({ slot }: { slot: LensSlotValue }) {
 
 	return (
 		<div className="space-y-1">
-			<p className="text-foreground text-sm font-medium">{primaryValue}</p>
+			<p className="font-medium text-foreground text-sm">{primaryValue}</p>
 			{slot.status ? <p className="text-muted-foreground text-xs">Status: {titleCase(slot.status)}</p> : null}
 			{slot.dateValue ? <p className="text-muted-foreground text-xs">Target: {slot.dateValue}</p> : null}
 			{typeof slot.numericValue === "number" ? (
@@ -191,7 +191,7 @@ function LensConfidence({ slot }: { slot: LensSlotValue }) {
 		"border-rose-200 bg-rose-50 text-rose-700"
 
 	return (
-		<Badge variant="outline" className={cn("text-xs font-medium", badgeStyle)}>
+		<Badge variant="outline" className={cn("font-medium text-xs", badgeStyle)}>
 			{percent}% sure
 		</Badge>
 	)

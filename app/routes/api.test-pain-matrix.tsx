@@ -31,7 +31,9 @@ export async function action({ request }: ActionFunctionArgs) {
 		}
 
 		consola.log(`[test-pain-matrix] Generating pain matrix for project: ${projectId}`)
-		consola.log(`[test-pain-matrix] minEvidence: ${minEvidence}, minGroupSize: ${minGroupSize}, forceRefresh: ${forceRefresh}`)
+		consola.log(
+			`[test-pain-matrix] minEvidence: ${minEvidence}, minGroupSize: ${minGroupSize}, forceRefresh: ${forceRefresh}`
+		)
 
 		const matrix = await generatePainMatrix({
 			supabase,
@@ -42,7 +44,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			forceRefresh,
 		})
 
-		consola.log(`[test-pain-matrix] Generated matrix:`, {
+		consola.log("[test-pain-matrix] Generated matrix:", {
 			pain_themes: matrix.pain_themes.length,
 			user_groups: matrix.user_groups.length,
 			cells: matrix.cells.length,

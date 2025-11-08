@@ -1,8 +1,8 @@
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { LensEvidenceList } from "./EditableLensContent"
 import type { LensStakeholder } from "~/features/lenses/types"
+import { LensEvidenceList } from "./EditableLensContent"
 
 const influenceBadgeClasses: Record<string, string> = {
 	low: "border-slate-200 bg-slate-50 text-slate-700",
@@ -20,7 +20,7 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 		return (
 			<Card className={className}>
 				<CardHeader>
-					<CardTitle className="text-base font-semibold">Stakeholders</CardTitle>
+					<CardTitle className="font-semibold text-base">Stakeholders</CardTitle>
 				</CardHeader>
 				<CardContent>
 					<p className="text-muted-foreground text-sm">No stakeholders linked to this interview yet.</p>
@@ -32,7 +32,7 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 	return (
 		<Card className={className}>
 			<CardHeader>
-				<CardTitle className="text-base font-semibold">Stakeholders</CardTitle>
+				<CardTitle className="font-semibold text-base">Stakeholders</CardTitle>
 				<p className="text-muted-foreground text-sm">Mapped contacts and their inferred roles in the deal.</p>
 			</CardHeader>
 			<CardContent className="space-y-3">
@@ -42,7 +42,7 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 							<AccordionTrigger className="px-1 text-left hover:no-underline">
 								<div className="flex flex-1 flex-col gap-1 text-left">
 									<div className="flex flex-wrap items-center gap-2">
-										<p className="font-semibold text-sm text-foreground">{stakeholder.displayName}</p>
+										<p className="font-semibold text-foreground text-sm">{stakeholder.displayName}</p>
 										{stakeholder.personName ? (
 											<Badge variant="outline" className="text-[0.65rem] uppercase">
 												Linked: {stakeholder.personName}
@@ -51,7 +51,9 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 										{stakeholder.influence ? (
 											<Badge
 												variant="outline"
-												className={influenceBadgeClasses[stakeholder.influence] ?? "border-border text-muted-foreground"}
+												className={
+													influenceBadgeClasses[stakeholder.influence] ?? "border-border text-muted-foreground"
+												}
 											>
 												Influence: {stakeholder.influence}
 											</Badge>
@@ -70,7 +72,11 @@ export function StakeholderList({ stakeholders, className }: StakeholderListProp
 									{stakeholder.labels.length > 0 ? (
 										<div className="flex flex-wrap gap-1">
 											{stakeholder.labels.map((label) => (
-												<Badge key={`${stakeholder.id}-${label}`} variant="secondary" className="text-[0.65rem] uppercase">
+												<Badge
+													key={`${stakeholder.id}-${label}`}
+													variant="secondary"
+													className="text-[0.65rem] uppercase"
+												>
 													{label.replace(/_/g, " ")}
 												</Badge>
 											))}

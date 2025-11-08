@@ -59,7 +59,9 @@ export async function deriveUserGroups(opts: {
 
 	// Load all people with attributes + joined organization data
 	// If segmentId is provided, only include people tagged with that segment
-	let query = supabase.from("people").select(`
+	let query = supabase
+		.from("people")
+		.select(`
 			id,
 			name,
 			role,
@@ -108,19 +110,12 @@ export async function deriveUserGroups(opts: {
 	// If segment kind is specified, group by facets of that kind instead of old person attributes
 	if (segmentKindSlug) {
 		// Get facet kind ID
-		const { data: kind } = await supabase
-			.from("facet_kind_global")
-			.select("id")
-			.eq("slug", segmentKindSlug)
-			.single()
+		const { data: kind } = await supabase.from("facet_kind_global").select("id").eq("slug", segmentKindSlug).single()
 
 		if (!kind) return []
 
 		// Get all facets of this kind
-		const { data: facets } = await supabase
-			.from("facet_account")
-			.select("id, label")
-			.eq("kind_id", kind.id)
+		const { data: facets } = await supabase.from("facet_account").select("id, label").eq("kind_id", kind.id)
 
 		if (!facets || facets.length === 0) return []
 

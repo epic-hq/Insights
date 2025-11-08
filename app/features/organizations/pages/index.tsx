@@ -182,12 +182,20 @@ export default function OrganizationsIndexPage() {
 											{organization.industry && (
 												<span className="font-medium text-base text-foreground">{organization.industry}</span>
 											)}
-											{organization.size_range && <span className="text-muted-foreground/80">Size: {organization.size_range}</span>}
-											{organization.headquarters_location && <span className="text-muted-foreground/80">HQ: {organization.headquarters_location}</span>}
+											{organization.size_range && (
+												<span className="text-muted-foreground/80">Size: {organization.size_range}</span>
+											)}
+											{organization.headquarters_location && (
+												<span className="text-muted-foreground/80">HQ: {organization.headquarters_location}</span>
+											)}
 										</div>
-										{organization.notes && <p className="border-muted/20 border-t-2 leading-relaxed line-clamp-2 mt-3 pt-3 text-muted-foreground/90">{organization.notes}</p>}
+										{organization.notes && (
+											<p className="mt-3 line-clamp-2 border-muted/20 border-t-2 pt-3 text-muted-foreground/90 leading-relaxed">
+												{organization.notes}
+											</p>
+										)}
 									</CardContent>
-									<CardFooter className="bg-muted/20 border-muted/20 border-t-2 flex items-center justify-between px-4 py-3">
+									<CardFooter className="flex items-center justify-between border-muted/20 border-t-2 bg-muted/20 px-4 py-3">
 										<span className="flex items-center gap-2 text-muted-foreground text-sm">
 											<Users className="h-4 w-4" />
 											<span className="font-medium">{linkedPeople.length} linked</span>

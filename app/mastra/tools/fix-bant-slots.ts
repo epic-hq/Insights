@@ -86,7 +86,7 @@ async function fixBantSlots() {
 		const timelineSlot = {
 			summary_id: summary.id,
 			slot: "timeline",
-			description: `Expected timeline discussed`,
+			description: "Expected timeline discussed",
 			text_value: "Q4 2025",
 			status: "tentative",
 			confidence: 0.7,

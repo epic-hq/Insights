@@ -78,9 +78,7 @@ export default function OpportunityDetail() {
 						<Briefcase className="h-8 w-8 text-primary" />
 						<h1 className="text-balance font-bold text-4xl tracking-tight">{opportunity.title}</h1>
 					</div>
-					{opportunity.description && (
-						<p className="text-lg text-muted-foreground">{opportunity.description}</p>
-					)}
+					{opportunity.description && <p className="text-lg text-muted-foreground">{opportunity.description}</p>}
 					<div className="mt-3 flex items-center gap-2">
 						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status)}>
 							{opportunity.kanban_status || "Unknown"}
@@ -190,9 +188,7 @@ export default function OpportunityDetail() {
 						<div className="md:col-span-2">
 							<label className="font-medium text-muted-foreground text-sm">Additional Information</label>
 							<div className="mt-1 text-sm">
-								<pre className="rounded bg-muted p-2 text-xs">
-									{JSON.stringify(opportunity.metadata, null, 2)}
-								</pre>
+								<pre className="rounded bg-muted p-2 text-xs">{JSON.stringify(opportunity.metadata, null, 2)}</pre>
 							</div>
 						</div>
 					)}

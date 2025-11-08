@@ -32,7 +32,7 @@ export default function ProductLensGuide() {
 							The Product Lens is an interactive heat map showing which customer pains matter most for each user
 							segment. Instead of guessing priorities from gut feel, you see impact scores based on:
 						</p>
-						<ul className="space-y-2 text-sm text-muted-foreground">
+						<ul className="space-y-2 text-muted-foreground text-sm">
 							<li className="flex items-start gap-2">
 								<span className="mt-0.5 text-primary">•</span>
 								<span>
@@ -53,10 +53,10 @@ export default function ProductLensGuide() {
 							</li>
 						</ul>
 						<div className="rounded-lg border border-border/60 bg-muted/10 p-4">
-							<p className="font-medium text-sm text-foreground">Example</p>
-							<p className="mt-2 text-sm text-muted-foreground">
-								If 100% of your Artist segment mentions "lack of creative time" with high intensity and high
-								willingness to pay, that cell gets a high impact score (e.g., 3.0) and appears in red on the heat map.
+							<p className="font-medium text-foreground text-sm">Example</p>
+							<p className="mt-2 text-muted-foreground text-sm">
+								If 100% of your Artist segment mentions "lack of creative time" with high intensity and high willingness
+								to pay, that cell gets a high impact score (e.g., 3.0) and appears in red on the heat map.
 							</p>
 						</div>
 					</CardContent>
@@ -71,10 +71,10 @@ export default function ProductLensGuide() {
 					</CardHeader>
 					<CardContent className="space-y-4 text-muted-foreground">
 						<p>
-							User groups come from <strong>personas</strong> and <strong>roles</strong> you've tagged in your
-							evidence. Each piece of evidence linked to a person with a persona creates a segment in the matrix.
+							User groups come from <strong>personas</strong> and <strong>roles</strong> you've tagged in your evidence.
+							Each piece of evidence linked to a person with a persona creates a segment in the matrix.
 						</p>
-						<div className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-4 text-sm">
+						<div className="rounded-lg border border-border/60 border-dashed bg-muted/10 p-4 text-sm">
 							<p className="font-medium text-foreground">Tip</p>
 							<p className="mt-1">
 								More interviews with diverse segments = more confident insights. The Product Lens will warn you when
@@ -98,19 +98,19 @@ export default function ProductLensGuide() {
 						</p>
 						<div className="grid gap-4 md:grid-cols-2">
 							<div className="rounded-lg border border-border/60 bg-muted/10 p-4">
-								<h3 className="mb-2 font-semibold text-sm text-foreground">Raw pains from evidence:</h3>
-								<ul className="space-y-1 text-xs text-muted-foreground">
+								<h3 className="mb-2 font-semibold text-foreground text-sm">Raw pains from evidence:</h3>
+								<ul className="space-y-1 text-muted-foreground text-xs">
 									<li>• "Not enough time for creativity"</li>
 									<li>• "Struggle to find time to create"</li>
 									<li>• "Can't make space for creative work"</li>
 								</ul>
 							</div>
 							<div className="rounded-lg border border-border/60 bg-primary/10 p-4">
-								<h3 className="mb-2 font-semibold text-sm text-foreground">Clustered theme:</h3>
-								<div className="rounded bg-primary/20 px-3 py-2 text-center text-sm font-medium text-foreground">
+								<h3 className="mb-2 font-semibold text-foreground text-sm">Clustered theme:</h3>
+								<div className="rounded bg-primary/20 px-3 py-2 text-center font-medium text-foreground text-sm">
 									"lack of creative time"
 								</div>
-								<p className="mt-2 text-xs text-muted-foreground">3 evidence items from 2 people</p>
+								<p className="mt-2 text-muted-foreground text-xs">3 evidence items from 2 people</p>
 							</div>
 						</div>
 					</CardContent>
@@ -166,7 +166,7 @@ export default function ProductLensGuide() {
 								</div>
 							</div>
 						</div>
-						<p className="text-sm text-muted-foreground">
+						<p className="text-muted-foreground text-sm">
 							The <strong>💰 icon</strong> marks pains where users showed high willingness to pay for a solution.
 						</p>
 					</CardContent>
@@ -188,12 +188,12 @@ export default function ProductLensGuide() {
 								<strong>Sort by Frequency</strong> – Shows most commonly mentioned pains at the top
 							</li>
 							<li>
-								<strong>Min Impact filter</strong> – Use the slider to hide low-impact pains and focus on what
-								matters. Start at 1.0 to see only medium/high/critical opportunities.
+								<strong>Min Impact filter</strong> – Use the slider to hide low-impact pains and focus on what matters.
+								Start at 1.0 to see only medium/high/critical opportunities.
 							</li>
 							<li>
-								<strong>Click any cell</strong> – Opens a detail modal with metrics, sample quotes, and a link to
-								view all supporting evidence
+								<strong>Click any cell</strong> – Opens a detail modal with metrics, sample quotes, and a link to view
+								all supporting evidence
 							</li>
 						</ol>
 					</CardContent>
@@ -215,8 +215,8 @@ export default function ProductLensGuide() {
 								<strong>1-2 sentence summary</strong> – The biggest opportunity based on impact scores
 							</li>
 							<li>
-								<strong>Top 3 Actions</strong> – Specific features to build or problems to solve, ranked by impact
-								with actual numbers
+								<strong>Top 3 Actions</strong> – Specific features to build or problems to solve, ranked by impact with
+								actual numbers
 							</li>
 							<li>
 								<strong>Sample size warnings</strong> – If you need more interviews to increase confidence
@@ -224,10 +224,10 @@ export default function ProductLensGuide() {
 						</ul>
 						<div className="rounded-lg border border-border/60 bg-muted/10 p-4 text-sm">
 							<p className="font-medium text-foreground">Example output</p>
-							<div className="mt-2 space-y-1 text-xs text-muted-foreground">
+							<div className="mt-2 space-y-1 text-muted-foreground text-xs">
 								<p>
-									"The most significant opportunity is addressing the 'lack of creative time' for Creative
-									Individuals, which has a high impact score of 0.5."
+									"The most significant opportunity is addressing the 'lack of creative time' for Creative Individuals,
+									which has a high impact score of 0.5."
 								</p>
 								<p className="mt-2 font-medium text-foreground">Top 3 Actions:</p>
 								<ol className="list-decimal space-y-1 pl-4">
@@ -264,8 +264,8 @@ export default function ProductLensGuide() {
 							<li className="flex items-start gap-2">
 								<span className="mt-0.5 text-primary">✓</span>
 								<span>
-									<strong>Segment-specific features</strong> – Decide if a feature is worth building for one segment
-									vs. all users
+									<strong>Segment-specific features</strong> – Decide if a feature is worth building for one segment vs.
+									all users
 								</span>
 							</li>
 							<li className="flex items-start gap-2">

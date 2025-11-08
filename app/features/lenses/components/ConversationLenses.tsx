@@ -1,14 +1,14 @@
-import { type ReactNode, useMemo } from "react"
-import { AlertTriangle, BarChart3, Cpu, Headset, Map, Sparkles, Target, Users, Heart } from "lucide-react"
 import type { LucideIcon } from "lucide-react"
+import { AlertTriangle, BarChart3, Cpu, Headset, Heart, Map, Sparkles, Target, Users } from "lucide-react"
+import { type ReactNode, useMemo } from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
-import { cn } from "~/lib/utils"
 import type { InterviewLensFramework, InterviewLensView } from "~/features/lenses/types"
+import { cn } from "~/lib/utils"
 import { LensSlotTable } from "./CompanyTable"
-import { StakeholderList } from "./PersonDetail"
 import { LensExecutionPanel } from "./ConversationViewer"
+import { StakeholderList } from "./PersonDetail"
 
 type CustomLensDefaults = Record<string, { summary?: string; notes?: string; highlights?: string[] }>
 
@@ -130,7 +130,8 @@ export function SalesLensesSection({
 			},
 			customerService: {
 				title: "Customer Service",
-				description: "Capture support expectations, friction points, and service-level considerations raised by participants.",
+				description:
+					"Capture support expectations, friction points, and service-level considerations raised by participants.",
 			},
 			pessimistic: {
 				title: "Pessimistic",
@@ -153,9 +154,9 @@ export function SalesLensesSection({
 			highlights,
 			badge: null,
 			content: highlights.length ? (
-				<div className="rounded-lg border border-dashed border-border/60 bg-muted/20 p-4">
+				<div className="rounded-lg border border-border/60 border-dashed bg-muted/20 p-4">
 					<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Signals captured</p>
-					<ul className="space-y-2 text-sm text-foreground">
+					<ul className="space-y-2 text-foreground text-sm">
 						{highlights.map((item, index) => (
 							<li key={`${lensId}-highlight-${index}`} className="flex gap-2">
 								<span className="mt-[3px] text-muted-foreground">•</span>
@@ -190,7 +191,7 @@ export function SalesLensesSection({
 						{person.painsAndGoals.pains.length > 0 && (
 							<div className="rounded-lg border border-border/50 bg-background p-3">
 								<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Pains</p>
-								<ul className="space-y-2 text-sm text-foreground">
+								<ul className="space-y-2 text-foreground text-sm">
 									{person.painsAndGoals.pains.map((pain, index) => (
 										<li key={`pain-${index}`} className="flex gap-2">
 											<span className="mt-[3px] text-destructive">•</span>
@@ -203,7 +204,7 @@ export function SalesLensesSection({
 						{person.painsAndGoals.gains.length > 0 && (
 							<div className="rounded-lg border border-border/50 bg-background p-3">
 								<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Goals & Gains</p>
-								<ul className="space-y-2 text-sm text-foreground">
+								<ul className="space-y-2 text-foreground text-sm">
 									{person.painsAndGoals.gains.map((gain, index) => (
 										<li key={`gain-${index}`} className="flex gap-2">
 											<span className="mt-[3px] text-emerald-600">•</span>
@@ -243,7 +244,7 @@ export function SalesLensesSection({
 							{person.empathyMap.says.length > 0 && (
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Says</p>
-									<ul className="space-y-1.5 text-sm text-foreground">
+									<ul className="space-y-1.5 text-foreground text-sm">
 										{person.empathyMap.says.slice(0, 4).map((item, index) => (
 											<li key={`says-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-muted-foreground">•</span>
@@ -256,7 +257,7 @@ export function SalesLensesSection({
 							{person.empathyMap.does.length > 0 && (
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Does</p>
-									<ul className="space-y-1.5 text-sm text-foreground">
+									<ul className="space-y-1.5 text-foreground text-sm">
 										{person.empathyMap.does.slice(0, 4).map((item, index) => (
 											<li key={`does-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-muted-foreground">•</span>
@@ -269,7 +270,7 @@ export function SalesLensesSection({
 							{person.empathyMap.thinks.length > 0 && (
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Thinks</p>
-									<ul className="space-y-1.5 text-sm text-foreground">
+									<ul className="space-y-1.5 text-foreground text-sm">
 										{person.empathyMap.thinks.slice(0, 4).map((item, index) => (
 											<li key={`thinks-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-muted-foreground">•</span>
@@ -282,7 +283,7 @@ export function SalesLensesSection({
 							{person.empathyMap.feels.length > 0 && (
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 font-medium text-muted-foreground text-xs uppercase tracking-wide">Feels</p>
-									<ul className="space-y-1.5 text-sm text-foreground">
+									<ul className="space-y-1.5 text-foreground text-sm">
 										{person.empathyMap.feels.slice(0, 4).map((item, index) => (
 											<li key={`feels-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-muted-foreground">•</span>
@@ -316,7 +317,7 @@ export function SalesLensesSection({
 	return (
 		<div className="space-y-6">
 			<header className="space-y-2">
-				<h2 className="font-semibold text-lg text-foreground">Conversation lenses</h2>
+				<h2 className="font-semibold text-foreground text-lg">Conversation lenses</h2>
 				<p className="text-muted-foreground text-sm">
 					Mix of structured frameworks and team-specific perspectives that keep engineering, customer success, and deal
 					risks aligned.
@@ -336,7 +337,7 @@ export function SalesLensesSection({
 							</div>
 							<div className="flex flex-1 flex-col gap-1 sm:flex-row sm:items-center sm:gap-3">
 								<div className="flex items-center gap-2">
-									<span className="font-semibold text-sm text-foreground">{item.title}</span>
+									<span className="font-semibold text-foreground text-sm">{item.title}</span>
 									{item.badge ? (
 										<Badge variant="outline" className="text-[0.65rem] uppercase">
 											{item.badge}
@@ -365,7 +366,7 @@ export function SalesLensesSection({
 						</AccordionTrigger>
 						<AccordionContent className="space-y-4 px-4 pb-4">
 							<div
-								className="rounded-lg border border-dashed border-border/60 bg-muted/10 p-3"
+								className="rounded-lg border border-border/60 border-dashed bg-muted/10 p-3"
 								onClick={(event) => event.stopPropagation()}
 								onFocusCapture={(event) => event.stopPropagation()}
 							>
@@ -383,7 +384,7 @@ export function SalesLensesSection({
 							{item.highlights && item.highlights.length > 0 ? (
 								<div className="rounded-lg border border-border/50 bg-background p-3">
 									<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Signals to watch</p>
-									<ul className="space-y-2 text-sm text-foreground">
+									<ul className="space-y-2 text-foreground text-sm">
 										{item.highlights.map((highlight, index) => (
 											<li key={`${item.id}-highlight-${index}`} className="flex gap-2">
 												<span className="mt-[3px] text-muted-foreground">•</span>

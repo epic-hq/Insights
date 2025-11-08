@@ -54,7 +54,8 @@ function useAnnotations({
 	const [annotations, setAnnotations] = useState<Annotation[]>([])
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const annotationsEndpoint = useMemo(() => (projectPath ? routes.api.annotations() : null), [projectPath, routes])
+	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
+	const annotationsEndpoint = useMemo(() => (projectPath ? routes.api.annotations() : null), [projectPath])
 
 	// Fetch annotations on mount and when parameters change
 	useEffect(() => {
@@ -182,7 +183,8 @@ function useVoting({ entityType, entityId }: { entityType: EntityType; entityId:
 	})
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath, routes])
+	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
+	const votesEndpoint = useMemo(() => (projectPath ? routes.api.votes() : null), [projectPath])
 
 	// Fetch vote counts on mount and when parameters change
 	useEffect(() => {
@@ -300,7 +302,8 @@ function useEntityFlags({ entityType, entityId }: { entityType: EntityType; enti
 	})
 	const [isLoading, setIsLoading] = useState(true)
 	const [error, setError] = useState<string | null>(null)
-	const entityFlagsEndpoint = useMemo(() => (projectPath ? routes.api.entityFlags() : null), [projectPath, routes])
+	// Fix: Remove routes from deps to prevent infinite loop - routes is a new object every render
+	const entityFlagsEndpoint = useMemo(() => (projectPath ? routes.api.entityFlags() : null), [projectPath])
 
 	// Fetch flags on mount and when parameters change
 	useEffect(() => {

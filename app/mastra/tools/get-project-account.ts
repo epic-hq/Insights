@@ -13,11 +13,7 @@ const supabase = createClient(supabaseUrl, supabaseKey)
 async function getProjectAccount() {
 	const projectId = "6d3594bd-04d5-48dc-8a37-14d609b3e1ad"
 
-	const { data, error } = await supabase
-		.from("projects")
-		.select("id, name, account_id")
-		.eq("id", projectId)
-		.single()
+	const { data, error } = await supabase.from("projects").select("id, name, account_id").eq("id", projectId).single()
 
 	if (error) {
 		consola.error("Error:", error)

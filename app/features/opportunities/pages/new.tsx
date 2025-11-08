@@ -159,15 +159,7 @@ export default function NewOpportunity() {
 				<div className="grid gap-6 md:grid-cols-2">
 					<div>
 						<Label htmlFor="amount">Deal Value ($)</Label>
-						<Input
-							id={useId()}
-							name="amount"
-							type="number"
-							step="0.01"
-							min="0"
-							placeholder="0.00"
-							className="mt-1"
-						/>
+						<Input id={useId()} name="amount" type="number" step="0.01" min="0" placeholder="0.00" className="mt-1" />
 					</div>
 
 					<div>

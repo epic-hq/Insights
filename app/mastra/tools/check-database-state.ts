@@ -28,15 +28,22 @@ async function checkDatabaseState() {
 
 	if (colError) {
 		// Try direct query instead
-		const { data: peopleSchema } = await supabase
-			.from("people")
-			.select("*")
-			.limit(1)
+		const { data: peopleSchema } = await supabase.from("people").select("*").limit(1)
 
 		if (peopleSchema && peopleSchema.length > 0) {
 			const person = peopleSchema[0] as Record<string, unknown>
 			const cols = Object.keys(person).filter((k) =>
-				["job_function", "seniority_level", "title", "industry", "life_stage", "age_range", "segment", "role", "occupation"].includes(k)
+				[
+					"job_function",
+					"seniority_level",
+					"title",
+					"industry",
+					"life_stage",
+					"age_range",
+					"segment",
+					"role",
+					"occupation",
+				].includes(k)
 			)
 			consola.info("Available columns:", cols.length > 0 ? cols : "None of the expected columns found")
 		}
@@ -99,15 +106,15 @@ async function checkDatabaseState() {
 		}
 		consola.info(`Found ${personFacets?.length || 0} total person_facet links:`)
 		for (const [kind, people] of linksByKind.entries()) {
-			consola.info(`  - ${kind}: ${people.size} people, ${personFacets?.filter((pf) => ((pf.facet_account as any).facet_kind_global as any).slug === kind).length} total links`)
+			consola.info(
+				`  - ${kind}: ${people.size} people, ${personFacets?.filter((pf) => ((pf.facet_account as any).facet_kind_global as any).slug === kind).length} total links`
+			)
 		}
 	}
 
 	// Check people with data
 	consola.box("People with Segment Data")
-	const { count: totalPeople } = await supabase
-		.from("people")
-		.select("*", { count: "exact", head: true })
+	const { count: totalPeople } = await supabase.from("people").select("*", { count: "exact", head: true })
 
 	const { count: withSegment } = await supabase
 		.from("people")

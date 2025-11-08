@@ -53,10 +53,7 @@ async function verifyBantData() {
 	const { data: slots, error: slotsError } = await supabase
 		.from("sales_lens_slots")
 		.select("id, summary_id, slot, text_value, numeric_value")
-		.in(
-			"summary_id",
-			summaries?.map((s) => s.id) || []
-		)
+		.in("summary_id", summaries?.map((s) => s.id) || [])
 
 	if (slotsError) {
 		consola.error("Error fetching slots:", slotsError)
@@ -80,10 +77,7 @@ async function verifyBantData() {
 	const { data: stakeholders, error: stakeholdersError } = await supabase
 		.from("sales_lens_stakeholders")
 		.select("id, summary_id, display_name, influence, labels")
-		.in(
-			"summary_id",
-			summaries?.map((s) => s.id) || []
-		)
+		.in("summary_id", summaries?.map((s) => s.id) || [])
 
 	if (stakeholdersError) {
 		consola.error("Error fetching stakeholders:", stakeholdersError)

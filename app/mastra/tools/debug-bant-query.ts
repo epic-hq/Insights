@@ -24,7 +24,10 @@ async function debugBantQuery() {
 		.select("id, opportunity_id, framework")
 		.limit(10)
 	consola.info(`Total sales_lens_summaries: ${allSummaries?.length || 0}`)
-	consola.info("Framework values:", allSummaries?.map((s) => s.framework))
+	consola.info(
+		"Framework values:",
+		allSummaries?.map((s) => s.framework)
+	)
 
 	// Try the same query as generateBantMatrix
 	if (allOpps && allOpps.length > 0) {

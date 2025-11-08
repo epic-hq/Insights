@@ -3,12 +3,12 @@
  * Shows opportunity qualification by budget range and decision-maker authority
  */
 
-import { useState } from "react"
-import { LoaderFunctionArgs, useLoaderData } from "react-router"
 import consola from "consola"
-import { BantMatrixComponent } from "../components/BantMatrix"
-import { generateBantMatrix, type BantMatrixCell } from "../services/generateBantMatrix.server"
+import { useState } from "react"
+import { type LoaderFunctionArgs, useLoaderData } from "react-router"
 import { userContext } from "~/server/user-context"
+import { BantMatrixComponent } from "../components/BantMatrix"
+import { type BantMatrixCell, generateBantMatrix } from "../services/generateBantMatrix.server"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
@@ -63,9 +63,7 @@ export default function BantLens() {
 			<div className="flex items-start justify-between gap-4">
 				<div>
 					<h1 className="font-bold text-3xl">BANT Lens</h1>
-					<p className="text-muted-foreground">
-						Budget × Authority matrix to prioritize qualified opportunities
-					</p>
+					<p className="text-muted-foreground">Budget × Authority matrix to prioritize qualified opportunities</p>
 				</div>
 			</div>
 
@@ -87,14 +85,9 @@ export default function BantLens() {
 								<h3 className="font-bold text-lg">
 									{selectedCell.budget_bucket} × {selectedCell.authority_level}
 								</h3>
-								<p className="text-muted-foreground text-sm">
-									{selectedCell.metrics.opportunity_count} opportunities
-								</p>
+								<p className="text-muted-foreground text-sm">{selectedCell.metrics.opportunity_count} opportunities</p>
 							</div>
-							<button
-								onClick={() => setSelectedCell(null)}
-								className="text-muted-foreground hover:text-foreground"
-							>
+							<button onClick={() => setSelectedCell(null)} className="text-muted-foreground hover:text-foreground">
 								✕
 							</button>
 						</div>
@@ -103,15 +96,11 @@ export default function BantLens() {
 						<div className="mb-4 grid grid-cols-2 gap-4">
 							<div className="rounded-lg border bg-card p-3">
 								<div className="text-muted-foreground text-sm">Avg Deal Size</div>
-								<div className="font-bold text-xl">
-									${(selectedCell.metrics.avg_deal_size / 1000).toFixed(0)}K
-								</div>
+								<div className="font-bold text-xl">${(selectedCell.metrics.avg_deal_size / 1000).toFixed(0)}K</div>
 							</div>
 							<div className="rounded-lg border bg-card p-3">
 								<div className="text-muted-foreground text-sm">BANT Confidence</div>
-								<div className="font-bold text-xl">
-									{(selectedCell.metrics.confidence_avg * 100).toFixed(0)}%
-								</div>
+								<div className="font-bold text-xl">{(selectedCell.metrics.confidence_avg * 100).toFixed(0)}%</div>
 							</div>
 						</div>
 

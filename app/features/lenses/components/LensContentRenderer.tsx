@@ -12,7 +12,7 @@ export function LensContentRenderer({ slot, title }: LensContentRendererProps) {
 	return (
 		<Card className="border border-border/60 shadow-sm">
 			<CardHeader className="flex flex-col gap-1 py-3">
-				<CardTitle className="text-base font-semibold">
+				<CardTitle className="font-semibold text-base">
 					{title ?? slot.label ?? slot.fieldKey.replace(/_/g, " ").replace(/\b\w/g, (m) => m.toUpperCase())}
 				</CardTitle>
 				{slot.summary ? <p className="text-muted-foreground text-sm">{slot.summary}</p> : null}
@@ -40,13 +40,11 @@ export function LensContentRenderer({ slot, title }: LensContentRendererProps) {
 					<>
 						<Separator />
 						<section className="space-y-3">
-							<p className="font-medium text-sm text-muted-foreground">Evidence</p>
+							<p className="font-medium text-muted-foreground text-sm">Evidence</p>
 							<ul className="space-y-3">
 								{slot.evidence.map((item) => (
 									<li key={item.evidenceId} className="rounded-md border bg-muted/30 p-3">
-										<p className="text-sm text-foreground">
-											{item.transcriptSnippet ?? "Evidence snippet pending"}
-										</p>
+										<p className="text-foreground text-sm">{item.transcriptSnippet ?? "Evidence snippet pending"}</p>
 										<p className="mt-2 text-muted-foreground text-xs">
 											#{item.evidenceId.slice(0, 8)}
 											{typeof item.startMs === "number" ? ` · ${Math.round(item.startMs / 1000)}s` : ""}

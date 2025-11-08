@@ -1,5 +1,5 @@
 import { ChevronDown, Target, TrendingUp, Users } from "lucide-react"
-import React from "react"
+import type React from "react"
 import { useState } from "react"
 import { Link, useLoaderData } from "react-router"
 import { BackButton } from "~/components/ui/BackButton"
@@ -342,7 +342,7 @@ export default function SegmentsIndex({ loaderData }: Route.ComponentProps) {
 			<Collapsible open={isExplainerOpen} onOpenChange={setIsExplainerOpen}>
 				<Card className="mt-8">
 					<CollapsibleTrigger asChild>
-						<CardHeader className="cursor-pointer hover:bg-muted/50 transition-colors">
+						<CardHeader className="cursor-pointer transition-colors hover:bg-muted/50">
 							<CardTitle className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Target className="h-5 w-5" />

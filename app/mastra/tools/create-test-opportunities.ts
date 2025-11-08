@@ -191,7 +191,7 @@ async function createTestOpportunities() {
 
 				consola.success(`Created ${extraction.entities.stakeholders.length} stakeholders`)
 			} catch (err) {
-				consola.error(`Failed to generate sales lens:`, err)
+				consola.error("Failed to generate sales lens:", err)
 			}
 		}
 	}

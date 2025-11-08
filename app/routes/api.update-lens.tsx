@@ -34,7 +34,8 @@ export async function action({ request }: ActionFunctionArgs) {
 	}
 
 	const conversationAnalysis =
-		(data.conversation_analysis as Record<string, unknown> | null | undefined) && typeof data.conversation_analysis === "object"
+		(data.conversation_analysis as Record<string, unknown> | null | undefined) &&
+		typeof data.conversation_analysis === "object"
 			? { ...(data.conversation_analysis as Record<string, unknown>) }
 			: {}
 

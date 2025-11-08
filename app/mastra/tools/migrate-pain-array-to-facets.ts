@@ -7,8 +7,8 @@
  * 3. The new evidence_facet records will trigger embedding generation automatically
  */
 
-import consola from "consola"
 import { createClient } from "@supabase/supabase-js"
+import consola from "consola"
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!
@@ -41,10 +41,7 @@ function slugify(text: string): string {
 /**
  * Get or create facet_account entry for a given label
  */
-async function getOrCreateFacetAccount(opts: {
-	accountId: string
-	label: string
-}): Promise<number | null> {
+async function getOrCreateFacetAccount(opts: { accountId: string; label: string }): Promise<number | null> {
 	const { accountId, label } = opts
 	const slug = slugify(label)
 
@@ -109,9 +106,7 @@ async function migratePainsToFacets(projectId?: string) {
 	}
 
 	// Filter to only records with non-empty pains array
-	const recordsWithPains = evidenceRecords.filter(
-		(r) => r.pains && Array.isArray(r.pains) && r.pains.length > 0
-	)
+	const recordsWithPains = evidenceRecords.filter((r) => r.pains && Array.isArray(r.pains) && r.pains.length > 0)
 
 	if (recordsWithPains.length === 0) {
 		consola.success("[migrate-pains] No evidence records with non-empty pains[] found!")
@@ -196,17 +191,15 @@ async function migratePainsToFacets(projectId?: string) {
 	)
 
 	// Verify migration
-	const { data: verifyData } = await supabaseAdmin
-		.from("evidence")
-		.select("id")
-		.not("pains", "is", null)
+	const { data: verifyData } = await supabaseAdmin.from("evidence").select("id").not("pains", "is", null)
 
-	const remaining = verifyData?.filter((r: any) => {
-		return r.pains && Array.isArray(r.pains) && r.pains.length > 0
-	}).length || 0
+	const remaining =
+		verifyData?.filter((r: any) => {
+			return r.pains && Array.isArray(r.pains) && r.pains.length > 0
+		}).length || 0
 
 	consola.info(`[migrate-pains] Evidence records still in old format: ${remaining}`)
-	consola.info(`[migrate-pains] Note: These may have been migrated already, check evidence_facet table`)
+	consola.info("[migrate-pains] Note: These may have been migrated already, check evidence_facet table")
 }
 
 // Run the migration
