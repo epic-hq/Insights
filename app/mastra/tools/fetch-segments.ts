@@ -4,7 +4,7 @@ import consola from "consola"
 import { z } from "zod"
 import { getSegmentKindSummaries, getSegmentsSummary } from "~/features/segments/services/segmentData.server"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
+import { HOST } from "~/paths"
 import type { Database } from "~/types"
 import { createRouteDefinitions } from "~/utils/route-definitions"
 
@@ -119,7 +119,7 @@ export const fetchSegmentsTool = createTool({
 			// Add URLs to each segment
 			const segmentsWithUrls = segments.map((segment) => ({
 				...segment,
-				url: projectPath ? `${PRODUCTION_HOST}${routes.segments.detail(segment.id)}` : null,
+				url: projectPath ? `${HOST}${routes.segments.detail(segment.id)}` : null,
 			}))
 
 			let message = `Retrieved ${segmentsWithUrls.length} segments.`

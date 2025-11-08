@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
+import { HOST } from "~/paths"
 import type { contactInfoSchema } from "~/schemas"
 import { personDetailSchema } from "~/schemas"
 import type {
@@ -205,14 +205,16 @@ export const fetchPeopleDetailsTool = createTool({
 		}
 
 		try {
-			// First try project-scoped search
-			let { data: peopleData, error: peopleError } = await supabase
+			// First try project-scoped search using project_people junction table
+			let { data: projectPeopleData, error: peopleError } = await supabase
 				.from("people")
-				.select("*")
-				.eq("project_id", projectId)
+				.select("*, project_people!inner(project_id)")
+				.eq("project_people.project_id", projectId)
+				.eq("account_id", accountId || "")
 				.limit(sanitizedPersonSearch ? 100 : peopleLimit)
 
 			let searchScope: "project" | "account" = "project"
+			let peopleData: Person[] | null = projectPeopleData as Person[] | null
 
 			// If searching and no results in project, expand to account level
 			if (sanitizedPersonSearch && (!peopleData || peopleData.length === 0) && accountId) {
@@ -229,10 +231,10 @@ export const fetchPeopleDetailsTool = createTool({
 					.limit(100)
 
 				if (accountQuery.data && accountQuery.data.length > 0) {
-					peopleData = accountQuery.data
+					peopleData = accountQuery.data as Person[]
 					searchScope = "account"
 					consola.info("fetch-people-details: found results at account scope", {
-						count: peopleData.length,
+						count: peopleData?.length || 0,
 					})
 				}
 			}
@@ -247,7 +249,7 @@ export const fetchPeopleDetailsTool = createTool({
 				consola.info("fetch-people-details: RAW first result", JSON.stringify(peopleData[0], null, 2))
 			}
 
-			let people = (peopleData as Person[] | null) ?? []
+			let people = peopleData ?? []
 
 			consola.info("fetch-people-details: query results", {
 				projectId,
@@ -493,7 +495,7 @@ export const fetchPeopleDetailsTool = createTool({
 								interview_date: normalizeDate(interview.interview_date),
 								status: interview.status,
 								evidenceCount: interviewEvidenceCount,
-								url: projectPath ? `${PRODUCTION_HOST}${routes.interviews.detail(interview.id)}` : null,
+								url: projectPath ? `${HOST}${routes.interviews.detail(interview.id)}` : null,
 							}
 						})
 						.filter(Boolean)
@@ -536,7 +538,7 @@ export const fetchPeopleDetailsTool = createTool({
 								description: pp.personas?.description ?? null,
 								assigned_at: normalizeDate(pp.assigned_at),
 								confidence_score: pp.confidence_score,
-								url: projectPath && pp.personas?.id ? `${PRODUCTION_HOST}${routes.personas.detail(pp.personas.id)}` : null,
+								url: projectPath && pp.personas?.id ? `${HOST}${routes.personas.detail(pp.personas.id)}` : null,
 							}))
 							: undefined,
 						interviews: includeEvidence ? interviews : undefined,
@@ -551,7 +553,7 @@ export const fetchPeopleDetailsTool = createTool({
 								interview_title: ev.interview?.title ?? null,
 								interview_date: normalizeDate(ev.interview?.interview_date),
 								created_at: normalizeDate(ev.created_at),
-								url: projectPath ? `${PRODUCTION_HOST}${routes.evidence.detail(ev.id)}` : null,
+								url: projectPath ? `${HOST}${routes.evidence.detail(ev.id)}` : null,
 							}))
 							: undefined,
 						facets: includeFacets
@@ -575,7 +577,7 @@ export const fetchPeopleDetailsTool = createTool({
 						evidenceCount: includeEvidence ? evidenceCount : undefined,
 						created_at: normalizeDate(person.created_at),
 						updated_at: normalizeDate(person.updated_at),
-					url: projectPath ? `${PRODUCTION_HOST}${routes.people.detail(person.id)}` : null,
+					url: projectPath ? `${HOST}${routes.people.detail(person.id)}` : null,
 					}
 				})
 				.filter(Boolean) as z.infer<typeof personDetailSchema>[]

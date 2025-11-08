@@ -4,7 +4,7 @@ import consola from "consola"
 import { z } from "zod"
 import { getPersonas } from "~/features/personas/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
+import { HOST } from "~/paths"
 import { personasDetailSchema } from "~/schemas"
 import type { Database } from "~/types"
 import { createRouteDefinitions } from "~/utils/route-definitions"
@@ -98,7 +98,7 @@ export const fetchPersonasTool = createTool({
 						: 0,
 				createdAt: persona.created_at ? new Date(persona.created_at).toISOString() : null,
 				updatedAt: persona.updated_at ? new Date(persona.updated_at).toISOString() : null,
-				url: projectPath ? `${PRODUCTION_HOST}${routes.personas.detail(persona.id)}` : null,
+				url: projectPath ? `${HOST}${routes.personas.detail(persona.id)}` : null,
 			}))
 
 			// Apply search filtering if provided

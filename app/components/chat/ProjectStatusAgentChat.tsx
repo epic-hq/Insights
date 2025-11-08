@@ -3,6 +3,7 @@ import type { ToolCallPart, ToolResultPart } from "ai"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import { BotMessageSquare, ChevronLeft, ChevronRight } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
+import { useFetcher } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
@@ -12,23 +13,24 @@ import type { UpsightMessage } from "~/mastra/message-types"
 interface ProjectStatusAgentChatProps {
 	accountId: string
 	projectId: string
-	initialMessages?: UpsightMessage[]
 	systemContext: string
 }
 
-export function ProjectStatusAgentChat({
-	accountId,
-	projectId,
-	initialMessages = [],
-	systemContext,
-}: ProjectStatusAgentChatProps) {
+export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: ProjectStatusAgentChatProps) {
 	const [input, setInput] = useState("")
 	const [isCollapsed, setIsCollapsed] = useState(false)
 	const messagesEndRef = useRef<HTMLDivElement | null>(null)
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
+	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
 	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
 
-	const { messages, sendMessage, status } = useChat<UpsightMessage>({
+	// Load chat history when project changes
+	useEffect(() => {
+		historyFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/history`)
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [accountId, projectId])
+
+	const { messages, sendMessage, status, setMessages } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: routes.api.chat.projectStatus(),
 			body: { system: systemContext },
@@ -36,13 +38,20 @@ export function ProjectStatusAgentChat({
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 	})
 
+	// Set messages from history when loaded
+	useEffect(() => {
+		if (historyFetcher.data?.messages && historyFetcher.data.messages.length > 0) {
+			setMessages(historyFetcher.data.messages)
+		}
+	}, [historyFetcher.data, setMessages])
+
 	const visibleMessages = useMemo(() => (messages ?? []).slice(-12), [messages])
 
 	useEffect(() => {
 		if (messagesEndRef.current) {
 			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
 		}
-	}, [visibleMessages])
+	}, [messages])
 
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {

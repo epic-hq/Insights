@@ -101,16 +101,16 @@ export default function PeopleIndexPage() {
 				segment: person.segment ?? null,
 				persona: persona
 					? {
-							id: persona.id,
-							name: persona.name,
-						}
+						id: persona.id,
+						name: persona.name,
+					}
 					: null,
 				personaColor: persona?.color_hex || null,
 				organization: primaryOrganization
 					? {
-							id: primaryOrganization.id,
-							name: primaryOrganization.name || primaryOrganization.website_url || null,
-						}
+						id: primaryOrganization.id,
+						name: primaryOrganization.name || primaryOrganization.website_url || null,
+					}
 					: null,
 				interviewCount: person.interview_people?.length ?? 0,
 				keySignals: facets.map((facet) => facet.label),
@@ -131,7 +131,10 @@ export default function PeopleIndexPage() {
 							<UserCircle className="h-6 w-6" />
 						</div>
 						<div>
-							<h1 className="font-semibold text-3xl text-foreground">People</h1>
+							<div className="flex items-baseline gap-2">
+								<h1 className="font-semibold text-3xl text-foreground">People</h1>
+								<span className="text-foreground/75 text-sm">({people.length})</span>
+							</div>
 							<p className="mt-2 max-w-2xl text-muted-foreground text-sm">
 								Track the people behind your interviews. Explore linked personas, signals, and engagement recency from
 								one view.
@@ -145,9 +148,9 @@ export default function PeopleIndexPage() {
 							value={scope}
 							onValueChange={(value) => {
 								if (value) {
-															const newParams = new URLSearchParams(searchParams)
-															newParams.set("scope", value)
-															navigate(`?${newParams.toString()}`, { replace: true })
+									const newParams = new URLSearchParams(searchParams)
+									newParams.set("scope", value)
+									navigate(`?${newParams.toString()}`, { replace: true })
 								}
 							}}
 							className="w-full sm:w-auto"
@@ -208,9 +211,9 @@ export default function PeopleIndexPage() {
 									people_personas: (person.people_personas || []).map((pp) => ({
 										personas: pp.personas
 											? {
-													name: pp.personas.name,
-													color_hex: pp.personas.color_hex || undefined,
-												}
+												name: pp.personas.name,
+												color_hex: pp.personas.color_hex || undefined,
+											}
 											: undefined,
 									})),
 								}}

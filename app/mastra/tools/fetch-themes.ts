@@ -4,7 +4,7 @@ import consola from "consola"
 import { z } from "zod"
 import { getThemes } from "~/features/themes/db"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
+import { HOST } from "~/paths"
 import { themeDetailSchema } from "~/schemas"
 import type { Database } from "~/types"
 import { createRouteDefinitions } from "~/utils/route-definitions"
@@ -95,7 +95,7 @@ export const fetchThemesTool = createTool({
 						: 0,
 				createdAt: theme.created_at ? new Date(theme.created_at).toISOString() : null,
 				updatedAt: theme.updated_at ? new Date(theme.updated_at).toISOString() : null,
-				url: projectPath ? `${PRODUCTION_HOST}${routes.themes.detail(theme.id)}` : null,
+				url: projectPath ? `${HOST}${routes.themes.detail(theme.id)}` : null,
 			}))
 
 			// Apply search filtering if provided

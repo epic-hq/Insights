@@ -3,7 +3,7 @@ import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
-import { PRODUCTION_HOST } from "~/paths"
+import { HOST } from "~/paths"
 import type { Database } from "~/types"
 import { getProjectStatusData } from "~/utils/project-status.server"
 import { createRouteDefinitions } from "~/utils/route-definitions"
@@ -572,7 +572,7 @@ export const fetchProjectStatusContextTool = createTool({
 								project_id: insight.project_id,
 								created_at: normalizeDate(insight.created_at),
 								updated_at: normalizeDate(insight.updated_at),
-								url: projectPath ? `${PRODUCTION_HOST}${routes.insights.detail(insight.id)}` : null,
+								url: projectPath ? `${HOST}${routes.insights.detail(insight.id)}` : null,
 							}
 						}) ?? []
 
@@ -622,7 +622,7 @@ export const fetchProjectStatusContextTool = createTool({
 								pains: toStringArray(item.pains),
 								gains: toStringArray(item.gains),
 								anchors: item.anchors ?? undefined,
-								url: projectPath ? `${PRODUCTION_HOST}${routes.evidence.detail(item.id)}` : null,
+								url: projectPath ? `${HOST}${routes.evidence.detail(item.id)}` : null,
 							})) ?? []
 
 						data.evidence = serialized
@@ -701,7 +701,7 @@ export const fetchProjectStatusContextTool = createTool({
 						updated_at: normalizeDate(theme.updated_at),
 						evidenceCount: themeEvidenceCount.get(theme.id),
 						evidence: themeEvidenceMap.get(theme.id),
-						url: projectPath ? `${PRODUCTION_HOST}${routes.themes.detail(theme.id)}` : null,
+						url: projectPath ? `${HOST}${routes.themes.detail(theme.id)}` : null,
 					}))
 
 					data.themes = serialized
@@ -873,7 +873,7 @@ export const fetchProjectStatusContextTool = createTool({
 							contactInfo: person?.contact_info ?? null,
 							interviews: interviewsForPerson.length > 0 ? interviewsForPerson : undefined,
 							evidence: evidenceSnippets,
-							url: projectPath ? `${PRODUCTION_HOST}${routes.people.detail(personId)}` : null,
+							url: projectPath ? `${HOST}${routes.people.detail(personId)}` : null,
 						}
 					})
 
@@ -975,7 +975,7 @@ export const fetchProjectStatusContextTool = createTool({
 						linkedPeople: personaPeopleMap.has(persona.id)
 							? personaPeopleMap.get(persona.id)?.slice(0, peopleLimit)
 							: undefined,
-						url: projectPath ? `${PRODUCTION_HOST}${routes.personas.detail(persona.id)}` : null,
+						url: projectPath ? `${HOST}${routes.personas.detail(persona.id)}` : null,
 					}))
 
 					data.personas = serialized
@@ -1011,7 +1011,7 @@ export const fetchProjectStatusContextTool = createTool({
 							updated_at: normalizeDate(interview.updated_at),
 							evidenceCount: interview.evidence?.filter((item) => Boolean(item?.id)).length ?? 0,
 							insightCount: interview.insights?.filter((item) => Boolean(item?.id)).length ?? 0,
-							url: projectPath ? `${PRODUCTION_HOST}${routes.interviews.detail(interview.id)}` : null,
+							url: projectPath ? `${HOST}${routes.interviews.detail(interview.id)}` : null,
 						})) ?? []
 
 					data.interviews = serialized

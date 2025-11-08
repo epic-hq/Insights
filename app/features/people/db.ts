@@ -13,9 +13,8 @@ export const getPeople = async ({
 	projectId: string
 	scope?: "project" | "account"
 }) => {
-	let query = supabase
-		.from("people")
-		.select(`
+	// Build select string conditionally based on scope
+	const baseSelect = `
 			*,
 			people_personas (
 				personas (
@@ -70,13 +69,21 @@ export const getPeople = async ({
                                         id,
                                         title
                                 )
-			)
-		`)
+			)`
+
+	// For project scope, add inner join on project_people to filter by project
+	const selectString = scope === "project"
+		? `${baseSelect}, project_people!inner(project_id)`
+		: baseSelect
+
+	let query = supabase
+		.from("people")
+		.select(selectString)
 		.eq("account_id", accountId)
 
-	// Filter by project or account based on scope
+	// Filter by project using the junction table
 	if (scope === "project") {
-		query = query.eq("project_id", projectId)
+		query = query.eq("project_people.project_id", projectId)
 	}
 
 	const { data, error} = await query.order("created_at", { ascending: false })

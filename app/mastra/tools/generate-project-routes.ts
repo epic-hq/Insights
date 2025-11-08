@@ -1,5 +1,5 @@
 import { createTool } from "@mastra/core/tools"
-import { PRODUCTION_HOST } from "~/paths"
+import { HOST } from "~/paths"
 import { createRouteDefinitions } from "~/utils/route-definitions"
 
 /**
@@ -145,7 +145,7 @@ export const generateProjectRoutesTool = createTool({
 
 			return {
 				success: true,
-				route: `${PRODUCTION_HOST}${route}`,
+				route: `${HOST}${route}`,
 				entityType,
 				entityId,
 				action,

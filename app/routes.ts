@@ -99,6 +99,7 @@ const routes = [
 				route("api/chat/project-status", "./routes/api.chat.project-status.tsx"),
 				// Interview insight agent chat API (project-scoped)
 				route("api/chat/interview/:interviewId", "./routes/api.chat.interview.$interviewId.tsx"),
+				route("api/chat/project-status/history", "./routes/api.chat.project-status.history.tsx"),
 
 				// Interview transcript API (project-scoped)
 				route("api/interview-transcript", "./routes/api.interview-transcript.tsx"),
