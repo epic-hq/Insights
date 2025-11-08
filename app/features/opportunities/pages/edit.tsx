@@ -9,6 +9,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~
 import { Textarea } from "~/components/ui/textarea"
 
 import { deleteOpportunity, getOpportunityById, updateOpportunity } from "~/features/opportunities/db"
+import type { Database } from "~/types"
 import { userContext } from "~/server/user-context"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
@@ -25,7 +26,7 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
-	const opportunityId = params.id
+	const opportunityId = params.opportunityId
 
 	if (!accountId || !projectId || !opportunityId) {
 		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
@@ -56,7 +57,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	// Both from URL params - consistent, explicit, RESTful
 	const accountId = params.accountId
 	const projectId = params.projectId
-	const opportunityId = params.id
+	const opportunityId = params.opportunityId
 
 	if (!accountId || !projectId || !opportunityId) {
 		throw new Response("Account ID, Project ID, and Opportunity ID are required", { status: 400 })
@@ -98,7 +99,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	}
 
 	try {
-		const updateData: any = {
+		const updateData: Database["public"]["Tables"]["opportunities"]["Update"] = {
 			title: title.trim(),
 			kanban_status: kanbanStatus || "Explore",
 		}
@@ -237,7 +238,7 @@ export default function EditOpportunity() {
 			</Form>
 
 			<div className="mt-12 border-t pt-8">
-				<h2 className="font-semibold text-lg text-destructive">Danger Zone</h2>
+				<h2 className="font-semibold text-destructive text-lg">Danger Zone</h2>
 				<p className="mt-2 text-muted-foreground text-sm">
 					Permanently delete this opportunity. This action cannot be undone.
 				</p>
