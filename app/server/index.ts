@@ -1,6 +1,7 @@
 import "~/lib/instrumentation" // Must be the first import
 import { AssemblyAI } from "assemblyai"
 import consola from "consola"
+import { cors } from "hono/cors"
 import { createHonoServer } from "react-router-hono-server/node"
 import { i18next } from "remix-hono/i18next"
 import i18nextOpts from "../localization/i18n.server"
@@ -9,6 +10,15 @@ import { getLoadContext } from "./load-context"
 export default await createHonoServer({
 	useWebSocket: true,
 	configure(server, { upgradeWebSocket }) {
+		// Add CORS headers for all requests including __manifest
+		server.use(
+			"*",
+			cors({
+				origin: "*",
+				credentials: true,
+			})
+		)
+
 		server.use("*", i18next(i18nextOpts))
 
 		// Realtime transcription proxy (browser <-> server <-> AssemblyAI)

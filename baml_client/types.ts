@@ -815,6 +815,29 @@ export interface Person {
   
 }
 
+export interface PersonDescriptionSummary {
+  summary: string
+  
+}
+
+export interface PersonEvidenceHighlight {
+  gist: string
+  interview_title?: string | null
+  interview_date?: string | null
+  journey_stage?: string | null
+  topic?: string | null
+  support?: string | null
+  
+}
+
+export interface PersonFacetInput {
+  label: string
+  kind_slug: string
+  source?: string | null
+  confidence?: number | null
+  
+}
+
 export interface PersonFacetObservation {
   facet_account_id?: number | null
   candidate?: FacetCandidatePayload | null
@@ -824,6 +847,30 @@ export interface PersonFacetObservation {
   evidence_unit_index?: number | null
   confidence?: number | null
   notes?: string[] | null
+  
+}
+
+export interface PersonProfileInput {
+  person_id: string
+  name?: string | null
+  title?: string | null
+  role?: string | null
+  company?: string | null
+  segment?: string | null
+  persona?: string | null
+  quick_facts: string[]
+  facets: PersonFacetInput[]
+  scales: PersonScaleInput[]
+  evidence_highlights: PersonEvidenceHighlight[]
+  
+}
+
+export interface PersonScaleInput {
+  kind_slug: string
+  score?: number | null
+  band?: string | null
+  source?: string | null
+  confidence?: number | null
   
 }
 

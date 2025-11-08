@@ -2,7 +2,16 @@ import consola from "consola"
 import { UserCircle } from "lucide-react"
 import { useEffect, useMemo, useState } from "react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, redirect, useActionData, useLoaderData, useNavigate, useParams } from "react-router-dom"
+import {
+	Form,
+	Link,
+	redirect,
+	useActionData,
+	useLoaderData,
+	useNavigate,
+	useNavigation,
+	useParams,
+} from "react-router-dom"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -13,7 +22,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
-import { getPersonById } from "~/features/people/db"
+import { getPersonById, updatePerson } from "~/features/people/db"
+import { generatePersonDescription } from "~/features/people/services/generatePersonDescription.server"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { getFacetCatalog } from "~/lib/database/facets.server"
@@ -89,10 +99,37 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	const formData = await request.formData()
 	const intent = formData.get("_action")
 
+	if (intent === "refresh-description") {
+		try {
+			const person = await getPersonById({
+				supabase,
+				accountId,
+				projectId,
+				id: personId,
+			})
+			const summary = await generatePersonDescription({
+				supabase,
+				person,
+				projectId,
+			})
+			await updatePerson({
+				supabase,
+				accountId,
+				projectId,
+				id: personId,
+				data: { description: summary },
+			})
+			return redirect(routes.people.detail(personId))
+		} catch (error) {
+			const message = error instanceof Error ? error.message : "Failed to refresh description."
+			return { refresh: { error: message } }
+		}
+	}
+
 	if (intent === "link-organization") {
 		const organizationId = (formData.get("organization_id") as string | null)?.trim()
 		if (!organizationId) {
-			return { error: "Organization is required" }
+			return { organization: { error: "Organization is required" } }
 		}
 
 		const role = (formData.get("role") as string | null)?.trim() || null
@@ -111,7 +148,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		})
 
 		if (error) {
-			return { error: "Failed to link organization" }
+			return { organization: { error: "Failed to link organization" } }
 		}
 
 		return redirect(routes.people.detail(personId))
@@ -120,7 +157,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 	if (intent === "unlink-organization") {
 		const organizationId = formData.get("organization_id") as string | null
 		if (!organizationId) {
-			return { error: "Organization is required" }
+			return { organization: { error: "Organization is required" } }
 		}
 
 		const { error } = await unlinkPersonFromOrganization({
@@ -132,7 +169,7 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		})
 
 		if (error) {
-			return { error: "Failed to unlink organization" }
+			return { organization: { error: "Failed to unlink organization" } }
 		}
 
 		return redirect(routes.people.detail(personId))
@@ -144,9 +181,12 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 export default function PersonDetail() {
 	const { person, catalog, organizations } = useLoaderData<typeof loader>()
 	const actionData = useActionData<typeof action>()
+	const organizationActionData = actionData?.organization
+	const refreshError = actionData?.refresh?.error
 	const { projectPath } = useCurrentProject()
 	const { accountId, projectId } = useParams()
 	const navigate = useNavigate()
+	const navigation = useNavigation()
 	const routesByIds = useProjectRoutesFromIds(accountId ?? "", projectId ?? "")
 	const routesByPath = useProjectRoutes(projectPath || "")
 	const routes = accountId && projectId ? routesByIds : routesByPath
@@ -258,10 +298,10 @@ export default function PersonDetail() {
 	}, [sortedLinkedOrganizations.length])
 
 	useEffect(() => {
-		if (actionData?.error) {
+		if (organizationActionData?.error) {
 			setShowLinkForm(true)
 		}
-	}, [actionData?.error])
+	}, [organizationActionData?.error])
 
 	const handleAttachRecording = () => {
 		if (!person.id) return
@@ -309,6 +349,8 @@ export default function PersonDetail() {
 		peoplePersonas.length ? { label: "Persona Links", value: String(peoplePersonas.length) } : null,
 		{ label: "Interviews", value: String(interviewLinks.length) },
 	].filter((fact): fact is { label: string; value: string } => Boolean(fact?.value))
+	const isRefreshingDescription =
+		navigation.state === "submitting" && navigation.formData?.get("_action") === "refresh-description"
 
 	return (
 		<div className="relative min-h-screen bg-muted/20">
@@ -326,8 +368,20 @@ export default function PersonDetail() {
 						<Button asChild variant="outline" size="sm">
 							<Link to={routes.people.edit(person.id)}>Edit Person</Link>
 						</Button>
+						<Form method="post" className="contents">
+							<input type="hidden" name="_action" value="refresh-description" />
+							<Button type="submit" variant="outline" size="sm" disabled={isRefreshingDescription}>
+								{isRefreshingDescription ? "Refreshing..." : "Refresh Description"}
+							</Button>
+						</Form>
 					</div>
 				</div>
+
+				{refreshError && (
+					<div className="rounded-md border border-destructive/30 bg-destructive/10 p-3 text-destructive text-sm">
+						{refreshError}
+					</div>
+				)}
 
 				<DetailPageHeader
 					icon={UserCircle}
@@ -342,7 +396,7 @@ export default function PersonDetail() {
 						availableOrganizations,
 						showLinkForm,
 						setShowLinkForm,
-						actionData,
+						actionData: organizationActionData,
 						routes,
 					}}
 				/>

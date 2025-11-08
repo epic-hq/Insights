@@ -16,7 +16,17 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const projectId = String(params.projectId || "")
 	const userId = ctx?.claims?.sub || ""
 
+	consola.info("project-status action: received request", {
+		accountId,
+		projectId,
+		userId,
+		paramsAccountId: params.accountId,
+		paramsProjectId: params.projectId,
+		ctxAccountId: ctx?.account_id,
+	})
+
 	if (!projectId) {
+		consola.warn("project-status action: Missing projectId")
 		return new Response(JSON.stringify({ error: "Missing projectId" }), {
 			status: 400,
 			headers: { "Content-Type": "application/json" },
@@ -26,6 +36,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const { messages, system } = await request.json()
 
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`
+
+	consola.info("project-status action: using resourceId", { resourceId })
 	const threads = await memory.getThreadsByResourceIdPaginated({
 		resourceId,
 		orderBy: "createdAt",

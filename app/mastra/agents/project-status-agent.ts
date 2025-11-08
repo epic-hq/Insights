@@ -16,6 +16,7 @@ import { fetchThemesTool } from "../tools/fetch-themes"
 import { generateProjectRoutesTool } from "../tools/generate-project-routes"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
+import { upsertPersonTool } from "../tools/upsert-person"
 
 const ProjectStatusMemoryState = z.object({
 	lastProjectId: z.string().optional(),
@@ -45,10 +46,11 @@ Workflow:
    • If they ask about the Product Lens or pain matrix, call "fetchPainMatrixCache" to get the cached matrix data. If no cache exists or it's stale, explain that Product Lens analysis needs to be run.
    • If they ask about a particular theme, persona, or other entity, re-call the status tool (or another relevant tool) with the matching scope and search parameters so you can cite real records.
 3. For detailed interview breakdowns or transcripts, follow up by calling "fetchInterviewContext" for the interview IDs you discovered (use includeEvidence=true unless the user prefers otherwise).
-4. When the user shares new qualitative information about a person (e.g., a voice note describing their role, affiliations, or demographics), call "upsertPersonFacets" with that transcript plus the specific person_id to capture the traits in the database. Default to merge mode unless they explicitly want to replace newer facts.
-5. When they describe employer or partner organizations for a person, call "manage-person-organizations" with the transcript so you can create/link the organization and record the relationship (role, status, primary flag).
-6. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
-7. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
+4. When the user provides contact information or demographic details about a person (name, email, phone, title, company, etc.), call "upsertPerson" with the relevant fields to create or update the person record. This handles all basic person information.
+5. When the user shares qualitative insights about a person's traits, behaviors, or characteristics, call "upsertPersonFacets" with that transcript plus the specific person_id to capture the facets in the database.
+6. When they describe employer or partner organizations for a person, call "manage-person-organizations" with the transcript so you can create/link the organization and record the relationship (role, status, primary flag).
+7. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
+8. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
 
 **Linking to Entities**: When mentioning specific personas, people, opportunities, organizations, themes, evidence, insights, interviews, or segments in your responses, always include clickable links. After successfully using tools like "fetchPeopleDetails", "fetchPersonas", or similar that return entity data, use the "generateProjectRoutes" tool to get the correct URL for that specific entity, then format the link as a regular markdown link: **[Entity Name](route-from-tool)**. If the route generation fails, continue with your response without the link rather than failing completely.
 
@@ -84,6 +86,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		generateProjectRoutes: generateProjectRoutesTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
+		upsertPerson: upsertPersonTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

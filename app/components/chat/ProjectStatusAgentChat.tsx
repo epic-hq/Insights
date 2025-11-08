@@ -139,7 +139,7 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 					<CardContent className="flex min-h-0 flex-1 flex-col p-3 sm:p-4">
 						<div className="min-h-0 flex-1 overflow-hidden">
 							{visibleMessages.length === 0 ? (
-								<p className="text-muted-foreground text-xs sm:text-sm">Hey, how can I help?</p>
+								<p className="text-foreground/70 text-xs sm:text-sm">Hey, how can I help?</p>
 							) : (
 								<div className="h-full space-y-3 overflow-y-auto text-xs sm:text-sm">
 									{visibleMessages.map((message, index) => {
@@ -162,7 +162,7 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 										return (
 											<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
 												<div className="max-w-[85%]">
-													<div className="mb-1 text-[10px] text-muted-foreground uppercase tracking-wide">
+													<div className="mb-1 text-[10px] text-foreground/60 uppercase tracking-wide">
 														{isUser ? "You" : "Project Assistant"}
 													</div>
 													<div
@@ -178,9 +178,9 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 																<AiResponse key={key}>{messageText}</AiResponse>
 															)
 														) : !isUser ? (
-															<span className="text-muted-foreground italic">Thinking...</span>
+															<span className="text-foreground/70 italic">Thinking...</span>
 														) : (
-															<span className="text-muted-foreground">(No text response)</span>
+															<span className="text-foreground/70">(No text response)</span>
 														)}
 													</div>
 												</div>

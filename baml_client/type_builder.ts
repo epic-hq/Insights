@@ -135,7 +135,17 @@ export default class TypeBuilder {
     
     Person: ClassViewer<'Person', "person_key" | "speaker_label" | "person_name" | "inferred_name" | "role">;
     
+    PersonDescriptionSummary: ClassViewer<'PersonDescriptionSummary', "summary">;
+    
+    PersonEvidenceHighlight: ClassViewer<'PersonEvidenceHighlight', "gist" | "interview_title" | "interview_date" | "journey_stage" | "topic" | "support">;
+    
+    PersonFacetInput: ClassViewer<'PersonFacetInput', "label" | "kind_slug" | "source" | "confidence">;
+    
     PersonFacetObservation: ClassViewer<'PersonFacetObservation', "facet_account_id" | "candidate" | "kind_slug" | "value" | "source" | "evidence_unit_index" | "confidence" | "notes">;
+    
+    PersonProfileInput: ClassViewer<'PersonProfileInput', "person_id" | "name" | "title" | "role" | "company" | "segment" | "persona" | "quick_facts" | "facets" | "scales" | "evidence_highlights">;
+    
+    PersonScaleInput: ClassViewer<'PersonScaleInput', "kind_slug" | "score" | "band" | "source" | "confidence">;
     
     PersonScaleObservation: ClassViewer<'PersonScaleObservation', "kind_slug" | "score" | "band" | "source" | "evidence_unit_index" | "confidence" | "rationale">;
     
@@ -222,7 +232,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonFacetObservation","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TopPainCell","TurnAnchors",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetObservation","PersonProfileInput","PersonScaleInput","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TopPainCell","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -446,8 +456,28 @@ export default class TypeBuilder {
           "person_key","speaker_label","person_name","inferred_name","role",
         ]);
         
+        this.PersonDescriptionSummary = this.tb.classViewer("PersonDescriptionSummary", [
+          "summary",
+        ]);
+        
+        this.PersonEvidenceHighlight = this.tb.classViewer("PersonEvidenceHighlight", [
+          "gist","interview_title","interview_date","journey_stage","topic","support",
+        ]);
+        
+        this.PersonFacetInput = this.tb.classViewer("PersonFacetInput", [
+          "label","kind_slug","source","confidence",
+        ]);
+        
         this.PersonFacetObservation = this.tb.classViewer("PersonFacetObservation", [
           "facet_account_id","candidate","kind_slug","value","source","evidence_unit_index","confidence","notes",
+        ]);
+        
+        this.PersonProfileInput = this.tb.classViewer("PersonProfileInput", [
+          "person_id","name","title","role","company","segment","persona","quick_facts","facets","scales","evidence_highlights",
+        ]);
+        
+        this.PersonScaleInput = this.tb.classViewer("PersonScaleInput", [
+          "kind_slug","score","band","source","confidence",
         ]);
         
         this.PersonScaleObservation = this.tb.classViewer("PersonScaleObservation", [

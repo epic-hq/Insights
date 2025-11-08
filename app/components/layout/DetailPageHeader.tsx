@@ -70,7 +70,7 @@ export function DetailPageHeader({
 				{(description || aboveDescription || organizations || children) && (
 					<CardContent className="space-y-4">
 						{aboveDescription}
-						{description && <p className="text-muted-foreground">{description}</p>}
+						{description && <p className="text-foreground">{description}</p>}
 
 						{organizations && (
 							<div className="space-y-4 border-border/50 border-t pt-4">

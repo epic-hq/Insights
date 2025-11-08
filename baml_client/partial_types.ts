@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  KindTags,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonFacetObservation,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TopPainCell,  TurnAnchors } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  KindTags,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetObservation,  PersonProfileInput,  PersonScaleInput,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TopPainCell,  TurnAnchors } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -447,6 +447,23 @@ export namespace partial_types {
       inferred_name?: string | null
       role?: string | null
     }
+    export interface PersonDescriptionSummary {
+      summary?: string | null
+    }
+    export interface PersonEvidenceHighlight {
+      gist?: string | null
+      interview_title?: string | null
+      interview_date?: string | null
+      journey_stage?: string | null
+      topic?: string | null
+      support?: string | null
+    }
+    export interface PersonFacetInput {
+      label?: string | null
+      kind_slug?: string | null
+      source?: string | null
+      confidence?: number | null
+    }
     export interface PersonFacetObservation {
       facet_account_id?: number | null
       candidate?: FacetCandidatePayload | null
@@ -456,6 +473,26 @@ export namespace partial_types {
       evidence_unit_index?: number | null
       confidence?: number | null
       notes?: string[] | null
+    }
+    export interface PersonProfileInput {
+      person_id?: string | null
+      name?: string | null
+      title?: string | null
+      role?: string | null
+      company?: string | null
+      segment?: string | null
+      persona?: string | null
+      quick_facts: string[]
+      facets: PersonFacetInput[]
+      scales: PersonScaleInput[]
+      evidence_highlights: PersonEvidenceHighlight[]
+    }
+    export interface PersonScaleInput {
+      kind_slug?: string | null
+      score?: number | null
+      band?: string | null
+      source?: string | null
+      confidence?: number | null
     }
     export interface PersonScaleObservation {
       kind_slug?: string | null

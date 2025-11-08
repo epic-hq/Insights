@@ -5,15 +5,12 @@
  * Right: ProjectStatusAgent chat sidebar
  */
 
-import { convertMessages } from "@mastra/core/agent"
 import consola from "consola"
-import { Outlet, redirect, useLoaderData } from "react-router"
+import { Outlet, redirect, useLoaderData, useParams } from "react-router"
 import { z } from "zod"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
-import { CurrentProjectProvider, useCurrentProject } from "~/contexts/current-project-context"
+import { CurrentProjectProvider } from "~/contexts/current-project-context"
 import { getProjectById } from "~/features/projects/db"
-import { memory } from "~/mastra/memory"
-import type { UpsightMessage } from "~/mastra/message-types"
 import { currentProjectContext } from "~/server/current-project-context"
 import { userContext } from "~/server/user-context"
 import type { GetAccount, Project } from "~/types"
@@ -67,50 +64,10 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 		// Load project status (latest analysis or fallback counts)
 		const statusData = await getProjectStatusData(projectId, supabase)
 
-		let initialChatMessages: UpsightMessage[] = []
-
-		try {
-			const userId = ctx.claims?.sub
-			if (userId) {
-				const resourceId = `projectStatusAgent-${userId}-${projectId}`
-				const threads = await memory.getThreadsByResourceIdPaginated({
-					resourceId,
-					orderBy: "createdAt",
-					sortDirection: "DESC",
-					page: 0,
-					perPage: 100,
-				})
-
-				let threadId = ""
-				if (!(threads?.total > 0)) {
-					const newThread = await memory.createThread({
-						resourceId,
-						title: `Project Status ${projectId}`,
-						metadata: { user_id: userId, project_id: projectId, account_id: _accountId },
-					})
-					threadId = newThread.id
-				} else {
-					threadId = threads.threads[0].id
-				}
-
-				const { messagesV2 } = await memory.query({
-					threadId,
-					selectBy: { last: 50 },
-				})
-
-				if (messagesV2 && messagesV2.length > 0) {
-					initialChatMessages = convertMessages(messagesV2).to("AIV5.UI") as UpsightMessage[]
-				}
-			}
-		} catch (error) {
-			console.error("project-status chat history load failed", error)
-		}
-
 		return {
 			projectId,
 			project: project.data,
 			statusData,
-			initialChatMessages,
 		}
 	} catch (error) {
 		consola.error("_protected/projects loader error:", error)
@@ -146,14 +103,15 @@ async function _parse_project_id_from_params({
 // Layout component with main content and right sidebar
 function ProjectLayout({
 	statusData,
-	initialChatMessages,
 	project,
 }: {
 	statusData: any
-	initialChatMessages: UpsightMessage[]
 	project: any
 }) {
-	const { accountId, projectId } = useCurrentProject()
+	// Get params directly to ensure consistent values on server and client
+	const params = useParams()
+	const accountId = params.accountId || ""
+	const projectId = params.projectId || ""
 
 	// Build comprehensive system context for the project status agent
 	const projectSystemContext = `
@@ -177,9 +135,9 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 				<div className="min-h-0 flex-1">
 					{accountId && projectId && (
 						<ProjectStatusAgentChat
+							key={projectId}
 							accountId={accountId}
 							projectId={projectId}
-							initialMessages={initialChatMessages}
 							systemContext={projectSystemContext}
 						/>
 					)}
@@ -191,11 +149,11 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 
 export default function Projects() {
 	const loaderData = useLoaderData<typeof loader>()
-	const { statusData, initialChatMessages, project } = loaderData
+	const { statusData, project } = loaderData
 
 	return (
 		<CurrentProjectProvider>
-			<ProjectLayout statusData={statusData} initialChatMessages={initialChatMessages} project={project} />
+			<ProjectLayout statusData={statusData} project={project} />
 		</CurrentProjectProvider>
 	)
 }
