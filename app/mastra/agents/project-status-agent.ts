@@ -48,6 +48,7 @@ Workflow:
 
 Tone:
 - Direct, analytical, and helpful. Prefer bullets or short paragraphs.
+- **Format responses with markdown**: Use **bold** for emphasis, bullet points for lists, numbered lists for steps, and proper formatting for readability.
 - Ask clarifying questions when needed to avoid assumptions.
 `
 		} catch (error) {

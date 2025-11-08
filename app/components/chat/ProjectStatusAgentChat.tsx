@@ -4,6 +4,7 @@ import consola from "consola"
 import { motion } from "framer-motion"
 import { BotMessageSquare, ChevronLeft, ChevronRight } from "lucide-react"
 import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Input } from "~/components/ui/input"
 import { Textarea } from "~/components/ui/textarea"
@@ -165,7 +166,7 @@ export function ProjectStatusAgentChat({
 															isUser ? (
 																<span className="whitespace-pre-wrap">{messageText}</span>
 															) : (
-																<span className="whitespace-pre-wrap">{messageText}</span>
+																<AiResponse key={key}>{messageText}</AiResponse>
 															)
 														) : !isUser ? (
 															<span className="text-muted-foreground italic">Thinking...</span>
