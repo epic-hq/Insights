@@ -50,7 +50,12 @@ export const generateProjectRoutesTool = createTool({
 			route: {
 				type: "string",
 				nullable: true,
-				description: "The generated route",
+				description: "Relative route that can be used directly in-app",
+			},
+			absoluteRoute: {
+				type: "string",
+				nullable: true,
+				description: "Absolute URL including the host (useful for emails or copying)",
 			},
 			entityType: {
 				type: "string",
@@ -84,6 +89,7 @@ export const generateProjectRoutesTool = createTool({
 				success: false,
 				error: "Missing required parameters: entityType and entityId are required",
 				route: null,
+				absoluteRoute: null,
 			}
 		}
 
@@ -97,6 +103,7 @@ export const generateProjectRoutesTool = createTool({
 				success: false,
 				error: "Missing accountId or projectId in runtime context",
 				route: null,
+				absoluteRoute: null,
 			}
 		}
 
@@ -123,40 +130,45 @@ export const generateProjectRoutesTool = createTool({
 				case "theme":
 					route = action === "edit" ? routes.themes.edit(entityId) : routes.themes.detail(entityId)
 					break
-				case "evidence":
-					route = action === "edit" ? routes.evidence.edit(entityId) : routes.evidence.detail(entityId)
-					break
-				case "insight":
-					route = action === "edit" ? routes.insights.edit(entityId) : routes.insights.detail(entityId)
-					break
-				case "interview":
-					route = action === "edit" ? routes.interviews.edit(entityId) : routes.interviews.detail(entityId)
-					break
-				case "segment":
-					route = routes.segments.detail(entityId) // segments don't have edit
-					break
-				default:
-					return {
-						success: false,
-						error: `Unknown entity type: ${entityType}`,
-						route: null,
-					}
-			}
-
-			return {
-				success: true,
-				route: `${HOST}${route}`,
-				entityType,
-				entityId,
-				action,
-			}
-		} catch (error) {
-			console.error("generate-project-routes: Unexpected error", error)
-			return {
-				success: false,
-				error: "Unexpected error generating route",
-				route: null,
-			}
+			case "evidence":
+				route = action === "edit" ? routes.evidence.edit(entityId) : routes.evidence.detail(entityId)
+				break
+			case "insight":
+				route = action === "edit" ? routes.insights.edit(entityId) : routes.insights.detail(entityId)
+				break
+			case "interview":
+				route = action === "edit" ? routes.interviews.edit(entityId) : routes.interviews.detail(entityId)
+				break
+			case "segment":
+				route = routes.segments.detail(entityId) // segments don't have edit
+				break
+			default:
+				return {
+					success: false,
+					error: `Unknown entity type: ${entityType}`,
+					route: null,
+					absoluteRoute: null,
+				}
 		}
+
+		const absoluteRoute = `${HOST}${route}`
+
+		return {
+			success: true,
+			route,
+			absoluteRoute,
+			entityType,
+			entityId,
+			action,
+		}
+	} catch (error) {
+		console.error("generate-project-routes: Unexpected error", error)
+		return {
+			success: false,
+			error: "Unexpected error generating route",
+			route: null,
+			absoluteRoute: null,
+		}
+	}
 	},
 })

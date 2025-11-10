@@ -15,8 +15,9 @@ import { fetchSegmentsTool } from "../tools/fetch-segments"
 import { fetchThemesTool } from "../tools/fetch-themes"
 import { generateProjectRoutesTool } from "../tools/generate-project-routes"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
-import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
+import { navigateToPageTool } from "../tools/navigate-to-page"
 import { upsertPersonTool } from "../tools/upsert-person"
+import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
 
 const ProjectStatusMemoryState = z.object({
 	lastProjectId: z.string().optional(),
@@ -52,7 +53,9 @@ Workflow:
 7. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
 8. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
 
-**Linking to Entities**: When mentioning specific personas, people, opportunities, organizations, themes, evidence, insights, interviews, or segments in your responses, always include clickable links. After successfully using tools like "fetchPeopleDetails", "fetchPersonas", or similar that return entity data, use the "generateProjectRoutes" tool to get the correct URL for that specific entity, then format the link as a regular markdown link: **[Entity Name](route-from-tool)**. If the route generation fails, continue with your response without the link rather than failing completely.
+**Linking to Entities**: When mentioning specific personas, people, opportunities, organizations, themes, evidence, insights, interviews, or segments in your responses, always include clickable links. After successfully using tools like "fetchPeopleDetails", "fetchPersonas", or similar that return entity data, use the "generateProjectRoutes" tool to get the correct URL for that specific entity, then format the link as a regular markdown link: **[Entity Name](\`route-from-tool\`)**. The tool returns both a relative \`route\` (preferred for in-product links) and an \`absoluteRoute\` (for sharing outside the app). If the route generation fails, continue with your response without the link rather than failing completely.
+
+**Driving the UI**: When you want the user to immediately see a relevant screen—even if they don't click a link—call \`navigateToPage\` with the same relative path you provided in the markdown link (usually the \`route\` from \`generateProjectRoutes\`). Use this to guide them to the most actionable view (person detail, opportunity edit, etc.), and briefly explain why you opened that page so they understand the context.
 
 Tone:
 - Direct, analytical, and helpful. Prefer bullets or short paragraphs.
@@ -84,6 +87,7 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchPainMatrixCache: fetchPainMatrixCacheTool,
 		fetchSegments: fetchSegmentsTool,
 		generateProjectRoutes: generateProjectRoutesTool,
+		navigateToPage: navigateToPageTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,
 		upsertPerson: upsertPersonTool,

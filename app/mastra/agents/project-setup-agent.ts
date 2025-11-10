@@ -24,9 +24,10 @@ const ProjectSetupState = z.object({
 
 const navigateToPageTool = createTool({
 	id: "navigate-to-page",
-	description: "Navigate to a specific page. \\n Projects: /projects \\n Home: /home \\n Setup: /setup",
+	description:
+		"Navigate to a specific in-app route. Use the account-scoped paths (e.g. /a/:accountId/:projectId/setup) or other current UI routes—avoid legacy /projects/... URLs.",
 	inputSchema: z.object({
-		path: z.string().describe("Path to navigate to"),
+		path: z.string().describe("Relative path to navigate to"),
 	}),
 })
 

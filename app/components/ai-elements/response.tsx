@@ -24,6 +24,8 @@ export const Response = memo(
 		<Streamdown
 			className={cn("size-full [&>*:first-child]:mt-0 [&>*:last-child]:mb-0", className)}
 			renderers={customRenderers}
+			defaultOrigin={typeof window !== 'undefined' ? window.location.origin : 'http://localhost:3000'}
+			allowedLinkPrefixes={['http://', 'https://', '/', '#', 'mailto:']} // Allow all common link types
 			rehypePlugins={[]} // Disable all rehype plugins to allow links
 			{...props}
 		/>

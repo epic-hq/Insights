@@ -67,21 +67,21 @@ export function PainMatrixComponent({
 	return (
 		<div className="space-y-6">
 			{/* Header */}
-			<div>
+			{/* <div>
 				<h2 className="font-bold text-2xl">Pain × User Type Matrix</h2>
-			</div>
+			</div> */}
 
 			{/* Key Insights + KPIs/Controls on Right */}
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
 				{/* AI-Generated Insights */}
 				<div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-					<h3 className="mb-4 flex items-center gap-2 font-semibold text-sm">
+					{/* <h3 className="mb-4 flex items-center gap-2 font-semibold text-sm">
 						<span>💡</span> Key Insights & Actions
-					</h3>
+					</h3> */}
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{/* Key Insights */}
 						<div>
-							<h4 className="mb-2 font-medium text-sm">Key Insights</h4>
+							<h4 className="mb-2 font-medium text-sm"><span>💡</span> Key Insights</h4>
 							<p className="text-sm leading-relaxed">{insights.split("\n\nTop 3 Actions:")[0] || insights}</p>
 						</div>
 

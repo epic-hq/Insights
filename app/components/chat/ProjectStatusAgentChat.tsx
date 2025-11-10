@@ -1,20 +1,74 @@
 import { useChat } from "@ai-sdk/react"
-import type { ToolCallPart, ToolResultPart } from "ai"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import { BotMessageSquare, ChevronRight } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useFetcher } from "react-router"
+import { useFetcher, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
+import { HOST, PRODUCTION_HOST } from "~/paths"
 
 interface ProjectStatusAgentChatProps {
 	accountId: string
 	projectId: string
 	systemContext: string
 	onCollapsedChange?: (collapsed: boolean) => void
+}
+
+const INTERNAL_ORIGINS = [HOST, PRODUCTION_HOST]
+	.map((value) => {
+		try {
+			return new URL(value).origin
+		} catch {
+			return null
+		}
+	})
+	.filter((origin): origin is string => Boolean(origin))
+
+const normalizeInternalPath = (href: string | null): string | null => {
+	if (!href) return null
+	if (href.startsWith("/")) return href
+	if (href.startsWith("#")) return href
+
+	try {
+		const baseOrigin = typeof window !== "undefined" ? window.location.origin : INTERNAL_ORIGINS[0]
+		const candidate = baseOrigin ? new URL(href, baseOrigin) : new URL(href)
+
+		const matchesWindow = typeof window !== "undefined" && candidate.origin === window.location.origin
+		const matchesKnownHost = INTERNAL_ORIGINS.includes(candidate.origin)
+
+		if (matchesWindow || matchesKnownHost) {
+			return `${candidate.pathname}${candidate.search}${candidate.hash}`
+		}
+	} catch {
+		return null
+	}
+
+	return null
+}
+
+const ensureProjectScopedPath = (
+	path: string | null,
+	accountId: string,
+	projectId: string
+): { resolved: string | null; reason?: string } => {
+	const normalized = normalizeInternalPath(path)
+	if (!normalized) {
+		return { resolved: null, reason: "non-internal" }
+	}
+
+	if (!accountId || !projectId) {
+		return { resolved: normalized }
+	}
+
+	const projectBase = `/a/${accountId}/${projectId}`
+	if (normalized === projectBase || normalized.startsWith(`${projectBase}/`)) {
+		return { resolved: normalized }
+	}
+
+	return { resolved: null, reason: "outside-project-scope" }
 }
 
 export function ProjectStatusAgentChat({
@@ -41,12 +95,37 @@ export function ProjectStatusAgentChat({
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [accountId, projectId])
 
-	const { messages, sendMessage, status, setMessages } = useChat<UpsightMessage>({
+	const navigate = useNavigate()
+
+	const { messages, sendMessage, status, setMessages, addToolResult } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: routes.api.chat.projectStatus(),
 			body: { system: systemContext },
 		}),
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
+		onToolCall: async ({ toolCall }) => {
+			if (toolCall.dynamic) return
+
+			if (toolCall.toolName === "navigateToPage") {
+				const rawPath = typeof toolCall.input?.path === "string" ? toolCall.input.path : null
+				const { resolved: normalizedPath, reason } = ensureProjectScopedPath(rawPath, accountId, projectId)
+
+				if (normalizedPath) {
+					navigate(normalizedPath)
+					addToolResult({
+						tool: "navigateToPage",
+						toolCallId: toolCall.toolCallId,
+						output: { success: true, path: normalizedPath },
+					})
+				} else {
+					addToolResult({
+						tool: "navigateToPage",
+						toolCallId: toolCall.toolCallId,
+						output: { success: false, error: reason || "Unsupported navigation target" },
+					})
+				}
+			}
+		},
 	})
 
 	// Set messages from history when loaded
@@ -56,18 +135,25 @@ export function ProjectStatusAgentChat({
 		}
 	}, [historyFetcher.data, setMessages])
 
-	const visibleMessages = useMemo(() => (messages ?? []).slice(-12), [messages])
-	let lastVisibleMessageKey = "none"
-	if (visibleMessages.length > 0) {
-		lastVisibleMessageKey = visibleMessages[visibleMessages.length - 1]?.id ?? `len-${visibleMessages.length}`
-	}
+	const displayableMessages = useMemo(() => {
+		if (!messages) return []
+		return messages.filter((message) => {
+			if (message.role !== "assistant") return true
+			return Boolean(
+				message.parts?.some((part) => part.type === "text" && typeof part.text === "string" && part.text.trim() !== "")
+			)
+		})
+	}, [messages])
 
+	const visibleMessages = useMemo(() => displayableMessages.slice(-12), [displayableMessages])
+
+	// Auto-scroll to bottom whenever messages change (including during streaming)
 	useEffect(() => {
-		if (!lastVisibleMessageKey) return
 		if (messagesEndRef.current) {
 			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
 		}
-	}, [lastVisibleMessageKey])
+		// biome-ignore lint/correctness/useExhaustiveDependencies: We want to scroll on any message change including streaming
+	}, [visibleMessages, status])
 
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {
@@ -107,11 +193,28 @@ export function ProjectStatusAgentChat({
 	const isBusy = status === "streaming" || status === "submitted"
 	const isError = status === "error"
 
+	const handleAssistantLinkClick = (event: React.MouseEvent<HTMLDivElement>) => {
+		if (event.defaultPrevented) return
+		if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
+		if (event.button !== 0) return
+
+		const anchor = (event.target as HTMLElement | null)?.closest?.("a")
+		if (!anchor) return
+
+		const { resolved: normalizedPath } = ensureProjectScopedPath(anchor.getAttribute("href"), accountId, projectId)
+		if (!normalizedPath) {
+			return
+		}
+
+		event.preventDefault()
+		navigate(normalizedPath)
+	}
+
 	return (
 		<div
 			className={cn(
 				"flex h-full flex-col overflow-hidden transition-all duration-200",
-				isCollapsed ? "w-12" : "min-w-[260px] w-full"
+				isCollapsed ? "w-12" : "w-full min-w-[260px]"
 			)}
 		>
 			<Card className="flex h-full min-h-0 flex-col border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
@@ -175,18 +278,9 @@ export function ProjectStatusAgentChat({
 										const key = message.id || `${message.role}-${index}`
 										const isUser = message.role === "user"
 										const textParts =
-											message.parts?.map((part) => {
-												if (part.type === "text") return part.text
-												if (part.type === "tool-call") {
-													const toolPart = part as ToolCallPart
-													return `Requesting tool: ${toolPart.toolName ?? "unknown"}`
-												}
-												if (part.type === "tool-result") {
-													const toolPart = part as ToolResultPart
-													return `Tool result: ${toolPart.toolName ?? "unknown"}`
-												}
-												return ""
-											}) ?? []
+											message.parts
+												?.filter((part) => part.type === "text")
+												.map((part) => part.text) ?? []
 										const messageText = textParts.filter(Boolean).join("\n").trim()
 										return (
 											<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -199,6 +293,7 @@ export function ProjectStatusAgentChat({
 															"whitespace-pre-wrap rounded-lg px-3 py-2 shadow-sm",
 															isUser ? "bg-blue-600 text-white" : "bg-background text-foreground ring-1 ring-border/60"
 														)}
+														onClick={!isUser ? handleAssistantLinkClick : undefined}
 													>
 														{messageText ? (
 															isUser ? (

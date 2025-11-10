@@ -63,8 +63,8 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.questions.index(),
 			},
 			{
-				// keep key "conversations" for count mapping; label is Encounters
 				key: "conversations",
+				// keep key "conversations" for count mapping; label is Encounters
 				title: "Calls & Notes",
 				description: "Calls, meetings, uploads",
 				icon: File,
@@ -77,11 +77,11 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		title: "Analysis",
 		items: [
 			{
-				key: "personas",
-				title: "Personas",
-				description: "Segments & patterns",
-				icon: UserCircle,
-				to: (routes) => routes.personas.index(),
+				key: "product-lens",
+				title: "Pain Matrix",
+				description: "Pain × user segments matrix",
+				icon: Grid3x3,
+				to: (routes) => routes.productLens(),
 			},
 			{
 				key: "segments",
@@ -98,11 +98,11 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				to: (routes) => routes.themes.index(),
 			},
 			{
-				key: "product-lens",
-				title: "Product Lens",
-				description: "Pain × user matrix",
-				icon: Grid3x3,
-				to: (routes) => routes.productLens(),
+				key: "personas",
+				title: "Personas",
+				description: "Segments & patterns",
+				icon: UserCircle,
+				to: (routes) => routes.personas.index(),
 			},
 			{
 				key: "bant-lens",

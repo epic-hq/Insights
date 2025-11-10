@@ -7,8 +7,9 @@ import { z } from "zod"
 // the agent (by leverageing sendAutomaticallyWhen with lastAssistantMessageIsCompleteWithToolCalls)
 export const navigateToPageTool = createTool({
 	id: "navigate-to-page",
-	description: "Navigate to a specific page. \n Projects: /projects \n Home: /home \n Signup Chat: /signup-chat",
+	description:
+		"Navigate to an in-app route. Always prefer the relative path returned by generateProjectRoutes (e.g. /a/:accountId/:projectId/opportunities). Do not guess legacy /projects/... paths.",
 	inputSchema: z.object({
-		path: z.string().describe("Path to navigate to"),
+		path: z.string().describe("Relative path to navigate to (must start with /a/ or another valid in-app route)"),
 	}),
 })

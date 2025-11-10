@@ -17,6 +17,7 @@ type Counts = {
 	accounts?: number
 	deals?: number
 	contacts?: number
+	opportunities?: number
 }
 
 export function useSidebarCounts(projectId?: string, workflowType?: string | null) {
@@ -32,10 +33,18 @@ export function useSidebarCounts(projectId?: string, workflowType?: string | nul
 			try {
 				const supabase = createClient()
 				// Execute all count queries in parallel
-				const [interviewsResult, personasResult, themesResult, insightsResult, peopleResult, organizationsResult] =
-					await Promise.all([
-						// Count interviews
-						supabase
+			const [
+				interviewsResult,
+				personasResult,
+				themesResult,
+				insightsResult,
+				peopleResult,
+				organizationsResult,
+				opportunitiesResult,
+			] =
+				await Promise.all([
+					// Count interviews
+					supabase
 							.from("interviews")
 							.select("*", { count: "exact", head: true })
 							.eq("project_id", projectId),
@@ -64,12 +73,18 @@ export function useSidebarCounts(projectId?: string, workflowType?: string | nul
 							.select("*", { count: "exact", head: true })
 							.eq("project_id", projectId),
 
-						// Count organizations
-						supabase
-							.from("organizations")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
-					])
+					// Count organizations
+					supabase
+						.from("organizations")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
+
+					// Count opportunities
+					supabase
+						.from("opportunities")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
+				])
 
 				if (!isCancelled) {
 					setCounts({
@@ -79,6 +94,7 @@ export function useSidebarCounts(projectId?: string, workflowType?: string | nul
 						insights: insightsResult.count || 0,
 						people: peopleResult.count || 0,
 						organizations: organizationsResult.count || 0,
+						opportunities: opportunitiesResult.count || 0,
 					})
 				}
 			} catch (error) {

@@ -73,8 +73,8 @@ export default function ProductLens() {
 			{/* Header */}
 			<div className="flex items-start justify-between gap-4">
 				<div>
-					<h1 className="font-bold text-3xl">Product Lens</h1>
-					<p className="text-muted-foreground">Pain × User Type matrix to prioritize product features</p>
+					<h1 className="font-bold text-3xl">Pain-Segment Lens</h1>
+					<p className="text-muted-foreground">Map pain by customer segment to find the wedge opportunities.</p>
 				</div>
 			</div>
 
