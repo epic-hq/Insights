@@ -7,6 +7,7 @@ import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
+import { InsightsDataTable } from "~/features/insights/components/InsightsDataTableTS"
 import { getInsights } from "~/features/insights/db"
 import { PersonaThemeMatrix } from "~/features/themes/components/PersonaThemeMatrix"
 import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
@@ -221,14 +222,37 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	return { themes: enriched, matrixData, insights }
 }
 
+
 export default function ThemesIndex() {
 	const { themes, matrixData, insights } = useLoaderData<typeof loader>()
 	const params = useParams()
 	const insightsTableUrl = `/a/${params.accountId ?? "785c124a-d1e2-4538-8908-df39b0973f5b"}/${params.projectId ?? "146e8fbe-99ab-4bce-a3ee-d7249c0decda"}/insights/table`
-	const [viewMode, setViewMode] = useState<"insights" | "matrix" | "cards">("insights")
+	const [viewMode, setViewMode] = useState<"table" | "matrix" | "cards" | "alt">("table")
 	const [searchQuery, setSearchQuery] = useState("")
 
-	const filteredInsights = useMemo(() => {
+	const insightsTableData = useMemo(() => {
+		const priorityRank = (value?: string | number | null, fallback = 0) => {
+			const normalized = typeof value === "string" ? value.toLowerCase() : typeof value === "number" ? String(value).toLowerCase() : null
+			if (!normalized) return fallback
+			switch (normalized) {
+				case "high":
+					return 3
+				case "medium":
+					return 2
+				case "low":
+					return 1
+				default:
+					return fallback
+			}
+		}
+
+		return insights.map((insight, index) => ({
+			...insight,
+			priority: priorityRank((insight as any).priority, Math.max(insights.length - index, 0)),
+		}))
+	}, [insights])
+
+	const filteredCardInsights = useMemo(() => {
 		const normalized = searchQuery.trim().toLowerCase()
 		if (!normalized) return insights
 
@@ -268,10 +292,9 @@ export default function ThemesIndex() {
 			<div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
 				<div>
 					<h1 className="font-semibold text-3xl text-foreground">Topics by Persona</h1>
-					{/* <p className="max-w-2xl text-sm text-foreground/70">
-						Compare how personas engage with your themes. Purple highlights call out wedge opportunities where a persona
-						over-indexes.
-					</p> */}
+					<p className="max-w-2xl text-foreground/70 text-sm">
+						See where each persona over-indexes so you can decide which wedges to double down on next.
+					</p>
 				</div>
 				<div className="relative w-full max-w-md">
 					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
@@ -284,62 +307,73 @@ export default function ThemesIndex() {
 				</div>
 			</div>
 		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-			<div className="space-y-1.5">
-				<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
-				<p className="max-w-2xl text-foreground/70 text-sm">
-					Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for
-					your team.
-				</p>
-			</div>
-			<div className="flex flex-wrap items-center gap-3">
-				<Button variant="secondary" size="sm" asChild>
-					<Link to={insightsTableUrl} className="gap-1.5">
-						<Columns3 className="h-4 w-4" />
-						Insights Table
-					</Link>
-				</Button>
+				<div className="space-y-1.5">
+					<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
+					<p className="max-w-2xl text-foreground/70 text-sm">
+						Scan validated findings, then vote or comment directly in the table when you need to drive alignment.
+					</p>
+				</div>
+				<div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
+					<Button
+						variant="secondary"
+						size="sm"
+						className="h-9 rounded-full border border-border/70 bg-background px-4 font-medium text-foreground hover:bg-background/80"
+						asChild
+					>
+						<Link to={insightsTableUrl} className="flex items-center gap-2">
+							<Columns3 className="h-4 w-4" />
+							Insights Table
+						</Link>
+					</Button>
+					<div className="hidden h-9 w-px bg-border/70 sm:block" />
 				<ToggleGroup
 					type="single"
 					value={viewMode}
-					onValueChange={(next) => next && setViewMode(next as "insights" | "matrix" | "cards")}
+					onValueChange={(next) => next && setViewMode(next as "table" | "matrix" | "cards" | "alt")}
 					size="sm"
-					className="shrink-0"
+					className="shrink-0 rounded-full border border-border/70 bg-background/60 p-0.5 text-xs"
 				>
-					<ToggleGroupItem value="insights" aria-label="Insights view" className="gap-2">
+					<ToggleGroupItem value="table" aria-label="Insights table view" className="gap-2 rounded-full px-3">
 						<Grid3X3 className="h-4 w-4" />
-						Insights
+						Table
 					</ToggleGroupItem>
-					<ToggleGroupItem value="matrix" aria-label="Matrix view" className="gap-2">
+					<ToggleGroupItem value="matrix" aria-label="Matrix view" className="gap-2 rounded-full px-3">
 						<List className="h-4 w-4" />
 						Matrix
 					</ToggleGroupItem>
-					<ToggleGroupItem value="cards" aria-label="Cards view" className="gap-2">
+					<ToggleGroupItem value="cards" aria-label="Card view" className="gap-2 rounded-full px-3">
 						<List className="h-4 w-4" />
 						Cards
+					</ToggleGroupItem>
+					<ToggleGroupItem value="alt" aria-label="Alternative card view" className="gap-2 rounded-full px-3">
+						<List className="h-4 w-4" />
+						Alt View
 					</ToggleGroupItem>
 				</ToggleGroup>
 			</div>
 		</div>
 
-			{viewMode === "insights" ? (
-				filteredInsights.length === 0 ? (
-					<div className="rounded-lg border border-dashed bg-muted/30 py-16 text-center text-muted-foreground">
-						<p className="font-medium">No insights match your filters</p>
-						{searchQuery ? <p className="mt-2 text-sm">Try a different keyword or clear the search field.</p> : null}
-					</div>
-				) : (
-					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-						{filteredInsights.map((insight) => (
-							<InsightCardV3 key={insight.id} insight={insight} />
-						))}
-					</div>
-				)
+			{viewMode === "table" ? (
+				<InsightsDataTable data={insightsTableData} />
 			) : viewMode === "matrix" && matrixData.length > 0 ? (
 				<PersonaThemeMatrix matrixData={matrixData} />
 			) : viewMode === "matrix" ? (
 				<div className="py-12 text-center text-foreground/60">
 					<p>No persona data available. Add evidence with personas to see the matrix.</p>
 				</div>
+			) : viewMode === "cards" ? (
+				filteredCardInsights.length === 0 ? (
+					<div className="rounded-lg border border-dashed bg-muted/30 py-16 text-center text-muted-foreground">
+						<p className="font-medium">No insights match your filters</p>
+						{searchQuery ? <p className="mt-2 text-sm">Try a different keyword or clear the search field.</p> : null}
+					</div>
+				) : (
+					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+						{filteredCardInsights.map((insight) => (
+							<InsightCardV3 key={insight.id} insight={insight} />
+						))}
+					</div>
+				)
 			) : (
 				<ThemeStudio themes={themes} />
 			)}

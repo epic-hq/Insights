@@ -33,13 +33,15 @@ export async function action({ request }: ActionFunctionArgs) {
 
 	const currentMetadata = (currentOpp.metadata as Record<string, any>) || {}
 
-	// Store notes and product_description in metadata
+	// Store notes and product_description in metadata; description is a direct field
 	const updateData: Record<string, any> = {}
 	if (field === "notes" || field === "product_description") {
 		updateData.metadata = {
 			...currentMetadata,
 			[field]: value,
 		}
+	} else if (field === "description") {
+		updateData.description = value
 	} else {
 		return Response.json({ ok: false, error: "Unsupported field" }, { status: 400 })
 	}

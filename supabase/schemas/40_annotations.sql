@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS public.annotations (
 
   -- Annotation metadata
   annotation_type TEXT NOT NULL CHECK (annotation_type IN ('comment', 'ai_suggestion', 'flag', 'note', 'todo', 'reaction')),
-  content TEXT,
+  content TEXT, -- Plain text content for comments, notes, etc.
+  content_jsonb JSONB, -- Structured JSONB content for AI suggestions, complex todos, etc.
   metadata JSONB DEFAULT '{}',
 
   -- Authorship - use auth.uid() for user_id to support multi-user accounts
@@ -29,6 +30,17 @@ CREATE TABLE IF NOT EXISTS public.annotations (
   -- Threading support for conversations
   parent_annotation_id UUID REFERENCES public.annotations(id) ON DELETE CASCADE,
   thread_root_id UUID REFERENCES public.annotations(id) ON DELETE CASCADE,
+
+  -- Edit and resolution tracking
+  updated_by_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+  resolved_at TIMESTAMPTZ,
+  resolved_by_user_id UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+
+  -- Todo-specific fields
+  due_date TIMESTAMPTZ,
+
+  -- Reaction-specific fields
+  reaction_type TEXT, -- Emoji or reaction identifier
 
   -- Timestamps
   created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -89,6 +101,20 @@ CREATE INDEX IF NOT EXISTS idx_annotations_project ON public.annotations(project
 CREATE INDEX IF NOT EXISTS idx_annotations_type ON public.annotations(annotation_type);
 CREATE INDEX IF NOT EXISTS idx_annotations_thread ON public.annotations(thread_root_id);
 CREATE INDEX IF NOT EXISTS idx_annotations_user ON public.annotations(created_by_user_id);
+
+-- JSONB indexes for efficient querying of structured content
+CREATE INDEX IF NOT EXISTS idx_annotations_content_jsonb_gin ON public.annotations USING GIN (content_jsonb);
+CREATE INDEX IF NOT EXISTS idx_annotations_content_jsonb_path ON public.annotations USING GIN (content_jsonb jsonb_path_ops);
+
+-- Composite indexes for common query patterns
+CREATE INDEX IF NOT EXISTS idx_annotations_ai_suggestions ON public.annotations (entity_type, entity_id, annotation_type, created_at DESC)
+WHERE created_by_ai = true AND status = 'active';
+
+CREATE INDEX IF NOT EXISTS idx_annotations_todos_unresolved ON public.annotations (project_id, entity_id, due_date)
+WHERE annotation_type = 'todo' AND resolved_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS idx_annotations_reactions ON public.annotations (entity_type, entity_id, reaction_type)
+WHERE annotation_type = 'reaction' AND status = 'active';
 
 CREATE INDEX IF NOT EXISTS idx_votes_entity ON public.votes(entity_type, entity_id);
 CREATE INDEX IF NOT EXISTS idx_votes_user ON public.votes(user_id);

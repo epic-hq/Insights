@@ -132,6 +132,7 @@ const routes = [
 	route("api/update-stakeholder", "./routes/api.update-stakeholder.tsx"),
 	route("api/update-opportunity", "./routes/api.update-opportunity.tsx"),
 	route("api/update-next-step", "./routes/api.update-next-step.tsx"),
+	route("api/opportunity-advisor", "./routes/api.opportunity-advisor.tsx"),
 	route("api/update-user-project-preference", "./routes/api.update-user-project-preference.tsx"),
 	route("api/interview-status", "./routes/api.interview-status.tsx"),
 	route("api/onboarding-start", "./routes/api.onboarding-start.tsx"),

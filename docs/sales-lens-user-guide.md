@@ -1,6 +1,8 @@
 # Sales Lens User Guide
 
-This guide explains how account teams can review and act on sales methodology lenses inside the Insights app.
+> **Note:** For the complete CRM & Opportunities workflow, see the [CRM & Opportunities Guide](./user-guides/crm-opportunities-guide.md). This guide covers the technical details of Sales Lens extraction.
+
+This guide explains how sales methodology lenses (BANT, MEDDIC, SPICED, MAP) are automatically extracted from customer conversations.
 
 ## Accessing the page
 
@@ -36,3 +38,24 @@ Both buttons submit through fetcher forms and will disable while the request is 
 - If a lens fails to refresh, check the Trigger.dev dashboard for the `sales.generate-sales-lens` task logs.
 - Re-run the upstream interview processing (Regenerate evidence) if stakeholders or themes look outdated before refreshing the lens.
 - Use the stakeholder list to confirm the economic buyer and decision maker were picked up—update the transcript or slot manually if the heuristics miss a key role.
+
+---
+
+## CRM & Opportunities Integration
+
+**Sales Lens extraction now powers the CRM & Opportunities feature!**
+
+When you link a conversation to an opportunity:
+1. Sales Lens automatically extracts stakeholders with role classification (DM, Influencer, Blocker)
+2. Next steps are identified with owners and due dates
+3. The AI Deal Advisor analyzes the extracted data to provide strategic recommendations
+
+**To use the complete workflow:**
+- See [CRM & Opportunities Guide](./user-guides/crm-opportunities-guide.md) for full documentation
+- See [CRM Workflow Quick Reference](./quick-reference/crm-workflow.md) for a cheat sheet
+
+**Key differences between Sales Lens page and Opportunity detail:**
+- **Sales Lens page** - Technical view of extraction results across all conversations
+- **Opportunity detail** - Business view focused on a specific deal with AI coaching
+
+For most users, the Opportunity detail page provides the most actionable workflow.

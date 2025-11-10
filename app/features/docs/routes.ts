@@ -8,5 +8,7 @@ export default [
 		route("analyzing-insights", "./features/docs/pages/analyzing-insights.tsx"),
 		route("conversation-lenses", "./features/docs/pages/conversation-lenses.tsx"),
 		route("product-lens", "./features/docs/pages/product-lens.tsx"),
+		route("crm-opportunities", "./features/docs/pages/crm-opportunities.tsx"),
+		route("crm-quick-reference", "./features/docs/pages/crm-quick-reference.tsx"),
 	]),
 ]

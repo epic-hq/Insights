@@ -1,4 +1,4 @@
-import { Book, Compass, Layers3, Lightbulb, Package, Users } from "lucide-react"
+import { Book, Compass, Layers3, Lightbulb, Package, Users, Briefcase, Zap } from "lucide-react"
 import { Link } from "react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 
@@ -135,6 +135,34 @@ export default function DocsIndex() {
 								</CardTitle>
 								<CardDescription>
 									Prioritize what to build next using a pain × user type matrix from customer conversations
+								</CardDescription>
+							</CardHeader>
+						</Card>
+					</Link>
+
+					<Link to="/docs/crm-opportunities" className="group">
+						<Card className="h-full transition-shadow hover:shadow-lg">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
+									<Briefcase className="h-5 w-5" />
+									CRM & Opportunities
+								</CardTitle>
+								<CardDescription>
+									Turn discovery conversations into actionable deal intelligence with AI-powered coaching
+								</CardDescription>
+							</CardHeader>
+						</Card>
+					</Link>
+
+					<Link to="/docs/crm-quick-reference" className="group">
+						<Card className="h-full transition-shadow hover:shadow-lg">
+							<CardHeader>
+								<CardTitle className="flex items-center gap-2 text-lg group-hover:text-primary">
+									<Zap className="h-5 w-5" />
+									CRM Quick Reference
+								</CardTitle>
+								<CardDescription>
+									One-page cheat sheet for the complete discovery-to-deal workflow
 								</CardDescription>
 							</CardHeader>
 						</Card>

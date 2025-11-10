@@ -396,6 +396,14 @@ export interface ConversationTakeaway {
   
 }
 
+export interface DealAdvisorRecommendation {
+  status_assessment: string
+  recommendations: string[]
+  risks: string[]
+  confidence: string
+  
+}
+
 export interface DecisionQuestionAnswer {
   decision_question_id: string
   strategic_insight: string

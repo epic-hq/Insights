@@ -1,6 +1,7 @@
-import { Briefcase, Calendar, DollarSign, MessageSquare, TrendingUp, Users } from "lucide-react"
+import { AlertTriangle, Briefcase, Calendar, DollarSign, Lightbulb, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react"
+import { useEffect } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useFetcher, useLoaderData } from "react-router-dom"
+import { Link, useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
 import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -9,6 +10,7 @@ import InlineEdit from "~/components/ui/inline-edit"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "~/components/ui/table"
 import { useCurrentProject } from "~/contexts/current-project-context"
+import { isOpportunityAdvice } from "~/features/annotations/types"
 import { getOpportunityById } from "~/features/opportunities/db"
 import type { OpportunitySalesLensData } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
 import { loadOpportunitySalesLens } from "~/features/opportunities/lib/loadOpportunitySalesLens.server"
@@ -55,7 +57,35 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			projectId,
 		})
 
-		return { opportunity, salesLensData }
+		// Load AI recommendations from annotations
+		const { data: annotations } = await supabase
+			.from("annotations")
+			.select("*")
+			.eq("entity_type", "opportunity")
+			.eq("entity_id", opportunityId)
+			.eq("annotation_type", "ai_suggestion")
+			.eq("status", "active")
+			.order("created_at", { ascending: false })
+			.limit(5)
+
+		const aiRecommendations = (annotations || [])
+			.map((ann) => {
+				// Type guard filters and narrows the type
+				if (!isOpportunityAdvice(ann.content_jsonb)) return null
+
+				const content = ann.content_jsonb
+				return {
+					id: ann.id,
+					status_assessment: content.status_assessment,
+					recommendations: content.recommendations,
+					risks: content.risks,
+					confidence: content.confidence,
+					created_at: ann.created_at,
+				}
+			})
+			.filter((rec): rec is NonNullable<typeof rec> => rec !== null)
+
+		return { opportunity, salesLensData, aiRecommendations }
 	} catch (_error) {
 		throw new Response("Failed to load opportunity", { status: 500 })
 	}
@@ -75,7 +105,7 @@ const getKanbanStatusColor = (kanbanStatus: string | null) => {
 }
 
 export default function OpportunityDetail() {
-	const { opportunity, salesLensData } = useLoaderData<typeof loader>()
+	const { opportunity, salesLensData, aiRecommendations } = useLoaderData<typeof loader>()
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 	const opportunityFetcher = useFetcher()
@@ -116,8 +146,7 @@ export default function OpportunityDetail() {
 						<Briefcase className="h-8 w-8 text-primary" />
 						<h1 className="text-balance font-bold text-4xl tracking-tight">{opportunity.title}</h1>
 					</div>
-					{opportunity.description && <p className="text-lg text-muted-foreground">{opportunity.description}</p>}
-					<div className="mt-3 flex items-center gap-2">
+						<div className="mt-3 flex items-center gap-2">
 						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status)}>
 							{opportunity.kanban_status || "Unknown"}
 						</Badge>
@@ -178,17 +207,33 @@ export default function OpportunityDetail() {
 				)}
 			</div>
 
+			{/* AI Advisor Section */}
+			<AIAdvisorSection
+				opportunityId={opportunity.id}
+				accountId={currentProjectContext?.accountId || ""}
+				projectId={currentProjectContext?.projectId || ""}
+				recommendations={aiRecommendations}
+			/>
+
 			{/* Description Section */}
-			{opportunity.description && (
-				<Card className="mb-8">
-					<CardHeader>
-						<CardTitle>Description</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<p className="text-muted-foreground">{opportunity.description}</p>
-					</CardContent>
-				</Card>
-			)}
+			<Card className="mb-8">
+				<CardHeader>
+					<CardTitle>Description</CardTitle>
+				</CardHeader>
+				<CardContent>
+					<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+						<InlineEdit
+							value={opportunity.description || ""}
+							placeholder="Add a description for this opportunity..."
+							onSubmit={(value) => handleOpportunityUpdate("description", value)}
+							submitOnBlur
+							multiline
+							textClassName={`text-sm whitespace-pre-wrap ${opportunity.description ? "text-foreground" : "text-muted-foreground italic"}`}
+							inputClassName="text-sm min-h-[80px]"
+						/>
+					</div>
+				</CardContent>
+			</Card>
 
 			{/* Product Section */}
 			<Card className="mb-8">
@@ -234,6 +279,21 @@ export default function OpportunityDetail() {
 				</CardContent>
 			</Card>
 
+			{/* Stakeholder Matrix */}
+			{salesLensData && salesLensData.stakeholders.length > 0 && (
+				<Card className="mt-8">
+					<CardHeader>
+						<CardTitle className="flex items-center gap-2">
+							<Users className="h-5 w-5" />
+							Stakeholder Matrix
+						</CardTitle>
+					</CardHeader>
+					<CardContent>
+						<StakeholderMatrix salesLensData={salesLensData} />
+					</CardContent>
+				</Card>
+			)}
+
 			{/* Linked Interviews */}
 			{salesLensData?.linkedInterviews && salesLensData.linkedInterviews.length > 0 && (
 				<Card className="mt-8">
@@ -272,21 +332,6 @@ export default function OpportunityDetail() {
 					</CardContent>
 				</Card>
 			)}
-
-			{/* Stakeholder Matrix */}
-			{salesLensData && salesLensData.stakeholders.length > 0 && (
-				<Card className="mt-8">
-					<CardHeader>
-						<CardTitle className="flex items-center gap-2">
-							<Users className="h-5 w-5" />
-							Stakeholder Matrix
-						</CardTitle>
-					</CardHeader>
-					<CardContent>
-						<StakeholderMatrix salesLensData={salesLensData} />
-					</CardContent>
-				</Card>
-			)}
 		</div>
 	)
 }
@@ -295,6 +340,7 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 	const { stakeholders, nextSteps } = salesLensData
 	const stakeholderFetcher = useFetcher()
 	const nextStepFetcher = useFetcher()
+	const revalidator = useRevalidator()
 	const currentProjectContext = useCurrentProject()
 	const routes = useProjectRoutes(currentProjectContext?.projectPath)
 
@@ -310,6 +356,14 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 
 	// Unassigned next steps
 	const unassignedSteps = (nextSteps || []).filter((step) => !step.ownerName)
+
+	// Revalidate after stakeholder updates
+	useEffect(() => {
+		if (stakeholderFetcher.state === "idle" && stakeholderFetcher.data) {
+			revalidator.revalidate()
+		}
+		// eslint-disable-next-line react-hooks/exhaustive-deps
+	}, [stakeholderFetcher.state, stakeholderFetcher.data])
 
 	const handleStakeholderUpdate = (stakeholderId: string, field: string, value: string) => {
 		stakeholderFetcher.submit(
@@ -337,27 +391,28 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 
 	const getStakeholderType = (stakeholder: (typeof stakeholders)[0]) => {
 		if (!stakeholder.labels || stakeholder.labels.length === 0) {
-			if (stakeholder.influence === "high") return "DM"
-			if (stakeholder.influence === "medium") return "I"
 			return "—"
 		}
-		// Check for decision maker labels
+		// Check for exact type labels first (DM, I, B)
+		if (stakeholder.labels.includes("DM")) return "DM"
+		if (stakeholder.labels.includes("I")) return "I"
+		if (stakeholder.labels.includes("B")) return "B"
+
+		// Check for decision maker labels (legacy/descriptive)
 		if (stakeholder.labels.some((l) => l.toLowerCase().includes("decision") || l.toLowerCase().includes("buyer"))) {
 			return "DM"
 		}
-		// Check for influencer labels
+		// Check for influencer labels (legacy/descriptive)
 		if (
 			stakeholder.labels.some((l) => l.toLowerCase().includes("influencer") || l.toLowerCase().includes("champion"))
 		) {
 			return "I"
 		}
-		// Check for blocker/objector
+		// Check for blocker/objector (legacy/descriptive)
 		if (stakeholder.labels.some((l) => l.toLowerCase().includes("blocker") || l.toLowerCase().includes("objection"))) {
 			return "B"
 		}
-		// Default based on influence
-		if (stakeholder.influence === "high") return "DM"
-		if (stakeholder.influence === "medium") return "I"
+		// If labels exist but no type is found, return unknown
 		return "—"
 	}
 
@@ -573,5 +628,171 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 				</TableBody>
 			</Table>
 		</div>
+	)
+}
+
+function AIAdvisorSection({
+	opportunityId,
+	accountId,
+	projectId,
+	recommendations,
+}: {
+	opportunityId: string
+	accountId: string
+	projectId: string
+	recommendations: Array<{
+		id: string
+		status_assessment: string
+		recommendations: string[]
+		risks: string[]
+		confidence: string
+		created_at: string | null
+	}>
+}) {
+	const advisorFetcher = useFetcher<{ ok: boolean; recommendation: any }>()
+
+	const handleGenerateRecommendation = () => {
+		advisorFetcher.submit(
+			{
+				opportunityId,
+				accountId,
+				projectId,
+			},
+			{ method: "post", action: "/api/opportunity-advisor" }
+		)
+	}
+
+	const isGenerating = advisorFetcher.state === "submitting" || advisorFetcher.state === "loading"
+
+	// Show newly generated recommendation if available
+	const latestRecommendation =
+		advisorFetcher.data?.ok && advisorFetcher.data.recommendation
+			? advisorFetcher.data.recommendation
+			: recommendations?.[0]
+
+	// Debug logging
+	console.log("AI Advisor Debug:", {
+		fetcherState: advisorFetcher.state,
+		fetcherData: advisorFetcher.data,
+		recommendations,
+		latestRecommendation,
+	})
+
+	// Show error if fetcher failed
+	const hasError = advisorFetcher.data && !advisorFetcher.data.ok
+
+	return (
+		<Card className="mb-8 border-indigo-200 bg-gradient-to-br from-indigo-50/50 to-purple-50/30">
+			<CardHeader className={latestRecommendation ? "" : "pb-4"}>
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<Sparkles className="h-5 w-5 text-indigo-600" />
+						<CardTitle>AI Deal Advisor</CardTitle>
+						<Badge variant="outline" className="bg-white text-indigo-600 text-xs">
+							AI
+						</Badge>
+					</div>
+					<Button onClick={handleGenerateRecommendation} disabled={isGenerating} size="sm" className="gap-2">
+						{isGenerating ? (
+							<>
+								<Sparkles className="h-4 w-4 animate-pulse" />
+								Analyzing...
+							</>
+						) : (
+							<>
+								<Lightbulb className="h-4 w-4" />
+								{latestRecommendation ? "Refresh" : "Get Advice"}
+							</>
+						)}
+					</Button>
+				</div>
+				{!latestRecommendation && !hasError && (
+					<p className="mt-2 text-muted-foreground text-sm">
+						Get AI-powered strategic guidance for advancing this deal
+					</p>
+				)}
+				{hasError && (
+					<p className="mt-2 text-red-600 text-sm">
+						Error: {(advisorFetcher.data as any)?.error || "Failed to generate recommendation"}
+					</p>
+				)}
+			</CardHeader>
+			{latestRecommendation && (
+				<CardContent>
+					<div className="space-y-6">
+						{/* Status Assessment */}
+						<div className="rounded-lg border border-indigo-100 bg-white p-4">
+							<div className="mb-2 flex items-center gap-2">
+								<TrendingUp className="h-4 w-4 text-indigo-600" />
+								<span className="font-semibold text-sm">Status Assessment</span>
+								<Badge
+									variant={
+										latestRecommendation.confidence === "high"
+											? "default"
+											: latestRecommendation.confidence === "medium"
+												? "outline"
+												: "secondary"
+									}
+									className="text-xs"
+								>
+									{latestRecommendation.confidence} confidence
+								</Badge>
+							</div>
+							<p className="text-foreground">{latestRecommendation.status_assessment}</p>
+						</div>
+
+						{/* Recommendations */}
+						{latestRecommendation.recommendations && latestRecommendation.recommendations.length > 0 && (
+							<div className="rounded-lg border border-emerald-100 bg-white p-4">
+								<div className="mb-3 flex items-center gap-2">
+									<Lightbulb className="h-4 w-4 text-emerald-600" />
+									<span className="font-semibold text-sm">Recommended Actions</span>
+								</div>
+								<ul className="space-y-2">
+									{latestRecommendation.recommendations.map((rec: string, idx: number) => (
+										<li key={idx} className="flex items-start gap-3">
+											<span className="mt-1 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-700 text-xs">
+												{idx + 1}
+											</span>
+											<span className="flex-1 text-foreground text-sm">{rec}</span>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+
+						{/* Risks */}
+						{latestRecommendation.risks && latestRecommendation.risks.length > 0 && (
+							<div className="rounded-lg border border-amber-100 bg-white p-4">
+								<div className="mb-3 flex items-center gap-2">
+									<AlertTriangle className="h-4 w-4 text-amber-600" />
+									<span className="font-semibold text-sm">Key Risks</span>
+								</div>
+								<ul className="space-y-2">
+									{latestRecommendation.risks.map((risk: string, idx: number) => (
+										<li key={idx} className="flex items-start gap-3">
+											<span className="mt-0.5 text-amber-600">•</span>
+											<span className="flex-1 text-foreground text-sm">{risk}</span>
+										</li>
+									))}
+								</ul>
+							</div>
+						)}
+
+						{/* Timestamp */}
+						{latestRecommendation.created_at && (
+							<div className="border-indigo-100 border-t pt-3 text-muted-foreground text-xs">
+								Generated {new Date(latestRecommendation.created_at).toLocaleString("en-US", {
+									month: "short",
+									day: "numeric",
+									hour: "numeric",
+									minute: "2-digit",
+								})}
+							</div>
+						)}
+					</div>
+				</CardContent>
+			)}
+		</Card>
 	)
 }

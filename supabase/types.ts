@@ -412,18 +412,24 @@ export type Database = {
           ai_model: string | null
           annotation_type: string
           content: string | null
+          content_jsonb: Json | null
           created_at: string | null
           created_by_ai: boolean | null
           created_by_user_id: string | null
+          due_date: string | null
           entity_id: string
           entity_type: string
           id: string
           metadata: Json | null
           parent_annotation_id: string | null
           project_id: string
+          reaction_type: string | null
+          resolved_at: string | null
+          resolved_by_user_id: string | null
           status: string | null
           thread_root_id: string | null
           updated_at: string | null
+          updated_by_user_id: string | null
           visibility: string | null
         }
         Insert: {
@@ -431,18 +437,24 @@ export type Database = {
           ai_model?: string | null
           annotation_type: string
           content?: string | null
+          content_jsonb?: Json | null
           created_at?: string | null
           created_by_ai?: boolean | null
           created_by_user_id?: string | null
+          due_date?: string | null
           entity_id: string
           entity_type: string
           id?: string
           metadata?: Json | null
           parent_annotation_id?: string | null
           project_id: string
+          reaction_type?: string | null
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
           status?: string | null
           thread_root_id?: string | null
           updated_at?: string | null
+          updated_by_user_id?: string | null
           visibility?: string | null
         }
         Update: {
@@ -450,18 +462,24 @@ export type Database = {
           ai_model?: string | null
           annotation_type?: string
           content?: string | null
+          content_jsonb?: Json | null
           created_at?: string | null
           created_by_ai?: boolean | null
           created_by_user_id?: string | null
+          due_date?: string | null
           entity_id?: string
           entity_type?: string
           id?: string
           metadata?: Json | null
           parent_annotation_id?: string | null
           project_id?: string
+          reaction_type?: string | null
+          resolved_at?: string | null
+          resolved_by_user_id?: string | null
           status?: string | null
           thread_root_id?: string | null
           updated_at?: string | null
+          updated_by_user_id?: string | null
           visibility?: string | null
         }
         Relationships: [
