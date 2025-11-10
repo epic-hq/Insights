@@ -1,8 +1,9 @@
-import { Grid3X3, List, Search } from "lucide-react"
+import { Columns3, Grid3X3, List, Search } from "lucide-react"
 import { useMemo, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
-import { useLoaderData } from "react-router-dom"
+import { Link, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
@@ -222,6 +223,8 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 export default function ThemesIndex() {
 	const { themes, matrixData, insights } = useLoaderData<typeof loader>()
+	const params = useParams()
+	const insightsTableUrl = `/a/${params.accountId ?? "785c124a-d1e2-4538-8908-df39b0973f5b"}/${params.projectId ?? "146e8fbe-99ab-4bce-a3ee-d7249c0decda"}/insights/table`
 	const [viewMode, setViewMode] = useState<"insights" | "matrix" | "cards">("insights")
 	const [searchQuery, setSearchQuery] = useState("")
 
@@ -280,14 +283,21 @@ export default function ThemesIndex() {
 					/>
 				</div>
 			</div>
-			<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-				<div className="space-y-1.5">
-					<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
-					<p className="max-w-2xl text-foreground/70 text-sm">
-						Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for
-						your team.
-					</p>
-				</div>
+		<div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+			<div className="space-y-1.5">
+				<h2 className="font-medium text-foreground text-xl">Project Insights</h2>
+				<p className="max-w-2xl text-foreground/70 text-sm">
+					Browse the latest validated findings. Open a card to review context, linked themes, and leave feedback for
+					your team.
+				</p>
+			</div>
+			<div className="flex flex-wrap items-center gap-3">
+				<Button variant="secondary" size="sm" asChild>
+					<Link to={insightsTableUrl} className="gap-1.5">
+						<Columns3 className="h-4 w-4" />
+						Insights Table
+					</Link>
+				</Button>
 				<ToggleGroup
 					type="single"
 					value={viewMode}
@@ -309,6 +319,7 @@ export default function ThemesIndex() {
 					</ToggleGroupItem>
 				</ToggleGroup>
 			</div>
+		</div>
 
 			{viewMode === "insights" ? (
 				filteredInsights.length === 0 ? (

@@ -158,18 +158,15 @@ export default function Dashboard({
 							</div>
 						</div>
 						{/* Opportunity Kanban - spans full width */}
-						{/* Hidden for now */}
-						{/*
-				<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
-					<div className="mb-3 flex items-center justify-between">
-						<h2 className="font-semibold text-lg">Opportunities</h2>
-						<Link to={routes.opportunities.index()} className="text-blue-600 text-xs hover:text-blue-800">
-							View all
-						</Link>
-					</div>
-					<OpportunityKanban columns={kanbanCols} />
-				</div>
-				*/}
+						<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm dark:bg-gray-900">
+							<div className="mb-3 flex items-center justify-between">
+								<h2 className="font-semibold text-lg">Opportunities</h2>
+								<Link to={routes.opportunities.index()} className="text-blue-600 text-xs hover:text-blue-800">
+									View all
+								</Link>
+							</div>
+							<OpportunityKanban columns={_kanbanCols} />
+						</div>
 
 						{/* Recent Interviews - spans 6 columns on large screens, full width on smaller screens */}
 						<div className="col-span-12 rounded-lg bg-white p-4 shadow-sm lg:col-span-6 dark:bg-gray-900">

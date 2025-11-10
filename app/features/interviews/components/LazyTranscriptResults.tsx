@@ -1,4 +1,4 @@
-import { Download, FileText } from "lucide-react"
+import { ChevronDown, ChevronUp, Download, FileText } from "lucide-react"
 import { useState } from "react"
 import { Button } from "~/components/ui/button"
 import { useCurrentProject } from "~/contexts/current-project-context"
@@ -42,6 +42,7 @@ export function LazyTranscriptResults({
 	const [transcriptData, setTranscriptData] = useState<TranscriptData | null>(null)
 	const [loading, setLoading] = useState(false)
 	const [isLoaded, setIsLoaded] = useState(false)
+	const [isExpanded, setIsExpanded] = useState(false)
 	const [error, setError] = useState<string | null>(null)
 	const currentProject = useCurrentProject()
 	const projectId = currentProject?.projectId
@@ -89,6 +90,7 @@ export function LazyTranscriptResults({
 			}
 			setTranscriptData(processedData)
 			setIsLoaded(true)
+			setIsExpanded(true)
 		} catch (err) {
 			setError(err instanceof Error ? err.message : "Failed to load transcript")
 		} finally {
@@ -155,20 +157,55 @@ export function LazyTranscriptResults({
 	}
 
 	return (
-		<TranscriptResults
-			data={{
-				id: interviewId,
-				text: transcriptData.text,
-				words: [],
-				language_code: "en",
-				confidence: 0,
-				audio_duration: 0,
-				utterances: transcriptData.utterances,
-				iab_categories_result: transcriptData.iab_categories_result,
-				sentiment_analysis_results: transcriptData.sentiment_analysis_results,
-			}}
-			rawTranscript={transcriptData.text || undefined}
-			participants={participants}
-		/>
+		<div className="space-y-4">
+			<div className="rounded-lg border bg-background/50 p-4">
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-3">
+						<FileText className="h-5 w-5 text-muted-foreground" />
+						<div>
+							<h3 className="font-medium text-foreground">Interview Transcript</h3>
+							<p className="text-foreground text-sm">
+								{hasFormattedTranscript ? "Full transcript with analysis" : "Raw transcript"}
+							</p>
+						</div>
+					</div>
+					<Button
+						onClick={() => setIsExpanded(!isExpanded)}
+						variant="ghost"
+						size="sm"
+						className="flex items-center gap-2"
+					>
+						{isExpanded ? (
+							<>
+								<ChevronUp className="h-4 w-4" />
+								Hide
+							</>
+						) : (
+							<>
+								<ChevronDown className="h-4 w-4" />
+								Show
+							</>
+						)}
+					</Button>
+				</div>
+			</div>
+			{isExpanded && (
+				<TranscriptResults
+					data={{
+						id: interviewId,
+						text: transcriptData.text,
+						words: [],
+						language_code: "en",
+						confidence: 0,
+						audio_duration: 0,
+						utterances: transcriptData.utterances,
+						iab_categories_result: transcriptData.iab_categories_result,
+						sentiment_analysis_results: transcriptData.sentiment_analysis_results,
+					}}
+					rawTranscript={transcriptData.text || undefined}
+					participants={participants}
+				/>
+			)}
+		</div>
 	)
 }

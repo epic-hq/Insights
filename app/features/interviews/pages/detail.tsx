@@ -385,27 +385,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-							id: string
-							name: string | null
-							segment: string | null
-							project_id: string | null
-							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-							[key: string]: unknown
-					  }
+						id: string
+						name: string | null
+						segment: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-							id: person.id,
-							name: person.name,
-							segment: person.segment,
-							project_id: person.project_id,
-							people_personas: Array.isArray(person.people_personas)
-								? person.people_personas.map((pp) => ({
-										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-									}))
-								: undefined,
-						}
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
+							: undefined,
+					}
 					: undefined
 				return {
 					id: row.id,
@@ -452,6 +452,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 
 		let salesLens: InterviewLensView | null = null
+		let linkedOpportunity: { id: string; title: string } | null = null
 		try {
 			if (supabase) {
 				salesLens = await loadInterviewSalesLens({
@@ -460,6 +461,28 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 					interviewId,
 					peopleLookup,
 				})
+
+				// Check if interview is linked to an opportunity
+				const { data: summaryData } = await supabase
+					.from("sales_lens_summaries")
+					.select("opportunity_id")
+					.eq("interview_id", interviewId)
+					.eq("project_id", projectId)
+					.not("opportunity_id", "is", null)
+					.limit(1)
+					.single()
+
+				if (summaryData?.opportunity_id) {
+					const { data: oppData } = await supabase
+						.from("opportunities")
+						.select("id, title")
+						.eq("id", summaryData.opportunity_id)
+						.single()
+
+					if (oppData) {
+						linkedOpportunity = oppData
+					}
+				}
 			}
 		} catch (error) {
 			consola.warn("Failed to load sales lens for interview", { interviewId, error })
@@ -716,6 +739,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			assistantMessages,
 			conversationAnalysis,
 			salesLens,
+			linkedOpportunity,
 		}
 
 		consola.info("✅ Loader completed successfully:", {
@@ -755,6 +779,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		assistantMessages,
 		conversationAnalysis,
 		salesLens,
+		linkedOpportunity,
 	} = useLoaderData<typeof loader>()
 
 	// Early validation - must happen before any hooks
@@ -765,6 +790,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 	const fetcher = useFetcher()
 	const participantFetcher = useFetcher()
 	const lensFetcher = useFetcher()
+	const slotFetcher = useFetcher()
 	const navigation = useNavigation()
 	const { accountId: contextAccountId, projectId: contextProjectId, projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(`/a/${contextAccountId}/${contextProjectId}`)
@@ -1218,6 +1244,24 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 		}
 	}
 
+	const handleSlotUpdate = (slotId: string, field: "summary" | "textValue", value: string) => {
+		try {
+			// Convert textValue to text_value for database column name
+			const dbField = field === "textValue" ? "text_value" : field
+
+			slotFetcher.submit(
+				{
+					slotId,
+					field: dbField,
+					value,
+				},
+				{ method: "post", action: "/api/update-slot" }
+			)
+		} catch (error) {
+			consola.error("Failed to update slot", error)
+		}
+	}
+
 	const activeLensUpdateId =
 		lensFetcher.state !== "idle" && lensFetcher.formData
 			? (lensFetcher.formData.get("lensId")?.toString() ?? null)
@@ -1409,15 +1453,26 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 										</DropdownMenuContent>
 									</DropdownMenu>
 								)}
-								<Link
-									to={routes.opportunities.new()}
-									state={{ interviewId: interview.id, interviewTitle: interview.title }}
-									className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-50 px-3 py-2 font-semibold text-blue-700 text-sm shadow-sm hover:bg-blue-100"
-									title="Create opportunity from this interview"
-								>
-									<Briefcase className="h-4 w-4" />
-									Create Opportunity
-								</Link>
+								{linkedOpportunity ? (
+									<Link
+										to={routes.opportunities.detail(linkedOpportunity.id)}
+										className="inline-flex items-center gap-2 rounded-md border border-emerald-600 bg-emerald-50 px-3 py-2 font-semibold text-emerald-700 text-sm shadow-sm hover:bg-emerald-100"
+										title="View linked opportunity"
+									>
+										<Briefcase className="h-4 w-4" />
+										Opportunity: {linkedOpportunity.title}
+									</Link>
+								) : (
+									<Link
+										to={routes.opportunities.new()}
+										state={{ interviewId: interview.id, interviewTitle: interview.title }}
+										className="inline-flex items-center gap-2 rounded-md border border-blue-600 bg-blue-50 px-3 py-2 font-semibold text-blue-700 text-sm shadow-sm hover:bg-blue-100"
+										title="Create opportunity from this interview"
+									>
+										<Briefcase className="h-4 w-4" />
+										Create Opportunity
+									</Link>
+								)}
 								<Link
 									to={routes.interviews.edit(interview.id)}
 									className="inline-flex items-center rounded-md border px-3 py-2 font-semibold text-sm shadow-sm hover:bg-gray-50"
@@ -1523,6 +1578,7 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 							customLenses={customLensOverrides}
 							customLensDefaults={customLensDefaults}
 							onUpdateLens={handleCustomLensUpdate}
+							onUpdateSlot={handleSlotUpdate}
 							updatingLensId={activeLensUpdateId}
 							personLenses={personLenses}
 						/>

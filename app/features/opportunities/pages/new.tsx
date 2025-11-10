@@ -67,6 +67,16 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 			return { error: "Failed to create opportunity" }
 		}
 
+		// Link interview to opportunity in sales_lens_summaries
+		if (interviewId && data?.id) {
+			await supabase
+				.from("sales_lens_summaries")
+				.update({ opportunity_id: data.id })
+				.eq("interview_id", interviewId)
+				.eq("project_id", projectId)
+				.eq("account_id", accountId)
+		}
+
 		// Redirect to the opportunity detail page with full path context
 		return redirect(`/a/${accountId}/${projectId}/opportunities/${data.id}`)
 	} catch (_error) {

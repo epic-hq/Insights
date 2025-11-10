@@ -1,4 +1,4 @@
-import { z } from "zod" // Centralized application type definitions
+// Centralized application type definitions
 
 // -------------------------------------------------------
 // All UI components should import domain types from this
@@ -9,7 +9,6 @@ import { z } from "zod" // Centralized application type definitions
 // -------------------------------------------------------
 
 import type { SupabaseClient as UntypedSupabaseClient } from "@supabase/supabase-js"
-import type { PersonaSlice } from "~/components/charts/PersonaDonut"
 // 1. Core Supabase types
 // ----------------------
 // These come from `supabase/types.ts`, generated via the
@@ -29,15 +28,9 @@ type TablesInsert<TName extends keyof Database["public"]["Tables"]> = Database["
 
 type TablesUpdate<TName extends keyof Database["public"]["Tables"]> = Database["public"]["Tables"][TName]["Update"]
 
-type Enums<EName extends keyof Database["public"]["Enums"]> = Database["public"]["Enums"][EName]
-
 // RPC function argument helper
 export type RpcArgs<RpcName extends keyof Database["public"]["Functions"]> =
 	Database["public"]["Functions"][RpcName]["Args"]
-
-// RPC function return type helper
-type RpcReturns<RpcName extends keyof Database["public"]["Functions"]> =
-	Database["public"]["Functions"][RpcName]["Returns"]
 
 // Re-export account types
 
@@ -53,64 +46,25 @@ export type Interview = Tables<"interviews">
 export type Persona = Tables<"personas"> // ensure table exists in DB
 export type Opportunity = Tables<"opportunities"> // ensure table exists in DB
 export type Organization = Tables<"organizations">
-type Tag = Tables<"tags">
 export type Person = Tables<"people">
 export type Project = Tables<"projects">
 export type Project_Section = Tables<"project_sections">
-type InterviewTag = Tables<"interview_tags">
-type InsightTag = Tables<"insight_tags">
 export type InterviewPeople = Tables<"interview_people">
-type Comment = Tables<"comments">
 export type AccountSettings = Tables<"account_settings">
 export type UserSettings = Tables<"user_settings">
 export type Evidence = Tables<"evidence">
 export type Theme = Tables<"themes">
-type Theme_Evidence = Tables<"theme_evidence">
 // Newly exposed domain types to replace `any` usage in components
 export type Annotation = Tables<"annotations">
-type EntityFlag = Tables<"entity_flags">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
 export type InsightInsert = TablesInsert<"insights">
-type InsightUpdate = TablesUpdate<"insights">
 export type InterviewInsert = TablesInsert<"interviews">
-type InterviewUpdate = TablesUpdate<"interviews">
-type OpportunityInsert = TablesInsert<"opportunities">
-type OpportunityUpdate = TablesUpdate<"opportunities">
-type OrganizationInsert = TablesInsert<"organizations">
-type OrganizationUpdate = TablesUpdate<"organizations">
-type PersonInsert = TablesInsert<"people">
-type PersonUpdate = TablesUpdate<"people">
 export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
 export type Project_SectionInsert = TablesInsert<"project_sections">
 export type Project_SectionUpdate = TablesUpdate<"project_sections">
-type InterviewTagInsert = TablesInsert<"interview_tags">
-type InterviewTagUpdate = TablesUpdate<"interview_tags">
-type InsightTagInsert = TablesInsert<"insight_tags">
-type InsightTagUpdate = TablesUpdate<"insight_tags">
-type PeoplePersonaInsert = TablesInsert<"people_personas">
-type PeoplePersonaUpdate = TablesUpdate<"people_personas">
-export type ProjectPeople = Tables<"project_people">
-export type PeopleOrganization = Tables<"people_organizations">
-type PeopleOrganizationUpdate = TablesUpdate<"people_organizations">
-type CommentInsert = TablesInsert<"comments">
-type CommentUpdate = TablesUpdate<"comments">
-type AccountSettingsInsert = TablesInsert<"account_settings">
-type AccountSettingsUpdate = TablesUpdate<"account_settings">
-type UserSettingsInsert = TablesInsert<"user_settings">
-type UserSettingsUpdate = TablesUpdate<"user_settings">
-type EvidenceInsert = TablesInsert<"evidence">
-type EvidenceUpdate = TablesUpdate<"evidence">
-type ThemeInsert = TablesInsert<"themes">
-type ThemeUpdate = TablesUpdate<"themes">
-type Theme_EvidenceInsert = TablesInsert<"theme_evidence">
-type Theme_EvidenceUpdate = TablesUpdate<"theme_evidence">
-type AnnotationInsert = TablesInsert<"annotations">
-type AnnotationUpdate = TablesUpdate<"annotations">
-type EntityFlagInsert = TablesInsert<"entity_flags">
-type EntityFlagUpdate = TablesUpdate<"entity_flags">
 
 // 4. Extended types for complex queries
 // -------------------------------------
@@ -162,20 +116,16 @@ export type QuestionInput = {
 // reuse consistently.
 
 // Kanban UI interfaces
-interface OpportunityItem {
+export interface OpportunityItem {
 	id: string
 	title: string
 	owner: string
 	priority?: "high" | "medium" | "low"
 }
 
-interface ColumnData {
+export interface ColumnData {
 	title: string
 	items: OpportunityItem[]
-}
-
-interface InsightWithEvidence extends Insight {
-	evidence_interviews: Interview[]
 }
 
 // Example aggregated persona metrics
@@ -226,47 +176,12 @@ export interface CommentView extends Comment {
 	text?: string
 }
 
-type PersonaView = Persona & {
-	percentage?: number | null
-	count?: number
-	color?: string
-	slices?: PersonaSlice[]
-	href?: string
-}
-
-interface PersonaWithCounts extends Persona {
-	interview_count: number
-	insight_count: number
-}
-
 // Composite view-models ------------------------------------------
-interface InterviewBundle {
-	interview: Interview
-	insights: Insight[]
-	comments: Comment[]
-}
-
-interface PersonaBundle {
-	persona: Persona
-	people: Person[]
-}
 // -------------------------------------------------------
 // Usage example in a component or loader:
 // import { Insight } from "~/app/types"
 // const data: Insight[] = await db.from("insights").select()
 // -------------------------------------------------------
-
-const InterviewStatus = z.enum([
-	"draft",
-	"scheduled",
-	"uploaded",
-	"transcribed",
-	"processing",
-	"ready",
-	"tagged",
-	"archived",
-])
-type InterviewStatus = z.infer<typeof InterviewStatus>
 
 // TODO: Double check the types here
 export type GetAccount = {

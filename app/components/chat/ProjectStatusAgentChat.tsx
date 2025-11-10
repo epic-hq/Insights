@@ -2,7 +2,7 @@ import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import { BotMessageSquare, ChevronRight } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
-import { useFetcher, useNavigate } from "react-router"
+import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
@@ -85,6 +85,7 @@ export function ProjectStatusAgentChat({
 	const messagesEndRef = useRef<HTMLDivElement | null>(null)
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
+	const location = useLocation()
 	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
 
 	// Load chat history when project changes
@@ -97,10 +98,24 @@ export function ProjectStatusAgentChat({
 
 	const navigate = useNavigate()
 
+	const currentPageContext = useMemo(() => {
+		return describeCurrentProjectView({
+			pathname: location.pathname,
+			search: location.search,
+			accountId,
+			projectId,
+		})
+	}, [location.pathname, location.search, accountId, projectId])
+
+	const mergedSystemContext = useMemo(() => {
+		if (!currentPageContext) return systemContext
+		return [systemContext, `Current UI Context:\n${currentPageContext}`].filter(Boolean).join("\n\n")
+	}, [systemContext, currentPageContext])
+
 	const { messages, sendMessage, status, setMessages, addToolResult } = useChat<UpsightMessage>({
 		transport: new DefaultChatTransport({
 			api: routes.api.chat.projectStatus(),
-			body: { system: systemContext },
+			body: { system: mergedSystemContext },
 		}),
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 		onToolCall: async ({ toolCall }) => {
@@ -135,7 +150,7 @@ export function ProjectStatusAgentChat({
 		}
 	}, [historyFetcher.data, setMessages])
 
-	const displayableMessages = useMemo(() => {
+const displayableMessages = useMemo(() => {
 		if (!messages) return []
 		return messages.filter((message) => {
 			if (message.role !== "assistant") return true
@@ -347,4 +362,88 @@ export function ProjectStatusAgentChat({
 			</Card>
 		</div>
 	)
+}
+
+interface ViewContextArgs {
+	pathname: string
+	search: string
+	accountId: string
+	projectId: string
+}
+
+function describeCurrentProjectView({ pathname, search, accountId, projectId }: ViewContextArgs): string {
+	if (!pathname) return ""
+	const segments = pathname.split("/").filter(Boolean)
+	const isProjectScoped = segments[0] === "a" && segments.length >= 3
+	let contextLines: string[] = [`Route: ${pathname}`]
+	if (isProjectScoped) {
+		const [, accountSegment, projectSegment, ...rest] = segments
+		const accountMatch = accountSegment || accountId
+		const projectMatch = projectSegment || projectId
+		if (accountMatch) {
+			contextLines.push(`Account: ${accountMatch}`)
+		}
+		if (projectMatch) {
+			contextLines.push(`Project: ${projectMatch}`)
+		}
+		if (rest.length > 0) {
+			const resource = rest[0]
+			const remainder = rest.slice(1)
+			contextLines.push(describeResourceContext(resource, remainder))
+		} else {
+			contextLines.push("View: Project overview")
+		}
+	} else {
+		contextLines.push("View: Outside project scope")
+	}
+	if (search) {
+		contextLines.push(`Query: ${search}`)
+	}
+	return contextLines.filter(Boolean).join("\n")
+}
+
+function describeResourceContext(resource: string, remainder: string[]): string {
+	const id = remainder[0]
+	switch (resource) {
+		case "interviews":
+			if (!id) return "View: Interviews workspace"
+			if (id === "new") return "View: Create interview"
+			return `View: Interview detail (id=${id})`
+		case "people":
+			if (!id) return "View: People directory"
+			if (id === "new") return "View: Add person"
+			return `View: Person profile (id=${id})`
+		case "opportunities":
+			if (!id) return "View: Opportunities pipeline"
+			if (id === "new") return "View: New opportunity"
+			return `View: Opportunity detail (id=${id})`
+		case "themes":
+			if (!id) return "View: Themes overview"
+			return `View: Theme detail (id=${id})`
+		case "evidence":
+			if (!id) return "View: Evidence library"
+			return `View: Evidence detail (id=${id})`
+		case "insights":
+			if (!id) return "View: Insights workspace"
+			return `View: Insight detail (id=${id})`
+		case "segments":
+			if (!id) return "View: Segment index"
+			return `View: Segment detail (id=${id})`
+		case "personas":
+			if (!id) return "View: Personas overview"
+			return `View: Persona detail (id=${id})`
+		case "product-lens":
+			return "View: Product Lens (pain × user matrix)"
+		case "bant-lens":
+			return "View: BANT Lens (budget × authority)"
+		case "dashboard":
+			return "View: Project dashboard"
+		case "project-status":
+			return "View: Project status summary"
+		default:
+			if (resource) {
+				return `View: ${resource.replace(/-/g, " ")}${id ? ` (context=${id})` : ""}`
+			}
+			return "View: Project content"
+	}
 }

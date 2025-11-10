@@ -173,28 +173,27 @@ export default function StatCard({
 			<Wrapper
 				{...next}
 				{...(onClick ? { onClick } : {})}
-				// inline, no extra chrome, minimal padding
-				className={`inline-flex items-center gap-0.5 rounded-md border border-gray-200/70 bg-white px-0.5 py-0.5 text-[11px] leading-none dark:border-gray-800 dark:bg-gray-900 ${clickable ? "cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-800" : ""} ${className ?? ""}`}
-				// slimmer left accent if you still want highlight
-				style={highlightColor ? { borderLeft: `2px solid ${highlightColor}` } : undefined}
+				// ultra-compact, minimal chrome, tiny padding
+				className={`inline-flex items-center gap-0.5 rounded px-1 py-0.5 text-[10px] leading-none dark:bg-gray-800 ${clickable ? "cursor-pointer hover:bg-gray-100 dark:hover:bg-gray-700" : ""} ${className ?? ""}`}
+				// minimal left accent if you still want highlight
+				style={highlightColor ? { borderLeft: `1px solid ${highlightColor}` } : undefined}
 			>
 				{icon && (
-					<span className="flex-shrink-0 text-gray-400">
+					<span className="flex-shrink-0 text-gray-500">
 						{renderIcon(icon, /* compact */ true /* -> h-4 w-4 */, iconTitleId)}
 					</span>
 				)}
 
-				{/* label width = max-w-[9rem]*/}
-				<span className="max-w-[6rem] truncate text-gray-500">{label}</span>
+				{/* shorter label width */}
+				<span className="max-w-[4rem] truncate text-gray-600">{label}</span>
 
-				{/* value */}
-				<span className="font-semibold text-gray-900 dark:text-gray-100">{value}</span>
+				{/* smaller value */}
+				<span className="font-medium text-gray-900 dark:text-gray-100">{value}</span>
 
-				{/* change (tiny, color-coded) */}
+				{/* tiny change indicator */}
 				{change && (
-					<span className={`ml-0.5 flex items-center gap-0.5 ${isUp ? "text-emerald-600" : "text-rose-600"}`}>
-						<span aria-hidden>{isUp ? "▲" : "▼"}</span>
-						<span>{change}</span>
+					<span className={`ml-0.5 text-[9px] ${isUp ? "text-emerald-600" : "text-rose-600"}`}>
+						{change}
 					</span>
 				)}
 			</Wrapper>

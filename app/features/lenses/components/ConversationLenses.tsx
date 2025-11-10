@@ -1,14 +1,12 @@
 import type { LucideIcon } from "lucide-react"
-import { AlertTriangle, BarChart3, Cpu, Headset, Heart, Map, Sparkles, Target, Users } from "lucide-react"
+import { AlertTriangle, BarChart3, CheckCircle2, Cpu, Headset, Heart, Map, Sparkles, Target, Users, XCircle } from "lucide-react"
 import { type ReactNode, useMemo } from "react"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "~/components/ui/accordion"
 import { Badge } from "~/components/ui/badge"
 import InlineEdit from "~/components/ui/inline-edit"
-import type { InterviewLensFramework, InterviewLensView } from "~/features/lenses/types"
+import type { InterviewLensFramework, InterviewLensView, LensSlotValue } from "~/features/lenses/types"
 import { cn } from "~/lib/utils"
 import { LensSlotTable } from "./CompanyTable"
-import { LensExecutionPanel } from "./ConversationViewer"
-import { StakeholderList } from "./PersonDetail"
 
 type CustomLensDefaults = Record<string, { summary?: string; notes?: string; highlights?: string[] }>
 
@@ -32,6 +30,7 @@ type SalesLensesSectionProps = {
 	customLenses: Record<string, { summary?: string; notes?: string }>
 	customLensDefaults: CustomLensDefaults
 	onUpdateLens: (lensId: string, field: "summary" | "notes", value: string) => void
+	onUpdateSlot?: (slotId: string, field: "summary" | "textValue", value: string) => void
 	updatingLensId?: string | null
 	personLenses?: PersonLens[]
 }
@@ -57,7 +56,6 @@ const FRAMEWORK_ICON_MAP: Record<
 		background: string
 	}
 > = {
-	SPICED: { icon: Sparkles, color: "text-fuchsia-600", background: "bg-fuchsia-50" },
 	BANT_GPCT: { icon: Target, color: "text-amber-600", background: "bg-amber-50" },
 	MEDDIC: { icon: BarChart3, color: "text-sky-600", background: "bg-sky-50" },
 	MAP: { icon: Map, color: "text-emerald-600", background: "bg-emerald-50" },
@@ -71,11 +69,177 @@ const CUSTOM_LENS_ICON_MAP: Record<string, { icon: LucideIcon; color: string; ba
 	personEmpathy: { icon: Users, color: "text-purple-600", background: "bg-purple-50" },
 }
 
+// Helper to get confidence badge
+function getConfidenceBadge(confidence: number | null | undefined) {
+	if (confidence === null || confidence === undefined) {
+		return <Badge variant="outline" className="text-[0.65rem] bg-gray-100 text-gray-600">Unknown</Badge>
+	}
+	if (confidence >= 0.7) {
+		return <Badge variant="outline" className="text-[0.65rem] bg-emerald-100 text-emerald-700">High</Badge>
+	}
+	if (confidence >= 0.4) {
+		return <Badge variant="outline" className="text-[0.65rem] bg-amber-100 text-amber-700">Medium</Badge>
+	}
+	return <Badge variant="outline" className="text-[0.65rem] bg-rose-100 text-rose-700">Low</Badge>
+}
+
+// Helper to render a compact framework field
+function CompactFrameworkField({
+	label,
+	slot,
+	frameworkId,
+	onUpdateField
+}: {
+	label: string
+	slot?: LensSlotValue
+	frameworkId: string
+	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
+}) {
+	const hasValue = slot && (slot.textValue || slot.summary || slot.numericValue || slot.dateValue)
+	const Icon = hasValue ? CheckCircle2 : XCircle
+	const iconColor = hasValue ? "text-emerald-600" : "text-gray-400"
+
+	const displayValue = slot?.summary || slot?.textValue || (slot?.numericValue !== null && slot?.numericValue !== undefined ? String(slot?.numericValue) : null) || slot?.dateValue || ""
+
+	// Always allow editing, even if slot doesn't exist yet
+	return (
+		<div className="flex items-start gap-3 rounded-lg border border-border/50 bg-background p-3">
+			<Icon className={cn("h-4 w-4 mt-0.5 flex-shrink-0", iconColor)} />
+			<div className="flex-1 min-w-0">
+				<div className="flex items-center justify-between gap-2 mb-1">
+					<p className="font-medium text-foreground text-sm">{label}</p>
+					{hasValue && slot && getConfidenceBadge(slot.confidence)}
+				</div>
+				<div onClick={(e) => e.stopPropagation()} onFocusCapture={(e) => e.stopPropagation()}>
+					<InlineEdit
+						value={displayValue}
+						placeholder={`Add ${label.toLowerCase()}...`}
+						onSubmit={(value) => {
+							if (slot?.id) {
+								// Prefer updating summary if it exists, otherwise textValue
+								const field = slot.summary ? "summary" : "textValue"
+								onUpdateField(slot.id, field, value)
+							} else {
+								// TODO: Handle creating new slot when it doesn't exist
+								console.warn(`Cannot save ${label} - slot not found in database. Refresh the page after interview analysis completes.`)
+							}
+						}}
+						submitOnBlur
+						textClassName={cn("text-sm break-words", hasValue ? "text-foreground/90" : "text-muted-foreground italic")}
+						inputClassName="text-sm"
+					/>
+				</div>
+			</div>
+		</div>
+	)
+}
+
+// Render compact BANT view
+function renderBantCompactView(
+	framework: InterviewLensFramework,
+	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
+): ReactNode {
+	const budget = framework.slots.find(s => s.fieldKey === 'budget' || s.fieldKey.toLowerCase().includes('budget'))
+	const authority = framework.slots.find(s => s.fieldKey === 'authority' || s.fieldKey.toLowerCase().includes('authority'))
+	const need = framework.slots.find(s => s.fieldKey === 'need' || s.fieldKey.toLowerCase().includes('need'))
+	const timeline = framework.slots.find(s => s.fieldKey === 'timeline' || s.fieldKey.toLowerCase().includes('timeline'))
+
+	return (
+		<div className="grid gap-3 sm:grid-cols-2">
+			<CompactFrameworkField label="Budget" slot={budget} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Authority" slot={authority} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Need" slot={need} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Timeline" slot={timeline} frameworkId={framework.name} onUpdateField={onUpdateField} />
+		</div>
+	)
+}
+
+// Render compact MEDDIC view
+function renderMeddicCompactView(
+	framework: InterviewLensFramework,
+	onUpdateField: (slotId: string, field: "summary" | "textValue", value: string) => void
+): ReactNode {
+	const metrics = framework.slots.find(s => s.fieldKey === 'metrics' || s.fieldKey.toLowerCase().includes('metric'))
+	const economicBuyer = framework.slots.find(s => s.fieldKey === 'economic_buyer' || s.fieldKey.toLowerCase().includes('economic'))
+	const decisionCriteria = framework.slots.find(s => s.fieldKey === 'decision_criteria' || s.fieldKey.toLowerCase().includes('criteria'))
+	const decisionProcess = framework.slots.find(s => s.fieldKey === 'decision_process' || s.fieldKey.toLowerCase().includes('process'))
+	const pain = framework.slots.find(s => s.fieldKey === 'pain' || s.fieldKey.toLowerCase().includes('pain'))
+	const champion = framework.slots.find(s => s.fieldKey === 'champion' || s.fieldKey.toLowerCase().includes('champion'))
+
+	return (
+		<div className="grid gap-3 sm:grid-cols-2">
+			<CompactFrameworkField label="Metrics" slot={metrics} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Economic Buyer" slot={economicBuyer} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Decision Criteria" slot={decisionCriteria} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Decision Process" slot={decisionProcess} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Identify Pain" slot={pain} frameworkId={framework.name} onUpdateField={onUpdateField} />
+			<CompactFrameworkField label="Champion" slot={champion} frameworkId={framework.name} onUpdateField={onUpdateField} />
+		</div>
+	)
+}
+
+// Render Next Steps view showing milestones
+function renderNextStepsView(nextSteps?: Array<{ id: string; description: string; ownerName: string | null; dueDate: string | null }>, milestones?: Array<{ id: string; label: string; status: string; ownerName: string | null; dueDate: string | null }>): ReactNode {
+	const hasNextSteps = (nextSteps?.length ?? 0) > 0
+	const hasMilestones = (milestones?.length ?? 0) > 0
+
+	if (!hasNextSteps && !hasMilestones) {
+		return (
+			<div className="rounded-lg border border-dashed bg-muted/20 p-6 text-center">
+				<p className="text-muted-foreground text-sm">No next steps or milestones captured from this interview.</p>
+			</div>
+		)
+	}
+
+	return (
+		<div className="space-y-4">
+			{hasNextSteps && (
+				<div className="space-y-3">
+					<h4 className="font-medium text-foreground text-sm">Next Steps</h4>
+					<div className="space-y-2">
+						{nextSteps!.map((step) => (
+							<div key={step.id} className="rounded-lg border border-border/50 bg-background p-3">
+								<p className="text-foreground text-sm">{step.description}</p>
+								<div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs">
+									{step.ownerName && <span>Owner: {step.ownerName}</span>}
+									{step.dueDate && <span>Due: {step.dueDate}</span>}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+			{hasMilestones && (
+				<div className="space-y-3">
+					<h4 className="font-medium text-foreground text-sm">Milestones</h4>
+					<div className="space-y-2">
+						{milestones!.map((milestone) => (
+							<div key={milestone.id} className="rounded-lg border border-border/50 bg-background p-3">
+								<div className="flex items-center justify-between gap-2">
+									<p className="font-medium text-foreground text-sm">{milestone.label}</p>
+									<Badge variant="outline" className="text-[0.65rem] uppercase">
+										{milestone.status.replace("_", " ")}
+									</Badge>
+								</div>
+								<div className="mt-2 flex flex-wrap gap-3 text-muted-foreground text-xs">
+									{milestone.ownerName && <span>Owner: {milestone.ownerName}</span>}
+									{milestone.dueDate && <span>Due: {milestone.dueDate}</span>}
+								</div>
+							</div>
+						))}
+					</div>
+				</div>
+			)}
+		</div>
+	)
+}
+
 export function SalesLensesSection({
 	lens,
 	customLenses,
 	customLensDefaults,
 	onUpdateLens,
+	onUpdateSlot,
 	updatingLensId,
 	personLenses = [],
 }: SalesLensesSectionProps) {
@@ -100,6 +264,24 @@ export function SalesLensesSection({
 				? `${framework.hygiene.length} ${framework.hygiene.length === 1 ? "alert" : "alerts"}`
 				: null
 
+		// Use compact views for BANT and MEDDIC, next steps view for MAP, full table for others
+		let content: ReactNode
+		const handleUpdateField = (slotId: string, field: "summary" | "textValue", value: string) => {
+			if (onUpdateSlot) {
+				onUpdateSlot(slotId, field, value)
+			}
+		}
+
+		if (framework.name === "BANT_GPCT") {
+			content = renderBantCompactView(framework, handleUpdateField)
+		} else if (framework.name === "MEDDIC") {
+			content = renderMeddicCompactView(framework, handleUpdateField)
+		} else if (framework.name === "MAP") {
+			content = renderNextStepsView(lens?.entities.nextSteps, lens?.entities.mapMilestones)
+		} else {
+			content = <LensSlotTable framework={framework} showHeader={false} />
+		}
+
 		return {
 			id: framework.name,
 			title: friendlyFrameworkName(framework.name),
@@ -110,11 +292,11 @@ export function SalesLensesSection({
 			notes: overrides.notes ?? defaultNotes ?? "",
 			highlights,
 			badge: hygieneBadge,
-			content: <LensSlotTable framework={framework} showHeader={false} />,
+			content,
 		}
 	})
 
-	const customLensItems: LensHeaderConfig[] = ["productImpact", "customerService", "pessimistic"].map((lensId) => {
+	const customLensItems: LensHeaderConfig[] = ["productImpact"].map((lensId) => {
 		const overrides = customLenses[lensId] ?? {}
 		const defaults = customLensDefaults[lensId] ?? {}
 		const style = CUSTOM_LENS_ICON_MAP[lensId] ?? {
@@ -178,7 +360,7 @@ export function SalesLensesSection({
 			const painsGoalsStyle = CUSTOM_LENS_ICON_MAP.personPainsGoals
 			items.push({
 				id: `person-pains-goals-${person.id}`,
-				title: `${person.name}: Pain & Goals`,
+				title: `Pain & Goals (${person.name})`,
 				icon: painsGoalsStyle.icon,
 				colorClass: painsGoalsStyle.color,
 				backgroundClass: painsGoalsStyle.background,
@@ -231,7 +413,7 @@ export function SalesLensesSection({
 				const empathyStyle = CUSTOM_LENS_ICON_MAP.personEmpathy
 				items.push({
 					id: `person-empathy-${person.id}`,
-					title: `${person.name}: Empathy Map`,
+					title: `Empathy Map (${person.name})`,
 					icon: empathyStyle.icon,
 					colorClass: empathyStyle.color,
 					backgroundClass: empathyStyle.background,
@@ -302,8 +484,8 @@ export function SalesLensesSection({
 		return items
 	})
 
-	// Order: frameworks first, then custom lenses, then person lenses
-	const combinedItems = [...frameworkItems, ...customLensItems, ...personLensItems]
+	// Order: frameworks first, then person lenses, then custom lenses (Product last)
+	const combinedItems = [...frameworkItems, ...personLensItems, ...customLensItems]
 	const defaultAccordionValue = combinedItems[0]?.id
 
 	if (combinedItems.length === 0) {
@@ -318,10 +500,7 @@ export function SalesLensesSection({
 		<div className="space-y-6">
 			<header className="space-y-2">
 				<h2 className="font-semibold text-foreground text-lg">Conversation lenses</h2>
-				<p className="text-muted-foreground text-sm">
-					Mix of structured frameworks and team-specific perspectives that keep engineering, customer success, and deal
-					risks aligned.
-				</p>
+				<p className="text-muted-foreground text-sm">Focused perspectives on the content</p>
 			</header>
 
 			<Accordion type="single" collapsible defaultValue={defaultAccordionValue} className="space-y-3">
@@ -381,35 +560,11 @@ export function SalesLensesSection({
 									inputClassName="text-sm"
 								/>
 							</div>
-							{item.highlights && item.highlights.length > 0 ? (
-								<div className="rounded-lg border border-border/50 bg-background p-3">
-									<p className="mb-2 text-muted-foreground text-xs uppercase tracking-wide">Signals to watch</p>
-									<ul className="space-y-2 text-foreground text-sm">
-										{item.highlights.map((highlight, index) => (
-											<li key={`${item.id}-highlight-${index}`} className="flex gap-2">
-												<span className="mt-[3px] text-muted-foreground">•</span>
-												<span>{highlight}</span>
-											</li>
-										))}
-									</ul>
-								</div>
-							) : null}
 							{item.content}
 						</AccordionContent>
 					</AccordionItem>
 				))}
 			</Accordion>
-
-			{lens ? (
-				<div className="grid gap-4 lg:grid-cols-2">
-					<StakeholderList stakeholders={lens.entities.stakeholders} />
-					<LensExecutionPanel
-						nextSteps={lens.entities.nextSteps}
-						mapMilestones={lens.entities.mapMilestones}
-						objections={lens.entities.objections}
-					/>
-				</div>
-			) : null}
 		</div>
 	)
 }
@@ -418,12 +573,10 @@ function friendlyFrameworkOrder(name: string) {
 	switch (name) {
 		case "BANT_GPCT":
 			return 0
-		case "SPICED":
-			return 1
 		case "MEDDIC":
-			return 2
+			return 1
 		case "MAP":
-			return 3
+			return 2
 		default:
 			return 99
 	}
@@ -433,12 +586,10 @@ function friendlyFrameworkName(name: string) {
 	switch (name) {
 		case "BANT_GPCT":
 			return "BANT / GPCT"
-		case "SPICED":
-			return "SPICED"
 		case "MEDDIC":
 			return "MEDDIC"
 		case "MAP":
-			return "Mutual Action Plan"
+			return "Next Steps"
 		default:
 			return name
 	}

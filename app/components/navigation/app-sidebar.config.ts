@@ -122,7 +122,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 	},
 	{
 		key: "directory",
-		title: "People & Accounts",
+		title: "CRM",
 		items: [
 			{
 				key: "people",

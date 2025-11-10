@@ -144,7 +144,7 @@ export default function EditOpportunity() {
 				<div>
 					<Label htmlFor="title">Title *</Label>
 					<Input
-						id={useId()}
+						id="title"
 						name="title"
 						type="text"
 						required
@@ -157,7 +157,7 @@ export default function EditOpportunity() {
 				<div>
 					<Label htmlFor="description">Description</Label>
 					<Textarea
-						id={useId()}
+						id="description"
 						name="description"
 						defaultValue={opportunity.description || ""}
 						placeholder="Enter opportunity description"
@@ -169,7 +169,7 @@ export default function EditOpportunity() {
 					<div>
 						<Label htmlFor="kanban_status">Status</Label>
 						<Select name="kanban_status" defaultValue={opportunity.kanban_status || "Explore"}>
-							<SelectTrigger className="mt-1">
+							<SelectTrigger className="mt-1" id="kanban_status">
 								<SelectValue placeholder="Select status" />
 							</SelectTrigger>
 							<SelectContent>
@@ -183,7 +183,7 @@ export default function EditOpportunity() {
 					<div>
 						<Label htmlFor="stage">Sales Stage</Label>
 						<Input
-							id={useId()}
+							id="stage"
 							name="stage"
 							type="text"
 							defaultValue={opportunity.stage || ""}
@@ -197,7 +197,7 @@ export default function EditOpportunity() {
 					<div>
 						<Label htmlFor="amount">Deal Value ($)</Label>
 						<Input
-							id={useId()}
+							id="amount"
 							name="amount"
 							type="number"
 							step="0.01"
@@ -211,7 +211,7 @@ export default function EditOpportunity() {
 					<div>
 						<Label htmlFor="close_date">Expected Close Date</Label>
 						<Input
-							id={useId()}
+							id="close_date"
 							name="close_date"
 							type="date"
 							defaultValue={opportunity.close_date ? new Date(opportunity.close_date).toISOString().split("T")[0] : ""}
