@@ -34,6 +34,30 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	}
 
 	const { messages, system } = await request.json()
+	const sanitizedMessages = Array.isArray(messages)
+		? messages.map((message) => {
+				if (!message || typeof message !== "object") return message
+				const cloned = { ...message }
+				if ("id" in cloned) {
+					delete (cloned as Record<string, unknown>).id
+				}
+				return cloned
+		  })
+		: []
+
+	const latestUserMessage = [...sanitizedMessages]
+		.reverse()
+		.find((message) => Boolean(message && typeof message === "object" && message.role === "user"))
+
+	if (!latestUserMessage || typeof latestUserMessage !== "object") {
+		consola.warn("project-status action: missing latest user message in payload")
+		return new Response(JSON.stringify({ error: "Missing user prompt" }), {
+			status: 400,
+			headers: { "Content-Type": "application/json" },
+		})
+	}
+
+	const runtimeMessages = [latestUserMessage]
 
 	const resourceId = `projectStatusAgent-${userId}-${projectId}`
 
@@ -64,7 +88,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	runtimeContext.set("project_id", projectId)
 
 	const agent = mastra.getAgent("projectStatusAgent")
-	const result = await agent.stream(messages, {
+	const result = await agent.stream(runtimeMessages, {
 		memory: {
 			thread: threadId,
 			resource: resourceId,

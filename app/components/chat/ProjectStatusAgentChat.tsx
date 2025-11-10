@@ -1,7 +1,7 @@
 import { useChat } from "@ai-sdk/react"
 import type { ToolCallPart, ToolResultPart } from "ai"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import { BotMessageSquare, ChevronLeft, ChevronRight } from "lucide-react"
+import { BotMessageSquare, ChevronRight } from "lucide-react"
 import { useEffect, useMemo, useRef, useState } from "react"
 import { useFetcher } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
@@ -14,11 +14,20 @@ interface ProjectStatusAgentChatProps {
 	accountId: string
 	projectId: string
 	systemContext: string
+	onCollapsedChange?: (collapsed: boolean) => void
 }
 
-export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: ProjectStatusAgentChatProps) {
+export function ProjectStatusAgentChat({
+	accountId,
+	projectId,
+	systemContext,
+	onCollapsedChange,
+}: ProjectStatusAgentChatProps) {
 	const [input, setInput] = useState("")
-	const [isCollapsed, setIsCollapsed] = useState(false)
+	const [isCollapsed, setIsCollapsed] = useState(() => {
+		if (typeof window === "undefined") return false
+		return localStorage.getItem("project-chat-collapsed") === "true"
+	})
 	const messagesEndRef = useRef<HTMLDivElement | null>(null)
 	const textareaRef = useRef<HTMLTextAreaElement | null>(null)
 	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
@@ -26,7 +35,9 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 
 	// Load chat history when project changes
 	useEffect(() => {
+		if (!accountId || !projectId) return
 		historyFetcher.load(`/a/${accountId}/${projectId}/api/chat/project-status/history`)
+		// Avoid adding historyFetcher dependency; identity flips on state updates and would re-run this effect endlessly.
 		// eslint-disable-next-line react-hooks/exhaustive-deps
 	}, [accountId, projectId])
 
@@ -46,26 +57,39 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 	}, [historyFetcher.data, setMessages])
 
 	const visibleMessages = useMemo(() => (messages ?? []).slice(-12), [messages])
+	let lastVisibleMessageKey = "none"
+	if (visibleMessages.length > 0) {
+		lastVisibleMessageKey = visibleMessages[visibleMessages.length - 1]?.id ?? `len-${visibleMessages.length}`
+	}
 
 	useEffect(() => {
+		if (!lastVisibleMessageKey) return
 		if (messagesEndRef.current) {
 			messagesEndRef.current.scrollIntoView({ behavior: "smooth" })
 		}
-	}, [messages])
+	}, [lastVisibleMessageKey])
 
 	// Auto-focus the textarea when component mounts
 	useEffect(() => {
+		if (typeof window !== "undefined") {
+			localStorage.setItem("project-chat-collapsed", String(isCollapsed))
+		}
 		if (textareaRef.current && !isCollapsed) {
 			textareaRef.current.focus()
 		}
-	}, [isCollapsed])
+		onCollapsedChange?.(isCollapsed)
+	}, [isCollapsed, onCollapsedChange])
 
-	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
-		event.preventDefault()
+	const submitMessage = () => {
 		const trimmed = input.trim()
 		if (!trimmed) return
 		sendMessage({ text: trimmed })
 		setInput("")
+	}
+
+	const handleSubmit = (event: React.FormEvent<HTMLFormElement>) => {
+		event.preventDefault()
+		submitMessage()
 	}
 
 	const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -76,7 +100,7 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 			}
 			// Enter: Submit
 			event.preventDefault()
-			handleSubmit(event as any)
+			submitMessage()
 		}
 	}
 
@@ -84,8 +108,13 @@ export function ProjectStatusAgentChat({ accountId, projectId, systemContext }: 
 	const isError = status === "error"
 
 	return (
-		<div className={cn("flex h-full flex-col transition-all duration-200", isCollapsed ? "w-12" : "w-80")}>
-			<Card className="flex h-full flex-col border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
+		<div
+			className={cn(
+				"flex h-full flex-col overflow-hidden transition-all duration-200",
+				isCollapsed ? "w-12" : "min-w-[260px] w-full"
+			)}
+		>
+			<Card className="flex h-full min-h-0 flex-col border-0 bg-background/80 shadow-none ring-1 ring-border/60 backdrop-blur sm:rounded-xl sm:shadow-sm">
 				<CardHeader
 					className={cn("flex-shrink-0 transition-all duration-200", isCollapsed ? "p-2" : "p-3 pb-2 sm:p-4")}
 				>
