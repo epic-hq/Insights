@@ -1,6 +1,7 @@
 import "~/lib/instrumentation" // Must be the first import
 import { AssemblyAI } from "assemblyai"
 import consola from "consola"
+import { bodyLimit } from "hono/body-limit"
 import { cors } from "hono/cors"
 import { createHonoServer } from "react-router-hono-server/node"
 import { i18next } from "remix-hono/i18next"
@@ -10,6 +11,13 @@ import { getLoadContext } from "./load-context"
 export default await createHonoServer({
 	useWebSocket: true,
 	configure(server, { upgradeWebSocket }) {
+		// Increase body size limit for file uploads (500MB)
+		server.use(
+			"*",
+			bodyLimit({
+				maxSize: 500 * 1024 * 1024, // 500MB in bytes
+			})
+		)
 		// Add CORS headers for all requests including __manifest
 		server.use(
 			"*",
