@@ -228,7 +228,7 @@ export const fetchEvidenceTool = createTool({
 
 				includeInsights && evidenceRows.length > 0
 					? supabase
-							.from("insights")
+							.from("themes")
 							.select("id, name, details, interview_id")
 							.eq("project_id", projectIdStr)
 							.in(

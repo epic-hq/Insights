@@ -63,7 +63,7 @@ export function useSidebarCounts(projectId?: string, workflowType?: string | nul
 
 						// Count insights
 						supabase
-							.from("insights")
+							.from("themes")
 							.select("*", { count: "exact", head: true })
 							.eq("project_id", projectId),
 

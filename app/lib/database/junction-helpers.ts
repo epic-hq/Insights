@@ -119,7 +119,7 @@ export class InsightTagsHelper {
 			.from("insight_tags")
 			.select(`
         insight_id,
-        insights!inner(
+        themes!inner(
           id,
           name,
           category,
@@ -242,7 +242,7 @@ export class OpportunityInsightsHelper {
 			.select(`
         insight_id,
         weight,
-        insights!inner(
+        themes!inner(
           id,
           name,
           category,
@@ -414,7 +414,7 @@ export class PersonaInsightsHelper {
 	async autoLinkInsightToPersonas(insightId: string) {
 		// Find personas for people involved in the interview that generated this insight
 		const { data: personaLinks } = await this.db
-			.from("insights")
+			.from("themes")
 			.select(`
         id,
         interview_id,
@@ -473,7 +473,7 @@ export class PersonaInsightsHelper {
 			.select(`
         insight_id,
         relevance_score,
-        insights!inner(
+        themes!inner(
           id,
           name,
           category,
@@ -537,7 +537,7 @@ export class JunctionTableManager {
 	async migrateArrayData(accountId: string) {
 		// Migrate insight related_tags to insight_tags
 		const { data: insights } = await this.insightTags.db
-			.from("insights")
+			.from("themes")
 			.select("id, related_tags")
 			.eq("account_id", accountId)
 			.not("related_tags", "is", null)

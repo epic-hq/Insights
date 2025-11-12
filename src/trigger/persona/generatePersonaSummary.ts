@@ -31,12 +31,12 @@ export const generatePersonaSummaryTask = task({
                 }
 
                 type PersonaInsightRow = Pick<Tables<"persona_insights">, "insight_id" | "persona_id"> & {
-                        insights: Tables<"insights"> | null
+                        insights: Tables<"themes"> | null
                 }
 
                 const { data: personaInsights, error: insightsError } = await supabase
                         .from("persona_insights")
-                        .select<PersonaInsightRow>("insight_id, insights(*)")
+                        .select<PersonaInsightRow>("insight_id, insights:themes(*)")
                         .eq("persona_id", personaId)
                 if (insightsError) {
                         throw new Error(`Failed to fetch persona insights: ${insightsError.message}`)
@@ -86,7 +86,7 @@ export const generatePersonaSummaryTask = task({
                         .filter((value): value is Tables<"people"> => Boolean(value))
                 const insightsRecords = (personaInsights ?? [])
                         .map((entry) => entry.insights)
-                        .filter((value): value is Tables<"insights"> => Boolean(value))
+                        .filter((value): value is Tables<"themes"> => Boolean(value))
 
                 const bamlResult = await b.ExtractPersona(
                         JSON.stringify(peopleRecords),

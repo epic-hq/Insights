@@ -139,35 +139,45 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	// Fetch insights related to this persona via junction table
-	const { data: insightsData, error: insightsError } = await supabase
+	const { data: personaInsightRows, error: personaInsightsError } = await supabase
 		.from("persona_insights")
-		.select(`
-			insights (
-				id,
-				name,
-				category,
-				pain,
-				details,
-				desired_outcome,
-				evidence,
-				journey_stage,
-				emotional_response,
-				insight_tags (
-					tags (
-						tag,
-						term,
-						definition
-					)
-				)
-			)
-		`)
+		.select("insight_id")
 		.eq("persona_id", personaId)
 
-	if (insightsError) {
-		consola.error("Error fetching insights:", insightsError)
+	if (personaInsightsError) {
+		consola.error("Error fetching persona insights:", personaInsightsError)
 	}
 
-	const insights: Insight[] = insightsData?.map((pi: any) => pi.insights).filter(Boolean) || []
+	const personaInsightIds = personaInsightRows?.map((row) => row.insight_id).filter(Boolean) || []
+	let insights: Insight[] = []
+	if (personaInsightIds.length > 0) {
+		const [{ data: themeRows, error: themesError }, { data: tagsRows }] = await Promise.all([
+			supabase
+				.from("themes")
+				.select(
+					"id, name, category, pain, details, desired_outcome, evidence, journey_stage, emotional_response, project_id, interview_id, created_at, updated_at"
+				)
+				.in("id", personaInsightIds),
+			supabase.from("insight_tags").select("insight_id, tags(tag, term, definition)").in("insight_id", personaInsightIds),
+		])
+
+		if (themesError) {
+			consola.error("Error fetching insights:", themesError)
+		}
+
+		const tagsMap = new Map<string, { tag?: string | null; term?: string | null; definition?: string | null }[]>()
+		tagsRows?.forEach((row) => {
+			if (!row.insight_id || !row.tags) return
+			if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, [])
+			tagsMap.get(row.insight_id)?.push(row.tags)
+		})
+
+		insights =
+			themeRows?.map((row) => ({
+				...row,
+				insight_tags: (tagsMap.get(row.id) || []).map((tag) => ({ tags: tag })),
+			})) || []
+	}
 
 	// Get related personas (same account, different persona)
 	// const { data: relatedPersonas } = await supabase

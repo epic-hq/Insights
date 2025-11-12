@@ -146,7 +146,7 @@ export async function seedTestData() {
 	])
 
 	// Seed insights
-	await testDb.from("insights").insert([
+	await testDb.from("themes").insert([
 		{
 			id: "insight-1",
 			account_id: TEST_ACCOUNT_ID,
@@ -185,7 +185,7 @@ export async function getTestDbState() {
 		testDb.from("interviews").select("id,title").eq("account_id", TEST_ACCOUNT_ID),
 		testDb.from("people").select("*").eq("account_id", TEST_ACCOUNT_ID),
 		testDb.from("interview_people").select("*"),
-		testDb.from("insights").select("*").eq("account_id", TEST_ACCOUNT_ID),
+		testDb.from("themes").select("*").eq("account_id", TEST_ACCOUNT_ID),
 		testDb.from("tags").select("*").eq("account_id", TEST_ACCOUNT_ID),
 		testDb.from("insight_tags").select("*"),
 	])

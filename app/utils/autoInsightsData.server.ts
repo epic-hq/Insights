@@ -80,7 +80,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 
 	// 1. Get data summary statistics
 	const [insightsCount, interviewsCount, peopleCount, opportunitiesCount] = await Promise.all([
-		db.from("insights").select("id", { count: "exact" }).eq("account_id", accountId),
+		db.from("themes").select("id", { count: "exact" }).eq("account_id", accountId),
 		db.from("interviews").select("id", { count: "exact" }).eq("account_id", accountId),
 		db.from("people").select("id", { count: "exact" }).eq("account_id", accountId),
 		db.from("opportunities").select("id", { count: "exact" }).eq("account_id", accountId),
@@ -112,7 +112,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 
 	// 2. Get high-impact insights with tags and personas
 	const { data: insightsData, error: insightsError } = await db
-		.from("insight_with_priority")
+		.from("insights_with_priority")
 		.select(`
 	     id,
 	     name,
@@ -207,26 +207,46 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 	// Get persona insight counts and top pain points
 	const personas: PersonaSummary[] = await Promise.all(
 		(personasData || []).map(async (persona) => {
-			// Get insights for this persona
 			const { data: personaInsights } = await db
 				.from("persona_insights")
-				.select(`
-          insights!inner(pain, desired_outcome)
-        `)
+				.select("insight_id")
 				.eq("persona_id", persona.id)
 
-			const insightCount = personaInsights?.length || 0
-			const topPainPoints =
-				personaInsights
-					?.map((pi) => (pi.insights as any)?.pain)
-					.filter(Boolean)
-					.slice(0, 3) || []
+			const insightIds = personaInsights?.map((pi) => pi.insight_id).filter((id): id is string => Boolean(id)) || []
+			let insightCount = insightIds.length
+			let topPainPoints: string[] = []
+			let topDesiredOutcomes: string[] = []
 
-			const topDesiredOutcomes =
-				personaInsights
-					?.map((pi) => (pi.insights as any)?.desired_outcome)
-					.filter(Boolean)
-					.slice(0, 3) || []
+			if (insightIds.length) {
+				const { data: themeDetails } = await db
+					.from("themes")
+					.select("id, pain, desired_outcome")
+					.in("id", insightIds)
+
+				const themeMap = new Map(themeDetails?.map((row) => [row.id, row]))
+
+				const orderedDetails = insightIds
+					.map((id) => themeMap.get(id) ?? null)
+					.filter(
+						(
+							value
+						): value is {
+							pain: string | null
+							desired_outcome: string | null
+						} => Boolean(value)
+					)
+
+				insightCount = orderedDetails.length
+				topPainPoints = orderedDetails
+					.map((detail) => detail.pain)
+					.filter((pain): pain is string => Boolean(pain))
+					.slice(0, 3)
+
+				topDesiredOutcomes = orderedDetails
+					.map((detail) => detail.desired_outcome)
+					.filter((outcome): outcome is string => Boolean(outcome))
+					.slice(0, 3)
+			}
 
 			return {
 				id: persona.id,
@@ -256,20 +276,30 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 
 	const opportunities: OpportunitySummary[] = await Promise.all(
 		(opportunitiesData || []).map(async (opportunity) => {
-			// Get supporting insights via junction table
-			const { data: supportingInsights } = await db
+			const { data: supportingRows } = await db
 				.from("opportunity_insights")
-				.select(`
-          insights!inner(name)
-        `)
+				.select("insight_id")
 				.eq("opportunity_id", opportunity.id)
+
+			const supportingIds = supportingRows?.map((row) => row.insight_id).filter((id): id is string => Boolean(id)) || []
+			let supportingNames: string[] = []
+
+			if (supportingIds.length) {
+				const { data: themeNames } = await db
+					.from("themes")
+					.select("id, name")
+					.in("id", supportingIds)
+
+				const nameMap = new Map(themeNames?.map((row) => [row.id, row.name || ""]))
+				supportingNames = supportingIds.map((id) => nameMap.get(id) || "").filter((name) => name.length > 0)
+			}
 
 			return {
 				id: opportunity.id,
 				title: opportunity.title,
 				kanban_status: opportunity.kanban_status,
-				insight_count: supportingInsights?.length || 0,
-				supporting_insights: supportingInsights?.map((si) => (si.insights as any)?.name).filter(Boolean) || [],
+				insight_count: supportingIds.length,
+				supporting_insights: supportingNames,
 			}
 		})
 	)
@@ -284,17 +314,26 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
     `)
 		.eq("account_id", accountId)
 
-	// Get categories for each tag
-	const { data: tagCategories } = await db
-		.from("insight_tags")
-		.select(`
-      tag_id,
-      insights!inner(category)
-    `)
-		.in(
-			"tag_id",
-			(tagFrequency || []).map((t) => t.tag)
-		)
+	const tagIds = (tagFrequency || []).map((t) => t.tag)
+	const { data: tagCategoryLinks } = tagIds.length
+		? await db.from("insight_tags").select("tag_id, insight_id").in("tag_id", tagIds)
+		: { data: [], error: null }
+
+	const insightIdsForTags = Array.from(
+		new Set((tagCategoryLinks || []).map((link) => link.insight_id).filter((id): id is string => Boolean(id)))
+	)
+
+	const { data: themeCategoryRows } = insightIdsForTags.length
+		? await db.from("themes").select("id, category").in("id", insightIdsForTags)
+		: { data: [], error: null }
+
+	const categoryMap = new Map(themeCategoryRows?.map((row) => [row.id, row.category || null]))
+
+	const tagToInsightIds = new Map<string, string[]>()
+	;(tagCategoryLinks || []).forEach((link) => {
+		if (!link.tag_id || !link.insight_id) return
+		tagToInsightIds.set(link.tag_id, [...(tagToInsightIds.get(link.tag_id) || []), link.insight_id])
+	})
 
 	const tags: TagSummary[] = (tagFrequency || [])
 		.map((tag) => {
@@ -302,10 +341,10 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 			const interviewCount = (tag.interview_tags as any[])?.length || 0
 
 			const categories =
-				tagCategories
-					?.filter((tc) => tc.tag_id === tag.tag)
-					.map((tc) => (tc.insights as any)?.category)
-					.filter(Boolean) || []
+				tagToInsightIds
+					.get(tag.tag)
+					?.map((insightId) => categoryMap.get(insightId))
+					.filter((category): category is string => Boolean(category)) || []
 
 			return {
 				tag: tag.tag,
@@ -339,7 +378,7 @@ export async function aggregateAutoInsightsData(request: Request, accountId: str
 		(interviewsData || []).map(async (interview) => {
 			// Get insight count for this interview
 			const { data: interviewInsights } = await db
-				.from("insights")
+				.from("themes")
 				.select("id", { count: "exact" })
 				.eq("interview_id", interview.id)
 

@@ -127,7 +127,7 @@ BEGIN
     -- Find personas for people involved in the interview that generated this insight
     FOR persona_record IN
         SELECT DISTINCT pp.persona_id, p.name as persona
-        FROM insights i
+        FROM themes i
         JOIN interviews iv ON i.interview_id = iv.id
         JOIN interview_people ip ON iv.id = ip.interview_id
         JOIN people pe ON ip.person_id = pe.id
@@ -199,9 +199,9 @@ END;
 $$ LANGUAGE plpgsql;
 
 -- Create trigger
-DROP TRIGGER IF EXISTS trigger_auto_link_persona_insights_on_insert ON insights;
+DROP TRIGGER IF EXISTS trigger_auto_link_persona_insights_on_insert ON themes;
 CREATE TRIGGER trigger_auto_link_persona_insights_on_insert
-    AFTER INSERT ON insights
+    AFTER INSERT ON themes
     FOR EACH ROW EXECUTE FUNCTION trigger_auto_link_persona_insights();
 
 -- Grant permissions

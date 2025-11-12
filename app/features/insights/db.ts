@@ -12,8 +12,8 @@ export const getInsights = async ({
 	accountId: string
 	projectId: string
 }) => {
-	const query = supabase
-		.from("insights_with_priority")
+	const baseQuery = supabase
+		.from("themes")
 		.select(`
 			id,
 			interview_id,
@@ -31,25 +31,58 @@ export const getInsights = async ({
 			contradictions,
 			updated_at,
 			project_id,
-			priority,
-		  persona_insights:persona_insights (
-		    *,
-		    personas:personas (name,id)
-		  ),
-		interviews (title,id),
-		insight_tags:insight_tags (
-			tags (tag,term, definition)
-		)
+			created_at
 		`)
-		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
 
-	const { data, error } = await query
-	// Get linked themes for all insights via evidence relationship
+	const { data, error } = await baseQuery
 	const insightIds = data?.map((i) => i.id) || []
-	const themesMap = new Map<string, any[]>()
+	const interviewIds = data?.map((i) => i.interview_id).filter(Boolean) as string[]
 
+	const [tagsResult, personasResult, interviewsResult, priorityResult] = insightIds.length
+		? await Promise.all([
+				supabase
+					.from("insight_tags")
+					.select(`insight_id, tags (tag, term, definition)`)
+					.in("insight_id", insightIds),
+				supabase
+					.from("persona_insights")
+					.select(`insight_id, personas (id, name)`)
+					.in("insight_id", insightIds),
+				interviewIds.length
+					? supabase.from("interviews").select("id, title").in("id", interviewIds)
+					: Promise.resolve({ data: null, error: null }),
+				supabase.from("insights_with_priority").select("id, priority").in("id", insightIds),
+		  ])
+		: [null, null, null, null]
+
+	const tagsMap = new Map<string, Array<{ tag?: string | null; term?: string | null; definition?: string | null }>>()
+	tagsResult?.data?.forEach((row) => {
+		if (!row.insight_id) return
+		if (!tagsMap.has(row.insight_id)) tagsMap.set(row.insight_id, [])
+		if (row.tags) tagsMap.get(row.insight_id)?.push(row.tags)
+	})
+
+	const personasMap = new Map<string, Array<{ id: string; name: string | null }>>()
+	personasResult?.data?.forEach((row) => {
+		if (!row.insight_id || !row.personas) return
+		if (!personasMap.has(row.insight_id)) personasMap.set(row.insight_id, [])
+		personasMap.get(row.insight_id)?.push(row.personas)
+	})
+
+	const interviewsMap = new Map<string, { id: string; title: string | null }>()
+	interviewsResult?.data?.forEach((row) => {
+		if (row.id) interviewsMap.set(row.id, row)
+	})
+
+	const priorityMap = new Map<string, number>()
+	priorityResult?.data?.forEach((row) => {
+		priorityMap.set(row.id, row.priority ?? 0)
+	})
+
+	// Get linked themes for all insights via evidence relationship
+	const themesMap = new Map<string, any[]>()
 	if (insightIds.length > 0) {
 		const { data: themeLinks } = await supabase
 			.from("theme_evidence")
@@ -84,12 +117,17 @@ export const getInsights = async ({
 
 	const transformedData = data?.map((insight) => ({
 		...insight,
+		priority: priorityMap.get(insight.id) ?? 0,
+		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
+		interviews: insight.interview_id ? [interviewsMap.get(insight.interview_id) || null].filter(Boolean) : [],
 		insight_tags:
-			insight.insight_tags?.map((it: any) => ({
-				tag: it.tags?.tag,
-				term: it.tags?.term,
-				definition: it.tags?.definition,
-			})) || [],
+			tagsMap
+				.get(insight.id)
+				?.map((tag) => ({
+					tag: tag.tag,
+					term: tag.term,
+					definition: tag.definition,
+				})) || [],
 		linked_themes: themesMap.get(insight.id) || [],
 	}))
 	return { data: transformedData, error }
@@ -107,8 +145,9 @@ export const getInsightById = async ({
 	id: string
 }) => {
 	const insightByIdQuery = supabase
-		.from("insights_with_priority")
+		.from("themes")
 		.select(`
+			id,
 			interview_id,
 			name,
 			pain,
@@ -124,15 +163,7 @@ export const getInsightById = async ({
 			contradictions,
 			updated_at,
 			project_id,
-			priority,
-		  persona_insights:persona_insights (
-		    *,
-		    personas:personas (name,id)
-		  ),
-		interviews (title,id),
-		insight_tags:insight_tags (
-			tags (tag,term, definition)
-		)
+			created_at
 		`)
 		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
@@ -143,10 +174,7 @@ export const getInsightById = async ({
 
 	const { data, error } = await insightByIdQuery
 
-	// consola.log("getInsightById", data, error)
-
 	if (error) {
-		// PGRST116 means no rows returned from .single()
 		if (error.code === "PGRST116") {
 			return null
 		}
@@ -158,7 +186,31 @@ export const getInsightById = async ({
 	}
 
 	const insightData: InsightById = data
-	return insightData
+
+	const [tagsResult, personasResult, interviewResult, priorityResult] = await Promise.all([
+		supabase
+			.from("insight_tags")
+			.select(`insight_id, tags (tag, term, definition)`)
+			.eq("insight_id", id),
+		supabase.from("persona_insights").select(`insight_id, personas (id, name)`).eq("insight_id", id),
+		insightData.interview_id
+			? supabase.from("interviews").select("id, title").eq("id", insightData.interview_id).single()
+			: Promise.resolve({ data: null, error: null }),
+		supabase.from("insights_with_priority").select("id, priority").eq("id", id).single(),
+	])
+
+	return {
+		...insightData,
+		priority: priorityResult?.data?.priority ?? 0,
+		persona_insights: personasResult?.data?.map((row) => ({ personas: row.personas })) ?? [],
+		interviews: interviewResult?.data ? [interviewResult.data] : [],
+		insight_tags:
+			tagsResult?.data?.map((row) => ({
+				tag: row.tags?.tag,
+				term: row.tags?.term,
+				definition: row.tags?.definition,
+			})) ?? [],
+	}
 }
 
 export const createInsight = async ({
@@ -168,7 +220,7 @@ export const createInsight = async ({
 	supabase: SupabaseClient<Database>
 	data: InsightInsert & { project_id: string }
 }) => {
-	return await supabase.from("insights").insert(data).select().single()
+	return await supabase.from("themes").insert(data).select().single()
 }
 
 export const updateInsight = async ({
@@ -182,10 +234,10 @@ export const updateInsight = async ({
 	id: string
 	accountId: string
 	projectId: string
-	data: Database["public"]["Tables"]["insights"]["Update"]
+	data: Database["public"]["Tables"]["themes"]["Update"]
 }) => {
 	return await supabase
-		.from("insights")
+		.from("themes")
 		.update(data)
 		.eq("id", id)
 		// .eq("account_id", accountId)
@@ -205,5 +257,5 @@ export const deleteInsight = async ({
 	accountId: string
 	projectId: string
 }) => {
-	return await supabase.from("insights").delete().eq("id", id).eq("project_id", projectId)
+	return await supabase.from("themes").delete().eq("id", id).eq("project_id", projectId)
 }

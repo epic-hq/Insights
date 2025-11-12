@@ -89,7 +89,7 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 			let insightsList: Pick<Insight, "id" | "name">[] = []
 			if (interviewIds.length) {
 				const { data: ins } = await supabase
-					.from("insights")
+					.from("themes")
 					.select("id, name, interview_id")
 					.in("interview_id", interviewIds)
 					.limit(20)

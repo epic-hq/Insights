@@ -512,7 +512,7 @@ export async function getSegmentDetail(supabase: DbClient, facetId: string): Pro
 
 	// Get insight count
 	const { count: insightCount } = await supabase
-		.from("insights")
+		.from("themes")
 		.select("*", { count: "exact", head: true })
 		.contains("tags", [facet.label])
 

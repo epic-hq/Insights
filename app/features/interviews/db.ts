@@ -94,12 +94,12 @@ export const getInterviewById = async ({
 	projectId: string
 	id: string
 }) => {
-	// Fetch interview with related participants and insights (including tags)
+	// Fetch interview without nested relations (participants fetched separately)
 	consola.log("getInterviewById", projectId, id)
 	const { data, error } = await supabase
 		.from("interviews")
 		.select(`
-		title,
+			title,
 			id,
 			interview_date,
 			participant_pseudonym,
@@ -113,45 +113,22 @@ export const getInterviewById = async ({
 			media_type,
 			created_at,
 			created_by,
-			updated_at,
-			interview_people (
-				role,
-				transcript_key,
-				display_name,
-				people (
-					id,
-					name,
-					segment
-				)
-			),
-			insights (
-				id,
-				name,
-				category,
-				pain,
-				journey_stage,
-				emotional_response,
-				insight_tags (
-					tags (
-						tag
-					)
-				)
-			)
+			updated_at
 		`)
-		.eq("id", id)
-		// .eq("account_id", accountId)
 		.eq("project_id", projectId)
+		.eq("id", id)
+		.single()
 
 	if (error) {
+		consola.error("getInterviewInsights: failed to load themes", { interviewId, error })
 		return { data: null, error }
 	}
 
-	// Handle case where no interview is found (RLS filtered it out)
-	if (!data || data.length === 0) {
+	if (!data) {
 		return { data: null, error: { message: "Interview not found", code: "PGRST116" } }
 	}
 
-	return { data: data[0], error: null }
+	return { data, error: null }
 }
 
 export const getInterviewParticipants = async ({
@@ -200,8 +177,8 @@ export const getInterviewInsights = async ({
 	interviewId: string
 }) => {
 	// Fetch insights related to this interview with junction table tags
-	return await supabase
-		.from("insights")
+	const { data, error } = await supabase
+		.from("themes")
 		.select(`
 			id,
 			interview_id,
@@ -219,13 +196,33 @@ export const getInterviewInsights = async ({
 			contradictions,
 			updated_at,
 			project_id,
-			insight_tags (
-				tags (
-					tag
-				)
-			)
 		`)
 		.eq("interview_id", interviewId)
+
+	if (error) {
+		return { data: null, error }
+	}
+
+	const insightIds = data?.map((insight) => insight.id) || []
+	const tagsMap = new Map<string, string[]>()
+	if (insightIds.length) {
+		const { data: tagRows } = await supabase
+			.from("insight_tags")
+			.select(`insight_id, tags (tag)`)
+			.in("insight_id", insightIds)
+
+		tagRows?.forEach((row) => {
+			if (!row.insight_id || !row.tags?.tag) return
+			tagsMap.set(row.insight_id, [...(tagsMap.get(row.insight_id) || []), row.tags.tag])
+		})
+	}
+
+	const enriched = (data ?? []).map((insight) => ({
+		...insight,
+		insight_tags: (tagsMap.get(insight.id) || []).map((tag) => ({ tags: { tag } })),
+	}))
+
+	return { data: enriched, error: null }
 }
 
 const _getRelatedInterviews = async ({

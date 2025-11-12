@@ -28,7 +28,7 @@ async function migrateInsightTags(
 	try {
 		// Get all insights with related_tags arrays
 		const { data: insights, error } = await supabase
-			.from("insights")
+			.from("themes")
 			.select("id, related_tags")
 			.eq("account_id", accountId)
 			.not("related_tags", "is", null)
@@ -80,7 +80,7 @@ async function migrateInsightTags(
 				}
 
 				// Clear the array field after successful migration
-				await supabase.from("insights").update({ related_tags: null }).eq("id", insight.id).eq("account_id", accountId)
+				await supabase.from("themes").update({ related_tags: null }).eq("id", insight.id).eq("account_id", accountId)
 
 				migrated++
 				consola.success(`Migrated ${insight.related_tags.length} tags for insight ${insight.id}`)
@@ -223,7 +223,7 @@ export async function getMigrationStatus(request: Request, accountId: string) {
 	try {
 		// Count insights with related_tags
 		const { count: insightsWithTags } = await supabase
-			.from("insights")
+			.from("themes")
 			.select("*", { count: "exact", head: true })
 			.eq("account_id", accountId)
 			.not("related_tags", "is", null)

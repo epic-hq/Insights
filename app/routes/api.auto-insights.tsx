@@ -16,7 +16,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	try {
 		// Check if we have enough data for meaningful insights
 		const [insightsCount, interviewsCount] = await Promise.all([
-			supabase.from("insights").select("id", { count: "exact", head: true }).eq("account_id", accountId),
+			supabase.from("themes").select("id", { count: "exact", head: true }).eq("account_id", accountId),
 			supabase.from("interviews").select("id", { count: "exact", head: true }).eq("account_id", accountId),
 		])
 

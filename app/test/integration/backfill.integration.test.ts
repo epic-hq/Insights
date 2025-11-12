@@ -158,7 +158,7 @@ describe("Backfill Integration Tests", () => {
 
 			// Verify we can still query across junction tables
 			const { data: insightsWithTags } = await testDb
-				.from("insights")
+				.from("themes")
 				.select(`
           *,
           insight_tags (

@@ -148,7 +148,7 @@ export async function getProjectStatusData(
 			analysisRunResult,
 		] = await Promise.all([
 			supabase.from("interviews").select("id").eq("project_id", projectId),
-			supabase.from("insights").select("id,name").eq("project_id", projectId),
+			supabase.from("themes").select("id,name").eq("project_id", projectId),
 			supabase.from("evidence").select("id").eq("project_id", projectId),
 			supabase.from("research_questions").select("id").eq("project_id", projectId).limit(1),
 			supabase.from("decision_questions").select("id").eq("project_id", projectId).limit(1),
@@ -165,7 +165,7 @@ export async function getProjectStatusData(
 		const totalInsights = insightsResult.data?.length || 0
 		const totalEvidence = evidenceResult.data?.length || 0
 		const totalPersonas = Math.min(Math.ceil(totalInterviews / 2), 5)
-		const totalThemes = Math.min(Math.ceil(totalInsights / 2), 8)
+		const totalThemes = totalInsights
 
 		if (researchQuestionsResult.error) throw researchQuestionsResult.error
 		if (decisionQuestionsResult.error) throw decisionQuestionsResult.error

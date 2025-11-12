@@ -182,7 +182,7 @@ describe("Onboarding Pipeline Integration", () => {
 			expect(analysisJob?.progress).toBe(100)
 
 			// Verify insights and people were created
-			const { data: insights } = await testDb.from("insights").select("*").eq("interview_id", interviewId)
+			const { data: insights } = await testDb.from("themes").select("*").eq("interview_id", interviewId)
 
 			expect(insights).toHaveLength(1)
 			expect(insights?.[0]?.name).toBe("Test Insight")

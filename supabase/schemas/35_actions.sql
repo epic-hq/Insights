@@ -20,7 +20,7 @@ create table if not exists public.actions (
 
   -- Relationships
   evidence_ids uuid[] default '{}',  -- Direct links to supporting evidence
-  insight_id uuid references public.insights(id) on delete set null,
+  insight_id uuid references public.themes(id) on delete set null,
   theme_id uuid references public.themes(id) on delete set null,
 
   -- Lens context

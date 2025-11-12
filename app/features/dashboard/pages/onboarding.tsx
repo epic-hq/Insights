@@ -27,7 +27,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 		.eq("account_id", accountId)
 
 	const { count: insightCount } = await supabase
-		.from("insights")
+		.from("themes")
 		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 
@@ -104,7 +104,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}))
 
 	// Fetch insights for the theme tree
-	const { data: insightRows } = await supabase.from("insights").select("*").eq("account_id", accountId).limit(10)
+	const { data: insightRows } = await supabase.from("themes").select("*").eq("account_id", accountId).limit(10)
 
 	// Transform insights into the expected format
 	const insights: InsightView[] = (insightRows || []).map((insight) => ({
@@ -129,17 +129,30 @@ export async function loader({ request }: LoaderFunctionArgs) {
 	}))
 
 	// Fetch insights with their tags from junction table
-	const { data: insightTags } = await supabase
+	const { data: insightTagRows } = await supabase
 		.from("insight_tags")
-		.select(`
-			tag,
-			insights!inner (
-				id,
-				name,
-				title
-			)
-		`)
+		.select("tag, insight_id")
 		.eq("account_id", accountId)
+
+	const tagInsightIds = insightTagRows?.map((row) => row.insight_id).filter((id): id is string => Boolean(id)) || []
+	const { data: themeNames } =
+		tagInsightIds.length > 0
+			? await supabase.from("themes").select("id, name").in("id", tagInsightIds)
+			: { data: [], error: null }
+
+	const nameMap = new Map(themeNames?.map((row) => [row.id, row.name || ""]))
+
+	const insightTags =
+		insightTagRows?.map((row) => ({
+			tag: row.tag,
+			insights: row.insight_id
+				? {
+						id: row.insight_id,
+						name: nameMap.get(row.insight_id) || "",
+						title: nameMap.get(row.insight_id) || "",
+				  }
+				: null,
+		})) || []
 
 	// Debug logging
 	// consola.log("Dashboard Debug:", {
@@ -153,9 +166,13 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	// Process insight-tag relationships
 	if (insightTags) {
-		insightTags.forEach((record: { tag: string; insights: { id: string; name?: string; title?: string } }) => {
+		insightTags.forEach((record: { tag: string | null; insights: { id: string; name?: string; title?: string } | null }) => {
 			const tag = record.tag
 			const insight = record.insights
+
+			if (!tag || !insight) {
+				return
+			}
 
 			if (!tagMap.has(tag)) {
 				tagMap.set(tag, {

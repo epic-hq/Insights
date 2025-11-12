@@ -554,16 +554,17 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 
 		const analysisJob = (analysisJobRows?.[0] ?? null) as AnalysisJobSummary | null
 
-		// Fetch insights related to this interview with junction table tags
-		const { data: insights, error } = await getInterviewInsights({
+		const { data: insightsData, error } = await getInterviewInsights({
 			supabase,
 			interviewId: interviewId,
 		})
 
 		if (error) {
 			const msg = error instanceof Error ? error.message : String(error)
-			throw new Response(`Error fetching insights: ${msg}`, { status: 500 })
+			consola.error("Error fetching insights for interview", { interviewId, error: msg })
 		}
+
+		const insights = insightsData ?? []
 
 		// Fetch evidence related to this interview with person associations
 		const { data: evidence, error: evidenceError } = await supabase

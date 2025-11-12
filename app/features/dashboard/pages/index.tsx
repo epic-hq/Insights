@@ -54,7 +54,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.eq("project_id", projectId)
 
 	const { count: insightCount } = await supabase
-		.from("insights")
+		.from("themes")
 		.select("id", { count: "exact", head: true })
 		.eq("account_id", accountId)
 		.eq("project_id", projectId)
@@ -142,7 +142,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}))
 
 	// Fetch insights for the theme tree
-	const { data: insightRows } = await supabase.from("insights").select("*").eq("account_id", accountId).limit(10)
+	const { data: insightRows } = await supabase.from("themes").select("*").eq("account_id", accountId).limit(10)
 
 	// Transform insights into the expected format
 	const insights: InsightView[] = (insightRows || []).map((insight) => ({

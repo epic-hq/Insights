@@ -28,7 +28,7 @@ export const action: ActionFunction = async ({ context, request }) => {
 
 		// Verify the insight exists and user has access
 		const { data: insight, error: fetchError } = await supabase
-			.from("insights")
+			.from("themes")
 			.select("id")
 			.eq("id", insightId)
 			.eq("account_id", accountId)

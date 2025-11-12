@@ -41,7 +41,7 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 	// Fetch insights with embeddings
 	const { data: insights, error } = await supabase
-		.from("insights")
+		.from("themes")
 		// .select("*")
 		.select("id, pain, embedding")
 		.eq("account_id", accountId)

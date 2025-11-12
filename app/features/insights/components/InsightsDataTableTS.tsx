@@ -38,20 +38,23 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 	const columns = useMemo<ColumnDef<Insight>[]>(
 		() => [
 			{
-				accessorKey: "pain",
+				id: "pain",
+				accessorFn: (row) =>
+					row.pain || row.name || (row as any).statement || row.details || row.jtbd || row.desired_outcome || "Untitled insight",
 				header: () => "Pain",
 				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => (
-					<div className="font-medium">{cell.getValue() as string | null}</div>
+					<div className="font-medium">{cell.getValue() as string}</div>
 				),
 			},
 			{
-				accessorKey: "journey_stage",
+				id: "journey_stage",
+				accessorFn: (row) => row.journey_stage || row.category || "—",
 				header: () => "Stage",
 				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => {
 					const value = cell.getValue() as string | null
-					return value ? <Badge variant="outline">{value}</Badge> : null
+					return value && value !== "—" ? <Badge variant="outline">{value}</Badge> : <span className="text-muted-foreground/60">—</span>
 				},
 			},
 			{
@@ -77,11 +80,17 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				},
 			},
 			{
+				id: "emotional_response",
 				accessorKey: "emotional_response",
 				header: () => "Emotion",
-				cell: (cell: CellContext<Insight, unknown>) => (
-					<EmotionBadge emotion_string={cell.getValue() as string} muted />
-				),
+				cell: (cell: CellContext<Insight, unknown>) => {
+					const emotion = cell.getValue() as string | null
+					return emotion ? (
+						<EmotionBadge emotion_string={emotion} muted />
+					) : (
+						<span className="text-muted-foreground/60">—</span>
+					)
+				},
 			},
 			{
 				accessorKey: "priority",
@@ -160,6 +169,15 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 												)
 											)
 										)
+									} else if (colId === "journey_stage") {
+										uniqueValues = Array.from(
+											new Set(
+												data
+													.map((row) => row.journey_stage || (row as any).category || null)
+													.filter(Boolean) as string[]
+											)
+										)
+										uniqueValues.unshift("—")
 									} else {
 										uniqueValues = Array.from(
 											new Set(data.map((row) => row[colId as keyof Insight]).filter(Boolean) as string[])

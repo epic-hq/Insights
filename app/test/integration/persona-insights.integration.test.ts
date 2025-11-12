@@ -62,7 +62,7 @@ describe("Persona-Insight Integration Tests", () => {
 
 		// 4. Create an insight
 		const { data: insight } = await supabase
-			.from("insights")
+			.from("themes")
 			.insert({
 				name: "Users prefer simple interfaces",
 				category: "UX",
@@ -132,7 +132,7 @@ describe("Persona-Insight Integration Tests", () => {
 
 		// 3. Create an insight
 		const { data: insight } = await supabase
-			.from("insights")
+			.from("themes")
 			.insert({
 				name: "Users need better onboarding",
 				category: "UX",

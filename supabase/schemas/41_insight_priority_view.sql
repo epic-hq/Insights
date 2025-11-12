@@ -1,15 +1,114 @@
--- View: insights_with_priority
--- Shows each insight with its priority (sum of votes from votes table)
+-- Compatibility views that expose themes as "insights"
 
+create or replace view public.insights_current as
+select
+  t.id,
+  t.account_id,
+  t.project_id,
+  t.name,
+  t.pain,
+  t.details,
+  t.category,
+  t.journey_stage,
+  t.emotional_response,
+  t.desired_outcome,
+  t.jtbd,
+  t.impact,
+  t.evidence,
+  t.motivation,
+  t.contradictions,
+  t.embedding,
+  t.embedding_model,
+  t.embedding_generated_at,
+  t.opportunity_ideas,
+  t.related_tags,
+  t.novelty,
+  t.confidence,
+  t.interview_id,
+  t.statement,
+  t.synonyms,
+  t.inclusion_criteria,
+  t.exclusion_criteria,
+  t.anti_examples,
+  t.created_at,
+  t.created_by,
+  t.updated_at,
+  t.updated_by
+from public.themes t;
+
+drop view if exists public.insights_with_priority;
 create or replace view public.insights_with_priority as
 select
-  i.*,
+  ic.id,
+  ic.account_id,
+  ic.project_id,
+  ic.name,
+  ic.pain,
+  ic.details,
+  ic.category,
+  ic.journey_stage,
+  ic.emotional_response,
+  ic.desired_outcome,
+  ic.jtbd,
+  ic.impact,
+  ic.evidence,
+  ic.motivation,
+  ic.contradictions,
+  ic.embedding,
+  ic.embedding_model,
+  ic.embedding_generated_at,
+  ic.opportunity_ideas,
+  ic.related_tags,
+  ic.novelty,
+  ic.confidence,
+  ic.interview_id,
+  ic.statement,
+  ic.synonyms,
+  ic.inclusion_criteria,
+  ic.exclusion_criteria,
+  ic.anti_examples,
+  ic.created_at,
+  ic.created_by,
+  ic.updated_at,
+  ic.updated_by,
   coalesce(sum(v.vote_value), 0) as priority
-from
-  public.insights i
-left join
-  public.votes v
-    on v.entity_type = 'insight'
-    and v.entity_id = i.id
+from public.insights_current ic
+left join public.votes v
+  on v.entity_type = 'insight'
+  and v.entity_id = ic.id
 group by
-  i.id;
+  ic.id,
+  ic.account_id,
+  ic.project_id,
+  ic.name,
+  ic.pain,
+  ic.details,
+  ic.category,
+  ic.journey_stage,
+  ic.emotional_response,
+  ic.desired_outcome,
+  ic.jtbd,
+  ic.impact,
+  ic.evidence,
+  ic.motivation,
+  ic.contradictions,
+  ic.embedding,
+  ic.embedding_model,
+  ic.embedding_generated_at,
+  ic.opportunity_ideas,
+  ic.related_tags,
+  ic.novelty,
+  ic.confidence,
+  ic.interview_id,
+  ic.statement,
+  ic.synonyms,
+  ic.inclusion_criteria,
+  ic.exclusion_criteria,
+  ic.anti_examples,
+  ic.created_at,
+  ic.created_by,
+  ic.updated_at,
+  ic.updated_by;
+
+grant select on public.insights_current to authenticated;
+grant select on public.insights_with_priority to authenticated;

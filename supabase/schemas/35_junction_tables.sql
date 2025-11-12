@@ -4,7 +4,7 @@
 -- Insight-Tags junction table (replaces related_tags array in insights)
 CREATE TABLE IF NOT EXISTS insight_tags (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+    insight_id UUID NOT NULL REFERENCES themes(id) ON DELETE CASCADE,
     tag_id UUID NOT NULL REFERENCES tags(id) ON DELETE CASCADE,
     account_id UUID NOT NULL,
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
@@ -33,7 +33,7 @@ CREATE TABLE IF NOT EXISTS interview_tags (
 CREATE TABLE IF NOT EXISTS opportunity_insights (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     opportunity_id UUID NOT NULL REFERENCES opportunities(id) ON DELETE CASCADE,
-    insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+    insight_id UUID NOT NULL REFERENCES themes(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     weight DECIMAL(3,2) DEFAULT 1.0, -- How strongly this insight supports the opportunity
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -125,7 +125,7 @@ CREATE POLICY "Users can delete people_personas for their account" ON people_per
 CREATE TABLE IF NOT EXISTS persona_insights (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     persona_id UUID NOT NULL REFERENCES personas(id) ON DELETE CASCADE,
-    insight_id UUID NOT NULL REFERENCES insights(id) ON DELETE CASCADE,
+    insight_id UUID NOT NULL REFERENCES themes(id) ON DELETE CASCADE,
     project_id UUID REFERENCES projects(id) ON DELETE CASCADE,
     relevance_score DECIMAL(3,2) DEFAULT 1.0, -- How relevant this insight is to the persona
     created_at TIMESTAMPTZ DEFAULT NOW(),
@@ -164,9 +164,17 @@ ALTER TABLE persona_insights ENABLE ROW LEVEL SECURITY;
 CREATE POLICY "Users can view insight_tags for their account" ON insight_tags
     FOR SELECT USING (
         EXISTS (
-            SELECT 1 FROM insights i
+            SELECT 1 FROM themes i
             WHERE i.id = insight_tags.insight_id
             AND i.account_id IN (
+                SELECT account_id FROM accounts.account_user
+                WHERE user_id = auth.uid()
+            )
+        )
+        OR EXISTS (
+            SELECT 1 FROM insights legacy_i
+            WHERE legacy_i.id = insight_tags.insight_id
+            AND legacy_i.account_id IN (
                 SELECT account_id FROM accounts.account_user
                 WHERE user_id = auth.uid()
             )
@@ -176,7 +184,7 @@ CREATE POLICY "Users can view insight_tags for their account" ON insight_tags
 CREATE POLICY "Users can insert insight_tags for their account" ON insight_tags
     FOR INSERT WITH CHECK (
         EXISTS (
-            SELECT 1 FROM insights i
+            SELECT 1 FROM themes i
             WHERE i.id = insight_tags.insight_id
             AND i.account_id IN (
                 SELECT account_id FROM accounts.account_user
@@ -188,7 +196,7 @@ CREATE POLICY "Users can insert insight_tags for their account" ON insight_tags
 CREATE POLICY "Users can update insight_tags for their account" ON insight_tags
     FOR UPDATE USING (
         EXISTS (
-            SELECT 1 FROM insights i
+            SELECT 1 FROM themes i
             WHERE i.id = insight_tags.insight_id
             AND i.account_id IN (
                 SELECT account_id FROM accounts.account_user
@@ -200,7 +208,7 @@ CREATE POLICY "Users can update insight_tags for their account" ON insight_tags
 CREATE POLICY "Users can delete insight_tags for their account" ON insight_tags
     FOR DELETE USING (
         EXISTS (
-            SELECT 1 FROM insights i
+            SELECT 1 FROM themes i
             WHERE i.id = insight_tags.insight_id
             AND i.account_id IN (
                 SELECT account_id FROM accounts.account_user

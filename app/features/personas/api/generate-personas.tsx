@@ -58,7 +58,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 		}
 		// 3. Aggregate all insights for the 	project
 		const { data: insights, error: insightsError } = await supabase
-			.from("insights")
+			.from("themes")
 			.select("*")
 			.eq("project_id", projectId)
 

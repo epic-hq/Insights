@@ -113,24 +113,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		}
 	}
 
-	// Pre-index insights by interview_id for quick counting
-	const insightsByInterview = new Map<string, number>()
-	for (const ins of insights ?? []) {
-		if (ins.interview_id) {
-			insightsByInterview.set(ins.interview_id, (insightsByInterview.get(ins.interview_id) ?? 0) + 1)
-		}
-	}
-
 	// Enrich themes with counts
 	const enriched = (themes ?? []).map((t) => {
 		const evCount = (evidenceByTheme.get(t.id) ?? []).length
-		let insightCount = 0
 		const interviewSet = interviewsByTheme.get(t.id)
-		if (interviewSet) {
-			for (const iid of interviewSet) {
-				insightCount += insightsByInterview.get(iid) ?? 0
-			}
-		}
+		const insightCount = interviewSet ? interviewSet.size : 0
 		return { ...t, evidence_count: evCount, insights_count: insightCount }
 	}) as Array<
 		Pick<Theme, "id" | "name" | "statement" | "created_at"> & { evidence_count: number; insights_count: number }

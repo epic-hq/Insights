@@ -378,7 +378,7 @@ export const fetchInterviewContextTool = createTool({
 					.eq("interview_id", interviewId)
 					.order("created_at", { ascending: true }),
 				supabase
-					.from("insights")
+					.from("themes")
 					.select(
 						"id, name, summary, pain, desired_outcome, category, journey_stage, emotional_response, updated_at, interview_id, project_id, insight_tags(tags(tag))"
 					)

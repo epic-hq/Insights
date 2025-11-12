@@ -1651,7 +1651,7 @@ export async function analyzeThemesAndPersonaCore({
 		return { storedInsights: [], interview: interviewRecord }
 	}
 
-	await db.from("insights").delete().eq("interview_id", interviewRecord.id)
+	await db.from("themes").delete().eq("interview_id", interviewRecord.id)
 
 	const rows = insights.map((i) => ({
 		account_id: metadata.accountId,
@@ -1675,7 +1675,7 @@ export async function analyzeThemesAndPersonaCore({
 		updated_by: metadata.userId,
 	}))
 
-	const { data, error } = await db.from("insights").insert(rows).select()
+	const { data, error } = await db.from("themes").insert(rows).select()
 	if (error) throw new Error(`Failed to insert insights: ${error.message}`)
 
 	const generateFallbackName = (): string => {

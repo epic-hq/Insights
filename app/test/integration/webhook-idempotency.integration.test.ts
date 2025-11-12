@@ -329,7 +329,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 
 			// Create insight without created_by (null)
 			const { data: insight, error: insightError } = await adminClient
-				.from("insights")
+				.from("themes")
 				.insert({
 					interview_id: interview?.id,
 					account_id: TEST_ACCOUNT_ID,
@@ -356,7 +356,7 @@ describe("Webhook Idempotency Integration Tests", () => {
 
 			// Create insight with created_by set
 			const { data: insightWithAudit, error: auditError } = await adminClient
-				.from("insights")
+				.from("themes")
 				.insert({
 					interview_id: interview?.id,
 					account_id: TEST_ACCOUNT_ID,

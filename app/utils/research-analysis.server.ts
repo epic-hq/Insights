@@ -330,7 +330,7 @@ async function _getProjectAnalysisData(supabase: SupabaseClient, projectId: stri
 	const [sectionsResult, insightsResult, peopleResult, personasResult] = await Promise.all([
 		supabase.from("project_sections").select("*").eq("project_id", projectId),
 
-		supabase.from("insights").select("*").eq("project_id", projectId),
+		supabase.from("themes").select("*").eq("project_id", projectId),
 
 		supabase.from("people").select("*").eq("project_id", projectId),
 

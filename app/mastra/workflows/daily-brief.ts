@@ -59,7 +59,7 @@ const getInsightsStep = createStep({
 		consola.log("wf-daily: account and project id", account_id, project_id)
 		consola.log("wf-daily: insights result", { count: insights?.length })
 
-		// const { data: test } = await supabase.from("insights").select("id,name,pain,details").eq("project_id", project_id)
+		// const { data: test } = await supabase.from("themes").select("id,name,pain,details").eq("project_id", project_id)
 		// consola.log("wf-daily: test", { count: test?.length, test })
 
 		// Handle potential undefined return from getInsights

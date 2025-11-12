@@ -30,11 +30,7 @@ const detailScopes = [
 type DetailScope = (typeof detailScopes)[number]
 
 type ProjectSectionRow = Database["public"]["Tables"]["project_sections"]["Row"]
-type InsightRow = Database["public"]["Tables"]["insights"]["Row"] & {
-	insight_tags?: Array<{
-		tags?: { tag?: string | null } | null
-	}> | null
-}
+type InsightRow = Database["public"]["Tables"]["themes"]["Row"]
 type EvidenceRow = Database["public"]["Tables"]["evidence"]["Row"]
 type ThemeRow = Database["public"]["Tables"]["themes"]["Row"]
 type ThemeEvidenceRow = Database["public"]["Tables"]["theme_evidence"]["Row"] & {
@@ -530,9 +526,9 @@ export const fetchProjectStatusContextTool = createTool({
 			if (scopeSet.has("insights")) {
 				try {
 					const { data: insights, error } = await supabase
-						.from("insights")
+						.from("themes")
 						.select(
-							"id, name, details, category, pain, desired_outcome, journey_stage, emotional_response, confidence, impact, novelty, opportunity_ideas, related_tags, interview_id, project_id, created_at, updated_at, insight_tags(tags(tag))"
+							"id, name, details, category, pain, desired_outcome, journey_stage, emotional_response, confidence, impact, novelty, opportunity_ideas, related_tags, interview_id, project_id, created_at, updated_at"
 						)
 						.eq("project_id", projectId)
 						.order("updated_at", { ascending: false })
@@ -540,15 +536,24 @@ export const fetchProjectStatusContextTool = createTool({
 
 					if (error) throw error
 
+					const insightIds = insights?.map((insight) => insight.id) || []
+					const { data: tagsRows } =
+						insightIds.length > 0
+							? await supabase
+									.from("insight_tags")
+									.select("insight_id, tags(tag)")
+									.in("insight_id", insightIds)
+							: { data: [], error: null }
+
+					const tagsMap = new Map<string, string[]>()
+					;(tagsRows || []).forEach((row) => {
+						if (!row.insight_id || !row.tags?.tag) return
+						tagsMap.set(row.insight_id, [...(tagsMap.get(row.insight_id) || []), row.tags.tag])
+					})
+
 					const serialized: InsightPayload[] =
 						insights?.map((insight: InsightRow) => {
-							const tags = Array.from(
-								new Set(
-									(insight.insight_tags || [])
-										.map((entry) => entry?.tags?.tag)
-										.filter((tag): tag is string => Boolean(tag))
-								)
-							)
+							const tags = Array.from(new Set(tagsMap.get(insight.id) || []))
 							return {
 								id: insight.id,
 								name: insight.name,
@@ -989,15 +994,39 @@ export const fetchProjectStatusContextTool = createTool({
 				try {
 					const { data: interviews, error } = await supabase
 						.from("interviews")
-						.select(
-							"id, title, participant_pseudonym, segment, status, interview_date, created_at, updated_at, insights:insights(id), evidence:evidence(id)"
-						)
+						.select("id, title, participant_pseudonym, segment, status, interview_date, created_at, updated_at")
 						.eq("project_id", projectId)
 						.order("interview_date", { ascending: false, nullsFirst: false })
 						.order("created_at", { ascending: false })
 						.limit(interviewLimit)
 
 					if (error) throw error
+
+					const interviewIds = interviews?.map((i) => i.id) || []
+					const [evidenceRows, insightRows] = interviewIds.length
+						? await Promise.all([
+								supabase
+									.from("evidence")
+									.select("id, interview_id")
+									.in("interview_id", interviewIds),
+								supabase
+									.from("themes")
+									.select("id, interview_id")
+									.in("interview_id", interviewIds),
+						  ])
+						: [{ data: [], error: null }, { data: [], error: null }]
+
+					const evidenceMap = new Map<string, number>()
+					evidenceRows?.data?.forEach((row) => {
+						if (!row.interview_id) return
+						evidenceMap.set(row.interview_id, (evidenceMap.get(row.interview_id) || 0) + 1)
+					})
+
+					const insightMap = new Map<string, number>()
+					insightRows?.data?.forEach((row) => {
+						if (!row.interview_id) return
+						insightMap.set(row.interview_id, (insightMap.get(row.interview_id) || 0) + 1)
+					})
 
 					const serialized: InterviewPayload[] =
 						(interviews as InterviewRow[] | null)?.map((interview) => ({
@@ -1009,8 +1038,8 @@ export const fetchProjectStatusContextTool = createTool({
 							interview_date: normalizeDate(interview.interview_date),
 							created_at: normalizeDate(interview.created_at),
 							updated_at: normalizeDate(interview.updated_at),
-							evidenceCount: interview.evidence?.filter((item) => Boolean(item?.id)).length ?? 0,
-							insightCount: interview.insights?.filter((item) => Boolean(item?.id)).length ?? 0,
+							evidenceCount: evidenceMap.get(interview.id) ?? 0,
+							insightCount: insightMap.get(interview.id) ?? 0,
 							url: projectPath ? `${HOST}${routes.interviews.detail(interview.id)}` : null,
 						})) ?? []
 

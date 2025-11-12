@@ -85,7 +85,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	await Promise.all([
 		supabase.from("interviews").select("id", { count: "exact", head: true }).eq("project_id", projectId),
 		supabase
-			.from("insights")
+			.from("themes")
 			.select("id", { count: "exact", head: true })
 
 			.eq("project_id", projectId),
@@ -152,7 +152,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}))
 
 	// Fetch insights for the theme tree
-	const { data: insightRows } = await supabase.from("insights").select("*").eq("account_id", accountId).limit(10)
+	const { data: insightRows } = await supabase.from("themes").select("*").eq("account_id", accountId).limit(10)
 
 	// Transform insights into the expected format - InsightView extends Insight, so use the DB row directly
 	const insights: InsightView[] = (insightRows || []).map((insight) => ({

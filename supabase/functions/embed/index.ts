@@ -60,7 +60,7 @@ Deno.serve(async (req) => {
 		// 2) Write back to Supabase
 		const supabase = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!)
 
-		const { error } = await supabase.from("insights").update({ embedding: embedding }).eq("id", id)
+		const { error } = await supabase.from("themes").update({ embedding: embedding }).eq("id", id)
 
 		if (error) throw error
 

@@ -140,7 +140,7 @@ async function testAuditFields() {
 
 	// Test creating insight without created_by (should work with nullable fields)
 	const { error: insightError } = await supabase
-		.from("insights")
+		.from("themes")
 		.insert({
 			interview_id: interview.id,
 			account_id: "45b0ca10-9af1-402d-9684-91198748a216",
@@ -153,7 +153,7 @@ async function testAuditFields() {
 			journey_stage: "Awareness",
 			confidence: "High",
 			emotional_response: "Frustrated",
-			underlying_motivation: "Test motivation",
+			motivation: "Test motivation",
 			desired_outcome: "Test outcome",
 			jtbd: "Test JTBD",
 			// created_by and updated_by omitted (should be null)
@@ -167,7 +167,7 @@ async function testAuditFields() {
 
 	// Test creating insight with created_by
 	const { error: auditError } = await supabase
-		.from("insights")
+		.from("themes")
 		.insert({
 			interview_id: interview.id,
 			account_id: "45b0ca10-9af1-402d-9684-91198748a216",
@@ -180,7 +180,7 @@ async function testAuditFields() {
 			journey_stage: "Awareness",
 			confidence: "High",
 			emotional_response: "Frustrated",
-			underlying_motivation: "Test motivation",
+			motivation: "Test motivation",
 			desired_outcome: "Test outcome",
 			jtbd: "Test JTBD",
 			created_by: "45b0ca10-9af1-402d-9684-91198748a216", // Set audit field

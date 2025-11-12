@@ -35,7 +35,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	let insightsCount = 0
 	if (uniqueInterviewIds.length > 0) {
 		const { count } = await supabase
-			.from("insights")
+			.from("themes")
 			.select("*", { count: "exact", head: true })
 			.in("interview_id", uniqueInterviewIds)
 		insightsCount = count ?? 0

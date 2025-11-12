@@ -41,7 +41,7 @@ export type RpcArgs<RpcName extends keyof Database["public"]["Functions"]> =
 // schema changes and we regenerate Supabase types, these
 // aliases automatically stay correct.
 
-export type Insight = Tables<"insights">
+export type Insight = Tables<"themes">
 export type Interview = Tables<"interviews">
 export type Persona = Tables<"personas"> // ensure table exists in DB
 export type Opportunity = Tables<"opportunities"> // ensure table exists in DB
@@ -59,7 +59,7 @@ export type Annotation = Tables<"annotations">
 
 // 3. Insert / Update helpers (optional)
 // ------------------------------------
-export type InsightInsert = TablesInsert<"insights">
+export type InsightInsert = TablesInsert<"themes">
 export type InterviewInsert = TablesInsert<"interviews">
 export type ProjectInsert = TablesInsert<"projects">
 export type ProjectUpdate = TablesUpdate<"projects">
@@ -180,7 +180,7 @@ export interface CommentView extends Comment {
 // -------------------------------------------------------
 // Usage example in a component or loader:
 // import { Insight } from "~/app/types"
-// const data: Insight[] = await db.from("insights").select()
+// const data: Insight[] = await db.from("themes").select()
 // -------------------------------------------------------
 
 // TODO: Double check the types here
