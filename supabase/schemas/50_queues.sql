@@ -64,6 +64,30 @@ for delete
 to authenticated
 USING (true);
 
+-- Person facets embedding queue setup (for semantic segment clustering)
+select pgmq.create('person_facet_embedding_queue');
+grant insert, select, delete on table pgmq.q_person_facet_embedding_queue to authenticated;
+
+alter table pgmq.q_person_facet_embedding_queue enable row level security;
+
+create policy "authenticated can enqueue person facets"
+on pgmq.q_person_facet_embedding_queue
+for insert
+to authenticated
+with check (true);
+
+create policy "authenticated can read person facets"
+on pgmq.q_person_facet_embedding_queue
+for select
+to authenticated
+USING (true);
+
+create policy "authenticated can delete person facets"
+on pgmq.q_person_facet_embedding_queue
+for delete
+to authenticated
+USING (true);
+
 -- b) trigger fn to enqueue changed rows
 -- Update functions to use extensions schema for pgmq and cron
 create or replace function public.enqueue_insight_embedding()
@@ -111,6 +135,41 @@ $$;
 create or replace trigger trg_enqueue_facet
   after insert or update on public.evidence_facet
   for each row execute function public.enqueue_facet_embedding();
+
+-- Person facet enqueue function (needs to fetch label from facet_account)
+create or replace function public.enqueue_person_facet_embedding()
+returns trigger language plpgsql as $$
+declare
+  facet_label text;
+  kind_slug text;
+begin
+  if (TG_OP = 'INSERT' or TG_OP = 'UPDATE') then
+    -- Fetch label and kind_slug from facet_account via join
+    select fa.label, fkg.slug
+    into facet_label, kind_slug
+    from facet_account fa
+    join facet_kind_global fkg on fkg.id = fa.kind_id
+    where fa.id = new.facet_account_id;
+
+    if facet_label is not null then
+      perform pgmq.send(
+        'person_facet_embedding_queue',
+        json_build_object(
+          'person_id', new.person_id::text,
+          'facet_account_id', new.facet_account_id,
+          'label', facet_label,
+          'kind_slug', kind_slug
+        )::jsonb
+      );
+    end if;
+  end if;
+  return new;
+end;
+$$;
+
+create or replace trigger trg_enqueue_person_facet
+  after insert or update on public.person_facet
+  for each row execute function public.enqueue_person_facet_embedding();
 
 -- c) helper to invoke your Edge Function
 create or replace function public.invoke_edge_function(func_name text, payload jsonb)
@@ -200,6 +259,34 @@ begin
 end;
 $$;
 
+-- Processor for person facet embedding queue
+create or replace function public.process_person_facet_embedding_queue()
+returns text
+language plpgsql
+as $$
+declare
+  job record;
+  count int := 0;
+begin
+  for job in
+    select * from pgmq.read(
+      'person_facet_embedding_queue',
+      5,
+      30
+    )
+  loop
+    perform public.invoke_edge_function('embed-person-facet', job.message::jsonb);
+    perform pgmq.delete(
+      'person_facet_embedding_queue',
+      job.msg_id
+    );
+    count := count + 1;
+  end loop;
+
+  return format('Processed %s person facet message(s) from embedding queue.', count);
+end;
+$$;
+
 
 
 
@@ -214,6 +301,13 @@ select cron.schedule(
   'process-facet-embeddings',
   '*/1 * * * *',
   'select public.process_facet_embedding_queue()'
+);
+
+-- g) cron-job for person facet embeddings (every minute)
+select cron.schedule(
+  'process-person-facet-embeddings',
+  '*/1 * * * *',
+  'select public.process_person_facet_embedding_queue()'
 );
 
 
