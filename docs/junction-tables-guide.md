@@ -34,7 +34,7 @@ await junctionManager.insightTags.syncTags(insightId, ['user-feedback', 'pain-po
 
 ```typescript
 const { data: insights } = await supabase
-  .from('insights')
+  .from('themes')
   .select(`
     *,
     insight_tags(tag)
@@ -52,7 +52,7 @@ const insightsWithTags = insights?.map(insight => ({
 
 ```typescript
 const { data: insights } = await supabase
-  .from('insights')
+  .from('themes')
   .select(`
     *,
     insight_tags!inner(tag)
@@ -182,7 +182,7 @@ export async function loader({ request, params }: LoaderFunctionArgs) {
   const accountId = extractAccountId(request)
 
   const { data: insight } = await supabase
-    .from('insights')
+    .from('themes')
     .select(`
       *,
       insight_tags(tag),
@@ -307,7 +307,7 @@ const tagCounts = tagStats?.reduce((acc, { tag }) => {
 ```typescript
 // Find insights related to specific people
 const { data: personInsights } = await supabase
-  .from('insights')
+  .from('themes')
   .select(`
     *,
     interviews!inner(
@@ -353,7 +353,7 @@ import { testDb } from '~/test/utils/testDb'
 
 test('should create insight-tag relationships', async () => {
   const { data: insight } = await testDb
-    .from('insights')
+    .from('themes')
     .insert({ name: 'Test Insight', account_id: TEST_ACCOUNT_ID })
     .select()
     .single()
@@ -383,7 +383,7 @@ test('should create insight-tag relationships', async () => {
 ```typescript
 // Enable query logging
 const { data, error } = await supabase
-  .from('insights')
+  .from('themes')
   .select('*, insight_tags(tag)')
   .eq('account_id', accountId)
 

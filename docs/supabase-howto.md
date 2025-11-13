@@ -519,7 +519,7 @@ The pattern to use in loaders/actions is this:
 
 ```ts
 import { getServerClient } from "~/lib/supabase/client.server"
-import type { InsightView } from "~/types"
+import type { Theme } from "~/types"
 
 export const meta: MetaFunction = () => {
  return [
@@ -528,7 +528,7 @@ export const meta: MetaFunction = () => {
  ]
 }
 
-// Load insights from Supabase
+// Load insights (themes) from Supabase
 export async function loader({ request }: { request: Request }) {
  const { client: supabase } = getServerClient(request)
  const { data: jwt } = await supabase.auth.getClaims()
@@ -543,9 +543,9 @@ export async function loader({ request }: { request: Request }) {
  const personaFilter = url.searchParams.get("persona") || null
 
  // Build base query with account filtering for RLS
- type InsightRow =
+ type ThemeRow = Theme
  let query = supabase
-  .from("insights")
+  .from("themes")
   .select("*")
   .eq("account_id", accountId)
 
@@ -553,7 +553,7 @@ export async function loader({ request }: { request: Request }) {
  if (error) {
   throw new Response(`Error fetching insights: ${error.message}`, { status: 500 })
  }
- return {insights: rows }
+ return { insights: rows }
 }
 ```
 

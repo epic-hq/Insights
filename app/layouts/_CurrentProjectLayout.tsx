@@ -132,10 +132,10 @@ export const middleware: Route.MiddlewareFunction[] = [
 
 			// Set user context for all child loaders/actions to access
 			context.set(currentProjectContext, {
-				current_account_id: parsed_account_id,
-				current_project_id: project.id,
-				account: {} as GetAccount,
-				project: {} as Project,
+				accountId: parsed_account_id,
+				projectId: project?.id ?? null,
+				account: null,
+				project: project ?? null,
 			})
 		} catch (error) {
 			consola.error("Authentication middleware error:", error)

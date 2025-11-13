@@ -5,7 +5,7 @@
 
 import consola from "consola"
 import { useState } from "react"
-import { type LoaderFunctionArgs, useLoaderData, useNavigate } from "react-router"
+import { type LoaderFunctionArgs, useLoaderData, useNavigate, useNavigation } from "react-router"
 import { getSegmentKindSummaries } from "~/features/segments/services/segmentData.server"
 import { userContext } from "~/server/user-context"
 import { PainMatrixComponent } from "../components/PainMatrix"
@@ -51,6 +51,9 @@ export default function ProductLens() {
 	const { matrix, segments, selectedSegmentSlug } = useLoaderData<typeof loader>()
 	const [selectedCell, setSelectedCell] = useState<PainMatrixCell | null>(null)
 	const navigate = useNavigate()
+	const navigation = useNavigation()
+
+	const isLoading = navigation.state === "loading"
 
 	const handleSegmentChange = (kindSlug: string) => {
 		if (kindSlug === "all") {
@@ -78,14 +81,26 @@ export default function ProductLens() {
 				</div>
 			</div>
 
+			{/* Loading Overlay */}
+			{isLoading && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+					<div className="flex flex-col items-center gap-3">
+						<div className="h-12 w-12 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+						<p className="font-medium text-sm">Loading pain matrix...</p>
+					</div>
+				</div>
+			)}
+
 			{/* Pain Matrix */}
-			<PainMatrixComponent
-				matrix={matrix}
-				onCellClick={setSelectedCell}
-				segments={segments}
-				selectedSegmentSlug={selectedSegmentSlug}
-				onSegmentChange={handleSegmentChange}
-			/>
+			<div className={isLoading ? "pointer-events-none opacity-50" : ""}>
+				<PainMatrixComponent
+					matrix={matrix}
+					onCellClick={setSelectedCell}
+					segments={segments}
+					selectedSegmentSlug={selectedSegmentSlug}
+					onSegmentChange={handleSegmentChange}
+				/>
+			</div>
 
 			{/* Selected Cell Detail Modal */}
 			{selectedCell && (

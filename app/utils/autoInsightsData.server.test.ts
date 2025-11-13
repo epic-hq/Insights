@@ -86,7 +86,7 @@ describe("Auto-Insights Data Aggregation", () => {
 					in: vi.fn().mockReturnThis(),
 				}
 
-				if (table === "insights") {
+				if (table === "themes") {
 					mockQuery.eq.mockResolvedValue({
 						data: mockInsights,
 						error: null,
@@ -170,7 +170,7 @@ describe("Auto-Insights Data Aggregation", () => {
 			]
 
 			mockSupabase.from.mockImplementation((table) => {
-				if (table === "insights") {
+				if (table === "themes") {
 					return {
 						select: vi.fn().mockReturnValue({
 							eq: vi.fn().mockReturnValue({
@@ -210,7 +210,7 @@ describe("Auto-Insights Data Aggregation", () => {
 			}))
 
 			mockSupabase.from.mockImplementation((table) => {
-				if (table === "insights") {
+				if (table === "themes") {
 					return {
 						select: vi.fn().mockReturnValue({
 							eq: vi.fn().mockReturnValue({
@@ -471,7 +471,7 @@ describe("Auto-Insights Data Aggregation", () => {
 					in: vi.fn().mockReturnThis(),
 				}
 
-				if (table === "insights") {
+				if (table === "themes") {
 					mockQuery.eq.mockResolvedValue({
 						data: mockInsights,
 						error: null,

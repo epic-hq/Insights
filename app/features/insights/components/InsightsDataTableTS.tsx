@@ -32,7 +32,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath || "")
 
-	const [sorting, setSorting] = useState<SortingState>([])
+	const [sorting, setSorting] = useState<SortingState>([{ id: "vote_count", desc: true }])
 	const [columnFilters, setColumnFilters] = useState<any[]>([])
 
 	const columns = useMemo<ColumnDef<Insight>[]>(
@@ -93,10 +93,9 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				},
 			},
 			{
-				accessorKey: "priority",
-				header: () => "Priority",
-				// Numeric sort/filter
-				filterFn: "equalsString",
+				accessorFn: (row) => row.vote_count ?? 0,
+				id: "vote_count",
+				header: () => "Votes",
 				cell: (cell: CellContext<Insight, unknown>) => (
 					<span className="font-semibold text-sm">{cell.getValue() as number}</span>
 				),
@@ -141,7 +140,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 								{headerGroup.headers.map((header) => {
 									const colId = header.column.id
 									const col = table.getColumn(colId)
-									const isFacet = ["journey_stage", "personas", "priority"].includes(colId)
+									const isFacet = ["journey_stage", "personas"].includes(colId)
 									const isTextFilter = colId === "pain"
 									if (!isFacet && !isTextFilter) return <TableHead key={colId} />
 

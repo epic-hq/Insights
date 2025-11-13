@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Badge } from "~/components/ui/badge"
 import type { PainMatrix, PainMatrixCell } from "../services/generatePainMatrix.server"
 
 export interface PainMatrixProps {
@@ -71,17 +71,45 @@ export function PainMatrixComponent({
 				<h2 className="font-bold text-2xl">Pain × User Type Matrix</h2>
 			</div> */}
 
-			{/* Key Insights + KPIs/Controls on Right */}
+			{/* Segment Filter Pills */}
+			<div className="rounded-lg border bg-card p-4">
+				<label className="mb-3 block font-medium text-sm">Filter by Segment</label>
+				{segments && onSegmentChange && (
+					<div className="flex flex-wrap gap-2">
+						<Badge
+							variant={!selectedSegmentSlug || selectedSegmentSlug === "all" ? "default" : "outline"}
+							className="cursor-pointer transition-colors hover:bg-primary/80"
+							onClick={() => onSegmentChange("all")}
+						>
+							All Segments
+						</Badge>
+						{segments
+							.filter((s) => s.person_count > 0)
+							.map((segment) => (
+								<Badge
+									key={segment.kind}
+									variant={selectedSegmentSlug === segment.kind ? "default" : "outline"}
+									className="cursor-pointer transition-colors hover:bg-primary/80"
+									onClick={() => onSegmentChange(segment.kind)}
+								>
+									{segment.label}
+									<span className="ml-1.5 text-[10px] opacity-70">({segment.person_count})</span>
+								</Badge>
+							))}
+					</div>
+				)}
+			</div>
+
+			{/* Key Insights + Controls */}
 			<div className="grid grid-cols-1 gap-4 lg:grid-cols-[1fr_auto]">
 				{/* AI-Generated Insights */}
 				<div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-					{/* <h3 className="mb-4 flex items-center gap-2 font-semibold text-sm">
-						<span>💡</span> Key Insights & Actions
-					</h3> */}
 					<div className="grid grid-cols-1 gap-4 md:grid-cols-2">
 						{/* Key Insights */}
 						<div>
-							<h4 className="mb-2 font-medium text-sm"><span>💡</span> Key Insights</h4>
+							<h4 className="mb-2 font-medium text-sm">
+								<span>💡</span> Key Insights
+							</h4>
 							<p className="text-sm leading-relaxed">{insights.split("\n\nTop 3 Actions:")[0] || insights}</p>
 						</div>
 
@@ -108,66 +136,38 @@ export function PainMatrixComponent({
 					</div>
 				</div>
 
-				{/* KPIs + Controls */}
-				<div className="flex flex-col gap-4">
-					{/* Segment Filter */}
-					<div className="flex flex-col gap-2 rounded-lg border bg-card p-3">
-						<label className="font-medium text-sm">Filter by Segment</label>
-						{segments && onSegmentChange && (
-							<Select value={selectedSegmentSlug || "all"} onValueChange={onSegmentChange}>
-								<SelectTrigger className="mt-1">
-									<SelectValue placeholder="All Segments" />
-								</SelectTrigger>
-								<SelectContent className="max-h-[300px]">
-									<SelectItem value="all">All Segments</SelectItem>
-									{segments
-										.filter((s) => s.person_count > 0)
-										.map((segment) => (
-											<SelectItem key={segment.kind} value={segment.kind} className="py-2.5">
-												<span className="flex w-full items-center justify-between gap-3">
-													<span>{segment.label}</span>
-													<span className="text-muted-foreground text-xs">({segment.person_count})</span>
-												</span>
-											</SelectItem>
-										))}
-								</SelectContent>
-							</Select>
-						)}
+				{/* Controls */}
+				<div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3">
+					{/* Sort Control */}
+					<div className="flex flex-col gap-2">
+						<label className="font-medium text-xs">Sort by:</label>
+						<select
+							value={sortBy}
+							onChange={(e) => setSortBy(e.target.value as "impact" | "frequency")}
+							className="rounded border bg-background px-2 py-1 text-sm"
+						>
+							<option value="impact">Impact Score</option>
+							<option value="frequency">Frequency</option>
+						</select>
 					</div>
 
-					{/* Controls */}
-					<div className="flex flex-col gap-3 rounded-lg border bg-muted/30 p-3">
-						{/* Sort Control */}
-						<div className="flex flex-col gap-2">
-							<label className="font-medium text-xs">Sort by:</label>
-							<select
-								value={sortBy}
-								onChange={(e) => setSortBy(e.target.value as "impact" | "frequency")}
-								className="rounded border bg-background px-2 py-1 text-sm"
-							>
-								<option value="impact">Impact Score</option>
-								<option value="frequency">Frequency</option>
-							</select>
+					{/* Filter Control */}
+					<div className="flex flex-col gap-2">
+						<label className="font-medium text-xs">Min Impact:</label>
+						<div className="flex items-center gap-2">
+							<input
+								type="range"
+								min="0"
+								max="3"
+								step="0.1"
+								value={minImpact}
+								onChange={(e) => setMinImpact(Number.parseFloat(e.target.value))}
+								className="flex-1"
+							/>
+							<span className="w-8 text-right font-medium text-xs">{minImpact.toFixed(1)}</span>
 						</div>
-
-						{/* Filter Control */}
-						<div className="flex flex-col gap-2">
-							<label className="font-medium text-xs">Min Impact:</label>
-							<div className="flex items-center gap-2">
-								<input
-									type="range"
-									min="0"
-									max="3"
-									step="0.1"
-									value={minImpact}
-									onChange={(e) => setMinImpact(Number.parseFloat(e.target.value))}
-									className="flex-1"
-								/>
-								<span className="w-8 text-right font-medium text-xs">{minImpact.toFixed(1)}</span>
-							</div>
-							<div className="text-[10px] text-muted-foreground">
-								Showing {filteredPainThemes.length} of {matrix.pain_themes.length} pains
-							</div>
+						<div className="text-[10px] text-muted-foreground">
+							Showing {filteredPainThemes.length} of {matrix.pain_themes.length} pains
 						</div>
 					</div>
 				</div>

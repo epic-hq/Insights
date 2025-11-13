@@ -128,25 +128,27 @@ const sectionSchema = z.object({
 })
 
 const insightSchema = z.object({
-	id: z.string(),
-	name: z.string(),
-	details: z.string().nullable(),
-	category: z.string().nullable(),
-	pain: z.string().nullable(),
-	desired_outcome: z.string().nullable(),
-	journey_stage: z.string().nullable(),
-	emotional_response: z.string().nullable(),
-	confidence: z.string().nullable(),
-	impact: z.number().nullable(),
-	novelty: z.number().nullable(),
-	opportunity_ideas: z.array(z.string()).optional(),
-	related_tags: z.array(z.string()).optional(),
-	tags: z.array(z.string()).optional(),
-	interview_id: z.string().nullable(),
-	project_id: z.string().nullable(),
-	created_at: z.string().nullable(),
-	updated_at: z.string().nullable(),
-	url: z.string().nullable(),
+  id: z.string(),
+  name: z.string(),
+  details: z.string().nullable(),
+  category: z.string().nullable(),
+  pain: z.string().nullable(),
+  desired_outcome: z.string().nullable(),
+  journey_stage: z.string().nullable(),
+  emotional_response: z.string().nullable(),
+  confidence: z.string().nullable(),
+  impact: z.number().nullable(),
+  novelty: z.number().nullable(),
+  opportunity_ideas: z.array(z.string()).optional(),
+  related_tags: z.array(z.string()).optional(),
+  tags: z.array(z.string()).optional(),
+  vote_count: z.number().nullable().optional(),
+  priority: z.number().nullable().optional(),
+  interview_id: z.string().nullable(),
+  project_id: z.string().nullable(),
+  created_at: z.string().nullable(),
+  updated_at: z.string().nullable(),
+  url: z.string().nullable(),
 })
 
 const evidenceSchema = z.object({
@@ -537,6 +539,14 @@ export const fetchProjectStatusContextTool = createTool({
 					if (error) throw error
 
 					const insightIds = insights?.map((insight) => insight.id) || []
+					const priorityMap = new Map<string, number>()
+					if (insightIds.length) {
+						const { data: priorityRows } = await supabase
+							.from("insights_with_priority")
+							.select("id, priority")
+							.in("id", insightIds)
+						priorityRows?.forEach((row) => priorityMap.set(row.id, row.priority ?? 0))
+					}
 					const { data: tagsRows } =
 						insightIds.length > 0
 							? await supabase
@@ -573,6 +583,8 @@ export const fetchProjectStatusContextTool = createTool({
 									? insight.related_tags.filter((item): item is string => typeof item === "string")
 									: undefined,
 								tags,
+								vote_count: priorityMap.get(insight.id) ?? null,
+								priority: priorityMap.get(insight.id) ?? null,
 								interview_id: insight.interview_id,
 								project_id: insight.project_id,
 								created_at: normalizeDate(insight.created_at),

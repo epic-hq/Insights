@@ -40,7 +40,7 @@ export const getInsights = async ({
 	const insightIds = data?.map((i) => i.id) || []
 	const interviewIds = data?.map((i) => i.interview_id).filter(Boolean) as string[]
 
-	const [tagsResult, personasResult, interviewsResult, priorityResult] = insightIds.length
+	const [tagsResult, personasResult, interviewsResult, priorityResult, votesResult] = insightIds.length
 		? await Promise.all([
 				supabase
 					.from("insight_tags")
@@ -54,8 +54,14 @@ export const getInsights = async ({
 					? supabase.from("interviews").select("id, title").in("id", interviewIds)
 					: Promise.resolve({ data: null, error: null }),
 				supabase.from("insights_with_priority").select("id, priority").in("id", insightIds),
+				supabase
+					.from("votes")
+					.select("entity_id")
+					.eq("entity_type", "insight")
+					.eq("project_id", projectId)
+					.in("entity_id", insightIds),
 		  ])
-		: [null, null, null, null]
+		: [null, null, null, null, null]
 
 	const tagsMap = new Map<string, Array<{ tag?: string | null; term?: string | null; definition?: string | null }>>()
 	tagsResult?.data?.forEach((row) => {
@@ -79,6 +85,12 @@ export const getInsights = async ({
 	const priorityMap = new Map<string, number>()
 	priorityResult?.data?.forEach((row) => {
 		priorityMap.set(row.id, row.priority ?? 0)
+	})
+
+	const voteCountMap = new Map<string, number>()
+	votesResult?.data?.forEach((row) => {
+		if (!row.entity_id) return
+		voteCountMap.set(row.entity_id, (voteCountMap.get(row.entity_id) ?? 0) + 1)
 	})
 
 	// Get linked themes for all insights via evidence relationship
@@ -118,6 +130,7 @@ export const getInsights = async ({
 	const transformedData = data?.map((insight) => ({
 		...insight,
 		priority: priorityMap.get(insight.id) ?? 0,
+		vote_count: voteCountMap.get(insight.id) ?? 0,
 		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
 		interviews: insight.interview_id ? [interviewsMap.get(insight.interview_id) || null].filter(Boolean) : [],
 		insight_tags:

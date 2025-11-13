@@ -5,13 +5,13 @@ import { Link, useLoaderData, useParams } from "react-router-dom"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { Input } from "~/components/ui/input"
-import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { InsightsDataTable } from "~/features/insights/components/InsightsDataTableTS"
 import { getInsights } from "~/features/insights/db"
 import { PersonaThemeMatrix } from "~/features/themes/components/PersonaThemeMatrix"
 import { ThemeStudio } from "~/features/themes/components/ThemeStudio"
 import { userContext } from "~/server/user-context"
+import { cn } from "~/lib/utils"
 import type { Insight } from "~/types"
 
 export async function loader({ context, params }: LoaderFunctionArgs) {
@@ -43,10 +43,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	})
 	if (iErr) throw new Error(`Failed to load insights: ${iErr.message}`)
 
-	// 4) Load all evidence with personas (legacy) and interview for fallback only
+	// 4) Load all evidence used anywhere (for persona matrix)
 	const { data: allEvidence, error: eErr } = await supabase
 		.from("evidence")
-		.select("id, personas, interview_id")
+		.select("id, interview_id")
 		.eq("project_id", projectId)
 	if (eErr) throw new Error(`Failed to load evidence: ${eErr.message}`)
 
@@ -137,8 +137,7 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 				for (const p of plist) normalizedPersonas.add(p.name)
 			}
 		}
-		// Fallback to legacy evidence.personas if no normalized mapping
-		const finalPersonas = normalizedPersonas.size ? Array.from(normalizedPersonas) : (ev.personas ?? [])
+		const finalPersonas = Array.from(normalizedPersonas)
 		evidenceById.set(ev.id, { personas: finalPersonas, interview_id: ev.interview_id ?? undefined })
 		for (const persona of finalPersonas) personaSet.add(persona)
 	}
@@ -213,37 +212,35 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 export default function ThemesIndex() {
 	const { themes, matrixData, insights } = useLoaderData<typeof loader>()
 	const params = useParams()
-	const insightsTableUrl = `/a/${params.accountId ?? "785c124a-d1e2-4538-8908-df39b0973f5b"}/${params.projectId ?? "146e8fbe-99ab-4bce-a3ee-d7249c0decda"}/insights/table`
-	const [viewMode, setViewMode] = useState<"table" | "matrix" | "cards" | "alt">("table")
+	const [viewMode, setViewMode] = useState<"table" | "cards">("table")
 	const [searchQuery, setSearchQuery] = useState("")
 
-	const insightsTableData = useMemo(() => {
-		const priorityRank = (value?: string | number | null, fallback = 0) => {
-			const normalized = typeof value === "string" ? value.toLowerCase() : typeof value === "number" ? String(value).toLowerCase() : null
-			if (!normalized) return fallback
-			switch (normalized) {
-				case "high":
-					return 3
-				case "medium":
-					return 2
-				case "low":
-					return 1
-				default:
-					return fallback
-			}
-		}
+	const visibleInsights = useMemo(() => {
+		return insights.filter((insight) => {
+			const textFields = [
+				insight.name,
+				insight.pain,
+				insight.details,
+				insight.category,
+				insight.statement,
+				insight.jtbd,
+				insight.desired_outcome,
+				insight.evidence,
+			]
+				.map((value) => (typeof value === "string" ? value.trim() : ""))
+				.filter((value) => value.length > 0)
 
-		return insights.map((insight, index) => ({
-			...insight,
-			priority: priorityRank((insight as any).priority, Math.max(insights.length - index, 0)),
-		}))
+			return textFields.length > 0
+		})
 	}, [insights])
+
+	const insightsTableData = useMemo(() => [...visibleInsights], [visibleInsights])
 
 	const filteredCardInsights = useMemo(() => {
 		const normalized = searchQuery.trim().toLowerCase()
 		if (!normalized) return insights
 
-		return insights.filter((insight: Insight & { [key: string]: any }) => {
+	return visibleInsights.filter((insight: Insight & { [key: string]: any }) => {
 			const haystack = [
 				insight.name,
 				insight.pain,
@@ -301,68 +298,43 @@ export default function ThemesIndex() {
 					</p>
 				</div>
 				<div className="flex w-full flex-col gap-2 sm:w-auto sm:flex-row sm:items-center sm:gap-3">
-					<Button
-						variant="secondary"
-						size="sm"
-						className="h-9 rounded-full border border-border/70 bg-background px-4 font-medium text-foreground hover:bg-background/80"
-						asChild
-					>
-						<Link to={insightsTableUrl} className="flex items-center gap-2">
-							<Columns3 className="h-4 w-4" />
-							Insights Table
-						</Link>
-					</Button>
-					<div className="hidden h-9 w-px bg-border/70 sm:block" />
-				<ToggleGroup
-					type="single"
-					value={viewMode}
-					onValueChange={(next) => next && setViewMode(next as "table" | "matrix" | "cards" | "alt")}
-					size="sm"
-					className="shrink-0 rounded-full border border-border/70 bg-background/60 p-0.5 text-xs"
-				>
-					<ToggleGroupItem value="table" aria-label="Insights table view" className="gap-2 rounded-full px-3">
-						<Grid3X3 className="h-4 w-4" />
-						Table
-					</ToggleGroupItem>
-					<ToggleGroupItem value="matrix" aria-label="Matrix view" className="gap-2 rounded-full px-3">
-						<List className="h-4 w-4" />
-						Matrix
-					</ToggleGroupItem>
-					<ToggleGroupItem value="cards" aria-label="Card view" className="gap-2 rounded-full px-3">
-						<List className="h-4 w-4" />
-						Cards
-					</ToggleGroupItem>
-					<ToggleGroupItem value="alt" aria-label="Alternative card view" className="gap-2 rounded-full px-3">
-						<List className="h-4 w-4" />
-						Alt View
-					</ToggleGroupItem>
-				</ToggleGroup>
+					<div className="flex flex-wrap gap-2">
+						{[
+							{ label: "Table", icon: Grid3X3, mode: "table" },
+							{ label: "Cards", icon: List, mode: "cards" },
+						].map(({ label, icon: Icon, mode }) => (
+							<Button
+								key={mode}
+								variant="ghost"
+								size="sm"
+								onClick={() => setViewMode(mode as "table" | "cards")}
+								className={cn(
+									"gap-2 rounded-full px-3 text-xs font-semibold tracking-wide transition-all focus-visible:ring-2 focus-visible:ring-ring",
+									viewMode === mode ? "bg-secondary text-secondary-foreground shadow" : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
+								)}
+								aria-pressed={viewMode === mode}
+							>
+								<Icon className="h-4 w-4" />
+								{label}
+							</Button>
+						))}
+					</div>
 			</div>
 		</div>
 
 			{viewMode === "table" ? (
 				<InsightsDataTable data={insightsTableData} />
-			) : viewMode === "matrix" && matrixData.length > 0 ? (
-				<PersonaThemeMatrix matrixData={matrixData} />
-			) : viewMode === "matrix" ? (
-				<div className="py-12 text-center text-foreground/60">
-					<p>No persona data available. Add evidence with personas to see the matrix.</p>
+			) : filteredCardInsights.length === 0 ? (
+				<div className="rounded-lg border border-dashed bg-muted/30 py-16 text-center text-muted-foreground">
+					<p className="font-medium">No insights match your filters</p>
+					{searchQuery ? <p className="mt-2 text-sm">Try a different keyword or clear the search field.</p> : null}
 				</div>
-			) : viewMode === "cards" ? (
-				filteredCardInsights.length === 0 ? (
-					<div className="rounded-lg border border-dashed bg-muted/30 py-16 text-center text-muted-foreground">
-						<p className="font-medium">No insights match your filters</p>
-						{searchQuery ? <p className="mt-2 text-sm">Try a different keyword or clear the search field.</p> : null}
-					</div>
-				) : (
-					<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
-						{filteredCardInsights.map((insight) => (
-							<InsightCardV3 key={insight.id} insight={insight} />
-						))}
-					</div>
-				)
 			) : (
-				<ThemeStudio themes={themes} />
+				<div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
+					{filteredCardInsights.map((insight) => (
+						<InsightCardV3 key={insight.id} insight={insight} />
+					))}
+				</div>
 			)}
 		</PageContainer>
 	)

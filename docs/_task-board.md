@@ -16,7 +16,7 @@
 - [x] Fix Mastra instrumentation.mjs missing file error
 Remaining Critical:
 - [x] People not added. `app/utils/processInterview.server.ts` it was accountId param query again.
-- [ ] Verify personas & people linked into themes, evidence, insights.
+- [x] Verify personas & people linked into themes, evidence, insights.
 - [x] Verify db fns updated to just match projectId. accountId should not be used. (people, projects, interviews)
 
 ## Simple UI
@@ -26,6 +26,7 @@ Remaining Critical:
 - [ ] Detect mobile and implement mobile version.
 
 ## Wow with Insights - Make Qualitative data more useful
+- [x] Migrate legacy insights table usage to themes (+ compatibility views, RLS read-only legacy table)
 
 - [ ] How clear is it what we've helped you learn?
 - [ ] How informative is it? what could be better?

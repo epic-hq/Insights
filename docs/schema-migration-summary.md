@@ -83,7 +83,7 @@ All routes updated to use junction table queries:
 
 ```typescript
 const { data } = await supabase
-  .from('insights')
+  .from('themes')
   .select('*, related_tags')
   .eq('account_id', accountId)
 ```
@@ -92,7 +92,7 @@ const { data } = await supabase
 
 ```typescript
 const { data } = await supabase
-  .from('insights')
+  .from('themes')
   .select(`
     *,
     insight_tags(tag)
