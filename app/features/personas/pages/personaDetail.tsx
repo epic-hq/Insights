@@ -90,16 +90,16 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Fetch people linked via junction table
 	const { data: peopleData, error: peopleError } = await supabase
 		.from("people_personas")
-		.select("people ( * )")
+		.select("people!inner(*)")
 		.eq("persona_id", personaId)
-	// .eq("account_id", accountId)
 
 	if (peopleError) {
+		consola.error("Error fetching people:", peopleError)
 		throw new Response(`Error fetching people: ${peopleError.message}`, { status: 500 })
 	}
 
 	const people: Array<{ id: string; name: string | null; segment: string | null; description: string | null }> =
-		peopleData?.map((pp: any) => pp.people) ?? []
+		peopleData?.map((pp: any) => pp.people).filter(Boolean) ?? []
 
 	// Fetch interviews where people with this persona participated
 	const peopleIds = people.map((p) => p.id)

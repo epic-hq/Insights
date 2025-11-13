@@ -137,19 +137,11 @@ export async function generatePainMatrix(opts: {
 	})
 	consola.info(`[generatePainMatrix] Found ${userGroups.length} user groups`)
 
-	// 2. Get all evidence with pains (support both old and new formats)
-	// Old format: pains text[] column
-	// New format: evidence_facet table with kind_slug='pain'
+	// 2. Get all evidence with pains from evidence_facet table (NEW FORMAT ONLY)
+	// NOTE: We now ONLY use evidence_facet table (kind_slug='pain') because the old pains[] column
+	// contained corrupted data in "when X blocked by..." format. The evidence_facet table has clean data.
 
-	// First, get evidence with old-style pains array
-	const { data: evidenceOldFormat, error: evidenceError1 } = await supabase
-		.from("evidence")
-		.select("id, verbatim, confidence, pains")
-		.eq("project_id", projectId)
-		.not("pains", "is", null)
-
-	// Then get evidence with new-style evidence_facet
-	const { data: evidenceNewFormat, error: evidenceError2 } = await supabase
+	const { data: evidenceNewFormat, error: evidenceError } = await supabase
 		.from("evidence")
 		.select(
 			`
@@ -165,23 +157,10 @@ export async function generatePainMatrix(opts: {
 		.eq("project_id", projectId)
 		.eq("evidence_facet.kind_slug", "pain")
 
-	if (evidenceError1) throw evidenceError1
-	if (evidenceError2) throw evidenceError2
+	if (evidenceError) throw evidenceError
 
-	// Normalize both formats to a common structure
-	const evidenceFromOldFormat = (evidenceOldFormat || [])
-		.filter((ev) => ev.pains && ev.pains.length > 0)
-		.flatMap((ev) =>
-			ev.pains.map((painText: string) => ({
-				id: ev.id,
-				verbatim: ev.verbatim,
-				confidence: ev.confidence,
-				pain_label: painText,
-				source_format: "old",
-			}))
-		)
-
-	const evidenceFromNewFormat = (evidenceNewFormat || []).map((ev) => {
+	// Normalize to common structure
+	const evidenceWithPains = (evidenceNewFormat || []).map((ev) => {
 		const facets = Array.isArray(ev.evidence_facet) ? ev.evidence_facet : [ev.evidence_facet]
 		const painFacet = facets.find((f) => f.kind_slug === "pain")
 		return {
@@ -193,10 +172,8 @@ export async function generatePainMatrix(opts: {
 		}
 	})
 
-	const evidenceWithPains = [...evidenceFromOldFormat, ...evidenceFromNewFormat]
-
 	consola.info(
-		`[generatePainMatrix] Found ${evidenceWithPains.length} evidence items with pains (${evidenceFromOldFormat.length} old format, ${evidenceFromNewFormat.length} new format)`
+		`[generatePainMatrix] Found ${evidenceWithPains.length} evidence items with pains from evidence_facet table`
 	)
 
 	// 3. Get evidence -> people mappings from evidence_people junction table
@@ -403,9 +380,13 @@ async function clusterPainsBySemantic(opts: {
 
 	// Get unique pain labels with evidence IDs
 	const painLabelMap = new Map<string, any[]>()
+	let emptyLabelCount = 0
 	for (const ev of evidenceWithPains) {
 		const painLabel = ev.pain_label?.trim()
-		if (!painLabel) continue
+		if (!painLabel) {
+			emptyLabelCount++
+			continue
+		}
 
 		const normalized = normalizePainLabel(painLabel)
 		const group = painLabelMap.get(normalized) ?? []
@@ -413,12 +394,21 @@ async function clusterPainsBySemantic(opts: {
 		painLabelMap.set(normalized, group)
 	}
 
+	consola.info(
+		`[clusterPainsBySemantic] Found ${painLabelMap.size} unique pain labels (${emptyLabelCount} evidence with no label, ${evidenceWithPains.length} total)`
+	)
+
 	// Filter out pains with insufficient evidence
 	const validPainLabels = Array.from(painLabelMap.entries()).filter(
 		([_, evidence]) => evidence.length >= minEvidencePerPain
 	)
 
+	consola.info(
+		`[clusterPainsBySemantic] ${validPainLabels.length} pain labels pass threshold (minEvidence=${minEvidencePerPain})`
+	)
+
 	if (validPainLabels.length === 0) {
+		consola.warn("[clusterPainsBySemantic] No pain labels passed minEvidence threshold")
 		return []
 	}
 

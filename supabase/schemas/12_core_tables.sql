@@ -394,6 +394,9 @@ create table if not exists person_facet (
   evidence_id uuid,
   confidence numeric default 0.8 check (confidence >= 0 and confidence <= 1),
   noted_at timestamptz default now(),
+  embedding vector(1536), -- Semantic embedding for clustering similar facets
+  embedding_model text default 'text-embedding-3-small',
+  embedding_generated_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   primary key (person_id, facet_account_id)
@@ -402,6 +405,18 @@ create table if not exists person_facet (
 CREATE INDEX IF NOT EXISTS idx_person_facet_account ON public.person_facet(account_id);
 CREATE INDEX IF NOT EXISTS idx_person_facet_project ON public.person_facet(project_id);
 CREATE INDEX IF NOT EXISTS idx_person_facet_facet_account ON public.person_facet(facet_account_id);
+
+-- HNSW index for semantic similarity search on person facet embeddings
+do $$
+begin
+  if not exists (
+    select 1 from pg_indexes
+    where tablename = 'person_facet' and indexname = 'person_facet_embedding_idx'
+  ) then
+    create index person_facet_embedding_idx on public.person_facet
+    using hnsw (embedding vector_cosine_ops);
+  end if;
+end $$;
 
 CREATE TRIGGER set_person_facet_timestamp
     BEFORE INSERT OR UPDATE ON public.person_facet

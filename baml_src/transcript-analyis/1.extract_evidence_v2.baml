@@ -96,7 +96,27 @@ Your task is to produce an exhaustive, chronological Event Stream from an interv
 High-severity pains, frequent/recency-marked behaviors, explicit goals, success criteria.
 Workarounds, hacks, switching triggers, evaluation criteria, blockers, willingness-to-pay signals.
 Moments that reveal motivations, anxieties, decision criteria, or definitions of success.
-Skip generic filler unless it informs a concrete outcome.
+
+## SKIP Non-Evidence (Do NOT Extract)
+- Weather talk, bathroom breaks, technical difficulties
+- Social pleasantries ("nice to meet you", "how are you", "have a great day")
+- Procedural questions ("can we continue?", "is this recording?", "can you hear me?")
+- Off-topic chitchat unrelated to product, workflow, or user psychology
+- Interviewer instructions or transitions unless they reveal user confusion/friction
+
+Examples to SKIP:
+❌ "It's really hot today" - weather
+❌ "Can I grab some water real quick?" - procedural
+❌ "That's fine, go ahead" - generic acknowledgment
+❌ "So, let's talk about..." - interviewer transition (no signal)
+
+Examples to EXTRACT:
+✅ "I wish the tool would..." - pain/goal
+✅ "I usually work around that by..." - workaround/behavior
+✅ "It's frustrating when..." - pain with emotional signal
+✅ "I use Notion because..." - tool + rationale
+
+ONLY extract turns with business or psychographic relevance.
 
 ## EvidenceTurn
 - index: 0-based chronological index (strictly ascending) and equals its position in the stream.

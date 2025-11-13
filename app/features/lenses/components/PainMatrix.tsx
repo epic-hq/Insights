@@ -76,13 +76,6 @@ export function PainMatrixComponent({
 				<label className="mb-3 block font-medium text-sm">Filter by Segment</label>
 				{segments && onSegmentChange && (
 					<div className="flex flex-wrap gap-2">
-						<Badge
-							variant={!selectedSegmentSlug || selectedSegmentSlug === "all" ? "default" : "outline"}
-							className="cursor-pointer transition-colors hover:bg-primary/80"
-							onClick={() => onSegmentChange("all")}
-						>
-							All Segments
-						</Badge>
 						{segments
 							.filter((s) => s.person_count > 0)
 							.map((segment) => (

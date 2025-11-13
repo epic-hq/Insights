@@ -154,6 +154,8 @@ const routes = [
 	route("api.analysis-retry", "./routes/api.analysis-retry.tsx"),
 	route("api/generate-themes", "./routes/api/generate-themes.tsx"),
 	route("api/generate-persona-insights", "./routes/api/generate-persona-insights.ts"),
+	route("api/generate-icp-recommendations", "./routes/api.generate-icp-recommendations.ts"),
+	route("api/create-persona-from-icp", "./routes/api.create-persona-from-icp.ts"),
 	route("api/generate-followup-questions", "./routes/api.generate-followup-questions.tsx"),
 	route("api/improve-question", "./routes/api.improve-question.tsx"),
 	route("api/questions/:questionId", "./routes/api.questions.$questionId.tsx"),

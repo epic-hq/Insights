@@ -1,11 +1,13 @@
 /**
- * Product Lens - Pain × User Matrix Analysis
- * Aggregates pain points and creates a 2x2 matrix of Pain Intensity vs Willingness to Pay
+ * ICP Discovery - Identify Ideal Customer Profiles
+ * Analyzes pain points, bullseye scores, and customer segments to recommend target ICPs
  */
 
 import consola from "consola"
 import { useState } from "react"
-import { type LoaderFunctionArgs, useLoaderData, useNavigate, useNavigation } from "react-router"
+import { Form, type LoaderFunctionArgs, useLoaderData, useNavigate, useNavigation, useFetcher } from "react-router"
+import { Button } from "~/components/ui/button"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 import { getSegmentKindSummaries } from "~/features/segments/services/segmentData.server"
 import { userContext } from "~/server/user-context"
 import { PainMatrixComponent } from "../components/PainMatrix"
@@ -27,20 +29,39 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 
 	// Get selected segment kind from query params
 	const url = new URL(request.url)
-	const segmentKindSlug = url.searchParams.get("segment")
+	let segmentKindSlug = url.searchParams.get("segment")
 
 	try {
 		const segments = await getSegmentKindSummaries(supabase, projectId)
 
+		// If no segment specified, default to first one with people
+		if (!segmentKindSlug) {
+			const segmentWithPeople = segments.find((s) => s.person_count > 0)
+			segmentKindSlug = segmentWithPeople?.kind || "preference" // Fallback to preference if none found
+		}
+
 		const matrix = await generatePainMatrix({
 			supabase,
 			projectId,
-			segmentKindSlug: segmentKindSlug || undefined,
-			minEvidencePerPain: 2,
+			segmentKindSlug,
+			minEvidencePerPain: 1, // Lowered from 2 to capture more themes
 			minGroupSize: 1,
 		})
 
-		return { matrix, projectId, segments, selectedSegmentSlug: segmentKindSlug }
+		// Fetch existing ICP recommendations
+		const { data: icpRecs } = await supabase
+			.from("icp_recommendations")
+			.select("*")
+			.eq("project_id", projectId)
+			.single()
+
+		return {
+			matrix,
+			projectId,
+			segments,
+			selectedSegmentSlug: segmentKindSlug,
+			icpRecommendations: icpRecs?.recommendations || null,
+		}
 	} catch (error) {
 		consola.error("Product Lens loader error:", error)
 		throw new Response("Failed to generate pain matrix", { status: 500 })
@@ -48,7 +69,7 @@ export async function loader({ context, params, request }: LoaderFunctionArgs) {
 }
 
 export default function ProductLens() {
-	const { matrix, segments, selectedSegmentSlug } = useLoaderData<typeof loader>()
+	const { matrix, segments, selectedSegmentSlug, icpRecommendations, projectId } = useLoaderData<typeof loader>()
 	const [selectedCell, setSelectedCell] = useState<PainMatrixCell | null>(null)
 	const navigate = useNavigate()
 	const navigation = useNavigation()
@@ -56,11 +77,7 @@ export default function ProductLens() {
 	const isLoading = navigation.state === "loading"
 
 	const handleSegmentChange = (kindSlug: string) => {
-		if (kindSlug === "all") {
-			navigate("?")
-		} else {
-			navigate(`?segment=${kindSlug}`)
-		}
+		navigate(`?segment=${kindSlug}`)
 	}
 
 	if (!matrix) {
@@ -71,15 +88,117 @@ export default function ProductLens() {
 		)
 	}
 
+	const generateFetcher = useFetcher()
+	const isGenerating = generateFetcher.state !== "idle"
+
+	const createPersonaFetcher = useFetcher()
+
+	const handleCreatePersona = (icp: any) => {
+		// Create persona with ICP data
+		const formData = new FormData()
+		formData.append("name", icp.name)
+		formData.append(
+			"description",
+			`Target customer: ${icp.name}\n\nMarket size: ${icp.stats.count} people\nAvg Bullseye: ${icp.stats.bullseye_avg?.toFixed(1) || "N/A"}\n\nTop Pains:\n${icp.stats.top_pains?.map((p: string) => `• ${p}`).join("\n") || "None"}`
+		)
+		formData.append("facets", JSON.stringify(icp.facets))
+		formData.append("projectId", projectId)
+
+		createPersonaFetcher.submit(formData, {
+			method: "post",
+			action: "/api/create-persona-from-icp",
+		})
+	}
+
 	return (
 		<div className="space-y-6 p-6">
 			{/* Header */}
 			<div className="flex items-start justify-between gap-4">
 				<div>
-					<h1 className="font-bold text-3xl">Pain-Segment Lens</h1>
-					<p className="text-muted-foreground">Map pain by customer segment to find the wedge opportunities.</p>
+					<h1 className="font-bold text-3xl">ICP Discovery</h1>
+					<p className="text-muted-foreground">
+						Identify your Ideal Customer Profile by analyzing pain intensity, bullseye scores, and market segments.
+					</p>
 				</div>
 			</div>
+
+			{/* ICP Recommendations Section */}
+			<Card>
+				<CardHeader>
+					<CardTitle>Ideal Customer Profile Recommendations</CardTitle>
+					<CardDescription>
+						AI-suggested customer segments with high pain intensity and market potential
+					</CardDescription>
+				</CardHeader>
+				<CardContent>
+					{!icpRecommendations ? (
+						<div className="flex flex-col items-center gap-4 py-8">
+							<p className="text-center text-muted-foreground text-sm">
+								Generate AI-powered ICP recommendations based on your pain matrix data
+							</p>
+							<generateFetcher.Form method="post" action="/api/generate-icp-recommendations">
+								<input type="hidden" name="projectId" value={projectId} />
+								<Button type="submit" disabled={isGenerating}>
+									{isGenerating ? "Generating..." : "Generate ICP Recommendations"}
+								</Button>
+							</generateFetcher.Form>
+						</div>
+					) : (
+						<div className="space-y-4">
+							<div className="grid gap-4 md:grid-cols-3">
+								{(icpRecommendations as any[]).slice(0, 3).map((icp: any, idx: number) => (
+									<Card key={idx} className="border-2">
+										<CardHeader className="pb-3">
+											<CardTitle className="text-lg">{icp.name}</CardTitle>
+										</CardHeader>
+										<CardContent className="space-y-3">
+											<div className="space-y-2 text-sm">
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Market Size:</span>
+													<span className="font-semibold">{icp.stats.count} people</span>
+												</div>
+												<div className="flex justify-between">
+													<span className="text-muted-foreground">Avg Bullseye:</span>
+													<span className="font-semibold">{icp.stats.bullseye_avg?.toFixed(1) || "N/A"}</span>
+												</div>
+												{icp.stats.top_pains && icp.stats.top_pains.length > 0 && (
+													<div className="pt-2">
+														<span className="text-muted-foreground text-xs">Top Pains:</span>
+														<ul className="mt-1 space-y-1">
+															{icp.stats.top_pains.slice(0, 2).map((pain: string, i: number) => (
+																<li key={i} className="text-xs">
+																	• {pain}
+																</li>
+															))}
+														</ul>
+													</div>
+												)}
+											</div>
+											<Button
+												size="sm"
+												className="w-full"
+												variant="outline"
+												onClick={() => handleCreatePersona(icp)}
+												disabled={createPersonaFetcher.state !== "idle"}
+											>
+												{createPersonaFetcher.state !== "idle" ? "Creating..." : "Create Persona from This"}
+											</Button>
+										</CardContent>
+									</Card>
+								))}
+							</div>
+							<div className="flex justify-end">
+								<generateFetcher.Form method="post" action="/api/generate-icp-recommendations">
+									<input type="hidden" name="projectId" value={projectId} />
+									<Button type="submit" variant="ghost" size="sm" disabled={isGenerating}>
+										{isGenerating ? "Regenerating..." : "Regenerate Recommendations"}
+									</Button>
+								</generateFetcher.Form>
+							</div>
+						</div>
+					)}
+				</CardContent>
+			</Card>
 
 			{/* Loading Overlay */}
 			{isLoading && (

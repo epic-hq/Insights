@@ -12,6 +12,10 @@ export const SEGMENT_KIND_SLUGS = [
 	"industry",
 	"life_stage",
 	"age_range",
+	"tool",
+	"workflow",
+	"preference",
+	"value",
 ]
 
 export const SEGMENT_KIND_LABELS: Record<string, string> = {
@@ -22,6 +26,10 @@ export const SEGMENT_KIND_LABELS: Record<string, string> = {
 	industry: "Industries",
 	life_stage: "Life Stages",
 	age_range: "Age Ranges",
+	tool: "Tools",
+	workflow: "Workflows",
+	preference: "Preferences",
+	value: "Values",
 }
 
 // Define types for complex nested query results

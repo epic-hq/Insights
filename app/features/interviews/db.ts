@@ -208,7 +208,7 @@ export const getInterviewInsights = async ({
 	if (insightIds.length) {
 		const { data: tagRows } = await supabase
 			.from("insight_tags")
-			.select(`insight_id, tags (tag)`)
+			.select("insight_id, tags (tag)")
 			.in("insight_id", insightIds)
 
 		tagRows?.forEach((row) => {

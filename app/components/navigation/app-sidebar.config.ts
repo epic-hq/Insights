@@ -78,7 +78,7 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 		items: [
 			{
 				key: "product-lens",
-				title: "Pain Matrix",
+				title: "ICP Discovery",
 				description: "Pain × user segments matrix",
 				icon: Grid3x3,
 				to: (routes) => routes.productLens(),

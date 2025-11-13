@@ -71,19 +71,17 @@ export const getPeople = async ({
                                 )
 			)`
 
-	// For project scope, add inner join on project_people to filter by project
-	const selectString = scope === "project"
-		? `${baseSelect}, project_people!inner(project_id)`
-		: baseSelect
-
+	// Build query based on scope
 	let query = supabase
 		.from("people")
-		.select(selectString)
+		.select(baseSelect)
 		.eq("account_id", accountId)
 
-	// Filter by project using the junction table
+	// Filter by project using the project_id column directly
+	// NOTE: We use people.project_id instead of project_people junction table
+	// because junction records may not always be created/maintained
 	if (scope === "project") {
-		query = query.eq("project_people.project_id", projectId)
+		query = query.eq("project_id", projectId)
 	}
 
 	const { data, error} = await query.order("created_at", { ascending: false })
@@ -166,19 +164,7 @@ export const getPersonById = async ({
                                 interviews (
                                         id,
                                         title,
-                                        created_at,
-                                        insights (
-						id,
-						name,
-						category,
-						pain,
-						details,
-						desired_outcome,
-						evidence,
-						journey_stage,
-						emotional_response,
-						project_id
-					)
+                                        created_at
 				)
 			)
 		`)
@@ -324,14 +310,7 @@ const _getPeopleWithValidation = async ({
                         interview_people (
                                 interviews (
                                         id,
-                                        title,
-                                        insights (
-						id,
-						name,
-						category,
-						pain,
-						journey_stage
-					)
+                                        title
 				)
 			)
 		`)
