@@ -1,11 +1,9 @@
 import type { Meta, StoryObj } from "@storybook/react"
-import { reactRouterParameters, withRouter } from "storybook-addon-remix-react-router"
 import InterviewDetail from "./detail"
 
 const meta = {
 	title: "Features/Interviews/InterviewDetail",
 	component: InterviewDetail,
-	decorators: [withRouter],
 	parameters: {
 		layout: "fullscreen",
 	},
