@@ -3,8 +3,8 @@
  * Bypasses the global queue to prioritize one project
  */
 
-const { createClient } = require("@supabase/supabase-js")
-const consola = require("consola")
+import { createClient } from "@supabase/supabase-js"
+import consola from "consola"
 
 const SUPABASE_URL = process.env.SUPABASE_URL!
 const SUPABASE_SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY!

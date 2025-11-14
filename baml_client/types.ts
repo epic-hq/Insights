@@ -969,6 +969,77 @@ export interface Persona1 {
   
 }
 
+export interface PersonaAdvisorContext {
+  project_name: string
+  project_description?: string | null
+  personas: PersonaAdvisorPersonaInput[]
+  research_insights: ResearchInsightInput[]
+  shared_themes: PersonaAdvisorThemeInput[]
+  total_personas: number
+  total_people: number
+  
+}
+
+export interface PersonaAdvisorFacetInput {
+  label: string
+  kind_slug: string
+  confidence?: number | null
+  source?: string | null
+  
+}
+
+export interface PersonaAdvisorPersonaInput {
+  name: string
+  tagline?: string | null
+  description?: string | null
+  quick_facts: string[]
+  people_count: number
+  percent?: number | null
+  motivations?: string[] | null
+  frustrations?: string[] | null
+  values?: string[] | null
+  goals?: string[] | null
+  primary_goal?: string | null
+  secondary_goals?: string[] | null
+  preferences?: string | null
+  tech_comfort_level?: string | null
+  key_tasks?: string[] | null
+  tools_used?: string[] | null
+  quotes?: string[] | null
+  facets: PersonaAdvisorFacetInput[]
+  scales: PersonaAdvisorScaleInput[]
+  themes: PersonaAdvisorThemeInput[]
+  
+}
+
+export interface PersonaAdvisorReport {
+  markdown: string
+  
+}
+
+export interface PersonaAdvisorScaleInput {
+  kind_slug: string
+  score?: number | null
+  band?: string | null
+  source?: string | null
+  confidence?: number | null
+  
+}
+
+export interface PersonaAdvisorThemeInput {
+  title: string
+  description?: string | null
+  pain?: string | null
+  desired_outcome?: string | null
+  emotional_response?: string | null
+  journey_stage?: string | null
+  category?: string | null
+  evidence?: string[] | null
+  persona_count?: number | null
+  priority?: number | null
+  
+}
+
 export interface PersonaAnalysis {
   persona_name: string
   key_pain_points: string[]
@@ -1128,6 +1199,14 @@ export interface ResearchGoal {
   icp: string
   role: string
   questions: ResearchQuestion[]
+  
+}
+
+export interface ResearchInsightInput {
+  title: string
+  summary: string
+  source?: string | null
+  evidence?: string[] | null
   
 }
 

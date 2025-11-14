@@ -20,7 +20,7 @@ $ pnpm add @boundaryml/baml
 
 import type { Image, Audio, Pdf, Video } from "@boundaryml/baml"
 import type { Checked, Check } from "./types"
-import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DealAdvisorRecommendation,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  KindTags,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetObservation,  PersonProfileInput,  PersonScaleInput,  PersonScaleObservation,  Persona,  Persona1,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TopPainCell,  TurnAnchors } from "./types"
+import type {  ActionButton,  Anchor,  AutoGroupThemesResponse,  AutoInsightsResponse,  BBValues,  BatchEvaluationResult,  Category,  Chapter,  ContextualSuggestions,  ConversationAnalysis,  ConversationQuestion,  ConversationRecommendation,  ConversationTakeaway,  DealAdvisorRecommendation,  DecisionQuestionAnswer,  DecisionQuestionItem,  DecisionQuestionOut,  Emotions,  EvidenceAnalysisResponse,  EvidenceExtraction,  EvidenceItem,  EvidenceLinkProposal,  EvidenceLinkResult,  EvidenceParticipant,  EvidenceQuestionLink,  EvidenceSet,  EvidenceTurn,  EvidenceUnit,  ExecutiveInsight,  ExecutiveSummary,  ExtractedInsight,  Extraction,  FacetCandidatePayload,  FacetCatalog,  FacetCatalogEntry,  FacetCatalogKind,  FacetMention,  FollowUpQuestion,  FollowUpQuestionScores,  FollowUpSet,  GapAnalysis,  GenerateInputs,  HistoryItem,  InsightMatch,  InterviewDoc,  InterviewExtraction,  InterviewMetadata,  InterviewPromptItem,  InterviewPromptOut,  KindTags,  NoteSnippet,  OpportunityRecommendation,  PainMatrixInsights,  PainMatrixInsightsInput,  Participant,  ParticipantGoal,  Person,  PersonDescriptionSummary,  PersonEvidenceHighlight,  PersonFacetInput,  PersonFacetObservation,  PersonProfileInput,  PersonScaleInput,  PersonScaleObservation,  Persona,  Persona1,  PersonaAdvisorContext,  PersonaAdvisorFacetInput,  PersonaAdvisorPersonaInput,  PersonaAdvisorReport,  PersonaAdvisorScaleInput,  PersonaAdvisorThemeInput,  PersonaAnalysis,  PersonaAssignmentDecision,  PersonaExtraction,  PersonaFacet,  PersonaSet,  ProjectAnalysis,  ProjectNameDescription,  ProjectTemplateOut,  Question,  QuestionAnalysisSummary,  QuestionContext,  QuestionEvaluation,  QuestionImprovement,  QuestionIssue,  QuestionPolicy,  QuestionSet,  ResearchGoal,  ResearchInsightInput,  ResearchPlanOut,  ResearchQuestion,  ResearchQuestionAnswer,  ResearchQuestionItem,  ResearchQuestionOut,  ResearchQuestionSuggestions,  ResearchStructure,  Scene,  Scores,  Set,  SetRecord,  Source,  SpeakerUtterance,  Spectrum,  SuggestedQuestion,  ThemeCandidate,  TopPainCell,  TurnAnchors } from "./types"
 import type * as types from "./types"
 
 /******************************************************************************
@@ -581,6 +581,65 @@ export namespace partial_types {
       quotes?: string[] | null
       percentage?: number | null
     }
+    export interface PersonaAdvisorContext {
+      project_name?: string | null
+      project_description?: string | null
+      personas: PersonaAdvisorPersonaInput[]
+      research_insights: ResearchInsightInput[]
+      shared_themes: PersonaAdvisorThemeInput[]
+      total_personas?: number | null
+      total_people?: number | null
+    }
+    export interface PersonaAdvisorFacetInput {
+      label?: string | null
+      kind_slug?: string | null
+      confidence?: number | null
+      source?: string | null
+    }
+    export interface PersonaAdvisorPersonaInput {
+      name?: string | null
+      tagline?: string | null
+      description?: string | null
+      quick_facts: string[]
+      people_count?: number | null
+      percent?: number | null
+      motivations?: string[] | null
+      frustrations?: string[] | null
+      values?: string[] | null
+      goals?: string[] | null
+      primary_goal?: string | null
+      secondary_goals?: string[] | null
+      preferences?: string | null
+      tech_comfort_level?: string | null
+      key_tasks?: string[] | null
+      tools_used?: string[] | null
+      quotes?: string[] | null
+      facets: PersonaAdvisorFacetInput[]
+      scales: PersonaAdvisorScaleInput[]
+      themes: PersonaAdvisorThemeInput[]
+    }
+    export interface PersonaAdvisorReport {
+      markdown?: string | null
+    }
+    export interface PersonaAdvisorScaleInput {
+      kind_slug?: string | null
+      score?: number | null
+      band?: string | null
+      source?: string | null
+      confidence?: number | null
+    }
+    export interface PersonaAdvisorThemeInput {
+      title?: string | null
+      description?: string | null
+      pain?: string | null
+      desired_outcome?: string | null
+      emotional_response?: string | null
+      journey_stage?: string | null
+      category?: string | null
+      evidence?: string[] | null
+      persona_count?: number | null
+      priority?: number | null
+    }
     export interface PersonaAnalysis {
       persona_name?: string | null
       key_pain_points: string[]
@@ -708,6 +767,12 @@ export namespace partial_types {
       icp?: string | null
       role?: string | null
       questions: ResearchQuestion[]
+    }
+    export interface ResearchInsightInput {
+      title?: string | null
+      summary?: string | null
+      source?: string | null
+      evidence?: string[] | null
     }
     export interface ResearchPlanOut {
       goal?: string | null

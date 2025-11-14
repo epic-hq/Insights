@@ -155,6 +155,18 @@ export default class TypeBuilder {
     
     Persona1: ClassViewer<'Persona1', "name" | "description" | "age" | "gender" | "location" | "education" | "occupation" | "income" | "languages" | "segment" | "role" | "color_hex" | "image_url" | "motivations" | "values" | "frustrations" | "preferences" | "learning_style" | "tech_comfort_level" | "frequency_of_purchase" | "frequency_of_use" | "key_tasks" | "tools_used" | "primary_goal" | "secondary_goals" | "sources" | "quotes" | "percentage">;
     
+    PersonaAdvisorContext: ClassViewer<'PersonaAdvisorContext', "project_name" | "project_description" | "personas" | "research_insights" | "shared_themes" | "total_personas" | "total_people">;
+    
+    PersonaAdvisorFacetInput: ClassViewer<'PersonaAdvisorFacetInput', "label" | "kind_slug" | "confidence" | "source">;
+    
+    PersonaAdvisorPersonaInput: ClassViewer<'PersonaAdvisorPersonaInput', "name" | "tagline" | "description" | "quick_facts" | "people_count" | "percent" | "motivations" | "frustrations" | "values" | "goals" | "primary_goal" | "secondary_goals" | "preferences" | "tech_comfort_level" | "key_tasks" | "tools_used" | "quotes" | "facets" | "scales" | "themes">;
+    
+    PersonaAdvisorReport: ClassViewer<'PersonaAdvisorReport', "markdown">;
+    
+    PersonaAdvisorScaleInput: ClassViewer<'PersonaAdvisorScaleInput', "kind_slug" | "score" | "band" | "source" | "confidence">;
+    
+    PersonaAdvisorThemeInput: ClassViewer<'PersonaAdvisorThemeInput', "title" | "description" | "pain" | "desired_outcome" | "emotional_response" | "journey_stage" | "category" | "evidence" | "persona_count" | "priority">;
+    
     PersonaAnalysis: ClassViewer<'PersonaAnalysis', "persona_name" | "key_pain_points" | "unmet_needs" | "revenue_potential" | "willingness_to_pay" | "recommended_solutions" | "competitive_threats">;
     
     PersonaAssignmentDecision: ClassViewer<'PersonaAssignmentDecision', "action" | "persona_id" | "persona_name" | "confidence_score" | "reasoning" | "new_persona_data">;
@@ -188,6 +200,8 @@ export default class TypeBuilder {
     QuestionSet: ClassViewer<'QuestionSet', "sessionId" | "policy" | "categories" | "questions" | "history" | "round">;
     
     ResearchGoal: ClassViewer<'ResearchGoal', "goal" | "icp" | "role" | "questions">;
+    
+    ResearchInsightInput: ClassViewer<'ResearchInsightInput', "title" | "summary" | "source" | "evidence">;
     
     ResearchPlanOut: ClassViewer<'ResearchPlanOut', "goal" | "decision_questions" | "research_questions" | "interview_prompts" | "other_data_sources">;
     
@@ -234,7 +248,7 @@ export default class TypeBuilder {
     constructor() {
         this.tb = new _TypeBuilder({
           classes: new Set([
-            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DealAdvisorRecommendation","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetObservation","PersonProfileInput","PersonScaleInput","PersonScaleObservation","Persona","Persona1","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TopPainCell","TurnAnchors",
+            "ActionButton","Anchor","AutoGroupThemesResponse","AutoInsightsResponse","BatchEvaluationResult","Category","Chapter","ContextualSuggestions","ConversationAnalysis","ConversationQuestion","ConversationRecommendation","ConversationTakeaway","DealAdvisorRecommendation","DecisionQuestionAnswer","DecisionQuestionItem","DecisionQuestionOut","EvidenceAnalysisResponse","EvidenceExtraction","EvidenceItem","EvidenceLinkProposal","EvidenceLinkResult","EvidenceParticipant","EvidenceQuestionLink","EvidenceSet","EvidenceTurn","EvidenceUnit","ExecutiveInsight","ExecutiveSummary","ExtractedInsight","Extraction","FacetCandidatePayload","FacetCatalog","FacetCatalogEntry","FacetCatalogKind","FacetMention","FollowUpQuestion","FollowUpQuestionScores","FollowUpSet","GapAnalysis","GenerateInputs","HistoryItem","InsightMatch","InterviewDoc","InterviewExtraction","InterviewMetadata","InterviewPromptItem","InterviewPromptOut","KindTags","NoteSnippet","OpportunityRecommendation","PainMatrixInsights","PainMatrixInsightsInput","Participant","ParticipantGoal","Person","PersonDescriptionSummary","PersonEvidenceHighlight","PersonFacetInput","PersonFacetObservation","PersonProfileInput","PersonScaleInput","PersonScaleObservation","Persona","Persona1","PersonaAdvisorContext","PersonaAdvisorFacetInput","PersonaAdvisorPersonaInput","PersonaAdvisorReport","PersonaAdvisorScaleInput","PersonaAdvisorThemeInput","PersonaAnalysis","PersonaAssignmentDecision","PersonaExtraction","PersonaFacet","PersonaSet","ProjectAnalysis","ProjectNameDescription","ProjectTemplateOut","Question","QuestionAnalysisSummary","QuestionContext","QuestionEvaluation","QuestionImprovement","QuestionIssue","QuestionPolicy","QuestionSet","ResearchGoal","ResearchInsightInput","ResearchPlanOut","ResearchQuestion","ResearchQuestionAnswer","ResearchQuestionItem","ResearchQuestionOut","ResearchQuestionSuggestions","ResearchStructure","Scene","Scores","Set","SetRecord","Source","SpeakerUtterance","Spectrum","SuggestedQuestion","ThemeCandidate","TopPainCell","TurnAnchors",
           ]),
           enums: new Set([
             "BBValues","Emotions",
@@ -498,6 +512,30 @@ export default class TypeBuilder {
           "name","description","age","gender","location","education","occupation","income","languages","segment","role","color_hex","image_url","motivations","values","frustrations","preferences","learning_style","tech_comfort_level","frequency_of_purchase","frequency_of_use","key_tasks","tools_used","primary_goal","secondary_goals","sources","quotes","percentage",
         ]);
         
+        this.PersonaAdvisorContext = this.tb.classViewer("PersonaAdvisorContext", [
+          "project_name","project_description","personas","research_insights","shared_themes","total_personas","total_people",
+        ]);
+        
+        this.PersonaAdvisorFacetInput = this.tb.classViewer("PersonaAdvisorFacetInput", [
+          "label","kind_slug","confidence","source",
+        ]);
+        
+        this.PersonaAdvisorPersonaInput = this.tb.classViewer("PersonaAdvisorPersonaInput", [
+          "name","tagline","description","quick_facts","people_count","percent","motivations","frustrations","values","goals","primary_goal","secondary_goals","preferences","tech_comfort_level","key_tasks","tools_used","quotes","facets","scales","themes",
+        ]);
+        
+        this.PersonaAdvisorReport = this.tb.classViewer("PersonaAdvisorReport", [
+          "markdown",
+        ]);
+        
+        this.PersonaAdvisorScaleInput = this.tb.classViewer("PersonaAdvisorScaleInput", [
+          "kind_slug","score","band","source","confidence",
+        ]);
+        
+        this.PersonaAdvisorThemeInput = this.tb.classViewer("PersonaAdvisorThemeInput", [
+          "title","description","pain","desired_outcome","emotional_response","journey_stage","category","evidence","persona_count","priority",
+        ]);
+        
         this.PersonaAnalysis = this.tb.classViewer("PersonaAnalysis", [
           "persona_name","key_pain_points","unmet_needs","revenue_potential","willingness_to_pay","recommended_solutions","competitive_threats",
         ]);
@@ -564,6 +602,10 @@ export default class TypeBuilder {
         
         this.ResearchGoal = this.tb.classViewer("ResearchGoal", [
           "goal","icp","role","questions",
+        ]);
+        
+        this.ResearchInsightInput = this.tb.classViewer("ResearchInsightInput", [
+          "title","summary","source","evidence",
         ]);
         
         this.ResearchPlanOut = this.tb.classViewer("ResearchPlanOut", [
