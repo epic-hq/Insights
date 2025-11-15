@@ -23,6 +23,26 @@ export async function action({ request }: ActionFunctionArgs) {
 
 		consola.info(`[Generate Personas API] Starting persona generation for project ${projectId}`)
 
+		// Delete existing auto-generated personas (to avoid duplicates on re-generation)
+		// Keep manually created personas
+		const { data: existingPersonas } = await supabase
+			.from("personas")
+			.select("id")
+			.eq("project_id", projectId)
+			.eq("kind", "core") // Only delete core/contrast, not manually created ones
+			.or("kind.eq.core,kind.eq.contrast")
+
+		if (existingPersonas && existingPersonas.length > 0) {
+			const personaIds = existingPersonas.map((p) => p.id)
+			consola.info(`[Generate Personas API] Deleting ${personaIds.length} existing auto-generated personas`)
+
+			// Delete people_personas links first
+			await supabase.from("people_personas").delete().in("persona_id", personaIds)
+
+			// Then delete personas
+			await supabase.from("personas").delete().in("id", personaIds)
+		}
+
 		// Use the new facet-driven persona generation service
 		const { personas, people_links } = await generatePersonasForProject(supabase, projectId, accountId)
 
@@ -30,7 +50,7 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.warn("[Generate Personas API] No personas generated - insufficient data")
 			return {
 				success: false,
-				message: "Not enough data to generate personas. Need at least 2 people with shared facets.",
+				message: "Not enough data to generate personas. Need people with facets (job function, seniority, preferences, etc.) to cluster.",
 			}
 		}
 

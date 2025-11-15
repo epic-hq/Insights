@@ -95,10 +95,10 @@ async function clusterPeopleByFacets(
 
 	consola.info(`[Persona Generation] Found ${facetCombinationMap.size} unique facet combinations`)
 
-	// Create clusters from facet combinations with 2+ people
+	// Create clusters from facet combinations with 1+ people
 	const clusters: PersonaCluster[] = []
 	for (const [key, peopleSet] of facetCombinationMap.entries()) {
-		if (peopleSet.size >= 2) {
+		if (peopleSet.size >= 1) {
 			const facets = facetCombinationDetails.get(key)!
 			clusters.push({
 				people_ids: Array.from(peopleSet),
@@ -258,12 +258,10 @@ async function generatePersonaDescriptions(clusters: PersonaCluster[]): Promise<
 		persona: Partial<Persona>
 	}>
 > {
-	consola.info("[Persona Generation] Step 3: Generating AI descriptions for clusters")
+	consola.info(`[Persona Generation] Step 3: Generating AI descriptions for ${clusters.length} clusters (in parallel)`)
 
-	const results = []
-
-	// Generate all personas first
-	for (const cluster of clusters) {
+	// Generate all personas in parallel for speed
+	const promises = clusters.map(async (cluster) => {
 		const context = `
 Cluster Size: ${cluster.size} people
 
@@ -296,12 +294,20 @@ ${Object.entries(cluster.scales)
 				context // evidence context
 			)
 
-			results.push({ cluster, persona })
 			consola.info(`[Persona Generation] Generated persona: ${persona.name}`)
+			return { cluster, persona }
 		} catch (error) {
 			consola.error("[Persona Generation] Error generating persona for cluster:", error)
+			return null
 		}
-	}
+	})
+
+	const results = (await Promise.all(promises)).filter((r) => r !== null) as Array<{
+		cluster: PersonaCluster
+		persona: Partial<Persona>
+	}>
+
+	consola.info(`[Persona Generation] Generated ${results.length} persona descriptions`)
 
 	// De-duplicate semantically similar personas
 	const deduped = deduplicateSimilarPersonas(results)
@@ -320,8 +326,21 @@ function deduplicateSimilarPersonas(
 	const result: Array<{ cluster: PersonaCluster; persona: Partial<Persona> }> = []
 	const usedNames = new Set<string>()
 
+	consola.info(`[Persona Generation] Starting semantic deduplication on ${personas.length} personas`)
+
 	for (const item of personas) {
-		const nameLower = item.persona.name?.toLowerCase() || ""
+		const nameLower = (item.persona.name?.toLowerCase() || "").trim()
+
+		if (!nameLower) {
+			consola.warn("[Persona Generation] Skipping persona with empty name")
+			continue
+		}
+
+		// Check for exact duplicate first
+		if (usedNames.has(nameLower)) {
+			consola.info(`[Persona Generation] Skipping exact duplicate: "${item.persona.name}"`)
+			continue
+		}
 
 		// Check if we already have a very similar name
 		let isDuplicate = false
@@ -334,7 +353,7 @@ function deduplicateSimilarPersonas(
 			// If 50%+ word overlap, consider it a duplicate
 			if (overlap / newWords.length >= 0.5 && overlap >= 1) {
 				isDuplicate = true
-				consola.info(`[Persona Generation] Skipping duplicate persona "${item.persona.name}" (similar to "${existingName}")`)
+				consola.info(`[Persona Generation] Skipping similar persona "${item.persona.name}" (matches "${existingName}")`)
 				break
 			}
 		}
@@ -345,6 +364,7 @@ function deduplicateSimilarPersonas(
 		}
 	}
 
+	consola.info(`[Persona Generation] Deduplication complete: ${result.length} unique personas (from ${personas.length})`)
 	return result
 }
 
@@ -417,18 +437,16 @@ export async function generatePersonasForProject(
 	// Step 3: Generate AI descriptions
 	const personaData = await generatePersonaDescriptions(enrichedClusters)
 
-	// Step 4: Generate contrast personas
+	// Step 4: Skip contrast personas for now (can add back later if needed)
 	const corePersonas = personaData.map((pd) => pd.persona as Persona)
-	const contrastPersonas = await generateContrastPersonas(corePersonas)
 
 	// Step 5: Prepare DB inserts
-	const allPersonas = [...corePersonas, ...contrastPersonas]
-	const personaInserts = allPersonas.map((persona, idx) => ({
+	const personaInserts = corePersonas.map((persona) => ({
 		account_id: accountId,
 		project_id: projectId,
 		name: persona.name || "Untitled Persona",
 		description: persona.description,
-		kind: idx < corePersonas.length ? "core" : "contrast",
+		kind: "core",
 		goals: persona.goals || [],
 		pains: persona.pain_points || persona.frustrations || [],
 		motivations: persona.motivations || [],

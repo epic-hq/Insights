@@ -3,6 +3,7 @@ import { LayoutGrid, Sparkle, Table as TableIcon, UserCircle, Users } from "luci
 import { useEffect, useMemo, useState } from "react"
 import { type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import { Link, useFetcher } from "react-router-dom"
+import { toast } from "sonner"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
@@ -180,8 +181,14 @@ function GeneratePersonasButton() {
 	const isGenerating = fetcher.state === "submitting" || fetcher.state === "loading"
 
 	useEffect(() => {
-		if (fetcher.data?.success) {
-			window.location.reload()
+		if (fetcher.data) {
+			if (fetcher.data.success) {
+				const count = fetcher.data.personas?.length || 0
+				toast.success(`Successfully generated ${count} persona${count === 1 ? "" : "s"}!`)
+				setTimeout(() => window.location.reload(), 1000)
+			} else {
+				toast.error(fetcher.data.message || "Failed to generate personas. Please try again.")
+			}
 		}
 	}, [fetcher.data])
 
