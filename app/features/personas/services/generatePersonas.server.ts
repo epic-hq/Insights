@@ -437,16 +437,18 @@ export async function generatePersonasForProject(
 	// Step 3: Generate AI descriptions
 	const personaData = await generatePersonaDescriptions(enrichedClusters)
 
-	// Step 4: Skip contrast personas for now (can add back later if needed)
+	// Step 4: Generate contrast personas
 	const corePersonas = personaData.map((pd) => pd.persona as Persona)
+	const contrastPersonas = await generateContrastPersonas(corePersonas)
 
 	// Step 5: Prepare DB inserts
-	const personaInserts = corePersonas.map((persona) => ({
+	const allPersonas = [...corePersonas, ...contrastPersonas]
+	const personaInserts = allPersonas.map((persona) => ({
 		account_id: accountId,
 		project_id: projectId,
 		name: persona.name || "Untitled Persona",
 		description: persona.description,
-		kind: "core",
+		kind: persona.name?.includes("Contrast") ? "contrast" : "core",
 		goals: persona.goals || [],
 		pains: persona.pain_points || persona.frustrations || [],
 		motivations: persona.motivations || [],

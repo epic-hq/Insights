@@ -44,8 +44,26 @@ create table if not exists organizations (
 create table if not exists people (
   id uuid primary key default gen_random_uuid(),
   account_id uuid references accounts.accounts (id) on delete cascade,
-  name text,
-  name_hash text generated always as (lower(name)) stored,
+  firstname text,
+  lastname text,
+  name text generated always as (
+    case
+      when firstname is not null and lastname is not null then trim(firstname || ' ' || lastname)
+      when firstname is not null then trim(firstname)
+      when lastname is not null then trim(lastname)
+      else null
+    end
+  ) stored,
+  name_hash text generated always as (
+    lower(
+      case
+        when firstname is not null and lastname is not null then trim(firstname || ' ' || lastname)
+        when firstname is not null then trim(firstname)
+        when lastname is not null then trim(lastname)
+        else ''
+      end
+    )
+  ) stored,
   description text,
   role text,
   title text,

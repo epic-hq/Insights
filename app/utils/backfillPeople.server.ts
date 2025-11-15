@@ -23,6 +23,26 @@ interface BackfillResult {
 }
 
 /**
+ * Parse a full name into firstname and lastname
+ * Returns { firstname, lastname } with lastname being null for single-word names
+ */
+function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
+	const trimmed = fullName.trim()
+	if (!trimmed) return { firstname: "", lastname: null }
+
+	const parts = trimmed.split(/\s+/)
+	if (parts.length === 1) {
+		return { firstname: parts[0], lastname: null }
+	}
+
+	// firstname is the first part, lastname is everything else joined
+	return {
+		firstname: parts[0],
+		lastname: parts.slice(1).join(" "),
+	}
+}
+
+/**
  * Generate a smart fallback name for a person based on interview data
  */
 function generateFallbackPersonName(interview: any): string {
@@ -134,9 +154,11 @@ export async function backfillMissingPeople(request: Request, options: BackfillO
 				}
 
 				// Create person record
+				const { firstname, lastname } = parseFullName(personName)
 				const personData: PeopleInsert = {
 					account_id: accountId,
-					name: personName,
+					firstname: firstname || null,
+					lastname: lastname || null,
 					segment: interview.segment || null,
 					description: `Backfilled from interview: ${interview.title || interview.id}`,
 				}
