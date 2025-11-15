@@ -38,3 +38,25 @@
 - Requires building or sourcing a realtime provider that satisfies the MastraVoice interface (connect/send/answer/etc.); no such provider ships in our repo today.
 - The existing widget/session APIs expect LiveKit data messages, so we would still need custom glue code (or dual pipelines) even if Mastra drives the agent logic.
 - Mastra’s realtime module is newer and less battle-tested for prolonged, interruption-free discovery calls compared to LiveKit’s agent stack.
+
+### Mastra + Google Gemini speech-to-speech
+The [Mastra voice docs](https://mastra.ai/docs/voice/speech-to-speech) ship a Gemini-powered `GeminiVoice` provider that handles STT, LLM reasoning, and TTS from a single Google API surface. It streams microphone audio directly to Gemini’s realtime endpoint while emitting `speaking` + `writing` events to the Mastra runtime.
+
+**What we would need to adapt for the `/project-chat` flow**
+1. **Browser input path** – instead of using the local Node microphone like the example, the widget would keep streaming audio through LiveKit so we can maintain shared rooms + data channels. On the backend we would translate LiveKit PCM frames into the `MastraGeminiVoice` input stream (Mastra uses the WebRTC `connect` helper behind the scenes, so we would adapt their `navigator.mediaDevices.getUserMedia` references to LiveKit’s server-side audio frames).
+2. **Reduced vendor stack** – Gemini provides streaming STT, LLM, and speech synthesis in one API key. We would drop AssemblyAI, OpenAI, and ElevenLabs secrets in favor of Google Cloud credentials, though LiveKit remains necessary for multi-party audio and the existing widget wiring.
+3. **Structured slot filling** – Mastra agents can still run our discovery/post-sales workflows; we would convert the LiveKit `form_update` payloads into Mastra workflow outputs or continue to broadcast data-channel updates sourced from Mastra events.
+
+**Pros**
+- Lowest vendor count (LiveKit + Google Cloud only) and one billing surface for STT/LLM/TTS.
+- Gemini’s speech-to-speech model is tuned to maintain conversational cadence, so we may be able to relax the custom turn detector logic.
+- Mastra already exports a ready-to-use `GeminiVoice`, so we avoid writing a provider from scratch.
+
+**Cons**
+- Google Gemini realtime is still in preview and enforces region restrictions plus project-level quotas; we would need VPC access to the Gemini API as well as new compliance reviews.
+- Audio still has to exit the browser via WebRTC -> LiveKit -> Mastra -> Gemini. The example code assumes direct browser ↔ Gemini websockets, so we must ensure the extra hops keep latency acceptable.
+- Gemini speech currently supports fewer configurable voices compared to ElevenLabs, so matching our existing persona set could be difficult.
+
+### Recommendation
+- If reducing the vendor stack and centralizing on Mastra workflows is the priority, piloting the Gemini voice provider inside a feature flag is worthwhile. We could keep LiveKit in place for transport while swapping the backend agent to Mastra + Gemini, allowing us to evaluate latency and transcription quality without deleting the working LiveKit agent.
+- If stability and predictable voice characteristics matter more (e.g., for demos), stick with the current LiveKit pipeline until Gemini’s realtime SLA matures and the compliance work for Google Cloud is approved.

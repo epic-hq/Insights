@@ -29,3 +29,6 @@ Environment variables used by the agent:
 - `VOICE_AGENT_PORT` / `VOICE_AGENT_CONTROL_URL` (where the control server listens)
 
 Configure the widget with `VOICE_AGENT_CONTROL_URL` so the API route can wake the agent service per session.
+
+## Considering a Mastra + Gemini alternative
+We also evaluated Mastra’s `GeminiVoice` provider from [their speech-to-speech guide](https://mastra.ai/docs/voice/speech-to-speech). That path would keep LiveKit for browser streaming but hand off transcription, LLM reasoning, and TTS to Google Gemini via Mastra’s realtime runtime. See `docs/voice-agent-options.md` for a detailed comparison of the trade-offs (vendor count, latency, voice quality, and compliance work) before we decide whether to replace the current LiveKit agent.
