@@ -26,11 +26,12 @@ import { getClientEnv } from "~/env.server"
 import { loadContext } from "~/server/load-context"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
+import { loader as authCallbackLoader } from "./routes/auth.callback"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)
 	if (requestUrl.pathname === "/" && requestUrl.searchParams.has("code")) {
-		return redirect(`/auth/callback${requestUrl.search}`)
+		return authCallbackLoader({ request, params: {} })
 	}
 
 	let lang = "en"

@@ -400,7 +400,8 @@ export default function MetroIndex() {
 		<div className="relative flex min-h-screen bg-background text-foreground">
 			{/* Main Content */}
 			<div className={`flex-1 transition-all duration-300 ${showChat ? "mr-80" : ""}`}>
-				<PageContainer className="mx-auto flex flex-col justify-center">
+				<div className="flex justify-center px-4">
+					<PageContainer className="mx-auto flex flex-col justify-center">
 					{/* Project Status */}
 					<ProjectStatusScreen
 						projectName={project?.name || ""}
@@ -579,6 +580,7 @@ export default function MetroIndex() {
 					{/* Bottom action bar */}
 					{/* <BottomActionBar onToggleChat={handleToggleChat} isUploading={isUploading} /> */}
 				</PageContainer>
+				</div>
 			</div>
 
 			{/* CopilotSidebar - Right side overlay */}
