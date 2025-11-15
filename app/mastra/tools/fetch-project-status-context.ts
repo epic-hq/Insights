@@ -128,27 +128,27 @@ const sectionSchema = z.object({
 })
 
 const insightSchema = z.object({
-  id: z.string(),
-  name: z.string(),
-  details: z.string().nullable(),
-  category: z.string().nullable(),
-  pain: z.string().nullable(),
-  desired_outcome: z.string().nullable(),
-  journey_stage: z.string().nullable(),
-  emotional_response: z.string().nullable(),
-  confidence: z.string().nullable(),
-  impact: z.number().nullable(),
-  novelty: z.number().nullable(),
-  opportunity_ideas: z.array(z.string()).optional(),
-  related_tags: z.array(z.string()).optional(),
-  tags: z.array(z.string()).optional(),
-  vote_count: z.number().nullable().optional(),
-  priority: z.number().nullable().optional(),
-  interview_id: z.string().nullable(),
-  project_id: z.string().nullable(),
-  created_at: z.string().nullable(),
-  updated_at: z.string().nullable(),
-  url: z.string().nullable(),
+	id: z.string(),
+	name: z.string(),
+	details: z.string().nullable(),
+	category: z.string().nullable(),
+	pain: z.string().nullable(),
+	desired_outcome: z.string().nullable(),
+	journey_stage: z.string().nullable(),
+	emotional_response: z.string().nullable(),
+	confidence: z.string().nullable(),
+	impact: z.number().nullable(),
+	novelty: z.number().nullable(),
+	opportunity_ideas: z.array(z.string()).optional(),
+	related_tags: z.array(z.string()).optional(),
+	tags: z.array(z.string()).optional(),
+	vote_count: z.number().nullable().optional(),
+	priority: z.number().nullable().optional(),
+	interview_id: z.string().nullable(),
+	project_id: z.string().nullable(),
+	created_at: z.string().nullable(),
+	updated_at: z.string().nullable(),
+	url: z.string().nullable(),
 })
 
 const evidenceSchema = z.object({
@@ -549,10 +549,7 @@ export const fetchProjectStatusContextTool = createTool({
 					}
 					const { data: tagsRows } =
 						insightIds.length > 0
-							? await supabase
-									.from("insight_tags")
-									.select("insight_id, tags(tag)")
-									.in("insight_id", insightIds)
+							? await supabase.from("insight_tags").select("insight_id, tags(tag)").in("insight_id", insightIds)
 							: { data: [], error: null }
 
 					const tagsMap = new Map<string, string[]>()
@@ -1017,16 +1014,13 @@ export const fetchProjectStatusContextTool = createTool({
 					const interviewIds = interviews?.map((i) => i.id) || []
 					const [evidenceRows, insightRows] = interviewIds.length
 						? await Promise.all([
-								supabase
-									.from("evidence")
-									.select("id, interview_id")
-									.in("interview_id", interviewIds),
-								supabase
-									.from("themes")
-									.select("id, interview_id")
-									.in("interview_id", interviewIds),
-						  ])
-						: [{ data: [], error: null }, { data: [], error: null }]
+								supabase.from("evidence").select("id, interview_id").in("interview_id", interviewIds),
+								supabase.from("themes").select("id, interview_id").in("interview_id", interviewIds),
+							])
+						: [
+								{ data: [], error: null },
+								{ data: [], error: null },
+							]
 
 					const evidenceMap = new Map<string, number>()
 					evidenceRows?.data?.forEach((row) => {

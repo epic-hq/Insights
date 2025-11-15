@@ -206,7 +206,7 @@ export const fetchPeopleDetailsTool = createTool({
 
 		try {
 			// First try project-scoped search using project_people junction table
-			let { data: projectPeopleData, error: peopleError } = await supabase
+			const { data: projectPeopleData, error: peopleError } = await supabase
 				.from("people")
 				.select("*, project_people!inner(project_id)")
 				.eq("project_people.project_id", projectId)
@@ -224,11 +224,7 @@ export const fetchPeopleDetailsTool = createTool({
 					searchTerm: sanitizedPersonSearch,
 				})
 
-				const accountQuery = await supabase
-					.from("people")
-					.select("*")
-					.eq("account_id", accountId)
-					.limit(100)
+				const accountQuery = await supabase.from("people").select("*").eq("account_id", accountId).limit(100)
 
 				if (accountQuery.data && accountQuery.data.length > 0) {
 					peopleData = accountQuery.data as Person[]
@@ -258,11 +254,11 @@ export const fetchPeopleDetailsTool = createTool({
 				sampleResult:
 					people.length > 0
 						? {
-							person_id: people[0].id,
-							name: people[0].name,
-							title: people[0].title,
-							company: people[0].company,
-						}
+								person_id: people[0].id,
+								name: people[0].name,
+								title: people[0].title,
+								company: people[0].company,
+							}
 						: null,
 			})
 
@@ -298,14 +294,14 @@ export const fetchPeopleDetailsTool = createTool({
 			const personIds = people.map((person) => person.id)
 
 			// Get total count - just use the filtered array length since we fetched all matching records
-			let totalCount = people.length
+			const totalCount = people.length
 
 			// Fetch additional data if requested
 			const [personaData, interviewData, evidenceData, facetData, scaleData] = await Promise.all([
 				includePersonas && personIds.length > 0
 					? supabase
-						.from("people_personas")
-						.select(`
+							.from("people_personas")
+							.select(`
 						person_id,
 						personas:persona_id(
 							id,
@@ -316,14 +312,14 @@ export const fetchPeopleDetailsTool = createTool({
 						assigned_at,
 						confidence_score
 					`)
-						.in("person_id", personIds)
-						.eq("project_id", projectId)
+							.in("person_id", personIds)
+							.eq("project_id", projectId)
 					: Promise.resolve({ data: null }),
 
 				includeEvidence && personIds.length > 0
 					? supabase
-						.from("interview_people")
-						.select(`
+							.from("interview_people")
+							.select(`
 						person_id,
 						interview:interview_id(
 							id,
@@ -332,15 +328,15 @@ export const fetchPeopleDetailsTool = createTool({
 							status
 						)
 					`)
-						.eq("project_id", projectId)
-						.in("person_id", personIds)
-						.order("created_at", { ascending: false })
+							.eq("project_id", projectId)
+							.in("person_id", personIds)
+							.order("created_at", { ascending: false })
 					: Promise.resolve({ data: null }),
 
 				includeEvidence && personIds.length > 0
 					? supabase
-						.from("evidence")
-						.select(`
+							.from("evidence")
+							.select(`
 						id,
 						gist,
 						verbatim,
@@ -353,27 +349,27 @@ export const fetchPeopleDetailsTool = createTool({
 							interview_date
 						)
 					`)
-						.eq("project_id", projectId)
-						.in(
-							"interview_id",
-							(
-								await supabase
-									.from("interview_people")
-									.select("interview_id")
-									.eq("project_id", projectId)
-									.in("person_id", personIds)
-							).data
-								?.map((ip) => ip.interview_id)
-								.filter(Boolean) ?? []
-						)
-						.order("created_at", { ascending: false })
-						.limit(50) // Limit evidence per person to avoid too much data
+							.eq("project_id", projectId)
+							.in(
+								"interview_id",
+								(
+									await supabase
+										.from("interview_people")
+										.select("interview_id")
+										.eq("project_id", projectId)
+										.in("person_id", personIds)
+								).data
+									?.map((ip) => ip.interview_id)
+									.filter(Boolean) ?? []
+							)
+							.order("created_at", { ascending: false })
+							.limit(50) // Limit evidence per person to avoid too much data
 					: Promise.resolve({ data: null }),
 
 				includeFacets && personIds.length > 0
 					? supabase
-						.from("person_facet")
-						.select(`
+							.from("person_facet")
+							.select(`
 						person_id,
 						facet_account_id,
 						source,
@@ -391,14 +387,14 @@ export const fetchPeopleDetailsTool = createTool({
 							)
 						)
 					`)
-						.eq("project_id", projectId)
-						.in("person_id", personIds)
+							.eq("project_id", projectId)
+							.in("person_id", personIds)
 					: Promise.resolve({ data: null }),
 
 				includeFacets && personIds.length > 0
 					? supabase
-						.from("person_scale")
-						.select(`
+							.from("person_scale")
+							.select(`
 						person_id,
 						kind_slug,
 						score,
@@ -407,8 +403,8 @@ export const fetchPeopleDetailsTool = createTool({
 						confidence,
 						noted_at
 					`)
-						.eq("project_id", projectId)
-						.in("person_id", personIds)
+							.eq("project_id", projectId)
+							.in("person_id", personIds)
 					: Promise.resolve({ data: null }),
 			])
 
@@ -532,52 +528,52 @@ export const fetchPeopleDetailsTool = createTool({
 						lastSeenAt: null, // Not available without project_people junction
 						personas: includePersonas
 							? personPersonas.map((pp) => ({
-								id: pp.personas?.id ?? null,
-								name: pp.personas?.name ?? null,
-								color_hex: pp.personas?.color_hex ?? null,
-								description: pp.personas?.description ?? null,
-								assigned_at: normalizeDate(pp.assigned_at),
-								confidence_score: pp.confidence_score,
-								url: projectPath && pp.personas?.id ? `${HOST}${routes.personas.detail(pp.personas.id)}` : null,
-							}))
+									id: pp.personas?.id ?? null,
+									name: pp.personas?.name ?? null,
+									color_hex: pp.personas?.color_hex ?? null,
+									description: pp.personas?.description ?? null,
+									assigned_at: normalizeDate(pp.assigned_at),
+									confidence_score: pp.confidence_score,
+									url: projectPath && pp.personas?.id ? `${HOST}${routes.personas.detail(pp.personas.id)}` : null,
+								}))
 							: undefined,
 						interviews: includeEvidence ? interviews : undefined,
 						evidence: includeEvidence
 							? personEvidence.slice(0, 20).map((ev) => ({
-								// Limit to 20 snippets per person
-								id: ev.id,
-								gist: ev.gist ?? null,
-								verbatim: ev.verbatim ?? null,
-								context_summary: ev.context_summary ?? null,
-								modality: ev.modality ?? null,
-								interview_title: ev.interview?.title ?? null,
-								interview_date: normalizeDate(ev.interview?.interview_date),
-								created_at: normalizeDate(ev.created_at),
-								url: projectPath ? `${HOST}${routes.evidence.detail(ev.id)}` : null,
-							}))
+									// Limit to 20 snippets per person
+									id: ev.id,
+									gist: ev.gist ?? null,
+									verbatim: ev.verbatim ?? null,
+									context_summary: ev.context_summary ?? null,
+									modality: ev.modality ?? null,
+									interview_title: ev.interview?.title ?? null,
+									interview_date: normalizeDate(ev.interview?.interview_date),
+									created_at: normalizeDate(ev.created_at),
+									url: projectPath ? `${HOST}${routes.evidence.detail(ev.id)}` : null,
+								}))
 							: undefined,
 						facets: includeFacets
 							? personFacets.map((facet) => ({
-								facet_account_id: facet.facet_account_id,
-								label: facet.facet?.label ?? `ID:${facet.facet_account_id}`,
-								kind_slug: facet.facet?.kind?.slug ?? "",
-								source: facet.source ?? null,
-								confidence: facet.confidence ?? null,
-							}))
+									facet_account_id: facet.facet_account_id,
+									label: facet.facet?.label ?? `ID:${facet.facet_account_id}`,
+									kind_slug: facet.facet?.kind?.slug ?? "",
+									source: facet.source ?? null,
+									confidence: facet.confidence ?? null,
+								}))
 							: undefined,
 						scales: includeFacets
 							? personScales.map((scale) => ({
-								kind_slug: scale.kind_slug,
-								score: scale.score,
-								band: scale.band ?? null,
-								source: scale.source ?? null,
-								confidence: scale.confidence ?? null,
-							}))
+									kind_slug: scale.kind_slug,
+									score: scale.score,
+									band: scale.band ?? null,
+									source: scale.source ?? null,
+									confidence: scale.confidence ?? null,
+								}))
 							: undefined,
 						evidenceCount: includeEvidence ? evidenceCount : undefined,
 						created_at: normalizeDate(person.created_at),
 						updated_at: normalizeDate(person.updated_at),
-					url: projectPath ? `${HOST}${routes.people.detail(person.id)}` : null,
+						url: projectPath ? `${HOST}${routes.people.detail(person.id)}` : null,
 					}
 				})
 				.filter(Boolean) as z.infer<typeof personDetailSchema>[]
@@ -598,11 +594,11 @@ export const fetchPeopleDetailsTool = createTool({
 				samplePerson:
 					result.length > 0
 						? {
-							id: result[0].personId,
-							name: result[0].name,
-							title: result[0].title,
-							company: result[0].company,
-						}
+								id: result[0].personId,
+								name: result[0].name,
+								title: result[0].title,
+								company: result[0].company,
+							}
 						: null,
 			})
 

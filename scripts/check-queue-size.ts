@@ -3,9 +3,9 @@
  * Run with: npx tsx scripts/check-queue-size.ts production
  */
 
+import dotenvx from "@dotenvx/dotenvx"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
-import dotenvx from "@dotenvx/dotenvx"
 
 // Load environment variables
 const env = process.argv.find((arg) => arg === "production" || arg === "prod") ? "production" : ""
@@ -30,8 +30,7 @@ async function main() {
 		consola.error("Error counting queue:", countError)
 
 		// Try with schema prefix
-		const { data: rawData, error: rawError } = await supabase
-			.rpc("pgmq.metrics_all")
+		const { data: rawData, error: rawError } = await supabase.rpc("pgmq.metrics_all")
 
 		if (rawError) {
 			consola.error("Error getting metrics:", rawError)
@@ -43,9 +42,7 @@ async function main() {
 	}
 
 	// Check person_facet stats
-	const { count: totalPersonFacets } = await supabase
-		.from("person_facet")
-		.select("*", { count: "exact", head: true })
+	const { count: totalPersonFacets } = await supabase.from("person_facet").select("*", { count: "exact", head: true })
 
 	const { count: withEmbeddings } = await supabase
 		.from("person_facet")

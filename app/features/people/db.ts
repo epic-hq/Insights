@@ -72,10 +72,7 @@ export const getPeople = async ({
 			)`
 
 	// Build query based on scope
-	let query = supabase
-		.from("people")
-		.select(baseSelect)
-		.eq("account_id", accountId)
+	let query = supabase.from("people").select(baseSelect).eq("account_id", accountId)
 
 	// Filter by project using the project_id column directly
 	// NOTE: We use people.project_id instead of project_people junction table
@@ -84,7 +81,7 @@ export const getPeople = async ({
 		query = query.eq("project_id", projectId)
 	}
 
-	const { data, error} = await query.order("created_at", { ascending: false })
+	const { data, error } = await query.order("created_at", { ascending: false })
 
 	// consola.log("getPeople data: ", data)
 	return { data, error }

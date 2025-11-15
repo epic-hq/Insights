@@ -14,11 +14,7 @@ import { fetchProjectStatusContextTool } from "../tools/fetch-project-status-con
 import { fetchSegmentsTool } from "../tools/fetch-segments"
 import { fetchThemesTool } from "../tools/fetch-themes"
 import { generateProjectRoutesTool } from "../tools/generate-project-routes"
-import {
-	createOpportunityTool,
-	fetchOpportunitiesTool,
-	updateOpportunityTool,
-} from "../tools/manage-opportunities"
+import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { upsertPersonTool } from "../tools/upsert-person"

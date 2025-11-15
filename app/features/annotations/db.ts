@@ -1,11 +1,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import type { Database } from "~/types"
-import type {
-	AISuggestionContent,
-	AnnotationContentJsonb,
-	OpportunityAdviceContent,
-} from "./types"
+import type { AISuggestionContent, AnnotationContentJsonb, OpportunityAdviceContent } from "./types"
 
 // Database types for annotations system
 type DB = Database["public"]
@@ -563,10 +559,7 @@ export async function createAISuggestion({
 
 		// If this supersedes a previous annotation, mark the old one as archived
 		if (supersedesAnnotationId) {
-			await supabase
-				.from("annotations")
-				.update({ status: "archived" })
-				.eq("id", supersedesAnnotationId)
+			await supabase.from("annotations").update({ status: "archived" }).eq("id", supersedesAnnotationId)
 		}
 
 		return { data, error: null }

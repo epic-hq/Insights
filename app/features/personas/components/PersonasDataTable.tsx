@@ -65,10 +65,10 @@ export function PersonasDataTable({ rows }: PersonasDataTableProps) {
 										style={
 											persona.colorHex
 												? {
-													backgroundColor: `${persona.colorHex}1a`,
-													color: persona.colorHex,
-													borderColor: persona.colorHex,
-												}
+														backgroundColor: `${persona.colorHex}1a`,
+														color: persona.colorHex,
+														borderColor: persona.colorHex,
+													}
 												: undefined
 										}
 									>

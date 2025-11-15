@@ -3,9 +3,9 @@
  * Run with: npx tsx scripts/purge-queue.ts production
  */
 
+import dotenvx from "@dotenvx/dotenvx"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
-import dotenvx from "@dotenvx/dotenvx"
 
 // Load environment variables
 const env = process.argv.find((arg) => arg === "production" || arg === "prod") ? "production" : ""
@@ -33,9 +33,7 @@ async function main() {
 		consola.info("Trying to drain queue by reading and deleting messages...")
 
 		for (let i = 0; i < 50; i++) {
-			const { data: processResult, error: processError } = await supabase.rpc(
-				"process_person_facet_embedding_queue"
-			)
+			const { data: processResult, error: processError } = await supabase.rpc("process_person_facet_embedding_queue")
 
 			if (processError) {
 				consola.error(`Batch ${i + 1} error:`, processError)

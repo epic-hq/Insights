@@ -8,6 +8,7 @@
 import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { useEffect, useRef, useState } from "react"
+import type { ImperativePanelHandle } from "react-resizable-panels"
 import { Outlet, redirect, useLoaderData, useParams } from "react-router"
 import { z } from "zod"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
@@ -19,7 +20,6 @@ import { type UserMetadata, userContext } from "~/server/user-context"
 import type { Database, GetAccount, Project, UserSettings } from "~/types"
 import { getProjectStatusData, type ProjectStatusData } from "~/utils/project-status.server"
 import type { Route } from "./+types/projects"
-import type { ImperativePanelHandle } from "react-resizable-panels"
 
 type ProjectRecord = Awaited<ReturnType<typeof getProjectById>>["data"]
 
@@ -152,17 +152,8 @@ Current next steps: ${statusData?.nextSteps?.slice(0, 3).join(", ") || "None"}
 
 	return (
 		<div className="flex h-dvh min-h-0 w-full overflow-hidden">
-			<ResizablePanelGroup
-				direction="horizontal"
-				autoSaveId="project-status-layout"
-				className="flex h-full w-full"
-			>
-				<ResizablePanel
-					tagName="main"
-					defaultSize={70}
-					minSize={45}
-					className="flex min-h-0 min-w-0 flex-1 flex-col"
-				>
+			<ResizablePanelGroup direction="horizontal" autoSaveId="project-status-layout" className="flex h-full w-full">
+				<ResizablePanel tagName="main" defaultSize={70} minSize={45} className="flex min-h-0 min-w-0 flex-1 flex-col">
 					<div className="min-h-0 min-w-0 flex-1 overflow-auto">
 						<Outlet />
 					</div>

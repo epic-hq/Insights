@@ -1,4 +1,14 @@
-import { AlertTriangle, Briefcase, Calendar, DollarSign, Lightbulb, MessageSquare, Sparkles, TrendingUp, Users } from "lucide-react"
+import {
+	AlertTriangle,
+	Briefcase,
+	Calendar,
+	DollarSign,
+	Lightbulb,
+	MessageSquare,
+	Sparkles,
+	TrendingUp,
+	Users,
+} from "lucide-react"
 import { useEffect } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Link, useFetcher, useLoaderData, useRevalidator } from "react-router-dom"
@@ -146,7 +156,7 @@ export default function OpportunityDetail() {
 						<Briefcase className="h-8 w-8 text-primary" />
 						<h1 className="text-balance font-bold text-4xl tracking-tight">{opportunity.title}</h1>
 					</div>
-						<div className="mt-3 flex items-center gap-2">
+					<div className="mt-3 flex items-center gap-2">
 						<Badge variant="outline" className={getKanbanStatusColor(opportunity.kanban_status)}>
 							{opportunity.kanban_status || "Unknown"}
 						</Badge>
@@ -532,14 +542,15 @@ function StakeholderMatrix({ salesLensData }: { salesLensData: OpportunitySalesL
 										onValueChange={(value) => handleStakeholderUpdate(stakeholder.id, "influence", value)}
 									>
 										<SelectTrigger
-											className={`h-7 w-24 text-xs ${stakeholder.influence === "high"
+											className={`h-7 w-24 text-xs ${
+												stakeholder.influence === "high"
 													? "border-emerald-600 bg-emerald-50 text-emerald-700"
 													: stakeholder.influence === "medium"
 														? "border-amber-600 bg-amber-50 text-amber-700"
 														: stakeholder.influence === "low"
 															? "border-gray-400 bg-gray-50 text-gray-700"
 															: ""
-												}`}
+											}`}
 										>
 											<SelectValue placeholder="Select" />
 										</SelectTrigger>
@@ -782,7 +793,8 @@ function AIAdvisorSection({
 						{/* Timestamp */}
 						{latestRecommendation.created_at && (
 							<div className="border-indigo-100 border-t pt-3 text-muted-foreground text-xs">
-								Generated {new Date(latestRecommendation.created_at).toLocaleString("en-US", {
+								Generated{" "}
+								{new Date(latestRecommendation.created_at).toLocaleString("en-US", {
 									month: "short",
 									day: "numeric",
 									hour: "numeric",

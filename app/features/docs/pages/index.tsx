@@ -1,4 +1,4 @@
-import { Book, Compass, Layers3, Lightbulb, Package, Users, Briefcase, Zap } from "lucide-react"
+import { Book, Briefcase, Compass, Layers3, Lightbulb, Package, Users, Zap } from "lucide-react"
 import { Link } from "react-router"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "~/components/ui/card"
 
@@ -161,9 +161,7 @@ export default function DocsIndex() {
 									<Zap className="h-5 w-5" />
 									CRM Quick Reference
 								</CardTitle>
-								<CardDescription>
-									One-page cheat sheet for the complete discovery-to-deal workflow
-								</CardDescription>
+								<CardDescription>One-page cheat sheet for the complete discovery-to-deal workflow</CardDescription>
 							</CardHeader>
 						</Card>
 					</Link>

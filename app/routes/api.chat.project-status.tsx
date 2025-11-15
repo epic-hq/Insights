@@ -42,7 +42,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 					delete (cloned as Record<string, unknown>).id
 				}
 				return cloned
-		  })
+			})
 		: []
 
 	const latestUserMessage = [...sanitizedMessages]

@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { ActionFunctionArgs } from "react-router"
-import { getServerClient } from "~/lib/supabase/client.server"
 import { updateOpportunity } from "~/features/opportunities/db"
+import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function action({ request }: ActionFunctionArgs) {
 	const formData = await request.formData()

@@ -25,10 +25,7 @@ interface PersonaCluster {
  * Step 1: Cluster people by shared facets
  * Groups people who have similar facet combinations (job function, preferences, values)
  */
-async function clusterPeopleByFacets(
-	supabase: SupabaseClient,
-	projectId: string
-): Promise<PersonaCluster[]> {
+async function clusterPeopleByFacets(supabase: SupabaseClient, projectId: string): Promise<PersonaCluster[]> {
 	consola.info("[Persona Generation] Step 1: Clustering people by shared facets")
 
 	// Get all person facets for behavioral/demographic clustering
@@ -204,11 +201,7 @@ async function aggregateEvidenceForClusters(
 		cluster.behaviors = Array.from(behaviors).slice(0, 5)
 
 		// Get quotes from evidence
-		const { data: evidence } = await supabase
-			.from("evidence")
-			.select("quote, verbatim")
-			.in("id", evidenceIds)
-			.limit(10)
+		const { data: evidence } = await supabase.from("evidence").select("quote, verbatim").in("id", evidenceIds).limit(10)
 
 		cluster.quotes =
 			evidence
@@ -364,7 +357,9 @@ function deduplicateSimilarPersonas(
 		}
 	}
 
-	consola.info(`[Persona Generation] Deduplication complete: ${result.length} unique personas (from ${personas.length})`)
+	consola.info(
+		`[Persona Generation] Deduplication complete: ${result.length} unique personas (from ${personas.length})`
+	)
 	return result
 }
 

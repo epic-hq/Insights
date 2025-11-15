@@ -4,9 +4,9 @@
  * For production: npx tsx scripts/process-person-facet-queue.ts production
  */
 
+import dotenvx from "@dotenvx/dotenvx"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
-import dotenvx from "@dotenvx/dotenvx"
 
 // Load environment variables
 const env = process.argv.find((arg) => arg === "production" || arg === "prod") ? "production" : ""

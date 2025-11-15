@@ -88,10 +88,7 @@ export async function loadOpportunitySalesLens({
 		})) || []
 
 	// Get slots for next steps, objections, and milestones
-	const { data: slotsData } = await supabase
-		.from("sales_lens_slots")
-		.select("*")
-		.in("summary_id", summaryIds)
+	const { data: slotsData } = await supabase.from("sales_lens_slots").select("*").in("summary_id", summaryIds)
 
 	const slots = slotsData || []
 

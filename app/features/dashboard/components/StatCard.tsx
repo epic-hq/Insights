@@ -191,11 +191,7 @@ export default function StatCard({
 				<span className="font-medium text-gray-900 dark:text-gray-100">{value}</span>
 
 				{/* tiny change indicator */}
-				{change && (
-					<span className={`ml-0.5 text-[9px] ${isUp ? "text-emerald-600" : "text-rose-600"}`}>
-						{change}
-					</span>
-				)}
+				{change && <span className={`ml-0.5 text-[9px] ${isUp ? "text-emerald-600" : "text-rose-600"}`}>{change}</span>}
 			</Wrapper>
 		)
 	}

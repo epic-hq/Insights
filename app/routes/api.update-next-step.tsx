@@ -26,10 +26,7 @@ export async function action({ request }: ActionFunctionArgs) {
 		return Response.json({ ok: false, error: "Unsupported field" }, { status: 400 })
 	}
 
-	const { error: updateError } = await supabase
-		.from("sales_lens_slots")
-		.update(updateData)
-		.eq("id", slotId)
+	const { error: updateError } = await supabase.from("sales_lens_slots").update(updateData).eq("id", slotId)
 
 	if (updateError) {
 		consola.error("Failed to update next step", updateError)

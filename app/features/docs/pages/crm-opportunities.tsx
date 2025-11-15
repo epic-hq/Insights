@@ -1,13 +1,4 @@
-import {
-	ArrowLeft,
-	Briefcase,
-	CheckCircle2,
-	Link2,
-	Lightbulb,
-	TrendingUp,
-	Users,
-	AlertCircle,
-} from "lucide-react"
+import { AlertCircle, ArrowLeft, Briefcase, CheckCircle2, Lightbulb, Link2, TrendingUp, Users } from "lucide-react"
 import { Link } from "react-router"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -40,10 +31,10 @@ export default function CRMOpportunitiesGuide() {
 					</CardHeader>
 					<CardContent className="space-y-4">
 						<p className="text-muted-foreground">
-							The CRM & Opportunities feature transforms customer conversations into structured sales intelligence. Every
-							interview can be linked to an opportunity, automatically extracting stakeholder relationships, next steps,
-							and deal context. The AI Deal Advisor then analyzes this data to provide strategic recommendations for
-							advancing deals.
+							The CRM & Opportunities feature transforms customer conversations into structured sales intelligence.
+							Every interview can be linked to an opportunity, automatically extracting stakeholder relationships, next
+							steps, and deal context. The AI Deal Advisor then analyzes this data to provide strategic recommendations
+							for advancing deals.
 						</p>
 						<div className="grid gap-3 md:grid-cols-2">
 							<div className="rounded-lg border border-border/60 bg-muted/10 p-3">
@@ -99,7 +90,7 @@ export default function CRMOpportunitiesGuide() {
 						<div className="space-y-3">
 							<div>
 								<h4 className="mb-2 font-medium text-foreground text-sm">From the Opportunities Page</h4>
-								<ol className="space-y-1 pl-5 text-muted-foreground text-sm list-decimal">
+								<ol className="list-decimal space-y-1 pl-5 text-muted-foreground text-sm">
 									<li>Navigate to CRM in the sidebar</li>
 									<li>Click "+ New Opportunity" in the header</li>
 									<li>Fill in: Title (required), Stage, Amount, Close Date, Product/Solution, Notes</li>
@@ -108,7 +99,7 @@ export default function CRMOpportunitiesGuide() {
 							</div>
 							<div>
 								<h4 className="mb-2 font-medium text-foreground text-sm">From a Conversation</h4>
-								<ol className="space-y-1 pl-5 text-muted-foreground text-sm list-decimal">
+								<ol className="list-decimal space-y-1 pl-5 text-muted-foreground text-sm">
 									<li>Open an interview detail page</li>
 									<li>Click "Link to Opportunity"</li>
 									<li>Click "Create New Opportunity"</li>
@@ -316,7 +307,8 @@ export default function CRMOpportunitiesGuide() {
 									<li className="flex items-start gap-2">
 										<CheckCircle2 className="mt-0.5 h-3 w-3 shrink-0 text-green-600" />
 										<span>
-											<strong className="text-foreground">Conversation history</strong> - Insights from linked interviews
+											<strong className="text-foreground">Conversation history</strong> - Insights from linked
+											interviews
 										</span>
 									</li>
 								</ul>
@@ -374,8 +366,8 @@ export default function CRMOpportunitiesGuide() {
 						<div className="rounded-lg border-primary border-l-4 bg-primary/5 p-3">
 							<p className="font-medium text-foreground text-sm">💡 When to Use the Advisor</p>
 							<p className="mt-1 text-muted-foreground text-sm">
-								Get fresh advice after every conversation, before key meetings, when deals stall, or during deal reviews.
-								Click "Get Advice" again after updating stakeholder information or completing next steps.
+								Get fresh advice after every conversation, before key meetings, when deals stall, or during deal
+								reviews. Click "Get Advice" again after updating stakeholder information or completing next steps.
 							</p>
 						</div>
 					</CardContent>
@@ -401,8 +393,8 @@ export default function CRMOpportunitiesGuide() {
 							<div>
 								<h4 className="mb-1 font-medium text-foreground text-sm">AI Advisor returns no recommendations</h4>
 								<p className="text-muted-foreground text-sm">
-									Link at least one conversation, ensure stakeholders are populated, and add some next steps (even manual
-									ones). Then try again.
+									Link at least one conversation, ensure stakeholders are populated, and add some next steps (even
+									manual ones). Then try again.
 								</p>
 							</div>
 							<div>
@@ -415,8 +407,8 @@ export default function CRMOpportunitiesGuide() {
 							<div>
 								<h4 className="mb-1 font-medium text-foreground text-sm">Can't find my opportunity</h4>
 								<p className="text-muted-foreground text-sm">
-									Check you're in the correct project (top nav). Use the search/filter on opportunities page. Verify it's
-									not in a different account.
+									Check you're in the correct project (top nav). Use the search/filter on opportunities page. Verify
+									it's not in a different account.
 								</p>
 							</div>
 						</div>
@@ -432,7 +424,7 @@ export default function CRMOpportunitiesGuide() {
 						<div className="space-y-2 text-sm">
 							<div>
 								<h4 className="mb-1 font-semibold text-foreground">🎯 Maximize AI Accuracy</h4>
-								<ul className="space-y-1 pl-4 text-muted-foreground list-disc">
+								<ul className="list-disc space-y-1 pl-4 text-muted-foreground">
 									<li>Link conversations as soon as possible after calls</li>
 									<li>Ensure stakeholder names/emails are correct (improves matching)</li>
 									<li>Add manual context in Notes that wasn't captured in calls</li>
@@ -441,7 +433,7 @@ export default function CRMOpportunitiesGuide() {
 							</div>
 							<div>
 								<h4 className="mb-1 font-semibold text-foreground">📊 Keep Data Fresh</h4>
-								<ul className="space-y-1 pl-4 text-muted-foreground list-disc">
+								<ul className="list-disc space-y-1 pl-4 text-muted-foreground">
 									<li>Review stakeholder matrix weekly</li>
 									<li>Mark completed next steps or update status</li>
 									<li>Get fresh AI advice before key meetings</li>
@@ -450,7 +442,7 @@ export default function CRMOpportunitiesGuide() {
 							</div>
 							<div>
 								<h4 className="mb-1 font-semibold text-foreground">🤝 Improve Collaboration</h4>
-								<ul className="space-y-1 pl-4 text-muted-foreground list-disc">
+								<ul className="list-disc space-y-1 pl-4 text-muted-foreground">
 									<li>Share opportunity links with team members</li>
 									<li>Use AI recommendations in deal reviews</li>
 									<li>Reference specific conversation evidence when debating strategy</li>

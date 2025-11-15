@@ -119,10 +119,7 @@ export async function deriveUserGroups(opts: {
 	})
 
 	// Group by facet_account_id (not label) to prepare for semantic clustering
-	const facetAccountGroups = new Map<
-		number,
-		{ label: string; kindSlug: string; personIds: Set<string> }
-	>()
+	const facetAccountGroups = new Map<number, { label: string; kindSlug: string; personIds: Set<string> }>()
 
 	for (const pf of filteredFacets) {
 		const facetAccountId = pf.facet_account_id
@@ -190,9 +187,7 @@ export async function deriveUserGroups(opts: {
 			type: kindSlug as any,
 			name: clusterName,
 			description:
-				labels.length > 1
-					? `Semantic cluster: ${labels.join(", ")}`
-					: `People with ${kindSlug}: ${clusterName}`,
+				labels.length > 1 ? `Semantic cluster: ${labels.join(", ")}` : `People with ${kindSlug}: ${clusterName}`,
 			criteria: {},
 			member_count: allPersonIds.size,
 			member_ids: Array.from(allPersonIds),

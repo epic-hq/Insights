@@ -223,7 +223,16 @@ export function AppSidebar() {
 	// Map your item keys to count keys (leave unmapped to skip)
 	const COUNT_KEY_BY_ITEM: Record<
 		string,
-		"encounters" | "personas" | "themes" | "insights" | "people" | "organizations" | "accounts" | "deals" | "contacts" | "opportunities"
+		| "encounters"
+		| "personas"
+		| "themes"
+		| "insights"
+		| "people"
+		| "organizations"
+		| "accounts"
+		| "deals"
+		| "contacts"
+		| "opportunities"
 	> = {
 		// Discovery (your current keys)
 		conversations: "encounters", // your "Conversations" list = encounters
@@ -239,7 +248,7 @@ export function AppSidebar() {
 		accounts: "accounts",
 		deals: "deals",
 		contacts: "contacts",
-		opportunities: "opportunities"
+		opportunities: "opportunities",
 	}
 
 	const { counts, loading: countsLoading } = useSidebarCounts(effectiveProjectId, project?.workflow_type)

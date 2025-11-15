@@ -3,9 +3,9 @@
  * Run with: npx tsx scripts/debug-person-facet-queue.ts production
  */
 
+import dotenvx from "@dotenvx/dotenvx"
 import { createClient } from "@supabase/supabase-js"
 import consola from "consola"
-import dotenvx from "@dotenvx/dotenvx"
 
 // Load environment variables
 const env = process.argv.find((arg) => arg === "production" || arg === "prod") ? "production" : ""
@@ -66,12 +66,9 @@ async function main() {
 		kind_slug: "test_kind",
 	}
 
-	const { data: edgeFunctionTest, error: edgeFunctionError } = await supabase.functions.invoke(
-		"embed-person-facet",
-		{
-			body: testPayload,
-		}
-	)
+	const { data: edgeFunctionTest, error: edgeFunctionError } = await supabase.functions.invoke("embed-person-facet", {
+		body: testPayload,
+	})
 
 	if (edgeFunctionError) {
 		consola.error("Edge function error:", edgeFunctionError)
@@ -99,9 +96,7 @@ async function main() {
 		.select("*", { count: "exact", head: true })
 		.is("embedding", null)
 
-	const { count: totalPersonFacets } = await supabase
-		.from("person_facet")
-		.select("*", { count: "exact", head: true })
+	const { count: totalPersonFacets } = await supabase.from("person_facet").select("*", { count: "exact", head: true })
 
 	consola.box(`
 		Person Facets Summary:

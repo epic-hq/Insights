@@ -204,11 +204,7 @@ export const createOpportunityTool = createTool({
 				insertData.metadata = metadata
 			}
 
-			const { data, error } = await supabase
-				.from("opportunities")
-				.insert(insertData)
-				.select("*")
-				.single()
+			const { data, error } = await supabase.from("opportunities").insert(insertData).select("*").single()
 
 			if (error || !data) {
 				consola.error("create-opportunity: insert failed", error)

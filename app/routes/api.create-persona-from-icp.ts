@@ -30,7 +30,7 @@ async function findPeopleMatchingFacets(
 	const facetKindSlugs = Object.keys(allFacets)
 	const facetLabels = Object.values(allFacets)
 
-	consola.info(`[Find Matching People] Looking for people with facets:`, allFacets)
+	consola.info("[Find Matching People] Looking for people with facets:", allFacets)
 
 	if (facetKindSlugs.length === 0) {
 		consola.warn("[Find Matching People] No facets provided")
@@ -76,15 +76,15 @@ async function findPeopleMatchingFacets(
 		personFacetCounts.set(pf.person_id, (personFacetCounts.get(pf.person_id) || 0) + 1)
 	}
 
-	consola.info(`[Find Matching People] Person facet counts:`, Object.fromEntries(personFacetCounts))
-	consola.info(`[Find Matching People] Required facet count:`, targetFacetIds.size)
+	consola.info("[Find Matching People] Person facet counts:", Object.fromEntries(personFacetCounts))
+	consola.info("[Find Matching People] Required facet count:", targetFacetIds.size)
 
 	// Filter people who have ALL required facets
 	const matchingPeopleIds = Array.from(personFacetCounts.entries())
 		.filter(([_, count]) => count === targetFacetIds.size)
 		.map(([personId, _]) => personId)
 
-	consola.info(`[Find Matching People] Matching people IDs:`, matchingPeopleIds)
+	consola.info("[Find Matching People] Matching people IDs:", matchingPeopleIds)
 
 	if (matchingPeopleIds.length === 0) {
 		consola.warn("[Find Matching People] No people have all required facets")
@@ -192,7 +192,7 @@ export async function action({ request, params }: ActionFunctionArgs) {
 				person_id: person.id,
 			}))
 
-			consola.info(`[Create Persona from ICP] Inserting junction records:`, junctionRecords)
+			consola.info("[Create Persona from ICP] Inserting junction records:", junctionRecords)
 
 			const { error: junctionError } = await supabase.from("people_personas").insert(junctionRecords)
 

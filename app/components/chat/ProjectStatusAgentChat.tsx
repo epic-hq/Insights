@@ -98,7 +98,11 @@ function useSpeechRecognition() {
 		if (typeof window === "undefined") return false
 
 		// Web Speech API requires HTTPS in modern browsers, but allow localhost for development
-		if (window.location.protocol !== "https:" && window.location.hostname !== "localhost" && window.location.hostname !== "127.0.0.1") {
+		if (
+			window.location.protocol !== "https:" &&
+			window.location.hostname !== "localhost" &&
+			window.location.hostname !== "127.0.0.1"
+		) {
 			console.log("Speech recognition disabled: requires HTTPS (or localhost for development)")
 			return false
 		}
@@ -110,7 +114,7 @@ function useSpeechRecognition() {
 			hostname: window.location.hostname,
 			hasSpeechRecognition: Boolean(window.SpeechRecognition),
 			hasWebkitSpeechRecognition: Boolean(window.webkitSpeechRecognition),
-			supported
+			supported,
 		})
 		return supported
 	}, [])
@@ -144,7 +148,7 @@ function useSpeechRecognition() {
 					}
 				}
 				if (transcript) {
-					setFinalTranscript(prev => prev + transcript)
+					setFinalTranscript((prev) => prev + transcript)
 				}
 			}
 
@@ -158,14 +162,16 @@ function useSpeechRecognition() {
 					message: event.message,
 					protocol: window.location.protocol,
 					hostname: window.location.hostname,
-					userAgent: navigator.userAgent
+					userAgent: navigator.userAgent,
 				})
 				setIsListening(false)
 
 				// Provide user-friendly error messages
 				switch (event.error) {
 					case "network":
-						setError("Network error. Speech recognition requires HTTPS. For development, use localhost or 127.0.0.1 with HTTP allowed.")
+						setError(
+							"Network error. Speech recognition requires HTTPS. For development, use localhost or 127.0.0.1 with HTTP allowed."
+						)
 						break
 					case "not-allowed":
 						setError("Microphone permission denied. Please allow microphone access.")
@@ -366,7 +372,7 @@ export function ProjectStatusAgentChat({
 	// Update input with final speech recognition transcript when listening stops
 	useEffect(() => {
 		if (finalTranscript && !isListening) {
-			setInput(prevInput => prevInput + finalTranscript)
+			setInput((prevInput) => prevInput + finalTranscript)
 		}
 	}, [finalTranscript, isListening])
 
@@ -377,7 +383,7 @@ export function ProjectStatusAgentChat({
 		}
 	}, [input, error, clearError])
 
-const displayableMessages = useMemo(() => {
+	const displayableMessages = useMemo(() => {
 		if (!messages) return []
 		return messages.filter((message) => {
 			if (message.role !== "assistant") return true
@@ -520,9 +526,7 @@ const displayableMessages = useMemo(() => {
 										const key = message.id || `${message.role}-${index}`
 										const isUser = message.role === "user"
 										const textParts =
-											message.parts
-												?.filter((part) => part.type === "text")
-												.map((part) => part.text) ?? []
+											message.parts?.filter((part) => part.type === "text").map((part) => part.text) ?? []
 										const messageText = textParts.filter(Boolean).join("\n").trim()
 										return (
 											<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
@@ -636,7 +640,7 @@ function describeCurrentProjectView({ pathname, search, accountId, projectId }: 
 	if (!pathname) return ""
 	const segments = pathname.split("/").filter(Boolean)
 	const isProjectScoped = segments[0] === "a" && segments.length >= 3
-	let contextLines: string[] = [`Route: ${pathname}`]
+	const contextLines: string[] = [`Route: ${pathname}`]
 	if (isProjectScoped) {
 		const [, accountSegment, projectSegment, ...rest] = segments
 		const accountMatch = accountSegment || accountId

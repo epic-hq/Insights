@@ -50,15 +50,13 @@ export async function action({ request }: ActionFunctionArgs) {
 			consola.warn("[Generate Personas API] No personas generated - insufficient data")
 			return {
 				success: false,
-				message: "Not enough data to generate personas. Need people with facets (job function, seniority, preferences, etc.) to cluster.",
+				message:
+					"Not enough data to generate personas. Need people with facets (job function, seniority, preferences, etc.) to cluster.",
 			}
 		}
 
 		// Insert personas into database
-		const { data: createdPersonas, error: insertError } = await supabase
-			.from("personas")
-			.insert(personas)
-			.select()
+		const { data: createdPersonas, error: insertError } = await supabase.from("personas").insert(personas).select()
 
 		if (insertError) {
 			consola.error("[Generate Personas API] Failed to save personas:", insertError)

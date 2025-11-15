@@ -33,45 +33,44 @@ export function useSidebarCounts(projectId?: string, workflowType?: string | nul
 			try {
 				const supabase = createClient()
 				// Execute all count queries in parallel
-			const [
-				interviewsResult,
-				personasResult,
-				themesResult,
-				insightsResult,
-				peopleResult,
-				organizationsResult,
-				opportunitiesResult,
-			] =
-				await Promise.all([
+				const [
+					interviewsResult,
+					personasResult,
+					themesResult,
+					insightsResult,
+					peopleResult,
+					organizationsResult,
+					opportunitiesResult,
+				] = await Promise.all([
 					// Count interviews
 					supabase
-							.from("interviews")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+						.from("interviews")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count personas
-						supabase
-							.from("personas")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count personas
+					supabase
+						.from("personas")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count themes
-						supabase
-							.from("themes")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count themes
+					supabase
+						.from("themes")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count insights
-						supabase
-							.from("themes")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count insights
+					supabase
+						.from("themes")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
-						// Count people
-						supabase
-							.from("people")
-							.select("*", { count: "exact", head: true })
-							.eq("project_id", projectId),
+					// Count people
+					supabase
+						.from("people")
+						.select("*", { count: "exact", head: true })
+						.eq("project_id", projectId),
 
 					// Count organizations
 					supabase

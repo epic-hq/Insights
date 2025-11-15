@@ -69,10 +69,7 @@ export interface PersonaAnalysisContent {
 	confidence: "high" | "medium" | "low"
 }
 
-export type AISuggestionContent =
-	| OpportunityAdviceContent
-	| InsightRecommendationContent
-	| PersonaAnalysisContent
+export type AISuggestionContent = OpportunityAdviceContent | InsightRecommendationContent | PersonaAnalysisContent
 
 // =============================================================================
 // TODO CONTENT
@@ -125,20 +122,13 @@ export interface CommentContent {
 // UNION TYPE
 // =============================================================================
 
-export type AnnotationContentJsonb =
-	| AISuggestionContent
-	| TodoContent
-	| NoteContent
-	| CommentContent
-	| null
+export type AnnotationContentJsonb = AISuggestionContent | TodoContent | NoteContent | CommentContent | null
 
 // =============================================================================
 // TYPE GUARDS
 // =============================================================================
 
-export function isOpportunityAdvice(
-	content: unknown
-): content is OpportunityAdviceContent {
+export function isOpportunityAdvice(content: unknown): content is OpportunityAdviceContent {
 	return (
 		typeof content === "object" &&
 		content !== null &&
@@ -147,9 +137,7 @@ export function isOpportunityAdvice(
 	)
 }
 
-export function isInsightRecommendation(
-	content: unknown
-): content is InsightRecommendationContent {
+export function isInsightRecommendation(content: unknown): content is InsightRecommendationContent {
 	return (
 		typeof content === "object" &&
 		content !== null &&
@@ -158,9 +146,7 @@ export function isInsightRecommendation(
 	)
 }
 
-export function isPersonaAnalysis(
-	content: unknown
-): content is PersonaAnalysisContent {
+export function isPersonaAnalysis(content: unknown): content is PersonaAnalysisContent {
 	return (
 		typeof content === "object" &&
 		content !== null &&

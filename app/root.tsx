@@ -6,11 +6,11 @@ import type { LoaderFunctionArgs } from "react-router"
 import {
 	isRouteErrorResponse,
 	Links,
-	redirect,
 	type LinksFunction,
 	Meta,
 	type MetaFunction,
 	Outlet,
+	redirect,
 	Scripts,
 	ScrollRestoration,
 	useRouteError,
@@ -24,9 +24,9 @@ import { ThemeProvider } from "~/contexts/ThemeContext"
 import { ValidationViewProvider } from "~/contexts/ValidationViewContext"
 import { getClientEnv } from "~/env.server"
 import { loadContext } from "~/server/load-context"
+import { loader as authCallbackLoader } from "./routes/auth.callback"
 import { ClientHintCheck, getHints } from "./services/client-hints"
 import tailwindcss from "./tailwind.css?url"
-import { loader as authCallbackLoader } from "./routes/auth.callback"
 
 export async function loader({ context, request }: LoaderFunctionArgs) {
 	const requestUrl = new URL(request.url)

@@ -42,14 +42,8 @@ export const getInsights = async ({
 
 	const [tagsResult, personasResult, interviewsResult, priorityResult, votesResult] = insightIds.length
 		? await Promise.all([
-				supabase
-					.from("insight_tags")
-					.select(`insight_id, tags (tag, term, definition)`)
-					.in("insight_id", insightIds),
-				supabase
-					.from("persona_insights")
-					.select(`insight_id, personas (id, name)`)
-					.in("insight_id", insightIds),
+				supabase.from("insight_tags").select("insight_id, tags (tag, term, definition)").in("insight_id", insightIds),
+				supabase.from("persona_insights").select("insight_id, personas (id, name)").in("insight_id", insightIds),
 				interviewIds.length
 					? supabase.from("interviews").select("id, title").in("id", interviewIds)
 					: Promise.resolve({ data: null, error: null }),
@@ -60,7 +54,7 @@ export const getInsights = async ({
 					.eq("entity_type", "insight")
 					.eq("project_id", projectId)
 					.in("entity_id", insightIds),
-		  ])
+			])
 		: [null, null, null, null, null]
 
 	const tagsMap = new Map<string, Array<{ tag?: string | null; term?: string | null; definition?: string | null }>>()
@@ -134,13 +128,11 @@ export const getInsights = async ({
 		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
 		interviews: insight.interview_id ? [interviewsMap.get(insight.interview_id) || null].filter(Boolean) : [],
 		insight_tags:
-			tagsMap
-				.get(insight.id)
-				?.map((tag) => ({
-					tag: tag.tag,
-					term: tag.term,
-					definition: tag.definition,
-				})) || [],
+			tagsMap.get(insight.id)?.map((tag) => ({
+				tag: tag.tag,
+				term: tag.term,
+				definition: tag.definition,
+			})) || [],
 		linked_themes: themesMap.get(insight.id) || [],
 	}))
 	return { data: transformedData, error }
@@ -201,11 +193,8 @@ export const getInsightById = async ({
 	const insightData: InsightById = data
 
 	const [tagsResult, personasResult, interviewResult, priorityResult] = await Promise.all([
-		supabase
-			.from("insight_tags")
-			.select(`insight_id, tags (tag, term, definition)`)
-			.eq("insight_id", id),
-		supabase.from("persona_insights").select(`insight_id, personas (id, name)`).eq("insight_id", id),
+		supabase.from("insight_tags").select("insight_id, tags (tag, term, definition)").eq("insight_id", id),
+		supabase.from("persona_insights").select("insight_id, personas (id, name)").eq("insight_id", id),
 		insightData.interview_id
 			? supabase.from("interviews").select("id, title").eq("id", insightData.interview_id).single()
 			: Promise.resolve({ data: null, error: null }),

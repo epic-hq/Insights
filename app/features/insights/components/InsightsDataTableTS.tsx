@@ -40,12 +40,16 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 			{
 				id: "pain",
 				accessorFn: (row) =>
-					row.pain || row.name || (row as any).statement || row.details || row.jtbd || row.desired_outcome || "Untitled insight",
+					row.pain ||
+					row.name ||
+					(row as any).statement ||
+					row.details ||
+					row.jtbd ||
+					row.desired_outcome ||
+					"Untitled insight",
 				header: () => "Pain",
 				filterFn: "includesString",
-				cell: (cell: CellContext<Insight, unknown>) => (
-					<div className="font-medium">{cell.getValue() as string}</div>
-				),
+				cell: (cell: CellContext<Insight, unknown>) => <div className="font-medium">{cell.getValue() as string}</div>,
 			},
 			{
 				id: "journey_stage",
@@ -54,7 +58,11 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => {
 					const value = cell.getValue() as string | null
-					return value && value !== "—" ? <Badge variant="outline">{value}</Badge> : <span className="text-muted-foreground/60">—</span>
+					return value && value !== "—" ? (
+						<Badge variant="outline">{value}</Badge>
+					) : (
+						<span className="text-muted-foreground/60">—</span>
+					)
 				},
 			},
 			{
