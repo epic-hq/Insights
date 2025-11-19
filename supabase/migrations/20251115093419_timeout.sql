@@ -1,16 +1,16 @@
 drop trigger if exists "trigger_evidence_facet_embedding" on "public"."evidence_facet";
 
-drop policy "insights_read_only" on "public"."insights";
+drop policy if exists "insights_read_only" on "public"."insights";
 
-drop policy "Users can delete insight_tags for their account" on "public"."insight_tags";
+drop policy if exists "Users can delete insight_tags for their account" on "public"."insight_tags";
 
-drop policy "Users can insert insight_tags for their account" on "public"."insight_tags";
+drop policy if exists "Users can insert insight_tags for their account" on "public"."insight_tags";
 
-drop policy "Users can update insight_tags for their account" on "public"."insight_tags";
+drop policy if exists "Users can update insight_tags for their account" on "public"."insight_tags";
 
-drop policy "Users can view insight_tags for their account" on "public"."insight_tags";
+drop policy if exists "Users can view insight_tags for their account" on "public"."insight_tags";
 
-alter table "public"."sales_lens_slots" drop constraint "sales_lens_slots_related_person_ids_project_check";
+alter table "public"."sales_lens_slots" drop constraint if exists "sales_lens_slots_related_person_ids_project_check";
 
 alter table "public"."comments" drop constraint "comments_insight_id_fkey";
 
@@ -71,37 +71,39 @@ alter table "public"."insights" add column "embedding_generated_at" timestamp wi
 
 alter table "public"."insights" add column "embedding_model" text;
 
-alter table "public"."themes" drop column "category";
+alter table "public"."themes" drop column if exists "category";
 
-alter table "public"."themes" drop column "confidence";
+alter table "public"."themes" drop column if exists "confidence";
 
-alter table "public"."themes" drop column "contradictions";
+alter table "public"."themes" drop column if exists "contradictions";
 
-alter table "public"."themes" drop column "desired_outcome";
+alter table "public"."themes" drop column if exists "desired_outcome";
 
-alter table "public"."themes" drop column "details";
+alter table "public"."themes" drop column if exists "details";
 
-alter table "public"."themes" drop column "emotional_response";
+alter table "public"."themes" drop column if exists "emotional_response";
 
-alter table "public"."themes" drop column "evidence";
+alter table "public"."themes" drop column if exists "evidence";
 
-alter table "public"."themes" drop column "impact";
+alter table "public"."themes" drop column if exists "impact";
 
-alter table "public"."themes" drop column "interview_id";
+alter table "public"."themes" drop column if exists "interview_id";
 
-alter table "public"."themes" drop column "journey_stage";
+alter table "public"."themes" drop column if exists "journey_stage";
 
-alter table "public"."themes" drop column "jtbd";
+alter table "public"."themes" drop column if exists "jtbd";
 
-alter table "public"."themes" drop column "motivation";
+alter table "public"."themes" drop column if exists "motivation";
 
-alter table "public"."themes" drop column "novelty";
+alter table "public"."themes" drop column if exists "novelty";
 
-alter table "public"."themes" drop column "opportunity_ideas";
+alter table "public"."themes" drop column if exists "opportunity_ideas";
 
-alter table "public"."themes" drop column "pain";
+alter table "public"."themes" drop column if exists "pain";
 
-alter table "public"."themes" drop column "related_tags";
+alter table "public"."themes" drop column if exists "related_tags";
+
+alter table "public"."themes" add column if not exists "embedding" vector(1536);
 
 alter table "public"."themes" alter column "embedding" set data type vector(1536) using "embedding"::vector(1536);
 
@@ -175,6 +177,7 @@ alter table "public"."actions" add constraint "actions_type_check" CHECK ((type 
 
 alter table "public"."actions" validate constraint "actions_type_check";
 
+alter table "public"."insights" drop constraint if exists "insights_interview_id_fkey";
 alter table "public"."insights" add constraint "insights_interview_id_fkey" FOREIGN KEY (interview_id) REFERENCES interviews(id) not valid;
 
 alter table "public"."insights" validate constraint "insights_interview_id_fkey";
@@ -182,6 +185,11 @@ alter table "public"."insights" validate constraint "insights_interview_id_fkey"
 alter table "public"."comments" add constraint "comments_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES insights(id) ON DELETE CASCADE not valid;
 
 alter table "public"."comments" validate constraint "comments_insight_id_fkey";
+
+-- Clean up orphaned records before validating foreign keys
+delete from "public"."insight_tags" where insight_id not in (select id from "public"."themes");
+delete from "public"."opportunity_insights" where insight_id not in (select id from "public"."themes");
+delete from "public"."persona_insights" where insight_id not in (select id from "public"."themes");
 
 alter table "public"."insight_tags" add constraint "insight_tags_insight_id_fkey" FOREIGN KEY (insight_id) REFERENCES themes(id) ON DELETE CASCADE not valid;
 
@@ -670,8 +678,8 @@ using (((EXISTS ( SELECT 1
           WHERE (account_user.user_id = auth.uid()))))))));
 
 
+drop trigger if exists set_actions_updated_at on public.actions;
 CREATE TRIGGER set_actions_updated_at BEFORE UPDATE ON public.actions FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
+drop trigger if exists trg_enqueue_facet on public.evidence_facet;
 CREATE TRIGGER trg_enqueue_facet AFTER INSERT OR UPDATE ON public.evidence_facet FOR EACH ROW EXECUTE FUNCTION enqueue_facet_embedding();
-
-

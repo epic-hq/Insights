@@ -37,8 +37,11 @@ import ContextualSuggestions from "./ContextualSuggestions"
 
 type TemplatePrefill = {
 	template_key: string
+	customer_problem: string
 	target_orgs: string[]
 	target_roles: string[]
+	offerings: string
+	competitors: string[]
 	research_goal: string
 	research_goal_details: string
 	decision_questions: string[]
@@ -51,9 +54,12 @@ type TemplatePrefill = {
 
 // Zod schema for validation
 const projectGoalsSchema = z.object({
+	customer_problem: z.string().min(1, "Customer problem is required"),
 	// Organizations are optional - user can specify none
 	target_orgs: z.array(z.string()).default([]),
 	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
+	offerings: z.string().optional(),
+	competitors: z.array(z.string()).default([]),
 	research_goal: z.string().min(1, "Research goal is required"),
 	research_goal_details: z.string().optional(),
 	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
@@ -72,8 +78,11 @@ type ProjectGoalsData = z.infer<typeof projectGoalsSchema>
 
 interface ProjectGoalsScreenProps {
 	onNext: (data: {
+		customer_problem: string
 		target_orgs: string[]
 		target_roles: string[]
+		offerings: string
+		competitors: string[]
 		research_goal: string
 		research_goal_details: string
 		decision_questions: string[]
@@ -101,10 +110,14 @@ export default function ProjectGoalsScreen({
 	templateKey,
 	prefill,
 }: ProjectGoalsScreenProps) {
+	const [customer_problem, setCustomerProblem] = useState("")
 	const [target_orgs, setTargetOrgs] = useState<string[]>([])
 	const [target_roles, setTargetRoles] = useState<string[]>([])
+	const [offerings, setOfferings] = useState("")
+	const [competitors, setCompetitors] = useState<string[]>([])
 	const [newOrg, setNewOrg] = useState("")
 	const [newRole, setNewRole] = useState("")
+	const [newCompetitor, setNewCompetitor] = useState("")
 	const [research_goal, setResearchGoal] = useState("")
 	const [research_goal_details, setResearchGoalDetails] = useState("")
 	const [decision_questions, setDecisionQuestions] = useState<string[]>([])
@@ -128,7 +141,7 @@ export default function ProjectGoalsScreen({
 	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
-	const [_showAssumptionSuggestions, _setShowAssumptionSuggestions] = useState(false)
+	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
 	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
@@ -162,7 +175,7 @@ export default function ProjectGoalsScreen({
 	const decisionQuestionInputRef = useRef<HTMLTextAreaElement>(null)
 	const orgInputRef = useRef<HTMLTextAreaElement>(null)
 	const roleInputRef = useRef<HTMLTextAreaElement>(null)
-	const _assumptionInputRef = useRef<HTMLTextAreaElement>(null)
+	const assumptionInputRef = useRef<HTMLTextAreaElement>(null)
 	const unknownInputRef = useRef<HTMLTextAreaElement>(null)
 
 	// Construct the protected API path
@@ -227,9 +240,12 @@ export default function ProjectGoalsScreen({
 				formData.append("project_id", projectIdToUse)
 				formData.append("research_goal", research_goal)
 				formData.append("research_mode", researchMode)
+				if (customer_problem.trim()) formData.append("customer_problem", customer_problem)
 				if (research_goal_details.trim()) formData.append("research_goal_details", research_goal_details)
 				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
 				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
+				if (offerings.trim()) formData.append("offerings", offerings)
+				if (competitors.length > 0) formData.append("competitors", competitors.join(", "))
 				if (assumptions.length > 0) formData.append("assumptions", assumptions.join("\n"))
 				if (unknowns.length > 0) formData.append("unknowns", unknowns.join("\n"))
 				if (custom_instructions.trim()) formData.append("custom_instructions", custom_instructions)
@@ -259,8 +275,11 @@ export default function ProjectGoalsScreen({
 		},
 		[
 			assumptions,
+			competitors,
 			custom_instructions,
+			customer_problem,
 			ensuringStructure,
+			offerings,
 			research_goal,
 			research_goal_details,
 			researchMode,
@@ -341,8 +360,11 @@ export default function ProjectGoalsScreen({
 			if (ctx?.merged) {
 				const m = ctx.merged as Record<string, unknown>
 				const hasAny =
+					(typeof m.customer_problem === "string" && (m.customer_problem as string).length > 0) ||
 					(Array.isArray(m.target_orgs) && (m.target_orgs as unknown[]).length > 0) ||
 					(Array.isArray(m.target_roles) && (m.target_roles as unknown[]).length > 0) ||
+					(typeof m.offerings === "string" && (m.offerings as string).length > 0) ||
+					(Array.isArray(m.competitors) && (m.competitors as unknown[]).length > 0) ||
 					(typeof m.research_goal === "string" && (m.research_goal as string).length > 0) ||
 					(Array.isArray(m.decision_questions) && (m.decision_questions as unknown[]).length > 0) ||
 					(Array.isArray(m.assumptions) && (m.assumptions as unknown[]).length > 0) ||
@@ -350,8 +372,11 @@ export default function ProjectGoalsScreen({
 					(typeof m.custom_instructions === "string" && (m.custom_instructions as string).length > 0)
 
 				if (hasAny) {
+					setCustomerProblem((m.customer_problem as string) ?? "")
 					setTargetOrgs((m.target_orgs as string[]) ?? [])
 					setTargetRoles((m.target_roles as string[]) ?? [])
+					setOfferings((m.offerings as string) ?? "")
+					setCompetitors((m.competitors as string[]) ?? [])
 					setResearchGoal((m.research_goal as string) ?? "")
 					setResearchGoalDetails((m.research_goal_details as string) ?? "")
 					setAssumptions((m.assumptions as string[]) ?? [])
@@ -373,8 +398,11 @@ export default function ProjectGoalsScreen({
 				const result = await response.json()
 				if (result.success && result.data) {
 					const data = result.data
+					setCustomerProblem(data.customer_problem || "")
 					setTargetOrgs(data.target_orgs || [])
 					setTargetRoles(data.target_roles || [])
+					setOfferings(data.offerings || "")
+					setCompetitors(data.competitors || [])
 					setResearchGoal(data.research_goal || "")
 					setResearchGoalDetails(data.research_goal_details || "")
 					setAssumptions(data.assumptions || [])
@@ -415,8 +443,11 @@ export default function ProjectGoalsScreen({
 			!custom_instructions
 
 		if (noData) {
+			setCustomerProblem(prefill.customer_problem || "")
 			setTargetOrgs(prefill.target_orgs || [])
 			setTargetRoles(prefill.target_roles || [])
+			setOfferings(prefill.offerings || "")
+			setCompetitors(prefill.competitors || [])
 			setResearchGoal(prefill.research_goal || "")
 			setResearchGoalDetails(prefill.research_goal_details || "")
 			setAssumptions(prefill.assumptions || [])
@@ -427,8 +458,11 @@ export default function ProjectGoalsScreen({
 			}
 
 			if (currentProjectId) {
+				if (prefill.customer_problem) saveProjectSection("customer_problem", prefill.customer_problem)
 				if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
 				if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
+				if (prefill.offerings) saveProjectSection("offerings", prefill.offerings)
+				if ((prefill.competitors || []).length > 0) saveProjectSection("competitors", prefill.competitors)
 				if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
 				if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
 				if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
@@ -438,8 +472,11 @@ export default function ProjectGoalsScreen({
 	}, [
 		prefill,
 		contextLoaded,
+		customer_problem,
 		target_orgs.length,
 		target_roles.length,
+		offerings,
+		competitors.length,
 		research_goal,
 		assumptions.length,
 		unknowns.length,
@@ -510,7 +547,7 @@ export default function ProjectGoalsScreen({
 		saveDecisionQuestions(newQuestions)
 	}
 
-	const _addAssumption = async () => {
+	const addAssumption = async () => {
 		if (newAssumption.trim() && !assumptions.includes(newAssumption.trim())) {
 			await createProjectIfNeeded()
 			const newAssumptions = [...assumptions, newAssumption.trim()]
@@ -520,7 +557,7 @@ export default function ProjectGoalsScreen({
 		}
 	}
 
-	const _updateAssumption = (index: number, value: string) => {
+	const updateAssumption = (index: number, value: string) => {
 		const v = value.trim()
 		if (!v) return
 		const updated = [...assumptions]
@@ -548,7 +585,7 @@ export default function ProjectGoalsScreen({
 		saveUnknowns(updated)
 	}
 
-	const _removeAssumption = (index: number) => {
+	const removeAssumption = (index: number) => {
 		const newAssumptions = assumptions.filter((_, i) => i !== index)
 		setAssumptions(newAssumptions)
 		saveAssumptions(newAssumptions)
@@ -561,7 +598,7 @@ export default function ProjectGoalsScreen({
 	}
 
 	const handleNext = useCallback(async () => {
-		if (target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
+		if (customer_problem.trim() && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
 			try {
 				const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
 				if (!resolvedProjectId) {
@@ -572,8 +609,11 @@ export default function ProjectGoalsScreen({
 				await ensureResearchStructure(resolvedProjectId)
 				saveResearchGoal(research_goal, research_goal_details, false)
 				onNext({
+					customer_problem,
 					target_orgs,
 					target_roles,
+					offerings,
+					competitors,
 					research_goal,
 					research_goal_details,
 					decision_questions,
@@ -588,11 +628,14 @@ export default function ProjectGoalsScreen({
 		}
 	}, [
 		assumptions,
+		competitors,
 		createProjectIfNeeded,
 		currentProjectId,
 		custom_instructions,
+		customer_problem,
 		decision_questions,
 		ensureResearchStructure,
+		offerings,
 		onNext,
 		research_goal,
 		research_goal_details,
@@ -638,16 +681,14 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
-												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-											}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+												}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
-												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-											}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+												}`}
 										>
 											{step.title}
 										</span>
@@ -693,7 +734,44 @@ export default function ProjectGoalsScreen({
 
 				{/* Main Content - Single Column Accordion Layout */}
 				<div className="mx-auto max-w-4xl space-y-4">
-					{/* Research Goal Accordion */}
+					{/* 1. Customer Problem Section */}
+					<Card>
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<HelpCircle className="h-5 w-5 text-orange-600" />
+									<h2 className="font-semibold text-lg">What is the customer's problem?</h2>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												Tell us about your business and the customer problem you're addressing.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</div>
+						</CardHeader>
+
+						<CardContent className="p-6 pt-0">
+							<Textarea
+								placeholder="e.g., Small businesses struggle to manage customer relationships efficiently without expensive CRM tools"
+								value={customer_problem}
+								onChange={(e) => {
+									setCustomerProblem(e.target.value)
+									saveProjectSection("customer_problem", e.target.value, true)
+								}}
+								rows={3}
+								className="min-h-[80px]"
+							/>
+						</CardContent>
+					</Card>
+
+					{/* 5. Research Goal Accordion */}
 
 					<Card>
 						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
@@ -701,7 +779,7 @@ export default function ProjectGoalsScreen({
 								<div className="flex items-center gap-2">
 									<Target className="h-5 w-5 text-blue-600" />
 									<h2 className="font-semibold text-lg">
-										{templateKey === "understand_customer_needs" ? "Business Goal" : "Primary Goal"}
+										What goal are you trying to achieve?
 									</h2>
 									<Tooltip>
 										<TooltipTrigger asChild>
@@ -711,7 +789,7 @@ export default function ProjectGoalsScreen({
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
 											<p>
-												What problem would you like to solve? This will guide your research and interview questions.
+												Define your research goal - what you're trying to learn or validate.
 											</p>
 										</TooltipContent>
 									</Tooltip>
@@ -741,7 +819,7 @@ export default function ProjectGoalsScreen({
 						</CardContent>
 					</Card>
 
-					{/* Type & Scope Section - Collapsible */}
+					{/* Interview Type & Scope Section - Collapsible */}
 					<Collapsible
 						open={openAccordion === "type-scope"}
 						onOpenChange={() => setOpenAccordion(openAccordion === "type-scope" ? null : "type-scope")}
@@ -752,7 +830,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Clock className="h-5 w-5 text-green-600" />
-											<h2 className="font-semibold text-lg">Type & Scope</h2>
+											<h2 className="font-semibold text-lg">Interview Type & Scope</h2>
 											<span className="rounded-md bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
 												{getResearchModeDisplay(researchMode)} • {interview_duration} min
 											</span>
@@ -950,7 +1028,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											<h2 className="font-semibold text-lg">Who are we talking to?</h2>
+											<h2 className="font-semibold text-lg">Who are your ideal customers?</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
@@ -962,8 +1040,7 @@ export default function ProjectGoalsScreen({
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
 													<p>
-														Define the types of organizations and roles you want to research. This helps target the
-														right interview participants.
+														Identify the organizations and roles of people you want to interview.
 													</p>
 												</TooltipContent>
 											</Tooltip>
@@ -1186,7 +1263,136 @@ export default function ProjectGoalsScreen({
 						</Card>
 					</Collapsible>
 
-					{/* Key Decisions to make Accordion */}
+					{/* 3. Offerings Section */}
+					<Card>
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<GraduationCapIcon className="h-5 w-5 text-indigo-600" />
+									<h2 className="font-semibold text-lg">What products and services do you offer?</h2>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												Describe your solutions - the products and services that address the customer problem.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</div>
+						</CardHeader>
+
+						<CardContent className="p-6 pt-0">
+							<Textarea
+								placeholder="e.g., Cloud-based CRM platform with AI-powered insights, mobile app, and integration marketplace"
+								value={offerings}
+								onChange={(e) => {
+									setOfferings(e.target.value)
+									saveProjectSection("offerings", e.target.value, true)
+								}}
+								rows={3}
+								className="min-h-[80px]"
+							/>
+						</CardContent>
+					</Card>
+
+					{/* 4. Competitors Section */}
+					<Card>
+						<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+							<div className="flex items-center justify-between">
+								<div className="flex items-center gap-2">
+									<Users className="h-5 w-5 text-red-600" />
+									<h2 className="font-semibold text-lg">What other products are customers using?</h2>
+									<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+										{competitors.length}
+									</span>
+									<Tooltip>
+										<TooltipTrigger asChild>
+											<span className="inline-flex">
+												<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+											</span>
+										</TooltipTrigger>
+										<TooltipContent className="max-w-xs">
+											<p>
+												List the competitive alternatives or solutions customers might be using or considering.
+											</p>
+										</TooltipContent>
+									</Tooltip>
+								</div>
+							</div>
+						</CardHeader>
+
+						<CardContent className="p-6 pt-0">
+							<div className="mb-3 flex flex-wrap gap-2">
+								{competitors.map((competitor, index) => (
+									<div
+										key={`${competitor}-${index}`}
+										className="group flex items-center gap-2 rounded-md border border-red-300 bg-red-100 px-3 py-1 text-sm transition-all hover:bg-red-200 dark:border-red-700 dark:bg-red-900/20 dark:hover:bg-red-800/30"
+									>
+										<InlineEdit
+											value={competitor}
+											onSubmit={(val) => {
+												const v = val.trim()
+												if (!v) return
+												const list = [...competitors]
+												list[index] = v
+												setCompetitors(list)
+												saveProjectSection("competitors", list)
+											}}
+											textClassName="flex-shrink-0 font-medium text-red-800 dark:text-red-300"
+											inputClassName="h-6 py-0 text-red-900 dark:text-red-200"
+										/>
+										<button
+											onClick={() => {
+												const newCompetitors = competitors.filter((_, i) => i !== index)
+												setCompetitors(newCompetitors)
+												saveProjectSection("competitors", newCompetitors)
+											}}
+											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-red-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-red-700"
+										>
+											<X className="h-3 w-3 text-red-700 dark:text-red-400" />
+										</button>
+									</div>
+								))}
+							</div>
+							<div className="flex gap-2">
+								<Input
+									placeholder="e.g., Salesforce, HubSpot, Excel spreadsheets"
+									value={newCompetitor}
+									onChange={(e) => setNewCompetitor(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && newCompetitor.trim()) {
+											const newCompetitors = [...competitors, newCompetitor.trim()]
+											setCompetitors(newCompetitors)
+											setNewCompetitor("")
+											saveProjectSection("competitors", newCompetitors)
+										}
+									}}
+									className="flex-1"
+								/>
+								<Button
+									onClick={() => {
+										if (newCompetitor.trim()) {
+											const newCompetitors = [...competitors, newCompetitor.trim()]
+											setCompetitors(newCompetitors)
+											setNewCompetitor("")
+											saveProjectSection("competitors", newCompetitors)
+										}
+									}}
+									variant="outline"
+									size="sm"
+								>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
+						</CardContent>
+					</Card>
+
+					{/* 7. Key Decisions to make Accordion */}
 					<Collapsible
 						open={openAccordion === "key-questions"}
 						onOpenChange={() => setOpenAccordion(openAccordion === "key-questions" ? null : "key-questions")}
@@ -1197,7 +1403,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Option className="h-5 w-5 text-green-600" />
-											<h2 className="font-semibold text-lg">What Decisions Need to be Made?</h2>
+											<h2 className="font-semibold text-lg">What key decisions are you facing?</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{" "}
 												{decision_questions.length}
@@ -1344,7 +1550,11 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<GraduationCapIcon className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">What do we need to Learn?</h2>
+											<h2 className="font-semibold text-lg">Assumptions & Unknowns</h2>
+											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+												{" "}
+												{unknowns.length}
+											</span>
 											<Tooltip>
 												<TooltipTrigger asChild>
 													<span className="inline-flex">
@@ -1352,7 +1562,7 @@ export default function ProjectGoalsScreen({
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
-													<p>What do we need to learn in order to make decisions?</p>
+													<p>Address your riskiest assumptions to gain confidence in your decisions.</p>
 												</TooltipContent>
 											</Tooltip>
 										</div>
@@ -1368,8 +1578,8 @@ export default function ProjectGoalsScreen({
 								<CardContent className="p-6 pt-0">
 									<div className="mb-6">
 										{/* Assumptions */}
-										{/* <div className="mb-6">
-											<label className="mb-3 block font-medium text-foreground text-sm">Assumptions</label>
+										<div className="mb-6">
+											<label className="mb-3 block font-medium text-foreground text-md">Assumptions</label>
 											<div className="mb-3 space-y-2">
 												{assumptions.map((assumption, index) => (
 													<div
@@ -1461,11 +1671,11 @@ export default function ProjectGoalsScreen({
 													/>
 												</div>
 											)}
-										</div> */}
+										</div>
 
 										{/* Unknowns -> Research Questions */}
 										<div>
-											{/* <label className="mb-3 block font-medium text-foreground text-sm">Research Questions (Unknowns)</label> */}
+											<label className="mb-3 block font-medium text-foreground text-md">Unknowns</label>
 											<div className="mb-3 space-y-2">
 												{unknowns.map((unknown, index) => (
 													<div
@@ -1622,7 +1832,7 @@ export default function ProjectGoalsScreen({
 									</>
 								) : (
 									<>
-										Next
+										Conversation Prompts
 										<ChevronRight className="ml-2 h-4 w-4" />
 									</>
 								)}

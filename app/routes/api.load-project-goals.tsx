@@ -1,6 +1,7 @@
 import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
 import { getProjectSectionsByKind } from "~/features/projects/db"
+import { PROJECT_SECTIONS, getSectionDefaultValue } from "~/features/projects/section-config"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {
@@ -13,19 +14,10 @@ export async function loader({ request }: LoaderFunctionArgs) {
 			return Response.json({ error: "Project ID is required" }, { status: 400 })
 		}
 
-		// Load all relevant sections
-		const sectionTypes = [
-			"target_orgs",
-			"target_roles",
-			"research_goal",
-			"decision_questions",
-			"assumptions",
-			"unknowns",
-			"custom_instructions",
-		]
-		const sectionsData: Record<string, any> = {}
+		// Load all sections
+		const sectionsData: Record<string, { meta: Record<string, unknown> }> = {}
 
-		for (const kind of sectionTypes) {
+		for (const { kind } of PROJECT_SECTIONS) {
 			const { data: sections, error } = await getProjectSectionsByKind({
 				supabase,
 				projectId,
@@ -39,63 +31,27 @@ export async function loader({ request }: LoaderFunctionArgs) {
 
 			// Get the most recent section for this kind
 			if (sections && sections.length > 0) {
-				sectionsData[kind] = sections[0] // Most recent due to ordering by created_at desc
+				sectionsData[kind] = {
+					meta: (sections[0].meta as Record<string, unknown>) || {},
+				}
 			}
 		}
 
-		// Parse the data into the format expected by the component
-		const result = {
-			target_orgs: [] as string[],
-			target_roles: [] as string[],
-			research_goal: "",
-			research_goal_details: "",
-			decision_questions: [] as string[],
-			assumptions: [] as string[],
-			unknowns: [] as string[],
-			custom_instructions: "",
-		}
+		// Build result dynamically from section config
+		const result: Record<string, unknown> = {}
 
-		// Parse target orgs data
-		if (sectionsData.target_orgs) {
-			const meta = sectionsData.target_orgs.meta || {}
-			result.target_orgs = meta.target_orgs || []
-		}
+		for (const { kind, type } of PROJECT_SECTIONS) {
+			const section = sectionsData[kind]
+			const meta = section?.meta || {}
 
-		// Parse target roles data
-		if (sectionsData.target_roles) {
-			const meta = sectionsData.target_roles.meta || {}
-			result.target_roles = meta.target_roles || []
-		}
-
-		// Parse research goal data
-		if (sectionsData.research_goal) {
-			const meta = sectionsData.research_goal.meta || {}
-			result.research_goal = meta.research_goal || ""
-			result.research_goal_details = meta.research_goal_details || ""
-		}
-
-		// Parse decision questions data
-		if (sectionsData.decision_questions) {
-			const meta = sectionsData.decision_questions.meta || {}
-			result.decision_questions = meta.decision_questions || []
-		}
-
-		// Parse assumptions data
-		if (sectionsData.assumptions) {
-			const meta = sectionsData.assumptions.meta || {}
-			result.assumptions = meta.assumptions || []
-		}
-
-		// Parse unknowns data
-		if (sectionsData.unknowns) {
-			const meta = sectionsData.unknowns.meta || {}
-			result.unknowns = meta.unknowns || []
-		}
-
-		// Parse custom instructions data
-		if (sectionsData.custom_instructions) {
-			const meta = sectionsData.custom_instructions.meta || {}
-			result.custom_instructions = meta.custom_instructions || ""
+			if (type === "object" && kind === "research_goal") {
+				// Special case for research_goal which has nested structure
+				result.research_goal = meta.research_goal || ""
+				result.research_goal_details = meta.research_goal_details || ""
+			} else {
+				// For all other sections, extract the value from meta using the kind as key
+				result[kind] = meta[kind] ?? getSectionDefaultValue(kind)
+			}
 		}
 
 		consola.log(`Loaded project goals data for project ${projectId}`)
