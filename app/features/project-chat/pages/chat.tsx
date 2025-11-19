@@ -125,7 +125,7 @@ export default function ProjectChatPage() {
 						<span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-200 ring-inset dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800">
 							Setup Chat
 						</span>
-						<span className="text-muted-foreground text-xs">Answer 6 quick questions</span>
+						<span className="text-muted-foreground text-xs">Provide some background information</span>
 					</div>
 					<div className="flex items-center gap-3">
 						<MiniDotsProgress completed={progress.completedCount} total={progress.totalCount} />

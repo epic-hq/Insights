@@ -676,8 +676,11 @@ export interface GapAnalysis {
 }
 
 export interface GenerateInputs {
+  customer_problem?: string | null
   target_org?: string | null
   target_roles?: string | null
+  offerings?: string | null
+  competitors?: string | null
   research_goal: string
   research_goal_details?: string | null
   assumptions?: string | null

@@ -338,8 +338,11 @@ export namespace partial_types {
       suggested_interview_topics: string[]
     }
     export interface GenerateInputs {
+      customer_problem?: string | null
       target_org?: string | null
       target_roles?: string | null
+      offerings?: string | null
+      competitors?: string | null
       research_goal?: string | null
       research_goal_details?: string | null
       assumptions?: string | null

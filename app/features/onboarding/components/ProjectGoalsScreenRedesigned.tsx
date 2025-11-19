@@ -748,9 +748,7 @@ export default function ProjectGoalsScreen({
 											</span>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
-											<p>
-												Tell us about your business and the customer problem you're addressing.
-											</p>
+											<p>Tell us about your business and the customer problem you're addressing.</p>
 										</TooltipContent>
 									</Tooltip>
 								</div>
@@ -778,9 +776,7 @@ export default function ProjectGoalsScreen({
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Target className="h-5 w-5 text-blue-600" />
-									<h2 className="font-semibold text-lg">
-										What goal are you trying to achieve?
-									</h2>
+									<h2 className="font-semibold text-lg">What goal are you trying to achieve?</h2>
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<span className="inline-flex">
@@ -788,9 +784,7 @@ export default function ProjectGoalsScreen({
 											</span>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
-											<p>
-												Define your research goal - what you're trying to learn or validate.
-											</p>
+											<p>Define your research goal - what you're trying to learn or validate.</p>
 										</TooltipContent>
 									</Tooltip>
 								</div>
@@ -818,6 +812,148 @@ export default function ProjectGoalsScreen({
 							{/* Removed SuggestionBadges - rely only on ContextualSuggestions */}
 						</CardContent>
 					</Card>
+
+					{/* Target Market Accordion */}
+					<Collapsible
+						open={openAccordion === "target-market"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "target-market" ? null : "target-market")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Users className="h-5 w-5 text-purple-600" />
+											<h2 className="font-semibold text-lg">Who are your ideal customers?</h2>
+											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+												{target_roles.length}
+											</span>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+													</span>
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>Identify the organizations and roles of people you want to interview.</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "target-market" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									{/* Organizations */}
+									<div className="mb-6">
+										<label className="mb-3 block font-medium text-foreground text-sm">Organizations</label>
+										<div className="mb-3 flex flex-wrap gap-2">
+											{target_orgs.map((org, index) => (
+												<div
+													key={`${org}-${index}`}
+													className="group flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
+												>
+													<InlineEdit
+														value={org}
+														onSubmit={(val) => {
+															const v = val.trim()
+															if (!v) return
+															const list = [...target_orgs]
+															list[index] = v
+															setTargetOrgs(list)
+															saveTargetOrgs(list)
+														}}
+														textClassName="flex-shrink-0 font-medium text-green-800 dark:text-green-300"
+														inputClassName="h-6 py-0 text-green-900 dark:text-green-200"
+													/>
+													<button
+														onClick={() => removeOrg(org)}
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
+													>
+														<X className="h-3 w-3 text-green-700 dark:text-green-400" />
+													</button>
+												</div>
+											))}
+										</div>
+										{!showOrgSuggestions ? (
+											<Button
+												onClick={() => {
+													setShowOrgSuggestions(true)
+													setActiveSuggestionType("organizations")
+												}}
+												variant="outline"
+												size="sm"
+												className="w-full justify-center border-dashed"
+											>
+												<Plus className="mr-2 h-4 w-4" />
+												Add organization type
+											</Button>
+										) : (
+											<div className="space-y-3">
+												<div className="flex gap-2">
+													<Textarea
+														ref={orgInputRef}
+														placeholder="e.g., Enterprise software companies, D2C fashion brands, Healthcare startups"
+														value={newOrg}
+														onChange={(e) => setNewOrg(e.target.value)}
+														onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addOrg()}
+														className="flex-1 resize-none"
+														rows={2}
+														autoFocus
+													/>
+													<Button onClick={addOrg} variant="outline" size="sm">
+														<Plus className="h-4 w-4" />
+													</Button>
+													<Button
+														onClick={() => {
+															setShowOrgSuggestions(false)
+															setNewOrg("")
+														}}
+														variant="ghost"
+														size="sm"
+													>
+														<X className="h-4 w-4" />
+													</Button>
+												</div>
+
+												<ContextualSuggestions
+													suggestionType="organizations"
+													currentInput={newOrg}
+													researchGoal={research_goal}
+													existingItems={target_orgs}
+													apiPath={apiPath}
+													shownSuggestions={shownSuggestionsByType.organizations || []}
+													isActive={activeSuggestionType === null || activeSuggestionType === "organizations"}
+													onSuggestionClick={async (suggestion) => {
+														if (!target_orgs.includes(suggestion.trim())) {
+															await createProjectIfNeeded()
+															const newOrgs = [...target_orgs, suggestion.trim()]
+															setTargetOrgs(newOrgs)
+															saveTargetOrgs(newOrgs)
+														}
+													}}
+													onSuggestionShown={(suggestions) => {
+														if (activeSuggestionType === null) {
+															setActiveSuggestionType("organizations")
+														}
+														setShownSuggestionsByType((prev) => ({
+															...prev,
+															organizations: suggestions,
+														}))
+													}}
+												/>
+											</div>
+										)}
+									</div>
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
 
 					{/* Interview Type & Scope Section - Collapsible */}
 					<Collapsible
@@ -1039,9 +1175,7 @@ export default function ProjectGoalsScreen({
 													</span>
 												</TooltipTrigger>
 												<TooltipContent className="max-w-xs">
-													<p>
-														Identify the organizations and roles of people you want to interview.
-													</p>
+													<p>Identify the organizations and roles of people you want to interview.</p>
 												</TooltipContent>
 											</Tooltip>
 										</div>
@@ -1277,9 +1411,7 @@ export default function ProjectGoalsScreen({
 											</span>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
-											<p>
-												Describe your solutions - the products and services that address the customer problem.
-											</p>
+											<p>Describe your solutions - the products and services that address the customer problem.</p>
 										</TooltipContent>
 									</Tooltip>
 								</div>
@@ -1317,9 +1449,7 @@ export default function ProjectGoalsScreen({
 											</span>
 										</TooltipTrigger>
 										<TooltipContent className="max-w-xs">
-											<p>
-												List the competitive alternatives or solutions customers might be using or considering.
-											</p>
+											<p>List the competitive alternatives or solutions customers might be using or considering.</p>
 										</TooltipContent>
 									</Tooltip>
 								</div>
@@ -1772,6 +1902,150 @@ export default function ProjectGoalsScreen({
 													/>
 												</div>
 											)}
+										</div>
+									</div>
+								</CardContent>
+							</CollapsibleContent>
+						</Card>
+					</Collapsible>
+
+					{/* Interview Type & Scope Section - Collapsible (relocated) */}
+					<Collapsible
+						open={openAccordion === "type-scope"}
+						onOpenChange={() => setOpenAccordion(openAccordion === "type-scope" ? null : "type-scope")}
+					>
+						<Card>
+							<CollapsibleTrigger asChild>
+								<CardHeader className="cursor-pointer p-4 transition-colors hover:bg-muted/50">
+									<div className="flex items-center justify-between">
+										<div className="flex items-center gap-2">
+											<Clock className="h-5 w-5 text-green-600" />
+											<h2 className="font-semibold text-lg">Interview Type & Scope</h2>
+											<span className="rounded-md bg-muted px-2 py-1 font-medium text-muted-foreground text-xs">
+												{getResearchModeDisplay(researchMode)} • {interview_duration} min
+											</span>
+											<Tooltip>
+												<TooltipTrigger asChild>
+													<span className="inline-flex">
+														<Info className="h-4 w-4 text-muted-foreground hover:text-foreground" />
+													</span>
+												</TooltipTrigger>
+												<TooltipContent className="max-w-xs">
+													<p>Set the interview type, duration, and target number to guide question generation.</p>
+												</TooltipContent>
+											</Tooltip>
+										</div>
+										{openAccordion === "type-scope" ? (
+											<ChevronDown className="h-4 w-4" />
+										) : (
+											<ChevronRight className="h-4 w-4" />
+										)}
+									</div>
+								</CardHeader>
+							</CollapsibleTrigger>
+							<CollapsibleContent>
+								<CardContent className="p-6 pt-0">
+									<div className="grid gap-8 md:grid-cols-2">
+										<div className="space-y-6">
+											<div>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Conversation Type</label>
+												<ToggleGroup
+													className="grid w-full grid-cols-1 gap-2"
+													onValueChange={(value) => {
+														if (!value) return
+														const mode = value as ResearchMode
+														setResearchMode(mode)
+														saveSettings({ research_mode: mode })
+													}}
+													type="single"
+													value={researchMode}
+												>
+													<ToggleGroupItem
+														value="exploratory"
+														aria-label="Exploratory"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+													>
+														<div className="flex w-full items-center justify-between">
+															<span className="font-medium">Exploratory</span>
+															<span className="text-muted-foreground text-xs">Discovery</span>
+														</div>
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="validation"
+														aria-label="Validation"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+													>
+														<div className="flex w-full items-center justify-between">
+															<span className="font-medium">Validation</span>
+															<span className="text-muted-foreground text-xs">Testing</span>
+														</div>
+													</ToggleGroupItem>
+													<ToggleGroupItem
+														value="user_testing"
+														aria-label="User Testing"
+														className="justify-start rounded-lg border-2 px-4 py-3 data-[state=on]:border-primary data-[state=on]:bg-primary/5"
+													>
+														<div className="flex w-full items-center justify-between">
+															<span className="font-medium">User Testing</span>
+															<span className="text-muted-foreground text-xs">Usability</span>
+														</div>
+													</ToggleGroupItem>
+												</ToggleGroup>
+											</div>
+
+											<div>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Interview Duration</label>
+												<div className="flex items-center gap-3">
+													<Input
+														value={interview_duration}
+														onChange={(e) => {
+															const value = Number(e.target.value)
+															if (!Number.isNaN(value)) {
+																setInterviewDuration(value)
+																saveSettings({ interview_duration: value })
+															}
+														}}
+														type="number"
+														min={15}
+														max={90}
+														step={5}
+														className="w-24"
+													/>
+													<span className="text-muted-foreground text-sm">minutes</span>
+												</div>
+											</div>
+										</div>
+
+										<div className="space-y-6">
+											<div>
+												<label className="mb-3 block font-semibold text-foreground text-sm">Target Conversations</label>
+												<div className="items center flex gap-3">
+													<Input
+														value={target_conversations}
+														onChange={(e) => {
+															const value = Number(e.target.value)
+															if (!Number.isNaN(value)) {
+																setTargetConversations(value)
+																saveSettings({ target_conversations: value })
+															}
+														}}
+														type="number"
+														min={5}
+														max={100}
+														className="w-24"
+													/>
+													<span className="text-muted-foreground text-sm">interviews</span>
+												</div>
+											</div>
+
+											<div className="rounded-lg border border-muted-foreground/30 border-dashed p-4">
+												<p className="mb-2 font-semibold text-foreground text-sm">Mode guidance</p>
+												<ul className="list-disc space-y-2 pl-5 text-muted-foreground text-sm">
+													<li>Exploratory: Use when you're still framing the problem.</li>
+													<li>Validation: Use when testing specific hypotheses.</li>
+													<li>User Testing: Use when refining usability or adoption.</li>
+												</ul>
+											</div>
 										</div>
 									</div>
 								</CardContent>
