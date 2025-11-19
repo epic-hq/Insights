@@ -113,12 +113,18 @@ export const saveProjectSectionsDataTool = createTool({
 		saved: z.array(z.string()).optional(),
 		errors: z.array(z.string()).optional(),
 	}),
-	execute: async ({ context }) => {
+	execute: async ({ context: toolContext, runtimeContext }) => {
 		try {
-			const { project_id, ...sectionData } = context
+			const { project_id, ...sectionData } = toolContext
+			const runtimeProjectId = runtimeContext?.get?.("project_id")
 
-			if (!project_id) {
-				return { success: false, message: "Missing project_id" }
+			// Use runtime project_id if tool context has 'current' or missing
+			const actualProjectId = (!project_id || project_id === 'current')
+				? runtimeProjectId
+				: project_id
+
+			if (!actualProjectId) {
+				return { success: false, message: "Missing project_id in both context and runtime" }
 			}
 
 			const toSave: Array<{ kind: string; content_md: string; meta: Record<string, unknown> }> = []
@@ -154,7 +160,7 @@ export const saveProjectSectionsDataTool = createTool({
 				const res = await upsertProjectSection({
 					supabase: supabaseAdmin as unknown as SupabaseClient<Database>,
 					data: {
-						project_id,
+						project_id: actualProjectId,
 						kind: section.kind,
 						content_md: section.content_md,
 						meta: section.meta as Database["public"]["Tables"]["project_sections"]["Insert"]["meta"],

@@ -7,6 +7,9 @@ import { PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import { getSharedPostgresStore } from "../storage/postgres-singleton"
 import { displayUserQuestionsTool } from "../tools/display-user-questions"
+import { generateResearchStructureTool } from "../tools/generate-research-structure"
+import { manageAnnotationsTool } from "../tools/manage-annotations"
+import { manageDocumentsTool } from "../tools/manage-documents"
 import { saveProjectSectionsDataTool } from "../tools/save-project-sections-data"
 
 // Dynamically build ProjectSetupState from section config
@@ -66,12 +69,26 @@ Core questions (in order):
 Rules:
 - Always store each answer in memory under the matching key.
 - Save each answer individually as you discover them to the database using the "saveProjectSectionsData"
-- When all eight questions are answered, set completed=true in memory and thank the user.
+- When all eight questions are answered:
+  1. Call the "generateResearchStructure" tool to generate the research plan and interview prompts
+  2. Set completed=true in memory
+  3. Thank the user and let them know their research plan and conversation prompts have been generated
 
 Responses:
 - Keep replies concise, bulleted when appropriate, and factual.
 - Don't repeat the question or summarize the answer.
 - If the user seems uncertain, suggest 2–3 concrete examples.
+
+Document Management:
+- When users ask to "save", "create", "write", or "document" something, use the manageDocuments tool
+- Understand natural language: "save our positioning" → kind: "positioning_statement"
+- Examples of user requests you should handle:
+  * "Save this as our positioning" → positioning_statement
+  * "Create an SEO strategy doc" → seo_strategy
+  * "Document the pricing discussion" → pricing_strategy
+  * "Write up the meeting notes" → meeting_notes
+  * "Save the competitive analysis" → competitive_analysis
+- The manageDocuments tool has full vocabulary mapping built-in
 
 
 Existing project sections snapshot (for context):
@@ -83,6 +100,9 @@ ${JSON.stringify(existing)}
 		saveProjectSectionsData: saveProjectSectionsDataTool,
 		displayUserQuestions: displayUserQuestionsTool,
 		navigateToPage: navigateToPageTool,
+		generateResearchStructure: generateResearchStructureTool,
+		manageDocuments: manageDocumentsTool,
+		manageAnnotations: manageAnnotationsTool,
 	},
 	memory: new Memory({
 		storage: getSharedPostgresStore(),

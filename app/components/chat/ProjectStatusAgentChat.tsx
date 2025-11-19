@@ -471,7 +471,19 @@ export function ProjectStatusAgentChat({
 				>
 					<div className="flex items-center justify-between">
 						{!isCollapsed && (
-							<CardTitle className="flex items-center gap-2 text-base sm:text-lg">
+							<CardTitle
+								onClick={() => setIsCollapsed(!isCollapsed)}
+								className="flex cursor-pointer items-center gap-2 text-base transition-opacity hover:opacity-80 sm:text-lg"
+								role="button"
+								tabIndex={0}
+								onKeyDown={(e) => {
+									if (e.key === "Enter" || e.key === " ") {
+										e.preventDefault()
+										setIsCollapsed(!isCollapsed)
+									}
+								}}
+								aria-label="Toggle chat"
+							>
 								<BotMessageSquare className="h-4 w-4 text-blue-600" />
 								Ask Project Assistant
 							</CardTitle>

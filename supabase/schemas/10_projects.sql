@@ -125,20 +125,23 @@ create policy "Account owners can delete" on public.projects
 --   - accounts_users(account_id uuid, user_id uuid)
 --   - Supabase auth functions: auth.uid(), auth.role()
 
--- 1) Lookup table for allowed kinds (flexible; add rows anytime)
+-- 1) Reference catalog for common document types (no longer enforces FK)
+-- Any kind value is allowed in project_sections - this is just for tracking common types
 create table if not exists public.project_section_kinds (
-  id text primary key -- e.g., 'goal','questions','findings','background'
+  id text primary key -- e.g., 'goal','questions','findings','background','positioning_statement','seo_strategy'
 );
 
 insert into public.project_section_kinds (id) values
-  ('goal'), ('questions'), ('findings'), ('background'), ('target_market'), ('risks'), ('methodology'), ('assumptions'), ('recommendations'), ('unknowns'), ('custom_instructions'),('target_roles'),('target_orgs'),('research_goal'),('research_goal_details'),('decision_questions'),('research_questions'),('interview_prompts'),('settings'),('customer_problem'),('offerings'),('competitors')
+  ('goal'), ('questions'), ('findings'), ('background'), ('target_market'), ('risks'), ('methodology'), ('assumptions'), ('recommendations'), ('unknowns'), ('custom_instructions'),('target_roles'),('target_orgs'),('research_goal'),('research_goal_details'),('decision_questions'),('research_questions'),('interview_prompts'),('settings'),('customer_problem'),('offerings'),('competitors'),
+  ('positioning_statement'), ('seo_strategy'), ('market_analysis'), ('competitive_analysis'), ('user_personas'), ('feature_specs'), ('meeting_notes'), ('research_notes')
   on conflict (id) do nothing;
 
 -- 2) Sections table (Markdown content + optional JSONB meta)
+-- kind field is now dynamic - any text value allowed (no FK constraint)
 create table if not exists public.project_sections (
   id uuid primary key default gen_random_uuid(),
   project_id uuid not null references public.projects(id) on delete cascade,
-  kind text not null references public.project_section_kinds(id) on update cascade,
+  kind text not null, -- Dynamic field - any document type allowed
   content_md text not null,
   meta jsonb,
   position int,
@@ -168,6 +171,24 @@ drop trigger if exists trg_project_sections_updated_at on public.project_section
 create trigger trg_project_sections_updated_at
 before update on public.project_sections
 for each row execute function public.set_updated_at();
+
+-- Auto-register new document kinds for tracking (optional)
+CREATE OR REPLACE FUNCTION public.register_project_section_kind()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- Automatically add new kinds to the reference table for tracking
+  INSERT INTO public.project_section_kinds (id)
+  VALUES (NEW.kind)
+  ON CONFLICT (id) DO NOTHING;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+drop trigger if exists trg_register_section_kind on public.project_sections;
+CREATE TRIGGER trg_register_section_kind
+  AFTER INSERT ON public.project_sections
+  FOR EACH ROW
+  EXECUTE FUNCTION public.register_project_section_kind();
 
 -- 4) Indexes tuned for your queries
 create unique index if not exists idx_project_sections_project_id_kind_unique

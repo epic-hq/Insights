@@ -13,7 +13,7 @@ This document is the landing pad for every AI agent, automation workflow, or Cop
 | --- | --- | --- | --- | --- |
 | `projectStatusAgent` | Answers discovery progress questions, suggests next steps | `fetchProjectStatusContext` (themes, evidence, personas, votes) | ✅ Live | Keep syncing with the planning doc when themes/evidence scopes shift. |
 | `insightsAgent` + `dailyBriefWorkflow` | Synthesizes insights, surfacing high-vote findings | `getInsights`, `insights_with_priority`, `votes` | ✅ Live | Track vote counts in `InsightsDataTable` and keep LLM priority separate. |
-| `projectSetupAgent` | Onboarding journey and signed URLs guidance | `navigateToPage`, `generateProjectRoutes` | ⚠ Needs review | Refresh instructions now that project/theme routes are locked behind the new layout. |
+| `projectSetupAgent` | Onboarding journey: collects 8 setup questions, saves to `project_sections`, and auto-generates research structure (decision questions, research questions, interview prompts) via BAML | `saveProjectSectionsData`, `generateResearchStructure`, `navigateToPage`, `displayUserQuestions` | ✅ Live | Automatically generates complete research plan when all 8 questions are answered. |
 | Legacy helpers (`signup-agent`, `old reporting`) | Historical workflows | Deprecated | 💤 Dormant | Archive in `agents-TEMP-SKIP.md` once downstream references are removed. |
 
 ## 3. Planning & Implementation Workspace

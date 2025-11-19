@@ -1,15 +1,16 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { Grid, List, MessageSquare, MessagesSquare, Upload } from "lucide-react"
+import { Grid, List, MessageSquare, MessagesSquare, Upload, FileText } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData } from "react-router"
+import { Link, useLoaderData, useFetcher } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Button } from "~/components/ui/button"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
 import { getInterviews } from "~/features/interviews/db"
@@ -87,6 +88,39 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
 	const [viewMode, setViewMode] = useState<"cards" | "table">("table")
+	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
+	const fetcher = useFetcher()
+
+	const handleSaveNote = async (note: {
+		title: string
+		content: string
+		noteType: string
+		associations: Record<string, unknown>
+		tags: string[]
+	}) => {
+		const projectId = projectPath?.split("/")[2] // Extract project ID from path
+
+		// Submit as JSON
+		const response = await fetch("/api/notes/create", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json",
+			},
+			body: JSON.stringify({
+				projectId,
+				title: note.title,
+				content: note.content,
+				noteType: note.noteType,
+				associations: note.associations,
+				tags: note.tags,
+			}),
+		})
+
+		if (!response.ok) {
+			console.error("Failed to save note")
+			throw new Error("Failed to save note")
+		}
+	}
 
 	return (
 		<div className="relative min-h-screen bg-background">
@@ -121,6 +155,14 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									<List className="h-4 w-4" />
 								</ToggleGroupItem>
 							</ToggleGroup>
+							<Button
+								variant="outline"
+								onClick={() => setNoteDialogOpen(true)}
+								className="w-full text-sm sm:w-auto"
+							>
+								<FileText className="h-4 w-4" />
+								Quick Note
+							</Button>
 							<Button
 								asChild
 								variant="default"
@@ -270,6 +312,17 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 					</div>
 				)}
 			</PageContainer>
+
+			{/* Quick Note Dialog */}
+			<QuickNoteDialog
+				open={noteDialogOpen}
+				onOpenChange={setNoteDialogOpen}
+				onSave={handleSaveNote}
+				// TODO: Load available people, orgs, and opportunities from loader
+				availablePeople={[]}
+				availableOrgs={[]}
+				availableOpportunities={[]}
+			/>
 		</div>
 	)
 }
