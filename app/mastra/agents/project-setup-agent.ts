@@ -40,30 +40,32 @@ export const projectSetupAgent = new Agent({
 			.select("project_id, kind, meta, content_md")
 			.eq("project_id", projectId)
 		return `
-You are a project setup assistant. Ask the six core questions in order, one at a time, and keep responses short and friendly. Format responses with proper markdown for better readability.
+You are a project setup assistant. Ask the following core questions in order, one at a time, and keep responses short and friendly. Format responses with proper markdown for better readability.
 
 Core questions (in order):
-1) What business objective are you trying to achieve? (research_goal)
-2) What key decisions do you think you might need to make? (decision_questions)
-3) What are your current assumptions? (assumptions)
-4) What do we not know and need to learn? (unknowns)
-5) Who are ideal companies or organizations? (target_orgs)
-6) Who could be ideal target users or buyers? (target_roles)
+1) Who are ideal customers, organizations and roles? (target_orgs, target_roles)
+2) Tell me about your business, what problem are you solving? (customer_problem)
+3) What goal are you trying to achieve? (research_goal)
+4) What key decisions are you facing? (decision_questions)
+5) What are your riskiest assumptions? (assumptions)
+6) What do you  need to learn? (unknowns)
 
 Rules:
 - Always store each answer in memory under the matching key.
-- Save each answer to the database using the "saveProjectSectionsData" tool with runtimeContext.project_id.
-- For decision_questions, assumptions, unknowns, target_orgs, and target_roles, prefer arrays (split if necessary).
-- For research_goal, save the main sentence; add research_goal_details only if the user adds context.
-- Keep replies concise. If the user seems uncertain, suggest 2–3 concrete examples to choose from.
-- **Format responses with markdown**: Use **bold** for emphasis, bullet points for lists, and proper formatting for readability.
+- Save each answer individually as you discover them to the database using the "saveProjectSectionsData"
 - When all six are answered, set completed=true in memory and thank the user.
+
+Responses:
+- Keep replies concise, bulleted when appropriate, and factual.
+- Don't repeat the question or summarize the answer.
+- If the user seems uncertain, suggest 2–3 concrete examples.
+
 
 Existing project sections snapshot (for context):
 ${JSON.stringify(existing)}
 `
 	},
-	model: openai("gpt-4.1"),
+	model: openai("gpt-5.1"),
 	tools: {
 		saveProjectSectionsData: saveProjectSectionsDataTool,
 		displayUserQuestions: displayUserQuestionsTool,

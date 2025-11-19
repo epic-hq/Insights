@@ -13,7 +13,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const ctx = context.get(userContext)
 	const accountId = String(params.accountId || ctx?.account_id || "")
 	const projectId = String(params.projectId || "")
-	const userId = ctx.claims.sub
+	const userId = ctx.claims?.sub
 
 	if (!projectId) {
 		return new Response(JSON.stringify({ error: "Missing projectId" }), {
@@ -25,6 +25,8 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 	const { messages, system } = await request.json()
 
 	// Reuse latest thread for this project-scoped agent
+	// TODO pass in threadId instead of refetching
+	// TODO abstract into thread primitives lib
 	const resourceId = `projectSetupAgent-${userId}-${projectId}`
 	const threads = await memory.getThreadsByResourceIdPaginated({
 		resourceId,
@@ -60,11 +62,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		runtimeContext,
 		context: system
 			? [
-					{
-						role: "system",
-						content: `## Context from the client's UI:\n${system}`,
-					},
-				]
+				{
+					role: "system",
+					content: `## Context from the client's UI:\n${system}`,
+				},
+			]
 			: undefined,
 		onFinish: (data) => {
 			consola.log("project-setup onFinish", data)

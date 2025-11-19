@@ -150,7 +150,7 @@ importers:
         version: 8.21.3(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
       '@trigger.dev/build':
         specifier: 4.0.6
-        version: 4.0.6(supports-color@10.2.2)(typescript@5.8.3)
+        version: 4.0.6(typescript@5.8.3)
       '@trigger.dev/react-hooks':
         specifier: 4.0.6
         version: 4.0.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)
@@ -215,11 +215,11 @@ importers:
         specifier: 0.525.0
         version: 0.525.0(react@19.2.0)
       posthog-js:
-        specifier: 1.285.1
-        version: 1.285.1
+        specifier: 1.295.0
+        version: 1.295.0
       posthog-node:
-        specifier: 5.11.0
-        version: 5.11.0
+        specifier: 5.11.2
+        version: 5.11.2
       pretty-cache-header:
         specifier: 1.0.0
         version: 1.0.0
@@ -269,8 +269,8 @@ importers:
         specifier: 3.3.1
         version: 3.3.1
       trigger.dev:
-        specifier: 4.0.6
-        version: 4.0.6(typescript@5.8.3)(valibot@1.1.0(typescript@5.8.3))
+        specifier: 4.1.0
+        version: 4.1.0(typescript@5.8.3)(valibot@1.1.0(typescript@5.8.3))
       type-fest:
         specifier: 5.0.1
         version: 5.0.1
@@ -2431,8 +2431,11 @@ packages:
   '@polka/url@1.0.0-next.29':
     resolution: {integrity: sha512-wwQAWhWSuHaag8c4q/KN/vCoeOJYshAIvMQwD4GpSb3OiZklFfvAgmj0VCBBImRpuF/aFgIRzllXlVX93Jevww==}
 
-  '@posthog/core@1.5.0':
-    resolution: {integrity: sha512-oxfV20QMNwH30jKybUyqi3yGuMghULQz1zkJgQG3rjpHDxhD2vDN6E7UpmaqgphMIvGG3Q+DgfU10zfSPA7w7w==}
+  '@posthog/core@1.5.2':
+    resolution: {integrity: sha512-iedUP3EnOPPxTA2VaIrsrd29lSZnUV+ZrMnvY56timRVeZAXoYCkmjfIs3KBAsF8OUT5h1GXLSkoQdrV0r31OQ==}
+
+  '@protobuf-ts/runtime@2.11.1':
+    resolution: {integrity: sha512-KuDaT1IfHkugM2pyz+FwiY80ejWrkH1pAtOBOZFuR6SXEFTsnb/jiQWQ1rCIrcKx2BtyxnxW6BWwsVSA/Ie+WQ==}
 
   '@protobufjs/aspromise@1.1.2':
     resolution: {integrity: sha512-j+gKExEuLmKwvz3OgROXtrJ2UG2x8Ch2YZUxahh+s1F2HZ+wAceUNLkvy6zKCPVRkU++ZWQrdxsUeQXmcg4uoQ==}
@@ -3568,6 +3571,11 @@ packages:
     cpu: [x64]
     os: [win32]
 
+  '@s2-dev/streamstore@0.17.3':
+    resolution: {integrity: sha512-UeXL5+MgZQfNkbhCgEDVm7PrV5B3bxh6Zp4C5pUzQQwaoA+iGh2QiiIptRZynWgayzRv4vh0PYfnKpTzJEXegQ==}
+    peerDependencies:
+      typescript: ^5.9.3
+
   '@scarf/scarf@1.4.0':
     resolution: {integrity: sha512-xxeapPiUXdZAE3che6f3xogoJPeZgig6omHEy1rIY5WVsB3H2BHNnZH+gHG6x91SCWyQCzWGsuL2Hh3ClO5/qQ==}
 
@@ -3833,8 +3841,16 @@ packages:
     resolution: {integrity: sha512-NJ7N50mNTW43h7jJ/ynsjX1xT+R7fisxVytmwnjb8ZaCgScNp1zDdzGlJjhIjiIWU7G83qpZE1H8eoqjo7tOyg==}
     engines: {node: '>=18.20.0'}
 
+  '@trigger.dev/build@4.1.0':
+    resolution: {integrity: sha512-1GDBv2D//CImAQ7fU253olxZyUzO1QGselRmW5gjmY1zkdshdI09F1vkDT79wut59iqzxbc+WMi3fBhTmAJGZQ==}
+    engines: {node: '>=18.20.0'}
+
   '@trigger.dev/core@4.0.6':
     resolution: {integrity: sha512-V4w0Wmvw4fst0dbQ7LjmYuaWyLVlwNcLc6f2EB39XqoS7PVQGfRm6KCFWc0sG5x9xa/RBpusXcwmRK0C5QgW9g==}
+    engines: {node: '>=18.20.0'}
+
+  '@trigger.dev/core@4.1.0':
+    resolution: {integrity: sha512-CS2wMGw1ZR5moHUe0xIOqy9LUGm0wBo4FWEzptSZvyoLvfoP3bnFyR24bzNHqFgb6UGGDxURyeZGuQsKT04TNg==}
     engines: {node: '>=18.20.0'}
 
   '@trigger.dev/react-hooks@4.0.6':
@@ -3844,8 +3860,8 @@ packages:
       react: 19.2.0
       react-dom: 19.2.0
 
-  '@trigger.dev/schema-to-json@4.0.6':
-    resolution: {integrity: sha512-ScFU5nMPvIxfQL0umnDmZmhFb2VJJifjkiQZkp4q/FtQT1teUd8hlNK69oy0CCUJEvU2FEXZ/2mcweLHa4jjWA==}
+  '@trigger.dev/schema-to-json@4.1.0':
+    resolution: {integrity: sha512-h/n3FN2Zzh0GCLERTnPVUr/Ao9DWEsmECzeKNRNrBMM92ig+rvuw0kl1sn74PtAQ6Gu7yyPe+TJ3V6R82Cf1xQ==}
     engines: {node: '>=18.20.0'}
     peerDependencies:
       '@sinclair/typebox': '>=0.34.30'
@@ -7305,15 +7321,15 @@ packages:
     resolution: {integrity: sha512-Jtc2612XINuBjIl/QTWsV5UvE8UHuNblcO3vVADSrKsrc6RqGX6lOW1cEo3CM2v0XG4Nat8nI+YM7/f26VxXLw==}
     engines: {node: '>=12'}
 
-  posthog-js@1.285.1:
-    resolution: {integrity: sha512-+Cn3igI6LoOJuGtsiVsD15a0jGIaR1zE5tEG3Ovd4MLgti3RFHdS1eOisZTJUuQa2bR8X/Bx7HdoXsGNmW9h4Q==}
+  posthog-js@1.295.0:
+    resolution: {integrity: sha512-cOCO451t/5MB8Mq3QMrz/TV6Ct3COU9QEHcVaHAEdq5lYcCCq7bSfPUtwgwDQdNfxQB5LJdvfIfhz7HoOvOT1w==}
 
   posthog-node@4.18.0:
     resolution: {integrity: sha512-XROs1h+DNatgKh/AlIlCtDxWzwrKdYDb2mOs58n4yN8BkGN9ewqeQwG5ApS4/IzwCb7HPttUkOVulkYatd2PIw==}
     engines: {node: '>=15.0.0'}
 
-  posthog-node@5.11.0:
-    resolution: {integrity: sha512-9+gmWp/7AEryJMi0+/ywJjKQhpkmcjxf+eT030fTIIPvFTF84zeeagdZBGNC/Nh2Jc0grIAW6O1n5lxXiX3daA==}
+  posthog-node@5.11.2:
+    resolution: {integrity: sha512-z+XekcBUmGePMsjPlGaEF2bJFiDHKHYPQjS4OEw4YPDQz8s7Owuim/L7xNX+6UJkyIRniBza9iC7bW8yrGTv1g==}
     engines: {node: '>=20'}
 
   preact@10.27.2:
@@ -8363,8 +8379,8 @@ packages:
     resolution: {integrity: sha512-L0Orpi8qGpRG//Nd+H90vFB+3iHnue1zSSGmNOOCh1GLJ7rUKVwV2HvijphGQS2UmhUZewS9VgvxYIdgr+fG1A==}
     hasBin: true
 
-  trigger.dev@4.0.6:
-    resolution: {integrity: sha512-7HZVwQDTim6pd6qsdO6/PsaZQSPicgNu/KZNFzSHEq/G56eQPnK/LnkPxg/u/8g+ZCliS9lUc39cew2w+AGXCA==}
+  trigger.dev@4.1.0:
+    resolution: {integrity: sha512-XDxSRTQFvqs6bun9vZfRpfgSMiK8YwNS26wc8MQXTp6YB79cda8d+hRDVnjbBnK4kd2ShExt/eOLsW9mnbff/Q==}
     engines: {node: '>=18.20.0'}
     hasBin: true
 
@@ -11227,7 +11243,11 @@ snapshots:
 
   '@polka/url@1.0.0-next.29': {}
 
-  '@posthog/core@1.5.0': {}
+  '@posthog/core@1.5.2':
+    dependencies:
+      cross-spawn: 7.0.6
+
+  '@protobuf-ts/runtime@2.11.1': {}
 
   '@protobufjs/aspromise@1.1.2': {}
 
@@ -12292,6 +12312,11 @@ snapshots:
   '@rollup/rollup-win32-x64-msvc@4.52.4':
     optional: true
 
+  '@s2-dev/streamstore@0.17.3(typescript@5.8.3)':
+    dependencies:
+      '@protobuf-ts/runtime': 2.11.1
+      typescript: 5.8.3
+
   '@scarf/scarf@1.4.0': {}
 
   '@sec-ant/readable-stream@0.4.1': {}
@@ -12575,9 +12600,9 @@ snapshots:
     dependencies:
       '@testing-library/dom': 10.4.1
 
-  '@trigger.dev/build@4.0.6(supports-color@10.2.2)(typescript@5.8.3)':
+  '@trigger.dev/build@4.0.6(typescript@5.8.3)':
     dependencies:
-      '@trigger.dev/core': 4.0.6(supports-color@10.2.2)
+      '@trigger.dev/core': 4.0.6
       pkg-types: 1.3.1
       tinyglobby: 0.2.15
       tsconfck: 3.1.3(typescript@5.8.3)
@@ -12587,7 +12612,19 @@ snapshots:
       - typescript
       - utf-8-validate
 
-  '@trigger.dev/core@4.0.6(supports-color@10.2.2)':
+  '@trigger.dev/build@4.1.0(supports-color@10.2.2)(typescript@5.8.3)':
+    dependencies:
+      '@trigger.dev/core': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
+      pkg-types: 1.3.1
+      tinyglobby: 0.2.15
+      tsconfck: 3.1.3(typescript@5.8.3)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
+
+  '@trigger.dev/core@4.0.6':
     dependencies:
       '@bugsnag/cuid': 3.2.1
       '@electric-sql/client': 1.0.14
@@ -12626,9 +12663,50 @@ snapshots:
       - supports-color
       - utf-8-validate
 
+  '@trigger.dev/core@4.1.0(supports-color@10.2.2)(typescript@5.8.3)':
+    dependencies:
+      '@bugsnag/cuid': 3.2.1
+      '@electric-sql/client': 1.0.14
+      '@google-cloud/precise-date': 4.0.0
+      '@jsonhero/path': 1.0.21
+      '@opentelemetry/api': 1.9.0
+      '@opentelemetry/api-logs': 0.203.0
+      '@opentelemetry/core': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-logs-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/exporter-trace-otlp-http': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/instrumentation': 0.203.0(@opentelemetry/api@1.9.0)(supports-color@10.2.2)
+      '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-logs': 0.203.0(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-base': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/sdk-trace-node': 2.0.1(@opentelemetry/api@1.9.0)
+      '@opentelemetry/semantic-conventions': 1.36.0
+      '@s2-dev/streamstore': 0.17.3(typescript@5.8.3)
+      dequal: 2.0.3
+      eventsource: 3.0.7
+      eventsource-parser: 3.0.6
+      execa: 8.0.1
+      humanize-duration: 3.33.1
+      jose: 5.10.0
+      nanoid: 3.3.8
+      prom-client: 15.1.3
+      socket.io: 4.7.4(supports-color@10.2.2)
+      socket.io-client: 4.7.5(supports-color@10.2.2)
+      std-env: 3.10.0
+      superjson: 2.2.2
+      tinyexec: 0.3.2
+      uncrypto: 0.1.3
+      zod: 3.25.76
+      zod-error: 1.5.0
+      zod-validation-error: 1.5.0(zod@3.25.76)
+    transitivePeerDependencies:
+      - bufferutil
+      - supports-color
+      - typescript
+      - utf-8-validate
+
   '@trigger.dev/react-hooks@4.0.6(react-dom@19.2.0(react@19.2.0))(react@19.2.0)':
     dependencies:
-      '@trigger.dev/core': 4.0.6(supports-color@10.2.2)
+      '@trigger.dev/core': 4.0.6
       react: 19.2.0
       react-dom: 19.2.0(react@19.2.0)
       swr: 2.3.6(react@19.2.0)
@@ -12637,10 +12715,10 @@ snapshots:
       - supports-color
       - utf-8-validate
 
-  '@trigger.dev/schema-to-json@4.0.6(supports-color@10.2.2)(valibot@1.1.0(typescript@5.8.3))':
+  '@trigger.dev/schema-to-json@4.1.0(supports-color@10.2.2)(typescript@5.8.3)(valibot@1.1.0(typescript@5.8.3))':
     dependencies:
       '@sodaru/yup-to-json-schema': 2.0.1
-      '@trigger.dev/core': 4.0.6(supports-color@10.2.2)
+      '@trigger.dev/core': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
       effect: 3.18.4
       zod: 3.25.76
       zod-to-json-schema: 3.24.6(zod@3.25.76)
@@ -12649,13 +12727,14 @@ snapshots:
     transitivePeerDependencies:
       - bufferutil
       - supports-color
+      - typescript
       - utf-8-validate
 
   '@trigger.dev/sdk@4.0.6(ai@5.0.87(zod@4.1.11))(zod@4.1.11)':
     dependencies:
       '@opentelemetry/api': 1.9.0
       '@opentelemetry/semantic-conventions': 1.36.0
-      '@trigger.dev/core': 4.0.6(supports-color@10.2.2)
+      '@trigger.dev/core': 4.0.6
       chalk: 5.6.2
       cronstrue: 2.59.0
       debug: 4.4.3(supports-color@10.2.2)
@@ -16637,9 +16716,9 @@ snapshots:
 
   postgres@3.4.7: {}
 
-  posthog-js@1.285.1:
+  posthog-js@1.295.0:
     dependencies:
-      '@posthog/core': 1.5.0
+      '@posthog/core': 1.5.2
       core-js: 3.46.0
       fflate: 0.4.8
       preact: 10.27.2
@@ -16651,9 +16730,9 @@ snapshots:
     transitivePeerDependencies:
       - debug
 
-  posthog-node@5.11.0:
+  posthog-node@5.11.2:
     dependencies:
-      '@posthog/core': 1.5.0
+      '@posthog/core': 1.5.2
 
   preact@10.27.2: {}
 
@@ -17945,7 +18024,7 @@ snapshots:
 
   tree-kill@1.2.2: {}
 
-  trigger.dev@4.0.6(typescript@5.8.3)(valibot@1.1.0(typescript@5.8.3)):
+  trigger.dev@4.1.0(typescript@5.8.3)(valibot@1.1.0(typescript@5.8.3)):
     dependencies:
       '@clack/prompts': 0.11.0
       '@depot/cli': 0.0.1-cli.2.80.0
@@ -17958,9 +18037,9 @@ snapshots:
       '@opentelemetry/resources': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/sdk-trace-node': 2.0.1(@opentelemetry/api@1.9.0)
       '@opentelemetry/semantic-conventions': 1.36.0
-      '@trigger.dev/build': 4.0.6(supports-color@10.2.2)(typescript@5.8.3)
-      '@trigger.dev/core': 4.0.6(supports-color@10.2.2)
-      '@trigger.dev/schema-to-json': 4.0.6(supports-color@10.2.2)(valibot@1.1.0(typescript@5.8.3))
+      '@trigger.dev/build': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
+      '@trigger.dev/core': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)
+      '@trigger.dev/schema-to-json': 4.1.0(supports-color@10.2.2)(typescript@5.8.3)(valibot@1.1.0(typescript@5.8.3))
       ansi-escapes: 7.1.1
       braces: 3.0.3
       c12: 1.11.2(magicast@0.3.5)
