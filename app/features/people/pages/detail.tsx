@@ -30,6 +30,8 @@ import { getFacetCatalog } from "~/lib/database/facets.server"
 import { userContext } from "~/server/user-context"
 import type { Insight } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
+import { PersonFacetLenses } from "../components/PersonFacetLenses"
+import { generatePersonFacetSummaries } from "../services/generatePersonFacetSummaries.server"
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
@@ -74,8 +76,18 @@ export async function loader({ params, context }: LoaderFunctionArgs) {
 			consola.error("PersonDetail loader: organizations fetch error", { error: organizations.error })
 			throw new Response("Failed to load organizations", { status: 500 })
 		}
+
+		// Refresh or reuse facet lens summaries in-line so the accordion always has a headline
+		const facetSummaries = await generatePersonFacetSummaries({
+			supabase,
+			person,
+			projectId,
+			accountId,
+		})
+		const personWithFacetSummaries = { ...person, person_facet_summaries: facetSummaries }
+
 		consola.info("PersonDetail loader success", { personId: person.id, orgCount: organizations.data?.length ?? 0 })
-		return { person, catalog, organizations: organizations.data ?? [] }
+		return { person: personWithFacetSummaries, catalog, organizations: organizations.data ?? [] }
 	} catch (error) {
 		const message = error instanceof Error ? error.message : String(error)
 		consola.error("PersonDetail loader error", { accountId, projectId, personId, message, error })
@@ -107,11 +119,20 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 				projectId,
 				id: personId,
 			})
-			const summary = await generatePersonDescription({
-				supabase,
-				person,
-				projectId,
-			})
+			const [summary] = await Promise.all([
+				generatePersonDescription({
+					supabase,
+					person,
+					projectId,
+				}),
+				generatePersonFacetSummaries({
+					supabase,
+					person,
+					projectId,
+					accountId,
+					force: true,
+				}),
+			])
 			await updatePerson({
 				supabase,
 				accountId,
@@ -233,6 +254,17 @@ export default function PersonDetail() {
 		return map
 	}, [catalog])
 
+	const facetSummaryMap = useMemo(() => {
+		const map = new Map<string, { summary: string; generated_at: string | null }>()
+		for (const row of person.person_facet_summaries ?? []) {
+			map.set(row.kind_slug, {
+				summary: row.summary,
+				generated_at: row.generated_at ?? null,
+			})
+		}
+		return map
+	}, [person.person_facet_summaries])
+
 	const personFacets = useMemo(() => {
 		return (person.person_facet ?? []).map((row) => {
 			const meta = facetsById.get(row.facet_account_id)
@@ -266,6 +298,13 @@ export default function PersonDetail() {
 		}
 		return Array.from(groups.entries()).map(([slug, value]) => ({ kind_slug: slug, ...value }))
 	}, [personFacets, catalog.kinds])
+
+	const facetLensGroups = useMemo(() => {
+		return facetsGrouped.map((group) => ({
+			...group,
+			summary: facetSummaryMap.get(group.kind_slug)?.summary ?? null,
+		}))
+	}, [facetsGrouped, facetSummaryMap])
 
 	const linkedOrganizations = useMemo(() => {
 		return (person.people_organizations ?? []).filter((link) => link.organization)
@@ -351,6 +390,7 @@ export default function PersonDetail() {
 	].filter((fact): fact is { label: string; value: string } => Boolean(fact?.value))
 	const isRefreshingDescription =
 		navigation.state === "submitting" && navigation.formData?.get("_action") === "refresh-description"
+	const isFacetSummaryPending = facetLensGroups.some((group) => !group.summary)
 
 	return (
 		<div className="relative min-h-screen bg-muted/20">
@@ -403,27 +443,12 @@ export default function PersonDetail() {
 
 				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
 					<div className="space-y-6">
-						{facetsGrouped.length > 0 && (
-							<div>
-								Key Attributes
-								<Card>
-									<CardContent className="space-y-4">
-										{facetsGrouped.map((group) => (
-											<div key={group.kind_slug} className="space-y-2">
-												<h4 className="font-medium text-sm">{group.label}</h4>
-												<div className="flex flex-wrap gap-2">
-													{group.facets.map((facet) => (
-														<Badge key={facet.facet_account_id} variant="secondary" className="text-xs">
-															{facet.label}
-														</Badge>
-													))}
-												</div>
-											</div>
-										))}
-									</CardContent>
-								</Card>
-							</div>
-						)}
+				{facetLensGroups.length > 0 && (
+					<PersonFacetLenses
+						groups={facetLensGroups}
+						isGenerating={isRefreshingDescription || isFacetSummaryPending}
+					/>
+				)}
 
 						{relatedInsights.length > 0 && (
 							<section className="space-y-3">

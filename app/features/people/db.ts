@@ -156,6 +156,15 @@ export const getPersonById = async ({
                                         headquarters_location
                                 )
                         ),
+                        person_facet_summaries (
+                                id,
+                                kind_slug,
+                                summary,
+                                generated_at,
+                                model_version,
+                                input_hash,
+                                supporting_evidence
+                        ),
                         interview_people (
                                 id,
                                 interviews (
