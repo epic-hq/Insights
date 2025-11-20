@@ -26,6 +26,11 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useFetcher } from "react-router"
 import { toast } from "sonner"
 import { z } from "zod"
+import {
+	createQuestionQueueStore,
+	useQuestionQueueStore,
+} from "~/components/questions/stores/questionQueueStore"
+import type { Question } from "~/components/questions/types"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent } from "~/components/ui/card"
@@ -70,109 +75,6 @@ interface InterviewQuestionsManagerProps {
 		text: string
 	}) => undefined | ((questions: { id: string; text: string }[]) => void)
 	onSelectedQuestionsChange?: (questions: { id: string; text: string }[]) => void
-}
-
-const buildQuestionMap = (list: Question[]) => new Map(list.map((q) => [q.id, q]))
-
-const buildOrderedQuestionList = (ids: string[], list: Question[]) => {
-	const map = buildQuestionMap(list)
-	return ids.map((id) => map.get(id)).filter((q): q is Question => Boolean(q))
-}
-
-const dedupeIds = (ids: string[]) => Array.from(new Set(ids.filter((id): id is string => typeof id === "string" && id.length > 0)))
-
-function useQuestionOrder(initialIds: string[] = []) {
-	const orderRef = useRef<string[]>(dedupeIds(initialIds))
-	const [orderedIdsState, setOrderedIdsState] = useState<string[]>(orderRef.current)
-
-	const setOrderedIds = useCallback((next: string[]) => {
-		const deduped = dedupeIds(next)
-		orderRef.current = deduped
-		setOrderedIdsState(deduped)
-	}, [])
-
-	const appendId = useCallback(
-		(id: string) => {
-			if (!id) return orderRef.current
-			if (orderRef.current.includes(id)) return orderRef.current
-			const next = [...orderRef.current, id]
-			setOrderedIds(next)
-			return next
-		},
-		[setOrderedIds]
-	)
-
-	const insertAfter = useCallback(
-		(anchorId: string | null, id: string) => {
-			if (!id) return orderRef.current
-			if (orderRef.current.includes(id)) return orderRef.current
-			const anchorIndex = anchorId ? orderRef.current.indexOf(anchorId) : -1
-			const next =
-				anchorIndex >= 0
-					? [...orderRef.current.slice(0, anchorIndex + 1), id, ...orderRef.current.slice(anchorIndex + 1)]
-					: [...orderRef.current, id]
-			setOrderedIds(next)
-			return next
-		},
-		[setOrderedIds]
-	)
-
-	const removeId = useCallback(
-		(id: string) => {
-			const next = orderRef.current.filter((existing) => existing !== id)
-			setOrderedIds(next)
-			return next
-		},
-		[setOrderedIds]
-	)
-
-	const reorderVisible = useCallback(
-		(visibleIds: string[], fromIndex: number, toIndex: number) => {
-			if (fromIndex === toIndex) return orderRef.current
-			if (visibleIds.length === 0) return orderRef.current
-			const normalizedVisible = visibleIds.filter((id) => orderRef.current.includes(id))
-			if (!normalizedVisible[fromIndex] || !normalizedVisible[toIndex]) return orderRef.current
-			const reordered = [...normalizedVisible]
-			const [moved] = reordered.splice(fromIndex, 1)
-			reordered.splice(toIndex, 0, moved)
-			const visibleSet = new Set(normalizedVisible)
-			let pointer = 0
-			const next = orderRef.current.map((id) => (visibleSet.has(id) ? reordered[pointer++] ?? id : id))
-			setOrderedIds(next)
-			return next
-		},
-		[setOrderedIds]
-	)
-
-	return {
-		orderedIds: orderedIdsState,
-		setOrderedIds,
-		appendId,
-		insertAfter,
-		removeId,
-		reorderVisible,
-	}
-}
-
-interface Question {
-	id: string
-	text: string
-	categoryId: string
-	scores: { importance: number; goalMatch: number; novelty: number }
-	rationale?: string
-	status: "proposed" | "asked" | "answered" | "skipped" | "rejected" | "selected" | "backup" | "deleted"
-	timesAnswered: number
-	source?: "ai" | "user" // Track whether question is AI-generated or user-created
-	isMustHave?: boolean // Track if question is marked as must-have
-	qualityFlag?: {
-		assessment: "red" | "yellow" | "green"
-		score: number
-		description: string
-		color?: string // Optional custom color override
-	}
-	estimatedMinutes?: number
-	selectedOrder?: number | null
-	isSelected?: boolean
 }
 
 const questionCategories = [
@@ -336,15 +238,21 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const [generating, setGenerating] = useState(false)
 	const [saving, setSaving] = useState(false)
 	const [questions, setQuestions] = useState<Question[]>([])
-	const [selectedQuestionIds, setSelectedQuestionIds] = useState<string[]>([])
-	const {
-		orderedIds,
-		setOrderedIds: setOrderedQuestionIds,
-		appendId: appendOrderedId,
-		insertAfter: insertOrderedAfter,
-		removeId: removeOrderedId,
-		reorderVisible,
-	} = useQuestionOrder([])
+
+	// Zustand store for question queue management
+	const store = useMemo(() => createQuestionQueueStore(), [])
+	const orderedIds = useQuestionQueueStore(store, (s) => s.orderedIds)
+	const backlogIds = useQuestionQueueStore(store, (s) => s.backlogIds)
+	const mustHavesOnly = useQuestionQueueStore(store, (s) => s.mustHavesOnly)
+	const setOrderedQuestionIds = useQuestionQueueStore(store, (s) => s.setOrderedIds)
+	const setBacklogIds = useQuestionQueueStore(store, (s) => s.setBacklogIds)
+	const initializeStore = useQuestionQueueStore(store, (s) => s.initialize)
+	const setMustHavesOnly = useQuestionQueueStore(store, (s) => s.setMustHavesOnly)
+	const appendIds = useQuestionQueueStore(store, (s) => s.appendIds)
+	const insertOrderedIds = useQuestionQueueStore(store, (s) => s.insertAfter)
+	const removeOrderedIds = useQuestionQueueStore(store, (s) => s.removeIds)
+	const reorderVisible = useQuestionQueueStore(store, (s) => s.reorderVisible)
+
 	const [hasInitialized, setHasInitialized] = useState(false)
 	const [skipDebounce, setSkipDebounce] = useState(false)
 	const [showAllQuestions, setShowAllQuestions] = useState(false)
@@ -360,7 +268,6 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const [showingFollowupFor, setShowingFollowupFor] = useState<string | null>(null)
 	const [followupInput, setFollowupInput] = useState("")
 	const [followupCategory, setFollowupCategory] = useState("context")
-	const [mustHavesOnly, setMustHavesOnly] = useState(false)
 	const [showHelp, setShowHelp] = useState(false)
 	const [improvingId, setImprovingId] = useState<string | null>(null)
 	const [improveOptions, setImproveOptions] = useState<string[]>([])
@@ -373,7 +280,6 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	// How many new questions to generate when user clicks "Generate More"
 	// Default "Generate More" count to 8 instead of 3
 	const [moreCount, setMoreCount] = useState<number>(3)
-	const previousSelectionRef = React.useRef<string[] | null>(null)
 	const recentlyAddedTimeoutsRef = React.useRef<Record<string, number>>({})
 	const [recentlyAddedQuestionIds, setRecentlyAddedQuestionIds] = useState<string[]>([])
 	const [pendingGeneratedQuestions, setPendingGeneratedQuestions] = useState<Question[]>([])
@@ -462,16 +368,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 	const supabase = createClient()
 
 	const getBaseSelectedIds = useCallback((): string[] => {
-		if (mustHavesOnly) {
-			const stored = previousSelectionRef.current
-			if (stored && stored.length > 0) return [...stored]
-		}
 		console.log("🧾 getBaseSelectedIds()", {
 			mustHavesOnly,
-			selectedQuestionIds,
+			orderedIds,
 		})
-		return [...selectedQuestionIds]
-	}, [mustHavesOnly, selectedQuestionIds])
+		return orderedIds
+	}, [mustHavesOnly, orderedIds])
 
 	const commitSelection = useCallback(
 		(nextBaseIds: string[]) => {
@@ -480,19 +382,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				nextBaseIds,
 				mustHaveCandidates: questions.filter((q) => q.isMustHave).map((q) => q.id),
 			})
-			previousSelectionRef.current = [...nextBaseIds]
-			if (mustHavesOnly) {
-				const filtered = nextBaseIds.filter((id) => {
-					const q = questions.find((question) => question.id === id)
-					return q?.isMustHave
-				})
-				console.log("🧮 commitSelection -> filtered (mustHavesOnly)", filtered)
-				setSelectedQuestionIds(filtered)
-			} else {
-				setSelectedQuestionIds(nextBaseIds)
-			}
+			setOrderedQuestionIds(nextBaseIds)
 		},
-		[mustHavesOnly, questions]
+		[mustHavesOnly, questions, setOrderedQuestionIds]
 	)
 
 	// Extract loadQuestions as a standalone function so it can be called from generateQuestions
@@ -684,19 +576,21 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			)
 
 			setQuestions(deduped)
-			if (selectedIds.length > 0) {
-				setSelectedQuestionIds(selectedIds)
-				commitSelection(selectedIds)
-				setHasInitialized(true)
-			} else {
-				setSelectedQuestionIds([])
-			}
+			// Calculate backlog (questions not selected)
+			const selectedSet = new Set(selectedIds)
+			const backlog = deduped
+				.filter((q) => !selectedSet.has(q.id) && q.status !== "deleted" && q.status !== "rejected")
+				.map((q) => q.id)
+
+			// Initialize store with ordered and backlog IDs
+			initializeStore(selectedIds, backlog)
+			setHasInitialized(true)
 		} catch (error) {
 			consola.error("Error loading questions:", error)
 		} finally {
 			setLoading(false)
 		}
-	}, [projectId, supabase, commitSelection])
+	}, [projectId, supabase, initializeStore])
 
 	const markQuestionAsRecentlyAdded = useCallback((id: string) => {
 		setRecentlyAddedQuestionIds((prev) => (prev.includes(id) ? prev : [...prev, id]))
@@ -896,7 +790,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 			// Clear existing questions
 			setQuestions([])
-			setSelectedQuestionIds([])
+			setOrderedQuestionIds([])
 
 			// Close dialog
 			setShowRegenerateDialog(false)
@@ -910,7 +804,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			console.error("Error regenerating questions:", error)
 			toast.error("Failed to regenerate questions")
 		}
-	}, [regenerateInstructions, generateQuestions])
+	}, [regenerateInstructions, generateQuestions, setOrderedQuestionIds])
 
 	const calculateCompositeScore = useCallback((q: Question): number => {
 		const categoryWeight = questionCategories.find((c) => c.id === q.categoryId)?.weight || 1
@@ -927,27 +821,37 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		}
 
 		const tc = targetCounts[timeMinutes]
-		// Guard: If timeMinutes doesn't match a predefined value, use a default based on duration
 		const defaultConfig = { base: Math.max(4, Math.floor(timeMinutes / 5)), validation: +1, cold: 0 }
 		const config = tc ?? defaultConfig
 		const validationBoost = researchMode === "validation" ? config.validation : 0
 		const targetCount = Math.max(4, config.base + validationBoost + (familiarity === "cold" ? config.cold : 0))
 
 		const allQuestionsWithScores = questions
-			.filter((q) => q.status === "proposed" || q.status === "selected") // Include proposed and selected questions, exclude rejected/deleted
+			.filter((q) => q.status === "proposed" || q.status === "selected")
 			.map((q) => ({
 				...q,
 				compositeScore: calculateCompositeScore(q),
 				estimatedMinutes: estimateMinutesPerQuestion(q, researchMode, familiarity),
 			}))
 
-		// Quick lookup map for id → question
 		const byId = new Map(allQuestionsWithScores.map((q) => [q.id, q]))
+		const sanitizeIds = (ids: string[]) => {
+			const seen = new Set<string>()
+			const result: string[] = []
+			for (const id of ids) {
+				if (!id) continue
+				if (seen.has(id)) continue
+				if (!byId.has(id)) continue
+				seen.add(id)
+				result.push(id)
+			}
+			return result
+		}
 
+		let canonicalIds = orderedIds
 		let autoSelectedIds: string[] = []
-		if (selectedQuestionIds.length === 0) {
+		if (canonicalIds.length === 0) {
 			let selected: typeof allQuestionsWithScores = []
-
 			if (goDeepMode) {
 				selected = [...allQuestionsWithScores]
 					.sort((a, b) => b.compositeScore - a.compositeScore)
@@ -984,24 +888,18 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			}
 
 			autoSelectedIds = selected.map((q) => q.id)
+			canonicalIds = autoSelectedIds
 		}
 
-		const idsToUseRaw = selectedQuestionIds.length > 0 ? selectedQuestionIds : autoSelectedIds
-		// Sanitize: keep only ids that exist, preserve order, and de-dupe
-		const seen = new Set<string>()
-		const idsToUse: string[] = []
-		for (const id of idsToUseRaw) {
-			if (!byId.has(id)) continue
-			if (seen.has(id)) continue
-			seen.add(id)
-			idsToUse.push(id)
-		}
+		const canonicalSanitized = sanitizeIds(canonicalIds)
+		const mustHaveSet = new Set(questions.filter((q) => q.isMustHave && q.status !== "rejected").map((q) => q.id))
+		const visibleIdsRaw = mustHavesOnly ? canonicalSanitized.filter((id) => mustHaveSet.has(id)) : canonicalSanitized
+		const visibleIds = sanitizeIds(visibleIdsRaw)
 
-		const orderedSelectedQuestions = idsToUse.map((id) => byId.get(id)).filter(Boolean) as typeof allQuestionsWithScores
-
+		const orderedSelectedQuestions = visibleIds
+			.map((id) => byId.get(id))
+			.filter(Boolean) as typeof allQuestionsWithScores
 		const totalEstimatedTime = orderedSelectedQuestions.reduce((sum, q) => sum + q.estimatedMinutes, 0)
-
-		// Compute overflow index (first index where cumulative time exceeds target)
 		let overflowIndex = -1
 		let running = 0
 		for (let i = 0; i < orderedSelectedQuestions.length; i++) {
@@ -1012,15 +910,13 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			}
 		}
 		const belowCount = overflowIndex >= 0 ? orderedSelectedQuestions.length - overflowIndex : 0
-
-		// Remaining = simple set difference for correctness and speed
-		const selectedSet = new Set(idsToUse)
+		const selectedSet = new Set(canonicalSanitized)
 		const remainingQuestions = allQuestionsWithScores.filter((q) => !selectedSet.has(q.id))
 
 		console.log("📦 questionPack()", {
-			selectedQuestionIds,
+			orderedIds,
 			autoSelectedIds,
-			idsToUse,
+			visibleIds,
 			orderedCount: orderedSelectedQuestions.length,
 			totalQuestions: allQuestionsWithScores.length,
 			exampleIds: orderedSelectedQuestions.slice(0, 5).map((q) => q.id),
@@ -1028,6 +924,9 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 		return {
 			questions: orderedSelectedQuestions,
+			visibleIds,
+			baseIds: canonicalSanitized,
+			autoSelectedIds,
 			totalEstimatedTime,
 			targetTime: timeMinutes,
 			remainingQuestions,
@@ -1040,7 +939,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		familiarity,
 		goDeepMode,
 		questions,
-		selectedQuestionIds,
+		orderedIds,
+		mustHavesOnly,
 		calculateCompositeScore,
 		estimateMinutesPerQuestion,
 	])
@@ -1052,14 +952,12 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 		[baseSelectedIdsForModal, questions]
 	)
 
-	// Initialize selected questions once after computing the pack (no state changes inside useMemo)
 	useEffect(() => {
-		if (!hasInitialized && selectedQuestionIds.length === 0 && questionPack.questions.length > 0) {
-			const ids = questionPack.questions.map((q) => q.id)
-			commitSelection(ids)
+		if (!hasInitialized && orderedIds.length === 0 && questionPack.baseIds.length > 0) {
+			commitSelection(questionPack.baseIds)
 			setHasInitialized(true)
 		}
-	}, [hasInitialized, selectedQuestionIds.length, questionPack.questions, commitSelection])
+	}, [hasInitialized, orderedIds.length, questionPack.baseIds, commitSelection])
 
 	// Time used per category for currently selected questions
 	const _usedMinutesByCategory = useMemo(() => {
@@ -1433,8 +1331,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 	const removeQuestion = useCallback(
 		(id: string) => {
-			const baseIds = getBaseSelectedIds().filter((qId) => qId !== id)
-			commitSelection(baseIds)
+			// Use store action to remove from ordered list
+			removeOrderedIds(id)
 
 			// Create form data for the API
 			const formData = new FormData()
@@ -1455,54 +1353,31 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				description: "The question has been moved to deleted status",
 			})
 		},
-		[getBaseSelectedIds, commitSelection, deleteFetcher]
+		[removeOrderedIds, deleteFetcher]
 	)
 
 	const moveQuestion = useCallback(
 		async (fromIndex: number, toIndex: number) => {
-			const visibleIds = selectedQuestionIds.length > 0 ? selectedQuestionIds : questionPack.questions.map((q) => q.id)
-			const reorderedVisible = [...visibleIds]
-			const [removed] = reorderedVisible.splice(fromIndex, 1)
-			reorderedVisible.splice(toIndex, 0, removed)
+			const visibleIds = questionPack.visibleIds
 
-			// Rebuild questions array to reflect new visible ordering while keeping non-visible items in place
-			const questionById = new Map(questions.map((q) => [q.id, q]))
-			const baseIds = getBaseSelectedIds()
-			const visibleSet = new Set(visibleIds)
-			let visiblePointer = 0
-			const newBaseIds = baseIds.map((id) => {
-				if (!visibleSet.has(id)) return id
-				const replacement = reorderedVisible[visiblePointer++]
-				return replacement
-			})
-			const targetVisibleOrder = [...reorderedVisible]
-			const reorderedQuestions = questions.map((question) => {
-				if (!visibleSet.has(question.id)) {
-					return question
-				}
-				const replacementId = targetVisibleOrder.shift()
-				if (!replacementId) {
-					return question
-				}
-				const replacement = questionById.get(replacementId)
-				return replacement ?? question
-			})
-			commitSelection(newBaseIds)
-			setQuestions(reorderedQuestions)
-			if (removed) {
-				markQuestionAsRecentlyAdded(removed)
+			// Use store action to handle reordering
+			const newBaseIds = reorderVisible(visibleIds, fromIndex, toIndex)
+
+			// Mark moved question as recently added for visual feedback
+			const movedId = visibleIds[fromIndex]
+			if (movedId) {
+				markQuestionAsRecentlyAdded(movedId)
 			}
+
 			setHasInitialized(true)
 			setSkipDebounce(true)
-			await saveQuestionsToDatabase(reorderedQuestions, newBaseIds)
+			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
 		[
-			selectedQuestionIds,
-			questionPack.questions,
-			getBaseSelectedIds,
-			commitSelection,
+			questionPack.visibleIds,
 			questions,
+			reorderVisible,
 			saveQuestionsToDatabase,
 			markQuestionAsRecentlyAdded,
 		]
@@ -1510,13 +1385,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 	const insertQuestionAfter = useCallback(
 		async (anchorId: string, newQuestion: Question) => {
-			const baseIds = getBaseSelectedIds()
-			const anchorIndex = baseIds.indexOf(anchorId)
-			const newBaseIds =
-				anchorIndex >= 0
-					? [...baseIds.slice(0, anchorIndex + 1), newQuestion.id, ...baseIds.slice(anchorIndex + 1)]
-					: [...baseIds, newQuestion.id]
+			// Use store action to insert after anchor
+			const newBaseIds = insertOrderedIds(anchorId, newQuestion.id)
 
+			// Add to questions list
 			const updatedQuestions: Question[] = []
 			let inserted = false
 			for (const existing of questions) {
@@ -1530,7 +1402,6 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				updatedQuestions.push(newQuestion)
 			}
 
-			commitSelection(newBaseIds)
 			setQuestions(updatedQuestions)
 			setHasInitialized(true)
 			markQuestionAsRecentlyAdded(newQuestion.id)
@@ -1541,7 +1412,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 				setTimeout(() => setSkipDebounce(false), 1500)
 			}
 		},
-		[questions, getBaseSelectedIds, commitSelection, markQuestionAsRecentlyAdded, saveQuestionsToDatabase]
+		[questions, insertOrderedIds, markQuestionAsRecentlyAdded, saveQuestionsToDatabase]
 	)
 
 	const onDragEnd = (result: DropResult) => {
@@ -1552,16 +1423,17 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 
 	const addQuestionFromReserve = useCallback(
 		async (question: Question) => {
-			const baseIds = getBaseSelectedIds()
-			if (baseIds.includes(question.id)) return
-			const newBaseIds = [...baseIds, question.id]
-			commitSelection(newBaseIds)
+			if (orderedIds.includes(question.id)) return
+
+			// Use store action to append to end of ordered list
+			const newBaseIds = appendIds(question.id)
+
 			setHasInitialized(true)
 			setSkipDebounce(true)
 			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[getBaseSelectedIds, commitSelection, questions, saveQuestionsToDatabase]
+		[orderedIds, appendIds, questions, saveQuestionsToDatabase]
 	)
 
 	const _addCustomQuestion = useCallback(async () => {
@@ -2191,21 +2063,8 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 										variant="outline"
 										size="sm"
 										onClick={() => {
-											if (!mustHavesOnly) {
-												// Save current selection before filtering
-												previousSelectionRef.current =
-													selectedQuestionIds.length > 0
-														? [...selectedQuestionIds]
-														: questionPack.questions.map((q) => q.id)
-												// Filter to must-haves from interview_prompts table only
-												const mustHaveIds = questions
-													.filter((q) => q.isMustHave && q.status !== "rejected")
-													.map((q) => q.id)
-												setSelectedQuestionIds(mustHaveIds)
-											} else {
-												// Restore previous selection
-												setSelectedQuestionIds(previousSelectionRef.current || [])
-											}
+											// Just toggle the view filter - don't modify orderedIds
+											// The questionPack already filters visibleIds based on mustHavesOnly
 											setMustHavesOnly(!mustHavesOnly)
 										}}
 										className={mustHavesOnly ? "border-orange-200 bg-orange-50" : ""}

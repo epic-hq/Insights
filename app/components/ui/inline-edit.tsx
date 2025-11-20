@@ -51,6 +51,8 @@ export default function InlineEdit({
 	const [isEditing, setIsEditing] = useState(initialIsEditing)
 	const [value, setValue] = useState(initialValue)
 	const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement>(null)
+	const containerRef = useRef<HTMLDivElement>(null)
+	const [preservedWidth, setPreservedWidth] = useState<number | null>(null)
 
 	useEffect(() => {
 		if (isEditing && inputRef.current) {
@@ -70,6 +72,12 @@ export default function InlineEdit({
 	const minRows = 3
 
 	const handleClick = () => {
+		// Preserve the width of the container before switching to edit mode
+		// Add 20px buffer to account for font size differences and ensure all text is visible
+		if (containerRef.current) {
+			const width = containerRef.current.getBoundingClientRect().width
+			setPreservedWidth(width + 20)
+		}
 		setIsEditing(true)
 	}
 
@@ -81,6 +89,7 @@ export default function InlineEdit({
 	const handleBlur = () => {
 		if (closeOnBlur) {
 			setIsEditing(false)
+			setPreservedWidth(null)
 		}
 		if (submitOnBlur) {
 			onSubmit?.(value)
@@ -94,6 +103,7 @@ export default function InlineEdit({
 				return
 			}
 			setIsEditing(false)
+			setPreservedWidth(null)
 			onSubmit?.(value)
 			return
 		}
@@ -104,6 +114,7 @@ export default function InlineEdit({
 
 	const handleCancel = () => {
 		setIsEditing(false)
+		setPreservedWidth(null)
 		setValue(initialValue)
 	}
 
@@ -120,6 +131,7 @@ export default function InlineEdit({
 						onKeyDown={handleKeyDown}
 						rows={minRows}
 						className={cn("scrollbar-none h-auto min-h-0 w-full resize-none", inputClassName)}
+						style={preservedWidth ? { width: `${preservedWidth}px`, minWidth: `${preservedWidth}px` } : undefined}
 					/>
 					{showConfirmationButtons && (
 						<div className="mt-1 flex justify-end gap-2">
@@ -142,6 +154,7 @@ export default function InlineEdit({
 					autoFocus={autoFocus}
 					onKeyDown={handleKeyDown}
 					className={cn("h-8 w-full focus-visible:ring-black/40", inputClassName)}
+					style={preservedWidth ? { width: `${preservedWidth}px`, minWidth: `${preservedWidth}px` } : undefined}
 				/>
 				{showConfirmationButtons && (
 					<div className="mt-1 flex justify-end gap-2">
@@ -159,6 +172,7 @@ export default function InlineEdit({
 
 	return (
 		<div
+			ref={containerRef}
 			onClick={handleClick}
 			className={cn(
 				"group cursor-pointer rounded transition-colors hover:bg-white/80",

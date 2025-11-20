@@ -113,10 +113,11 @@ export default function ProjectGoalsScreen({
 	const [customer_problem, setCustomerProblem] = useState("")
 	const [target_orgs, setTargetOrgs] = useState<string[]>([])
 	const [target_roles, setTargetRoles] = useState<string[]>([])
-	const [offerings, setOfferings] = useState("")
+	const [offerings, setOfferings] = useState<string[]>([])
 	const [competitors, setCompetitors] = useState<string[]>([])
 	const [newOrg, setNewOrg] = useState("")
 	const [newRole, setNewRole] = useState("")
+	const [newOffering, setNewOffering] = useState("")
 	const [newCompetitor, setNewCompetitor] = useState("")
 	const [research_goal, setResearchGoal] = useState("")
 	const [research_goal_details, setResearchGoalDetails] = useState("")
@@ -141,6 +142,7 @@ export default function ProjectGoalsScreen({
 	const [showDecisionQuestionInput, setShowDecisionQuestionInput] = useState(false)
 	const [showOrgSuggestions, setShowOrgSuggestions] = useState(false)
 	const [showRoleSuggestions, setShowRoleSuggestions] = useState(false)
+	const [showOfferingSuggestions, setShowOfferingSuggestions] = useState(false)
 	const [showAssumptionSuggestions, setShowAssumptionSuggestions] = useState(false)
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
@@ -522,6 +524,15 @@ export default function ProjectGoalsScreen({
 		saveTargetRoles(newRoles)
 	}
 
+	// Helper to focus input and move cursor to end
+	const focusInputAtEnd = (ref: React.RefObject<HTMLTextAreaElement | null>) => {
+		if (ref.current) {
+			ref.current.focus()
+			const len = ref.current.value.length
+			ref.current.setSelectionRange(len, len)
+		}
+	}
+
 	const addDecisionQuestion = async () => {
 		if (newDecisionQuestion.trim() && !decision_questions.includes(newDecisionQuestion.trim())) {
 			await createProjectIfNeeded()
@@ -851,12 +862,12 @@ export default function ProjectGoalsScreen({
 								<CardContent className="p-6 pt-0">
 									{/* Organizations */}
 									<div className="mb-6">
-										<label className="mb-3 block font-medium text-foreground text-sm">Organizations</label>
+										<label className="mb-3 block font-semibold text-base text-foreground">Organizations</label>
 										<div className="mb-3 flex flex-wrap gap-2">
 											{target_orgs.map((org, index) => (
 												<div
 													key={`${org}-${index}`}
-													className="group flex items-center gap-2 rounded-md border border-green-300 bg-green-100 px-3 py-1 text-sm transition-all hover:bg-green-200 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
+													className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 												>
 													<InlineEdit
 														value={org}
@@ -868,14 +879,14 @@ export default function ProjectGoalsScreen({
 															setTargetOrgs(list)
 															saveTargetOrgs(list)
 														}}
-														textClassName="flex-shrink-0 font-medium text-green-800 dark:text-green-300"
-														inputClassName="h-6 py-0 text-green-900 dark:text-green-200"
+														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
 													/>
 													<button
 														onClick={() => removeOrg(org)}
-														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-green-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 													>
-														<X className="h-3 w-3 text-green-700 dark:text-green-400" />
+														<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 													</button>
 												</div>
 											))}
@@ -944,6 +955,108 @@ export default function ProjectGoalsScreen({
 														setShownSuggestionsByType((prev) => ({
 															...prev,
 															organizations: suggestions,
+														}))
+													}}
+												/>
+											</div>
+										)}
+									</div>
+
+									{/* Roles */}
+									<div>
+										<label className="mb-3 block font-semibold text-base text-foreground">People's Roles</label>
+										<div className="mb-3 flex flex-wrap gap-2">
+											{target_roles.map((role, index) => (
+												<div
+													key={`${role}-${index}`}
+													className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
+												>
+													<InlineEdit
+														value={role}
+														onSubmit={(val) => {
+															const v = val.trim()
+															if (!v) return
+															const list = [...target_roles]
+															list[index] = v
+															setTargetRoles(list)
+															saveTargetRoles(list)
+														}}
+														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
+													/>
+													<button
+														onClick={() => removeRole(role)}
+														className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
+													>
+														<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
+													</button>
+												</div>
+											))}
+										</div>
+										{!showRoleSuggestions ? (
+											<Button
+												onClick={() => {
+													setShowRoleSuggestions(true)
+													setActiveSuggestionType("roles")
+												}}
+												variant="outline"
+												size="sm"
+												className="w-full justify-center border-dashed"
+											>
+												<Plus className="mr-2 h-4 w-4" />
+												Add target role
+											</Button>
+										) : (
+											<div className="space-y-3">
+												<div className="flex gap-2">
+													<Textarea
+														ref={roleInputRef}
+														placeholder="e.g., Chief Technology Officer, Marketing Director, End Users, Small Business Owners"
+														value={newRole}
+														onChange={(e) => setNewRole(e.target.value)}
+														onKeyDown={(e) => e.key === "Enter" && !e.shiftKey && addRole()}
+														className="flex-1 resize-none"
+														rows={2}
+														autoFocus
+													/>
+													<Button onClick={addRole} variant="outline" size="sm">
+														<Plus className="h-4 w-4" />
+													</Button>
+													<Button
+														onClick={() => {
+															setShowRoleSuggestions(false)
+															setNewRole("")
+														}}
+														variant="ghost"
+														size="sm"
+													>
+														<X className="h-4 w-4" />
+													</Button>
+												</div>
+
+												<ContextualSuggestions
+													suggestionType="roles"
+													currentInput={newRole}
+													researchGoal={research_goal}
+													existingItems={target_roles}
+													apiPath={apiPath}
+													shownSuggestions={shownSuggestionsByType.roles || []}
+													isActive={activeSuggestionType === null || activeSuggestionType === "roles"}
+													onSuggestionClick={async (suggestion) => {
+														if (!target_roles.includes(suggestion.trim())) {
+															await createProjectIfNeeded()
+															const newRoles = [...target_roles, suggestion.trim()]
+															setTargetRoles(newRoles)
+															saveTargetRoles(newRoles)
+														}
+													}}
+													onSuggestionShown={(suggestions) => {
+														if (activeSuggestionType === null) {
+															setActiveSuggestionType("roles")
+														}
+														setShownSuggestionsByType((prev) => ({
+															...prev,
+															roles: [...(prev.roles || []), ...suggestions],
 														}))
 													}}
 												/>
@@ -1019,7 +1132,7 @@ export default function ProjectGoalsScreen({
 								{competitors.map((competitor, index) => (
 									<div
 										key={`${competitor}-${index}`}
-										className="group flex items-center gap-2 rounded-md border border-red-300 bg-red-100 px-3 py-1 text-sm transition-all hover:bg-red-200 dark:border-red-700 dark:bg-red-900/20 dark:hover:bg-red-800/30"
+										className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 									>
 										<InlineEdit
 											value={competitor}
@@ -1031,8 +1144,8 @@ export default function ProjectGoalsScreen({
 												setCompetitors(list)
 												saveProjectSection("competitors", list)
 											}}
-											textClassName="flex-shrink-0 font-medium text-red-800 dark:text-red-300"
-											inputClassName="h-6 py-0 text-red-900 dark:text-red-200"
+											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
 										/>
 										<button
 											onClick={() => {
@@ -1040,9 +1153,9 @@ export default function ProjectGoalsScreen({
 												setCompetitors(newCompetitors)
 												saveProjectSection("competitors", newCompetitors)
 											}}
-											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-red-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-red-700"
+											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 										>
-											<X className="h-3 w-3 text-red-700 dark:text-red-400" />
+											<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 										</button>
 									</div>
 								))}
@@ -1122,10 +1235,10 @@ export default function ProjectGoalsScreen({
 										{decision_questions.map((question, index) => (
 											<div
 												key={`decision-${index}-${question.slice(0, 10)}`}
-												className="group flex items-start gap-3 rounded-lg border border-green-200 bg-green-50 p-3 transition-all duration-200 hover:bg-green-100 dark:border-green-700 dark:bg-green-900/20 dark:hover:bg-green-800/30"
+												className="group flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-all duration-200 hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 											>
 												<div className="mt-1 flex-shrink-0">
-													<div className="h-2 w-2 rounded-md bg-green-500" />
+													<div className="h-2 w-2 rounded-md bg-blue-500" />
 												</div>
 												<InlineEdit
 													value={question}
@@ -1138,9 +1251,9 @@ export default function ProjectGoalsScreen({
 												/>
 												<button
 													onClick={() => removeDecisionQuestion(index)}
-													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-green-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-green-700"
+													className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all duration-200 hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 												>
-													<X className="h-3 w-3 text-green-700 dark:text-green-400" />
+													<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 												</button>
 											</div>
 										))}
@@ -1267,7 +1380,7 @@ export default function ProjectGoalsScreen({
 									<div className="mb-6">
 										{/* Assumptions */}
 										<div className="mb-6">
-											<label className="mb-3 block font-medium text-foreground text-md">Assumptions</label>
+											<label className="mb-3 block font-semibold text-base text-foreground">Assumptions</label>
 											<div className="mb-3 space-y-2">
 												{assumptions.map((assumption, index) => (
 													<div
@@ -1363,15 +1476,15 @@ export default function ProjectGoalsScreen({
 
 										{/* Unknowns -> Research Questions */}
 										<div>
-											<label className="mb-3 block font-medium text-foreground text-md">Unknowns</label>
+											<label className="mb-3 block font-semibold text-base text-foreground">Unknowns</label>
 											<div className="mb-3 space-y-2">
 												{unknowns.map((unknown, index) => (
 													<div
 														key={`unknown-${index}-${unknown.slice(0, 10)}`}
-														className="group flex items-start gap-3 rounded-lg border border-amber-200 bg-amber-50 p-3 transition-all hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-900/20 dark:hover:bg-amber-800/30"
+														className="group flex items-start gap-3 rounded-lg border border-blue-200 bg-blue-50 p-3 transition-all hover:bg-blue-100 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
 													>
 														<div className="mt-0.5 flex-shrink-0">
-															<HelpCircle className="h-4 w-4 text-amber-600" />
+															<HelpCircle className="h-4 w-4 text-blue-600" />
 														</div>
 														<InlineEdit
 															value={unknown}
@@ -1384,9 +1497,9 @@ export default function ProjectGoalsScreen({
 														/>
 														<button
 															onClick={() => removeUnknown(index)}
-															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-amber-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-amber-700"
+															className="flex-shrink-0 rounded-md p-1 opacity-60 transition-all hover:bg-blue-200 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 														>
-															<X className="h-3 w-3 text-amber-700 dark:text-amber-400" />
+															<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
 														</button>
 													</div>
 												))}
