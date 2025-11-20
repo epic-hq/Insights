@@ -40,7 +40,7 @@ type TemplatePrefill = {
 	customer_problem: string
 	target_orgs: string[]
 	target_roles: string[]
-	offerings: string
+	offerings: string[]
 	competitors: string[]
 	research_goal: string
 	research_goal_details: string
@@ -58,13 +58,13 @@ const projectGoalsSchema = z.object({
 	// Organizations are optional - user can specify none
 	target_orgs: z.array(z.string()).default([]),
 	target_roles: z.array(z.string()).min(1, "At least one target role is required"),
-	offerings: z.string().optional(),
+	offerings: z.array(z.string()).default([]),
 	competitors: z.array(z.string()).default([]),
 	research_goal: z.string().min(1, "Research goal is required"),
 	research_goal_details: z.string().optional(),
 	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
-	assumptions: z.array(z.string()),
-	unknowns: z.array(z.string()),
+	assumptions: z.array(z.string()).default([]),
+	unknowns: z.array(z.string()).min(1, "At least one unknown is required"),
 	custom_instructions: z.string().optional(),
 })
 
@@ -81,7 +81,7 @@ interface ProjectGoalsScreenProps {
 		customer_problem: string
 		target_orgs: string[]
 		target_roles: string[]
-		offerings: string
+		offerings: string[]
 		competitors: string[]
 		research_goal: string
 		research_goal_details: string
@@ -147,6 +147,8 @@ export default function ProjectGoalsScreen({
 	const [showUnknownSuggestions, setShowUnknownSuggestions] = useState(false)
 	const [activeSuggestionType, setActiveSuggestionType] = useState<string | null>(null)
 	const [shownSuggestionsByType, setShownSuggestionsByType] = useState<Record<string, string[]>>({})
+	const [validationErrors, setValidationErrors] = useState<Record<string, string>>({})
+	const [hasAttemptedNext, setHasAttemptedNext] = useState(false)
 	const supabase = createClient()
 
 	// Feature flag for chat setup button
@@ -246,7 +248,7 @@ export default function ProjectGoalsScreen({
 				if (research_goal_details.trim()) formData.append("research_goal_details", research_goal_details)
 				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
 				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
-				if (offerings.trim()) formData.append("offerings", offerings)
+				if (offerings.length > 0) formData.append("offerings", offerings.join(", "))
 				if (competitors.length > 0) formData.append("competitors", competitors.join(", "))
 				if (assumptions.length > 0) formData.append("assumptions", assumptions.join("\n"))
 				if (unknowns.length > 0) formData.append("unknowns", unknowns.join("\n"))
@@ -365,6 +367,7 @@ export default function ProjectGoalsScreen({
 					(typeof m.customer_problem === "string" && (m.customer_problem as string).length > 0) ||
 					(Array.isArray(m.target_orgs) && (m.target_orgs as unknown[]).length > 0) ||
 					(Array.isArray(m.target_roles) && (m.target_roles as unknown[]).length > 0) ||
+					(Array.isArray(m.offerings) && (m.offerings as unknown[]).length > 0) ||
 					(typeof m.offerings === "string" && (m.offerings as string).length > 0) ||
 					(Array.isArray(m.competitors) && (m.competitors as unknown[]).length > 0) ||
 					(typeof m.research_goal === "string" && (m.research_goal as string).length > 0) ||
@@ -377,7 +380,15 @@ export default function ProjectGoalsScreen({
 					setCustomerProblem((m.customer_problem as string) ?? "")
 					setTargetOrgs((m.target_orgs as string[]) ?? [])
 					setTargetRoles((m.target_roles as string[]) ?? [])
-					setOfferings((m.offerings as string) ?? "")
+					// Handle offerings - convert string to array if needed, guard against null
+					const loadedOfferings = m.offerings
+					if (Array.isArray(loadedOfferings)) {
+						setOfferings(loadedOfferings)
+					} else if (typeof loadedOfferings === "string" && loadedOfferings.trim()) {
+						setOfferings([loadedOfferings])
+					} else {
+						setOfferings([])
+					}
 					setCompetitors((m.competitors as string[]) ?? [])
 					setResearchGoal((m.research_goal as string) ?? "")
 					setResearchGoalDetails((m.research_goal_details as string) ?? "")
@@ -403,7 +414,14 @@ export default function ProjectGoalsScreen({
 					setCustomerProblem(data.customer_problem || "")
 					setTargetOrgs(data.target_orgs || [])
 					setTargetRoles(data.target_roles || [])
-					setOfferings(data.offerings || "")
+					// Handle offerings - convert string to array if needed, guard against null
+					if (Array.isArray(data.offerings)) {
+						setOfferings(data.offerings)
+					} else if (typeof data.offerings === "string" && data.offerings.trim()) {
+						setOfferings([data.offerings])
+					} else {
+						setOfferings([])
+					}
 					setCompetitors(data.competitors || [])
 					setResearchGoal(data.research_goal || "")
 					setResearchGoalDetails(data.research_goal_details || "")
@@ -448,7 +466,14 @@ export default function ProjectGoalsScreen({
 			setCustomerProblem(prefill.customer_problem || "")
 			setTargetOrgs(prefill.target_orgs || [])
 			setTargetRoles(prefill.target_roles || [])
-			setOfferings(prefill.offerings || "")
+			// Handle offerings - convert string to array if needed, guard against null
+			if (Array.isArray(prefill.offerings)) {
+				setOfferings(prefill.offerings)
+			} else if (typeof prefill.offerings === "string" && prefill.offerings.trim()) {
+				setOfferings([prefill.offerings])
+			} else {
+				setOfferings([])
+			}
 			setCompetitors(prefill.competitors || [])
 			setResearchGoal(prefill.research_goal || "")
 			setResearchGoalDetails(prefill.research_goal_details || "")
@@ -463,7 +488,7 @@ export default function ProjectGoalsScreen({
 				if (prefill.customer_problem) saveProjectSection("customer_problem", prefill.customer_problem)
 				if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
 				if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
-				if (prefill.offerings) saveProjectSection("offerings", prefill.offerings)
+				if ((prefill.offerings || []).length > 0) saveProjectSection("offerings", prefill.offerings)
 				if ((prefill.competitors || []).length > 0) saveProjectSection("competitors", prefill.competitors)
 				if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
 				if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
@@ -609,33 +634,108 @@ export default function ProjectGoalsScreen({
 	}
 
 	const handleNext = useCallback(async () => {
-		if (customer_problem.trim() && target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0) {
-			try {
-				const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
-				if (!resolvedProjectId) {
-					toast.error("Unable to determine project. Please try again.")
-					return
+		setHasAttemptedNext(true)
+
+		// Validate using Zod schema
+		const validationResult = projectGoalsSchema.safeParse({
+			customer_problem,
+			target_orgs,
+			target_roles,
+			offerings,
+			competitors,
+			research_goal,
+			research_goal_details,
+			decision_questions,
+			assumptions,
+			unknowns,
+			custom_instructions,
+		})
+
+		consola.log("[ProjectGoals] Validation result:", validationResult)
+
+		if (!validationResult.success) {
+			// Extract and set validation errors
+			const errors: Record<string, string> = {}
+			const missingFields: string[] = []
+
+			consola.log("[ProjectGoals] Raw validation errors:", validationResult.error.issues)
+
+			validationResult.error.issues.forEach((err) => {
+				consola.log("[ProjectGoals] Processing error:", err)
+				const path = err.path.join(".")
+				consola.log("[ProjectGoals] Path:", path, "Message:", err.message)
+				errors[path] = err.message
+
+				// Map field names to user-friendly labels
+				const fieldLabels: Record<string, string> = {
+					customer_problem: "Customer Problem",
+					target_roles: "Target Roles",
+					research_goal: "Research Goal",
+					decision_questions: "Key Decisions",
+					unknowns: "Unknowns",
 				}
 
-				await ensureResearchStructure(resolvedProjectId)
-				saveResearchGoal(research_goal, research_goal_details, false)
-				onNext({
-					customer_problem,
-					target_orgs,
-					target_roles,
-					offerings,
-					competitors,
-					research_goal,
-					research_goal_details,
-					decision_questions,
-					assumptions,
-					unknowns,
-					custom_instructions: custom_instructions || undefined,
-					projectId: resolvedProjectId,
+				const fieldLabel = fieldLabels[path]
+				consola.log("[ProjectGoals] Field label for", path, ":", fieldLabel)
+				if (fieldLabel && !missingFields.includes(fieldLabel)) {
+					missingFields.push(fieldLabel)
+					consola.log("[ProjectGoals] Added missing field:", fieldLabel)
+				}
+			})
+
+			setValidationErrors(errors)
+
+			consola.log("[ProjectGoals] Final validation errors:", errors)
+			consola.log("[ProjectGoals] Final missing fields:", missingFields)
+
+			// Show error with missing fields - ALWAYS show the toast
+			const errorMessage =
+				missingFields.length > 0
+					? `Missing required fields: ${missingFields.join(", ")}`
+					: "Please fill in all required fields"
+
+			consola.log("[ProjectGoals] About to show toast with message:", errorMessage)
+
+			try {
+				toast.error(errorMessage, {
+					duration: 5000,
 				})
-			} catch (error) {
-				consola.error("[ProjectGoals] Unable to proceed to questions", error)
+				consola.log("[ProjectGoals] Toast.error called successfully")
+			} catch (toastError) {
+				consola.error("[ProjectGoals] Error calling toast.error:", toastError)
 			}
+
+			return
+		}
+
+		// Clear validation errors if validation passes
+		setValidationErrors({})
+
+		try {
+			const resolvedProjectId = (await createProjectIfNeeded()) || currentProjectId
+			if (!resolvedProjectId) {
+				toast.error("Unable to determine project. Please try again.")
+				return
+			}
+
+			await ensureResearchStructure(resolvedProjectId)
+			saveResearchGoal(research_goal, research_goal_details, false)
+			onNext({
+				customer_problem,
+				target_orgs,
+				target_roles,
+				offerings,
+				competitors,
+				research_goal,
+				research_goal_details,
+				decision_questions,
+				assumptions,
+				unknowns,
+				custom_instructions: custom_instructions || undefined,
+				projectId: resolvedProjectId,
+			})
+		} catch (error) {
+			consola.error("[ProjectGoals] Unable to proceed to questions", error)
 		}
 	}, [
 		assumptions,
@@ -669,9 +769,6 @@ export default function ProjectGoalsScreen({
 	}
 
 	// Removed contextualSuggestions fallback - rely only on AI-generated suggestions
-
-	const isValid =
-		target_roles.length > 0 && research_goal.trim() && decision_questions.length > 0 && unknowns.length > 0
 
 	const onboardingSteps = [
 		{ id: "goals", title: "Project Goals" },
@@ -751,7 +848,10 @@ export default function ProjectGoalsScreen({
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<HelpCircle className="h-5 w-5 text-orange-600" />
-									<h2 className="font-semibold text-lg">What is the customer's problem?</h2>
+									<h2 className="font-semibold text-lg">
+										What is the customer's problem?
+										<span className="ml-1 text-red-600">*</span>
+									</h2>
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<span className="inline-flex">
@@ -787,7 +887,10 @@ export default function ProjectGoalsScreen({
 							<div className="flex items-center justify-between">
 								<div className="flex items-center gap-2">
 									<Target className="h-5 w-5 text-blue-600" />
-									<h2 className="font-semibold text-lg">What goal are you trying to achieve?</h2>
+									<h2 className="font-semibold text-lg">
+										What goal are you trying to achieve?
+										<span className="ml-1 text-red-600">*</span>
+									</h2>
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<span className="inline-flex">
@@ -835,7 +938,9 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											<h2 className="font-semibold text-lg">Who are your ideal customers?</h2>
+											<h2 className="font-semibold text-lg">
+												Who are your ideal customers?
+											</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
@@ -964,7 +1069,9 @@ export default function ProjectGoalsScreen({
 
 									{/* Roles */}
 									<div>
-										<label className="mb-3 block font-semibold text-base text-foreground">People's Roles</label>
+										<label className="mb-3 block font-semibold text-base text-foreground">
+											People's Roles <span className="text-red-600">*</span>
+										</label>
 										<div className="mb-3 flex flex-wrap gap-2">
 											{target_roles.map((role, index) => (
 												<div
@@ -1075,6 +1182,9 @@ export default function ProjectGoalsScreen({
 								<div className="flex items-center gap-2">
 									<GraduationCapIcon className="h-5 w-5 text-indigo-600" />
 									<h2 className="font-semibold text-lg">What products and services do you offer?</h2>
+									<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
+										{offerings.length}
+									</span>
 									<Tooltip>
 										<TooltipTrigger asChild>
 											<span className="inline-flex">
@@ -1090,16 +1200,68 @@ export default function ProjectGoalsScreen({
 						</CardHeader>
 
 						<CardContent className="p-6 pt-0">
-							<Textarea
-								placeholder="e.g., Cloud-based CRM platform with AI-powered insights, mobile app, and integration marketplace"
-								value={offerings}
-								onChange={(e) => {
-									setOfferings(e.target.value)
-									saveProjectSection("offerings", e.target.value, true)
-								}}
-								rows={3}
-								className="min-h-[80px]"
-							/>
+							<div className="mb-3 flex flex-wrap gap-2">
+								{offerings.map((offering, index) => (
+									<div
+										key={`${offering}-${index}`}
+										className="group flex items-center gap-2 rounded-md border border-blue-300 bg-blue-100 px-3 py-1 text-sm transition-all hover:bg-blue-200 dark:border-blue-700 dark:bg-blue-900/20 dark:hover:bg-blue-800/30"
+									>
+										<InlineEdit
+											value={offering}
+											onSubmit={(val) => {
+												const v = val.trim()
+												if (!v) return
+												const list = [...offerings]
+												list[index] = v
+												setOfferings(list)
+												saveProjectSection("offerings", list)
+											}}
+											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
+											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
+										/>
+										<button
+											onClick={() => {
+												const newOfferings = offerings.filter((_, i) => i !== index)
+												setOfferings(newOfferings)
+												saveProjectSection("offerings", newOfferings)
+											}}
+											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
+										>
+											<X className="h-3 w-3 text-blue-700 dark:text-blue-400" />
+										</button>
+									</div>
+								))}
+							</div>
+							<div className="flex gap-2">
+								<Input
+									placeholder="e.g., Cloud CRM platform, Mobile app, Integration marketplace"
+									value={newOffering}
+									onChange={(e) => setNewOffering(e.target.value)}
+									onKeyDown={(e) => {
+										if (e.key === "Enter" && newOffering.trim()) {
+											const newOfferings = [...offerings, newOffering.trim()]
+											setOfferings(newOfferings)
+											setNewOffering("")
+											saveProjectSection("offerings", newOfferings)
+										}
+									}}
+									className="flex-1"
+								/>
+								<Button
+									onClick={() => {
+										if (newOffering.trim()) {
+											const newOfferings = [...offerings, newOffering.trim()]
+											setOfferings(newOfferings)
+											setNewOffering("")
+											saveProjectSection("offerings", newOfferings)
+										}
+									}}
+									variant="outline"
+									size="sm"
+								>
+									<Plus className="h-4 w-4" />
+								</Button>
+							</div>
 						</CardContent>
 					</Card>
 
@@ -1204,7 +1366,10 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Option className="h-5 w-5 text-green-600" />
-											<h2 className="font-semibold text-lg">What key decisions are you facing?</h2>
+											<h2 className="font-semibold text-lg">
+												What key decisions are you facing?
+												<span className="ml-1 text-red-600">*</span>
+											</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{" "}
 												{decision_questions.length}
@@ -1351,7 +1516,9 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<GraduationCapIcon className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">Assumptions & Unknowns</h2>
+											<h2 className="font-semibold text-lg">
+												Assumptions & Unknowns
+											</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{" "}
 												{unknowns.length}
@@ -1476,7 +1643,9 @@ export default function ProjectGoalsScreen({
 
 										{/* Unknowns -> Research Questions */}
 										<div>
-											<label className="mb-3 block font-semibold text-base text-foreground">Unknowns</label>
+											<label className="mb-3 block font-semibold text-base text-foreground">
+												Unknowns <span className="text-red-600">*</span>
+											</label>
 											<div className="mb-3 space-y-2">
 												{unknowns.map((unknown, index) => (
 													<div
@@ -1766,7 +1935,7 @@ export default function ProjectGoalsScreen({
 						<div className="flex items-center justify-center">
 							<Button
 								onClick={handleNext}
-								disabled={!isValid || isLoading || ensuringStructure}
+								disabled={isLoading || ensuringStructure}
 								size="lg"
 								className="px-8 py-3"
 							>
