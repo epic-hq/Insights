@@ -1,6 +1,6 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
-import { BotMessageSquare, ChevronRight, Mic, MicOff } from "lucide-react"
+import { ChevronRight, Mic, MicOff } from "lucide-react"
 import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
@@ -78,6 +78,34 @@ declare global {
 		stop(): void
 		abort(): void
 	}
+}
+
+function WizardIcon({ className }: { className?: string }) {
+	return (
+		<span
+			className={cn(
+				"flex h-8 w-8 items-center justify-center rounded-lg border border-border bg-card shadow-sm",
+				className
+			)}
+		>
+			<svg viewBox="0 0 64 64" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" role="img" aria-label="Wizard bot">
+				<path
+					d="M32 8l-10 18h20L32 8z"
+					strokeLinecap="round"
+					strokeLinejoin="round"
+				/>
+				<circle cx="32" cy="30" r="10" />
+				<path d="M24 45h16v11H24z" />
+				<path d="M19 45c-4 0-7 3-7 7v4" strokeLinecap="round" />
+				<path d="M45 45c4 0 7 3 7 7v4" strokeLinecap="round" />
+				<path d="M26 30h2" strokeLinecap="round" />
+				<path d="M36 30h2" strokeLinecap="round" />
+				<path d="M28 35c1.5 1 6.5 1 8 0" strokeLinecap="round" />
+				<path d="M14 26v18" strokeLinecap="round" />
+				<circle cx="14" cy="22" r="3" />
+			</svg>
+		</span>
+	)
 }
 
 function ThinkingWave() {
@@ -541,7 +569,7 @@ export function ProjectStatusAgentChat({
 								}}
 								aria-label="Toggle chat"
 							>
-								<BotMessageSquare className="h-4 w-4 text-blue-600" />
+								<WizardIcon className="h-8 w-8 border-0 bg-transparent p-0 text-blue-600" />
 								Ask Uppy
 							</CardTitle>
 						)}
@@ -559,7 +587,7 @@ export function ProjectStatusAgentChat({
 									}
 								}}
 							>
-								<BotMessageSquare className="h-5 w-5 text-blue-600" />
+								<WizardIcon className="h-10 w-10 border-0 bg-transparent p-0 text-blue-600" />
 								<span className="whitespace-nowrap font-medium text-[10px] text-muted-foreground leading-tight opacity-90">
 									Ask AI
 								</span>

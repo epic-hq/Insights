@@ -64,6 +64,7 @@ export function AppSidebar() {
 	const { project } = useCurrentProjectData()
 	const { showValidationView, setShowValidationView } = useValidationView()
 	const { isEnabled: salesCrmEnabled } = usePostHogFeatureFlag("ffSalesCRM")
+	const { isEnabled: prioritiesEnabled } = usePostHogFeatureFlag("ffPriorities")
 
 	const accounts = useMemo(() => {
 		if (!protectedData?.accounts) return [] as AccountRecord[]
@@ -212,11 +213,15 @@ export function AppSidebar() {
 					if (item.key === "bant-lens") {
 						return salesCrmEnabled
 					}
+					// Check generic featureFlag property
+					if (item.key === "priorities" && !prioritiesEnabled) {
+						return false
+					}
 					return true
 				}),
 			}))
 			.filter((section) => section.items.length > 0) // Remove sections with no items
-	}, [visibleSections, salesSection, salesCrmEnabled, icpFeatureEnabled])
+	}, [visibleSections, salesSection, salesCrmEnabled, icpFeatureEnabled, prioritiesEnabled])
 
 	// ────────────────────────────────────────────────────────────────
 	// Counts → show small badges on matching items

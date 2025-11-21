@@ -7,11 +7,6 @@ export type Json =
   | Json[]
 
 export type Database = {
-  // Allows to automatically instantiate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
   accounts: {
     Tables: {
       account_user: {
@@ -459,6 +454,56 @@ export type Database = {
           },
         ]
       }
+      agent_task_runs: {
+        Row: {
+          agent_type: string
+          completed_at: string | null
+          created_at: string
+          error: string | null
+          id: string
+          logs: Json | null
+          output: string | null
+          started_at: string | null
+          status: string
+          task_id: string
+          triggered_by: string | null
+        }
+        Insert: {
+          agent_type: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          logs?: Json | null
+          output?: string | null
+          started_at?: string | null
+          status?: string
+          task_id: string
+          triggered_by?: string | null
+        }
+        Update: {
+          agent_type?: string
+          completed_at?: string | null
+          created_at?: string
+          error?: string | null
+          id?: string
+          logs?: Json | null
+          output?: string | null
+          started_at?: string | null
+          status?: string
+          task_id?: string
+          triggered_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "agent_task_runs_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analysis_jobs: {
         Row: {
           attempts: number | null
@@ -540,6 +585,7 @@ export type Database = {
           resolved_at: string | null
           resolved_by_user_id: string | null
           status: string | null
+          task_id: string | null
           thread_root_id: string | null
           updated_at: string | null
           updated_by_user_id: string | null
@@ -565,6 +611,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by_user_id?: string | null
           status?: string | null
+          task_id?: string | null
           thread_root_id?: string | null
           updated_at?: string | null
           updated_by_user_id?: string | null
@@ -590,6 +637,7 @@ export type Database = {
           resolved_at?: string | null
           resolved_by_user_id?: string | null
           status?: string | null
+          task_id?: string | null
           thread_root_id?: string | null
           updated_at?: string | null
           updated_by_user_id?: string | null
@@ -608,6 +656,13 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "annotations_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
             referencedColumns: ["id"]
           },
           {
@@ -1944,414 +1999,6 @@ export type Database = {
           },
         ]
       }
-      mastra_ai_spans: {
-        Row: {
-          attributes: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          endedAt: string | null
-          endedAtZ: string | null
-          error: Json | null
-          input: Json | null
-          isEvent: boolean
-          links: Json | null
-          metadata: Json | null
-          name: string
-          output: Json | null
-          parentSpanId: string | null
-          scope: Json | null
-          spanId: string
-          spanType: string
-          startedAt: string
-          startedAtZ: string | null
-          traceId: string
-          updatedAt: string | null
-          updatedAtZ: string | null
-        }
-        Insert: {
-          attributes?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          endedAt?: string | null
-          endedAtZ?: string | null
-          error?: Json | null
-          input?: Json | null
-          isEvent: boolean
-          links?: Json | null
-          metadata?: Json | null
-          name: string
-          output?: Json | null
-          parentSpanId?: string | null
-          scope?: Json | null
-          spanId: string
-          spanType: string
-          startedAt: string
-          startedAtZ?: string | null
-          traceId: string
-          updatedAt?: string | null
-          updatedAtZ?: string | null
-        }
-        Update: {
-          attributes?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          endedAt?: string | null
-          endedAtZ?: string | null
-          error?: Json | null
-          input?: Json | null
-          isEvent?: boolean
-          links?: Json | null
-          metadata?: Json | null
-          name?: string
-          output?: Json | null
-          parentSpanId?: string | null
-          scope?: Json | null
-          spanId?: string
-          spanType?: string
-          startedAt?: string
-          startedAtZ?: string | null
-          traceId?: string
-          updatedAt?: string | null
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_evals: {
-        Row: {
-          agent_name: string
-          created_at: string
-          created_atZ: string | null
-          createdAt: string | null
-          createdAtZ: string | null
-          global_run_id: string
-          input: string
-          instructions: string
-          metric_name: string
-          output: string
-          result: Json
-          run_id: string
-          test_info: Json | null
-        }
-        Insert: {
-          agent_name: string
-          created_at: string
-          created_atZ?: string | null
-          createdAt?: string | null
-          createdAtZ?: string | null
-          global_run_id: string
-          input: string
-          instructions: string
-          metric_name: string
-          output: string
-          result: Json
-          run_id: string
-          test_info?: Json | null
-        }
-        Update: {
-          agent_name?: string
-          created_at?: string
-          created_atZ?: string | null
-          createdAt?: string | null
-          createdAtZ?: string | null
-          global_run_id?: string
-          input?: string
-          instructions?: string
-          metric_name?: string
-          output?: string
-          result?: Json
-          run_id?: string
-          test_info?: Json | null
-        }
-        Relationships: []
-      }
-      mastra_messages: {
-        Row: {
-          content: string
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          resourceId: string | null
-          role: string
-          thread_id: string
-          type: string
-        }
-        Insert: {
-          content: string
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          resourceId?: string | null
-          role: string
-          thread_id: string
-          type: string
-        }
-        Update: {
-          content?: string
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          resourceId?: string | null
-          role?: string
-          thread_id?: string
-          type?: string
-        }
-        Relationships: []
-      }
-      mastra_resources: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          metadata: Json | null
-          updatedAt: string
-          updatedAtZ: string | null
-          workingMemory: string | null
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          metadata?: Json | null
-          updatedAt: string
-          updatedAtZ?: string | null
-          workingMemory?: string | null
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          metadata?: Json | null
-          updatedAt?: string
-          updatedAtZ?: string | null
-          workingMemory?: string | null
-        }
-        Relationships: []
-      }
-      mastra_scorers: {
-        Row: {
-          additionalContext: Json | null
-          analyzePrompt: string | null
-          analyzeStepResult: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          entity: Json | null
-          entityId: string | null
-          entityType: string | null
-          extractPrompt: string | null
-          extractStepResult: Json | null
-          generateReasonPrompt: string | null
-          generateScorePrompt: string | null
-          id: string
-          input: Json
-          metadata: Json | null
-          output: Json
-          preprocessPrompt: string | null
-          preprocessStepResult: Json | null
-          reason: string | null
-          reasonPrompt: string | null
-          resourceId: string | null
-          runId: string
-          runtimeContext: Json | null
-          score: number
-          scorer: Json
-          scorerId: string
-          source: string
-          spanId: string | null
-          threadId: string | null
-          traceId: string | null
-          updatedAt: string
-          updatedAtZ: string | null
-        }
-        Insert: {
-          additionalContext?: Json | null
-          analyzePrompt?: string | null
-          analyzeStepResult?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          entity?: Json | null
-          entityId?: string | null
-          entityType?: string | null
-          extractPrompt?: string | null
-          extractStepResult?: Json | null
-          generateReasonPrompt?: string | null
-          generateScorePrompt?: string | null
-          id: string
-          input: Json
-          metadata?: Json | null
-          output: Json
-          preprocessPrompt?: string | null
-          preprocessStepResult?: Json | null
-          reason?: string | null
-          reasonPrompt?: string | null
-          resourceId?: string | null
-          runId: string
-          runtimeContext?: Json | null
-          score: number
-          scorer: Json
-          scorerId: string
-          source: string
-          spanId?: string | null
-          threadId?: string | null
-          traceId?: string | null
-          updatedAt: string
-          updatedAtZ?: string | null
-        }
-        Update: {
-          additionalContext?: Json | null
-          analyzePrompt?: string | null
-          analyzeStepResult?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          entity?: Json | null
-          entityId?: string | null
-          entityType?: string | null
-          extractPrompt?: string | null
-          extractStepResult?: Json | null
-          generateReasonPrompt?: string | null
-          generateScorePrompt?: string | null
-          id?: string
-          input?: Json
-          metadata?: Json | null
-          output?: Json
-          preprocessPrompt?: string | null
-          preprocessStepResult?: Json | null
-          reason?: string | null
-          reasonPrompt?: string | null
-          resourceId?: string | null
-          runId?: string
-          runtimeContext?: Json | null
-          score?: number
-          scorer?: Json
-          scorerId?: string
-          source?: string
-          spanId?: string | null
-          threadId?: string | null
-          traceId?: string | null
-          updatedAt?: string
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_threads: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          id: string
-          metadata: string | null
-          resourceId: string
-          title: string
-          updatedAt: string
-          updatedAtZ: string | null
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          id: string
-          metadata?: string | null
-          resourceId: string
-          title: string
-          updatedAt: string
-          updatedAtZ?: string | null
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          id?: string
-          metadata?: string | null
-          resourceId?: string
-          title?: string
-          updatedAt?: string
-          updatedAtZ?: string | null
-        }
-        Relationships: []
-      }
-      mastra_traces: {
-        Row: {
-          attributes: Json | null
-          createdAt: string
-          createdAtZ: string | null
-          endTime: number
-          events: Json | null
-          id: string
-          kind: number
-          links: Json | null
-          name: string
-          other: string | null
-          parentSpanId: string | null
-          scope: string
-          startTime: number
-          status: Json | null
-          traceId: string
-        }
-        Insert: {
-          attributes?: Json | null
-          createdAt: string
-          createdAtZ?: string | null
-          endTime: number
-          events?: Json | null
-          id: string
-          kind: number
-          links?: Json | null
-          name: string
-          other?: string | null
-          parentSpanId?: string | null
-          scope: string
-          startTime: number
-          status?: Json | null
-          traceId: string
-        }
-        Update: {
-          attributes?: Json | null
-          createdAt?: string
-          createdAtZ?: string | null
-          endTime?: number
-          events?: Json | null
-          id?: string
-          kind?: number
-          links?: Json | null
-          name?: string
-          other?: string | null
-          parentSpanId?: string | null
-          scope?: string
-          startTime?: number
-          status?: Json | null
-          traceId?: string
-        }
-        Relationships: []
-      }
-      mastra_workflow_snapshot: {
-        Row: {
-          createdAt: string
-          createdAtZ: string | null
-          resourceId: string | null
-          run_id: string
-          snapshot: string
-          updatedAt: string
-          updatedAtZ: string | null
-          workflow_name: string
-        }
-        Insert: {
-          createdAt: string
-          createdAtZ?: string | null
-          resourceId?: string | null
-          run_id: string
-          snapshot: string
-          updatedAt: string
-          updatedAtZ?: string | null
-          workflow_name: string
-        }
-        Update: {
-          createdAt?: string
-          createdAtZ?: string | null
-          resourceId?: string | null
-          run_id?: string
-          snapshot?: string
-          updatedAt?: string
-          updatedAtZ?: string | null
-          workflow_name?: string
-        }
-        Relationships: []
-      }
       opportunities: {
         Row: {
           account_id: string
@@ -3029,8 +2676,8 @@ export type Database = {
           created_at: string
           generated_at: string
           id: string
-          kind_slug: string
           input_hash: string | null
+          kind_slug: string
           model_version: string | null
           person_id: string
           project_id: string
@@ -3043,8 +2690,8 @@ export type Database = {
           created_at?: string
           generated_at?: string
           id?: string
-          kind_slug: string
           input_hash?: string | null
+          kind_slug: string
           model_version?: string | null
           person_id: string
           project_id: string
@@ -3057,8 +2704,8 @@ export type Database = {
           created_at?: string
           generated_at?: string
           id?: string
-          kind_slug?: string
           input_hash?: string | null
+          kind_slug?: string
           model_version?: string | null
           person_id?: string
           project_id?: string
@@ -3869,13 +3516,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "project_sections_kind_fkey"
-            columns: ["kind"]
-            isOneToOne: false
-            referencedRelation: "project_section_kinds"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "project_sections_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -4470,6 +4110,152 @@ export type Database = {
           },
         ]
       }
+      task_activity: {
+        Row: {
+          activity_type: string
+          content: string | null
+          created_at: string
+          field_name: string | null
+          id: string
+          new_value: Json | null
+          old_value: Json | null
+          source: string | null
+          task_id: string
+          user_id: string | null
+        }
+        Insert: {
+          activity_type: string
+          content?: string | null
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          source?: string | null
+          task_id: string
+          user_id?: string | null
+        }
+        Update: {
+          activity_type?: string
+          content?: string | null
+          created_at?: string
+          field_name?: string | null
+          id?: string
+          new_value?: Json | null
+          old_value?: Json | null
+          source?: string | null
+          task_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "task_activity_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          account_id: string
+          actual_hours: number | null
+          assigned_to: Json | null
+          benefit: string | null
+          blocks_task_ids: string[] | null
+          cluster: string
+          completed_at: string | null
+          created_at: string
+          created_by: string
+          depends_on_task_ids: string[] | null
+          description: string | null
+          due_date: string | null
+          estimated_effort: string | null
+          id: string
+          impact: number | null
+          parent_task_id: string | null
+          priority: number
+          project_id: string
+          reason: string | null
+          segments: string | null
+          stage: string | null
+          status: string
+          tags: string[] | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          actual_hours?: number | null
+          assigned_to?: Json | null
+          benefit?: string | null
+          blocks_task_ids?: string[] | null
+          cluster: string
+          completed_at?: string | null
+          created_at?: string
+          created_by: string
+          depends_on_task_ids?: string[] | null
+          description?: string | null
+          due_date?: string | null
+          estimated_effort?: string | null
+          id?: string
+          impact?: number | null
+          parent_task_id?: string | null
+          priority?: number
+          project_id: string
+          reason?: string | null
+          segments?: string | null
+          stage?: string | null
+          status?: string
+          tags?: string[] | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          actual_hours?: number | null
+          assigned_to?: Json | null
+          benefit?: string | null
+          blocks_task_ids?: string[] | null
+          cluster?: string
+          completed_at?: string | null
+          created_at?: string
+          created_by?: string
+          depends_on_task_ids?: string[] | null
+          description?: string | null
+          due_date?: string | null
+          estimated_effort?: string | null
+          id?: string
+          impact?: number | null
+          parent_task_id?: string | null
+          priority?: number
+          project_id?: string
+          reason?: string | null
+          segments?: string | null
+          stage?: string | null
+          status?: string
+          tags?: string[] | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "tasks_parent_task_id_fkey"
+            columns: ["parent_task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "tasks_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       theme_evidence: {
         Row: {
           account_id: string
@@ -5016,13 +4802,6 @@ export type Database = {
         }
         Relationships: [
           {
-            foreignKeyName: "project_sections_kind_fkey"
-            columns: ["kind"]
-            isOneToOne: false
-            referencedRelation: "project_section_kinds"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "project_sections_project_id_fkey"
             columns: ["project_id"]
             isOneToOne: false
@@ -5486,3 +5265,4 @@ export const Constants = {
     },
   },
 } as const
+

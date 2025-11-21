@@ -10,6 +10,7 @@ We leverage remix conventions like loaders and actions for apis, and store code 
 HTML/CSS we use tailwindcss, shadcnui and themes.
 
 - supabase we use declarative schemas in supabase/schemas, and implement here first, then generate migrations. See `docs/supabase-howto.md` for the process, and be sure to generate types after changing db.
+- React-router does not export JSON. and we don't need to wrap it in a response. we can just return the data and it will be serialized automatically.
 - do not use console.log, use consola.log instead and `import consola from "consola"`
 when making database changes, use the supabase declarative schema approach, and edit supabase/schemas/ file instead of creating a migration directly. Follow the process [here](`docs/@supabase/howto/declarative-schemas.md`)
 
@@ -20,6 +21,29 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 [ ] Persona Facet Summaries - summarize facet group takeaways atop an accordion
 
 [ ] Implement livekit-agent and token generator in backend, and livekit-web agent in front end e.g. projectStatusAgent for when user wants to talk to agent.
+
+## Recent Implementations
+
+### Task System (Nov 2024) ✅ **Phase 1 Complete**
+Unified task/feature management system for project prioritization and execution.
+
+**Completed:**
+- Database schema with 3 tables: `tasks`, `task_activity`, `agent_task_runs`
+- Full CRUD operations in `app/features/tasks/db.ts`
+- RESTful API at `/api/tasks` with filters and bulk operations
+- Auto-seeding from mock data on first load
+- Priorities page reads from database via loader
+
+**In Progress:**
+- Inline editing for task fields (status, priority, title, etc.)
+- Remix action handlers for CRUD operations
+
+**Next Steps:**
+- Voice integration with ProjectStatusAgent ("Mark STT input as in progress")
+- Agent assignment and execution tracking
+- Task detail modal with full metadata
+
+See `docs/features/task-system-technical-design.md` for full implementation details.
 
 
 ## Refactoring

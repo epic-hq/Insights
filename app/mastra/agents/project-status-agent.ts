@@ -18,6 +18,7 @@ import { manageAnnotationsTool } from "../tools/manage-annotations"
 import { manageDocumentsTool } from "../tools/manage-documents"
 import { createOpportunityTool, fetchOpportunitiesTool, updateOpportunityTool } from "../tools/manage-opportunities"
 import { managePersonOrganizationsTool } from "../tools/manage-person-organizations"
+import { createTaskTool, deleteTaskTool, fetchTasksTool, updateTaskTool } from "../tools/manage-tasks"
 import { navigateToPageTool } from "../tools/navigate-to-page"
 import { upsertPersonTool } from "../tools/upsert-person"
 import { upsertPersonFacetsTool } from "../tools/upsert-person-facets"
@@ -58,8 +59,14 @@ Workflow:
 8. When the user shares qualitative insights about a person's traits, behaviors, or characteristics, call "upsertPersonFacets" with that transcript plus the specific person_id to capture the facets in the database.
 9. When users ask you to save, create, write, or document something (e.g., "save our positioning", "create an SEO strategy", "write up meeting notes"), use "manageDocuments" with operation="upsert" and translate natural language to appropriate document kinds. The tool has full vocabulary mapping - just use natural language and it will handle the translation.
 10. When users want to add notes, comments, or reminders to specific entities (people, organizations, opportunities, interviews), use "manageAnnotations" to create annotations. Examples: "add a note to this person", "remind me to follow up with this org", "flag this opportunity as high priority". Annotations are for entity-level notes and todos, different from project-level documents managed by manageDocuments.
-11. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
-12. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
+11. **Task Management**: Use task tools to help users track and organize work:
+   • When users ask about tasks, features, or roadmap items, call "fetchTasks" to list current tasks. You can filter by status (backlog, todo, in_progress, blocked, review, done, archived), cluster, priority, or search text.
+   • When users ask you to create, add, or track a task/feature/work item, call "createTask" with title and cluster (required), plus optional fields like description, status, priority (1=Now, 2=Next, 3=Later), impact (1-3), stage, benefit, segments, reason, tags, dueDate, and estimatedEffort (S/M/L/XL).
+   • When users ask to update, modify, or change a task, call "updateTask" with the taskId and the fields to update. You can change any field including status (e.g., "mark as done", "move to in progress"), priority, title, description, etc.
+   • When users ask to delete or remove a task, call "deleteTask" with the taskId. This archives the task rather than hard deleting it.
+   • Tasks are grouped by cluster (e.g., "Core product – capture & workflow", "Foundation – reliability & UX", "Monetization & pricing"). Use existing clusters when possible or create descriptive new ones.
+12. If no project is in context or the user asks about another project, ask which project they want and call the status tool with that projectId to confirm access.
+13. When referencing information, mention counts or specific evidence summaries when helpful. Prioritize actionable recommendations, and if data is missing explain the gap and suggest concrete next steps (e.g., run more interviews, upload evidence, create personas).
 
 **Linking to Entities**: When mentioning specific personas, people, opportunities, organizations, themes, evidence, insights, interviews, or segments in your responses, always include clickable links. After successfully using tools like "fetchPeopleDetails", "fetchPersonas", or similar that return entity data, use the "generateProjectRoutes" tool to get the correct URL for that specific entity, then format the link as a regular markdown link: **[Entity Name](\`route-from-tool\`)**. The tool returns both a relative \`route\` (preferred for in-product links) and an \`absoluteRoute\` (for sharing outside the app). If the route generation fails, continue with your response without the link rather than failing completely.
 
@@ -98,6 +105,10 @@ I recommend checking your project settings or trying a simpler query to help dia
 		fetchOpportunities: fetchOpportunitiesTool,
 		createOpportunity: createOpportunityTool,
 		updateOpportunity: updateOpportunityTool,
+		fetchTasks: fetchTasksTool,
+		createTask: createTaskTool,
+		updateTask: updateTaskTool,
+		deleteTask: deleteTaskTool,
 		navigateToPage: navigateToPageTool,
 		upsertPersonFacets: upsertPersonFacetsTool,
 		managePersonOrganizations: managePersonOrganizationsTool,

@@ -13,11 +13,26 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table"
+import consola from "consola"
 import { Bot, ChevronDown, ChevronRight } from "lucide-react"
 import * as React from "react"
+import type { ActionFunctionArgs, LoaderFunctionArgs } from "react-router"
+import { redirect, useFetcher, useLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
+import InlineEdit from "~/components/ui/inline-edit"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
+import {
+	Select,
+	SelectContent,
+	SelectItem,
+	SelectTrigger,
+	SelectValue,
+} from "~/components/ui/select"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
+import { getTasks, updateTask } from "~/features/tasks/db"
+import { seedTasks } from "~/features/tasks/seed"
+import type { Task, TaskStatus } from "~/features/tasks/types"
+import { userContext } from "~/server/user-context"
 
 type Stage = "activation" | "onboarding" | "retention"
 type Impact = 1 | 2 | 3
@@ -42,302 +57,493 @@ export type FeatureRow = {
 	cluster: Cluster
 }
 
-const DATA: FeatureRow[] = [
-	{
-		id: "stt",
-		feature: "STT input until release or VAD",
-		benefit: "Capture calls reliably without friction",
-		segments: "Founders, sales reps, research leads",
-		impact: 3,
-		stage: "activation",
-		priority: 1,
-		reason: "Core to product promise; blocker to aha moment.",
-		cluster: "Core product – capture & workflow",
-	},
-	{
-		id: "call-workflow",
-		feature: "Call workflow (contact options, survey link, meeting applet)",
-		benefit: "Structure before/after call steps and follow-through",
-		segments: "Sales reps, CS, founders",
-		impact: 3,
-		stage: "activation",
-		priority: 2,
-		reason: "Ties captured calls to outcomes; shows 'close the loop'.",
-		cluster: "Core product – capture & workflow",
-	},
-	{
-		id: "import-contacts",
-		feature: "Import accounts & contacts list",
-		benefit: "Fast setup using existing CRM data",
-		segments: "New teams, admins, ops",
-		impact: 3,
-		stage: "onboarding",
-		priority: 1,
-		reason: "Lowers setup pain; key to first project populated.",
-		cluster: "Core product – capture & workflow",
-	},
-	{
-		id: "task-list",
-		feature: "Task list",
-		benefit: "Turn insights into clear next steps",
-		segments: "Founders, sales reps, CS",
-		impact: 2,
-		stage: "retention",
-		priority: 2,
-		reason: "Connects insights to action; can be simple v1.",
-		cluster: "Core product – capture & workflow",
-	},
-	{
-		id: "email-to-annotation",
-		feature: "Email responses to meetings → annotation",
-		benefit: "Automatic debrief + saved notes after calls",
-		segments: "Sales reps, founders",
-		impact: 2,
-		stage: "activation",
-		priority: 2,
-		reason: "Strong wow moment right after calls; reinforces core value.",
-		cluster: "Core product – capture & workflow",
-	},
-	{
-		id: "voice-assistant",
-		feature: "Voice chat assistant",
-		benefit: "In-app conversational help and hands-free control",
-		segments: "Power users, busy founders, sales reps",
-		impact: 2,
-		stage: "retention",
-		priority: 3,
-		reason: "Nice-to-have; improves depth, not initial value.",
-		cluster: "Core product – intelligence",
-	},
-	{
-		id: "docs-generator",
-		feature: "Sales/marketing doc generator + folder system",
-		benefit: "Reusable decks/emails and clearer library of outputs",
-		segments: "Marketing, sales, founders",
-		impact: 2,
-		stage: "retention",
-		priority: 3,
-		reason: "Deeper value layer; build after core workflow is stable.",
-		cluster: "Core product – intelligence",
-	},
-	{
-		id: "persona-creation",
-		feature: "Persona creation",
-		benefit: "Clarify who you're learning from and targeting",
-		segments: "Product, marketing, founders",
-		impact: 2,
-		stage: "retention",
-		priority: 3,
-		reason: "Strategic but not required for first wins.",
-		cluster: "Core product – intelligence",
-	},
-	{
-		id: "objection-handling",
-		feature: "Sales objection handling",
-		benefit: "Guided responses and playbook for common objections",
-		segments: "Sales reps, founders doing sales",
-		impact: 2,
-		stage: "retention",
-		priority: 3,
-		reason: "Sales enablement layer; good once core adoption exists.",
-		cluster: "Core product – intelligence",
-	},
-	{
-		id: "icp-finder",
-		feature: "ICP finder feature (bullseye customer)",
-		benefit: "Help users focus on best-fit customers/accounts",
-		segments: "Founders, Rev leaders, PMs",
-		impact: 3,
-		stage: "retention",
-		priority: 2,
-		reason: "Big differentiator; builds on existing data.",
-		cluster: "Core product – intelligence",
-	},
-	{
-		id: "oauth",
-		feature: "OAuth login reliability",
-		benefit: "Trustworthy, glitch-free sign-in",
-		segments: "Everyone",
-		impact: 3,
-		stage: "onboarding",
-		priority: 1,
-		reason: "Table-stakes; breaks everything if flaky.",
-		cluster: "Foundation – reliability & UX",
-	},
-	{
-		id: "app-flow",
-		feature: "App flow UX redesign / UI",
-		benefit: "Make main journeys obvious and low-friction",
-		segments: "All users, especially new signups",
-		impact: 3,
-		stage: "activation",
-		priority: 1,
-		reason: "Directly impacts aha moment and day-1 success.",
-		cluster: "Foundation – reliability & UX",
-	},
-	{
-		id: "branding",
-		feature: "Branding",
-		benefit: "Credibility, memorability, and trust",
-		segments: "Prospects, new users, investors",
-		impact: 2,
-		stage: "onboarding",
-		priority: 2,
-		reason: "Matters for trust; can iterate while fixing flows.",
-		cluster: "Foundation – reliability & UX",
-	},
-	{
-		id: "pricing",
-		feature: "Pricing on credit system + take credit card",
-		benefit: "Turn value into revenue and gate usage sanely",
-		segments: "Paying customers, founder/finance",
-		impact: 3,
-		stage: "activation",
-		priority: 1,
-		reason: "Needed to charge, test WTP, and control usage.",
-		cluster: "Monetization & pricing",
-	},
-	{
-		id: "email-nudges",
-		feature: "Email nudges + PostHog instrumentation",
-		benefit: "Drive usage and learn what works",
-		segments: "Admins, product team, active users",
-		impact: 2,
-		stage: "retention",
-		priority: 2,
-		reason: "Needed to keep users coming back and inform roadmap.",
-		cluster: "Engagement & analytics",
-	},
-	{
-		id: "webpage-messaging",
-		feature: "Webpage messaging and CTA to try app",
-		benefit: "Clear promise and path to start a trial",
-		segments: "Prospects evaluating tools",
-		impact: 3,
-		stage: "onboarding",
-		priority: 1,
-		reason: "You can't test demand or learn without this.",
-		cluster: "Acquisition & marketing",
-	},
-	{
-		id: "leadgen-content",
-		feature: "Lead generation content and newsletter",
-		benefit: "Attract and educate right-fit prospects",
-		segments: "Founders, PMs, sales leaders",
-		impact: 2,
-		stage: "onboarding",
-		priority: 2,
-		reason: "Fuels top/mid funnel once core app experience is solid.",
-		cluster: "Acquisition & marketing",
-	},
-	{
-		id: "paid-ads",
-		feature: "Paid ads",
-		benefit: "Scalable acquisition once funnel works",
-		segments: "Growth/marketing, founders",
-		impact: 2,
-		stage: "onboarding",
-		priority: 3,
-		reason: "Dangerous before positioning + activation are dialed in.",
-		cluster: "Acquisition & marketing",
-	},
-	{
-		id: "email-intro",
-		feature: "Email intro asking for meeting",
-		benefit: "Faster outreach to recruit conversations",
-		segments: "Founders, sales reps",
-		impact: 1,
-		stage: "activation",
-		priority: 3,
-		reason: "Useful, but can be done manually early.",
-		cluster: "Acquisition & marketing",
-	},
-]
+// ============================================================================
+// Loader - Fetch tasks from database
+// ============================================================================
+
+export async function loader({ context, params }: LoaderFunctionArgs) {
+	const ctx = context.get(userContext)
+
+	if (!ctx?.claims) {
+		return redirect("/login")
+	}
+
+	const accountId = params.accountId
+	const projectId = params.projectId
+
+	if (!accountId || !projectId) {
+		throw new Response("Missing account or project ID", { status: 400 })
+	}
+
+	if (!ctx.supabase) {
+		throw new Response("Supabase client missing", { status: 500 })
+	}
+
+	const userId = ctx.claims.sub
+
+	// Fetch tasks for this project
+	let tasks = await getTasks({
+		supabase: ctx.supabase,
+		projectId,
+		options: {
+			filters: {
+				status: ["backlog", "todo", "in_progress", "blocked", "review"], // Exclude done and archived
+			},
+		},
+	})
+
+	// If no tasks exist, seed with initial data
+	if (!tasks || tasks.length === 0) {
+		const seedResult = await seedTasks({
+			supabase: ctx.supabase,
+			accountId,
+			projectId,
+			userId,
+		})
+
+		if (seedResult.success) {
+			// Fetch again after seeding
+			tasks = await getTasks({
+				supabase: ctx.supabase,
+				projectId,
+				options: {
+					filters: {
+						status: ["backlog", "todo", "in_progress", "blocked", "review"],
+					},
+				},
+			})
+		}
+	}
+
+	return { tasks, accountId, projectId }
+}
+
+// ============================================================================
+// Action - Handle updates
+// ============================================================================
+
+export async function action({ context, request }: ActionFunctionArgs) {
+	const ctx = context.get(userContext)
+
+	if (!ctx?.claims) {
+		throw new Response("Unauthorized", { status: 401 })
+	}
+
+	if (!ctx.supabase) {
+		throw new Response("Supabase client missing", { status: 500 })
+	}
+
+	const userId = ctx.claims.sub
+	const formData = await request.formData()
+	const action = formData.get("_action") as string
+	const taskId = formData.get("taskId") as string
+	const field = formData.get("field") as string
+	const value = formData.get("value") as string
+
+	if (action === "update-field") {
+		if (!taskId || !field) {
+			throw new Response("Missing required fields", { status: 400 })
+		}
+
+		try {
+			// Parse value based on field type
+			let parsedValue: unknown = value
+			if (field === "priority" || field === "impact") {
+				parsedValue = Number.parseInt(value)
+			} else if (field === "status") {
+				parsedValue = value as TaskStatus
+			}
+
+			await updateTask({
+				supabase: ctx.supabase,
+				taskId,
+				userId,
+				updates: { [field]: parsedValue } as any,
+			})
+
+			return { success: true }
+		} catch (error) {
+			consola.error("Error updating task:", error)
+			throw new Response("Failed to update task", { status: 500 })
+		}
+	}
+
+	throw new Response("Invalid action", { status: 400 })
+}
+
+// ============================================================================
+// Transform Task to FeatureRow
+// ============================================================================
+
+function taskToFeatureRow(task: Task): FeatureRow {
+	return {
+		id: task.id,
+		feature: task.title,
+		benefit: task.benefit || "",
+		segments: task.segments || "",
+		impact: (task.impact || 1) as Impact,
+		stage: (task.stage || "activation") as Stage,
+		priority: task.priority as Priority,
+		reason: task.reason || "",
+		cluster: task.cluster as Cluster,
+	}
+}
+
+// ============================================================================
+// Editable Cell Components
+// ============================================================================
+
+function EditableTextCell({ taskId, field, value }: { taskId: string; field: string; value: string }) {
+	const fetcher = useFetcher()
+
+	const handleSubmit = (newValue: string) => {
+		if (newValue === value) return
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", field)
+		formData.append("value", newValue)
+
+		fetcher.submit(formData, { method: "POST" })
+	}
+
+	return (
+		<InlineEdit
+			value={value}
+			onSubmit={handleSubmit}
+			textClassName="text-sm text-foreground"
+			inputClassName="text-sm"
+			multiline={field === "benefit" || field === "reason"}
+			autoSize={true}
+		/>
+	)
+}
+
+function EditableStatusCell({ taskId, value }: { taskId: string; value: TaskStatus }) {
+	const fetcher = useFetcher()
+
+	const handleChange = (newValue: string) => {
+		if (newValue === value) return
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", "status")
+		formData.append("value", newValue)
+
+		fetcher.submit(formData, { method: "POST" })
+	}
+
+	const statusLabels: Record<TaskStatus, string> = {
+		backlog: "Backlog",
+		todo: "To Do",
+		in_progress: "In Progress",
+		blocked: "Blocked",
+		review: "In Review",
+		done: "Done",
+		archived: "Archived",
+	}
+
+	return (
+		<Select value={value} onValueChange={handleChange}>
+			<SelectTrigger className="h-7 w-32 text-xs">
+				<SelectValue />
+			</SelectTrigger>
+			<SelectContent>
+				{Object.entries(statusLabels).map(([val, label]) => (
+					<SelectItem key={val} value={val} className="text-xs">
+						{label}
+					</SelectItem>
+				))}
+			</SelectContent>
+		</Select>
+	)
+}
+
+function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priority }) {
+	const fetcher = useFetcher()
+	const [open, setOpen] = React.useState(false)
+
+	// Use optimistic value if update is in progress
+	const displayValue = React.useMemo(() => {
+		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "priority") {
+			const optimisticValue = fetcher.formData.get("value")
+			return optimisticValue ? Number.parseInt(optimisticValue as string) as Priority : value
+		}
+		return value
+	}, [fetcher.formData, taskId, value])
+
+	const handleSelect = (newValue: number) => {
+		if (newValue === value) {
+			setOpen(false)
+			return
+		}
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", "priority")
+		formData.append("value", newValue.toString())
+
+		fetcher.submit(formData, { method: "POST" })
+		setOpen(false)
+	}
+
+	const badges = {
+		1: { label: "Now", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
+		2: { label: "Next", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
+		3: { label: "Later", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
+	}
+
+	const badge = badges[displayValue as 1 | 2 | 3]
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button
+					variant="ghost"
+					size="sm"
+					className="h-auto p-0 hover:bg-transparent"
+				>
+					<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${badge.className}`}>
+						{badge.label}
+					</span>
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-48" align="center">
+				<div className="space-y-2">
+					<h4 className="font-semibold text-sm">Set Priority</h4>
+					<div className="space-y-1">
+						<Button
+							variant={displayValue === 1 ? "default" : "ghost"}
+							size="sm"
+							className="w-full justify-start"
+							onClick={() => handleSelect(1)}
+						>
+							<span className="mr-2 h-2 w-2 rounded-full bg-emerald-600" />
+							Now (1)
+						</Button>
+						<Button
+							variant={displayValue === 2 ? "default" : "ghost"}
+							size="sm"
+							className="w-full justify-start"
+							onClick={() => handleSelect(2)}
+						>
+							<span className="mr-2 h-2 w-2 rounded-full bg-amber-600" />
+							Next (2)
+						</Button>
+						<Button
+							variant={displayValue === 3 ? "default" : "ghost"}
+							size="sm"
+							className="w-full justify-start"
+							onClick={() => handleSelect(3)}
+						>
+							<span className="mr-2 h-2 w-2 rounded-full bg-slate-600" />
+							Later (3)
+						</Button>
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+	)
+}
+
+function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }) {
+	const fetcher = useFetcher()
+	const [open, setOpen] = React.useState(false)
+
+	// Use optimistic value if update is in progress
+	const displayValue = React.useMemo(() => {
+		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "impact") {
+			const optimisticValue = fetcher.formData.get("value")
+			return optimisticValue ? Number.parseInt(optimisticValue as string) as Impact : value
+		}
+		return value
+	}, [fetcher.formData, taskId, value])
+
+	const handleSelect = (newValue: number) => {
+		if (newValue === value) {
+			setOpen(false)
+			return
+		}
+
+		const formData = new FormData()
+		formData.append("_action", "update-field")
+		formData.append("taskId", taskId)
+		formData.append("field", "impact")
+		formData.append("value", newValue.toString())
+
+		fetcher.submit(formData, { method: "POST" })
+		setOpen(false)
+	}
+
+	const getImpactBars = (impact: number, isButton = false) => {
+		const colors = {
+			3: "bg-emerald-600",
+			2: "bg-amber-600",
+			1: "bg-slate-600",
+		}
+		const color = colors[impact as 3 | 2 | 1]
+		const mutedColor = isButton ? "bg-muted" : "bg-muted-foreground/30"
+
+		if (impact === 3) {
+			return (
+				<div className="flex items-end gap-0.5">
+					<div className={`h-2.5 w-1 rounded-sm ${color}`} />
+					<div className={`h-3 w-1 rounded-sm ${color}`} />
+					<div className={`h-3.5 w-1 rounded-sm ${color}`} />
+				</div>
+			)
+		}
+		if (impact === 2) {
+			return (
+				<div className="flex items-end gap-0.5">
+					<div className={`h-2.5 w-1 rounded-sm ${color}`} />
+					<div className={`h-3 w-1 rounded-sm ${color}`} />
+					<div className={`h-3.5 w-1 rounded-sm ${mutedColor}`} />
+				</div>
+			)
+		}
+		return (
+			<div className="flex items-end gap-0.5">
+				<div className={`h-2.5 w-1 rounded-sm ${color}`} />
+				<div className={`h-3 w-1 rounded-sm ${mutedColor}`} />
+				<div className={`h-3.5 w-1 rounded-sm ${mutedColor}`} />
+			</div>
+		)
+	}
+
+	return (
+		<Popover open={open} onOpenChange={setOpen}>
+			<PopoverTrigger asChild>
+				<Button variant="ghost" size="sm" className="h-auto p-1 hover:bg-muted">
+					{getImpactBars(displayValue)}
+				</Button>
+			</PopoverTrigger>
+			<PopoverContent className="w-48" align="center">
+				<div className="space-y-2">
+					<h4 className="font-semibold text-sm">Set Impact</h4>
+					<div className="space-y-1">
+						<Button
+							variant={displayValue === 3 ? "default" : "ghost"}
+							size="sm"
+							className="w-full justify-start"
+							onClick={() => handleSelect(3)}
+						>
+							{getImpactBars(3, true)}
+							<span className="ml-2">High (3)</span>
+						</Button>
+						<Button
+							variant={displayValue === 2 ? "default" : "ghost"}
+							size="sm"
+							className="w-full justify-start"
+							onClick={() => handleSelect(2)}
+						>
+							{getImpactBars(2, true)}
+							<span className="ml-2">Medium (2)</span>
+						</Button>
+						<Button
+							variant={displayValue === 1 ? "default" : "ghost"}
+							size="sm"
+							className="w-full justify-start"
+							onClick={() => handleSelect(1)}
+						>
+							{getImpactBars(1, true)}
+							<span className="ml-2">Low (1)</span>
+						</Button>
+					</div>
+				</div>
+			</PopoverContent>
+		</Popover>
+	)
+}
+
+// ============================================================================
+// Table Columns
+// ============================================================================
 
 const columns: ColumnDef<FeatureRow>[] = [
 	{
 		accessorKey: "cluster",
 		header: "Cluster",
-		cell: ({ row }) => <span className="font-semibold text-xs uppercase tracking-wide">{row.original.cluster}</span>,
+		// Hidden column - used for grouping and filtering only
+		cell: ({ row }) => <span>{row.original.cluster}</span>,
 	},
 	{
 		accessorKey: "feature",
-		header: "Feature",
-		cell: ({ row }) => <span className="font-medium">{row.original.feature}</span>,
+		header: ({ column }) => {
+			return (
+				<button
+					type="button"
+					onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+					className="flex items-center gap-1 hover:text-primary"
+				>
+					Feature
+					{column.getIsSorted() === "asc" && <span>↑</span>}
+					{column.getIsSorted() === "desc" && <span>↓</span>}
+				</button>
+			)
+		},
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="title" value={row.original.feature} />,
 	},
 	{
 		accessorKey: "benefit",
 		header: "Benefit (who)",
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="benefit" value={row.original.benefit} />,
 	},
 	{
 		accessorKey: "segments",
 		header: "Segments",
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="segments" value={row.original.segments} />,
 	},
 	{
 		accessorKey: "impact",
-		header: "Impact",
-		cell: ({ row }) => {
-			const impact = row.original.impact
-			// High impact (3): 3 bars
-			if (impact === 3) {
-				return (
-					<div className="flex items-end gap-0.5" title="High impact">
-						<div className="h-2.5 w-1 rounded-sm bg-emerald-600" />
-						<div className="h-3 w-1 rounded-sm bg-emerald-600" />
-						<div className="h-3.5 w-1 rounded-sm bg-emerald-600" />
-					</div>
-				)
-			}
-			// Medium impact (2): 2 bars
-			if (impact === 2) {
-				return (
-					<div className="flex items-end gap-0.5" title="Medium impact">
-						<div className="h-2.5 w-1 rounded-sm bg-amber-600" />
-						<div className="h-3 w-1 rounded-sm bg-amber-600" />
-						<div className="h-3.5 w-1 rounded-sm bg-muted-foreground/30" />
-					</div>
-				)
-			}
-			// Low impact (1): 1 bar
+		header: ({ column }) => {
 			return (
-				<div className="flex items-end gap-0.5" title="Low impact">
-					<div className="h-2.5 w-1 rounded-sm bg-slate-600" />
-					<div className="h-3 w-1 rounded-sm bg-muted-foreground/30" />
-					<div className="h-3.5 w-1 rounded-sm bg-muted-foreground/30" />
-				</div>
+				<button
+					type="button"
+					onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+					className="flex items-center gap-1 hover:text-primary"
+				>
+					Impact
+					{column.getIsSorted() === "asc" && <span>↑</span>}
+					{column.getIsSorted() === "desc" && <span>↓</span>}
+				</button>
 			)
 		},
+		cell: ({ row }) => <EditableImpactCell taskId={row.original.id} value={row.original.impact} />,
 	},
 	{
 		accessorKey: "stage",
 		header: "Stage",
-		cell: ({ row }) => <span className="capitalize">{row.original.stage}</span>,
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="stage" value={row.original.stage} />,
 	},
 	{
 		accessorKey: "priority",
-		header: "Priority",
-		cell: ({ row }) => {
-			const priority = row.original.priority
-			const badges = {
-				1: { label: "Now", className: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/30 dark:text-emerald-300" },
-				2: { label: "Next", className: "bg-amber-100 text-amber-800 dark:bg-amber-900/30 dark:text-amber-300" },
-				3: { label: "Later", className: "bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300" },
-			}
-			const badge = badges[priority as 1 | 2 | 3]
+		header: ({ column }) => {
 			return (
-				<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${badge.className}`}>
-					{badge.label}
-				</span>
+				<button
+					type="button"
+					onClick={() => column.toggleSorting(column.getIsSorted() === "asc")}
+					className="flex items-center gap-1 hover:text-primary"
+				>
+					Priority
+					{column.getIsSorted() === "asc" && <span>↑</span>}
+					{column.getIsSorted() === "desc" && <span>↓</span>}
+				</button>
 			)
 		},
+		cell: ({ row }) => <EditablePriorityCell taskId={row.original.id} value={row.original.priority} />,
 	},
 	{
 		accessorKey: "reason",
 		header: "Reason",
+		cell: ({ row }) => <EditableTextCell taskId={row.original.id} field="reason" value={row.original.reason} />,
 	},
 	{
 		id: "actions",
-		header: "",
+		header: "Action",
 		cell: ({ row }) => <AskUppyCell row={row.original} />,
 	},
 ]
@@ -391,23 +597,47 @@ Context:
 	)
 }
 
+// ============================================================================
+// Main Component
+// ============================================================================
+
 export default function FeaturePrioritizationPage() {
+	const { tasks } = useLoaderData<typeof loader>()
+
+	// Transform tasks to feature rows
+	const data = React.useMemo(() => tasks.map(taskToFeatureRow), [tasks])
+
 	const [sorting, setSorting] = React.useState<SortingState>([
 		{ id: "priority", desc: false },
 		{ id: "impact", desc: true },
 	])
 	const [columnFilters, setColumnFilters] = React.useState<ColumnFiltersState>([])
 	const [grouping, setGrouping] = React.useState<GroupingState>(["cluster"])
+	// User controls expansion state - preserve across updates
+	// Start with all groups expanded
 	const [expanded, setExpanded] = React.useState<ExpandedState>(true)
 
+	// Keep groups expanded on fresh load and after filtering
+	React.useEffect(() => {
+		setExpanded(true)
+	}, [data, columnFilters])
+
 	const table = useReactTable({
-		data: DATA,
+		data,
 		columns,
 		state: {
 			sorting,
 			columnFilters,
 			grouping,
 			expanded,
+			columnVisibility: {
+				cluster: false, // Hide cluster column from display
+			},
+		},
+		initialState: {
+			pagination: {
+				pageSize: 1000, // Show all tasks by default
+			},
 		},
 		onSortingChange: setSorting,
 		onColumnFiltersChange: setColumnFilters,
@@ -441,17 +671,18 @@ export default function FeaturePrioritizationPage() {
 					<input
 						type="text"
 						placeholder="Search feature..."
-						className="w-60 rounded border border-input bg-background px-2 py-1 text-sm"
-						value={(table.getColumn("feature")?.getFilterValue() as string) ?? ""}
 						onChange={(e) => table.getColumn("feature")?.setFilterValue(e.target.value)}
+						className="w-64 rounded-md border px-3 py-2 text-sm"
 					/>
 
 					<select
-						className="rounded border border-input bg-background px-2 py-1 text-sm"
-						value={(table.getColumn("cluster")?.getFilterValue() as string) ?? ""}
-						onChange={(e) => table.getColumn("cluster")?.setFilterValue(e.target.value || undefined)}
+						onChange={(e) => {
+							const col = table.getColumn("cluster")
+							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value)
+						}}
+						className="rounded-md border px-3 py-2 text-sm"
 					>
-						<option value="">All clusters</option>
+						<option value="all">All clusters</option>
 						{clusterOptions.map((c) => (
 							<option key={c} value={c}>
 								{c}
@@ -460,158 +691,101 @@ export default function FeaturePrioritizationPage() {
 					</select>
 
 					<select
-						className="rounded border border-input bg-background px-2 py-1 text-sm"
-						value={(table.getColumn("stage")?.getFilterValue() as string) ?? ""}
-						onChange={(e) => table.getColumn("stage")?.setFilterValue(e.target.value || undefined)}
+						onChange={(e) => {
+							const col = table.getColumn("stage")
+							col?.setFilterValue(e.target.value === "all" ? "" : e.target.value)
+						}}
+						className="rounded-md border px-3 py-2 text-sm"
 					>
-						<option value="">All stages</option>
+						<option value="all">All stages</option>
 						{stageOptions.map((s) => (
-							<option key={s} value={s}>
+							<option key={s} value={s} className="capitalize">
 								{s}
 							</option>
 						))}
 					</select>
 
-					<select
-						className="rounded border border-input bg-background px-2 py-1 text-sm"
-						value={(table.getColumn("impact")?.getFilterValue() as string | number) ?? ""}
-						onChange={(e) => table.getColumn("impact")?.setFilterValue(e.target.value || undefined)}
+					<Button
+						variant="outline"
+						size="sm"
+						onClick={() => table.toggleAllRowsExpanded()}
+						className="text-xs"
 					>
-						<option value="">All impacts</option>
-						<option value="3">3 (large)</option>
-						<option value="2">2 (medium)</option>
-						<option value="1">1 (small)</option>
-					</select>
-
-					<select
-						className="rounded border border-input bg-background px-2 py-1 text-sm"
-						value={(table.getColumn("priority")?.getFilterValue() as string | number) ?? ""}
-						onChange={(e) => table.getColumn("priority")?.setFilterValue(e.target.value || undefined)}
-					>
-						<option value="">All priorities</option>
-						<option value="1">1 (now)</option>
-						<option value="2">2 (next)</option>
-						<option value="3">3 (later)</option>
-					</select>
-
-					<button
-						className="rounded border border-input bg-background px-3 py-1 text-xs hover:bg-accent"
-						onClick={() => table.resetColumnFilters()}
-					>
-						Clear filters
-					</button>
+						{table.getIsAllRowsExpanded() ? "Collapse All" : "Expand All"}
+					</Button>
 				</div>
 
 				{/* Table */}
-				<div className="overflow-x-auto rounded border border-border">
-					<table className="min-w-full border-collapse text-sm">
-						<thead className="bg-muted/50">
-							{table.getHeaderGroups().map((hg) => (
-								<tr key={hg.id}>
-									{hg.headers.map((header) => {
-										const canSort = header.column.getCanSort()
-										const sortDir = header.column.getIsSorted()
-										return (
-											<th
-												key={header.id}
-												className="border-border border-b px-3 py-2 text-left font-semibold text-xs uppercase tracking-wide"
-											>
-												{canSort ? (
-													<button
-														className="inline-flex items-center gap-1"
-														onClick={header.column.getToggleSortingHandler()}
-													>
-														{flexRender(header.column.columnDef.header, header.getContext())}
-														{sortDir === "asc" && "↑"}
-														{sortDir === "desc" && "↓"}
-													</button>
-												) : (
-													flexRender(header.column.columnDef.header, header.getContext())
-												)}
-											</th>
-										)
-									})}
+				<div className="overflow-x-auto rounded-md border">
+					<table className="w-full border-collapse text-sm">
+						<thead>
+							{table.getHeaderGroups().map((headerGroup) => (
+								<tr key={headerGroup.id} className="border-b bg-muted/50">
+									{headerGroup.headers.map((header) => (
+										<th key={header.id} className="px-4 py-3 text-left font-semibold">
+											{header.isPlaceholder ? null : flexRender(header.column.columnDef.header, header.getContext())}
+										</th>
+									))}
 								</tr>
 							))}
 						</thead>
 						<tbody>
-							{table.getRowModel().rows.length === 0 ? (
-								<tr>
-									<td colSpan={columns.length} className="px-3 py-4 text-center text-muted-foreground text-sm">
-										No results.
-									</td>
-								</tr>
-							) : (
-								table.getRowModel().rows.map((row) => {
-									if (row.getIsGrouped()) {
-										// Group header row
-										return (
-											<tr key={row.id} className="bg-muted/70 font-semibold">
-												<td colSpan={columns.length} className="px-3 py-3">
-													<button onClick={row.getToggleExpandedHandler()} className="flex items-center gap-2 text-sm">
-														{row.getIsExpanded() ? (
-															<ChevronDown className="h-4 w-4" />
-														) : (
-															<ChevronRight className="h-4 w-4" />
-														)}
-														<span className="uppercase tracking-wide">
-															{flexRender(row.groupingValue as string, {} as any)} ({row.subRows.length})
-														</span>
-													</button>
-												</td>
-											</tr>
-										)
-									}
-
-									// Regular data row
+							{table.getRowModel().rows.map((row) => {
+								if (row.getIsGrouped()) {
+									// Group row (cluster header)
 									return (
-										<tr key={row.id} className="border-border border-b even:bg-muted/30 hover:bg-muted/50">
-											{row.getVisibleCells().map((cell) => {
-												if (cell.getIsGrouped()) {
-													return null
-												}
-												if (cell.getIsAggregated()) {
-													return null
-												}
-												if (cell.getIsPlaceholder()) {
-													return <td key={cell.id} />
-												}
-												return (
-													<td key={cell.id} className="px-3 py-2 align-top">
-														{flexRender(cell.column.columnDef.cell, cell.getContext())}
-													</td>
-												)
-											})}
+										<tr key={row.id} className="border-b bg-muted/70 font-semibold">
+											<td colSpan={columns.length} className="px-4 py-2">
+												<button
+													type="button"
+													onClick={row.getToggleExpandedHandler()}
+													className="flex items-center gap-2 hover:text-primary"
+												>
+													{row.getIsExpanded() ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+													<span className="uppercase tracking-wide text-xs">
+														{String(row.groupingValue)} ({row.subRows.length})
+													</span>
+												</button>
+											</td>
 										</tr>
 									)
-								})
-							)}
+								}
+
+								// Regular data row
+								return (
+									<tr key={row.id} className="border-b hover:bg-muted/30">
+										{row.getVisibleCells().map((cell) => {
+											// Skip cluster column in detail rows
+											if (cell.column.id === "cluster") return null
+											return (
+												<td key={cell.id} className="px-4 py-3">
+													{flexRender(cell.column.columnDef.cell, cell.getContext())}
+												</td>
+											)
+										})}
+									</tr>
+								)
+							})}
 						</tbody>
 					</table>
 				</div>
 
-				{/* Pagination */}
-				<div className="flex items-center justify-between gap-2 text-xs">
-					<div>
+				{/* Pagination - Disabled by default for tasks */}
+				{/*
+				<div className="flex items-center justify-between">
+					<div className="flex items-center gap-2">
+						<Button variant="outline" size="sm" onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()}>
+							Previous
+						</Button>
+						<Button variant="outline" size="sm" onClick={() => table.nextPage()} disabled={!table.getCanNextPage()}>
+							Next
+						</Button>
+					</div>
+					<div className="text-muted-foreground text-sm">
 						Page {table.getState().pagination.pageIndex + 1} of {table.getPageCount()}
 					</div>
-					<div className="flex items-center gap-1">
-						<button
-							className="rounded border border-input bg-background px-2 py-1 hover:bg-accent disabled:opacity-40"
-							onClick={() => table.previousPage()}
-							disabled={!table.getCanPreviousPage()}
-						>
-							Prev
-						</button>
-						<button
-							className="rounded border border-input bg-background px-2 py-1 hover:bg-accent disabled:opacity-40"
-							onClick={() => table.nextPage()}
-							disabled={!table.getCanNextPage()}
-						>
-							Next
-						</button>
-					</div>
 				</div>
+				*/}
 			</div>
 		</div>
 	)

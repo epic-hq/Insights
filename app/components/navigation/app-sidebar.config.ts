@@ -9,6 +9,7 @@ import {
 	Grid3x3,
 	Lightbulb,
 	ListChecks,
+	ListTodo,
 	Sparkles,
 	Target,
 	UserCircle,
@@ -22,6 +23,7 @@ export interface AppSidebarNavItem {
 	description?: string
 	icon: LucideIcon
 	to: (routes: RouteDefinitions) => string
+	featureFlag?: string
 }
 
 export interface AppSidebarSection {
@@ -117,6 +119,14 @@ export const APP_SIDEBAR_SECTIONS: AppSidebarSection[] = [
 				description: "Published insights & next steps",
 				icon: Lightbulb,
 				to: (routes) => routes.insights.index(),
+			},
+			{
+				key: "priorities",
+				title: "Priorities",
+				description: "Task planning & roadmap",
+				icon: ListTodo,
+				to: (routes) => routes.priorities(),
+				featureFlag: "ffPriorities",
 			},
 		],
 	},

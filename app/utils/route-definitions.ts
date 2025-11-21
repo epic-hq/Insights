@@ -93,6 +93,9 @@ export interface RouteDefinitions {
 		edit: (id: string) => string
 	}
 
+	// Priorities / roadmap tasks
+	priorities: () => string
+
 	// Organizations
 	organizations: {
 		index: () => string
@@ -251,6 +254,9 @@ export function createRouteDefinitions(projectPath = ""): RouteDefinitions {
 			detail: (id: string) => `${base}/opportunities/${id}`,
 			edit: (id: string) => `${base}/opportunities/${id}/edit`,
 		},
+
+		// Priorities / task system
+		priorities: () => `${base}/priorities`,
 
 		organizations: {
 			index: () => `${base}/organizations`,
