@@ -214,7 +214,7 @@ ${transcript}
 export const managePersonOrganizationsTool = createTool({
 	id: "manage-person-organizations",
 	description:
-		"Links a person to organizations. Parses transcripts to find employer/affiliation info, creates organizations if needed, and upserts people_organizations rows.",
+		"Link a person to organizations (employers, affiliations, partnerships). Use this when updating where someone works or their organizational relationships. Parses transcripts to find employer/affiliation info, creates organization entities if needed, and records the relationship details (role, status, primary flag).",
 	inputSchema: toolInputSchema,
 	outputSchema: toolOutputSchema,
 	execute: async ({ context, runtimeContext }) => {

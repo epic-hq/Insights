@@ -28,7 +28,7 @@ function parseFullName(fullName: string): { firstname: string; lastname: string 
 export const upsertPersonTool = createTool({
 	id: "upsert-person",
 	description:
-		"Create or update a person's information including contact details, demographics, and professional info. Use this when the user provides new information about a person.",
+		"Create or update a person's basic information including contact details (email, phone), demographics, and title. Use this for simple person data updates. NOTE: To link a person to an organization (employer/affiliation), use 'manage-person-organizations' instead.",
 	inputSchema: z.object({
 		personId: z.string().optional().describe("Person ID if updating an existing person"),
 		name: z.string().optional().describe("Full name of the person"),

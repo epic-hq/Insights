@@ -1,16 +1,16 @@
 import type { PostgrestError } from "@supabase/supabase-js"
 import consola from "consola"
 import { formatDistance } from "date-fns"
-import { Grid, List, MessageSquare, MessagesSquare, Upload, FileText } from "lucide-react"
+import { FileText, Grid, List, MessageSquare, MessagesSquare, Upload } from "lucide-react"
 import { useState } from "react"
 import type { LoaderFunctionArgs, MetaFunction } from "react-router"
-import { Link, useLoaderData, useFetcher } from "react-router"
+import { Link, useFetcher, useLoaderData } from "react-router"
 import { PrettySegmentPie } from "~/components/charts/PieSemgents"
 import { PageContainer } from "~/components/layout/PageContainer"
+import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { Button } from "~/components/ui/button"
 import { MediaTypeIcon } from "~/components/ui/MediaTypeIcon"
 import { ToggleGroup, ToggleGroupItem } from "~/components/ui/toggle-group"
-import { QuickNoteDialog } from "~/components/notes/QuickNoteDialog"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import InterviewCard from "~/features/interviews/components/InterviewCard"
 import { getInterviews } from "~/features/interviews/db"
@@ -51,11 +51,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	// Build persona/segment distribution from interview participants
 	const personaCountMap = new Map<string, number>()
 
-	;(rows || []).forEach((interview) => {
-		const primaryParticipant = interview.interview_people?.[0]
-		const segment = primaryParticipant?.people?.segment || "Unknown"
-		personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
-	})
+		; (rows || []).forEach((interview) => {
+			const primaryParticipant = interview.interview_people?.[0]
+			const segment = primaryParticipant?.people?.segment || "Unknown"
+			personaCountMap.set(segment, (personaCountMap.get(segment) || 0) + 1)
+		})
 
 	const segmentData = Array.from(personaCountMap.entries()).map(([name, value]) => ({
 		name,
@@ -155,11 +155,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 									<List className="h-4 w-4" />
 								</ToggleGroupItem>
 							</ToggleGroup>
-							<Button
-								variant="outline"
-								onClick={() => setNoteDialogOpen(true)}
-								className="w-full text-sm sm:w-auto"
-							>
+							<Button variant="outline" onClick={() => setNoteDialogOpen(true)} className="w-full text-sm sm:w-auto">
 								<FileText className="h-4 w-4" />
 								Quick Note
 							</Button>
@@ -227,7 +223,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											Participant
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
-											Interview
+											Type
 										</th>
 										<th className="px-4 py-3 text-left font-medium text-gray-500 text-xs uppercase tracking-wider dark:text-gray-400">
 											Persona
@@ -260,17 +256,15 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 												</Link>
 											</td>
 											<td className="px-4 py-3">
-												<Link to={routes.interviews.detail(interview.id)} className="hover:text-blue-600">
-													<div className="text-foreground/70 text-sm">
-														{interview.title || `Interview with ${interview.participant}`}
-													</div>
-													<div className="mt-1">
-														<MediaTypeIcon
-															mediaType={interview.media_type}
-															iconClassName="h-3 w-3"
-															labelClassName="text-xs"
-														/>
-													</div>
+												<Link
+													to={routes.interviews.detail(interview.id)}
+													className="inline-flex items-center gap-2 text-foreground/70 text-sm hover:text-blue-600"
+												>
+													<MediaTypeIcon
+														mediaType={interview.media_type}
+														iconClassName="h-4 w-4"
+														labelClassName="text-xs font-medium"
+													/>
 												</Link>
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
@@ -290,13 +284,12 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 											</td>
 											<td className="whitespace-nowrap px-4 py-3">
 												<span
-													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${
-														interview.status === "ready"
+													className={`inline-flex items-center rounded-full px-2.5 py-0.5 font-medium text-xs ${interview.status === "ready"
 															? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300"
 															: interview.status === "transcribed"
 																? "bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-300"
 																: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-300"
-													}`}
+														}`}
 												>
 													{interview.status.charAt(0).toUpperCase() + interview.status.slice(1)}
 												</span>

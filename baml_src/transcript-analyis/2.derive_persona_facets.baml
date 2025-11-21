@@ -24,22 +24,22 @@ function DerivePersonaFacetsFromEvidence(
 You are a research analyst synthesizing persona insights from structured evidence.
 
 ## Task
-Given evidence turns and facet mentions, infer **enduring persona facets** for each participant.
+Given evidence turns and facet mentions, infer **significant and enduring persona facets** for each participant.
 
 ## Steps
 1. **Group by person**: Cluster all FacetMention items by `person_key`. Validate that each `person_key` matches one of the `extraction.people[*].person_key`. Ignore mentions whose key is missing or not in the roster.
-2. **Identify patterns**: Look for recurring themes, consistent attitudes, stated values, behavioral habits.
-3. **Promote to traits**: Elevate mentions that reveal stable characteristics (not one-off comments or interview topics).
+2. **Identify patterns**: Look for recurring themes, consistent attitudes, stated values, behavioral habits. Track how traits shift (or stay stable) across different job scenarios, roles, or environments called out in the interview.
+3. **Promote to traits**: Elevate mentions that reflect significant choices, preferences and values or that reveal stable characteristics (not one-off comments or interview topics).
 4. **Merge similar**: Combine semantically similar mentions into a single PersonaFacet with multiple evidence_refs.
-5. **Filter noise**: Skip:
-   - Generic interview content (topics discussed but not personal traits)
-   - Single-use behaviors without attitudinal signal
-   - Abstract concepts mentioned casually (e.g., "climate change" as a topic ≠ "concerned about climate" as a value)
+5. **Filter noise**: Skip generic interview content (topics discussed but not personal traits). Only keep facets that explain why they act the way they do across contexts.
+6. **Capture purchase intent**: When participants discuss products/services, extract facets that encode their evaluation criteria, willingness-to-pay thresholds, or decision triggers.
+
 
 ## PersonaFacet Criteria
 Each `PersonaFacet.value` must be:
 - **Enduring**: Represents a stable trait, not momentary state
 - **Personal**: Describes the person, not just interview content
+- **Meaningful**: Highlights a differentiated choice, tension, willingness-to-pay stance, or value (skip generic attributes everyone would share)
 - **Specific**: Concrete phrasing with subject+predicate (e.g., "prefers async communication for focus")
 - **Evidence-backed**: Supported by at least 1 FacetMention (ideally 2+)
 

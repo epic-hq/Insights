@@ -1,6 +1,7 @@
-import { Building2, Globe, LinkIcon, Mail, MapPin, Phone, UserMinus, Users } from "lucide-react"
+import { Building2, Globe, LinkIcon, Mail, MapPin, Phone, Trash2, Users } from "lucide-react"
 import type { ActionFunctionArgs, LoaderFunctionArgs, MetaFunction } from "react-router"
 import { Form, Link, redirect, useActionData, useLoaderData } from "react-router-dom"
+import { LinkPersonDialog } from "~/components/dialogs/LinkPersonDialog"
 import { DetailPageHeader } from "~/components/layout/DetailPageHeader"
 import { PageContainer } from "~/components/layout/PageContainer"
 import { Avatar, AvatarFallback, AvatarImage } from "~/components/ui/avatar"
@@ -19,10 +20,25 @@ import {
 	unlinkPersonFromOrganization,
 } from "~/features/organizations/db"
 import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
+import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Organization, PeopleOrganization, Person } from "~/types"
 import { createProjectRoutes } from "~/utils/routes.server"
+
+// Helper to parse full name into first and last
+function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
+	const trimmed = fullName.trim()
+	if (!trimmed) return { firstname: "", lastname: null }
+	const parts = trimmed.split(/\s+/)
+	if (parts.length === 1) {
+		return { firstname: parts[0], lastname: null }
+	}
+	return {
+		firstname: parts[0],
+		lastname: parts.slice(1).join(" "),
+	}
+}
 
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	const title = data?.organization?.name ? `${data.organization.name} | Organizations` : "Organization"
@@ -120,6 +136,72 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 
 		if (error) {
 			return { error: "Failed to unlink person" }
+		}
+
+		return redirect(routes.organizations.detail(organizationId))
+	}
+
+	if (intent === "create-and-link-person") {
+		const name = (formData.get("name") as string | null)?.trim()
+		if (!name) {
+			return { error: "Person name is required" }
+		}
+
+		const { firstname, lastname } = parseFullName(name)
+		const primaryEmail = (formData.get("primary_email") as string | null)?.trim() || null
+		const title = (formData.get("title") as string | null)?.trim() || null
+		const role = (formData.get("role") as string | null)?.trim() || null
+		const relationshipStatus = (formData.get("relationship_status") as string | null)?.trim() || null
+		const notes = (formData.get("notes") as string | null)?.trim() || null
+
+		// Create the person
+		const { data: newPerson, error: createError } = await supabase
+			.from("people")
+			.insert({
+				account_id: accountId,
+				project_id: projectId,
+				firstname,
+				lastname,
+				primary_email: primaryEmail,
+				title,
+			})
+			.select()
+			.single()
+
+		if (createError || !newPerson) {
+			return { error: "Failed to create person" }
+		}
+
+		// Link person to project
+		await supabase.from("project_people").insert({
+			project_id: projectId,
+			person_id: newPerson.id,
+		})
+
+		// If title was provided, sync it to job_function facet
+		if (title) {
+			await syncTitleToJobFunctionFacet({
+				supabase,
+				personId: newPerson.id,
+				accountId,
+				title,
+			})
+		}
+
+		// Link the person to the organization
+		const { error: linkError } = await linkPersonToOrganization({
+			supabase,
+			accountId,
+			projectId,
+			organizationId,
+			personId: newPerson.id,
+			role,
+			relationshipStatus,
+			notes,
+		})
+
+		if (linkError) {
+			return { error: "Person created but failed to link" }
 		}
 
 		return redirect(routes.organizations.detail(organizationId))
@@ -249,8 +331,13 @@ export default function OrganizationDetailPage() {
 												<Form method="post">
 													<input type="hidden" name="_action" value="unlink-person" />
 													<input type="hidden" name="person_id" value={person.id} />
-													<Button variant="ghost" size="icon" className="text-muted-foreground" title="Remove link">
-														<UserMinus className="h-4 w-4" />
+													<Button
+														variant="ghost"
+														size="icon"
+														className="text-muted-foreground hover:text-destructive"
+														title="Remove link"
+													>
+														<Trash2 className="h-4 w-4" />
 													</Button>
 												</Form>
 											</div>
@@ -261,69 +348,12 @@ export default function OrganizationDetailPage() {
 						</CardContent>
 					</Card>
 
-					<Card className="border border-border/80">
-						<CardHeader>
-							<CardTitle className="text-xl">Link a person</CardTitle>
-						</CardHeader>
-						<CardContent className="space-y-4">
-							{actionData?.error && (
-								<div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
-									{actionData.error}
-								</div>
-							)}
-							<Form method="post" className="space-y-4">
-								<input type="hidden" name="_action" value="link-person" />
-								<div className="space-y-2">
-									<Label htmlFor="person_id">Person</Label>
-									<Select
-										name="person_id"
-										defaultValue={availablePeople[0]?.id ?? ""}
-										disabled={availablePeople.length === 0}
-									>
-										<SelectTrigger id="person_id">
-											<SelectValue placeholder={availablePeople.length ? "Select a person" : "No available people"} />
-										</SelectTrigger>
-										<SelectContent>
-											{availablePeople.length === 0 ? (
-												<SelectItem value="" disabled>
-													No people available
-												</SelectItem>
-											) : (
-												availablePeople.map((person) => (
-													<SelectItem key={person.id} value={person.id}>
-														{person.name || "Unnamed"}
-													</SelectItem>
-												))
-											)}
-										</SelectContent>
-									</Select>
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="role">Role</Label>
-									<Input id="role" name="role" placeholder="e.g., Decision Maker" />
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="relationship_status">Relationship Status</Label>
-									<Input id="relationship_status" name="relationship_status" placeholder="e.g., Champion, Prospect" />
-								</div>
-								<div className="space-y-2">
-									<Label htmlFor="notes">Notes</Label>
-									<Textarea id="notes" name="notes" rows={3} placeholder="Any context about this connection" />
-								</div>
-								<Button type="submit" disabled={availablePeople.length === 0}>
-									Link person
-								</Button>
-							</Form>
-							{availablePeople.length === 0 && people.length > 0 && (
-								<p className="text-muted-foreground text-xs">All people in this project are already linked.</p>
-							)}
-							{people.length === 0 && (
-								<p className="text-muted-foreground text-xs">
-									Add people to your project to link them with this organization.
-								</p>
-							)}
-						</CardContent>
-					</Card>
+					{actionData?.error && (
+						<div className="rounded-md border border-red-200 bg-red-50 p-3 text-red-700 text-sm dark:border-red-800 dark:bg-red-950/40 dark:text-red-400">
+							{actionData.error}
+						</div>
+					)}
+					<LinkPersonDialog entityId={organization.id} entityType="organization" availablePeople={availablePeople} />
 				</div>
 			</div>
 		</PageContainer>

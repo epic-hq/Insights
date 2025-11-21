@@ -900,55 +900,85 @@ CREATE TRIGGER mastra_ai_spans_timestamps BEFORE INSERT OR UPDATE ON public.mast
 -- Ensure the helper function and trigger exist without failing if already present; skip entirely if storage schema is unavailable or lacks usage privileges (e.g., local dev without storage)
 do $$
 begin
-  if exists (select 1 from pg_namespace where nspname = 'storage') and has_schema_privilege('storage', 'usage') then
-    if not exists (
-      select 1
-      from pg_proc p
-      join pg_namespace n on p.pronamespace = n.oid
-      where n.nspname = 'storage'
-        and p.proname = 'enforce_bucket_name_length'
-    ) then
-      create function storage.enforce_bucket_name_length() returns trigger
-      language plpgsql as $fn$
-      begin
-        if char_length(new.name) > 63 then
-          raise exception 'Bucket name too long (max 63 characters)';
-        end if;
-        return new;
-      end;
-      $fn$;
+  -- Check if we can access storage schema; silently skip if not
+  begin
+    if has_schema_privilege('storage', 'usage') then
+      if not exists (
+        select 1
+        from pg_proc p
+        join pg_namespace n on p.pronamespace = n.oid
+        where n.nspname = 'storage'
+          and p.proname = 'enforce_bucket_name_length'
+      ) then
+        create function storage.enforce_bucket_name_length() returns trigger
+        language plpgsql as $fn$
+        begin
+          if char_length(new.name) > 63 then
+            raise exception 'Bucket name too long (max 63 characters)';
+          end if;
+          return new;
+        end;
+        $fn$;
+      end if;
     end if;
-  end if;
+  exception
+    when insufficient_privilege or undefined_object then
+      -- Storage schema not accessible; skip
+      null;
+  end;
 end $$;
 
 do $$
 begin
-  if exists (select 1 from pg_namespace where nspname = 'storage') and has_schema_privilege('storage', 'usage') then
-    if not exists (
-      select 1
-      from pg_trigger t
-      join pg_class c on t.tgrelid = c.oid
-      join pg_namespace n on c.relnamespace = n.oid
-      where t.tgname = 'enforce_bucket_name_length_trigger'
-        and n.nspname = 'storage'
-        and c.relname = 'buckets'
-    ) then
-      create trigger enforce_bucket_name_length_trigger
-      before insert or update of name on storage.buckets
-      for each row execute function storage.enforce_bucket_name_length();
+  begin
+    if has_schema_privilege('storage', 'usage') then
+      if not exists (
+        select 1
+        from pg_trigger t
+        join pg_class c on t.tgrelid = c.oid
+        join pg_namespace n on c.relnamespace = n.oid
+        where t.tgname = 'enforce_bucket_name_length_trigger'
+          and n.nspname = 'storage'
+          and c.relname = 'buckets'
+      ) then
+        create trigger enforce_bucket_name_length_trigger
+        before insert or update of name on storage.buckets
+        for each row execute function storage.enforce_bucket_name_length();
+      end if;
     end if;
-  end if;
+  exception
+    when insufficient_privilege or undefined_object or undefined_function then
+      null;
+  end;
 end $$;
 
 -- Storage triggers (skipped in local dev where storage is disabled)
+-- These will silently fail if storage is not accessible
 do $$
 begin
-  if exists (select 1 from pg_namespace where nspname = 'storage') then
-    execute 'CREATE TRIGGER IF NOT EXISTS objects_delete_delete_prefix AFTER DELETE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.delete_prefix_hierarchy_trigger()';
-    execute 'CREATE TRIGGER IF NOT EXISTS objects_insert_create_prefix BEFORE INSERT ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.objects_insert_prefix_trigger()';
-    execute 'CREATE TRIGGER IF NOT EXISTS objects_update_create_prefix BEFORE UPDATE ON storage.objects FOR EACH ROW WHEN (((new.name <> old.name) OR (new.bucket_id <> old.bucket_id))) EXECUTE FUNCTION storage.objects_update_prefix_trigger()';
-    execute 'CREATE TRIGGER IF NOT EXISTS update_objects_updated_at BEFORE UPDATE ON storage.objects FOR EACH ROW EXECUTE FUNCTION storage.update_updated_at_column()';
-    execute 'CREATE TRIGGER IF NOT EXISTS prefixes_create_hierarchy BEFORE INSERT ON storage.prefixes FOR EACH ROW WHEN ((pg_trigger_depth() < 1)) EXECUTE FUNCTION storage.prefixes_insert_trigger()';
-    execute 'CREATE TRIGGER IF NOT EXISTS prefixes_delete_hierarchy AFTER DELETE ON storage.prefixes FOR EACH ROW EXECUTE FUNCTION storage.delete_prefix_hierarchy_trigger()';
-  end if;
+  begin
+    if has_schema_privilege('storage', 'usage') then
+      drop trigger if exists objects_delete_delete_prefix on storage.objects;
+      create trigger objects_delete_delete_prefix after delete on storage.objects for each row execute function storage.delete_prefix_hierarchy_trigger();
+
+      drop trigger if exists objects_insert_create_prefix on storage.objects;
+      create trigger objects_insert_create_prefix before insert on storage.objects for each row execute function storage.objects_insert_prefix_trigger();
+
+      drop trigger if exists objects_update_create_prefix on storage.objects;
+      create trigger objects_update_create_prefix before update on storage.objects for each row when (((new.name <> old.name) or (new.bucket_id <> old.bucket_id))) execute function storage.objects_update_prefix_trigger();
+
+      drop trigger if exists update_objects_updated_at on storage.objects;
+      create trigger update_objects_updated_at before update on storage.objects for each row execute function storage.update_updated_at_column();
+
+      drop trigger if exists prefixes_create_hierarchy on storage.prefixes;
+      create trigger prefixes_create_hierarchy before insert on storage.prefixes for each row when ((pg_trigger_depth() < 1)) execute function storage.prefixes_insert_trigger();
+
+      drop trigger if exists prefixes_delete_hierarchy on storage.prefixes;
+      create trigger prefixes_delete_hierarchy after delete on storage.prefixes for each row execute function storage.delete_prefix_hierarchy_trigger();
+    end if;
+  exception
+    when insufficient_privilege or undefined_object or undefined_function or undefined_table then
+      -- Silently skip if storage is not accessible
+      null;
+  end;
 end $$;

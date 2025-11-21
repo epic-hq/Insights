@@ -39,7 +39,7 @@ class PersonFacetLensRequest {
 
 class FacetGroupSummary {
   kind_slug string @description("Facet group being summarized")
-  summary string @description("1-2 sentence takeaway about this group; concrete, factual, non-fluffy")
+  summary string @description("Concise summary capturing key points; can include multiple items if important, avoid fluff")
 }
 
 class PersonFacetLensResponse {
@@ -50,13 +50,18 @@ function SummarizePersonFacetLens(payload: PersonFacetLensRequest) -> PersonFace
   client CustomGPT4oMini
   prompt #"
     {{ _.role("system") }}
-    You are a research summarizer. For each facet group, write 1-2 crisp sentences that surface the most practical signals.
+    You are a research summarizer. For each facet group, write a concise summary capturing the most important signals.
+    Style: Similar to pain/gain statements - punchy, concrete, action-oriented, NO FLUFF.
+
     Rules:
-    - Lead with concrete facts (role/company/segment) only if they sharpen the takeaway.
-    - Prefer actions, pains, goals, workflows, constraints over adjectives.
-    - Pull in evidence highlights for flavor but keep them short; attribute stage/topic when obvious.
-    - Never invent details. If a group is thin, acknowledge briefly and stay factual.
-    - Keep each group independent; do not reuse the same sentence across groups.
+    - Capture ALL key points, even if it means multiple items (e.g., "Struggles with data integration • Needs real-time sync • Limited by legacy APIs")
+    - Use bullet separators (•) for multiple distinct points
+    - Lead with concrete specifics: actions, pains, goals, workflows, constraints
+    - Skip generic qualifiers and filler words
+    - Use evidence to ground claims but stay tight
+    - Never invent details. If thin, write what you know factually
+    - Length: Whatever it takes to capture important signals without fluff (typically 10-40 words)
+    - Each group should feel complete, not artificially truncated
 
     {{ _.role("user") }}
     PERSON CONTEXT:

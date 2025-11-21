@@ -1,36 +1,34 @@
 import type { LucideIcon } from "lucide-react"
+import { Trash2 } from "lucide-react"
 import type { ReactNode } from "react"
 import { Form, Link } from "react-router-dom"
+import { LinkOrganizationDialog } from "~/components/dialogs/LinkOrganizationDialog"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
-import { Input } from "~/components/ui/input"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 
 interface DetailPageHeaderProps {
 	/** Icon component to display in the badge */
 	icon: LucideIcon
 	/** Type label (e.g., "Organization", "Person", "Persona") */
 	typeLabel: string
-	/** Main title/name */
-	title: string
+	/** Main title/name - can be string or editable component */
+	title: string | ReactNode
 	/** Optional subtitle or metadata row */
 	metadata?: ReactNode
 	/** Optional badges row */
 	badges?: ReactNode
-	/** Optional description/bio content */
-	description?: string | null
+	/** Optional description/bio content - can be string or editable component */
+	description?: string | ReactNode | null
 	/** Optional avatar to display */
 	avatar?: ReactNode
 	/** Optional content to display above the description */
 	aboveDescription?: ReactNode
 	/** Optional organization data for inline organization management */
 	organizations?: {
+		personId: string
 		sortedLinkedOrganizations: any[]
 		availableOrganizations: any[]
-		showLinkForm: boolean
-		setShowLinkForm: (show: boolean) => void
-		actionData?: { error?: string }
 		routes: any
 	}
 	/** Optional additional content in the card body */
@@ -67,27 +65,26 @@ export function DetailPageHeader({
 						</div>
 					</div>
 				</CardHeader>
-				{(description || aboveDescription || organizations || children) && (
+				{(description !== undefined || aboveDescription || organizations || children) && (
 					<CardContent className="space-y-4">
 						{aboveDescription}
-						{description && <p className="text-foreground">{description}</p>}
+						{description !== undefined && (typeof description === "string" ? <p className="text-foreground">{description}</p> : description)}
 
 						{organizations && (
 							<div className="space-y-4 border-border/50 border-t pt-4">
 								<div className="flex items-center justify-between">
 									<div>
 										<h4 className="font-medium text-sm">Organizations</h4>
-										<p className="text-muted-foreground text-xs">Accounts linked to this participant.</p>
+										{/* <p className="text-muted-foreground text-xs">Accounts linked to this participant.</p> */}
 									</div>
-									{organizations.availableOrganizations.length > 0 && !organizations.showLinkForm && (
-										<Button variant="outline" size="sm" onClick={() => organizations.setShowLinkForm(true)}>
-											Link organization
-										</Button>
-									)}
+									<LinkOrganizationDialog
+										personId={organizations.personId}
+										availableOrganizations={organizations.availableOrganizations}
+									/>
 								</div>
 
 								{organizations.sortedLinkedOrganizations.length > 0 ? (
-									<div className="space-y-3">
+									<div className="grid gap-3 sm:grid-cols-2">
 										{organizations.sortedLinkedOrganizations.map((link) => {
 											const organization = link.organization
 											if (!organization) return null
@@ -96,20 +93,26 @@ export function DetailPageHeader({
 													key={link.id}
 													className="flex items-center justify-between rounded-lg border border-border/60 bg-background p-3"
 												>
-													<div>
+													<div className="min-w-0 flex-1">
 														<Link
 															to={organizations.routes.organizations.detail(organization.id)}
-															className="font-medium text-foreground text-sm hover:text-primary"
+															className="block truncate font-medium text-foreground text-sm hover:text-primary"
 														>
 															{organization.name}
 														</Link>
-														<div className="text-muted-foreground text-xs">{link.role || "Linked participant"}</div>
+														<div className="truncate text-muted-foreground text-xs">{link.role || "Linked participant"}</div>
 													</div>
 													<Form method="post">
 														<input type="hidden" name="_action" value="unlink-organization" />
 														<input type="hidden" name="organization_id" value={organization.id} />
-														<Button type="submit" variant="ghost" size="sm" className="text-muted-foreground">
-															Remove
+														<Button
+															type="submit"
+															variant="ghost"
+															size="icon"
+															className="ml-2 h-8 w-8 flex-shrink-0 text-muted-foreground hover:text-destructive"
+															title="Remove organization"
+														>
+															<Trash2 className="h-4 w-4" />
 														</Button>
 													</Form>
 												</div>
@@ -120,44 +123,6 @@ export function DetailPageHeader({
 									<div className="rounded-lg border border-dashed p-6 text-center text-muted-foreground text-sm">
 										No organizations linked yet
 									</div>
-								)}
-
-								{organizations.actionData?.error && (
-									<div className="rounded-md bg-destructive/15 p-3 text-destructive text-sm">
-										{organizations.actionData.error}
-									</div>
-								)}
-
-								{organizations.showLinkForm && organizations.availableOrganizations.length > 0 && (
-									<Form method="post" className="space-y-3 rounded-lg border border-dashed p-4">
-										<input type="hidden" name="_action" value="link-organization" />
-										<Select name="organization_id" defaultValue={organizations.availableOrganizations[0]?.id ?? ""}>
-											<SelectTrigger>
-												<SelectValue placeholder="Select organization" />
-											</SelectTrigger>
-											<SelectContent>
-												{organizations.availableOrganizations.map((org) => (
-													<SelectItem key={org.id} value={org.id}>
-														{org.name}
-													</SelectItem>
-												))}
-											</SelectContent>
-										</Select>
-										<Input name="role" placeholder="Role or relationship" />
-										<div className="flex gap-2">
-											<Button type="submit" size="sm">
-												Link
-											</Button>
-											<Button
-												type="button"
-												variant="ghost"
-												size="sm"
-												onClick={() => organizations.setShowLinkForm(false)}
-											>
-												Cancel
-											</Button>
-										</div>
-									</Form>
 								)}
 							</div>
 						)}

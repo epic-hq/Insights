@@ -19,6 +19,7 @@ import { BackButton } from "~/components/ui/back-button"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
+import { InlineEditableField } from "~/components/ui/InlineEditableField"
 import { useCurrentProject } from "~/contexts/current-project-context"
 import { InsightCardV3 } from "~/features/insights/components/InsightCardV3"
 import { getOrganizations, linkPersonToOrganization, unlinkPersonFromOrganization } from "~/features/organizations/db"
@@ -196,6 +197,173 @@ export async function action({ request, params, context }: ActionFunctionArgs) {
 		return redirect(routes.people.detail(personId))
 	}
 
+	if (intent === "add-facet-signal") {
+		const facetAccountId = formData.get("facet_account_id") as string | null
+		if (!facetAccountId) {
+			return { facet: { error: "Facet is required" } }
+		}
+
+		const { error } = await supabase.from("person_facet").insert({
+			person_id: personId,
+			account_id: accountId,
+			project_id: projectId,
+			facet_account_id: Number.parseInt(facetAccountId),
+			source: "manual",
+			confidence: 1.0,
+			noted_at: new Date().toISOString(),
+		})
+
+		if (error) {
+			consola.error("Failed to add facet signal:", error)
+			return { facet: { error: "Failed to add facet signal" } }
+		}
+
+		return redirect(routes.people.detail(personId))
+	}
+
+	if (intent === "create-and-add-facet-signal") {
+		const kindSlug = (formData.get("kind_slug") as string | null)?.trim()
+		const facetLabel = (formData.get("facet_label") as string | null)?.trim()
+
+		if (!kindSlug || !facetLabel) {
+			return { facet: { error: "Facet kind and label are required" } }
+		}
+
+		// Get the facet kind
+		const { data: kind, error: kindError } = await supabase
+			.from("facet_kind_global")
+			.select("id")
+			.eq("slug", kindSlug)
+			.single()
+
+		if (kindError || !kind) {
+			return { facet: { error: "Invalid facet kind" } }
+		}
+
+		// Create slug from label
+		const slug = facetLabel
+			.toLowerCase()
+			.trim()
+			.replace(/\s+/g, "-")
+			.replace(/[^a-z0-9-]/g, "")
+
+		// Create or get the facet_account
+		const { data: existingFacet } = await supabase
+			.from("facet_account")
+			.select("id")
+			.eq("account_id", accountId)
+			.eq("kind_id", kind.id)
+			.eq("slug", slug)
+			.single()
+
+		let facetAccountId: number
+
+		if (existingFacet) {
+			facetAccountId = existingFacet.id
+		} else {
+			const { data: newFacet, error: createError } = await supabase
+				.from("facet_account")
+				.insert({
+					account_id: accountId,
+					kind_id: kind.id,
+					slug,
+					label: facetLabel,
+					is_active: true,
+				})
+				.select("id")
+				.single()
+
+			if (createError || !newFacet) {
+				consola.error("Failed to create facet:", createError)
+				return { facet: { error: "Failed to create facet" } }
+			}
+
+			facetAccountId = newFacet.id
+		}
+
+		// Link the facet to the person
+		const { error: linkError } = await supabase.from("person_facet").insert({
+			person_id: personId,
+			account_id: accountId,
+			project_id: projectId,
+			facet_account_id: facetAccountId,
+			source: "manual",
+			confidence: 1.0,
+			noted_at: new Date().toISOString(),
+		})
+
+		if (linkError) {
+			consola.error("Failed to link facet to person:", linkError)
+			return { facet: { error: "Failed to link facet to person" } }
+		}
+
+		return redirect(routes.people.detail(personId))
+	}
+
+	if (intent === "remove-facet-signal") {
+		const facetAccountId = formData.get("facet_account_id") as string | null
+		if (!facetAccountId) {
+			return { facet: { error: "Facet is required" } }
+		}
+
+		const { error } = await supabase
+			.from("person_facet")
+			.delete()
+			.eq("person_id", personId)
+			.eq("facet_account_id", Number.parseInt(facetAccountId))
+
+		if (error) {
+			consola.error("Failed to remove facet signal:", error)
+			return { facet: { error: "Failed to remove facet signal" } }
+		}
+
+		return redirect(routes.people.detail(personId))
+	}
+
+	if (intent === "create-and-link-organization") {
+		const name = (formData.get("name") as string | null)?.trim()
+		if (!name) {
+			return { organization: { error: "Organization name is required" } }
+		}
+
+		const headquartersLocation = (formData.get("headquarters_location") as string | null)?.trim() || null
+		const role = (formData.get("role") as string | null)?.trim() || null
+
+		// Create the organization
+		const { data: newOrg, error: createError } = await supabase
+			.from("organizations")
+			.insert({
+				account_id: accountId,
+				project_id: projectId,
+				name,
+				headquarters_location: headquartersLocation,
+			})
+			.select()
+			.single()
+
+		if (createError || !newOrg) {
+			return { organization: { error: "Failed to create organization" } }
+		}
+
+		// Link the person to the new organization
+		const { error: linkError } = await linkPersonToOrganization({
+			supabase,
+			accountId,
+			projectId,
+			personId,
+			organizationId: newOrg.id,
+			role,
+			relationshipStatus: null,
+			notes: null,
+		})
+
+		if (linkError) {
+			return { organization: { error: "Organization created but failed to link" } }
+		}
+
+		return redirect(routes.people.detail(personId))
+	}
+
 	return redirect(routes.people.detail(personId))
 }
 
@@ -306,6 +474,22 @@ export default function PersonDetail() {
 		}))
 	}, [facetsGrouped, facetSummaryMap])
 
+	const availableFacetsByKind = useMemo(() => {
+		const grouped: Record<string, Array<{ id: number; label: string; slug: string }>> = {}
+		for (const facet of catalog.facets) {
+			const kindSlug = facet.kind_slug
+			if (!grouped[kindSlug]) {
+				grouped[kindSlug] = []
+			}
+			grouped[kindSlug].push({
+				id: facet.facet_account_id,
+				label: facet.label,
+				slug: facet.slug || facet.label.toLowerCase().replace(/\s+/g, "-"),
+			})
+		}
+		return grouped
+	}, [catalog.facets])
+
 	const linkedOrganizations = useMemo(() => {
 		return (person.people_organizations ?? []).filter((link) => link.organization)
 	}, [person.people_organizations])
@@ -328,19 +512,7 @@ export default function PersonDetail() {
 			.sort((a, b) => (a.name || "").localeCompare(b.name || ""))
 	}, [linkedOrganizations, organizations])
 
-	const [showLinkForm, setShowLinkForm] = useState(() => sortedLinkedOrganizations.length > 0)
-
-	useEffect(() => {
-		if (sortedLinkedOrganizations.length > 0) {
-			setShowLinkForm(true)
-		}
-	}, [sortedLinkedOrganizations.length])
-
-	useEffect(() => {
-		if (organizationActionData?.error) {
-			setShowLinkForm(true)
-		}
-	}, [organizationActionData?.error])
+	// Organization linking is now handled by LinkOrganizationDialog modal
 
 	const handleAttachRecording = () => {
 		if (!person.id) return
@@ -348,17 +520,22 @@ export default function PersonDetail() {
 		navigate(destination)
 	}
 
-	const metadataItems = [person.title, person.segment, person.age ? `${person.age} yrs old` : null].filter(
-		Boolean
-	) as string[]
-	const metadataNode =
-		metadataItems.length > 0
-			? metadataItems.map((item) => (
-					<span key={item} className="font-medium text-muted-foreground text-sm">
-						{item}
-					</span>
-				))
-			: undefined
+	const metadataNode = (
+		<>
+			<InlineEditableField
+				value={person.title}
+				table="people"
+				id={person.id}
+				field="title"
+				placeholder="Add job title"
+				className="font-medium text-muted-foreground text-sm"
+			/>
+			{person.segment && (
+				<span className="font-medium text-muted-foreground text-sm">{person.segment}</span>
+			)}
+			{person.age && <span className="font-medium text-muted-foreground text-sm">{person.age} yrs old</span>}
+		</>
+	)
 	const avatarNode = (
 		<Avatar className="h-20 w-20 border-2" style={{ borderColor: themeColor }}>
 			{person.image_url && <AvatarImage src={person.image_url} alt={name} />}
@@ -426,17 +603,35 @@ export default function PersonDetail() {
 				<DetailPageHeader
 					icon={UserCircle}
 					typeLabel="Person"
-					title={name}
-					description={descriptionText}
+					title={
+						<InlineEditableField
+							value={person.name}
+							table="people"
+							id={person.id}
+							field="name"
+							placeholder="Enter name"
+							className="font-bold text-3xl text-foreground"
+						/>
+					}
+					description={
+						<InlineEditableField
+							value={person.description}
+							table="people"
+							id={person.id}
+							field="description"
+							placeholder="Add a description"
+							multiline
+							rows={3}
+							className="text-foreground"
+						/>
+					}
 					metadata={metadataNode}
 					avatar={avatarNode}
 					aboveDescription={personaBadgeNode}
 					organizations={{
+						personId: person.id,
 						sortedLinkedOrganizations,
 						availableOrganizations,
-						showLinkForm,
-						setShowLinkForm,
-						actionData: organizationActionData,
 						routes,
 					}}
 				/>
@@ -446,6 +641,8 @@ export default function PersonDetail() {
 				{facetLensGroups.length > 0 && (
 					<PersonFacetLenses
 						groups={facetLensGroups}
+						personId={person.id}
+						availableFacetsByKind={availableFacetsByKind}
 						isGenerating={isRefreshingDescription || isFacetSummaryPending}
 					/>
 				)}

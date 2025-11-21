@@ -1,5 +1,6 @@
 import consola from "consola"
 import type { ActionFunction } from "react-router"
+import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 import { userContext } from "~/server/user-context"
 
 interface Payload {
@@ -34,6 +35,16 @@ export const action: ActionFunction = async ({ context, request }) => {
 
 		if (error) {
 			return Response.json({ error: error.message }, { status: 500 })
+		}
+
+		// Auto-sync: When updating person title, sync to job_function facet
+		if (table === "people" && field === "title") {
+			await syncTitleToJobFunctionFacet({
+				supabase,
+				personId: id,
+				accountId,
+				title: value,
+			})
 		}
 
 		return Response.json({ success: true })
