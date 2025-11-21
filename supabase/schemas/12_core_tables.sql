@@ -495,6 +495,7 @@ create table if not exists person_facet_summaries (
   supporting_evidence jsonb,
   model_version text,
   input_hash text,
+  created_at timestamptz not null default now(),
   generated_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
   unique (person_id, kind_slug)

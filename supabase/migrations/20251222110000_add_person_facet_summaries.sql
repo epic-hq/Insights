@@ -8,6 +8,9 @@ create table if not exists public.person_facet_summaries (
 
   -- The summary for this (person, kind) combination
   summary text not null,
+  supporting_evidence jsonb,
+  model_version text,
+  input_hash text,
 
   generated_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),

@@ -3026,32 +3026,44 @@ export type Database = {
       person_facet_summaries: {
         Row: {
           account_id: string
+          created_at: string
           generated_at: string
           id: string
           kind_slug: string
+          input_hash: string | null
+          model_version: string | null
           person_id: string
           project_id: string
           summary: string
+          supporting_evidence: Json | null
           updated_at: string
         }
         Insert: {
           account_id: string
+          created_at?: string
           generated_at?: string
           id?: string
           kind_slug: string
+          input_hash?: string | null
+          model_version?: string | null
           person_id: string
           project_id: string
           summary: string
+          supporting_evidence?: Json | null
           updated_at?: string
         }
         Update: {
           account_id?: string
+          created_at?: string
           generated_at?: string
           id?: string
           kind_slug?: string
+          input_hash?: string | null
+          model_version?: string | null
           person_id?: string
           project_id?: string
           summary?: string
+          supporting_evidence?: Json | null
           updated_at?: string
         }
         Relationships: [

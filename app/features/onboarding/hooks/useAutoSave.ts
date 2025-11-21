@@ -115,22 +115,6 @@ export function useAutoSave({
 		}
 	}, [projectId, saveSectionWithLatest])
 
-	const saveTargetOrgs = useCallback(
-		(target_orgs: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveSectionWithLatest("target_orgs", target_orgs)
-		},
-		[saveSectionWithLatest]
-	)
-
-	const saveTargetRoles = useCallback(
-		(target_roles: string[]) => {
-			// Always save, including empty arrays to properly handle deletions
-			saveSectionWithLatest("target_roles", target_roles)
-		},
-		[saveSectionWithLatest]
-	)
-
 	// Generic save function for any project section
 	const saveSection = useCallback(
 		(sectionKind: string, sectionData: unknown, options?: SaveSectionOptions) => {

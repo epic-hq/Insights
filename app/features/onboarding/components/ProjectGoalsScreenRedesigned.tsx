@@ -43,7 +43,6 @@ type TemplatePrefill = {
 	offerings: string[]
 	competitors: string[]
 	research_goal: string
-	research_goal_details: string
 	decision_questions: string[]
 	assumptions: string[]
 	unknowns: string[]
@@ -61,7 +60,6 @@ const projectGoalsSchema = z.object({
 	offerings: z.array(z.string()).default([]),
 	competitors: z.array(z.string()).default([]),
 	research_goal: z.string().min(1, "Research goal is required"),
-	research_goal_details: z.string().optional(),
 	decision_questions: z.array(z.string()).min(1, "At least one decision question is required"),
 	assumptions: z.array(z.string()).default([]),
 	unknowns: z.array(z.string()).min(1, "At least one unknown is required"),
@@ -84,7 +82,6 @@ interface ProjectGoalsScreenProps {
 		offerings: string[]
 		competitors: string[]
 		research_goal: string
-		research_goal_details: string
 		decision_questions: string[]
 		assumptions: string[]
 		unknowns: string[]
@@ -120,7 +117,6 @@ export default function ProjectGoalsScreen({
 	const [newOffering, setNewOffering] = useState("")
 	const [newCompetitor, setNewCompetitor] = useState("")
 	const [research_goal, setResearchGoal] = useState("")
-	const [research_goal_details, setResearchGoalDetails] = useState("")
 	const [decision_questions, setDecisionQuestions] = useState<string[]>([])
 	const [newDecisionQuestion, setNewDecisionQuestion] = useState("")
 	const [assumptions, setAssumptions] = useState<string[]>([])
@@ -188,18 +184,9 @@ export default function ProjectGoalsScreen({
 			? `/a/${accountId}/${currentProjectId}/api/contextual-suggestions`
 			: "/api/contextual-suggestions" // fallback
 
-	const {
-		saveTargetOrgs,
-		saveTargetRoles,
-		saveResearchGoal,
-		saveAssumptions,
-		saveUnknowns,
-		saveDecisionQuestions,
-		saveCustomInstructions,
-		saveProjectSection,
-		isSaving,
-	} = useAutoSave({
+	const { saveSection, isSaving } = useAutoSave({
 		projectId: currentProjectId || "",
+		debounceMs: 2000,
 		onSaveStart: () => {
 			consola.log("🔄 Auto-save started", { projectId: currentProjectId })
 		},
@@ -215,9 +202,9 @@ export default function ProjectGoalsScreen({
 	const saveSettings = useCallback(
 		(updates: { target_conversations?: number; research_mode?: ResearchMode; interview_duration?: number }) => {
 			const payload = updates.research_mode ? { ...updates, conversation_type: updates.research_mode } : updates
-			saveProjectSection("settings", payload)
+			saveSection("settings", payload)
 		},
-		[saveProjectSection]
+		[saveSection]
 	)
 
 	const ensureResearchStructure = useCallback(
@@ -245,7 +232,6 @@ export default function ProjectGoalsScreen({
 				formData.append("research_goal", research_goal)
 				formData.append("research_mode", researchMode)
 				if (customer_problem.trim()) formData.append("customer_problem", customer_problem)
-				if (research_goal_details.trim()) formData.append("research_goal_details", research_goal_details)
 				if (target_roles.length > 0) formData.append("target_roles", target_roles.join(", "))
 				if (target_orgs.length > 0) formData.append("target_orgs", target_orgs.join(", "))
 				if (offerings.length > 0) formData.append("offerings", offerings.join(", "))
@@ -285,7 +271,6 @@ export default function ProjectGoalsScreen({
 			ensuringStructure,
 			offerings,
 			research_goal,
-			research_goal_details,
 			researchMode,
 			target_orgs,
 			target_roles,
@@ -305,7 +290,6 @@ export default function ProjectGoalsScreen({
 					target_orgs: target_orgs,
 					target_roles: target_roles,
 					research_goal: research_goal,
-					research_goal_details: research_goal_details,
 				})
 			)
 
@@ -327,9 +311,9 @@ export default function ProjectGoalsScreen({
 				consola.log("🎯 Created project on first input:", newProjectId)
 
 				setTimeout(() => {
-					if (assumptions.length > 0) saveAssumptions(assumptions)
-					if (unknowns.length > 0) saveUnknowns(unknowns)
-					if (research_goal.trim()) saveResearchGoal(research_goal, research_goal_details)
+					if (assumptions.length > 0) saveSection("assumptions", assumptions)
+					if (unknowns.length > 0) saveSection("unknowns", unknowns)
+					if (research_goal.trim()) saveSection("research_goal", research_goal)
 				}, 200)
 
 				return newProjectId
@@ -346,12 +330,11 @@ export default function ProjectGoalsScreen({
 		target_orgs,
 		target_roles,
 		research_goal,
-		research_goal_details,
 		assumptions,
 		unknowns,
-		saveAssumptions,
-		saveUnknowns,
-		saveResearchGoal,
+
+
+		saveSection,
 	])
 
 	const loadProjectData = useCallback(async () => {
@@ -391,7 +374,6 @@ export default function ProjectGoalsScreen({
 					}
 					setCompetitors((m.competitors as string[]) ?? [])
 					setResearchGoal((m.research_goal as string) ?? "")
-					setResearchGoalDetails((m.research_goal_details as string) ?? "")
 					setAssumptions((m.assumptions as string[]) ?? [])
 					setDecisionQuestions((m.decision_questions as string[]) ?? [])
 					setUnknowns((m.unknowns as string[]) ?? [])
@@ -424,7 +406,6 @@ export default function ProjectGoalsScreen({
 					}
 					setCompetitors(data.competitors || [])
 					setResearchGoal(data.research_goal || "")
-					setResearchGoalDetails(data.research_goal_details || "")
 					setAssumptions(data.assumptions || [])
 					setDecisionQuestions(data.decision_questions || [])
 					setUnknowns(data.unknowns || [])
@@ -476,7 +457,6 @@ export default function ProjectGoalsScreen({
 			}
 			setCompetitors(prefill.competitors || [])
 			setResearchGoal(prefill.research_goal || "")
-			setResearchGoalDetails(prefill.research_goal_details || "")
 			setAssumptions(prefill.assumptions || [])
 			setUnknowns(prefill.unknowns || [])
 			setCustomInstructions(prefill.custom_instructions || "")
@@ -485,15 +465,15 @@ export default function ProjectGoalsScreen({
 			}
 
 			if (currentProjectId) {
-				if (prefill.customer_problem) saveProjectSection("customer_problem", prefill.customer_problem)
-				if ((prefill.target_orgs || []).length > 0) saveTargetOrgs(prefill.target_orgs)
-				if ((prefill.target_roles || []).length > 0) saveTargetRoles(prefill.target_roles)
-				if ((prefill.offerings || []).length > 0) saveProjectSection("offerings", prefill.offerings)
-				if ((prefill.competitors || []).length > 0) saveProjectSection("competitors", prefill.competitors)
-				if (prefill.research_goal) saveResearchGoal(prefill.research_goal, prefill.research_goal_details || "", false)
-				if ((prefill.assumptions || []).length > 0) saveAssumptions(prefill.assumptions)
-				if ((prefill.unknowns || []).length > 0) saveUnknowns(prefill.unknowns)
-				if (prefill.custom_instructions) saveCustomInstructions(prefill.custom_instructions)
+				if (prefill.customer_problem) saveSection("customer_problem", prefill.customer_problem)
+				if ((prefill.target_orgs || []).length > 0) saveSection("target_orgs", prefill.target_orgs)
+				if ((prefill.target_roles || []).length > 0) saveSection("target_roles", prefill.target_roles)
+				if ((prefill.offerings || []).length > 0) saveSection("offerings", prefill.offerings)
+				if ((prefill.competitors || []).length > 0) saveSection("competitors", prefill.competitors)
+				if (prefill.research_goal) saveSection("research_goal", prefill.research_goal)
+				if ((prefill.assumptions || []).length > 0) saveSection("assumptions", prefill.assumptions)
+				if ((prefill.unknowns || []).length > 0) saveSection("unknowns", prefill.unknowns)
+				if (prefill.custom_instructions) saveSection("custom_instructions", prefill.custom_instructions)
 			}
 		}
 	}, [
@@ -509,12 +489,7 @@ export default function ProjectGoalsScreen({
 		unknowns.length,
 		custom_instructions,
 		currentProjectId,
-		saveTargetOrgs,
-		saveTargetRoles,
-		saveResearchGoal,
-		saveAssumptions,
-		saveUnknowns,
-		saveCustomInstructions,
+		saveSection,
 	])
 
 	const addOrg = async () => {
@@ -523,14 +498,14 @@ export default function ProjectGoalsScreen({
 			const newOrgs = [...target_orgs, newOrg.trim()]
 			setTargetOrgs(newOrgs)
 			setNewOrg("")
-			saveTargetOrgs(newOrgs)
+			saveSection("target_orgs", newOrgs)
 		}
 	}
 
 	const removeOrg = (org: string) => {
 		const newOrgs = target_orgs.filter((o) => o !== org)
 		setTargetOrgs(newOrgs)
-		saveTargetOrgs(newOrgs)
+		saveSection("target_orgs", newOrgs)
 	}
 
 	const addRole = async () => {
@@ -539,14 +514,14 @@ export default function ProjectGoalsScreen({
 			const newRoles = [...target_roles, newRole.trim()]
 			setTargetRoles(newRoles)
 			setNewRole("")
-			saveTargetRoles(newRoles)
+			saveSection("target_roles", newRoles)
 		}
 	}
 
 	const removeRole = (role: string) => {
 		const newRoles = target_roles.filter((r) => r !== role)
 		setTargetRoles(newRoles)
-		saveTargetRoles(newRoles)
+		saveSection("target_roles", newRoles)
 	}
 
 	// Helper to focus input and move cursor to end
@@ -564,7 +539,7 @@ export default function ProjectGoalsScreen({
 			const newQuestions = [...decision_questions, newDecisionQuestion.trim()]
 			setDecisionQuestions(newQuestions)
 			setNewDecisionQuestion("")
-			saveDecisionQuestions(newQuestions)
+			saveSection("decision_questions", newQuestions)
 		}
 	}
 
@@ -574,13 +549,13 @@ export default function ProjectGoalsScreen({
 		const updated = [...decision_questions]
 		updated[index] = v
 		setDecisionQuestions(updated)
-		saveDecisionQuestions(updated)
+		saveSection("decision_questions", updated)
 	}
 
 	const removeDecisionQuestion = (index: number) => {
 		const newQuestions = decision_questions.filter((_, i) => i !== index)
 		setDecisionQuestions(newQuestions)
-		saveDecisionQuestions(newQuestions)
+		saveSection("decision_questions", newQuestions)
 	}
 
 	const addAssumption = async () => {
@@ -589,7 +564,7 @@ export default function ProjectGoalsScreen({
 			const newAssumptions = [...assumptions, newAssumption.trim()]
 			setAssumptions(newAssumptions)
 			setNewAssumption("")
-			saveAssumptions(newAssumptions)
+			saveSection("assumptions", newAssumptions)
 		}
 	}
 
@@ -599,7 +574,7 @@ export default function ProjectGoalsScreen({
 		const updated = [...assumptions]
 		updated[index] = v
 		setAssumptions(updated)
-		saveAssumptions(updated)
+		saveSection("assumptions", updated)
 	}
 
 	const addUnknown = async () => {
@@ -608,7 +583,7 @@ export default function ProjectGoalsScreen({
 			const newUnknowns = [...unknowns, newUnknown.trim()]
 			setUnknowns(newUnknowns)
 			setNewUnknown("")
-			saveUnknowns(newUnknowns)
+			saveSection("unknowns", newUnknowns)
 		}
 	}
 
@@ -618,19 +593,19 @@ export default function ProjectGoalsScreen({
 		const updated = [...unknowns]
 		updated[index] = v
 		setUnknowns(updated)
-		saveUnknowns(updated)
+		saveSection("unknowns", updated)
 	}
 
 	const removeAssumption = (index: number) => {
 		const newAssumptions = assumptions.filter((_, i) => i !== index)
 		setAssumptions(newAssumptions)
-		saveAssumptions(newAssumptions)
+		saveSection("assumptions", newAssumptions)
 	}
 
 	const removeUnknown = (index: number) => {
 		const newUnknowns = unknowns.filter((_, i) => i !== index)
 		setUnknowns(newUnknowns)
-		saveUnknowns(newUnknowns)
+		saveSection("unknowns", newUnknowns)
 	}
 
 	const handleNext = useCallback(async () => {
@@ -644,7 +619,6 @@ export default function ProjectGoalsScreen({
 			offerings,
 			competitors,
 			research_goal,
-			research_goal_details,
 			decision_questions,
 			assumptions,
 			unknowns,
@@ -660,7 +634,7 @@ export default function ProjectGoalsScreen({
 
 			consola.log("[ProjectGoals] Raw validation errors:", validationResult.error.issues)
 
-			validationResult.error.issues.forEach((err) => {
+			validationResult.error?.issues?.forEach((err) => {
 				consola.log("[ProjectGoals] Processing error:", err)
 				const path = err.path.join(".")
 				consola.log("[ProjectGoals] Path:", path, "Message:", err.message)
@@ -719,7 +693,7 @@ export default function ProjectGoalsScreen({
 			}
 
 			await ensureResearchStructure(resolvedProjectId)
-			saveResearchGoal(research_goal, research_goal_details, false)
+			saveSection("research_goal", research_goal)
 			onNext({
 				customer_problem,
 				target_orgs,
@@ -727,7 +701,6 @@ export default function ProjectGoalsScreen({
 				offerings,
 				competitors,
 				research_goal,
-				research_goal_details,
 				decision_questions,
 				assumptions,
 				unknowns,
@@ -749,8 +722,7 @@ export default function ProjectGoalsScreen({
 		offerings,
 		onNext,
 		research_goal,
-		research_goal_details,
-		saveResearchGoal,
+		saveSection,
 		target_orgs,
 		target_roles,
 		unknowns,
@@ -759,13 +731,11 @@ export default function ProjectGoalsScreen({
 	const handleResearchGoalBlur = async () => {
 		if (!research_goal.trim()) return
 		if (!currentProjectId) await createProjectIfNeeded()
-		saveResearchGoal(research_goal, research_goal_details, false)
+		saveSection("research_goal", research_goal)
 	}
 
 	const handleCustomInstructionsBlur = () => {
-		if (custom_instructions.trim()) {
-			saveCustomInstructions(custom_instructions)
-		}
+		saveSection("custom_instructions", custom_instructions, { debounced: true })
 	}
 
 	// Removed contextualSuggestions fallback - rely only on AI-generated suggestions
@@ -872,7 +842,7 @@ export default function ProjectGoalsScreen({
 								value={customer_problem}
 								onChange={(e) => {
 									setCustomerProblem(e.target.value)
-									saveProjectSection("customer_problem", e.target.value, true)
+									saveSection("customer_problem", e.target.value, { debounced: true })
 								}}
 								rows={3}
 								className="min-h-[80px]"
@@ -982,7 +952,7 @@ export default function ProjectGoalsScreen({
 															const list = [...target_orgs]
 															list[index] = v
 															setTargetOrgs(list)
-															saveTargetOrgs(list)
+															saveSection("target_orgs", list)
 														}}
 														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
@@ -1050,7 +1020,7 @@ export default function ProjectGoalsScreen({
 															await createProjectIfNeeded()
 															const newOrgs = [...target_orgs, suggestion.trim()]
 															setTargetOrgs(newOrgs)
-															saveTargetOrgs(newOrgs)
+															saveSection("target_orgs", newOrgs)
 														}
 													}}
 													onSuggestionShown={(suggestions) => {
@@ -1086,7 +1056,7 @@ export default function ProjectGoalsScreen({
 															const list = [...target_roles]
 															list[index] = v
 															setTargetRoles(list)
-															saveTargetRoles(list)
+															saveSection("target_roles", list)
 														}}
 														textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 														inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
@@ -1154,7 +1124,7 @@ export default function ProjectGoalsScreen({
 															await createProjectIfNeeded()
 															const newRoles = [...target_roles, suggestion.trim()]
 															setTargetRoles(newRoles)
-															saveTargetRoles(newRoles)
+															saveSection("target_roles", newRoles)
 														}
 													}}
 													onSuggestionShown={(suggestions) => {
@@ -1214,7 +1184,7 @@ export default function ProjectGoalsScreen({
 												const list = [...offerings]
 												list[index] = v
 												setOfferings(list)
-												saveProjectSection("offerings", list)
+												saveSection("offerings", list)
 											}}
 											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
@@ -1223,7 +1193,7 @@ export default function ProjectGoalsScreen({
 											onClick={() => {
 												const newOfferings = offerings.filter((_, i) => i !== index)
 												setOfferings(newOfferings)
-												saveProjectSection("offerings", newOfferings)
+												saveSection("offerings", newOfferings)
 											}}
 											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 										>
@@ -1242,7 +1212,7 @@ export default function ProjectGoalsScreen({
 											const newOfferings = [...offerings, newOffering.trim()]
 											setOfferings(newOfferings)
 											setNewOffering("")
-											saveProjectSection("offerings", newOfferings)
+											saveSection("offerings", newOfferings)
 										}
 									}}
 									className="flex-1"
@@ -1253,7 +1223,7 @@ export default function ProjectGoalsScreen({
 											const newOfferings = [...offerings, newOffering.trim()]
 											setOfferings(newOfferings)
 											setNewOffering("")
-											saveProjectSection("offerings", newOfferings)
+											saveSection("offerings", newOfferings)
 										}
 									}}
 									variant="outline"
@@ -1304,7 +1274,7 @@ export default function ProjectGoalsScreen({
 												const list = [...competitors]
 												list[index] = v
 												setCompetitors(list)
-												saveProjectSection("competitors", list)
+												saveSection("competitors", list)
 											}}
 											textClassName="flex-shrink-0 font-medium text-blue-800 dark:text-blue-300"
 											inputClassName="h-6 py-0 text-blue-900 dark:text-blue-200"
@@ -1313,7 +1283,7 @@ export default function ProjectGoalsScreen({
 											onClick={() => {
 												const newCompetitors = competitors.filter((_, i) => i !== index)
 												setCompetitors(newCompetitors)
-												saveProjectSection("competitors", newCompetitors)
+												saveSection("competitors", newCompetitors)
 											}}
 											className="rounded-md p-0.5 opacity-60 transition-all hover:bg-blue-300 hover:opacity-100 group-hover:opacity-100 dark:hover:bg-blue-700"
 										>
@@ -1332,7 +1302,7 @@ export default function ProjectGoalsScreen({
 											const newCompetitors = [...competitors, newCompetitor.trim()]
 											setCompetitors(newCompetitors)
 											setNewCompetitor("")
-											saveProjectSection("competitors", newCompetitors)
+											saveSection("competitors", newCompetitors)
 										}
 									}}
 									className="flex-1"
@@ -1343,7 +1313,7 @@ export default function ProjectGoalsScreen({
 											const newCompetitors = [...competitors, newCompetitor.trim()]
 											setCompetitors(newCompetitors)
 											setNewCompetitor("")
-											saveProjectSection("competitors", newCompetitors)
+											saveSection("competitors", newCompetitors)
 										}
 									}}
 									variant="outline"
@@ -1485,7 +1455,7 @@ export default function ProjectGoalsScreen({
 														await createProjectIfNeeded()
 														const newQuestions = [...decision_questions, suggestion.trim()]
 														setDecisionQuestions(newQuestions)
-														saveDecisionQuestions(newQuestions)
+														saveSection("decision_questions", newQuestions)
 													}
 												}}
 												onSuggestionShown={(suggestions) => {
@@ -1727,7 +1697,7 @@ export default function ProjectGoalsScreen({
 																await createProjectIfNeeded()
 																const newUnknowns = [...unknowns, suggestion.trim()]
 																setUnknowns(newUnknowns)
-																saveUnknowns(newUnknowns)
+																saveSection("unknowns", newUnknowns)
 															}
 														}}
 														onSuggestionShown={(suggestions) => {

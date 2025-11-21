@@ -43,7 +43,7 @@ export const PROJECT_SECTIONS: SectionConfig[] = [
 	{ kind: "target_roles", type: "string[]", defaultValue: [], arrayFormatter: "numbered" },
 	{ kind: "offerings", type: "string", defaultValue: "", allowEmpty: true },
 	{ kind: "competitors", type: "string[]", defaultValue: [], arrayFormatter: "numbered" },
-	{ kind: "research_goal", type: "object", defaultValue: { research_goal: "", research_goal_details: "" } },
+	{ kind: "research_goal", type: "string", defaultValue: "", allowEmpty: true },
 	{ kind: "decision_questions", type: "string[]", defaultValue: [], arrayFormatter: "numbered" },
 	{ kind: "assumptions", type: "string[]", defaultValue: [], arrayFormatter: "spaced" },
 	{ kind: "unknowns", type: "string[]", defaultValue: [], arrayFormatter: "spaced" },

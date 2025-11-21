@@ -25,12 +25,6 @@ const sectionFormatters = {
 		meta: { [fieldName]: data },
 	}),
 
-	goal_with_details: (goal: string, details: string) => ({
-		// Store only the user's goal as content_md; keep details in meta
-		content_md: goal,
-		meta: { research_goal: goal, research_goal_details: details || "" },
-	}),
-
 	plain_text: (text: string, fieldName: string) => ({
 		content_md: text,
 		meta: { [fieldName]: text },
@@ -82,20 +76,6 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "
 		if (data.trim() || config.allowEmpty) {
 			const formatted = sectionFormatters.plain_text(data, kind)
 			return { kind, ...formatted }
-		}
-		return null
-	}
-
-	if (config.type === "object" && kind === "research_goal") {
-		if (typeof data === "object" && data && "research_goal" in data) {
-			const goalData = data as { research_goal: string; research_goal_details?: string }
-			if (goalData.research_goal?.trim()) {
-				const formatted = sectionFormatters.goal_with_details(
-					goalData.research_goal,
-					goalData.research_goal_details || ""
-				)
-				return { kind, ...formatted }
-			}
 		}
 		return null
 	}
@@ -289,10 +269,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				const formFields = {
 					target_orgs: safeParseArray(formData.get("target_orgs") as string),
 					target_roles: safeParseArray(formData.get("target_roles") as string),
-					research_goal: {
-						research_goal: (formData.get("research_goal") as string) || "",
-						research_goal_details: (formData.get("research_goal_details") as string) || "",
-					},
+					research_goal: (formData.get("research_goal") as string) || "",
 					assumptions: safeParseArray(formData.get("assumptions") as string),
 					unknowns: safeParseArray(formData.get("unknowns") as string),
 					custom_instructions: (formData.get("custom_instructions") as string) || "",

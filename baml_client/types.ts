@@ -636,11 +636,31 @@ export interface FacetCatalogKind {
   
 }
 
+export interface FacetGroupInput {
+  kind_slug: string
+  kind_label?: string | null
+  facets: FacetSignalInput[]
+  
+}
+
+export interface FacetGroupSummary {
+  kind_slug: string
+  summary: string
+  
+}
+
 export interface FacetMention {
   person_key: string
   kind_slug: string
   value: string
   quote?: string | null
+  
+}
+
+export interface FacetSignalInput {
+  label: string
+  source?: string | null
+  confidence?: number | null
   
 }
 
@@ -764,6 +784,16 @@ export interface KindTags {
   
 }
 
+export interface LensEvidenceHighlight {
+  gist: string
+  interview_title?: string | null
+  interview_date?: string | null
+  journey_stage?: string | null
+  topic?: string | null
+  support?: string | null
+  
+}
+
 export interface NoteSnippet {
   tag: string
   text: string
@@ -849,6 +879,18 @@ export interface PersonFacetInput {
   
 }
 
+export interface PersonFacetLensRequest {
+  person: PersonLensMetadata
+  facet_groups: FacetGroupInput[]
+  evidence_highlights: LensEvidenceHighlight[]
+  
+}
+
+export interface PersonFacetLensResponse {
+  summaries: FacetGroupSummary[]
+  
+}
+
 export interface PersonFacetObservation {
   facet_account_id?: number | null
   candidate?: FacetCandidatePayload | null
@@ -858,6 +900,17 @@ export interface PersonFacetObservation {
   evidence_unit_index?: number | null
   confidence?: number | null
   notes?: string[] | null
+  
+}
+
+export interface PersonLensMetadata {
+  person_id: string
+  name?: string | null
+  title?: string | null
+  company?: string | null
+  segment?: string | null
+  persona?: string | null
+  quick_facts: string[]
   
 }
 
