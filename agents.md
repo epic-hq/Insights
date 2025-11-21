@@ -17,12 +17,16 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 
 ## Plan (todos)
 
+[ ] Persona Facet Summaries - summarize facet group takeaways atop an accordion
+
 [ ] Implement livekit-agent and token generator in backend, and livekit-web agent in front end e.g. projectStatusAgent for when user wants to talk to agent.
 
 
 ## Refactoring
 
 [ ] Refactor the monolithic processInterviewServer.ts into smaller src/trigger task files
+
 [ ] Refactor out research_goal_details from rest of code, in favor of ad-hoc project_section kinds on demand.
+
 [ ] Fully remove `research_goal_details` across app/routes, BAML schemas, onboarding flows, and project section loaders once higher-priority onboarding changes land.
 [ ] Break `app/utils/processInterview.server.ts` into modular Trigger.dev tasks under `src/trigger/interviews/*` (see `docs/refactoring/interview-processing-optimization.md` and `docs/interview-processing-flows.md` for the staged plan) so we can share the pipeline with regeneration + batch jobs.
