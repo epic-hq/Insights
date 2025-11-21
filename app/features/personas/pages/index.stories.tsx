@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react"
 import { withRouter } from ".storybook/with-router"
+import type { Meta, StoryObj } from "@storybook/react"
 import PersonasIndex from "./index"
 
 const meta = {
