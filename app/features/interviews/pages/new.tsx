@@ -15,6 +15,8 @@ import { createInterview } from "~/features/interviews/db"
 import { createPerson, getPeople } from "~/features/people/db"
 import { userContext } from "~/server/user-context"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 export const meta: MetaFunction = () => {
 	return [{ title: "New Interview | Insights" }, { name: "description", content: "Create a new interview" }]
 }

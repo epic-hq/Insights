@@ -15,6 +15,8 @@ import { useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import { createProjectRoutes } from "~/utils/routes.server"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 export const meta: MetaFunction<typeof loader> = ({ data }) => {
 	return [
 		{ title: `Edit ${data?.interview?.title || "Interview"} | Insights` },

@@ -19,6 +19,8 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Interview } from "~/types"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 export const meta: MetaFunction = () => {
 	return [{ title: "Interviews | Insights" }, { name: "description", content: "Research interviews and transcripts" }]
 }
@@ -87,7 +89,7 @@ export default function InterviewsIndex({ showPie = false }: { showPie?: boolean
 	const { interviews, segmentData } = useLoaderData<typeof loader>()
 	const { projectPath } = useCurrentProject()
 	const routes = useProjectRoutes(projectPath)
-	const [viewMode, setViewMode] = useState<"cards" | "table">("table")
+	const [viewMode, setViewMode] = useState<"cards" | "table">("cards")
 	const [noteDialogOpen, setNoteDialogOpen] = useState(false)
 	const fetcher = useFetcher()
 

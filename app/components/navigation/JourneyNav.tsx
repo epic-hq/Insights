@@ -1,4 +1,4 @@
-import { ChevronRight, Command, Lightbulb, Mic, TrendingUp, Users } from "lucide-react"
+import { ChevronRight, Command, Lightbulb, MessageSquare, Mic, TrendingUp, User, Users } from "lucide-react"
 import { useState } from "react"
 import { NavLink, useLocation, useNavigate, useRouteLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
@@ -175,11 +175,15 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 		const routeMap: Record<string, () => string> = {
 			"/dashboard": () => routes.dashboard(),
 			"/interviews": () => routes.interviews.index(),
+			"/interviews/new": () => routes.interviews.new(),
 			"/personas": () => routes.personas.index(),
 			"/people": () => routes.people.index(),
 			"/themes": () => routes.themes.index(),
 			"/insights": () => routes.insights.index(),
 			"/opportunities": () => routes.opportunities.index(),
+			"/project-chat": () => `${projectPath}/project-chat`,
+			"/assistant": () => `${projectPath}/assistant`,
+			"/login": () => routes.login(),
 		}
 		return routeMap[route]?.() || route
 	}
@@ -222,6 +226,27 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 	}
 
 	if (variant === "bottom") {
+		const mobileNavItems = [
+			{
+				key: "calls",
+				title: "Interviews",
+				icon: Mic,
+				route: "/interviews",
+			},
+			{
+				key: "chat",
+				title: "Chat",
+				icon: MessageSquare,
+				route: "/assistant",
+			},
+			{
+				key: "account",
+				title: "Account",
+				icon: User,
+				route: "/login",
+			},
+		]
+
 		return (
 			<nav
 				className={cn(
@@ -229,63 +254,22 @@ export function JourneyNav({ variant = "sidebar", className }: JourneyNavProps) 
 					className
 				)}
 			>
-				{/* Team/Project Switcher */}
-				<Popover open={teamSwitcherOpen} onOpenChange={setTeamSwitcherOpen}>
-					<PopoverTrigger asChild>
-						<Button
-							variant="ghost"
-							className="flex min-w-0 flex-1 flex-col items-center space-y-1 rounded-lg px-3 py-2 font-medium text-xs transition-colors hover:bg-accent"
-						>
-							<div className="flex h-5 w-5 items-center justify-center rounded bg-sidebar-accent text-sidebar-accent-foreground">
-								<span className="font-semibold text-[10px]">{initials}</span>
-							</div>
-							<span className="truncate">Project</span>
-						</Button>
-					</PopoverTrigger>
-					<PopoverContent align="center" side="top" className="mb-2 w-72 p-0">
-						<CommandPrimitive>
-							<CommandInput placeholder="Search projects..." />
-							<CommandList>
-								<CommandEmpty>No projects found.</CommandEmpty>
-								{accounts.map((account) => (
-									<CommandGroup key={account.account_id} heading={account.name || "Untitled account"}>
-										{(account.projects ?? []).map((project) => {
-											const isActive = account.account_id === accountId && project.id === projectId
-											return (
-												<CommandItem
-													key={`${account.account_id}:${project.id}`}
-													value={`${project.name || "Untitled project"} ${account.name || ""}`}
-													onSelect={() => handleSelectProject(account.account_id, project.id)}
-													className={isActive ? "bg-accent" : ""}
-												>
-													<span className="truncate">{project.name || "Untitled project"}</span>
-												</CommandItem>
-											)
-										})}
-									</CommandGroup>
-								))}
-							</CommandList>
-						</CommandPrimitive>
-					</PopoverContent>
-				</Popover>
-
-				{/* Journey Steps */}
-				{journeySteps.map((step) => {
-					const isActive = step.key === currentStep
-					const Icon = step.icon
-					const primaryRoute = step.subItems?.[0]?.route || step.routes[0]
+				{/* Mobile Nav Items */}
+				{mobileNavItems.map((item) => {
+					const isActive = location.pathname.includes(item.route)
+					const Icon = item.icon
 
 					return (
 						<NavLink
-							key={step.key}
-							to={getRouteUrl(primaryRoute)}
+							key={item.key}
+							to={getRouteUrl(item.route)}
 							className={cn(
 								"flex min-w-0 flex-1 flex-col items-center space-y-1 rounded-lg px-3 py-2 font-medium text-xs transition-colors",
 								isActive ? "bg-primary/10 text-primary" : "text-foreground hover:bg-accent hover:text-foreground"
 							)}
 						>
 							<Icon className="h-5 w-5" />
-							<span className="truncate">{step.title}</span>
+							<span className="truncate">{item.title}</span>
 						</NavLink>
 					)
 				})}

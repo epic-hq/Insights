@@ -5,6 +5,8 @@ import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import OnboardingFlow, { type OnboardingData } from "../../onboarding/components/OnboardingFlow"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const accountId = ctx.account_id

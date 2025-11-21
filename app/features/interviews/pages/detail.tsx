@@ -47,6 +47,8 @@ import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAcc
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 // Helper to parse full name into first and last
 function parseFullName(fullName: string): { firstname: string; lastname: string | null } {
 	const trimmed = fullName.trim()

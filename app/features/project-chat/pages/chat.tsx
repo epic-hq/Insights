@@ -16,6 +16,8 @@ import { memory } from "~/mastra/memory"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
 
+export const handle = { hideProjectStatusAgent: true } as const
+
 export async function loader({ context, params }: LoaderFunctionArgs) {
 	const ctx = context.get(userContext)
 	const supabase = ctx.supabase
@@ -117,10 +119,10 @@ export default function ProjectChatPage() {
 	}
 
 	return (
-		<div className="grid h-dvh grid-cols-1 gap-x-2 px-4 pt-16 pb-4 md:pt-4">
+		<div className="grid h-dvh grid-cols-1 gap-x-2 px-2 pt-2 pb-4 md:px-4 md:pt-4">
 			{/* Header */}
-			<div className="mx-auto mb-2 w-full max-w-[var(--thread-max-width,44rem)]">
-				<div className="flex items-center justify-between rounded-xl border bg-white/70 px-3 py-2 shadow-sm backdrop-blur dark:bg-neutral-900/70">
+			<div className="mx-auto mb-2 w-full md:max-w-[var(--thread-max-width,44rem)]">
+				<div className="flex items-center justify-between rounded-xl border bg-white/70 px-2 py-2 shadow-sm backdrop-blur md:px-3 dark:bg-neutral-900/70">
 					<div className="flex items-center gap-2">
 						<span className="rounded-full bg-blue-50 px-2 py-0.5 font-medium text-blue-700 text-xs ring-1 ring-blue-200 ring-inset dark:bg-blue-900/30 dark:text-blue-300 dark:ring-blue-800">
 							Setup Chat
@@ -139,7 +141,7 @@ export default function ProjectChatPage() {
 			</div>
 
 			{/* Chat Interface */}
-			<div className="mx-auto flex h-full w-full max-w-[var(--thread-max-width,44rem)] flex-col">
+			<div className="mx-auto flex h-full w-full flex-col md:max-w-[var(--thread-max-width,44rem)]">
 				<Conversation>
 					<ConversationContent>
 						{messages?.map((message) => (
