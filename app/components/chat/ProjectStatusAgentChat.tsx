@@ -1,11 +1,12 @@
 import { useChat } from "@ai-sdk/react"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import { BotMessageSquare, ChevronRight, Mic, MicOff } from "lucide-react"
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useCallback, useEffect, useId, useMemo, useRef, useState } from "react"
 import { useFetcher, useLocation, useNavigate } from "react-router"
 import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
+import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { HOST, PRODUCTION_HOST } from "~/paths"
@@ -16,67 +17,103 @@ declare global {
 		SpeechRecognition: new () => SpeechRecognition
 		webkitSpeechRecognition: new () => SpeechRecognition
 	}
+
+	interface SpeechRecognitionEvent extends Event {
+		resultIndex: number
+		results: SpeechRecognitionResultList
+	}
+
+	interface SpeechRecognitionResultList {
+		[index: number]: SpeechRecognitionResult
+		length: number
+		item(index: number): SpeechRecognitionResult
+	}
+
+	interface SpeechRecognitionResult {
+		[index: number]: SpeechRecognitionAlternative
+		isFinal: boolean
+		length: number
+		item(index: number): SpeechRecognitionAlternative
+	}
+
+	interface SpeechRecognitionAlternative {
+		transcript: string
+		confidence: number
+	}
+
+	interface SpeechGrammarList {
+		[index: number]: SpeechGrammar
+		length: number
+		item(index: number): SpeechGrammar
+		addFromURI(src: string, weight?: number): void
+		addFromString(string: string, weight?: number): void
+	}
+
+	interface SpeechGrammar {
+		src: string
+		weight: number
+	}
+
+	interface SpeechRecognitionErrorEvent extends Event {
+		error: string
+		message: string
+	}
+
+	interface SpeechRecognition extends EventTarget {
+		continuous: boolean
+		grammars: SpeechGrammarList
+		lang: string
+		interimResults: boolean
+		maxAlternatives: number
+		serviceURI: string
+
+		// Event handlers
+		onstart: ((this: SpeechRecognition, ev: Event) => void) | null
+		onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
+		onend: ((this: SpeechRecognition, ev: Event) => void) | null
+		onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
+
+		// Methods
+		start(): void
+		stop(): void
+		abort(): void
+	}
 }
 
-interface SpeechRecognitionEvent extends Event {
-	resultIndex: number
-	results: SpeechRecognitionResultList
-}
+function ThinkingWave() {
+	const gradientId = useId()
+	const bars = [
+		{ delay: 0, x: 0 },
+		{ delay: 0.15, x: 12 },
+		{ delay: 0.3, x: 24 },
+		{ delay: 0.45, x: 36 },
+	]
 
-interface SpeechRecognitionResultList {
-	[index: number]: SpeechRecognitionResult
-	length: number
-	item(index: number): SpeechRecognitionResult
-}
-
-interface SpeechRecognitionResult {
-	[index: number]: SpeechRecognitionAlternative
-	isFinal: boolean
-	length: number
-	item(index: number): SpeechRecognitionAlternative
-}
-
-interface SpeechRecognitionAlternative {
-	transcript: string
-	confidence: number
-}
-
-interface SpeechGrammarList {
-	[index: number]: SpeechGrammar
-	length: number
-	item(index: number): SpeechGrammar
-	addFromURI(src: string, weight?: number): void
-	addFromString(string: string, weight?: number): void
-}
-
-interface SpeechGrammar {
-	src: string
-	weight: number
-}
-
-interface SpeechRecognitionErrorEvent extends Event {
-	error: string
-	message: string
-}
-
-interface SpeechRecognition extends EventTarget {
-	continuous: boolean
-	grammars: SpeechGrammarList
-	lang: string
-	interimResults: boolean
-	maxAlternatives: number
-	serviceURI: string
-
-	// Event handlers
-	onstart: ((this: SpeechRecognition, ev: Event) => void) | null
-	onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
-	onend: ((this: SpeechRecognition, ev: Event) => void) | null
-	onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
-
-	// Methods
-	start(): void
-	stop(): void
-	abort(): void
+	return (
+		<span className="flex items-center gap-2 font-medium text-[11px] text-foreground/70 italic" aria-live="polite">
+			<span>Thinking</span>
+			<svg
+				className="h-4 w-10 text-foreground/50"
+				viewBox="0 0 48 16"
+				fill="none"
+				role="presentation"
+				aria-hidden="true"
+			>
+				<defs>
+					<linearGradient id={gradientId} x1="0" x2="1" y1="0" y2="1">
+						<stop offset="0%" stopColor="currentColor" stopOpacity="0.6" />
+						<stop offset="100%" stopColor="currentColor" stopOpacity="0.2" />
+					</linearGradient>
+				</defs>
+				{bars.map(({ delay, x }) => (
+					<rect key={x} x={x} y={6} width={6} height={4} rx={3} fill={`url(#${gradientId})`}>
+						<animate attributeName="height" values="4;12;4" dur="1.2s" begin={`${delay}s`} repeatCount="indefinite" />
+						<animate attributeName="y" values="10;2;10" dur="1.2s" begin={`${delay}s`} repeatCount="indefinite" />
+					</rect>
+				))}
+			</svg>
+		</span>
+	)
 }
 
 interface ProjectStatusAgentChatProps {
@@ -299,9 +336,25 @@ export function ProjectStatusAgentChat({
 	const historyFetcher = useFetcher<{ messages: UpsightMessage[] }>()
 	const location = useLocation()
 	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
+	const { pendingInput, setPendingInput } = useProjectStatusAgent()
 
 	// Speech recognition hook
 	const { isListening, finalTranscript, isSupported, error, toggleListening, clearError } = useSpeechRecognition()
+
+	// Handle pendingInput from context (inserted by other components like priorities table)
+	useEffect(() => {
+		if (pendingInput) {
+			setInput(pendingInput)
+			setPendingInput(null)
+			// Focus textarea after inserting text
+			setTimeout(() => {
+				textareaRef.current?.focus()
+				// Move cursor to end
+				const len = pendingInput.length
+				textareaRef.current?.setSelectionRange(len, len)
+			}, 100)
+		}
+	}, [pendingInput, setPendingInput])
 
 	// Stabilize history loading function to avoid useEffect dependency issues
 	const loadHistory = useCallback(() => {
@@ -383,15 +436,22 @@ export function ProjectStatusAgentChat({
 		}
 	}, [input, error, clearError])
 
+	const isBusy = status === "streaming" || status === "submitted"
+	const isError = status === "error"
+	const awaitingAssistant = isBusy
+
 	const displayableMessages = useMemo(() => {
 		if (!messages) return []
+		const lastMessage = messages[messages.length - 1]
 		return messages.filter((message) => {
 			if (message.role !== "assistant") return true
-			return Boolean(
-				message.parts?.some((part) => part.type === "text" && typeof part.text === "string" && part.text.trim() !== "")
+			const hasContent = message.parts?.some(
+				(part) => part.type === "text" && typeof part.text === "string" && part.text.trim() !== ""
 			)
+			const isLatestAssistantPlaceholder = awaitingAssistant && message === lastMessage
+			return hasContent || isLatestAssistantPlaceholder
 		})
-	}, [messages])
+	}, [messages, status])
 
 	const visibleMessages = useMemo(() => displayableMessages.slice(-12), [displayableMessages])
 
@@ -438,9 +498,6 @@ export function ProjectStatusAgentChat({
 		}
 	}
 
-	const isBusy = status === "streaming" || status === "submitted"
-	const isError = status === "error"
-
 	const handleAssistantLinkClick = (event: React.MouseEvent<HTMLDivElement>) => {
 		if (event.defaultPrevented) return
 		if (event.metaKey || event.ctrlKey || event.altKey || event.shiftKey) return
@@ -485,7 +542,7 @@ export function ProjectStatusAgentChat({
 								aria-label="Toggle chat"
 							>
 								<BotMessageSquare className="h-4 w-4 text-blue-600" />
-								Ask Project Assistant
+								Ask Uppy
 							</CardTitle>
 						)}
 						{isCollapsed && (
@@ -544,7 +601,7 @@ export function ProjectStatusAgentChat({
 											<div key={key} className={`flex ${isUser ? "justify-end" : "justify-start"}`}>
 												<div className="max-w-[85%]">
 													<div className="mb-1 text-[10px] text-foreground/60 uppercase tracking-wide">
-														{isUser ? "You" : "Project Assistant"}
+														{isUser ? "You" : "Uppy Assistant"}
 													</div>
 													<div
 														className={cn(
@@ -560,7 +617,7 @@ export function ProjectStatusAgentChat({
 																<AiResponse key={key}>{messageText}</AiResponse>
 															)
 														) : !isUser ? (
-															<span className="text-foreground/70 italic">Thinking...</span>
+															<ThinkingWave />
 														) : (
 															<span className="text-foreground/70">(No text response)</span>
 														)}

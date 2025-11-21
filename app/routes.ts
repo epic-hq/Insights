@@ -14,6 +14,7 @@ import opportunitiesRoutes from "./features/opportunities/routes"
 import organizationsRoutes from "./features/organizations/routes"
 import peopleRoutes from "./features/people/routes"
 import personasRoutes from "./features/personas/routes"
+import prioritiesRoutes from "./features/priorities/routes"
 import projectChatRoutes from "./features/project-chat/routes"
 import projectsRoutes from "./features/projects/routes"
 import questionsRoutes from "./features/questions/routes"
@@ -68,6 +69,7 @@ const routes = [
 				...projectChatRoutes,
 				...facetsRoutes,
 				...lensesRoutes,
+				...prioritiesRoutes,
 
 				// Project-scoped onboarding route
 				route("new", "./features/onboarding/pages/new.tsx"),

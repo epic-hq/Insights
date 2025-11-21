@@ -14,6 +14,7 @@ import { z } from "zod"
 import { ProjectStatusAgentChat } from "~/components/chat/ProjectStatusAgentChat"
 import { ResizableHandle, ResizablePanel, ResizablePanelGroup } from "~/components/ui/resizable"
 import { CurrentProjectProvider } from "~/contexts/current-project-context"
+import { ProjectStatusAgentProvider, useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { getProjectById } from "~/features/projects/db"
 import { currentProjectContext } from "~/server/current-project-context"
 import { type UserMetadata, userContext } from "~/server/user-context"
@@ -123,6 +124,7 @@ function ProjectLayout({
 	const accountId = params.accountId || ""
 	const projectId = params.projectId || ""
 	const matches = useMatches()
+	const { isExpanded } = useProjectStatusAgent()
 	const [isChatCollapsed, setIsChatCollapsed] = useState(false)
 	const chatPanelRef = useRef<ImperativePanelHandle | null>(null)
 	const lastExpandedSize = useRef(30)
@@ -135,14 +137,15 @@ function ProjectLayout({
 	useEffect(() => {
 		const panel = chatPanelRef.current
 		if (!panel) return
-		if (isChatCollapsed) {
+		const shouldCollapse = isChatCollapsed || !isExpanded
+		if (shouldCollapse) {
 			panel.collapse()
 			return
 		}
 		panel.expand()
 		const target = Math.max(20, Math.min(55, lastExpandedSize.current))
 		panel.resize(target)
-	}, [isChatCollapsed])
+	}, [isChatCollapsed, isExpanded])
 
 	// Build comprehensive system context for the project status agent
 	const profileSection = userProfileContext ? `User Profile:\n${userProfileContext}` : ""
@@ -214,7 +217,9 @@ export default function Projects() {
 
 	return (
 		<CurrentProjectProvider>
-			<ProjectLayout statusData={statusData} project={project} userProfileContext={userProfileContext} />
+			<ProjectStatusAgentProvider>
+				<ProjectLayout statusData={statusData} project={project} userProfileContext={userProfileContext} />
+			</ProjectStatusAgentProvider>
 		</CurrentProjectProvider>
 	)
 }
