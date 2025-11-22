@@ -50,14 +50,8 @@ Entity Types Supported:
 - insight: Research insights
 - project: Projects themselves`,
 	inputSchema: z.object({
-		projectId: z
-			.string()
-			.optional()
-			.describe("Project ID. Defaults to current project in context."),
-		accountId: z
-			.string()
-			.optional()
-			.describe("Account ID. Defaults to current account in context."),
+		projectId: z.string().optional().describe("Project ID. Defaults to current project in context."),
+		accountId: z.string().optional().describe("Account ID. Defaults to current account in context."),
 		operation: z
 			.enum(["create", "update", "list", "delete"])
 			.describe("Operation to perform: create, update, list, or delete"),
@@ -66,55 +60,28 @@ Entity Types Supported:
 		entityType: entityTypeEnum
 			.optional()
 			.describe("Type of entity to annotate (person, organization, opportunity, interview, persona, insight, project)"),
-		entityId: z
-			.string()
-			.optional()
-			.describe("UUID of the entity to annotate"),
+		entityId: z.string().optional().describe("UUID of the entity to annotate"),
 
 		// Annotation details
 		annotationType: annotationTypeEnum
 			.optional()
 			.describe("Type of annotation: note, comment, todo, ai_suggestion, flag, reaction"),
-		content: z
-			.string()
-			.optional()
-			.describe("Text content for the annotation (markdown supported)"),
-		contentJsonb: z
-			.record(z.string(), z.any())
-			.optional()
-			.describe("Structured JSONB content for complex annotations"),
-		metadata: z
-			.record(z.string(), z.any())
-			.optional()
-			.describe("Additional metadata (tags, priorities, etc.)"),
+		content: z.string().optional().describe("Text content for the annotation (markdown supported)"),
+		contentJsonb: z.record(z.string(), z.any()).optional().describe("Structured JSONB content for complex annotations"),
+		metadata: z.record(z.string(), z.any()).optional().describe("Additional metadata (tags, priorities, etc.)"),
 
 		// Todo-specific
-		dueDate: z
-			.string()
-			.optional()
-			.describe("Due date for todos (ISO 8601 format)"),
+		dueDate: z.string().optional().describe("Due date for todos (ISO 8601 format)"),
 
 		// Reaction-specific
-		reactionType: z
-			.string()
-			.optional()
-			.describe("Emoji or reaction identifier (for reaction annotations)"),
+		reactionType: z.string().optional().describe("Emoji or reaction identifier (for reaction annotations)"),
 
 		// Update/delete
-		annotationId: z
-			.string()
-			.optional()
-			.describe("ID of annotation to update/delete"),
+		annotationId: z.string().optional().describe("ID of annotation to update/delete"),
 
 		// List filters
-		filterByType: annotationTypeEnum
-			.optional()
-			.describe("Filter annotations by type when listing"),
-		includeArchived: z
-			.boolean()
-			.optional()
-			.default(false)
-			.describe("Include archived/deleted annotations in list"),
+		filterByType: annotationTypeEnum.optional().describe("Filter annotations by type when listing"),
+		includeArchived: z.boolean().optional().default(false).describe("Include archived/deleted annotations in list"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

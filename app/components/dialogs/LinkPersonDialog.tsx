@@ -141,8 +141,9 @@ export function LinkPersonDialog({
 											key={person.id}
 											type="button"
 											onClick={() => setSelectedPersonId(person.id)}
-											className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${selectedPersonId === person.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
-												}`}
+											className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+												selectedPersonId === person.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
+											}`}
 										>
 											<Avatar className="h-10 w-10">
 												{person.image_url && <AvatarImage src={person.image_url} alt={person.name ?? "Person"} />}

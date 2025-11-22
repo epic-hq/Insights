@@ -34,6 +34,7 @@ import { SalesLensesSection } from "~/features/lenses/components/ConversationLen
 import { loadInterviewSalesLens } from "~/features/lenses/lib/interviewLens.server"
 import type { InterviewLensView } from "~/features/lenses/types"
 import { MiniPersonCard } from "~/features/people/components/EnhancedPersonCard"
+import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 import { useInterviewProgress } from "~/hooks/useInterviewProgress"
 import { usePostHogFeatureFlag } from "~/hooks/usePostHogFeatureFlag"
 import { useProjectRoutes, useProjectRoutesFromIds } from "~/hooks/useProjectRoutes"
@@ -45,7 +46,6 @@ import { userContext } from "~/server/user-context"
 import { createR2PresignedUrl, getR2KeyFromPublicUrl } from "~/utils/r2.server"
 import { InterviewQuestionsAccordion } from "../components/InterviewQuestionsAccordion"
 import { LazyTranscriptResults } from "../components/LazyTranscriptResults"
-import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
 
 export const handle = { hideProjectStatusAgent: true } as const
 

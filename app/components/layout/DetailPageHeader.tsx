@@ -68,7 +68,8 @@ export function DetailPageHeader({
 				{(description !== undefined || aboveDescription || organizations || children) && (
 					<CardContent className="space-y-4">
 						{aboveDescription}
-						{description !== undefined && (typeof description === "string" ? <p className="text-foreground">{description}</p> : description)}
+						{description !== undefined &&
+							(typeof description === "string" ? <p className="text-foreground">{description}</p> : description)}
 
 						{organizations && (
 							<div className="space-y-4 border-border/50 border-t pt-4">
@@ -100,7 +101,9 @@ export function DetailPageHeader({
 														>
 															{organization.name}
 														</Link>
-														<div className="truncate text-muted-foreground text-xs">{link.role || "Linked participant"}</div>
+														<div className="truncate text-muted-foreground text-xs">
+															{link.role || "Linked participant"}
+														</div>
 													</div>
 													<Form method="post">
 														<input type="hidden" name="_action" value="unlink-organization" />

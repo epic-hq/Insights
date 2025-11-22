@@ -333,7 +333,6 @@ export default function ProjectGoalsScreen({
 		assumptions,
 		unknowns,
 
-
 		saveSection,
 	])
 
@@ -759,14 +758,16 @@ export default function ProjectGoalsScreen({
 								<div key={step.id} className="flex items-center">
 									<div className="flex flex-col items-center">
 										<div
-											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
-												}`}
+											className={`flex h-7 w-7 items-center justify-center rounded-full font-medium text-xs sm:h-8 sm:w-8 sm:text-sm ${
+												step.id === "goals" ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
+											}`}
 										>
 											{index + 1}
 										</div>
 										<span
-											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${step.id === "goals" ? "text-foreground" : "text-muted-foreground"
-												}`}
+											className={`mt-1 line-clamp-1 font-medium text-[10px] sm:text-xs md:text-sm ${
+												step.id === "goals" ? "text-foreground" : "text-muted-foreground"
+											}`}
 										>
 											{step.title}
 										</span>
@@ -908,9 +909,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<Users className="h-5 w-5 text-purple-600" />
-											<h2 className="font-semibold text-lg">
-												Who are your ideal customers?
-											</h2>
+											<h2 className="font-semibold text-lg">Who are your ideal customers?</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{target_roles.length}
 											</span>
@@ -1486,9 +1485,7 @@ export default function ProjectGoalsScreen({
 									<div className="flex items-center justify-between">
 										<div className="flex items-center gap-2">
 											<GraduationCapIcon className="h-5 w-5 text-blue-600" />
-											<h2 className="font-semibold text-lg">
-												Assumptions & Unknowns
-											</h2>
+											<h2 className="font-semibold text-lg">Assumptions & Unknowns</h2>
 											<span className="rounded-md px-2 py-1 font-medium text-foreground/75 text-xs">
 												{" "}
 												{unknowns.length}
@@ -1903,12 +1900,7 @@ export default function ProjectGoalsScreen({
 				{showNextButton && (
 					<div className="mt-8 border-border border-t pt-8">
 						<div className="flex items-center justify-center">
-							<Button
-								onClick={handleNext}
-								disabled={isLoading || ensuringStructure}
-								size="lg"
-								className="px-8 py-3"
-							>
+							<Button onClick={handleNext} disabled={isLoading || ensuringStructure} size="lg" className="px-8 py-3">
 								{ensuringStructure ? (
 									<>
 										<Loader2 className="mr-2 h-4 w-4 animate-spin" />

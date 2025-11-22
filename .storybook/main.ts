@@ -4,7 +4,8 @@ import { mergeConfig } from "vite"
 const config: StorybookConfig = {
 	stories: ["../app/**/*.stories.@(js|jsx|mjs|ts|tsx)"],
 	addons: [
-		"storybook-addon-remix-react-router",
+		// Removed incompatible addon: storybook-addon-remix-react-router
+		// It requires Storybook 9.x but we're using 10.x
 	],
 	env: (config) => ({
 		...config,

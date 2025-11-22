@@ -49,6 +49,17 @@ let env: ServerEnv
  * @returns Initialized env vars
  */
 function initEnv() {
+	// Return mock env for Storybook/browser environments
+	if (typeof window !== "undefined") {
+		return {
+			NODE_ENV: "development" as const,
+			APP_ENV: "development" as const,
+			SUPABASE_URL: "https://mock.supabase.co",
+			SUPABASE_ANON_KEY: "mock-anon-key",
+			PAYLOAD_CMS_URL: "https://upsight-cms.vercel.app",
+		} as ServerEnv
+	}
+
 	// This should be the only place to use process.env directly
 	const rawEnv = {
 		...process.env,

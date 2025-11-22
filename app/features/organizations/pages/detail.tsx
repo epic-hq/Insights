@@ -19,8 +19,8 @@ import {
 	linkPersonToOrganization,
 	unlinkPersonFromOrganization,
 } from "~/features/organizations/db"
-import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { syncTitleToJobFunctionFacet } from "~/features/people/syncTitleToFacet.server"
+import { PersonaPeopleSubnav } from "~/features/personas/components/PersonaPeopleSubnav"
 import { useProjectRoutes } from "~/hooks/useProjectRoutes"
 import { userContext } from "~/server/user-context"
 import type { Organization, PeopleOrganization, Person } from "~/types"

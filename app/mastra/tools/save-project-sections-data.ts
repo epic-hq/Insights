@@ -1,9 +1,9 @@
-import type { SupabaseClient } from "@supabase/supabase-js"
 import { createTool } from "@mastra/core/tools"
+import type { SupabaseClient } from "@supabase/supabase-js"
 import consola from "consola"
 import { z } from "zod"
 import { upsertProjectSection } from "~/features/projects/db"
-import { PROJECT_SECTIONS, getSectionConfig } from "~/features/projects/section-config"
+import { getSectionConfig, PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { supabaseAdmin } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
@@ -119,9 +119,7 @@ export const saveProjectSectionsDataTool = createTool({
 			const runtimeProjectId = runtimeContext?.get?.("project_id")
 
 			// Use runtime project_id if tool context has 'current' or missing
-			const actualProjectId = (!project_id || project_id === 'current')
-				? runtimeProjectId
-				: project_id
+			const actualProjectId = !project_id || project_id === "current" ? runtimeProjectId : project_id
 
 			if (!actualProjectId) {
 				return { success: false, message: "Missing project_id in both context and runtime" }

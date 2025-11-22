@@ -126,7 +126,10 @@ export const generateResearchStructureTool = createTool({
 				.limit(1)
 
 			const hasExistingStructure =
-				existingDecisionQuestions && existingDecisionQuestions.length > 0 && existingResearchQuestions && existingResearchQuestions.length > 0
+				existingDecisionQuestions &&
+				existingDecisionQuestions.length > 0 &&
+				existingResearchQuestions &&
+				existingResearchQuestions.length > 0
 
 			if (hasExistingStructure) {
 				consola.info("generate-research-structure: structure already exists, skipping generation")

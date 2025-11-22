@@ -50,9 +50,7 @@ export function AddFacetSignalDialog({
 	const [newFacetLabel, setNewFacetLabel] = useState("")
 	const fetcher = useFetcher()
 
-	const filteredFacets = availableFacets.filter((facet) =>
-		facet.label.toLowerCase().includes(searchTerm.toLowerCase())
-	)
+	const filteredFacets = availableFacets.filter((facet) => facet.label.toLowerCase().includes(searchTerm.toLowerCase()))
 
 	const handleSelectExisting = () => {
 		if (!selectedFacetId) return
@@ -139,9 +137,7 @@ export function AddFacetSignalDialog({
 											type="button"
 											onClick={() => setSelectedFacetId(facet.id)}
 											className={`flex w-full items-center justify-between rounded-lg border p-3 text-left transition-colors ${
-												selectedFacetId === facet.id
-													? "border-primary bg-primary/10"
-													: "border-border hover:bg-muted"
+												selectedFacetId === facet.id ? "border-primary bg-primary/10" : "border-border hover:bg-muted"
 											}`}
 										>
 											<span className="font-medium text-sm">{facet.label}</span>

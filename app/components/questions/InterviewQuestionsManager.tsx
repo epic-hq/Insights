@@ -26,10 +26,7 @@ import React, { useCallback, useEffect, useMemo, useRef, useState } from "react"
 import { Link, useFetcher } from "react-router"
 import { toast } from "sonner"
 import { z } from "zod"
-import {
-	createQuestionQueueStore,
-	useQuestionQueueStore,
-} from "~/components/questions/stores/questionQueueStore"
+import { createQuestionQueueStore, useQuestionQueueStore } from "~/components/questions/stores/questionQueueStore"
 import type { Question } from "~/components/questions/types"
 import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
@@ -1374,13 +1371,7 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 			await saveQuestionsToDatabase(questions, newBaseIds)
 			setTimeout(() => setSkipDebounce(false), 1500)
 		},
-		[
-			questionPack.visibleIds,
-			questions,
-			reorderVisible,
-			saveQuestionsToDatabase,
-			markQuestionAsRecentlyAdded,
-		]
+		[questionPack.visibleIds, questions, reorderVisible, saveQuestionsToDatabase, markQuestionAsRecentlyAdded]
 	)
 
 	const insertQuestionAfter = useCallback(
@@ -2448,10 +2439,10 @@ function InterviewQuestionsManager(props: InterviewQuestionsManagerProps) {
 																										const updated = questions.map((q) =>
 																											q.id === question.id
 																												? {
-																													...q,
-																													text: editingText,
-																													qualityFlag: quality ?? undefined,
-																												}
+																														...q,
+																														text: editingText,
+																														qualityFlag: quality ?? undefined,
+																													}
 																												: q
 																										)
 																										setQuestions(updated)

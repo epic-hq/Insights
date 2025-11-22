@@ -343,7 +343,7 @@ export default function ProjectStatusScreen({
 		if (steps.size === 0) {
 			const hasStructure = Boolean(
 				(researchRollup?.decision_questions?.length || 0) > 0 ||
-				(researchRollup?.research_questions_without_decision?.length || 0) > 0
+					(researchRollup?.research_questions_without_decision?.length || 0) > 0
 			)
 			if (!hasStructure) {
 				addStep("Generate your research plan to create decision and research questions.")
@@ -724,7 +724,8 @@ export default function ProjectStatusScreen({
 										<div className="w-full space-y-2">
 											<div className="flex items-center justify-end text-sm">
 												<span className="gap-4 font-medium text-muted-foreground">
-													Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}% ({displayData.totalInterviews} / {targetConversations})
+													Interview Progress {((displayData.totalInterviews / targetConversations) * 100).toFixed(0)}% (
+													{displayData.totalInterviews} / {targetConversations})
 												</span>
 											</div>
 											{/* <div className="h-2 w-full rounded-full bg-muted">

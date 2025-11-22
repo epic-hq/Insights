@@ -9,6 +9,8 @@ export default defineConfig({
 		alias: {
 			"~": "/app",
 			"~/utils/r2.server": "/app/utils/r2.client.mock",
+			"~/env.server": "/.storybook/mocks/env.server.mock.ts",
+			"~/lib/supabase/client.server": "/.storybook/mocks/client.server.mock.ts",
 			"node:buffer": "buffer",
 			"node:crypto": "crypto-browserify",
 			"node:stream": "stream-browserify",

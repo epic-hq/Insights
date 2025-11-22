@@ -1,247 +1,305 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { reactRouterParameters, withRouter } from "storybook-addon-remix-react-router"
-import InterviewDetail from "./detail"
+import type { Meta, StoryObj } from "@storybook/react-vite"
+import InterviewDetailStorybook from "./detail.storybook"
 
 const meta = {
-	title: "Features/Interviews/InterviewDetail",
-	component: InterviewDetail,
-	decorators: [withRouter],
+	title: "Features/Interviews/Pages/Detail",
+	component: InterviewDetailStorybook,
 	parameters: {
 		layout: "fullscreen",
 	},
 	tags: ["autodocs"],
-} satisfies Meta<typeof InterviewDetail>
+} satisfies Meta<typeof InterviewDetailStorybook>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
-// Mock data for the interview
+// Mock interview data with full structure
 const mockInterview = {
 	id: "interview-1",
-	title: "User Research Interview - Product Discovery",
-	date: "2024-01-15",
-	duration: 3600,
-	status: "completed",
-	transcript: "This is a sample transcript...",
-	hasTranscript: true,
-	hasFormattedTranscript: true,
+	account_id: "acc-1",
+	project_id: "proj-1",
+	title: "Customer Discovery Interview - Enterprise SaaS",
+	description: "Initial discovery call with VP of Engineering at TechCorp",
+	status: "transcribed" as const,
+	media_url: "https://example.com/audio.mp3",
+	media_type: "audio/mpeg" as const,
+	duration_seconds: 1847, // ~30 minutes
+	created_at: "2025-01-10T14:30:00Z",
+	updated_at: "2025-01-10T16:45:00Z",
+	scheduled_at: "2025-01-10T14:00:00Z",
+	participant_pseudonym: "Alex Johnson",
+	questions: [
+		"What are your biggest challenges with current developer tools?",
+		"How does your team currently handle code reviews?",
+		"What would make your workflow more efficient?",
+	],
+	conversation_analysis: {
+		overview:
+			"Productive conversation with Alex Johnson, VP of Engineering at TechCorp. Discussion focused on their current development workflow pain points, particularly around code review processes and team collaboration. Alex expressed strong interest in automation tools and better integration with existing systems.",
+		key_takeaways: [
+			{
+				priority: "high" as const,
+				summary: "Code review process takes 2-3 days on average, causing significant deployment delays",
+				evidence_snippets: [
+					"We're averaging 2-3 days for code reviews right now",
+					"The delay is really hurting our deployment velocity",
+				],
+			},
+			{
+				priority: "high" as const,
+				summary: "Team struggles with context switching between multiple tools (GitHub, Jira, Slack)",
+				evidence_snippets: [
+					"My team is constantly switching between GitHub, Jira, and Slack",
+					"We lose so much context in the handoffs",
+				],
+			},
+			{
+				priority: "medium" as const,
+				summary: "Security concerns around third-party integrations",
+				evidence_snippets: [
+					"We need to be careful about what tools we integrate with",
+					"SOC 2 compliance is critical for us",
+				],
+			},
+		],
+		open_questions: [
+			"What is TechCorp's budget cycle for new tooling?",
+			"Who else on the team would need to be involved in the evaluation?",
+			"What are their current integration requirements?",
+		],
+		recommended_next_steps: [
+			{
+				focus_area: "Technical Demo",
+				action: "Schedule a demo of our GitHub integration features with Alex's senior engineers",
+				rationale: "They specifically mentioned code review automation as a top priority",
+			},
+			{
+				focus_area: "Security Review",
+				action: "Share SOC 2 compliance documentation and security whitepaper",
+				rationale: "Security and compliance are critical decision factors",
+			},
+			{
+				focus_area: "Stakeholder Mapping",
+				action: "Ask Alex to introduce us to the Director of Platform Engineering",
+				rationale: "Alex mentioned this person owns tool selection decisions",
+			},
+		],
+		custom_lenses: {},
+	},
 	participants: [
 		{
-			id: "participant-1",
-			person_id: "person-1",
-			role: "Participant",
-			display_name: "Sarah Johnson",
-			transcript_key: "speaker_1",
+			id: 1,
+			role: "Interviewee",
+			transcript_key: "Speaker 1",
+			display_name: "Alex Johnson",
+			people: {
+				id: "person-1",
+				name: "Alex Johnson",
+				segment: "Enterprise",
+				project_id: "proj-1",
+				people_personas: [
+					{
+						personas: {
+							id: "persona-1",
+							name: "Technical Decision Maker",
+						},
+					},
+				],
+			},
+		},
+		{
+			id: 2,
+			role: "Interviewer",
+			transcript_key: "Speaker 2",
+			display_name: "Sarah Chen",
+			people: {
+				id: "person-2",
+				name: "Sarah Chen",
+				segment: null,
+				project_id: "proj-1",
+			},
 		},
 	],
 	primaryParticipant: {
 		id: "person-1",
-		name: "Sarah Johnson",
-		segment: "Power User",
-		image_url: null,
+		name: "Alex Johnson",
+		segment: "Enterprise",
+		project_id: "proj-1",
 	},
+	hasTranscript: true,
+	hasFormattedTranscript: true,
 }
+
+const mockPeopleOptions = [
+	{ id: "person-1", name: "Alex Johnson", segment: "Enterprise" },
+	{ id: "person-2", name: "Sarah Chen", segment: null },
+	{ id: "person-3", name: "Michael Brown", segment: "Mid-Market" },
+	{ id: "person-4", name: "Jennifer Liu", segment: "SMB" },
+]
 
 const mockInsights = [
 	{
 		id: "insight-1",
-		name: "Users struggle with onboarding",
-		details: "Multiple participants mentioned difficulty understanding the initial setup process",
-		category: "Pain Point",
-		confidence: "high",
+		statement: "Code review delays are blocking deployment velocity",
+		evidence_count: 3,
+		theme_names: ["Process Pain Points", "Team Velocity"],
+		created_at: "2025-01-10T17:00:00Z",
 	},
 	{
 		id: "insight-2",
-		name: "Feature request: Dark mode",
-		details: "Users expressed interest in a dark mode option for better accessibility",
-		category: "Feature Request",
-		confidence: "medium",
+		statement: "Security and compliance are critical decision factors",
+		evidence_count: 2,
+		theme_names: ["Security", "Enterprise Requirements"],
+		created_at: "2025-01-10T17:05:00Z",
 	},
 ]
 
-const mockEvidence = [
+const mockSalesLens = {
+	bant: {
+		budget: {
+			score: 7,
+			summary: "Has budget allocated for developer tools this quarter",
+			evidence: ["Mentioned they have budget for Q1", "Currently spending on similar tools"],
+		},
+		authority: {
+			score: 8,
+			summary: "VP of Engineering with decision-making power",
+			evidence: ["Makes tool selection decisions", "Can approve budget up to $50k"],
+		},
+		need: {
+			score: 9,
+			summary: "Strong pain around code review delays",
+			evidence: ["2-3 day code review delays", "Hurting deployment velocity"],
+		},
+		timeline: {
+			score: 6,
+			summary: "Looking to implement new tools this quarter",
+			evidence: ["Want to move fast", "Q1 is the evaluation period"],
+		},
+	},
+	overallScore: 75,
+	buyingStage: "Evaluation" as const,
+	nextActions: [
+		"Schedule technical demo with engineering team",
+		"Share security documentation",
+		"Introduce to Director of Platform Engineering",
+	],
+}
+
+const mockAnalysisJobs = [
 	{
-		id: "evidence-1",
-		interview_id: "interview-1",
-		says: ["The setup process was confusing", "I had to restart twice"],
-		does: ["Clicks through menus repeatedly", "Searches for help documentation"],
-		thinks: ["This should be simpler", "Maybe I'm missing something"],
-		feels: ["Frustrated", "Uncertain"],
-		pains: ["Time wasted on setup", "Lack of clear guidance"],
-		gains: ["Eventually figured it out", "Learned the system"],
-		created_at: "2024-01-15T10:30:00Z",
+		id: "job-1",
+		status: "done" as const,
+		status_detail: "Analysis completed successfully",
+		progress: 100,
+		trigger_run_id: null,
+		created_at: "2025-01-10T16:00:00Z",
+		updated_at: "2025-01-10T16:45:00Z",
 	},
 ]
 
-const mockEmpathyMap = {
-	says: [
-		{ text: "The setup process was confusing", evidenceId: "evidence-1" },
-		{ text: "I had to restart twice", evidenceId: "evidence-1" },
-	],
-	does: [
-		{ text: "Clicks through menus repeatedly", evidenceId: "evidence-1" },
-		{ text: "Searches for help documentation", evidenceId: "evidence-1" },
-	],
-	thinks: [
-		{ text: "This should be simpler", evidenceId: "evidence-1" },
-		{ text: "Maybe I'm missing something", evidenceId: "evidence-1" },
-	],
-	feels: [
-		{ text: "Frustrated", evidenceId: "evidence-1" },
-		{ text: "Uncertain", evidenceId: "evidence-1" },
-	],
-	pains: [
-		{ text: "Time wasted on setup", evidenceId: "evidence-1" },
-		{ text: "Lack of clear guidance", evidenceId: "evidence-1" },
-	],
-	gains: [
-		{ text: "Eventually figured it out", evidenceId: "evidence-1" },
-		{ text: "Learned the system", evidenceId: "evidence-1" },
-	],
-}
-
-const mockPeopleOptions = [
-	{ id: "person-1", name: "Sarah Johnson", segment: "Power User" },
-	{ id: "person-2", name: "Mike Chen", segment: "New User" },
-	{ id: "person-3", name: "Emma Davis", segment: "Enterprise" },
-]
-
-// Default story with full interview data
 export const Default: Story = {
-	parameters: {
-		reactRouter: reactRouterParameters({
-			location: {
-				pathParams: {
-					accountId: "account-1",
-					projectId: "project-1",
-					interviewId: "interview-1",
-				},
-			},
-			routing: {
-				path: "/a/:accountId/:projectId/interviews/:interviewId",
-				loader: () => ({
-					accountId: "account-1",
-					projectId: "project-1",
-					interview: mockInterview,
-					insights: mockInsights,
-					evidence: mockEvidence,
-					empathyMap: mockEmpathyMap,
-					peopleOptions: mockPeopleOptions,
-				}),
-			},
-		}),
-	},
-}
-
-// Story without transcript
-export const NoTranscript: Story = {
-	parameters: {
-		reactRouter: reactRouterParameters({
-			location: {
-				pathParams: {
-					accountId: "account-1",
-					projectId: "project-1",
-					interviewId: "interview-2",
-				},
-			},
-			routing: {
-				path: "/a/:accountId/:projectId/interviews/:interviewId",
-				loader: () => ({
-					accountId: "account-1",
-					projectId: "project-1",
-					interview: {
-						...mockInterview,
-						id: "interview-2",
-						hasTranscript: false,
-						hasFormattedTranscript: false,
-						transcript: null,
-					},
-					insights: [],
-					evidence: [],
-					empathyMap: {
-						says: [],
-						does: [],
-						thinks: [],
-						feels: [],
-						pains: [],
-						gains: [],
-					},
-					peopleOptions: mockPeopleOptions,
-				}),
-			},
-		}),
-	},
-}
-
-// Story with minimal data
-export const MinimalData: Story = {
-	parameters: {
-		reactRouter: reactRouterParameters({
-			location: {
-				pathParams: {
-					accountId: "account-1",
-					projectId: "project-1",
-					interviewId: "interview-3",
-				},
-			},
-			routing: {
-				path: "/a/:accountId/:projectId/interviews/:interviewId",
-				loader: () => ({
-					accountId: "account-1",
-					projectId: "project-1",
-					interview: {
-						id: "interview-3",
-						title: "Quick Interview",
-						date: "2024-01-20",
-						status: "in_progress",
-						hasTranscript: false,
-						hasFormattedTranscript: false,
-						participants: [],
-						primaryParticipant: null,
-					},
-					insights: [],
-					evidence: [],
-					empathyMap: {
-						says: [],
-						does: [],
-						thinks: [],
-						feels: [],
-						pains: [],
-						gains: [],
-					},
-					peopleOptions: [],
-				}),
-			},
-		}),
-	},
-}
-
-// Story with recording enabled
-export const WithRecording: Story = {
 	args: {
-		enableRecording: true,
+		data: {
+			interview: mockInterview,
+			peopleOptions: mockPeopleOptions,
+			insights: mockInsights,
+			salesLens: mockSalesLens,
+			analysisJobs: mockAnalysisJobs,
+			conversationAnalysis: mockInterview.conversation_analysis,
+		},
 	},
-	parameters: {
-		reactRouter: reactRouterParameters({
-			location: {
-				pathParams: {
-					accountId: "account-1",
-					projectId: "project-1",
-					interviewId: "interview-1",
+}
+
+export const NoAnalysis: Story = {
+	args: {
+		data: {
+			interview: {
+				...mockInterview,
+				conversation_analysis: null,
+			},
+			peopleOptions: mockPeopleOptions,
+			insights: [],
+			salesLens: null,
+			analysisJobs: [
+				{
+					id: "job-1",
+					status: "pending" as const,
+					status_detail: "Waiting for analysis to start",
+					progress: 0,
+					trigger_run_id: null,
+					created_at: "2025-01-10T16:00:00Z",
+					updated_at: "2025-01-10T16:00:00Z",
 				},
+			],
+			conversationAnalysis: null,
+		},
+	},
+}
+
+export const Processing: Story = {
+	args: {
+		data: {
+			interview: {
+				...mockInterview,
+				status: "processing" as const,
+				conversation_analysis: null,
 			},
-			routing: {
-				path: "/a/:accountId/:projectId/interviews/:interviewId",
-				loader: () => ({
-					accountId: "account-1",
-					projectId: "project-1",
-					interview: mockInterview,
-					insights: mockInsights,
-					evidence: mockEvidence,
-					empathyMap: mockEmpathyMap,
-					peopleOptions: mockPeopleOptions,
-				}),
+			peopleOptions: mockPeopleOptions,
+			insights: [],
+			salesLens: null,
+			analysisJobs: [
+				{
+					id: "job-1",
+					status: "in_progress" as const,
+					status_detail: "Analyzing transcript...",
+					progress: 45,
+					trigger_run_id: "run-123",
+					created_at: "2025-01-10T16:00:00Z",
+					updated_at: "2025-01-10T16:30:00Z",
+				},
+			],
+			conversationAnalysis: null,
+		},
+	},
+}
+
+export const NoTranscript: Story = {
+	args: {
+		data: {
+			interview: {
+				...mockInterview,
+				status: "ready" as const,
+				hasTranscript: false,
+				hasFormattedTranscript: false,
+				conversation_analysis: null,
 			},
-		}),
+			peopleOptions: mockPeopleOptions,
+			insights: [],
+			salesLens: null,
+			analysisJobs: [],
+			conversationAnalysis: null,
+		},
+	},
+}
+
+export const MinimalInterview: Story = {
+	args: {
+		data: {
+			interview: {
+				...mockInterview,
+				title: "Quick Phone Call",
+				description: null,
+				questions: [],
+				participants: [],
+				primaryParticipant: null,
+				conversation_analysis: null,
+			},
+			peopleOptions: mockPeopleOptions,
+			insights: [],
+			salesLens: null,
+			analysisJobs: [],
+			conversationAnalysis: null,
+		},
 	},
 }

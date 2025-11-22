@@ -26,6 +26,7 @@
 		"paths": {
 			"~/*": ["./app/*"],
 			"@/*": ["./app/*"],
+			".storybook/*": ["./.storybook/*"],
 			"baml": ["./baml_client/index.ts"],
 			"baml/*": ["./baml_client/*"]
 		},

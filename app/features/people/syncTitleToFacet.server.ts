@@ -35,11 +35,7 @@ export async function syncTitleToJobFunctionFacet({
 		// If title is empty, remove job_function facet
 		if (!title || title.trim() === "") {
 			// Get job_function kind_id
-			const { data: kind } = await supabase
-				.from("facet_kind_global")
-				.select("id")
-				.eq("slug", "job_function")
-				.single()
+			const { data: kind } = await supabase.from("facet_kind_global").select("id").eq("slug", "job_function").single()
 
 			if (!kind) return
 
@@ -52,7 +48,11 @@ export async function syncTitleToJobFunctionFacet({
 
 			if (allJobFunctionFacets && allJobFunctionFacets.length > 0) {
 				const jobFunctionFacetIds = allJobFunctionFacets.map((f) => f.id)
-				await supabase.from("person_facet").delete().eq("person_id", personId).in("facet_account_id", jobFunctionFacetIds)
+				await supabase
+					.from("person_facet")
+					.delete()
+					.eq("person_id", personId)
+					.in("facet_account_id", jobFunctionFacetIds)
 			}
 
 			consola.info("Removed job_function facet for person", { personId })
@@ -129,7 +129,11 @@ export async function syncTitleToJobFunctionFacet({
 			const jobFunctionFacetIds = allJobFunctionFacets.map((f) => f.id).filter((id) => id !== facetAccountId)
 
 			if (jobFunctionFacetIds.length > 0) {
-				await supabase.from("person_facet").delete().eq("person_id", personId).in("facet_account_id", jobFunctionFacetIds)
+				await supabase
+					.from("person_facet")
+					.delete()
+					.eq("person_id", personId)
+					.in("facet_account_id", jobFunctionFacetIds)
 			}
 		}
 

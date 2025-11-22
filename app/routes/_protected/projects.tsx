@@ -128,7 +128,8 @@ function ProjectLayout({
 	const lastExpandedSize = useRef(30)
 
 	const hideProjectStatusAgent = matches.some(
-		(match) => typeof match.handle === "object" && (match.handle as { hideProjectStatusAgent?: boolean }).hideProjectStatusAgent
+		(match) =>
+			typeof match.handle === "object" && (match.handle as { hideProjectStatusAgent?: boolean }).hideProjectStatusAgent
 	)
 
 	useEffect(() => {

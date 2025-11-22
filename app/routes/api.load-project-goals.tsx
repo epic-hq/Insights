@@ -1,7 +1,7 @@
 import consola from "consola"
 import type { LoaderFunctionArgs } from "react-router"
 import { getProjectSectionsByKind } from "~/features/projects/db"
-import { PROJECT_SECTIONS, getSectionDefaultValue } from "~/features/projects/section-config"
+import { getSectionDefaultValue, PROJECT_SECTIONS } from "~/features/projects/section-config"
 import { getServerClient } from "~/lib/supabase/client.server"
 
 export async function loader({ request }: LoaderFunctionArgs) {

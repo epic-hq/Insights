@@ -62,11 +62,11 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 		runtimeContext,
 		context: system
 			? [
-				{
-					role: "system",
-					content: `## Context from the client's UI:\n${system}`,
-				},
-			]
+					{
+						role: "system",
+						content: `## Context from the client's UI:\n${system}`,
+					},
+				]
 			: undefined,
 		onFinish: async (data) => {
 			consola.log("project-setup onFinish", data)
@@ -90,7 +90,7 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 
 					// Check if research structure already exists
 					const checkResponse = await fetch(
-						`${request.url.split('/api')[0]}/api/check-research-structure?project_id=${projectId}`
+						`${request.url.split("/api")[0]}/api/check-research-structure?project_id=${projectId}`
 					)
 					const checkBody = await checkResponse.json()
 
@@ -112,13 +112,10 @@ export async function action({ request, context, params }: ActionFunctionArgs) {
 					if (setupState.unknowns?.length) formData.append("unknowns", setupState.unknowns.join("\n"))
 					formData.append("research_mode", "exploratory")
 
-					const generateResponse = await fetch(
-						`${request.url.split('/api')[0]}/api/generate-research-structure`,
-						{
-							method: "POST",
-							body: formData,
-						}
-					)
+					const generateResponse = await fetch(`${request.url.split("/api")[0]}/api/generate-research-structure`, {
+						method: "POST",
+						body: formData,
+					})
 
 					if (generateResponse.ok) {
 						const result = await generateResponse.json()

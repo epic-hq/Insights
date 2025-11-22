@@ -1,5 +1,5 @@
-import type { Meta, StoryObj } from "@storybook/react"
-import { reactRouterParameters, withRouter } from "storybook-addon-remix-react-router"
+import { withRouter } from ".storybook/with-router"
+import type { Meta, StoryObj } from "@storybook/react-vite"
 import { AnalyzeStageValidation } from "./validationStatus"
 
 const meta = {
@@ -10,26 +10,17 @@ const meta = {
 		layout: "centered",
 	},
 	tags: ["autodocs"],
-	argTypes: {
-		// Add controls here
-	},
 } satisfies Meta<typeof AnalyzeStageValidation>
 
 export default meta
 type Story = StoryObj<typeof meta>
 
+// Mock data that would normally come from loader
 export const Default: Story = {
 	parameters: {
-		reactRouter: reactRouterParameters({
-			location: {
-				pathParams: {},
-			},
-			routing: {
-				path: "/",
-				loader: () => ({
-					// Add mock data here
-				}),
-			},
-		}),
+		loaderData: {
+			// Add whatever data your component expects from useLoaderData()
+			// For now, empty object - add fields as you discover what's needed
+		},
 	},
 }

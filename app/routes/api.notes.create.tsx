@@ -1,7 +1,7 @@
-import type { ActionFunctionArgs } from "react-router"
 import consola from "consola"
-import { getServerClient } from "~/lib/supabase/client.server"
+import type { ActionFunctionArgs } from "react-router"
 import { upsertProjectSection } from "~/features/projects/db"
+import { getServerClient } from "~/lib/supabase/client.server"
 import type { Database } from "~/types"
 
 export async function action({ request }: ActionFunctionArgs) {

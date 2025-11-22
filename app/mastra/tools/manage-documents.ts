@@ -54,10 +54,7 @@ Operations:
 - read: Get document content by kind
 - list: List all documents for the project`,
 	inputSchema: z.object({
-		projectId: z
-			.string()
-			.optional()
-			.describe("Project ID. Defaults to current project in context."),
+		projectId: z.string().optional().describe("Project ID. Defaults to current project in context."),
 		operation: z
 			.enum(["create", "update", "upsert", "read", "list"])
 			.describe("Operation to perform: create, update, upsert, read, or list"),
@@ -67,14 +64,8 @@ Operations:
 			.describe(
 				"Document type identifier (e.g., 'positioning_statement', 'seo_strategy'). Required for create/update/upsert/read."
 			),
-		content: z
-			.string()
-			.optional()
-			.describe("Markdown content of the document. Required for create/update/upsert."),
-		metadata: z
-			.record(z.any())
-			.optional()
-			.describe("Optional metadata to store with the document (JSON object)"),
+		content: z.string().optional().describe("Markdown content of the document. Required for create/update/upsert."),
+		metadata: z.record(z.any()).optional().describe("Optional metadata to store with the document (JSON object)"),
 	}),
 	outputSchema: z.object({
 		success: z.boolean(),

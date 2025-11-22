@@ -15,14 +15,14 @@ export const getServerClient = (request: Request) => {
 				}[]
 			},
 			setAll(cookiesToSet) {
-				cookiesToSet.forEach(({ name, value, options }) =>
+				cookiesToSet.forEach(({ name, value, options }) => {
 					headers.append("Set-Cookie", serializeCookieHeader(name, value, options))
-				)
+				})
 			},
 		},
 	})
 
-	return { client: supabase, headers: headers }
+	return { client: supabase, headers }
 }
 
 export function createSupabaseAdminClient() {

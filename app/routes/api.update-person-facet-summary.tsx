@@ -24,21 +24,19 @@ export async function action({ request }: ActionFunctionArgs) {
 		consola.log("Updating facet summary:", person_id, kind_slug, summary)
 
 		// Update or insert the facet summary
-		const { error } = await supabase
-			.from("person_facet_summaries")
-			.upsert(
-				{
-					person_id,
-					kind_slug,
-					summary,
-					account_id,
-					project_id,
-					generated_at: new Date().toISOString(),
-				},
-				{
-					onConflict: "person_id,kind_slug",
-				}
-			)
+		const { error } = await supabase.from("person_facet_summaries").upsert(
+			{
+				person_id,
+				kind_slug,
+				summary,
+				account_id,
+				project_id,
+				generated_at: new Date().toISOString(),
+			},
+			{
+				onConflict: "person_id,kind_slug",
+			}
+		)
 
 		if (error) {
 			consola.error("Error updating facet summary:", error)

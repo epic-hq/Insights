@@ -107,7 +107,7 @@ export function LinkOrganizationDialog({
 									<p className="text-xs">Try creating a new one</p>
 								</div>
 							) : (
-								<div className="p-2 space-y-2">
+								<div className="space-y-2 p-2">
 									{filteredOrganizations.map((org) => (
 										<button
 											key={org.id}

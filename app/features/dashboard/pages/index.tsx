@@ -2,10 +2,13 @@ import consola from "consola"
 import { Link, type LoaderFunctionArgs, type MetaFunction, useLoaderData } from "react-router"
 import type { Database } from "~/../supabase/types"
 import type { TreeNode } from "~/components/charts/TreeMap"
+import TagDisplay from "~/components/TagDisplay"
 import { Button } from "~/components/ui/button"
 import Dashboard from "~/features/dashboard/components/Dashboard"
-import type { KPI } from "~/features/dashboard/components/KPIBar"
+import KPIBar, { type KPI } from "~/features/dashboard/components/KPIBar"
+import RecentInterviewsTable from "~/features/dashboard/components/RecentInterviewsTable"
 import { getPersonas } from "~/features/personas/db"
+import AddInterviewButton from "~/features/upload/components/AddInterviewButton"
 import { userContext } from "~/server/user-context"
 
 import type { InsightView, OpportunityView } from "~/types"
@@ -414,7 +417,7 @@ export default function Index() {
 						</Link>
 					</div>
 					{data.interviews.length > 0 ? (
-						<RecentInterviewsTable interviews={data.interviews} />
+						<RecentInterviewsTable rows={data.interviews} />
 					) : (
 						<div className="py-6 text-center">
 							<p className="mb-3 text-muted-foreground text-sm">No interviews yet</p>

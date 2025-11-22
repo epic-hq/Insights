@@ -1,5 +1,6 @@
-import { useState } from "react"
 import { X } from "lucide-react"
+import { useState } from "react"
+import { Badge } from "~/components/ui/badge"
 import { Button } from "~/components/ui/button"
 import {
 	Dialog,
@@ -9,17 +10,10 @@ import {
 	DialogHeader,
 	DialogTitle,
 } from "~/components/ui/dialog"
-import { Label } from "~/components/ui/label"
-import { Textarea } from "~/components/ui/textarea"
 import { Input } from "~/components/ui/input"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select"
-import { Badge } from "~/components/ui/badge"
+import { Label } from "~/components/ui/label"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
+import { Textarea } from "~/components/ui/textarea"
 
 export type NoteType = "meeting_notes" | "research_notes" | "call_notes" | "observation" | "idea" | "followup"
 
@@ -128,7 +122,7 @@ export function QuickNoteDialog({
 
 	return (
 		<Dialog open={open} onOpenChange={onOpenChange}>
-			<DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+			<DialogContent className="max-h-[90vh] max-w-2xl overflow-y-auto">
 				<DialogHeader>
 					<DialogTitle>Quick Note</DialogTitle>
 					<DialogDescription>
@@ -257,15 +251,11 @@ export function QuickNoteDialog({
 							</Button>
 						</div>
 						{tags.length > 0 && (
-							<div className="flex flex-wrap gap-2 mt-2">
+							<div className="mt-2 flex flex-wrap gap-2">
 								{tags.map((tag) => (
 									<Badge key={tag} variant="secondary" className="gap-1">
 										{tag}
-										<button
-											type="button"
-											onClick={() => removeTag(tag)}
-											className="hover:text-destructive"
-										>
+										<button type="button" onClick={() => removeTag(tag)} className="hover:text-destructive">
 											<X className="h-3 w-3" />
 										</button>
 									</Badge>

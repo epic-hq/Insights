@@ -63,7 +63,9 @@ export default function GettingStarted() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground">
-							Use our AI-powered setup assistant (via chat or form) to define your research. Answer 8 key questions and our AI will automatically generate your complete research plan including decision questions, research questions, and interview prompts.
+							Use our AI-powered setup assistant (via chat or form) to define your research. Answer 8 key questions and
+							our AI will automatically generate your complete research plan including decision questions, research
+							questions, and interview prompts.
 						</p>
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">
@@ -86,7 +88,9 @@ export default function GettingStarted() {
 						<div className="rounded-lg border-blue-500 border-l-4 bg-blue-50 p-3 dark:bg-blue-950/20">
 							<p className="font-medium text-sm">💡 AI-Powered Setup</p>
 							<p className="mt-1 text-muted-foreground text-sm">
-								After you answer all 8 questions, our AI automatically generates a complete research plan with strategic decision questions, tactical research questions, and ready-to-use interview prompts—saving you hours of planning work.
+								After you answer all 8 questions, our AI automatically generates a complete research plan with strategic
+								decision questions, tactical research questions, and ready-to-use interview prompts—saving you hours of
+								planning work.
 							</p>
 						</div>
 					</CardContent>
@@ -104,7 +108,8 @@ export default function GettingStarted() {
 					</CardHeader>
 					<CardContent className="space-y-3">
 						<p className="text-muted-foreground">
-							After setup, your AI-generated research plan is ready! Review the decision questions, research questions, and interview prompts. Customize them if needed—you're in full control.
+							After setup, your AI-generated research plan is ready! Review the decision questions, research questions,
+							and interview prompts. Customize them if needed—you're in full control.
 						</p>
 						<div className="space-y-2">
 							<div className="flex items-start gap-2">
@@ -127,7 +132,9 @@ export default function GettingStarted() {
 						<div className="rounded-lg border-green-500 border-l-4 bg-green-50 p-3 dark:bg-green-950/20">
 							<p className="font-medium text-sm">✨ Smart Generation</p>
 							<p className="mt-1 text-muted-foreground text-sm">
-								Questions are automatically linked: Interview prompts connect to research questions, which connect to decision questions—giving you a clear hierarchy from strategic goals down to specific interview questions.
+								Questions are automatically linked: Interview prompts connect to research questions, which connect to
+								decision questions—giving you a clear hierarchy from strategic goals down to specific interview
+								questions.
 							</p>
 						</div>
 					</CardContent>

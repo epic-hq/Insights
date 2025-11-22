@@ -61,7 +61,8 @@ function processSection(kind: string, data: unknown): Omit<ProjectSectionData, "
 			return null
 		}
 		// Always save arrays, including empty ones to handle deletions
-		const formatter = config.arrayFormatter === "spaced" ? sectionFormatters.array_spaced : sectionFormatters.array_numbered
+		const formatter =
+			config.arrayFormatter === "spaced" ? sectionFormatters.array_spaced : sectionFormatters.array_numbered
 		const formatted = formatter(data, kind)
 		consola.log(`✅ Array section formatted (${config.arrayFormatter}):`, formatted)
 		return { kind, ...formatted }
@@ -242,9 +243,7 @@ export async function action({ request }: ActionFunctionArgs) {
 				if ("error" in result && result.error) {
 					// Handle both string errors and Supabase error objects
 					const errorMessage =
-						typeof result.error === "string"
-							? result.error
-							: result.error?.message || JSON.stringify(result.error)
+						typeof result.error === "string" ? result.error : result.error?.message || JSON.stringify(result.error)
 					consola.error(`❌ Save failed for ${sectionKind}:`, errorMessage)
 					return Response.json({ error: errorMessage }, { status: 400 })
 				}
@@ -305,9 +304,7 @@ export async function action({ request }: ActionFunctionArgs) {
 
 						if ("error" in result && result.error) {
 							const errorMessage =
-								typeof result.error === "string"
-									? result.error
-									: result.error?.message || JSON.stringify(result.error)
+								typeof result.error === "string" ? result.error : result.error?.message || JSON.stringify(result.error)
 							consola.error(`Failed to save section ${section.kind}:`, errorMessage)
 							return Response.json({ error: `Failed to save ${section.kind}: ${errorMessage}` }, { status: 400 })
 						}

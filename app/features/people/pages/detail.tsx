@@ -530,9 +530,7 @@ export default function PersonDetail() {
 				placeholder="Add job title"
 				className="font-medium text-muted-foreground text-sm"
 			/>
-			{person.segment && (
-				<span className="font-medium text-muted-foreground text-sm">{person.segment}</span>
-			)}
+			{person.segment && <span className="font-medium text-muted-foreground text-sm">{person.segment}</span>}
 			{person.age && <span className="font-medium text-muted-foreground text-sm">{person.age} yrs old</span>}
 		</>
 	)
@@ -638,14 +636,14 @@ export default function PersonDetail() {
 
 				<div className="grid gap-6 xl:grid-cols-[2fr,1fr]">
 					<div className="space-y-6">
-				{facetLensGroups.length > 0 && (
-					<PersonFacetLenses
-						groups={facetLensGroups}
-						personId={person.id}
-						availableFacetsByKind={availableFacetsByKind}
-						isGenerating={isRefreshingDescription || isFacetSummaryPending}
-					/>
-				)}
+						{facetLensGroups.length > 0 && (
+							<PersonFacetLenses
+								groups={facetLensGroups}
+								personId={person.id}
+								availableFacetsByKind={availableFacetsByKind}
+								isGenerating={isRefreshingDescription || isFacetSummaryPending}
+							/>
+						)}
 
 						{relatedInsights.length > 0 && (
 							<section className="space-y-3">
