@@ -24,24 +24,34 @@ When designing or architecting a new feature, or fixing a bug, consult relevant 
 
 ## Recent Implementations
 
-### Task System (Nov 2024) ✅ **Phase 1 Complete**
+### Task System (Nov 2024) ✅ **Phase 2 Complete**
 Unified task/feature management system for project prioritization and execution.
 
 **Completed:**
-- Database schema with 3 tables: `tasks`, `task_activity`, `agent_task_runs`
-- Full CRUD operations in `app/features/tasks/db.ts`
-- RESTful API at `/api/tasks` with filters and bulk operations
-- Auto-seeding from mock data on first load
-- Priorities page reads from database via loader
+- ✅ Database schema with 3 tables: `tasks`, `task_activity`, `agent_task_runs`
+- ✅ Full CRUD operations in `app/features/tasks/db.ts`
+- ✅ RESTful API at `/api/tasks` with filters and bulk operations
+- ✅ Auto-seeding from mock data on first load
+- ✅ Priorities page reads from database via loader with inline editing
+- ✅ Inline editing for all task fields (status, priority, title, description, impact, stage, etc.)
+- ✅ Remix action handlers for CRUD operations
+- ✅ Optimistic UI updates for instant feedback
+- ✅ Sort indicators on columns (priority, impact, feature)
+- ✅ Cluster filtering and grouping with user-controlled expansion
+- ✅ Free-form stage field (removed database constraint)
+- ✅ **ProjectStatusAgent CRUD tools** - Agent can create, read, update, and delete tasks via voice/chat
 
-**In Progress:**
-- Inline editing for task fields (status, priority, title, etc.)
-- Remix action handlers for CRUD operations
+**Agent Integration Complete:**
+- `fetchTasks` - List/search tasks with filters
+- `createTask` - Create new tasks with full field support
+- `updateTask` - Modify existing tasks (status, priority, etc.)
+- `deleteTask` - Archive tasks
 
 **Next Steps:**
-- Voice integration with ProjectStatusAgent ("Mark STT input as in progress")
-- Agent assignment and execution tracking
-- Task detail modal with full metadata
+- Agent assignment and execution tracking (agent_task_runs integration)
+- Task detail modal with full metadata and activity history
+- Voice commands for bulk task operations
+- Task dependencies and blocking relationships UI
 
 See `docs/features/task-system-technical-design.md` for full implementation details.
 

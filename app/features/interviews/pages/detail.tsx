@@ -470,27 +470,27 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 			participants = (participantData || []).map((row) => {
 				const person = row.people as
 					| {
-							id: string
-							name: string | null
-							segment: string | null
-							project_id: string | null
-							people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
-							[key: string]: unknown
-					  }
+						id: string
+						name: string | null
+						segment: string | null
+						project_id: string | null
+						people_personas?: Array<{ personas?: { id?: string; name?: string | null } | null }>
+						[key: string]: unknown
+					}
 					| undefined
 				const valid = !!person && person.project_id === projectId
 				const minimal = person
 					? {
-							id: person.id,
-							name: person.name,
-							segment: person.segment,
-							project_id: person.project_id,
-							people_personas: Array.isArray(person.people_personas)
-								? person.people_personas.map((pp) => ({
-										personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
-									}))
-								: undefined,
-						}
+						id: person.id,
+						name: person.name,
+						segment: person.segment,
+						project_id: person.project_id,
+						people_personas: Array.isArray(person.people_personas)
+							? person.people_personas.map((pp) => ({
+								personas: pp?.personas ? { id: pp.personas.id, name: pp.personas.name } : null,
+							}))
+							: undefined,
+					}
 					: undefined
 				return {
 					id: row.id,
@@ -929,7 +929,9 @@ export default function InterviewDetail({ enableRecording = false }: { enableRec
 
 	// Derived state for processing status
 	const isProcessing = analysisState ? ACTIVE_ANALYSIS_STATUSES.has(analysisState.status) : false
-	const showProcessingBanner = isProcessing
+	const hasActiveRun = Boolean(activeRunId)
+	const isProgressActive = !progressInfo.isComplete && !progressInfo.hasError
+	const showProcessingBanner = isProcessing || (isProgressActive && (hasActiveRun || interview.status !== "ready"))
 
 	// Move all useMemo and useEffect hooks to the top
 	const keyTakeawaysDraft = useMemo(
