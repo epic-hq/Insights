@@ -1653,8 +1653,10 @@ export async function analyzeThemesAndPersonaCore({
 
 	const personData = evidenceResult.personData
 	const personName = participant?.name?.trim() || evidenceResult.primaryPersonName || generateFallbackName()
+	const { firstname, lastname } = parseFullName(personName)
 	const personUpdatePayload: PeopleUpdate = {
-		name: personName,
+		firstname: firstname || null,
+		lastname: lastname || null,
 		description: participant?.participantDescription?.trim() || evidenceResult.primaryPersonDescription || null,
 		segment: participant?.segment?.trim() || evidenceResult.primaryPersonSegments[0] || metadata.segment || null,
 		contact_info: participant?.contactInfo || null,
@@ -2089,10 +2091,12 @@ async function ensureFallbackPerson(
 	interviewRecord: Interview
 ): Promise<string> {
 	const fallbackName = generateFallbackPersonName(metadata)
+	const { firstname, lastname } = parseFullName(fallbackName)
 	const payload: PeopleInsert = {
 		account_id: metadata.accountId,
 		project_id: metadata.projectId,
-		name: fallbackName,
+		firstname: firstname || null,
+		lastname: lastname || null,
 	}
 	const { data, error } = await db
 		.from("people")

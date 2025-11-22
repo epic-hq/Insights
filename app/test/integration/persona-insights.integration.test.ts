@@ -31,7 +31,8 @@ describe("Persona-Insight Integration Tests", () => {
 		const { data: person } = await supabase
 			.from("people")
 			.insert({
-				name: "John Doe",
+				firstname: "John",
+				lastname: "Doe",
 				persona_id: persona.id,
 				account_id: TEST_ACCOUNT_ID,
 			})
@@ -104,7 +105,8 @@ describe("Persona-Insight Integration Tests", () => {
 		const { data: person } = await supabase
 			.from("people")
 			.insert({
-				name: "Jane Smith",
+				firstname: "Jane",
+				lastname: "Smith",
 				persona_id: null, // No persona assigned
 				account_id: TEST_ACCOUNT_ID,
 			})

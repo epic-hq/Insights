@@ -80,7 +80,27 @@ export type TaskInsert = Omit<
 	Task,
 	"id" | "created_at" | "updated_at" | "completed_at" | "account_id" | "project_id" | "created_by"
 > &
-	Partial<Pick<Task, "status" | "priority" | "assigned_to" | "tags" | "depends_on_task_ids" | "blocks_task_ids">>
+	Partial<
+		Pick<
+			Task,
+			| "status"
+			| "priority"
+			| "assigned_to"
+			| "tags"
+			| "depends_on_task_ids"
+			| "blocks_task_ids"
+			| "parent_task_id"
+			| "description"
+			| "benefit"
+			| "segments"
+			| "impact"
+			| "stage"
+			| "reason"
+			| "due_date"
+			| "estimated_effort"
+			| "actual_hours"
+		>
+	>
 
 export type TaskUpdate = Partial<Omit<Task, "id" | "created_at" | "account_id" | "project_id" | "created_by">>
 

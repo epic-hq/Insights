@@ -127,7 +127,8 @@ export async function seedTestData() {
 	await testDb.from("people").insert({
 		id: "person-1",
 		account_id: TEST_ACCOUNT_ID,
-		name: "Sarah Chen",
+		firstname: "Sarah",
+		lastname: "Chen",
 		segment: "enterprise",
 	})
 

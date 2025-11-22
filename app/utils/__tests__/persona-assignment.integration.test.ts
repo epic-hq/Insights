@@ -59,7 +59,8 @@ describe.skipIf(skipIntegration)("Persona Assignment Integration", () => {
 			.from("people")
 			.insert({
 				account_id: TEST_ACCOUNT_ID,
-				name: "Test Person",
+				firstname: "Test",
+				lastname: "Person",
 			})
 			.select()
 			.single()
