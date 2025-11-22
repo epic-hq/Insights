@@ -21,25 +21,9 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		.select("*", { count: "exact", head: true })
 		.eq("theme_id", themeId)
 
-	// Get insights count (proxy via interviews)
-	const { data: interviewIds } = await supabase
-		.from("theme_evidence")
-		.select("evidence:evidence_id(interview_id)")
-		.eq("theme_id", themeId)
-
-	type LinkRow = { evidence: { interview_id: string } | null }
-	const uniqueInterviewIds = Array.from(
-		new Set(((interviewIds ?? []) as LinkRow[]).map((link) => link.evidence?.interview_id).filter(Boolean))
-	) as string[]
-
-	let insightsCount = 0
-	if (uniqueInterviewIds.length > 0) {
-		const { count } = await supabase
-			.from("themes")
-			.select("*", { count: "exact", head: true })
-			.in("interview_id", uniqueInterviewIds)
-		insightsCount = count ?? 0
-	}
+	// Note: insights_count is deprecated in the new schema
+	// Themes are project-level and not directly linked to interviews
+	const insightsCount = 0
 
 	// Get evidence options for linking form
 	let evidenceQuery = supabase

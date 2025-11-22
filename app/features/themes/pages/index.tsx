@@ -20,12 +20,20 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	if (!projectId) throw new Response("Missing projectId", { status: 400 })
 	if (!supabase) throw new Response("Supabase client not available", { status: 500 })
 
+	console.log(`[ThemesIndex] Loading themes for project: ${projectId}`)
+
 	// 1) Load themes for project
 	const { data: themes, error: tErr } = await supabase
 		.from("themes")
 		.select("id, name, statement, created_at")
 		.eq("project_id", projectId)
 		.order("created_at", { ascending: false })
+
+	console.log(`[ThemesIndex] Loaded ${themes?.length || 0} themes, error:`, tErr)
+	if (themes?.length > 0) {
+		console.log(`[ThemesIndex] Sample theme:`, themes[0])
+	}
+
 	if (tErr) throw new Error(`Failed to load themes: ${tErr.message}`)
 
 	// 2) Load all theme_evidence rows for this project, with evidence.interview_id to derive insights coverage
@@ -41,6 +49,10 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 		accountId: params.accountId,
 		projectId,
 	})
+	console.log(`[ThemesIndex] Loaded ${insights?.length || 0} insights from getInsights, error:`, iErr)
+	if (insights?.length > 0) {
+		console.log(`[ThemesIndex] Sample insight:`, insights[0])
+	}
 	if (iErr) throw new Error(`Failed to load insights: ${iErr.message}`)
 
 	// 4) Load all evidence used anywhere (for persona matrix)
@@ -215,22 +227,23 @@ export default function ThemesIndex() {
 	const [searchQuery, setSearchQuery] = useState("")
 
 	const visibleInsights = useMemo(() => {
-		return insights.filter((insight) => {
+		const filtered = insights.filter((insight) => {
 			const textFields = [
 				insight.name,
-				insight.pain,
-				insight.details,
-				insight.category,
 				insight.statement,
-				insight.jtbd,
-				insight.desired_outcome,
-				insight.evidence,
+				insight.inclusion_criteria,
+				insight.exclusion_criteria,
 			]
 				.map((value) => (typeof value === "string" ? value.trim() : ""))
 				.filter((value) => value.length > 0)
 
 			return textFields.length > 0
 		})
+		console.log(`[ThemesIndex Client] Filtered ${insights.length} insights -> ${filtered.length} visible`)
+		if (filtered.length === 0 && insights.length > 0) {
+			console.log(`[ThemesIndex Client] Sample filtered insight:`, insights[0])
+		}
+		return filtered
 	}, [insights])
 
 	const insightsTableData = useMemo(() => [...visibleInsights], [visibleInsights])
@@ -242,14 +255,10 @@ export default function ThemesIndex() {
 		return visibleInsights.filter((insight: Insight & { [key: string]: any }) => {
 			const haystack = [
 				insight.name,
-				insight.pain,
-				insight.details,
-				insight.category,
-				insight.emotional_response,
-				insight.desired_outcome,
-				insight.jtbd,
-				insight.evidence,
-				insight.motivation,
+				insight.statement,
+				insight.inclusion_criteria,
+				insight.exclusion_criteria,
+				insight.synonyms,
 				insight?.persona_insights?.map((pi: any) => pi.personas?.name).join(" "),
 				insight?.linked_themes?.map((theme: any) => theme.name).join(" "),
 			]
@@ -280,7 +289,7 @@ export default function ThemesIndex() {
 					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						className="pl-9"
-						placeholder="Search by insight, pain, tags, personas…"
+						placeholder="Search themes by name, statement, personas…"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 					/>

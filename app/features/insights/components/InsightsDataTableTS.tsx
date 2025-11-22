@@ -10,7 +10,7 @@ import {
 	type SortingState,
 	useReactTable,
 } from "@tanstack/react-table"
-import { useMemo, useState } from "react"
+import React, { useMemo, useState } from "react"
 import { Link } from "react-router-dom"
 import { Badge } from "~/components/ui/badge"
 import { EmotionBadge } from "~/components/ui/emotion-badge"
@@ -38,28 +38,21 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 	const columns = useMemo<ColumnDef<Insight>[]>(
 		() => [
 			{
-				id: "pain",
-				accessorFn: (row) =>
-					row.pain ||
-					row.name ||
-					(row as any).statement ||
-					row.details ||
-					row.jtbd ||
-					row.desired_outcome ||
-					"Untitled insight",
-				header: () => "Pain",
+				id: "name",
+				accessorFn: (row) => row.name || "Untitled theme",
+				header: () => "Theme Name",
 				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => <div className="font-medium">{cell.getValue() as string}</div>,
 			},
 			{
-				id: "journey_stage",
-				accessorFn: (row) => row.journey_stage || row.category || "—",
-				header: () => "Stage",
+				id: "statement",
+				accessorFn: (row) => (row as any).statement || "—",
+				header: () => "Statement",
 				filterFn: "includesString",
 				cell: (cell: CellContext<Insight, unknown>) => {
-					const value = cell.getValue() as string | null
+					const value = cell.getValue() as string
 					return value && value !== "—" ? (
-						<Badge variant="outline">{value}</Badge>
+						<div className="max-w-md truncate text-muted-foreground text-sm">{value}</div>
 					) : (
 						<span className="text-muted-foreground/60">—</span>
 					)
@@ -85,19 +78,6 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 							))}
 						</div>
 					) : null
-				},
-			},
-			{
-				id: "emotional_response",
-				accessorKey: "emotional_response",
-				header: () => "Emotion",
-				cell: (cell: CellContext<Insight, unknown>) => {
-					const emotion = cell.getValue() as string | null
-					return emotion ? (
-						<EmotionBadge emotion_string={emotion} muted />
-					) : (
-						<span className="text-muted-foreground/60">—</span>
-					)
 				},
 			},
 			{
@@ -130,9 +110,9 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 		<div>
 			<Table>
 				<TableHeader>
-					{table.getHeaderGroups().map((headerGroup) => (
-						<>
-							<TableRow key={headerGroup.id}>
+					{table.getHeaderGroups().map((headerGroup, idx) => (
+						<React.Fragment key={headerGroup.id}>
+							<TableRow key={`${headerGroup.id}-header`}>
 								{headerGroup.headers.map((header) => (
 									<TableHead
 										key={header.id}
@@ -144,21 +124,22 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 									</TableHead>
 								))}
 							</TableRow>
-							<TableRow>
+							<TableRow key={`${headerGroup.id}-filters`}>
 								{headerGroup.headers.map((header) => {
 									const colId = header.column.id
 									const col = table.getColumn(colId)
-									const isFacet = ["journey_stage", "personas"].includes(colId)
-									const isTextFilter = colId === "pain"
+									const isFacet = ["personas"].includes(colId)
+									const isTextFilter = ["name", "statement"].includes(colId)
 									if (!isFacet && !isTextFilter) return <TableHead key={colId} />
 
-									// Handle text filter for Pain column
+									// Handle text filters for Name and Statement columns
 									if (isTextFilter) {
 										const filterValue = col?.getFilterValue() as string | undefined
+										const placeholder = colId === "name" ? "Filter themes..." : "Filter statement..."
 										return (
 											<TableHead key={colId}>
 												<Input
-													placeholder="Filter pain..."
+													placeholder={placeholder}
 													value={filterValue ?? ""}
 													onChange={(e) => col?.setFilterValue(e.target.value || undefined)}
 													className="h-7 w-full text-xs"
@@ -167,6 +148,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 										)
 									}
 
+									// Handle persona facet filter
 									let uniqueValues: string[] = []
 									if (colId === "personas") {
 										uniqueValues = Array.from(
@@ -176,48 +158,10 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 												)
 											)
 										)
-									} else if (colId === "journey_stage") {
-										uniqueValues = Array.from(
-											new Set(
-												data
-													.map((row) => row.journey_stage || (row as any).category || null)
-													.filter(Boolean) as string[]
-											)
-										)
-										uniqueValues.unshift("—")
-									} else {
-										uniqueValues = Array.from(
-											new Set(data.map((row) => row[colId as keyof Insight]).filter(Boolean) as string[])
-										)
 									}
 									const filterValue = col?.getFilterValue() as string | undefined
 
-									if (colId === "journey_stage") {
-										return (
-											<TableHead key={colId}>
-												<Select
-													value={filterValue ?? "__ALL__"}
-													onValueChange={(val) => col?.setFilterValue(val === "__ALL__" ? undefined : val)}
-												>
-													<SelectTrigger className="h-7 w-32 text-xs">
-														<SelectValue placeholder="All stages" />
-													</SelectTrigger>
-													<SelectContent>
-														<SelectGroup>
-															<SelectItem value="__ALL__">All stages</SelectItem>
-															{uniqueValues.map((val) => (
-																<SelectItem key={String(val)} value={String(val)}>
-																	{String(val)}
-																</SelectItem>
-															))}
-														</SelectGroup>
-													</SelectContent>
-												</Select>
-											</TableHead>
-										)
-									}
-
-									// Default: keep buttons for persona/priority
+									// Persona filter with buttons
 									return (
 										<TableHead key={colId}>
 											<div className="flex flex-wrap gap-1">
@@ -249,7 +193,7 @@ export function InsightsDataTable({ data }: InsightsDataTableProps) {
 									)
 								})}
 							</TableRow>
-						</>
+						</React.Fragment>
 					))}
 				</TableHeader>
 				<TableBody>

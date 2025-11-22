@@ -21,13 +21,7 @@ import { redirect, useFetcher, useLoaderData } from "react-router"
 import { Button } from "~/components/ui/button"
 import InlineEdit from "~/components/ui/inline-edit"
 import { Popover, PopoverContent, PopoverTrigger } from "~/components/ui/popover"
-import {
-	Select,
-	SelectContent,
-	SelectItem,
-	SelectTrigger,
-	SelectValue,
-} from "~/components/ui/select"
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "~/components/ui/select"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
 import { getTasks, updateTask } from "~/features/tasks/db"
 import { seedTasks } from "~/features/tasks/seed"
@@ -269,7 +263,7 @@ function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priori
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "priority") {
 			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? Number.parseInt(optimisticValue as string) as Priority : value
+			return optimisticValue ? (Number.parseInt(optimisticValue as string) as Priority) : value
 		}
 		return value
 	}, [fetcher.formData, taskId, value])
@@ -301,11 +295,7 @@ function EditablePriorityCell({ taskId, value }: { taskId: string; value: Priori
 	return (
 		<Popover open={open} onOpenChange={setOpen}>
 			<PopoverTrigger asChild>
-				<Button
-					variant="ghost"
-					size="sm"
-					className="h-auto p-0 hover:bg-transparent"
-				>
+				<Button variant="ghost" size="sm" className="h-auto p-0 hover:bg-transparent">
 					<span className={`inline-flex items-center rounded-full px-2 py-0.5 font-medium text-xs ${badge.className}`}>
 						{badge.label}
 					</span>
@@ -357,7 +347,7 @@ function EditableImpactCell({ taskId, value }: { taskId: string; value: Impact }
 	const displayValue = React.useMemo(() => {
 		if (fetcher.formData && fetcher.formData.get("taskId") === taskId && fetcher.formData.get("field") === "impact") {
 			const optimisticValue = fetcher.formData.get("value")
-			return optimisticValue ? Number.parseInt(optimisticValue as string) as Impact : value
+			return optimisticValue ? (Number.parseInt(optimisticValue as string) as Impact) : value
 		}
 		return value
 	}, [fetcher.formData, taskId, value])
@@ -663,7 +653,7 @@ export default function FeaturePrioritizationPage() {
 
 	return (
 		<div className="container mx-auto p-6">
-			<h1 className="mb-6 font-bold text-2xl">Feature Prioritization</h1>
+			<h1 className="mb-6 font-bold text-2xl">Priorities</h1>
 
 			<div className="space-y-3">
 				{/* Filters */}
@@ -705,12 +695,7 @@ export default function FeaturePrioritizationPage() {
 						))}
 					</select>
 
-					<Button
-						variant="outline"
-						size="sm"
-						onClick={() => table.toggleAllRowsExpanded()}
-						className="text-xs"
-					>
+					<Button variant="outline" size="sm" onClick={() => table.toggleAllRowsExpanded()} className="text-xs">
 						{table.getIsAllRowsExpanded() ? "Collapse All" : "Expand All"}
 					</Button>
 				</div>
@@ -741,8 +726,12 @@ export default function FeaturePrioritizationPage() {
 													onClick={row.getToggleExpandedHandler()}
 													className="flex items-center gap-2 hover:text-primary"
 												>
-													{row.getIsExpanded() ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-													<span className="uppercase tracking-wide text-xs">
+													{row.getIsExpanded() ? (
+														<ChevronDown className="h-4 w-4" />
+													) : (
+														<ChevronRight className="h-4 w-4" />
+													)}
+													<span className="text-xs uppercase tracking-wide">
 														{String(row.groupingValue)} ({row.subRows.length})
 													</span>
 												</button>

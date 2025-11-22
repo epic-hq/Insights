@@ -16,19 +16,12 @@ export const getInsights = async ({
 		.from("themes")
 		.select(`
 			id,
-			interview_id,
 			name,
-			pain,
-			details,
-			category,
-			journey_stage,
-			emotional_response,
-			desired_outcome,
-			jtbd,
-			impact,
-			evidence,
-			motivation,
-			contradictions,
+			statement,
+			inclusion_criteria,
+			exclusion_criteria,
+			synonyms,
+			anti_examples,
 			updated_at,
 			project_id,
 			created_at
@@ -38,7 +31,22 @@ export const getInsights = async ({
 
 	const { data, error } = await baseQuery
 	const insightIds = data?.map((i) => i.id) || []
-	const interviewIds = data?.map((i) => i.interview_id).filter(Boolean) as string[]
+
+	// Get interview IDs via theme_evidence junction table
+	const { data: evidenceLinks } = insightIds.length
+		? await supabase
+				.from("theme_evidence")
+				.select("theme_id, evidence:evidence_id(interview_id)")
+				.in("theme_id", insightIds)
+		: { data: null }
+
+	const interviewIds = Array.from(
+		new Set(
+			(evidenceLinks as any)
+				?.map((link: any) => link.evidence?.interview_id)
+				.filter(Boolean) as string[]
+		)
+	) || []
 
 	const [tagsResult, personasResult, interviewsResult, priorityResult, votesResult] = insightIds.length
 		? await Promise.all([
@@ -87,36 +95,19 @@ export const getInsights = async ({
 		voteCountMap.set(row.entity_id, (voteCountMap.get(row.entity_id) ?? 0) + 1)
 	})
 
-	// Get linked themes for all insights via evidence relationship
-	const themesMap = new Map<string, any[]>()
-	if (insightIds.length > 0) {
-		const { data: themeLinks } = await supabase
-			.from("theme_evidence")
-			.select(`
-				themes:themes (id, name, statement),
-				evidence:evidence (interview_id)
-			`)
-			.eq("project_id", projectId)
-
-		// Build map of interview_id -> themes
-		const interviewThemesMap = new Map<string, any[]>()
-		themeLinks?.forEach((link) => {
+	// Build interview map for each theme via evidence links
+	const themeInterviewsMap = new Map<string, string[]>()
+	if (evidenceLinks) {
+		(evidenceLinks as any).forEach((link: any) => {
+			const themeId = link.theme_id
 			const interviewId = link.evidence?.interview_id
-			if (interviewId && link.themes) {
-				if (!interviewThemesMap.has(interviewId)) {
-					interviewThemesMap.set(interviewId, [])
+			if (themeId && interviewId) {
+				if (!themeInterviewsMap.has(themeId)) {
+					themeInterviewsMap.set(themeId, [])
 				}
-				interviewThemesMap.get(interviewId)?.push(link.themes)
-			}
-		})
-
-		// Map themes to insights via interview_id
-		data?.forEach((insight) => {
-			if (insight.interview_id) {
-				const themes = interviewThemesMap.get(insight.interview_id) || []
-				// Deduplicate themes by id
-				const uniqueThemes = themes.filter((theme, index, arr) => arr.findIndex((t) => t.id === theme.id) === index)
-				themesMap.set(insight.id, uniqueThemes)
+				if (!themeInterviewsMap.get(themeId)?.includes(interviewId)) {
+					themeInterviewsMap.get(themeId)?.push(interviewId)
+				}
 			}
 		})
 	}
@@ -126,14 +117,19 @@ export const getInsights = async ({
 		priority: priorityMap.get(insight.id) ?? 0,
 		vote_count: voteCountMap.get(insight.id) ?? 0,
 		persona_insights: personasMap.get(insight.id)?.map((person) => ({ personas: person })) ?? [],
-		interviews: insight.interview_id ? [interviewsMap.get(insight.interview_id) || null].filter(Boolean) : [],
+		interviews: (themeInterviewsMap.get(insight.id) || [])
+			.map((id) => interviewsMap.get(id))
+			.filter(Boolean),
 		insight_tags:
 			tagsMap.get(insight.id)?.map((tag) => ({
 				tag: tag.tag,
 				term: tag.term,
 				definition: tag.definition,
 			})) || [],
-		linked_themes: themesMap.get(insight.id) || [],
+		linked_themes: [], // Themes are top-level now, not nested
+		// Add backward compatibility fields
+		category: null,
+		interview_id: themeInterviewsMap.get(insight.id)?.[0] || null, // Use first interview for backwards compat
 	}))
 	return { data: transformedData, error }
 }
@@ -153,19 +149,12 @@ export const getInsightById = async ({
 		.from("themes")
 		.select(`
 			id,
-			interview_id,
 			name,
-			pain,
-			details,
-			category,
-			journey_stage,
-			emotional_response,
-			desired_outcome,
-			jtbd,
-			impact,
-			evidence,
-			motivation,
-			contradictions,
+			statement,
+			inclusion_criteria,
+			exclusion_criteria,
+			synonyms,
+			anti_examples,
 			updated_at,
 			project_id,
 			created_at

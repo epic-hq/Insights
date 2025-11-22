@@ -176,51 +176,50 @@ export const getInterviewInsights = async ({
 	supabase: SupabaseClient<Database>
 	interviewId: string
 }) => {
-	// Fetch insights related to this interview with junction table tags
+	// Fetch themes related to this interview via theme_evidence junction and evidence table
+	// Note: Themes are now project-level entities, not directly linked to interviews
 	const { data, error } = await supabase
-		.from("themes")
+		.from("theme_evidence")
 		.select(`
-			id,
-			interview_id,
-			name,
-			pain,
-			details,
-			category,
-			journey_stage,
-			emotional_response,
-			desired_outcome,
-			jtbd,
-			impact,
-			evidence,
-			motivation,
-			contradictions,
-			updated_at,
-			project_id,
+			theme_id,
+			themes (
+				id,
+				name,
+				statement,
+				inclusion_criteria,
+				exclusion_criteria,
+				project_id,
+				updated_at
+			),
+			evidence!inner (
+				interview_id
+			)
 		`)
-		.eq("interview_id", interviewId)
+		.eq("evidence.interview_id", interviewId)
 
 	if (error) {
 		return { data: null, error }
 	}
 
-	const insightIds = data?.map((insight) => insight.id) || []
-	const tagsMap = new Map<string, string[]>()
-	if (insightIds.length) {
-		const { data: tagRows } = await supabase
-			.from("insight_tags")
-			.select("insight_id, tags (tag)")
-			.in("insight_id", insightIds)
+	// Deduplicate themes (same theme can be linked to multiple evidence items)
+	const themeMap = new Map()
+	data?.forEach((row: any) => {
+		if (row.themes && !themeMap.has(row.themes.id)) {
+			themeMap.set(row.themes.id, {
+				id: row.themes.id,
+				name: row.themes.name,
+				statement: row.themes.statement,
+				inclusion_criteria: row.themes.inclusion_criteria,
+				exclusion_criteria: row.themes.exclusion_criteria,
+				project_id: row.themes.project_id,
+				updated_at: row.themes.updated_at,
+				category: null, // Removed in new schema, keeping for backwards compatibility
+				insight_tags: [], // No tags support in new schema yet
+			})
+		}
+	})
 
-		tagRows?.forEach((row) => {
-			if (!row.insight_id || !row.tags?.tag) return
-			tagsMap.set(row.insight_id, [...(tagsMap.get(row.insight_id) || []), row.tags.tag])
-		})
-	}
-
-	const enriched = (data ?? []).map((insight) => ({
-		...insight,
-		insight_tags: (tagsMap.get(insight.id) || []).map((tag) => ({ tags: { tag } })),
-	}))
+	const enriched = Array.from(themeMap.values())
 
 	return { data: enriched, error: null }
 }

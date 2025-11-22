@@ -2,7 +2,8 @@ import { useChat } from "@ai-sdk/react"
 import { convertMessages } from "@mastra/core/agent"
 import { DefaultChatTransport, lastAssistantMessageIsCompleteWithToolCalls } from "ai"
 import consola from "consola"
-import { useState } from "react"
+import { Mic, MicOff } from "lucide-react"
+import { useCallback, useState } from "react"
 import type { LoaderFunctionArgs } from "react-router"
 import { data, Link, useLoaderData, useParams } from "react-router"
 import { Conversation, ConversationContent, ConversationScrollButton } from "~/components/ai-elements/conversation"
@@ -12,6 +13,7 @@ import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Button } from "~/components/ui/button"
 import { TextShimmer } from "~/components/ui/text-shimmer"
 import { cn } from "~/lib/utils"
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { memory } from "~/mastra/memory"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { userContext } from "~/server/user-context"
@@ -110,6 +112,26 @@ export default function ProjectChatPage() {
 		sendAutomaticallyWhen: lastAssistantMessageIsCompleteWithToolCalls,
 	})
 
+	const handleVoiceTranscription = useCallback(
+		(transcript: string) => {
+			const trimmed = transcript.trim()
+			if (!trimmed) return
+			sendMessage({ text: trimmed })
+			setInput("")
+		},
+		[sendMessage]
+	)
+
+	const {
+		startRecording: startVoiceRecording,
+		stopRecording: stopVoiceRecording,
+		isRecording: isVoiceRecording,
+		isTranscribing,
+		error: voiceError,
+		isSupported: isVoiceSupported,
+		intensity: voiceIntensity,
+	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
+
 	const handleSubmit = (e: React.FormEvent) => {
 		e.preventDefault()
 		if (input.trim()) {
@@ -117,6 +139,18 @@ export default function ProjectChatPage() {
 			setInput("")
 		}
 	}
+
+	const statusMessage =
+		voiceError ||
+		(status === "error"
+			? "Error"
+			: isTranscribing
+				? "Transcribing voice..."
+				: isVoiceRecording
+					? "Recording..."
+					: status === "streaming" || status === "submitted"
+						? "Thinking..."
+						: null)
 
 	return (
 		<div className="grid h-dvh grid-cols-1 gap-x-2 px-2 pt-2 pb-4 md:px-4 md:pt-4">
@@ -167,14 +201,19 @@ export default function ProjectChatPage() {
 						<TextShimmer
 							className={cn(
 								"mt-1 hidden font-mono text-sm",
-								status === "streaming" || (status === "submitted" && "block")
+								status === "streaming" || status === "submitted" || isTranscribing ? "block" : "hidden"
 							)}
 							duration={3}
 						>
 							Thinking...
 						</TextShimmer>
-						<div className={cn("mt-1 hidden font-mono text-destructive text-sm", status === "error" && "block")}>
-							Error
+						<div
+							className={cn(
+								"mt-1 hidden font-mono text-destructive text-sm",
+								(status === "error" || voiceError) && "block"
+							)}
+						>
+							{statusMessage}
 						</div>
 					</span>
 				</div>
@@ -183,13 +222,49 @@ export default function ProjectChatPage() {
 						value={input}
 						placeholder="Ask about your project setup..."
 						onChange={(e) => setInput(e.currentTarget.value)}
-						className="pr-12"
+						className="pr-28"
 					/>
-					<PromptInputSubmit
-						status={status === "streaming" ? "streaming" : "ready"}
-						disabled={!input.trim()}
-						className="absolute right-1 bottom-1"
-					/>
+					<div className="absolute right-1 bottom-1 flex items-center gap-1">
+						{isVoiceSupported && (
+							<button
+								type="button"
+								onClick={() => {
+									if (isVoiceRecording) {
+										stopVoiceRecording()
+									} else {
+										startVoiceRecording()
+									}
+								}}
+								disabled={isTranscribing}
+								className={cn(
+									"flex h-9 min-w-10 items-center justify-center rounded border px-2 transition-colors",
+									isVoiceRecording
+										? "border-red-500 bg-red-50 text-red-600 hover:bg-red-100"
+										: "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
+								)}
+								aria-label={isVoiceRecording ? "Stop voice input" : "Start voice input"}
+								title={isVoiceRecording ? "Stop voice input" : "Start voice input"}
+							>
+								{isVoiceRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+								{isVoiceRecording && (
+									<span
+										className="ml-2 h-2 w-8 overflow-hidden rounded-full bg-red-100"
+										aria-hidden
+									>
+										<span
+											className="block h-full bg-red-500 transition-[width]"
+											style={{ width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%` }}
+										/>
+									</span>
+								)}
+							</button>
+						)}
+						<PromptInputSubmit
+							status={status === "streaming" ? "streaming" : "ready"}
+							disabled={!input.trim()}
+							className="h-9"
+						/>
+					</div>
 				</PromptInput>
 			</div>
 		</div>

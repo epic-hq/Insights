@@ -7,78 +7,10 @@ import { Response as AiResponse } from "~/components/ai-elements/response"
 import { Card, CardContent, CardHeader, CardTitle } from "~/components/ui/card"
 import { Textarea } from "~/components/ui/textarea"
 import { useProjectStatusAgent } from "~/contexts/project-status-agent-context"
+import { useSpeechToText } from "~/features/voice/hooks/use-speech-to-text"
 import { cn } from "~/lib/utils"
 import type { UpsightMessage } from "~/mastra/message-types"
 import { HOST, PRODUCTION_HOST } from "~/paths"
-
-// Web Speech API types
-declare global {
-	interface Window {
-		SpeechRecognition: new () => SpeechRecognition
-		webkitSpeechRecognition: new () => SpeechRecognition
-	}
-
-	interface SpeechRecognitionEvent extends Event {
-		resultIndex: number
-		results: SpeechRecognitionResultList
-	}
-
-	interface SpeechRecognitionResultList {
-		[index: number]: SpeechRecognitionResult
-		length: number
-		item(index: number): SpeechRecognitionResult
-	}
-
-	interface SpeechRecognitionResult {
-		[index: number]: SpeechRecognitionAlternative
-		isFinal: boolean
-		length: number
-		item(index: number): SpeechRecognitionAlternative
-	}
-
-	interface SpeechRecognitionAlternative {
-		transcript: string
-		confidence: number
-	}
-
-	interface SpeechGrammarList {
-		[index: number]: SpeechGrammar
-		length: number
-		item(index: number): SpeechGrammar
-		addFromURI(src: string, weight?: number): void
-		addFromString(string: string, weight?: number): void
-	}
-
-	interface SpeechGrammar {
-		src: string
-		weight: number
-	}
-
-	interface SpeechRecognitionErrorEvent extends Event {
-		error: string
-		message: string
-	}
-
-	interface SpeechRecognition extends EventTarget {
-		continuous: boolean
-		grammars: SpeechGrammarList
-		lang: string
-		interimResults: boolean
-		maxAlternatives: number
-		serviceURI: string
-
-		// Event handlers
-		onstart: ((this: SpeechRecognition, ev: Event) => void) | null
-		onresult: ((this: SpeechRecognition, ev: SpeechRecognitionEvent) => void) | null
-		onend: ((this: SpeechRecognition, ev: Event) => void) | null
-		onerror: ((this: SpeechRecognition, ev: SpeechRecognitionErrorEvent) => void) | null
-
-		// Methods
-		start(): void
-		stop(): void
-		abort(): void
-	}
-}
 
 function WizardIcon({ className }: { className?: string }) {
 	return (
@@ -88,12 +20,16 @@ function WizardIcon({ className }: { className?: string }) {
 				className
 			)}
 		>
-			<svg viewBox="0 0 64 64" className="h-6 w-6" fill="none" stroke="currentColor" strokeWidth="2" role="img" aria-label="Wizard bot">
-				<path
-					d="M32 8l-10 18h20L32 8z"
-					strokeLinecap="round"
-					strokeLinejoin="round"
-				/>
+			<svg
+				viewBox="0 0 64 64"
+				className="h-6 w-6"
+				fill="none"
+				stroke="currentColor"
+				strokeWidth="2"
+				role="img"
+				aria-label="Wizard bot"
+			>
+				<path d="M32 8l-10 18h20L32 8z" strokeLinecap="round" strokeLinejoin="round" />
 				<circle cx="32" cy="30" r="10" />
 				<path d="M24 45h16v11H24z" />
 				<path d="M19 45c-4 0-7 3-7 7v4" strokeLinecap="round" />
@@ -149,149 +85,6 @@ interface ProjectStatusAgentChatProps {
 	projectId: string
 	systemContext: string
 	onCollapsedChange?: (collapsed: boolean) => void
-}
-
-// Custom hook for speech recognition
-function useSpeechRecognition() {
-	const [isListening, setIsListening] = useState(false)
-	const [finalTranscript, setFinalTranscript] = useState("")
-	const [error, setError] = useState<string | null>(null)
-	const recognitionRef = useRef<SpeechRecognition | null>(null)
-
-	// Check if Web Speech API is supported and we're on HTTPS (or localhost in development)
-	const isSupported = useMemo(() => {
-		if (typeof window === "undefined") return false
-
-		// Web Speech API requires HTTPS in modern browsers, but allow localhost for development
-		if (
-			window.location.protocol !== "https:" &&
-			window.location.hostname !== "localhost" &&
-			window.location.hostname !== "127.0.0.1"
-		) {
-			console.log("Speech recognition disabled: requires HTTPS (or localhost for development)")
-			return false
-		}
-
-		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-		const supported = Boolean(SpeechRecognition)
-		console.log("Speech recognition support check:", {
-			protocol: window.location.protocol,
-			hostname: window.location.hostname,
-			hasSpeechRecognition: Boolean(window.SpeechRecognition),
-			hasWebkitSpeechRecognition: Boolean(window.webkitSpeechRecognition),
-			supported,
-		})
-		return supported
-	}, [])
-
-	useEffect(() => {
-		if (!isSupported) return
-
-		// Check if Web Speech API is supported
-		const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition
-		if (SpeechRecognition) {
-			recognitionRef.current = new SpeechRecognition()
-			const recognition = recognitionRef.current
-
-			recognition.continuous = true
-			recognition.interimResults = false // Only get final results
-			recognition.lang = "en-US"
-
-			recognition.onstart = () => {
-				setIsListening(true)
-				setError(null) // Clear any previous errors
-				setFinalTranscript("") // Clear any previous transcript
-			}
-
-			recognition.onresult = (event: SpeechRecognitionEvent) => {
-				// Only process final results
-				let transcript = ""
-				for (let i = event.resultIndex; i < event.results.length; i++) {
-					const result = event.results[i]
-					if (result.isFinal) {
-						transcript += result[0].transcript
-					}
-				}
-				if (transcript) {
-					setFinalTranscript((prev) => prev + transcript)
-				}
-			}
-
-			recognition.onend = () => {
-				setIsListening(false)
-			}
-
-			recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
-				console.error("Speech recognition error:", {
-					error: event.error,
-					message: event.message,
-					protocol: window.location.protocol,
-					hostname: window.location.hostname,
-					userAgent: navigator.userAgent,
-				})
-				setIsListening(false)
-
-				// Provide user-friendly error messages
-				switch (event.error) {
-					case "network":
-						setError(
-							"Network error. Speech recognition requires HTTPS. For development, use localhost or 127.0.0.1 with HTTP allowed."
-						)
-						break
-					case "not-allowed":
-						setError("Microphone permission denied. Please allow microphone access.")
-						break
-					case "no-speech":
-						setError("No speech detected. Try speaking louder or closer to the microphone.")
-						break
-					case "aborted":
-						setError("Speech recognition was cancelled.")
-						break
-					case "audio-capture":
-						setError("Audio capture failed. Check your microphone.")
-						break
-					case "service-not-allowed":
-						setError("Speech recognition service not available.")
-						break
-					default:
-						setError(`Speech recognition error: ${event.error}`)
-				}
-			}
-		}
-
-		return () => {
-			if (recognitionRef.current) {
-				recognitionRef.current.stop()
-			}
-		}
-	}, [isSupported])
-
-	const toggleListening = () => {
-		if (!recognitionRef.current) return
-
-		if (isListening) {
-			// Stop listening
-			recognitionRef.current.stop()
-		} else {
-			// Start listening - clear any previous errors
-			setError(null)
-			try {
-				recognitionRef.current.start()
-			} catch (error) {
-				console.error("Error starting speech recognition:", error)
-				setError("Failed to start speech recognition. Try again.")
-			}
-		}
-	}
-
-	return {
-		isListening,
-		finalTranscript,
-		isSupported,
-		error,
-		toggleListening,
-		clearError: () => setError(null),
-	}
 }
 
 const INTERNAL_ORIGINS = [HOST, PRODUCTION_HOST]
@@ -365,9 +158,6 @@ export function ProjectStatusAgentChat({
 	const location = useLocation()
 	const routes = { api: { chat: { projectStatus: () => `/a/${accountId}/${projectId}/api/chat/project-status` } } }
 	const { pendingInput, setPendingInput } = useProjectStatusAgent()
-
-	// Speech recognition hook
-	const { isListening, finalTranscript, isSupported, error, toggleListening, clearError } = useSpeechRecognition()
 
 	// Handle pendingInput from context (inserted by other components like priorities table)
 	useEffect(() => {
@@ -450,23 +240,40 @@ export function ProjectStatusAgentChat({
 		}
 	}, [historyFetcher.data, setMessages])
 
-	// Update input with final speech recognition transcript when listening stops
-	useEffect(() => {
-		if (finalTranscript && !isListening) {
-			setInput((prevInput) => prevInput + finalTranscript)
-		}
-	}, [finalTranscript, isListening])
+	const handleVoiceTranscription = useCallback(
+		(transcript: string) => {
+			const trimmed = transcript.trim()
+			if (!trimmed) return
+			sendMessage({ text: trimmed })
+			setInput("")
+		},
+		[sendMessage]
+	)
 
-	// Clear speech recognition errors when user types
-	useEffect(() => {
-		if (error && input.trim()) {
-			clearError()
-		}
-	}, [input, error, clearError])
+	const {
+		startRecording: startVoiceRecording,
+		stopRecording: stopVoiceRecording,
+		isRecording: isVoiceRecording,
+		isTranscribing,
+		error: voiceError,
+		isSupported: isVoiceSupported,
+		intensity: voiceIntensity,
+	} = useSpeechToText({ onTranscription: handleVoiceTranscription })
 
 	const isBusy = status === "streaming" || status === "submitted"
 	const isError = status === "error"
 	const awaitingAssistant = isBusy
+	const statusMessage =
+		voiceError ||
+		(isError
+			? "Something went wrong. Try again."
+			: isTranscribing
+				? "Transcribing voice..."
+				: isBusy
+					? "Thinking..."
+					: isVoiceRecording
+						? "Recording..."
+						: null)
 
 	const displayableMessages = useMemo(() => {
 		if (!messages) return []
@@ -673,39 +480,42 @@ export function ProjectStatusAgentChat({
 								/>
 								<div className="flex items-center justify-between gap-2">
 									<span className="text-muted-foreground text-xs" aria-live="polite">
-										{error
-											? error
-											: isError
-												? "Something went wrong. Try again."
-												: isBusy
-													? "Thinking..."
-													: isListening
-														? "Listening..."
-														: null}
+										{statusMessage}
 									</span>
 									<div className="flex items-center gap-2">
-										{!isSupported ? (
+										{!isVoiceSupported ? (
 											<div className="flex h-8 items-center text-muted-foreground text-xs">
-												🔒 HTTPS required (localhost allowed for dev)
+												Microphone not available in this browser
 											</div>
 										) : (
 											<button
 												type="button"
 												onClick={() => {
-													clearError()
-													toggleListening()
+													if (isVoiceRecording) {
+														stopVoiceRecording()
+													} else {
+														startVoiceRecording()
+													}
 												}}
-												disabled={isBusy}
+												disabled={isTranscribing}
 												className={cn(
-													"flex h-8 w-8 items-center justify-center rounded border transition-colors",
-													isListening
+													"flex h-8 w-10 items-center justify-center rounded border transition-colors",
+													isVoiceRecording
 														? "border-red-500 bg-red-50 text-red-600 hover:bg-red-100"
 														: "border-border bg-background text-muted-foreground hover:bg-muted hover:text-foreground"
 												)}
-												aria-label={isListening ? "Stop voice input" : "Start voice input"}
-												title={isListening ? "Stop voice input" : "Start voice input"}
+												aria-label={isVoiceRecording ? "Stop voice input" : "Start voice input"}
+												title={isVoiceRecording ? "Stop voice input" : "Start voice input"}
 											>
-												{isListening ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+												{isVoiceRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+												{isVoiceRecording && (
+													<span className="ml-1 h-2 w-6 overflow-hidden rounded-full bg-red-100" aria-hidden>
+														<span
+															className="block h-full bg-red-500 transition-[width]"
+															style={{ width: `${Math.min(100, Math.max(10, voiceIntensity * 100))}%` }}
+														/>
+													</span>
+												)}
 											</button>
 										)}
 										<button

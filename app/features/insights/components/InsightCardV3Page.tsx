@@ -85,13 +85,15 @@ export function InsightCardV3Page({ insight, extended }: InsightCardV3Props) {
 									</div>
 								)} */}
 
-					{insight.insight_tags && (
+					{insight.insight_tags && insight.insight_tags.length > 0 && (
 						<div className="space-y-3">
 							<h4 className="font-medium text-foreground text-sm">Tags</h4>
 							<div className="flex flex-wrap gap-2">
-								{insight.insight_tags?.map((tag: any) => (
-									<StyledTag key={tag.tag} name={tag.tags.tag} style={tag.style} frequency={tag.frequency} />
-								))}
+								{insight.insight_tags?.map((tag: any, idx: number) => {
+									const tagName = tag?.tags?.tag || tag?.tag || null
+									if (!tagName) return null
+									return <StyledTag key={`${tagName}-${idx}`} name={tagName} style={tag.style} frequency={tag.frequency} />
+								})}
 							</div>
 						</div>
 					)}

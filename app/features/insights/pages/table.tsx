@@ -18,7 +18,11 @@ export async function loader({ context, params }: LoaderFunctionArgs) {
 	}
 
 	const { data, error } = await getInsights({ supabase, accountId, projectId })
-	if (error) throw new Response("Failed to load insights", { status: 500 })
+	if (error) {
+		console.error("Error loading insights:", error)
+		throw new Response("Failed to load insights", { status: 500 })
+	}
+	console.log(`Loaded ${data?.length || 0} insights/themes:`, data?.slice(0, 2))
 	return { insights: data || [] }
 }
 

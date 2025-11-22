@@ -57,14 +57,10 @@ export default function QuickInsights() {
 		return insights.filter((insight: Insight & { [key: string]: any }) => {
 			const haystack = [
 				insight.name,
-				insight.pain,
-				insight.details,
-				insight.category,
-				insight.emotional_response,
-				insight.desired_outcome,
-				insight.jtbd,
-				insight.evidence,
-				insight.motivation,
+				insight.statement,
+				insight.inclusion_criteria,
+				insight.exclusion_criteria,
+				insight.synonyms,
 				insight?.persona_insights?.map((pi: any) => pi.personas?.name).join(" "),
 				insight?.linked_themes?.map((theme: any) => theme.name).join(" "),
 			]
@@ -87,7 +83,7 @@ export default function QuickInsights() {
 					<Search className="-translate-y-1/2 pointer-events-none absolute top-1/2 left-3 h-4 w-4 text-muted-foreground" />
 					<Input
 						className="pl-9"
-						placeholder="Search by insight, pain, tags, personas…"
+						placeholder="Search themes by name, statement, personas…"
 						value={searchQuery}
 						onChange={(e) => setSearchQuery(e.target.value)}
 					/>

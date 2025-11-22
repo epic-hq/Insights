@@ -11,7 +11,10 @@ import { createClient } from "~/lib/supabase/client"
 import { cn } from "~/lib/utils"
 import type { Evidence, Insight, Person, Theme } from "~/types"
 
-export type ThemeCardTheme = Pick<Theme, "id" | "name" | "statement"> & {
+export type ThemeCardTheme = Pick<
+	Theme,
+	"id" | "name" | "statement" | "inclusion_criteria" | "exclusion_criteria"
+> & {
 	evidence_count?: number
 	insights_count?: number
 }
@@ -85,18 +88,30 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 				participantsByInterview = map
 			}
 
-			// 3) insights by interview (proxy linkage)
+			// 3) Other themes linked to same evidence
+			// Note: In new schema, themes are project-level, not interview-specific
+			// Show other themes that share evidence with this theme
 			let insightsList: Pick<Insight, "id" | "name">[] = []
-			if (interviewIds.length) {
+			const evidenceIds = ev.map((e) => e.id).filter(Boolean)
+			if (evidenceIds.length) {
 				const { data: ins } = await supabase
-					.from("themes")
-					.select("id, name, interview_id")
-					.in("interview_id", interviewIds)
+					.from("theme_evidence")
+					.select("themes:theme_id(id, name)")
+					.in("evidence_id", evidenceIds)
+					.neq("theme_id", theme.id) // Exclude current theme
 					.limit(20)
-				insightsList = ((ins ?? []) as Array<{ id: string; name: string | null }>).map((i) => ({
-					id: i.id,
-					name: i.name ?? "",
-				}))
+
+				// Deduplicate themes
+				const themeMap = new Map<string, { id: string; name: string }>()
+				for (const link of (ins ?? []) as Array<{ themes: { id: string; name: string | null } | null }>) {
+					if (link.themes && !themeMap.has(link.themes.id)) {
+						themeMap.set(link.themes.id, {
+							id: link.themes.id,
+							name: link.themes.name ?? "",
+						})
+					}
+				}
+				insightsList = Array.from(themeMap.values())
 			}
 
 			if (!active) return
@@ -209,6 +224,28 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 					className="overflow-hidden"
 				>
 					<div className="space-y-4">
+						{/* Theme Criteria */}
+						{(theme.inclusion_criteria || theme.exclusion_criteria) && (
+							<div className="space-y-3">
+								{theme.inclusion_criteria && (
+									<div className="rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
+										<h4 className="mb-1 font-medium text-green-900 text-sm dark:text-green-100">
+											Inclusion Criteria
+										</h4>
+										<p className="text-green-700 text-sm dark:text-green-300">{theme.inclusion_criteria}</p>
+									</div>
+								)}
+								{theme.exclusion_criteria && (
+									<div className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+										<h4 className="mb-1 font-medium text-red-900 text-sm dark:text-red-100">
+											Exclusion Criteria
+										</h4>
+										<p className="text-red-700 text-sm dark:text-red-300">{theme.exclusion_criteria}</p>
+									</div>
+								)}
+							</div>
+						)}
+
 						{/* Evidence Preview */}
 						{evidencePreview.length > 0 && (
 							<div>
@@ -248,38 +285,22 @@ export function ThemeCard({ theme, className, defaultExpanded = false }: ThemeCa
 							</div>
 						)}
 
-						{/* Insights Preview */}
+						{/* Related Themes Preview */}
 						{insightsPreview.length > 0 && (
 							<div>
-								<h3 className="mb-4 font-semibold text-foreground">Insights</h3>
-								{insights.length > 0 && (
-									<div className="">
-										{" "}
-										{/* TODO: border bg-background p-6 */}
-										<div className="space-y-3">
-											{insights.map((insight) => (
-												<div key={insight.id} className="max-w-xl rounded-lg border p-2">
-													<div key={insight.id} className="border-green-500 border-l-4 pl-3">
-														<Link
-															to={routes.insights.detail(insight.id)}
-															className="font-medium text-blue-600 hover:text-blue-800"
-														>
-															{insight.name}
-														</Link>
-														{insight.category && (
-															<Badge variant="secondary" className="ml-2">
-																{insight.category}
-															</Badge>
-														)}
-														{insight.impact && (
-															<div className="mt-1 text-foreground/50 text-sm">Impact: {insight.impact}</div>
-														)}
-													</div>
-												</div>
-											))}
+								<h4 className="mb-2 font-medium text-gray-900 text-sm dark:text-white">Related Themes</h4>
+								<div className="space-y-2">
+									{insightsPreview.map((insight) => (
+										<div key={insight.id} className="rounded-lg border border-gray-200 p-2 dark:border-gray-700">
+											<Link
+												to={routes.insights.detail(insight.id)}
+												className="font-medium text-indigo-600 text-sm hover:text-indigo-800 dark:text-indigo-400"
+											>
+												{insight.name}
+											</Link>
 										</div>
-									</div>
-								)}
+									))}
+								</div>
 							</div>
 						)}
 					</div>

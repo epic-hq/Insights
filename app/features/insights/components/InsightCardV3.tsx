@@ -25,18 +25,22 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 		<>
 			<Card className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => setSelected(insight)}>
 				<CardContent className="p-4">
-					<div className="pt-0 font-light text-muted-foreground text-xs">Category: {insight.category}</div>
-					<h3 className="mb-2 font-semibold text-foreground">{insight.pain || "Untitled"}</h3>
-					{insight.details && <p className="mb-4 line-clamp-4 text-muted-foreground text-sm">{insight.details}</p>}
+					<h3 className="mb-2 font-semibold text-foreground">{insight.name || "Untitled Theme"}</h3>
+					{(insight as any).statement && (
+						<p className="mb-4 line-clamp-4 text-muted-foreground text-sm">{(insight as any).statement}</p>
+					)}
 					<div className="flex flex-wrap items-center justify-between">
 						<div className="flex items-center space-x-2">
-							{insight.journey_stage && (
-								<Badge variant="outline" className="text-xs">
-									{insight.journey_stage} stage
-								</Badge>
+							{insight.persona_insights && insight.persona_insights.length > 0 && (
+								<div className="flex flex-wrap gap-1">
+									{insight.persona_insights.slice(0, 2).map((pi: any) => (
+										<Badge key={pi.personas?.id} variant="outline" className="text-xs">
+											{pi.personas?.name}
+										</Badge>
+									))}
+								</div>
 							)}
 						</div>
-						{insight.emotional_response && <EmotionBadge emotion_string={insight.emotional_response} muted />}
 					</div>
 				</CardContent>
 			</Card>
@@ -46,48 +50,44 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 					<DialogContent className="mx-4 my-8 max-h-[90vh] w-full max-w-5xl overflow-hidden sm:mx-auto lg:max-w-6xl">
 						<DialogHeader className="space-y-3 pb-4">
 							<DialogTitle className="space-y-2">
-								<div className="font-light text-muted-foreground text-xs">{selected.name}</div>
-								<div className="border-b pb-3 font-semibold text-lg">{selected.pain}</div>
+								<div className="border-b pb-3 font-semibold text-lg">{selected.name || "Untitled Theme"}</div>
 							</DialogTitle>
 						</DialogHeader>
 
 						<div className="max-h-[60vh] space-y-6 overflow-y-auto pr-2">
-							{selected.category && (
-								<Badge variant="outline" className="text-xs">
-									{selected.category}
-								</Badge>
-							)}
-
-							{(selected.details || selected.evidence) && (
-								<div className="grid grid-cols-1 gap-6">
-									{selected.details && (
-										<div className="space-y-2">
-											<h4 className="font-medium text-foreground text-sm">Details</h4>
-											<p className="text-muted-foreground text-sm leading-relaxed">{selected.details}</p>
-										</div>
-									)}
-									{selected.evidence && (
-										<div className="space-y-2">
-											<h4 className="font-medium text-foreground text-sm">Evidence</h4>
-											<div className="flex items-center gap-2 rounded-lg bg-blue-400/20 p-3">
-												<Quote className="h-4 w-4" />
-												<p className="text-muted-foreground text-sm leading-relaxed">{selected.evidence}</p>
-											</div>
-										</div>
-									)}
+							{(selected as any).statement && (
+								<div className="space-y-2">
+									<h4 className="font-medium text-foreground text-sm">Statement</h4>
+									<p className="text-muted-foreground text-sm leading-relaxed">{(selected as any).statement}</p>
 								</div>
 							)}
 
-							{selected.desired_outcome && (
-								<div className="space-y-2">
-									<h4 className="font-medium text-foreground text-sm">Desired Outcome</h4>
-									<p className="text-muted-foreground text-sm leading-relaxed">{selected.desired_outcome}</p>
+							{((selected as any).inclusion_criteria || (selected as any).exclusion_criteria) && (
+								<div className="grid grid-cols-1 gap-4">
+									{(selected as any).inclusion_criteria && (
+										<div className="space-y-2 rounded-lg border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-950">
+											<h4 className="font-medium text-green-900 text-sm dark:text-green-100">
+												Inclusion Criteria
+											</h4>
+											<p className="text-green-700 text-sm dark:text-green-300">
+												{(selected as any).inclusion_criteria}
+											</p>
+										</div>
+									)}
+									{(selected as any).exclusion_criteria && (
+										<div className="space-y-2 rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-950">
+											<h4 className="font-medium text-red-900 text-sm dark:text-red-100">Exclusion Criteria</h4>
+											<p className="text-red-700 text-sm dark:text-red-300">
+												{(selected as any).exclusion_criteria}
+											</p>
+										</div>
+									)}
 								</div>
 							)}
 
 							{selected.linked_themes && selected.linked_themes.length > 0 && (
 								<div className="space-y-3">
-									<h4 className="font-medium text-gray-700 text-sm">Linked Themes</h4>
+									<h4 className="font-medium text-gray-700 text-sm">Related Themes</h4>
 									<div className="flex flex-wrap gap-2">
 										{selected.linked_themes.map((theme: any) => (
 											<Link key={theme.id} to={routes.themes.detail(theme.id)}>
@@ -99,27 +99,24 @@ export function InsightCardV3({ insight, extended }: InsightCardV3Props) {
 									</div>
 								</div>
 							)}
-							{/* {selected.jtbd && (
-								<div className="space-y-2">
-									<h4 className="font-medium text-foreground text-sm">Job to be Done</h4>
-									<p className="text-muted-foreground text-sm leading-relaxed">{selected.jtbd}</p>
-								</div>
-							)} */}
 
-							{selected.insight_tags && (
+							{selected.insight_tags && selected.insight_tags.length > 0 && (
 								<div className="space-y-3">
 									<h4 className="font-medium text-foreground text-sm">Tags</h4>
 									<div className="flex flex-wrap gap-2">
-										{selected.insight_tags?.map((tag: any) => (
-											<StyledTag key={tag.tag} name={tag.tag} style={tag.style} frequency={tag.frequency} />
-										))}
+										{selected.insight_tags?.map((tag: any, idx: number) => {
+											const tagName = tag?.tags?.tag || tag?.tag || null
+											if (!tagName) return null
+											return (
+												<StyledTag
+													key={`${tagName}-${idx}`}
+													name={tagName}
+													style={tag.style}
+													frequency={tag.frequency}
+												/>
+											)
+										})}
 									</div>
-								</div>
-							)}
-
-							{selected.emotional_response && (
-								<div className="flex items-center justify-end pt-2">
-									<EmotionBadge emotion_string={selected.emotional_response} muted />
 								</div>
 							)}
 						</div>
